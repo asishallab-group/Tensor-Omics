@@ -11,6 +11,7 @@ user can get wrong is caught here, in their language, with their argument names.
 
 from __future__ import annotations
 
+from .error_arguments import sources_of
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
@@ -318,7 +319,15 @@ class RWrapperEmitter:
         writer.line(f".result <- .Call({args})")
         names = ", ".join(f'"{a.name}"' for a in wrapper.procedure.arguments)
         writer.line(f".arguments <- c({names})")
-        writer.line(".status <- check_err_code(.result$ierr, .arguments)")
+        # and, positionally, the argument the caller passed that each was derived from
+        sources = sources_of(wrapper.procedure)
+        if any(sources):
+            rendered = ", ".join(f'"{s}"' if s else "NA_character_" for s in sources)
+            writer.line(f".sources <- c({rendered})")
+        if any(sources_of(wrapper.procedure)):
+            writer.line(".status <- check_err_code(.result$ierr, .arguments, .sources)")
+        else:
+            writer.line(".status <- check_err_code(.result$ierr, .arguments)")
         writer.blank()
 
     def _return(self, writer: Writer, wrapper: CWrapper) -> None:

@@ -29,6 +29,8 @@ _lib.compute_shift_vector_field_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENTS = ("n_tissues", "n_genes", "n_families", "expression_vectors", "family_centroids", "gene_to_fam", "shift_vectors", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENT_SOURCES = ("expression_vectors", "expression_vectors", "family_centroids", None, None, None, None, None,)
 
 def compute_shift_vector_field(
         expression_vectors,
@@ -114,6 +116,6 @@ def compute_shift_vector_field(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENTS, _COMPUTE_SHIFT_VECTOR_FIELD_ARGUMENT_SOURCES)
 
     return shift_vectors

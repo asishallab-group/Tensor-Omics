@@ -161,13 +161,17 @@ class RErrorEmitter:
             "#' Raise if a tox_errors code reports an error\n"
             "#'\n"
             "#' @param ierr the encoded error code, argument position included\n"
+            "#' @param sources positionally alongside `arguments`: the argument the caller\n"
+            "#'   actually passed, where the Fortran one was derived from it -- an extent read\n"
+            "#'   off a matrix names that matrix here. NA where the Fortran argument is the\n"
+            "#'   caller's own.\n"
             "#' @param arguments the wrapped procedure's argument names, in order, so the\n"
             "#'   message can name the offending one\n"
             "#' @return invisibly, the name of the status code if the call reported one;\n"
             "#'   status codes are outcomes, not failures, and never raise\n"
             "#' @keywords internal"
         )
-        writer.line("check_err_code <- function(ierr, arguments = character()) {")
+        writer.line("check_err_code <- function(ierr, arguments = character(), sources = character()) {")
         with writer.indent():
             writer.line("code <- ierr %% ARG_POS_FACTOR")
             writer.line("if (code == 0L) return(invisible(NULL))")
@@ -187,7 +191,23 @@ class RErrorEmitter:
                 writer.line("if (arg_pos <= length(arguments)) {")
                 with writer.indent():
                     writer.line("argument <- arguments[[arg_pos]]")
-                    writer.line('message <- sprintf("%s (argument \'%s\')", message, argument)')
+                    writer.line("source <- if (arg_pos <= length(sources)) sources[[arg_pos]]")
+                    with writer.indent(9):
+                        writer.line("else NA_character_")
+                    writer.line("if (!is.na(source)) {")
+                    with writer.indent():
+                        writer.line("# the caller's word first, then the Fortran argument it")
+                        writer.line("# was derived from, which is what the signature calls it")
+                        writer.line(
+                            "message <- sprintf(\"%s (argument '%s', via '%s')\", message,"
+                        )
+                        with writer.indent(9):
+                            writer.line("source, argument)")
+                        writer.line("argument <- source")
+                    writer.line("} else {")
+                    with writer.indent():
+                        writer.line('message <- sprintf("%s (argument \'%s\')", message, argument)')
+                    writer.line("}")
                 writer.line("} else {")
                 with writer.indent():
                     writer.line('message <- sprintf("%s (argument %d)", message, arg_pos)')

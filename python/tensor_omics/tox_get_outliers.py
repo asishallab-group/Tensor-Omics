@@ -52,6 +52,8 @@ _lib.compute_family_scaling_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENT_SOURCES = ("distances", "dscale", None, None, None, None, None, None, None, None, None, None, "tmp_int_workspace", None, "tmp_real_workspace", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_family_scaling_c.restype = None
 _lib.compute_family_scaling_c.argtypes = (
@@ -74,6 +76,8 @@ _lib.compute_family_scaling_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_FAMILY_SCALING_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES = ("distances", "dscale", None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_rdi_expert_c.restype = None
 _lib.compute_rdi_expert_c.argtypes = (
@@ -92,6 +96,8 @@ _lib.compute_rdi_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_RDI_EXPERT_ARGUMENTS = ("n_genes", "distances", "gene_to_fam", "dscale", "rdi", "sorted_rdi", "perm", "tmp_stack_left", "tmp_stack_right", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_RDI_EXPERT_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_rdi_c.restype = None
 _lib.compute_rdi_c.argtypes = (
@@ -108,6 +114,8 @@ _lib.compute_rdi_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_RDI_ARGUMENTS = ("n_genes", "distances", "gene_to_fam", "dscale", "rdi", "sorted_rdi", "perm", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_RDI_ARGUMENT_SOURCES = ("distances", None, None, None, None, None, None, None,)
 
 _lib.identify_outliers_c.restype = None
 _lib.identify_outliers_c.argtypes = (
@@ -124,6 +132,8 @@ _lib.identify_outliers_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _IDENTIFY_OUTLIERS_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_IDENTIFY_OUTLIERS_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None, None, None,)
 
 _lib.detect_outliers_expert_c.restype = None
 _lib.detect_outliers_expert_c.argtypes = (
@@ -164,6 +174,8 @@ _lib.detect_outliers_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_OUTLIERS_EXPERT_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "tmp_means_aux", "tmp_dscale", "tmp_excluded_low_sd", "tmp_low_sd_cutoff", "tmp_rdi", "tmp_sorted_rdi", "tmp_threshold", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile",)
+#: For a derived argument, the one the caller passed it in
+_DETECT_OUTLIERS_EXPERT_ARGUMENT_SOURCES = ("distances", "tmp_diagl", None, None, None, None, None, None, "tmp_int_workspace", None, "tmp_real_workspace", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.detect_outliers_c.restype = None
 _lib.detect_outliers_c.argtypes = (
@@ -182,6 +194,8 @@ _lib.detect_outliers_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DETECT_OUTLIERS_ARGUMENTS = ("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile",)
+#: For a derived argument, the one the caller passed it in
+_DETECT_OUTLIERS_ARGUMENT_SOURCES = ("distances", "loess_x", None, None, None, None, None, None, None, None, None,)
 
 def compute_family_scaling_expert(
         n_families,
@@ -336,7 +350,7 @@ def compute_family_scaling_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENTS, _COMPUTE_FAMILY_SCALING_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "dscale": dscale,
@@ -463,7 +477,7 @@ def compute_family_scaling(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_FAMILY_SCALING_ARGUMENTS, _COMPUTE_FAMILY_SCALING_ARGUMENT_SOURCES)
 
     return {
         "dscale": dscale,
@@ -568,7 +582,7 @@ def compute_rdi_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RDI_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_RDI_EXPERT_ARGUMENTS, _COMPUTE_RDI_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "rdi": rdi,
@@ -666,7 +680,7 @@ def compute_rdi(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_RDI_ARGUMENTS, _COMPUTE_RDI_ARGUMENT_SOURCES)
 
     return {
         "rdi": rdi,
@@ -774,7 +788,7 @@ def identify_outliers(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS)
+    check_err_code(ierr.value, _IDENTIFY_OUTLIERS_ARGUMENTS, _IDENTIFY_OUTLIERS_ARGUMENT_SOURCES)
 
     return {
         "is_outlier": is_outlier,
@@ -927,7 +941,7 @@ def detect_outliers_expert(
         ctypes.byref(ctypes.c_double(percentile)),
     )
 
-    check_err_code(ierr.value, _DETECT_OUTLIERS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _DETECT_OUTLIERS_EXPERT_ARGUMENTS, _DETECT_OUTLIERS_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "is_outlier": is_outlier,
@@ -1033,7 +1047,7 @@ def detect_outliers(
         ctypes.byref(ctypes.c_double(percentile)),
     )
 
-    check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS)
+    check_err_code(ierr.value, _DETECT_OUTLIERS_ARGUMENTS, _DETECT_OUTLIERS_ARGUMENT_SOURCES)
 
     return {
         "is_outlier": is_outlier,

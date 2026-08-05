@@ -28,6 +28,8 @@ _lib.deserialize_logical_helper_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DESERIALIZE_LOGICAL_HELPER_ARGUMENTS = ("arr", "n_elements", "arr_shape", "filename", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DESERIALIZE_LOGICAL_HELPER_ARGUMENT_SOURCES = (None, "arr", "arr", None, None,)
 
 def deserialize_logical_helper(
         filename,
@@ -86,6 +88,6 @@ def deserialize_logical_helper(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DESERIALIZE_LOGICAL_HELPER_ARGUMENTS)
+    check_err_code(ierr.value, _DESERIALIZE_LOGICAL_HELPER_ARGUMENTS, _DESERIALIZE_LOGICAL_HELPER_ARGUMENT_SOURCES)
 
     return arr.reshape(tuple(arr_shape), order='F')

@@ -26,7 +26,8 @@ compute_shift_vector_field <- function(expression_vectors, family_centroids, gen
 
     .result <- .Call("compute_shift_vector_field_call", expression_vectors, family_centroids, gene_to_fam)
     .arguments <- c("n_tissues", "n_genes", "n_families", "expression_vectors", "family_centroids", "gene_to_fam", "shift_vectors", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expression_vectors", "expression_vectors", "family_centroids", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$shift_vectors
 }

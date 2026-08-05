@@ -156,6 +156,12 @@ The C layer packs no position of its own, so there is nothing for it to reconcil
 a Fortran argument it can map — an argument it cannot map is a hard generator diagnostic, not a
 silently renumbered signature.
 
+The *label* a binding prints is translated where it can be: an `arg_pos` naming an argument the
+caller never wrote — an extent read off an array, a `<x>_shape`, an `n_selected_<x>` — is
+reported as `(argument 'vec1', via 'n_elements')`, the caller's word first and the Fortran one
+after. The position itself is untouched; only the name shown changes, and an argument with no
+caller-visible source keeps its Fortran name alone.
+
 `map_err_arg_pos` in `tox_errors` stays for hand-written code where two dummy lists really are
 known to correspond. What a *generated* wrapper does with an inherited position is the opposite
 and is decided elsewhere: see "The argument position an `ierr` carries" in

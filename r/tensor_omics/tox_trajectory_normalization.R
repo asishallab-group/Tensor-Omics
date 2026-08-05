@@ -14,7 +14,8 @@ normalize_variable_timeseries <- function(v) {
     v <- .tox_as_double_vector(v, "v")
     .result <- .Call("normalize_variable_timeseries_call", v)
     .arguments <- c("v", "v_norm", "n_points", "status", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "v", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         v_norm = .result$v_norm,
@@ -36,7 +37,8 @@ normalize_single_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_matrix(trajectory, "trajectory")
     .result <- .Call("normalize_single_trajectory_call", trajectory)
     .arguments <- c("trajectory", "trajectory_norm", "n_factors", "n_timepoints", "status", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "trajectory", "trajectory", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         trajectory_norm = .result$trajectory_norm,
@@ -60,7 +62,8 @@ normalize_all_trajectories_expert <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
     .result <- .Call("normalize_all_trajectories_expert_call", trajectories)
     .arguments <- c("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "tmp_series", "tmp_series_norm", "status", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         trajectories_norm = .result$trajectories_norm,
@@ -84,7 +87,8 @@ normalize_all_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
     .result <- .Call("normalize_all_trajectories_call", trajectories)
     .arguments <- c("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "status", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         trajectories_norm = .result$trajectories_norm,

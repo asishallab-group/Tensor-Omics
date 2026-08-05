@@ -17,7 +17,8 @@ build_kd_index <- function(points, dimension_order) {
 
     .result <- .Call("build_kd_index_call", points, dimension_order)
     .arguments <- c("points", "n_dimensions", "n_points", "kd_indices", "dimension_order", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "points", "points", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$kd_indices
 }
@@ -43,7 +44,8 @@ build_spherical_kd <- function(points, dimension_order) {
 
     .result <- .Call("build_spherical_kd_call", points, dimension_order)
     .arguments <- c("points", "n_dimensions", "n_points", "kd_indices", "dimension_order", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "points", "points", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$kd_indices
 }

@@ -44,7 +44,8 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood
 
     .result <- .Call("gjct_permutation_test_expert_call", neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed, neighbor_mask_S1, neighbor_mask_S2)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "tmp_residuals_S1", "tmp_residuals_S2", "tmp_pool", "tmp_pmf_S1", "tmp_pmf_S2", "tmp_counts", "tmp_included_n_reps_S1", "tmp_included_n_reps_S2", "tmp_js_divergences", "tmp_weights", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", NA_character_, "tmp_pmf_S1", NA_character_, "jsd_null", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         jsd_null = .result$jsd_null,
@@ -96,7 +97,8 @@ gjct_permutation_test <- function(neighborhood_residuals_S1, neighborhood_residu
 
     .result <- .Call("gjct_permutation_test_call", neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed, neighbor_mask_S1, neighbor_mask_S2)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", NA_character_, NA_character_, NA_character_, "jsd_null", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         jsd_null = .result$jsd_null,

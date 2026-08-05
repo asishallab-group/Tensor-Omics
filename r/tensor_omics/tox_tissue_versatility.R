@@ -29,7 +29,8 @@ compute_tissue_versatility <- function(expression_vectors, vectors_selection_mas
 
     .result <- .Call("compute_tissue_versatility_call", expression_vectors, vectors_selection_mask, axes_selection_mask)
     .arguments <- c("n_axes", "n_vectors", "expression_vectors", "vectors_selection_mask", "n_selected_vectors", "axes_selection_mask", "n_selected_axes", "tissue_versatilities", "tissue_angles_deg", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expression_vectors", "expression_vectors", NA_character_, NA_character_, "tissue_versatilities", NA_character_, "axes_selection_mask", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         tissue_versatilities = .result$tissue_versatilities,

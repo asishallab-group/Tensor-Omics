@@ -36,6 +36,8 @@ _lib.perform_permutation_test_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "tmp_factor", "tmp_dependent", "random_seed", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, "local_contributions", None, None, None, None, None, None,)
 
 _lib.perform_permutation_test_c.restype = None
 _lib.perform_permutation_test_c.argtypes = (
@@ -56,6 +58,8 @@ _lib.perform_permutation_test_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _PERFORM_PERMUTATION_TEST_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "random_seed", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, "local_contributions", None, None, None, None,)
 
 _lib.compute_p_values_c.restype = None
 _lib.compute_p_values_c.argtypes = (
@@ -72,6 +76,8 @@ _lib.compute_p_values_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_P_VALUES_ARGUMENTS = ("local_contributions_observed", "total_contribution_observed", "local_contributions_perm_test", "total_contributions_perm_test", "n_timepoints", "n_permutations", "local_p_values", "total_p_value", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_P_VALUES_ARGUMENT_SOURCES = (None, None, None, None, "local_contributions_observed", "local_contributions_perm_test", None, None, None,)
 
 _lib.compute_contributions_c.restype = None
 _lib.compute_contributions_c.argtypes = (
@@ -86,6 +92,8 @@ _lib.compute_contributions_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_CONTRIBUTIONS_ARGUMENTS = ("factor", "dependent", "n_dims", "baseline_mode", "local_contributions", "total_contribution", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, None, "factor", None, None, None, None,)
 
 _lib.compute_all_contributions_expert_c.restype = None
 _lib.compute_all_contributions_expert_c.argtypes = (
@@ -107,6 +115,8 @@ _lib.compute_all_contributions_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, "factor_indices", None, "dependent_indices", None, None, None, None, None, None,)
 
 _lib.compute_all_contributions_c.restype = None
 _lib.compute_all_contributions_c.argtypes = (
@@ -126,6 +136,8 @@ _lib.compute_all_contributions_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_ALL_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, "factor_indices", None, "dependent_indices", None, None, None, None,)
 
 _lib.compute_baselines_factor_dependent_c.restype = None
 _lib.compute_baselines_factor_dependent_c.argtypes = (
@@ -140,6 +152,8 @@ _lib.compute_baselines_factor_dependent_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENTS = ("n_timepoints", "factor", "dependent", "baseline_mode", "factor_baseline", "dependent_baseline", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENT_SOURCES = ("factor", None, None, None, None, None, None,)
 
 _lib.compute_velocity_trajectory_c.restype = None
 _lib.compute_velocity_trajectory_c.argtypes = (
@@ -151,6 +165,8 @@ _lib.compute_velocity_trajectory_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENTS = ("trajectory", "velocity", "n_timepoints", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES = (None, None, "trajectory", None,)
 
 _lib.compute_acceleration_from_velocity_trajectory_c.restype = None
 _lib.compute_acceleration_from_velocity_trajectory_c.argtypes = (
@@ -175,6 +191,8 @@ _lib.compute_velocity_trajectories_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENTS = ("trajectories", "velocity", "n_factors", "n_samples", "n_timepoints", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES = (None, None, "trajectories", "trajectories", "trajectories", None,)
 
 _lib.compute_acceleration_from_velocity_c.restype = None
 _lib.compute_acceleration_from_velocity_c.argtypes = (
@@ -188,6 +206,8 @@ _lib.compute_acceleration_from_velocity_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS = ("velocity", "acceleration", "n_factors", "n_samples", "n_timepoints", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES = (None, None, "velocity", "velocity", None, None,)
 
 _lib.compute_velocity_acceleration_contributions_expert_c.restype = None
 _lib.compute_velocity_acceleration_contributions_expert_c.argtypes = (
@@ -208,6 +228,8 @@ _lib.compute_velocity_acceleration_contributions_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "tmp_factors", "tmp_dependent", "tmp_contributions", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, None, None, None, None, None,)
 
 _lib.compute_velocity_acceleration_contributions_c.restype = None
 _lib.compute_velocity_acceleration_contributions_c.argtypes = (
@@ -225,6 +247,8 @@ _lib.compute_velocity_acceleration_contributions_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, None, None,)
 
 def perform_permutation_test_expert(
         trajectories,
@@ -318,7 +342,7 @@ def perform_permutation_test_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENTS, _PERFORM_PERMUTATION_TEST_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "local_contributions": local_contributions,
@@ -413,7 +437,7 @@ def perform_permutation_test(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_ARGUMENTS)
+    check_err_code(ierr.value, _PERFORM_PERMUTATION_TEST_ARGUMENTS, _PERFORM_PERMUTATION_TEST_ARGUMENT_SOURCES)
 
     return {
         "local_contributions": local_contributions,
@@ -510,7 +534,7 @@ def compute_p_values(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_P_VALUES_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_P_VALUES_ARGUMENTS, _COMPUTE_P_VALUES_ARGUMENT_SOURCES)
 
     return {
         "local_p_values": local_p_values,
@@ -591,7 +615,7 @@ def compute_contributions(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_CONTRIBUTIONS_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     return {
         "local_contributions": local_contributions,
@@ -692,7 +716,7 @@ def compute_all_contributions_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "local_contributions": local_contributions,
@@ -789,7 +813,7 @@ def compute_all_contributions(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     return {
         "local_contributions": local_contributions,
@@ -870,7 +894,7 @@ def compute_baselines_factor_dependent(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENTS, _COMPUTE_BASELINES_FACTOR_DEPENDENT_ARGUMENT_SOURCES)
 
     return {
         "factor_baseline": factor_baseline.value,
@@ -924,7 +948,7 @@ def compute_velocity_trajectory(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORY_ARGUMENT_SOURCES)
 
     return velocity
 
@@ -1030,7 +1054,7 @@ def compute_velocity_trajectories(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORIES_ARGUMENT_SOURCES)
 
     return velocity
 
@@ -1087,7 +1111,7 @@ def compute_acceleration_from_velocity(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENTS, _COMPUTE_ACCELERATION_FROM_VELOCITY_ARGUMENT_SOURCES)
 
     return acceleration
 
@@ -1167,7 +1191,7 @@ def compute_velocity_acceleration_contributions_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "contrib_velocity": contrib_velocity,
@@ -1246,7 +1270,7 @@ def compute_velocity_acceleration_contributions(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     return {
         "contrib_velocity": contrib_velocity,

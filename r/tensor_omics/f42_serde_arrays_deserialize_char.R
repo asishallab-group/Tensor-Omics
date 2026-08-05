@@ -16,7 +16,8 @@ deserialize_char_helper <- function(filename) {
 
     .result <- .Call("deserialize_char_helper_call", strlen, arr_shape, filename)
     .arguments <- c("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "arr", NA_character_, "arr", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$arr
 }

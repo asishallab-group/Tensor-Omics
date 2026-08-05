@@ -21,6 +21,7 @@ from ..abi.c_abi import stripped_name
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
+from .error_arguments import sources_of
 from .doc_numpydoc import render_docstring
 
 #: A Fortran numeric literal's kind suffix -- `0_int32`, `2.0_real64`. Python has no such
@@ -306,6 +307,16 @@ class PythonEmitter:
         writer.line(f"#: The wrapped procedure's arguments, so an error can name one")
         names = ", ".join(f'"{a.name}"' for a in wrapper.procedure.arguments)
         writer.line(f"_{wrapper.stripped_name.upper()}_ARGUMENTS = ({names}{',' if names else ''})")
+        # and, positionally, the argument the caller passed that each was derived from -- an
+        # extent names its array, so a message can blame something the caller actually wrote
+        sources = sources_of(wrapper.procedure)
+        if any(sources):
+            rendered = ", ".join(f'"{s}"' if s else "None" for s in sources)
+            writer.line("#: For a derived argument, the one the caller passed it in")
+            writer.line(
+                f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES = "
+                f"({rendered}{',' if rendered else ''})"
+            )
         return writer.render()
 
     def _argtype(self, argument: CArgument) -> str:
@@ -946,7 +957,11 @@ class PythonEmitter:
     def _check_error(self, writer: Writer, wrapper: CWrapper) -> None:
         error = wrapper.error_argument
         arguments = f"_{wrapper.stripped_name.upper()}_ARGUMENTS"
-        writer.line(f"check_err_code({error.name}.value, {arguments})")
+        if any(sources_of(wrapper.procedure)):
+            sources = f"_{wrapper.stripped_name.upper()}_ARGUMENT_SOURCES"
+            writer.line(f"check_err_code({error.name}.value, {arguments}, {sources})")
+        else:
+            writer.line(f"check_err_code({error.name}.value, {arguments})")
         writer.blank()
 
     def _return(self, writer: Writer, wrapper: CWrapper) -> None:

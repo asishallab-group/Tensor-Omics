@@ -24,6 +24,8 @@ _lib.normalize_unit_length_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZE_UNIT_LENGTH_ARGUMENTS = ("vector", "n_dims", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_UNIT_LENGTH_ARGUMENT_SOURCES = (None, "vector", None,)
 
 _lib.normalization_pipeline_c.restype = None
 _lib.normalization_pipeline_c.argtypes = (
@@ -41,6 +43,8 @@ _lib.normalization_pipeline_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZATION_PIPELINE_ARGUMENTS = ("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "log_transformed_expr", None, None, None, None,)
 
 _lib.normalize_by_std_dev_c.restype = None
 _lib.normalize_by_std_dev_c.argtypes = (
@@ -55,6 +59,8 @@ _lib.normalize_by_std_dev_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZE_BY_STD_DEV_ARGUMENTS = ("n_genes", "n_replicates", "expr", "normalized_expr", "span", "degree", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_BY_STD_DEV_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None, None,)
 
 _lib.root_mean_sq_normalization_c.restype = None
 _lib.root_mean_sq_normalization_c.argtypes = (
@@ -67,6 +73,8 @@ _lib.root_mean_sq_normalization_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENTS = ("n_genes", "n_replicates", "expr", "normalized_expr", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_ROOT_MEAN_SQ_NORMALIZATION_ARGUMENT_SOURCES = ("expr", "expr", None, None, None,)
 
 _lib.quantile_normalization_expert_c.restype = None
 _lib.quantile_normalization_expert_c.argtypes = (
@@ -82,6 +90,8 @@ _lib.quantile_normalization_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _QUANTILE_NORMALIZATION_EXPERT_ARGUMENTS = ("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "tmp_genes_row", "tmp_perm", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_QUANTILE_NORMALIZATION_EXPERT_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None, None, None,)
 
 _lib.quantile_normalization_c.restype = None
 _lib.quantile_normalization_c.argtypes = (
@@ -95,6 +105,8 @@ _lib.quantile_normalization_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _QUANTILE_NORMALIZATION_ARGUMENTS = ("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_QUANTILE_NORMALIZATION_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None,)
 
 _lib.log2_transformation_c.restype = None
 _lib.log2_transformation_c.argtypes = (
@@ -107,6 +119,8 @@ _lib.log2_transformation_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LOG2_TRANSFORMATION_ARGUMENTS = ("n_genes", "n_tissues", "expr", "transformed_expr", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LOG2_TRANSFORMATION_ARGUMENT_SOURCES = ("expr", "expr", None, None, None,)
 
 _lib.calc_tiss_avg_c.restype = None
 _lib.calc_tiss_avg_c.argtypes = (
@@ -120,6 +134,8 @@ _lib.calc_tiss_avg_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CALC_TISS_AVG_ARGUMENTS = ("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CALC_TISS_AVG_ARGUMENT_SOURCES = ("expr", "reps_per_tissue", None, None, None, None,)
 
 _lib.calc_fchange_c.restype = None
 _lib.calc_fchange_c.argtypes = (
@@ -135,6 +151,8 @@ _lib.calc_fchange_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CALC_FCHANGE_ARGUMENTS = ("n_genes", "n_tissues", "n_pairs", "control_tissues", "condition_tissues", "expr", "fold_changes", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CALC_FCHANGE_ARGUMENT_SOURCES = ("expr", "expr", "control_tissues", None, None, None, None, None,)
 
 def normalize_unit_length(
         vector,
@@ -180,7 +198,7 @@ def normalize_unit_length(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_UNIT_LENGTH_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZE_UNIT_LENGTH_ARGUMENTS, _NORMALIZE_UNIT_LENGTH_ARGUMENT_SOURCES)
 
     return None
 
@@ -263,7 +281,7 @@ def normalization_pipeline(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZATION_PIPELINE_ARGUMENTS, _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES)
 
     return log_transformed_expr
 
@@ -328,7 +346,7 @@ def normalize_by_std_dev(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_BY_STD_DEV_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZE_BY_STD_DEV_ARGUMENTS, _NORMALIZE_BY_STD_DEV_ARGUMENT_SOURCES)
 
     return normalized_expr
 
@@ -383,7 +401,7 @@ def root_mean_sq_normalization(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENTS)
+    check_err_code(ierr.value, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENTS, _ROOT_MEAN_SQ_NORMALIZATION_ARGUMENT_SOURCES)
 
     return normalized_expr
 
@@ -449,7 +467,7 @@ def quantile_normalization_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _QUANTILE_NORMALIZATION_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _QUANTILE_NORMALIZATION_EXPERT_ARGUMENTS, _QUANTILE_NORMALIZATION_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "normalized_expr": normalized_expr,
@@ -514,7 +532,7 @@ def quantile_normalization(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _QUANTILE_NORMALIZATION_ARGUMENTS)
+    check_err_code(ierr.value, _QUANTILE_NORMALIZATION_ARGUMENTS, _QUANTILE_NORMALIZATION_ARGUMENT_SOURCES)
 
     return {
         "normalized_expr": normalized_expr,
@@ -572,7 +590,7 @@ def log2_transformation(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOG2_TRANSFORMATION_ARGUMENTS)
+    check_err_code(ierr.value, _LOG2_TRANSFORMATION_ARGUMENTS, _LOG2_TRANSFORMATION_ARGUMENT_SOURCES)
 
     return transformed_expr
 
@@ -639,7 +657,7 @@ def calc_tiss_avg(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS)
+    check_err_code(ierr.value, _CALC_TISS_AVG_ARGUMENTS, _CALC_TISS_AVG_ARGUMENT_SOURCES)
 
     return tissue_averages
 
@@ -726,6 +744,6 @@ def calc_fchange(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_FCHANGE_ARGUMENTS)
+    check_err_code(ierr.value, _CALC_FCHANGE_ARGUMENTS, _CALC_FCHANGE_ARGUMENT_SOURCES)
 
     return fold_changes

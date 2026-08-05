@@ -49,6 +49,8 @@ _lib.calc_work_arr_paralog_subsets_size_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS = ("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_mask", "n_mask_chunks", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES = (None, None, None, None, "filtered_paralogs_mask", None,)
 
 def mask_check_state(
         bit_mask,
@@ -217,7 +219,7 @@ def calc_work_arr_paralog_subsets_size(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS)
+    check_err_code(ierr.value, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENTS, _CALC_WORK_ARR_PARALOG_SUBSETS_SIZE_ARGUMENT_SOURCES)
 
     return {
         "max_subset_size": max_subset_size.value,

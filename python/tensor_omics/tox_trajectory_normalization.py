@@ -26,6 +26,8 @@ _lib.normalize_variable_timeseries_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENTS = ("v", "v_norm", "n_points", "status", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_VARIABLE_TIMESERIES_ARGUMENT_SOURCES = (None, None, "v", None, None,)
 
 _lib.normalize_single_trajectory_c.restype = None
 _lib.normalize_single_trajectory_c.argtypes = (
@@ -39,6 +41,8 @@ _lib.normalize_single_trajectory_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS = ("trajectory", "trajectory_norm", "n_factors", "n_timepoints", "status", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES = (None, None, "trajectory", "trajectory", None, None,)
 
 _lib.normalize_all_trajectories_expert_c.restype = None
 _lib.normalize_all_trajectories_expert_c.argtypes = (
@@ -55,6 +59,8 @@ _lib.normalize_all_trajectories_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENTS = ("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "tmp_series", "tmp_series_norm", "status", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENT_SOURCES = (None, None, "trajectories", "trajectories", "trajectories", None, None, None, None,)
 
 _lib.normalize_all_trajectories_c.restype = None
 _lib.normalize_all_trajectories_c.argtypes = (
@@ -69,6 +75,8 @@ _lib.normalize_all_trajectories_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS = ("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "status", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES = (None, None, "trajectories", "trajectories", "trajectories", None, None,)
 
 def normalize_variable_timeseries(
         v,
@@ -124,7 +132,7 @@ def normalize_variable_timeseries(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENTS, _NORMALIZE_VARIABLE_TIMESERIES_ARGUMENT_SOURCES)
 
     return {
         "v_norm": v_norm,
@@ -187,7 +195,7 @@ def normalize_single_trajectory(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS, _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES)
 
     return {
         "trajectory_norm": trajectory_norm,
@@ -256,7 +264,7 @@ def normalize_all_trajectories_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "trajectories_norm": trajectories_norm,
@@ -321,7 +329,7 @@ def normalize_all_trajectories(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS)
+    check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_ARGUMENT_SOURCES)
 
     return {
         "trajectories_norm": trajectories_norm,

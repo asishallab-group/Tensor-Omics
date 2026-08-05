@@ -192,12 +192,16 @@ ERR_UNKNOWN <- 9999L
 #' Raise if a tox_errors code reports an error
 #'
 #' @param ierr the encoded error code, argument position included
+#' @param sources positionally alongside `arguments`: the argument the caller
+#'   actually passed, where the Fortran one was derived from it -- an extent read
+#'   off a matrix names that matrix here. NA where the Fortran argument is the
+#'   caller's own.
 #' @param arguments the wrapped procedure's argument names, in order, so the
 #'   message can name the offending one
 #' @return invisibly, the name of the status code if the call reported one;
 #'   status codes are outcomes, not failures, and never raise
 #' @keywords internal
-check_err_code <- function(ierr, arguments = character()) {
+check_err_code <- function(ierr, arguments = character(), sources = character()) {
     code <- ierr %% ARG_POS_FACTOR
     if (code == 0L) return(invisible(NULL))
 
@@ -212,7 +216,17 @@ check_err_code <- function(ierr, arguments = character()) {
     if (arg_pos > 0L) {
         if (arg_pos <= length(arguments)) {
             argument <- arguments[[arg_pos]]
-            message <- sprintf("%s (argument '%s')", message, argument)
+            source <- if (arg_pos <= length(sources)) sources[[arg_pos]]
+                                                else NA_character_
+            if (!is.na(source)) {
+                # the caller's word first, then the Fortran argument it
+                # was derived from, which is what the signature calls it
+                message <- sprintf("%s (argument '%s', via '%s')", message,
+                                                    source, argument)
+                argument <- source
+            } else {
+                message <- sprintf("%s (argument '%s')", message, argument)
+            }
         } else {
             message <- sprintf("%s (argument %d)", message, arg_pos)
         }

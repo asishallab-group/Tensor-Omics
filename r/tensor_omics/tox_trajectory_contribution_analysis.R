@@ -33,7 +33,8 @@ perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_
         random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     .result <- .Call("perform_permutation_test_expert_call", trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "tmp_factor", "tmp_dependent", "random_seed", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, "local_contributions", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_contributions = .result$local_contributions,
@@ -74,7 +75,8 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
         random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     .result <- .Call("perform_permutation_test_call", trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_idx", "dependent_idx", "sample_idx", "baseline_mode", "n_permutations", "local_contributions", "total_contributions", "random_seed", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, "local_contributions", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_contributions = .result$local_contributions,
@@ -110,7 +112,8 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 
     .result <- .Call("compute_p_values_call", local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test)
     .arguments <- c("local_contributions_observed", "total_contribution_observed", "local_contributions_perm_test", "total_contributions_perm_test", "n_timepoints", "n_permutations", "local_p_values", "total_p_value", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, NA_character_, NA_character_, "local_contributions_observed", "local_contributions_perm_test", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_p_values = .result$local_p_values,
@@ -139,7 +142,8 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 
     .result <- .Call("compute_contributions_call", factor, dependent, baseline_mode)
     .arguments <- c("factor", "dependent", "n_dims", "baseline_mode", "local_contributions", "total_contribution", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "factor", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_contributions = .result$local_contributions,
@@ -171,7 +175,8 @@ compute_all_contributions_expert <- function(trajectories, factor_indices, depen
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
     .result <- .Call("compute_all_contributions_expert_call", trajectories, factor_indices, dependent_indices, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, "factor_indices", NA_character_, "dependent_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_contributions = .result$local_contributions,
@@ -203,7 +208,8 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
     .result <- .Call("compute_all_contributions_call", trajectories, factor_indices, dependent_indices, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, "factor_indices", NA_character_, "dependent_indices", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_contributions = .result$local_contributions,
@@ -232,7 +238,8 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
 
     .result <- .Call("compute_baselines_factor_dependent_call", factor, dependent, baseline_mode)
     .arguments <- c("n_timepoints", "factor", "dependent", "baseline_mode", "factor_baseline", "dependent_baseline", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("factor", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         factor_baseline = .result$factor_baseline,
@@ -252,7 +259,8 @@ compute_velocity_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
     .result <- .Call("compute_velocity_trajectory_call", trajectory)
     .arguments <- c("trajectory", "velocity", "n_timepoints", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "trajectory", NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$velocity
 }
@@ -288,7 +296,8 @@ compute_velocity_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
     .result <- .Call("compute_velocity_trajectories_call", trajectories)
     .arguments <- c("trajectories", "velocity", "n_factors", "n_samples", "n_timepoints", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "trajectories", "trajectories", "trajectories", NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$velocity
 }
@@ -307,7 +316,8 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     n_timepoints <- .tox_as_integer_scalar(n_timepoints, "n_timepoints")
     .result <- .Call("compute_acceleration_from_velocity_call", velocity, n_timepoints)
     .arguments <- c("velocity", "acceleration", "n_factors", "n_samples", "n_timepoints", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "velocity", "velocity", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$acceleration
 }
@@ -341,7 +351,8 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
     .result <- .Call("compute_velocity_acceleration_contributions_expert_call", trajectories, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "tmp_factors", "tmp_dependent", "tmp_contributions", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         contrib_velocity = .result$contrib_velocity,
@@ -380,7 +391,8 @@ compute_velocity_acceleration_contributions <- function(trajectories, baseline_m
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
     .result <- .Call("compute_velocity_acceleration_contributions_call", trajectories, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         contrib_velocity = .result$contrib_velocity,

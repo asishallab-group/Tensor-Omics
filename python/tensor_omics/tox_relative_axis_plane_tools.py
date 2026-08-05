@@ -30,6 +30,8 @@ _lib.omics_vector_RAP_projection_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS = ("vecs", "n_axes", "n_vecs", "vecs_selection_mask", "n_selected_vecs", "axes_selection_mask", "n_selected_axes", "projections", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "vecs", "vecs", None, "projections", None, "projections", None, None,)
 
 _lib.omics_field_RAP_projection_c.restype = None
 _lib.omics_field_RAP_projection_c.argtypes = (
@@ -46,6 +48,8 @@ _lib.omics_field_RAP_projection_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS = ("fields", "n_axes", "n_fields", "fields_selection_mask", "n_selected_fields", "axes_selection_mask", "n_selected_axes", "projections", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES = (None, "fields", "fields", None, "projections", None, "projections", None, None,)
 
 _lib.clock_hand_angle_between_vectors_c.restype = None
 _lib.clock_hand_angle_between_vectors_c.argtypes = (
@@ -59,6 +63,8 @@ _lib.clock_hand_angle_between_vectors_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS = ("v1", "v2", "n_dims", "signed_angle", "selected_axes_for_signed", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENT_SOURCES = (None, None, "v1", None, None, None,)
 
 _lib.clock_hand_angles_for_shift_vectors_c.restype = None
 _lib.clock_hand_angles_for_shift_vectors_c.argtypes = (
@@ -74,6 +80,8 @@ _lib.clock_hand_angles_for_shift_vectors_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS = ("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "selected_axes_for_signed", "signed_angles", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES = (None, "fields", "fields", None, "signed_angles", None, None, None,)
 
 _lib.compute_relative_axis_contributions_c.restype = None
 _lib.compute_relative_axis_contributions_c.argtypes = (
@@ -85,6 +93,8 @@ _lib.compute_relative_axis_contributions_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS = ("vec", "n_axes", "contributions", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENT_SOURCES = (None, "vec", None, None,)
 
 _lib.relative_axes_changes_from_shift_vector_c.restype = None
 _lib.relative_axes_changes_from_shift_vector_c.argtypes = (
@@ -96,6 +106,8 @@ _lib.relative_axes_changes_from_shift_vector_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENTS = ("vec", "n_axes", "contributions", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENT_SOURCES = (None, "vec", None, None,)
 
 _lib.relative_axes_expression_from_expression_vector_c.restype = None
 _lib.relative_axes_expression_from_expression_vector_c.argtypes = (
@@ -107,6 +119,8 @@ _lib.relative_axes_expression_from_expression_vector_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENTS = ("vec", "n_axes", "contributions", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENT_SOURCES = (None, "vec", None, None,)
 
 def omics_vector_RAP_projection(
         vecs,
@@ -191,7 +205,7 @@ def omics_vector_RAP_projection(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS)
+    check_err_code(ierr.value, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENTS, _OMICS_VECTOR_RAP_PROJECTION_ARGUMENT_SOURCES)
 
     return projections
 
@@ -278,7 +292,7 @@ def omics_field_RAP_projection(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS)
+    check_err_code(ierr.value, _OMICS_FIELD_RAP_PROJECTION_ARGUMENTS, _OMICS_FIELD_RAP_PROJECTION_ARGUMENT_SOURCES)
 
     return projections
 
@@ -355,7 +369,7 @@ def clock_hand_angle_between_vectors(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS)
+    check_err_code(ierr.value, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENT_SOURCES)
 
     return signed_angle.value
 
@@ -436,7 +450,7 @@ def clock_hand_angles_for_shift_vectors(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS)
+    check_err_code(ierr.value, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES)
 
     return signed_angles
 
@@ -487,7 +501,7 @@ def compute_relative_axis_contributions(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENT_SOURCES)
 
     return contributions
 
@@ -538,7 +552,7 @@ def relative_axes_changes_from_shift_vector(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENTS)
+    check_err_code(ierr.value, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENTS, _RELATIVE_AXES_CHANGES_FROM_SHIFT_VECTOR_ARGUMENT_SOURCES)
 
     return contributions
 
@@ -589,6 +603,6 @@ def relative_axes_expression_from_expression_vector(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENTS)
+    check_err_code(ierr.value, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENTS, _RELATIVE_AXES_EXPRESSION_FROM_EXPRESSION_VECTOR_ARGUMENT_SOURCES)
 
     return contributions

@@ -27,6 +27,8 @@ _lib.build_kd_index_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _BUILD_KD_INDEX_ARGUMENTS = ("points", "n_dimensions", "n_points", "kd_indices", "dimension_order", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_BUILD_KD_INDEX_ARGUMENT_SOURCES = (None, "points", "points", None, None, None,)
 
 _lib.build_spherical_kd_c.restype = None
 _lib.build_spherical_kd_c.argtypes = (
@@ -40,6 +42,8 @@ _lib.build_spherical_kd_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _BUILD_SPHERICAL_KD_ARGUMENTS = ("points", "n_dimensions", "n_points", "kd_indices", "dimension_order", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_BUILD_SPHERICAL_KD_ARGUMENT_SOURCES = (None, "points", "points", None, None, None,)
 
 def build_kd_index(
         points,
@@ -106,7 +110,7 @@ def build_kd_index(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS)
+    check_err_code(ierr.value, _BUILD_KD_INDEX_ARGUMENTS, _BUILD_KD_INDEX_ARGUMENT_SOURCES)
 
     return kd_indices
 
@@ -175,6 +179,6 @@ def build_spherical_kd(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS)
+    check_err_code(ierr.value, _BUILD_SPHERICAL_KD_ARGUMENTS, _BUILD_SPHERICAL_KD_ARGUMENT_SOURCES)
 
     return kd_indices

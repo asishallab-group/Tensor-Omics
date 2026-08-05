@@ -16,7 +16,8 @@ normalize_unit_length <- function(vector) {
     vector <- .tox_as_double_vector(vector, "vector")
     .result <- .Call("normalize_unit_length_call", vector)
     .arguments <- c("vector", "n_dims", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "vector", NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$vector
 }
@@ -49,7 +50,8 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
     use_quantile <- .tox_as_logical(use_quantile, "use_quantile")
     .result <- .Call("normalization_pipeline_call", expr, reps_per_tissue, span, degree, use_quantile)
     .arguments <- c("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "log_transformed_expr", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$log_transformed_expr
 }
@@ -77,7 +79,8 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
     degree <- .tox_as_integer_scalar(degree, "degree")
     .result <- .Call("normalize_by_std_dev_call", expr, span, degree)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "span", "degree", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$normalized_expr
 }
@@ -98,7 +101,8 @@ root_mean_sq_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("root_mean_sq_normalization_call", expr)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$normalized_expr
 }
@@ -121,7 +125,8 @@ quantile_normalization_expert <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("quantile_normalization_expert_call", expr)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "tmp_genes_row", "tmp_perm", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         normalized_expr = .result$normalized_expr,
@@ -147,7 +152,8 @@ quantile_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("quantile_normalization_call", expr)
     .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         normalized_expr = .result$normalized_expr,
@@ -174,7 +180,8 @@ log2_transformation <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("log2_transformation_call", expr)
     .arguments <- c("n_genes", "n_tissues", "expr", "transformed_expr", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$transformed_expr
 }
@@ -200,7 +207,8 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("calc_tiss_avg_call", reps_per_tissue, expr)
     .arguments <- c("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$tissue_averages
 }
@@ -234,7 +242,8 @@ calc_fchange <- function(control_tissues, condition_tissues, expr) {
 
     .result <- .Call("calc_fchange_call", control_tissues, condition_tissues, expr)
     .arguments <- c("n_genes", "n_tissues", "n_pairs", "control_tissues", "condition_tissues", "expr", "fold_changes", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("expr", "expr", "control_tissues", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$fold_changes
 }

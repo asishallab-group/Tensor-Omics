@@ -49,7 +49,8 @@ loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max
 
     .result <- .Call("loess_fit_plain_expert_call", x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace_size, real_workspace_size)
     .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "fitted_values", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "tmp_int_workspace", NA_character_, "tmp_real_workspace", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$fitted_values
 }
@@ -99,7 +100,8 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 
     .result <- .Call("loess_fit_plain_call", x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization)
     .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "fitted_values", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$fitted_values
 }
@@ -161,7 +163,8 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 
     .result <- .Call("loess_fit_robust_expert_call", x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace_size, real_workspace_size)
     .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "fitted_values", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "tmp_int_workspace", NA_character_, "tmp_real_workspace", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$fitted_values
 }
@@ -219,7 +222,8 @@ loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neigh
 
     .result <- .Call("loess_fit_robust_call", x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters)
     .arguments <- c("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "fitted_values", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$fitted_values
 }

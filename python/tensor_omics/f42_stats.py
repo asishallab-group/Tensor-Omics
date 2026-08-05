@@ -32,6 +32,8 @@ _lib.loess_smooth_2d_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LOESS_SMOOTH_2D_ARGUMENTS = ("n_total", "n_target", "x_ref", "y_ref", "indices_used", "n_used", "x_query", "kernel_sigma", "kernel_cutoff", "y_out", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LOESS_SMOOTH_2D_ARGUMENT_SOURCES = ("x_ref", "x_query", None, None, None, "indices_used", None, None, None, None, None,)
 
 _lib.compute_edf_expert_c.restype = None
 _lib.compute_edf_expert_c.argtypes = (
@@ -46,6 +48,8 @@ _lib.compute_edf_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_EDF_EXPERT_ARGUMENTS = ("values", "n_values", "perm", "unique_values", "cdf_values", "n_unique", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES = (None, "values", None, None, None, None, None,)
 
 _lib.compute_edf_c.restype = None
 _lib.compute_edf_c.argtypes = (
@@ -59,6 +63,8 @@ _lib.compute_edf_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_EDF_ARGUMENTS = ("values", "n_values", "unique_values", "cdf_values", "n_unique", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_EDF_ARGUMENT_SOURCES = (None, "values", None, None, None, None,)
 
 _lib.compute_scaled_distance_quantile_c.restype = None
 _lib.compute_scaled_distance_quantile_c.argtypes = (
@@ -73,6 +79,8 @@ _lib.compute_scaled_distance_quantile_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "perm", "quantile", "c_const",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None,)
 
 def loess_smooth_2d(
         x_ref,
@@ -169,7 +177,7 @@ def loess_smooth_2d(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS)
+    check_err_code(ierr.value, _LOESS_SMOOTH_2D_ARGUMENTS, _LOESS_SMOOTH_2D_ARGUMENT_SOURCES)
 
     return y_out
 
@@ -247,7 +255,7 @@ def compute_edf_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_EDF_EXPERT_ARGUMENTS, _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "unique_values": unique_values[..., :n_unique.value],
@@ -312,7 +320,7 @@ def compute_edf(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_EDF_ARGUMENTS, _COMPUTE_EDF_ARGUMENT_SOURCES)
 
     return {
         "unique_values": unique_values[..., :n_unique.value],
@@ -400,6 +408,6 @@ def compute_scaled_distance_quantile(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES)
 
     return quantile

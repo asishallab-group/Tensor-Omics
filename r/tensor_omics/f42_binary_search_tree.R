@@ -12,7 +12,8 @@ build_bst_index <- function(values) {
     values <- .tox_as_double_vector(values, "values")
     .result <- .Call("build_bst_index_call", values)
     .arguments <- c("values", "n_values", "sorted_indices", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "values", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$sorted_indices
 }
@@ -39,7 +40,8 @@ bst_range_query <- function(values, sorted_indices, lower_bound, upper_bound) {
 
     .result <- .Call("bst_range_query_call", values, sorted_indices, lower_bound, upper_bound)
     .arguments <- c("values", "sorted_indices", "n_values", "lower_bound", "upper_bound", "output_indices", "n_matches", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "values", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     utils::head(.result$output_indices, .result$n_matches)
 }

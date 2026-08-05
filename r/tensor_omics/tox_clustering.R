@@ -30,7 +30,8 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 
     .result <- .Call("cluster_factor_trajectories_k_means_call", trajectories, centroids, max_iterations)
     .arguments <- c("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "max_iterations", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("centroids", NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         centroids = .result$centroids,
@@ -74,7 +75,8 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 
     .result <- .Call("k_means_clustering_call", data_points, centroids, max_iterations)
     .arguments <- c("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "max_iterations", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("centroids", NA_character_, "data_points", "data_points", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         centroids = .result$centroids,
@@ -122,7 +124,8 @@ linkage_clustering <- function(distances, method) {
     method <- .tox_as_mode(method, "method", c("average", "weighted", "ward"))
     .result <- .Call("linkage_clustering_call", distances, method)
     .arguments <- c("distances", "n_points", "merge_i", "merge_j", "heights", "cluster_sizes", "method", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "distances", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         distances = .result$distances,

@@ -29,6 +29,8 @@ _lib.deserialize_char_helper_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DESERIALIZE_CHAR_HELPER_ARGUMENTS = ("arr", "n_strings", "strlen", "arr_shape", "filename", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES = (None, "arr", None, "arr", None, None,)
 
 def deserialize_char_helper(
         filename,
@@ -90,6 +92,6 @@ def deserialize_char_helper(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS)
+    check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
 
     return np.asarray([_s.decode() for _s in arr]).reshape(tuple(arr_shape), order='F')

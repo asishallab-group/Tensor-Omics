@@ -28,7 +28,8 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
 
     .result <- .Call("loess_smooth_2d_call", x_ref, y_ref, indices_used, x_query, kernel_sigma, kernel_cutoff)
     .arguments <- c("n_total", "n_target", "x_ref", "y_ref", "indices_used", "n_used", "x_query", "kernel_sigma", "kernel_cutoff", "y_out", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("x_ref", "x_query", NA_character_, NA_character_, NA_character_, "indices_used", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$y_out
 }
@@ -58,7 +59,8 @@ compute_edf_expert <- function(values, perm) {
 
     .result <- .Call("compute_edf_expert_call", values, perm)
     .arguments <- c("values", "n_values", "perm", "unique_values", "cdf_values", "n_unique", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "values", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         unique_values = utils::head(.result$unique_values, .result$n_unique),
@@ -85,7 +87,8 @@ compute_edf <- function(values) {
     values <- .tox_as_double_vector(values, "values")
     .result <- .Call("compute_edf_call", values)
     .arguments <- c("values", "n_values", "unique_values", "cdf_values", "n_unique", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "values", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         unique_values = utils::head(.result$unique_values, .result$n_unique),
@@ -129,7 +132,8 @@ compute_scaled_distance_quantile <- function(rdi, sorted_rdi, perm, c_const) {
 
     .result <- .Call("compute_scaled_distance_quantile_call", rdi, sorted_rdi, perm, c_const)
     .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "quantile", "c_const")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("rdi", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$quantile
 }

@@ -26,6 +26,8 @@ _lib.euclidean_distance_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _EUCLIDEAN_DISTANCE_ARGUMENTS = ("vec1", "vec2", "n_elements", "result", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES = (None, None, "vec1", None, None,)
 
 _lib.distance_to_centroid_c.restype = None
 _lib.distance_to_centroid_c.argtypes = (
@@ -41,6 +43,8 @@ _lib.distance_to_centroid_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DISTANCE_TO_CENTROID_ARGUMENTS = ("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DISTANCE_TO_CENTROID_ARGUMENT_SOURCES = ("genes", "centroids", None, None, None, None, "genes", None,)
 
 def euclidean_distance(
         vec1,
@@ -105,7 +109,7 @@ def euclidean_distance(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _EUCLIDEAN_DISTANCE_ARGUMENTS)
+    check_err_code(ierr.value, _EUCLIDEAN_DISTANCE_ARGUMENTS, _EUCLIDEAN_DISTANCE_ARGUMENT_SOURCES)
 
     return result.value
 
@@ -193,6 +197,6 @@ def distance_to_centroid(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS)
+    check_err_code(ierr.value, _DISTANCE_TO_CENTROID_ARGUMENTS, _DISTANCE_TO_CENTROID_ARGUMENT_SOURCES)
 
     return distances

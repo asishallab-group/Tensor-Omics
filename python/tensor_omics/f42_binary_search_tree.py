@@ -25,6 +25,8 @@ _lib.build_bst_index_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _BUILD_BST_INDEX_ARGUMENTS = ("values", "n_values", "sorted_indices", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_BUILD_BST_INDEX_ARGUMENT_SOURCES = (None, "values", None, None,)
 
 _lib.bst_range_query_c.restype = None
 _lib.bst_range_query_c.argtypes = (
@@ -40,6 +42,8 @@ _lib.bst_range_query_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _BST_RANGE_QUERY_ARGUMENTS = ("values", "sorted_indices", "n_values", "lower_bound", "upper_bound", "output_indices", "n_matches", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_BST_RANGE_QUERY_ARGUMENT_SOURCES = (None, None, "values", None, None, None, None, None,)
 
 def build_bst_index(
         values,
@@ -88,7 +92,7 @@ def build_bst_index(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_BST_INDEX_ARGUMENTS)
+    check_err_code(ierr.value, _BUILD_BST_INDEX_ARGUMENTS, _BUILD_BST_INDEX_ARGUMENT_SOURCES)
 
     return sorted_indices
 
@@ -166,6 +170,6 @@ def bst_range_query(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BST_RANGE_QUERY_ARGUMENTS)
+    check_err_code(ierr.value, _BST_RANGE_QUERY_ARGUMENTS, _BST_RANGE_QUERY_ARGUMENT_SOURCES)
 
     return output_indices[..., :n_matches.value]

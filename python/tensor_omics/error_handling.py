@@ -223,7 +223,7 @@ _EXCEPTIONS = {
 _STATUSES = {
 }
 
-def check_err_code(ierr, arguments=()):
+def check_err_code(ierr, arguments=(), sources=()):
     """Raise if `ierr` reports an error.
 
     Parameters
@@ -234,6 +234,11 @@ def check_err_code(ierr, arguments=()):
         The names of the wrapped procedure's arguments, in declaration
         order, so the message can name the offending one rather than
         give its number.
+    sources : sequence of str or None, optional
+        Positionally alongside `arguments`: the argument the caller actually
+        passed, where the Fortran one was derived from it. An extent read off
+        an array names that array here, so the message can blame something the
+        caller wrote. None where the Fortran argument is the caller's own.
 
     Returns
     -------
@@ -260,7 +265,14 @@ def check_err_code(ierr, arguments=()):
     if arg_pos > 0:
         if arg_pos <= len(arguments):
             argument = arguments[arg_pos - 1]
-            message = f"{message} (argument '{argument}')"
+            source = sources[arg_pos - 1] if arg_pos <= len(sources) else None
+            if source:
+                # the caller's word first, then the Fortran argument it
+                # was derived from, which is what the signature calls it
+                message = f"{message} (argument '{source}', via '{argument}')"
+                argument = source
+            else:
+                message = f"{message} (argument '{argument}')"
         else:
             message = f"{message} (argument {arg_pos})"
 

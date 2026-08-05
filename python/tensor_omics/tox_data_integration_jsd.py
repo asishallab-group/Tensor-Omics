@@ -27,6 +27,8 @@ _lib.determine_shared_residual_range_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS = ("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "abs_residual_pool", None, None, None,)
 
 _lib.determine_shared_residual_range_c.restype = None
 _lib.determine_shared_residual_range_c.argtypes = (
@@ -39,6 +41,8 @@ _lib.determine_shared_residual_range_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", None, None, None,)
 
 _lib.determine_study_shared_residual_range_expert_c.restype = None
 _lib.determine_study_shared_residual_range_expert_c.argtypes = (
@@ -57,6 +61,8 @@ _lib.determine_study_shared_residual_range_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "tmp_abs_residual_pool", "tmp_abs_residual_pool_perm", "shared_residual_range", "residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None, None, None,)
 
 _lib.determine_study_shared_residual_range_c.restype = None
 _lib.determine_study_shared_residual_range_c.argtypes = (
@@ -73,6 +79,8 @@ _lib.determine_study_shared_residual_range_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None,)
 
 _lib.build_residual_histograms_c.restype = None
 _lib.build_residual_histograms_c.argtypes = (
@@ -91,6 +99,8 @@ _lib.build_residual_histograms_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, "counts", None, None, None, None, None,)
 
 _lib.compute_divergence_per_reference_point_c.restype = None
 _lib.compute_divergence_per_reference_point_c.argtypes = (
@@ -104,6 +114,8 @@ _lib.compute_divergence_per_reference_point_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS = ("pmf_S1", "pmf_S2", "n_points", "n_bins", "js_divergences", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES = (None, None, "pmf_S1", "pmf_S1", None, None,)
 
 _lib.compute_weighted_global_divergence_c.restype = None
 _lib.compute_weighted_global_divergence_c.argtypes = (
@@ -118,6 +130,8 @@ _lib.compute_weighted_global_divergence_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS = ("js_divergences", "n_points", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES = (None, "js_divergences", None, None, None, None, None,)
 
 def determine_shared_residual_range_expert(
         abs_residual_pool,
@@ -192,7 +206,7 @@ def determine_shared_residual_range_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -251,7 +265,7 @@ def determine_shared_residual_range(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS)
+    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -341,7 +355,7 @@ def determine_study_shared_residual_range_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -427,7 +441,7 @@ def determine_study_shared_residual_range(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS)
+    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 
@@ -514,7 +528,7 @@ def build_residual_histograms(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS)
+    check_err_code(ierr.value, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS, _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES)
 
     return {
         "counts": counts,
@@ -595,7 +609,7 @@ def compute_divergence_per_reference_point(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENTS, _COMPUTE_DIVERGENCE_PER_REFERENCE_POINT_ARGUMENT_SOURCES)
 
     return js_divergences
 
@@ -686,7 +700,7 @@ def compute_weighted_global_divergence(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS, _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES)
 
     return {
         "global_js_divergence": global_js_divergence.value,

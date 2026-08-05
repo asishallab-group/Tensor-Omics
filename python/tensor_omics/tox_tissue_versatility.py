@@ -31,6 +31,8 @@ _lib.compute_tissue_versatility_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_TISSUE_VERSATILITY_ARGUMENTS = ("n_axes", "n_vectors", "expression_vectors", "vectors_selection_mask", "n_selected_vectors", "axes_selection_mask", "n_selected_axes", "tissue_versatilities", "tissue_angles_deg", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_TISSUE_VERSATILITY_ARGUMENT_SOURCES = ("expression_vectors", "expression_vectors", None, None, "tissue_versatilities", None, "axes_selection_mask", None, None, None,)
 
 def compute_tissue_versatility(
         expression_vectors,
@@ -122,7 +124,7 @@ def compute_tissue_versatility(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_TISSUE_VERSATILITY_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_TISSUE_VERSATILITY_ARGUMENTS, _COMPUTE_TISSUE_VERSATILITY_ARGUMENT_SOURCES)
 
     return {
         "tissue_versatilities": tissue_versatilities,

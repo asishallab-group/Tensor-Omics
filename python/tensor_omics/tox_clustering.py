@@ -31,6 +31,8 @@ _lib.cluster_factor_trajectories_k_means_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS = ("n_clusters", "trajectories", "n_factors", "n_samples", "n_timepoints", "centroids", "labels", "label_counts", "max_iterations", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES = ("centroids", None, "trajectories", "trajectories", "trajectories", None, None, None, None, None,)
 
 _lib.k_means_clustering_c.restype = None
 _lib.k_means_clustering_c.argtypes = (
@@ -47,6 +49,8 @@ _lib.k_means_clustering_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _K_MEANS_CLUSTERING_ARGUMENTS = ("n_clusters", "data_points", "n_points", "n_dims", "centroids", "labels", "label_counts", "max_iterations", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_K_MEANS_CLUSTERING_ARGUMENT_SOURCES = ("centroids", None, "data_points", "data_points", None, None, None, None, None,)
 
 _lib.linkage_clustering_c.restype = None
 _lib.linkage_clustering_c.argtypes = (
@@ -62,6 +66,8 @@ _lib.linkage_clustering_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LINKAGE_CLUSTERING_ARGUMENTS = ("distances", "n_points", "merge_i", "merge_j", "heights", "cluster_sizes", "method", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LINKAGE_CLUSTERING_ARGUMENT_SOURCES = (None, "distances", None, None, None, None, None, None,)
 
 def cluster_factor_trajectories_k_means(
         trajectories,
@@ -148,7 +154,7 @@ def cluster_factor_trajectories_k_means(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS)
+    check_err_code(ierr.value, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENTS, _CLUSTER_FACTOR_TRAJECTORIES_K_MEANS_ARGUMENT_SOURCES)
 
     return {
         "labels": labels,
@@ -239,7 +245,7 @@ def k_means_clustering(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _K_MEANS_CLUSTERING_ARGUMENTS)
+    check_err_code(ierr.value, _K_MEANS_CLUSTERING_ARGUMENTS, _K_MEANS_CLUSTERING_ARGUMENT_SOURCES)
 
     return {
         "labels": labels,
@@ -322,7 +328,7 @@ def linkage_clustering(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LINKAGE_CLUSTERING_ARGUMENTS)
+    check_err_code(ierr.value, _LINKAGE_CLUSTERING_ARGUMENTS, _LINKAGE_CLUSTERING_ARGUMENT_SOURCES)
 
     return {
         "merge_i": merge_i,

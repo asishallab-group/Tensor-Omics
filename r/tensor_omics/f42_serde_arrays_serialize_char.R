@@ -14,7 +14,8 @@ serialize_char_helper <- function(arr, filename) {
     filename <- .tox_as_character(filename, "filename")
     .result <- .Call("serialize_char_helper_call", arr, filename)
     .arguments <- c("arr", "n_strings", "arr_shape", "filename", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "arr", "arr", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     invisible(NULL)
 }

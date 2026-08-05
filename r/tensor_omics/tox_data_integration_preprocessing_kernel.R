@@ -23,7 +23,8 @@ calc_neighborhood_size <- function(n_pool, n_points, mean_S, desired_size = 1000
     desired_size <- .tox_as_integer_scalar(desired_size, "desired_size")
     .result <- .Call("calc_neighborhood_size_call", n_pool, n_points, mean_S, desired_size)
     .arguments <- c("n_pool", "n_points", "n_genes_S", "mean_S", "desired_size")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "mean_S", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$n_neighbors
 }

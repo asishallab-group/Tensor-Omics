@@ -28,6 +28,8 @@ _lib.get_array_metadata_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GET_ARRAY_METADATA_ARGUMENTS = ("filename", "dims_out", "dims_out_capacity", "ndims", "type_code", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GET_ARRAY_METADATA_ARGUMENT_SOURCES = (None, None, "dims_out", None, None, None,)
 
 def get_array_metadata(
         filename,
@@ -85,7 +87,7 @@ def get_array_metadata(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS)
+    check_err_code(ierr.value, _GET_ARRAY_METADATA_ARGUMENTS, _GET_ARRAY_METADATA_ARGUMENT_SOURCES)
 
     return {
         "dims_out": dims_out[..., :ndims.value],

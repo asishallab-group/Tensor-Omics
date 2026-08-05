@@ -28,6 +28,8 @@ _lib.serialize_int_helper_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _SERIALIZE_INT_HELPER_ARGUMENTS = ("arr", "n_elements", "arr_shape", "filename", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_SERIALIZE_INT_HELPER_ARGUMENT_SOURCES = (None, "arr", "arr", None, None,)
 
 def serialize_int_helper(
         arr,
@@ -82,6 +84,6 @@ def serialize_int_helper(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _SERIALIZE_INT_HELPER_ARGUMENTS)
+    check_err_code(ierr.value, _SERIALIZE_INT_HELPER_ARGUMENTS, _SERIALIZE_INT_HELPER_ARGUMENT_SOURCES)
 
     return None

@@ -26,6 +26,8 @@ _lib.compute_gene_means_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_GENE_MEANS_ARGUMENTS = ("n_genes", "n_reps", "expr", "means", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_GENE_MEANS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None,)
 
 _lib.compute_residuals_c.restype = None
 _lib.compute_residuals_c.argtypes = (
@@ -39,6 +41,8 @@ _lib.compute_residuals_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_RESIDUALS_ARGUMENTS = ("n_genes", "n_reps", "expr", "means", "resid", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_RESIDUALS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None,)
 
 _lib.pool_means_expert_c.restype = None
 _lib.pool_means_expert_c.argtypes = (
@@ -53,6 +57,8 @@ _lib.pool_means_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _POOL_MEANS_EXPERT_ARGUMENTS = ("pooled_means", "pooled_means_perm", "pool_size", "n_points", "n_pool", "x_star", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_POOL_MEANS_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_means", "x_star", None, None, None,)
 
 _lib.pool_means_c.restype = None
 _lib.pool_means_c.argtypes = (
@@ -66,6 +72,8 @@ _lib.pool_means_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _POOL_MEANS_ARGUMENTS = ("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_POOL_MEANS_ARGUMENT_SOURCES = (None, "pooled_means", "x_star", None, None, None,)
 
 _lib.pool_study_means_expert_c.restype = None
 _lib.pool_study_means_expert_c.argtypes = (
@@ -83,6 +91,8 @@ _lib.pool_study_means_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _POOL_STUDY_MEANS_EXPERT_ARGUMENTS = ("n_genes_S1", "mean_S1", "n_genes_S2", "mean_S2", "n_points", "tmp_pooled_means", "tmp_pooled_means_perm", "n_pool", "x_star", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_POOL_STUDY_MEANS_EXPERT_ARGUMENT_SOURCES = ("mean_S1", None, "mean_S2", None, "x_star", None, None, None, None, None,)
 
 _lib.pool_study_means_c.restype = None
 _lib.pool_study_means_c.argtypes = (
@@ -98,6 +108,8 @@ _lib.pool_study_means_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _POOL_STUDY_MEANS_ARGUMENTS = ("n_genes_S1", "mean_S1", "n_genes_S2", "mean_S2", "n_points", "n_pool", "x_star", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_POOL_STUDY_MEANS_ARGUMENT_SOURCES = ("mean_S1", None, "mean_S2", None, "x_star", None, None, None,)
 
 _lib.construct_neighborhoods_expert_c.restype = None
 _lib.construct_neighborhoods_expert_c.argtypes = (
@@ -117,6 +129,8 @@ _lib.construct_neighborhoods_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "tmp_distances", "tmp_distances_perm", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "resid_S", None, None, None, None, None, "neighborhood_residuals", None,)
 
 _lib.construct_neighborhoods_c.restype = None
 _lib.construct_neighborhoods_c.argtypes = (
@@ -134,6 +148,8 @@ _lib.construct_neighborhoods_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "n_reps_S", "resid_S", "neighborhood_residuals", "neighborhood_indices", "n_neighbors", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "resid_S", None, None, None, "neighborhood_residuals", None,)
 
 def compute_gene_means(
         expr,
@@ -186,7 +202,7 @@ def compute_gene_means(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_GENE_MEANS_ARGUMENTS, _COMPUTE_GENE_MEANS_ARGUMENT_SOURCES)
 
     return means
 
@@ -258,7 +274,7 @@ def compute_residuals(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_RESIDUALS_ARGUMENTS, _COMPUTE_RESIDUALS_ARGUMENT_SOURCES)
 
     return resid
 
@@ -337,7 +353,7 @@ def pool_means_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _POOL_MEANS_EXPERT_ARGUMENTS, _POOL_MEANS_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "n_pool": n_pool.value,
@@ -403,7 +419,7 @@ def pool_means(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS)
+    check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
 
     return {
         "n_pool": n_pool.value,
@@ -486,7 +502,7 @@ def pool_study_means_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_STUDY_MEANS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _POOL_STUDY_MEANS_EXPERT_ARGUMENTS, _POOL_STUDY_MEANS_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "n_pool": n_pool.value,
@@ -565,7 +581,7 @@ def pool_study_means(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS)
+    check_err_code(ierr.value, _POOL_STUDY_MEANS_ARGUMENTS, _POOL_STUDY_MEANS_ARGUMENT_SOURCES)
 
     return {
         "n_pool": n_pool.value,
@@ -672,7 +688,7 @@ def construct_neighborhoods_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "neighborhood_residuals": neighborhood_residuals,
@@ -775,7 +791,7 @@ def construct_neighborhoods(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS)
+    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES)
 
     return {
         "neighborhood_residuals": neighborhood_residuals,

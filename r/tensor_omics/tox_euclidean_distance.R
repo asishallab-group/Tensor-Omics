@@ -19,7 +19,8 @@ euclidean_distance <- function(vec1, vec2) {
 
     .result <- .Call("euclidean_distance_call", vec1, vec2)
     .arguments <- c("vec1", "vec2", "n_elements", "result", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "vec1", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$result
 }
@@ -50,7 +51,8 @@ distance_to_centroid <- function(genes, centroids, gene_to_fam) {
 
     .result <- .Call("distance_to_centroid_call", genes, centroids, gene_to_fam)
     .arguments <- c("n_genes", "n_families", "genes", "centroids", "gene_to_fam", "distances", "n_tissues", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("genes", "centroids", NA_character_, NA_character_, NA_character_, NA_character_, "genes", NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$distances
 }

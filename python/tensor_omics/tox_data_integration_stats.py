@@ -47,6 +47,8 @@ _lib.gjct_permutation_test_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GJCT_PERMUTATION_TEST_EXPERT_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "tmp_residuals_S1", "tmp_residuals_S2", "tmp_pool", "tmp_pmf_S1", "tmp_pmf_S2", "tmp_counts", "tmp_included_n_reps_S1", "tmp_included_n_reps_S2", "tmp_js_divergences", "tmp_weights", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GJCT_PERMUTATION_TEST_EXPERT_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, "tmp_pmf_S1", None, "jsd_null", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.gjct_permutation_test_c.restype = None
 _lib.gjct_permutation_test_c.argtypes = (
@@ -70,6 +72,8 @@ _lib.gjct_permutation_test_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GJCT_PERMUTATION_TEST_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "global_jsd_observed", "n_bins", "shared_residual_range", "n_permutations", "jsd_null", "p_value", "random_seed", "neighbor_mask_S1", "neighbor_mask_S2", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None, "jsd_null", None, None, None, None, None, None,)
 
 def gjct_permutation_test_expert(
         neighborhood_residuals_S1,
@@ -216,7 +220,7 @@ def gjct_permutation_test_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_EXPERT_ARGUMENTS, _GJCT_PERMUTATION_TEST_EXPERT_ARGUMENT_SOURCES)
 
     return {
         "jsd_null": jsd_null,
@@ -348,7 +352,7 @@ def gjct_permutation_test(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_ARGUMENTS)
+    check_err_code(ierr.value, _GJCT_PERMUTATION_TEST_ARGUMENTS, _GJCT_PERMUTATION_TEST_ARGUMENT_SOURCES)
 
     return {
         "jsd_null": jsd_null,

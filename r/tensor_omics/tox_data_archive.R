@@ -154,7 +154,8 @@ read_tox_data_into <- function(zip_filename) {
 
     .result <- .Call("read_tox_data_into_call", zip_filename, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols)
     .arguments <- c("zip_filename", "n_gene_ids", "gene_id_len", "gene_ids", "n_expression_rows", "n_expression_cols", "expression", "n_gene_to_family", "gene_to_family", "n_family_ids", "family_id_len", "family_ids", "n_family_centroids_rows", "n_family_centroids_cols", "family_centroids", "n_shift_vectors_rows", "n_shift_vectors_cols", "shift_vectors", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "gene_ids", NA_character_, NA_character_, "expression", "expression", NA_character_, "gene_to_family", NA_character_, "family_ids", NA_character_, NA_character_, "family_centroids", "family_centroids", NA_character_, "shift_vectors", "shift_vectors", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         gene_ids = .result$gene_ids,

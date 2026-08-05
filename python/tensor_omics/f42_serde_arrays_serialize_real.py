@@ -28,6 +28,8 @@ _lib.serialize_real_helper_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _SERIALIZE_REAL_HELPER_ARGUMENTS = ("arr", "n_elements", "arr_shape", "filename", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_SERIALIZE_REAL_HELPER_ARGUMENT_SOURCES = (None, "arr", "arr", None, None,)
 
 def serialize_real_helper(
         arr,
@@ -82,6 +84,6 @@ def serialize_real_helper(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _SERIALIZE_REAL_HELPER_ARGUMENTS)
+    check_err_code(ierr.value, _SERIALIZE_REAL_HELPER_ARGUMENTS, _SERIALIZE_REAL_HELPER_ARGUMENT_SOURCES)
 
     return None

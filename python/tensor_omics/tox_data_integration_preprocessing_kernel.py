@@ -28,6 +28,8 @@ _lib.calc_neighborhood_size_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _CALC_NEIGHBORHOOD_SIZE_ARGUMENTS = ("n_pool", "n_points", "n_genes_S", "mean_S", "desired_size",)
+#: For a derived argument, the one the caller passed it in
+_CALC_NEIGHBORHOOD_SIZE_ARGUMENT_SOURCES = (None, None, "mean_S", None, None,)
 
 def calc_neighborhood_size(
         n_pool,
@@ -90,6 +92,6 @@ def calc_neighborhood_size(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_NEIGHBORHOOD_SIZE_ARGUMENTS)
+    check_err_code(ierr.value, _CALC_NEIGHBORHOOD_SIZE_ARGUMENTS, _CALC_NEIGHBORHOOD_SIZE_ARGUMENT_SOURCES)
 
     return n_neighbors.value

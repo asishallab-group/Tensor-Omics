@@ -130,7 +130,7 @@ class PythonErrorEmitter:
         writer.blank()
 
     def _check(self, writer: Writer) -> None:
-        writer.line("def check_err_code(ierr, arguments=()):")
+        writer.line("def check_err_code(ierr, arguments=(), sources=()):")
         with writer.indent():
             writer.block(
                 '"""Raise if `ierr` reports an error.\n'
@@ -143,6 +143,11 @@ class PythonErrorEmitter:
                 "    The names of the wrapped procedure's arguments, in declaration\n"
                 "    order, so the message can name the offending one rather than\n"
                 "    give its number.\n"
+                "sources : sequence of str or None, optional\n"
+                "    Positionally alongside `arguments`: the argument the caller actually\n"
+                "    passed, where the Fortran one was derived from it. An extent read off\n"
+                "    an array names that array here, so the message can blame something the\n"
+                "    caller wrote. None where the Fortran argument is the caller's own.\n"
                 "\n"
                 "Returns\n"
                 "-------\n"
@@ -174,7 +179,18 @@ class PythonErrorEmitter:
                 writer.line("if arg_pos <= len(arguments):")
                 with writer.indent():
                     writer.line("argument = arguments[arg_pos - 1]")
-                    writer.line("message = f\"{message} (argument '{argument}')\"")
+                    writer.line("source = sources[arg_pos - 1] if arg_pos <= len(sources) else None")
+                    writer.line("if source:")
+                    with writer.indent():
+                        writer.line("# the caller's word first, then the Fortran argument it")
+                        writer.line("# was derived from, which is what the signature calls it")
+                        writer.line(
+                            'message = f"{message} (argument \'{source}\', via \'{argument}\')"'
+                        )
+                        writer.line("argument = source")
+                    writer.line("else:")
+                    with writer.indent():
+                        writer.line("message = f\"{message} (argument '{argument}')\"")
                 writer.line("else:")
                 with writer.indent():
                     writer.line('message = f"{message} (argument {arg_pos})"')

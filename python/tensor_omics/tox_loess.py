@@ -38,6 +38,8 @@ _lib.loess_fit_plain_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LOESS_FIT_PLAIN_EXPERT_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "fitted_values", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LOESS_FIT_PLAIN_EXPERT_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, None, None, None, None, "tmp_int_workspace", None, "tmp_real_workspace", None, None, None,)
 
 _lib.loess_fit_plain_c.restype = None
 _lib.loess_fit_plain_c.argtypes = (
@@ -57,6 +59,8 @@ _lib.loess_fit_plain_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LOESS_FIT_PLAIN_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "fitted_values", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LOESS_FIT_PLAIN_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.loess_fit_robust_expert_c.restype = None
 _lib.loess_fit_robust_expert_c.argtypes = (
@@ -86,6 +90,8 @@ _lib.loess_fit_robust_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LOESS_FIT_ROBUST_EXPERT_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "fitted_values", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LOESS_FIT_ROBUST_EXPERT_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, None, None, None, None, None, "tmp_int_workspace", None, "tmp_real_workspace", None, None, None, None, None, None, None,)
 
 _lib.loess_fit_robust_c.restype = None
 _lib.loess_fit_robust_c.argtypes = (
@@ -106,6 +112,8 @@ _lib.loess_fit_robust_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _LOESS_FIT_ROBUST_ARGUMENTS = ("n", "x", "y", "weights", "eval_points", "span", "degree", "max_neighborhood_size", "compute_influence", "save_factorization", "n_iters", "fitted_values", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_LOESS_FIT_ROBUST_ARGUMENT_SOURCES = ("x", None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def loess_fit_plain_expert(
         x,
@@ -239,7 +247,7 @@ def loess_fit_plain_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_PLAIN_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _LOESS_FIT_PLAIN_EXPERT_ARGUMENTS, _LOESS_FIT_PLAIN_EXPERT_ARGUMENT_SOURCES)
 
     return fitted_values
 
@@ -360,7 +368,7 @@ def loess_fit_plain(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS)
+    check_err_code(ierr.value, _LOESS_FIT_PLAIN_ARGUMENTS, _LOESS_FIT_PLAIN_ARGUMENT_SOURCES)
 
     return fitted_values
 
@@ -510,7 +518,7 @@ def loess_fit_robust_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_ROBUST_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _LOESS_FIT_ROBUST_EXPERT_ARGUMENTS, _LOESS_FIT_ROBUST_EXPERT_ARGUMENT_SOURCES)
 
     return fitted_values
 
@@ -637,6 +645,6 @@ def loess_fit_robust(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS)
+    check_err_code(ierr.value, _LOESS_FIT_ROBUST_ARGUMENTS, _LOESS_FIT_ROBUST_ARGUMENT_SOURCES)
 
     return fitted_values

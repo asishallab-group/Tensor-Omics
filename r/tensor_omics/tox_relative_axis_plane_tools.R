@@ -21,7 +21,8 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 
     .result <- .Call("omics_vector_RAP_projection_call", vecs, vecs_selection_mask, axes_selection_mask)
     .arguments <- c("vecs", "n_axes", "n_vecs", "vecs_selection_mask", "n_selected_vecs", "axes_selection_mask", "n_selected_axes", "projections", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "vecs", "vecs", NA_character_, "projections", NA_character_, "projections", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$projections
 }
@@ -47,7 +48,8 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
 
     .result <- .Call("omics_field_RAP_projection_call", fields, fields_selection_mask, axes_selection_mask)
     .arguments <- c("fields", "n_axes", "n_fields", "fields_selection_mask", "n_selected_fields", "axes_selection_mask", "n_selected_axes", "projections", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "fields", "fields", NA_character_, "projections", NA_character_, "projections", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$projections
 }
@@ -74,7 +76,8 @@ clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
 
     .result <- .Call("clock_hand_angle_between_vectors_call", v1, v2, selected_axes_for_signed)
     .arguments <- c("v1", "v2", "n_dims", "signed_angle", "selected_axes_for_signed", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "v1", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$signed_angle
 }
@@ -98,7 +101,8 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, s
 
     .result <- .Call("clock_hand_angles_for_shift_vectors_call", fields, fields_selection_mask, selected_axes_for_signed)
     .arguments <- c("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "selected_axes_for_signed", "signed_angles", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "fields", "fields", NA_character_, "signed_angles", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$signed_angles
 }
@@ -117,7 +121,8 @@ compute_relative_axis_contributions <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
     .result <- .Call("compute_relative_axis_contributions_call", vec)
     .arguments <- c("vec", "n_axes", "contributions", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "vec", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$contributions
 }
@@ -136,7 +141,8 @@ relative_axes_changes_from_shift_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
     .result <- .Call("relative_axes_changes_from_shift_vector_call", vec)
     .arguments <- c("vec", "n_axes", "contributions", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "vec", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$contributions
 }
@@ -155,7 +161,8 @@ relative_axes_expression_from_expression_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
     .result <- .Call("relative_axes_expression_from_expression_vector_call", vec)
     .arguments <- c("vec", "n_axes", "contributions", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "vec", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$contributions
 }

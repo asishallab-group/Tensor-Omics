@@ -28,6 +28,8 @@ _lib.mean_vector_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _MEAN_VECTOR_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "gene_indices", "n_selected_genes", "centroid", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_MEAN_VECTOR_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "gene_indices", None, None,)
 
 _lib.group_centroid_orthologs_expert_c.restype = None
 _lib.group_centroid_orthologs_expert_c.argtypes = (
@@ -44,6 +46,8 @@ _lib.group_centroid_orthologs_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "tmp_group_indices", "ortholog_set", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "centroid_matrix", None, None, None, None,)
 
 _lib.group_centroid_orthologs_c.restype = None
 _lib.group_centroid_orthologs_c.argtypes = (
@@ -59,6 +63,8 @@ _lib.group_centroid_orthologs_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GROUP_CENTROID_ORTHOLOGS_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "ortholog_set", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GROUP_CENTROID_ORTHOLOGS_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "centroid_matrix", None, None, None,)
 
 _lib.group_centroid_all_expert_c.restype = None
 _lib.group_centroid_all_expert_c.argtypes = (
@@ -74,6 +80,8 @@ _lib.group_centroid_all_expert_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GROUP_CENTROID_ALL_EXPERT_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "tmp_group_indices", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GROUP_CENTROID_ALL_EXPERT_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "centroid_matrix", None, None, None,)
 
 _lib.group_centroid_all_c.restype = None
 _lib.group_centroid_all_c.argtypes = (
@@ -88,6 +96,8 @@ _lib.group_centroid_all_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _GROUP_CENTROID_ALL_ARGUMENTS = ("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_GROUP_CENTROID_ALL_ARGUMENT_SOURCES = (None, "expression_vectors", "expression_vectors", None, "centroid_matrix", None, None,)
 
 def mean_vector(
         expression_vectors,
@@ -152,7 +162,7 @@ def mean_vector(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _MEAN_VECTOR_ARGUMENTS)
+    check_err_code(ierr.value, _MEAN_VECTOR_ARGUMENTS, _MEAN_VECTOR_ARGUMENT_SOURCES)
 
     return centroid
 
@@ -244,7 +254,7 @@ def group_centroid_orthologs_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENTS, _GROUP_CENTROID_ORTHOLOGS_EXPERT_ARGUMENT_SOURCES)
 
     return centroid_matrix
 
@@ -334,7 +344,7 @@ def group_centroid_orthologs(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_ARGUMENTS)
+    check_err_code(ierr.value, _GROUP_CENTROID_ORTHOLOGS_ARGUMENTS, _GROUP_CENTROID_ORTHOLOGS_ARGUMENT_SOURCES)
 
     return centroid_matrix
 
@@ -412,7 +422,7 @@ def group_centroid_all_expert(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GROUP_CENTROID_ALL_EXPERT_ARGUMENTS)
+    check_err_code(ierr.value, _GROUP_CENTROID_ALL_EXPERT_ARGUMENTS, _GROUP_CENTROID_ALL_EXPERT_ARGUMENT_SOURCES)
 
     return centroid_matrix
 
@@ -488,6 +498,6 @@ def group_centroid_all(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _GROUP_CENTROID_ALL_ARGUMENTS)
+    check_err_code(ierr.value, _GROUP_CENTROID_ALL_ARGUMENTS, _GROUP_CENTROID_ALL_ARGUMENT_SOURCES)
 
     return centroid_matrix

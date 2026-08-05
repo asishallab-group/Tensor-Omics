@@ -16,7 +16,8 @@ mean_vector <- function(expression_vectors, gene_indices) {
     gene_indices <- .tox_as_integer_vector(gene_indices, "gene_indices")
     .result <- .Call("mean_vector_call", expression_vectors, gene_indices)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_indices", "n_selected_genes", "centroid", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "gene_indices", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid
 }
@@ -47,7 +48,8 @@ group_centroid_orthologs_expert <- function(expression_vectors, gene_to_family, 
 
     .result <- .Call("group_centroid_orthologs_expert_call", expression_vectors, gene_to_family, n_families, ortholog_set)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "tmp_group_indices", "ortholog_set", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "centroid_matrix", NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid_matrix
 }
@@ -78,7 +80,8 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
 
     .result <- .Call("group_centroid_orthologs_call", expression_vectors, gene_to_family, n_families, ortholog_set)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "ortholog_set", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "centroid_matrix", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid_matrix
 }
@@ -105,7 +108,8 @@ group_centroid_all_expert <- function(expression_vectors, gene_to_family, n_fami
 
     .result <- .Call("group_centroid_all_expert_call", expression_vectors, gene_to_family, n_families)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "tmp_group_indices", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "centroid_matrix", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid_matrix
 }
@@ -132,7 +136,8 @@ group_centroid_all <- function(expression_vectors, gene_to_family, n_families) {
 
     .result <- .Call("group_centroid_all_call", expression_vectors, gene_to_family, n_families)
     .arguments <- c("expression_vectors", "n_axes", "n_genes", "gene_to_family", "n_families", "centroid_matrix", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "expression_vectors", "expression_vectors", NA_character_, "centroid_matrix", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$centroid_matrix
 }

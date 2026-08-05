@@ -72,7 +72,8 @@ calc_work_arr_paralog_subsets_size <- function(max_subset_size, n_genes, filtere
     filtered_paralogs_mask <- .tox_as_integer_vector(filtered_paralogs_mask, "filtered_paralogs_mask")
     .result <- .Call("calc_work_arr_paralog_subsets_size_call", max_subset_size, n_genes, filtered_paralogs_mask)
     .arguments <- c("max_subset_size", "n_genes", "work_array_size", "filtered_paralogs_mask", "n_mask_chunks", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, NA_character_, NA_character_, "filtered_paralogs_mask", NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         max_subset_size = .result$max_subset_size,

@@ -28,7 +28,8 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 
     .result <- .Call("determine_shared_residual_range_expert_call", abs_residual_pool, abs_residual_pool_perm, residual_range_quantile)
     .arguments <- c("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "abs_residual_pool", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$shared_residual_range
 }
@@ -54,7 +55,8 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
     residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
     .result <- .Call("determine_shared_residual_range_call", abs_residual_pool, residual_range_quantile)
     .arguments <- c("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "abs_residual_pool", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$shared_residual_range
 }
@@ -88,7 +90,8 @@ determine_study_shared_residual_range_expert <- function(neighborhood_residuals_
 
     .result <- .Call("determine_study_shared_residual_range_expert_call", neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "tmp_abs_residual_pool", "tmp_abs_residual_pool_perm", "shared_residual_range", "residual_range_quantile", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$shared_residual_range
 }
@@ -122,7 +125,8 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
 
     .result <- .Call("determine_study_shared_residual_range_call", neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile)
     .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$shared_residual_range
 }
@@ -153,7 +157,8 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
         neighbor_mask <- .tox_as_logical(neighbor_mask, "neighbor_mask")
     .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask)
     .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         counts = .result$counts,
@@ -187,7 +192,8 @@ compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
 
     .result <- .Call("compute_divergence_per_reference_point_call", pmf_S1, pmf_S2)
     .arguments <- c("pmf_S1", "pmf_S2", "n_points", "n_bins", "js_divergences", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "pmf_S1", "pmf_S1", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$js_divergences
 }
@@ -220,7 +226,8 @@ compute_weighted_global_divergence <- function(js_divergences, included_n_reps_S
 
     .result <- .Call("compute_weighted_global_divergence_call", js_divergences, included_n_reps_S1, included_n_reps_S2)
     .arguments <- c("js_divergences", "n_points", "included_n_reps_S1", "included_n_reps_S2", "global_js_divergence", "weights", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "js_divergences", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         global_js_divergence = .result$global_js_divergence,

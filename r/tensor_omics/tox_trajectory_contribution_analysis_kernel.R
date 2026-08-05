@@ -24,7 +24,8 @@ compute_all_contributions_kernel <- function(trajectories, factor_indices, depen
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
     .result <- .Call("compute_all_contributions_kernel_call", trajectories, factor_indices, dependent_indices, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, "factor_indices", NA_character_, "dependent_indices", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         local_contributions = .result$local_contributions,
@@ -53,7 +54,8 @@ compute_baselines_factor_dependent_kernel <- function(factor, dependent, baselin
 
     .result <- .Call("compute_baselines_factor_dependent_kernel_call", factor, dependent, baseline_mode)
     .arguments <- c("n_timepoints", "factor", "dependent", "baseline_mode", "factor_baseline", "dependent_baseline", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c("factor", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         factor_baseline = .result$factor_baseline,
@@ -73,7 +75,8 @@ compute_velocity_trajectory_kernel <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
     .result <- .Call("compute_velocity_trajectory_kernel_call", trajectory)
     .arguments <- c("trajectory", "velocity", "n_timepoints")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, NA_character_, "trajectory")
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$velocity
 }
@@ -126,7 +129,8 @@ compute_velocity_acceleration_contributions_kernel <- function(trajectories, bas
     baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
     .result <- .Call("compute_velocity_acceleration_contributions_kernel_call", trajectories, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "tmp_factors", "tmp_dependent", "tmp_contributions", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr")
-    .status <- check_err_code(.result$ierr, .arguments)
+    .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         contrib_velocity = .result$contrib_velocity,

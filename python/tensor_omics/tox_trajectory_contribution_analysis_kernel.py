@@ -35,6 +35,8 @@ _lib.compute_all_contributions_kernel_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_ALL_CONTRIBUTIONS_KERNEL_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "tmp_factors", "tmp_dependent", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_ALL_CONTRIBUTIONS_KERNEL_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, "factor_indices", None, "dependent_indices", None, None, None, None, None, None,)
 
 _lib.compute_baselines_factor_dependent_kernel_c.restype = None
 _lib.compute_baselines_factor_dependent_kernel_c.argtypes = (
@@ -49,6 +51,8 @@ _lib.compute_baselines_factor_dependent_kernel_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_BASELINES_FACTOR_DEPENDENT_KERNEL_ARGUMENTS = ("n_timepoints", "factor", "dependent", "baseline_mode", "factor_baseline", "dependent_baseline", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_BASELINES_FACTOR_DEPENDENT_KERNEL_ARGUMENT_SOURCES = ("factor", None, None, None, None, None, None,)
 
 _lib.compute_velocity_trajectory_kernel_c.restype = None
 _lib.compute_velocity_trajectory_kernel_c.argtypes = (
@@ -60,6 +64,8 @@ _lib.compute_velocity_trajectory_kernel_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_TRAJECTORY_KERNEL_ARGUMENTS = ("trajectory", "velocity", "n_timepoints",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_VELOCITY_TRAJECTORY_KERNEL_ARGUMENT_SOURCES = (None, None, "trajectory",)
 
 _lib.compute_acceleration_from_velocity_trajectory_kernel_c.restype = None
 _lib.compute_acceleration_from_velocity_trajectory_kernel_c.argtypes = (
@@ -91,6 +97,8 @@ _lib.compute_velocity_acceleration_contributions_kernel_c.argtypes = (
 
 #: The wrapped procedure's arguments, so an error can name one
 _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_KERNEL_ARGUMENTS = ("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "tmp_factors", "tmp_dependent", "tmp_contributions", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_KERNEL_ARGUMENT_SOURCES = (None, "trajectories", "trajectories", "trajectories", None, None, None, None, None, None, None, None, None,)
 
 def compute_all_contributions_kernel(
         trajectories,
@@ -186,7 +194,7 @@ def compute_all_contributions_kernel(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_KERNEL_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_ALL_CONTRIBUTIONS_KERNEL_ARGUMENTS, _COMPUTE_ALL_CONTRIBUTIONS_KERNEL_ARGUMENT_SOURCES)
 
     return {
         "local_contributions": local_contributions,
@@ -267,7 +275,7 @@ def compute_baselines_factor_dependent_kernel(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_BASELINES_FACTOR_DEPENDENT_KERNEL_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_BASELINES_FACTOR_DEPENDENT_KERNEL_ARGUMENTS, _COMPUTE_BASELINES_FACTOR_DEPENDENT_KERNEL_ARGUMENT_SOURCES)
 
     return {
         "factor_baseline": factor_baseline.value,
@@ -321,7 +329,7 @@ def compute_velocity_trajectory_kernel(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_KERNEL_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_VELOCITY_TRAJECTORY_KERNEL_ARGUMENTS, _COMPUTE_VELOCITY_TRAJECTORY_KERNEL_ARGUMENT_SOURCES)
 
     return velocity
 
@@ -452,7 +460,7 @@ def compute_velocity_acceleration_contributions_kernel(
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_KERNEL_ARGUMENTS)
+    check_err_code(ierr.value, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_KERNEL_ARGUMENTS, _COMPUTE_VELOCITY_ACCELERATION_CONTRIBUTIONS_KERNEL_ARGUMENT_SOURCES)
 
     return {
         "contrib_velocity": contrib_velocity,
