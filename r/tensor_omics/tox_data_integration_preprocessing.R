@@ -189,7 +189,7 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
 #'   It is recommended to compute this with
-#'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
+#'   \code{\link{calc_neighborhood_size}}.
 #' @return a named list with elements:
 #'   \item{neighborhood_residuals}{a numeric array of rank 3. Collection of residual vectors for each neighborhood}
 #'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes}
@@ -229,7 +229,7 @@ construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors)
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
 #'   It is recommended to compute this with
-#'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
+#'   \code{\link{calc_neighborhood_size}}.
 #' @return a named list with elements:
 #'   \item{neighborhood_residuals}{a numeric array of rank 3. Collection of residual vectors for each neighborhood}
 #'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes}

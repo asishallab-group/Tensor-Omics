@@ -131,8 +131,11 @@ def character_rank(argument: CArgument) -> int:
 
 
 class PythonEmitter:
-    def __init__(self, library: str = "build/libtensor-omics.so"):
+    def __init__(self, library: str = "build/libtensor-omics.so", links=None):
         self.library = library
+        #: resolves a Ford link to what it is called here; None in a unit test, where a link
+        #: then renders as plain code rather than a cross-reference
+        self.links = links
 
     # -- package ----------------------------------------------------------------
 
@@ -354,7 +357,7 @@ class PythonEmitter:
         writer.line("):")
 
         with writer.indent():
-            writer.block(render_docstring(wrapper))
+            writer.block(render_docstring(wrapper, self))
             self._stash_raw(writer, wrapper)
             self._prepare_inputs(writer, wrapper)
             # extents a producer reads must be settled before it is called; extents read

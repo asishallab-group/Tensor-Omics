@@ -613,7 +613,7 @@ def construct_neighborhoods_expert(
         The minimum valid value is `1`.
         The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
         It is recommended to compute this with
-        [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
+        :func:`tensor_omics.calc_neighborhood_size`.
 
     Returns
     -------
@@ -720,7 +720,7 @@ def construct_neighborhoods(
         The minimum valid value is `1`.
         The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
         It is recommended to compute this with
-        [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
+        :func:`tensor_omics.calc_neighborhood_size`.
 
     Returns
     -------

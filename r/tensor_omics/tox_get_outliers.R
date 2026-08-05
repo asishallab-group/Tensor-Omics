@@ -242,9 +242,9 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #' Main routine to detect outliers using RDI and LOESS-based scaling
 #'
 #' Orchestrates the full pipeline: per-family scaling via
-#' [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
-#' [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-#' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
+#' \code{\link{compute_family_scaling}}, the RDI per gene via
+#' \code{\link{compute_rdi}}, then flags outliers via
+#' \code{\link{identify_outliers}}.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}, whose argument names
 #' are the ones an error message reports.
@@ -295,9 +295,9 @@ detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentil
 #' Main routine to detect outliers using RDI and LOESS-based scaling
 #'
 #' Orchestrates the full pipeline: per-family scaling via
-#' [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
-#' [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-#' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
+#' \code{\link{compute_family_scaling}}, the RDI per gene via
+#' \code{\link{compute_rdi}}, then flags outliers via
+#' \code{\link{identify_outliers}}.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers_alloc}, whose argument names
 #' are the ones an error message reports.

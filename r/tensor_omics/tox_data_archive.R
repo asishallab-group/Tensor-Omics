@@ -79,7 +79,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
 #' Each count (and each string length) is 0 when the corresponding member is absent, so a
 #' caller can size all six output buffers up front. Character members report both an element
 #' count and a per-element string length. Pairs with
-#' [[tox_data_archive(module):read_tox_data_into(subroutine)]].
+#' \code{\link{read_tox_data_into}}.
 #'
 #' Generated from the Fortran procedure \code{tox_data_archive::get_tox_data_dims}, whose argument names
 #' are the ones an error message reports.
@@ -122,7 +122,7 @@ get_tox_data_dims <- function(zip_filename) {
 #' Read a tox data archive into caller-provided buffers
 #'
 #' Fills every buffer from the archive; size them from
-#' [[tox_data_archive(module):get_tox_data_dims(subroutine)]] first. A member that is absent
+#' \code{\link{get_tox_data_dims}} first. A member that is absent
 #' has a zero extent and is left untouched.
 #'
 #' Generated from the Fortran procedure \code{tox_data_archive::read_tox_data_into}, whose argument names

@@ -26,7 +26,7 @@ build_kd_index <- function(points, dimension_order) {
 #' Build a k-d tree index over points on the unit sphere (unit vectors)
 #'
 #' This is a thin, semantically-named wrapper: partitioning is identical to
-#' [[f42_kd_tree(module):build_kd_index_alloc(subroutine)]] (plain per-axis median splits);
+#' \code{\link{build_kd_index}} (plain per-axis median splits);
 #' callers are responsible for ensuring `points` are actually unit-normalized beforehand.
 #'
 #' Generated from the Fortran procedure \code{f42_kd_tree::build_spherical_kd_alloc}, whose argument names

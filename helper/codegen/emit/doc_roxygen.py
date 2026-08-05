@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_links import render_spans as _spans
 from .doc_literals import is_ford_block_tag, render as _render
 from ..ir.types import BaseType
 from ..render import Writer
@@ -48,7 +49,8 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
     writer.line(f"#' {title}")
     writer.line("#'")
 
-    notes = _notes(wrapper.doc)
+    resolver = getattr(emitter, "links", None)
+    notes = _notes(wrapper.doc, resolver)
     if notes:
         for line in notes:
             writer.line(f"#' {line}" if line else "#'")
@@ -73,7 +75,7 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
     writer.line("#'")
 
     for argument in emitter._inputs(wrapper):
-        first, *rest = _param_lines(argument)
+        first, *rest = _param_lines(argument, resolver)
         writer.line(f"#' @param {argument.name} {first}")
         # roxygen continues a tag until the next one, so the rest of the description is
         # indented under it rather than dropped
@@ -86,7 +88,7 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
     return writer.render()
 
 
-def _param_lines(argument: CArgument) -> list[str]:
+def _param_lines(argument: CArgument, resolver=None) -> list[str]:
     """The `@param` text, as the line the tag opens with plus any continuation lines.
 
     An argument's description is often several source lines; taking only the first silently
@@ -94,16 +96,16 @@ def _param_lines(argument: CArgument) -> list[str]:
     an R reader.
     """
     type_ = r_type_of(argument)
-    lines = _prose_lines(argument.doc)
+    lines = _prose_lines(argument.doc, resolver)
     if not lines:
         return [type_]
     return [f"{type_}. {lines[0]}", *lines[1:]]
 
 
-def _prose_lines(doc: Doc) -> list[str]:
+def _prose_lines(doc: Doc, resolver=None) -> list[str]:
     """Every non-table line of a doc, blanks trimmed from both ends."""
     lines = [
-        _render(block.text, "r")
+        _render(_spans(block, resolver, "r"), "r")
         for block in doc
         if not isinstance(block, DocTable) and not is_ford_block_tag(block.text)
     ]
@@ -127,32 +129,32 @@ def _return_lines(wrapper: CWrapper, emitter) -> list[str]:
         return ["#' @return invisibly `NULL`; called for its effect."]
 
     if len(outputs) == 1:
-        first, *rest = _param_lines(outputs[0])
+        first, *rest = _param_lines(outputs[0], getattr(emitter, "links", None))
         return [f"#' @return {first}", *(f"#'   {line}" for line in rest)]
 
     lines = ["#' @return a named list with elements:"]
     for argument in outputs:
-        first, *rest = _param_lines(argument)
+        first, *rest = _param_lines(argument, getattr(emitter, "links", None))
         lines.append(f"#'   \\item{{{argument.name}}}{{{first}")
         lines += [f"#'     {line}" for line in rest]
         lines[-1] += "}"
     return lines
 
 
-def _notes(doc: Doc) -> list[str]:
+def _notes(doc: Doc, resolver=None) -> list[str]:
     """Prose from the procedure doc, tables dropped (values are stated on the @param)."""
     lines = []
     for block in doc:
         if isinstance(block, DocTable) or is_ford_block_tag(block.text):
             continue
-        lines.append(_render(block.text, "r"))
+        lines.append(_render(_spans(block, resolver, "r"), "r"))
     while lines and not lines[-1]:
         lines.pop()
     return lines
 
 
-def _first_line(doc: Doc) -> str:
+def _first_line(doc: Doc, resolver=None) -> str:
     for block in doc:
         if not isinstance(block, DocTable) and block.text.strip():
-            return _render(block.text, "r")
+            return _render(_spans(block, resolver, "r"), "r")
     return ""

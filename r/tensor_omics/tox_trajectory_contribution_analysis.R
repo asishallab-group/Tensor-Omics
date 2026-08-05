@@ -86,7 +86,7 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 
 #' Calculates the p values for the contributions once the permutation tests are done
 #'
-#' Given the permutation tests ([[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test_kernel(subroutine)]]),
+#' Given the permutation tests (\code{\link{perform_permutation_test}}),
 #' this counts how many of the permutation contributions were at least as high as the real ones.
 #'
 #' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_p_values}, whose argument names
@@ -94,8 +94,8 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 #'
 #' @param local_contributions_observed a numeric vector. Per-timepoint contributions for the observed factor-dependent-sample combination
 #' @param total_contribution_observed a numeric scalar. Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
-#' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
-#' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
+#' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from \code{\link{perform_permutation_test_expert}}
+#' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from \code{\link{perform_permutation_test_expert}}
 #' @return a named list with elements:
 #'   \item{local_p_values}{a numeric vector. calculated p values for local contributions, like: `(local_contributions_perm_test >= local_contributions_observed)/n_permutations`}
 #'   \item{total_p_value}{a numeric scalar. calculated p values for total contributions, like: `(total_contributions_perm_test >= total_contribution_observed)/n_permutations`}

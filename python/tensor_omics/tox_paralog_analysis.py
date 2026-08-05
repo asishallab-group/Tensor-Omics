@@ -292,7 +292,7 @@ def detect_dosage_effect_expert(
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
-        [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+        :func:`tensor_omics.calc_work_arr_paralog_subsets_size` first.
         Zero is in range and means there is no subset to check -- the sizing routine reports
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
@@ -420,7 +420,7 @@ def detect_dosage_effect(
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
-        [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+        :func:`tensor_omics.calc_work_arr_paralog_subsets_size` first.
         Zero is in range and means there is no subset to check -- the sizing routine reports
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
@@ -545,7 +545,7 @@ def detect_subfunctionalization_expert(
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
-        [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+        :func:`tensor_omics.calc_work_arr_paralog_subsets_size` first.
         Zero is in range and means there is no subset to check -- the sizing routine reports
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that
@@ -698,7 +698,7 @@ def detect_subfunctionalization(
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
-        [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+        :func:`tensor_omics.calc_work_arr_paralog_subsets_size` first.
         Zero is in range and means there is no subset to check -- the sizing routine reports
         it whenever the filtered families hold a single gene each. It reports a work array
         of zero slots along with it, which this routine does not accept, so a caller that

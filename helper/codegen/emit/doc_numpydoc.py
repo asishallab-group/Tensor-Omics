@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
+from .doc_links import render_spans as _spans
 from .doc_literals import is_ford_block_tag, render as _render
 from ..ir.types import BaseType, Intent
 from ..render import Writer
@@ -42,11 +43,15 @@ def python_type_of(argument: CArgument) -> str:
     return _render(f"np.ndarray[{dtype_of(argument)}] of shape ({shape},){order}", "python")
 
 
-def render_docstring(wrapper: CWrapper) -> str:
-    """The whole numpydoc docstring for a generated function."""
+def render_docstring(wrapper: CWrapper, emitter=None) -> str:
+    """The whole numpydoc docstring for a generated function.
+
+    `emitter` carries the link resolver; without one (a unit test) a Ford link renders as
+    plain code rather than a cross-reference, which is the honest fallback anyway.
+    """
     from .python_ctypes import PythonEmitter
 
-    emitter = PythonEmitter()
+    emitter = emitter if emitter is not None else PythonEmitter()
     writer = Writer()
     # A raw docstring: the argument descriptions carry LaTeX (`\(`, `\frac`), which is an
     # invalid escape sequence in a plain string and warns (a hard error in a future Python).
@@ -69,7 +74,7 @@ def render_docstring(wrapper: CWrapper) -> str:
     if not outputs:
         writer.line("None")
     elif len(outputs) == 1:
-        _result(writer, outputs[0])
+        _result(writer, outputs[0], emitter)
     else:
         # several outputs come back as a dict, so document it as one
         writer.line("dict")
@@ -77,7 +82,7 @@ def render_docstring(wrapper: CWrapper) -> str:
             writer.line("with keys:")
             writer.blank()
             for argument in outputs:
-                _result(writer, argument)
+                _result(writer, argument, emitter)
 
     _raises(writer, wrapper)
     _notes(writer, wrapper)
@@ -100,16 +105,21 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
     suffix = ", " + ", ".join(annotations) if annotations else ""
     writer.line(f"{argument.name} : {python_type_of(argument)}{suffix}")
     with writer.indent():
-        _description(writer, argument.doc)
+        _description(writer, argument.doc, emitter)
 
 
-def _result(writer: Writer, argument: CArgument) -> None:
+def _result(writer: Writer, argument: CArgument, emitter=None) -> None:
     writer.line(f"{argument.name} : {python_type_of(argument)}")
     with writer.indent():
-        _description(writer, argument.doc)
+        _description(writer, argument.doc, emitter)
 
 
-def _description(writer: Writer, doc: Doc) -> None:
+def _resolver(emitter):
+    """The link resolver an emitter carries, absent in a unit test that builds one by hand."""
+    return getattr(emitter, "links", None)
+
+
+def _description(writer: Writer, doc: Doc, emitter=None) -> None:
     if not doc:
         return
     for block in doc:
@@ -118,7 +128,7 @@ def _description(writer: Writer, doc: Doc) -> None:
             continue
         if is_ford_block_tag(block.text):
             continue
-        writer.line(_render(block.text, "python"))
+        writer.line(_render(_spans(block, _resolver(emitter), "python"), "python"))
 
 
 def _raises(writer: Writer, wrapper: CWrapper) -> None:

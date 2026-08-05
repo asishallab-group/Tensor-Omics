@@ -171,7 +171,7 @@ quantile_normalization <- function(expr) {
 #' Generated from the Fortran procedure \code{tox_normalization::log2_transformation}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param expr a numeric matrix. Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+#' @param expr a numeric matrix. Gene Expression matrix, from \code{\link{calc_tiss_avg}}
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Log-transformed `expr`
@@ -228,7 +228,7 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' @param condition_tissues a integer vector. Condition tissue indices
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_tissues`.
-#' @param expr a numeric matrix. Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+#' @param expr a numeric matrix. Gene Expression matrix, from \code{\link{calc_tiss_avg}}
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Output matrix for fold changes

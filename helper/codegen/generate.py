@@ -20,6 +20,7 @@ from .emit.errors_python import PythonErrorEmitter
 from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
 from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+from .emit.doc_links import LinkResolver, build as build_links
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
@@ -100,9 +101,9 @@ def generate(
     if any(target in targets for target in ("python", "r", "snippets")):
         catalogue = _catalogue(project, parsed.arg_pos_factor, diagnostics, conventions)
         if "python" in targets:
-            files += _python_files(binding, catalogue, paths, library)
+            files += _python_files(binding, catalogue, paths, library, synthesis)
         if "r" in targets:
-            files += _r_files(binding, catalogue, paths)
+            files += _r_files(binding, catalogue, paths, synthesis)
         if "snippets" in targets:
             files += _snippets_files(binding, catalogue, paths)
 
@@ -171,9 +172,9 @@ def _c_files(binding: CBinding, paths: Paths) -> list[GeneratedFile]:
     ]
 
 
-def _python_files(binding: CBinding, catalogue, paths: Paths,
-                  library: str) -> list[GeneratedFile]:
-    emitter = PythonEmitter(library=library)
+def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,
+                  synthesis: SynthesisResult | None = None) -> list[GeneratedFile]:
+    emitter = PythonEmitter(library=library, links=_links(binding, synthesis))
     out = paths.resolve(paths.python_out_dir)
     files = [
         GeneratedFile(out / "library.py", emitter.library_module()),
@@ -187,8 +188,15 @@ def _python_files(binding: CBinding, catalogue, paths: Paths,
     return files
 
 
-def _r_files(binding: CBinding, catalogue, paths: Paths) -> list[GeneratedFile]:
-    emitter, wrapper = CCallEmitter(), RWrapperEmitter()
+def _links(binding: CBinding, synthesis: SynthesisResult | None) -> LinkResolver:
+    """One lookup of what every Ford link target is called in the language layers."""
+    bindings, kernels, modes = build_links(binding, synthesis.specs if synthesis else ())
+    return LinkResolver(bindings=bindings, kernels=kernels, modes=modes)
+
+
+def _r_files(binding: CBinding, catalogue, paths: Paths,
+             synthesis: SynthesisResult | None = None) -> list[GeneratedFile]:
+    emitter, wrapper = CCallEmitter(), RWrapperEmitter(links=_links(binding, synthesis))
     # the C `.Call` shims live under src/ so fpm compiles them into the one
     # libtensor-omics.so (mirroring the generated src/c_binding/*.F90); the R-language
     # wrappers live in the R package tree.

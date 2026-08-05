@@ -459,9 +459,9 @@ def compute_p_values(
     total_contribution_observed : float
         Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
     local_contributions_perm_test : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F')
-        Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
+        Per-timepoint contributions for the factor-dependent-random_sample combinations from :func:`tensor_omics.perform_permutation_test_expert`
     total_contributions_perm_test : np.ndarray[np.float64] of shape (n_permutations,)
-        Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
+        Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from :func:`tensor_omics.perform_permutation_test_expert`
 
     Returns
     -------

@@ -51,7 +51,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
-#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   \code{\link{calc_work_arr_paralog_subsets_size}} first.
 #'   Zero is in range and means there is no subset to check -- the sizing routine reports
 #'   it whenever the filtered families hold a single gene each. It reports a work array
 #'   of zero slots along with it, which this routine does not accept, so a caller that
@@ -105,7 +105,7 @@ detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask,
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
-#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   \code{\link{calc_work_arr_paralog_subsets_size}} first.
 #'   Zero is in range and means there is no subset to check -- the sizing routine reports
 #'   it whenever the filtered families hold a single gene each. It reports a work array
 #'   of zero slots along with it, which this routine does not accept, so a caller that
@@ -159,7 +159,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
-#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   \code{\link{calc_work_arr_paralog_subsets_size}} first.
 #'   Zero is in range and means there is no subset to check -- the sizing routine reports
 #'   it whenever the filtered families hold a single gene each. It reports a work array
 #'   of zero slots along with it, which this routine does not accept, so a caller that
@@ -218,7 +218,7 @@ detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralog
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #'   maximum valid size. The bindings cap it automatically while sizing the work
 #'   array; a Fortran caller caps it by calling
-#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   \code{\link{calc_work_arr_paralog_subsets_size}} first.
 #'   Zero is in range and means there is no subset to check -- the sizing routine reports
 #'   it whenever the filtered families hold a single gene each. It reports a work array
 #'   of zero slots along with it, which this routine does not accept, so a caller that

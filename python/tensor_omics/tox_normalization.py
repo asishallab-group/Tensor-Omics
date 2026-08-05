@@ -547,7 +547,7 @@ def log2_transformation(
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
-        Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+        Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
         NaN is permitted for this value.
         Infinite values are permitted for this value.
 
@@ -679,7 +679,7 @@ def calc_fchange(
         The minimum valid value is `1`.
         The maximum valid value is `n_tissues`.
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
-        Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+        Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
         NaN is permitted for this value.
         Infinite values are permitted for this value.
 

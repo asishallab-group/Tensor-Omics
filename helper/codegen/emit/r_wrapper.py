@@ -19,6 +19,11 @@ from .doc_roxygen import render_roxygen
 
 
 class RWrapperEmitter:
+    def __init__(self, links=None):
+        #: resolves a Ford link to what it is called here; None in a unit test, where a link
+        #: then renders as plain code rather than a cross-reference
+        self.links = links
+
     def validators(self) -> str:
         """The coercion helpers, in one file rather than repeated per module.
 
