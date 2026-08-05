@@ -402,14 +402,32 @@ class CCallEmitter:
             writer.blank()
 
     def _scalar_local(self, argument: CArgument) -> str:
+        return (
+            f"{self._scalar_local_type(argument)} {argument.name}_v"
+            f" = {self._scalar_value(argument)};"
+        )
+
+    @staticmethod
+    def _scalar_local_type(argument: CArgument) -> str:
+        """The C type a by-value scalar is pulled into, which conversion may narrow."""
+        base = argument.type.base
+        if base is BaseType.LOGICAL:
+            return "unsigned char"
+        if base is BaseType.COMPLEX:
+            return "Rcomplex"
+        return c_ctype(argument)
+
+    @staticmethod
+    def _scalar_value(argument: CArgument) -> str:
+        """The expression reading a by-value scalar out of its length-1 SEXP."""
         name = argument.name
         base = argument.type.base
         if base is BaseType.LOGICAL:
-            return f"unsigned char {name}_v = (Rf_asLogical({name}) == TRUE) ? 1 : 0;"
+            return f"(Rf_asLogical({name}) == TRUE) ? 1 : 0"
         if base is BaseType.COMPLEX:
-            return f"Rcomplex {name}_v = COMPLEX({name})[0];"
+            return f"COMPLEX({name})[0]"
         cast = "" if base is BaseType.REAL or base is BaseType.INTEGER else f"({c_ctype(argument)}) "
-        return f"{c_ctype(argument)} {name}_v = {cast}{_R_AS_SCALAR[base]}({name});"
+        return f"{cast}{_R_AS_SCALAR[base]}({name})"
 
     # -- optionals --------------------------------------------------------------
 
@@ -423,7 +441,20 @@ class CCallEmitter:
             ctype = c_ctype(argument)
             rank = argument.rank
             has_axes = rank > 1 and not argument.type.is_character
-            if not argument.needs_conversion:
+            # A scalar that needs converting -- a logical, which R stores four bytes wide --
+            # has no storage of its own to point at, and the buffer path only covers arrays
+            # and characters. It gets a local to convert into and a pointer to that local,
+            # left null while the argument is absent.
+            converts_in_place = (
+                argument.is_scalar
+                and argument.needs_conversion
+                and not self._converts_via_buffer(argument)
+            )
+            if converts_in_place:
+                local_type = self._scalar_local_type(argument)
+                lines.line(f"{local_type} {name}_v = 0;")
+                lines.line(f"const {local_type}* {name}_p = NULL;")
+            elif not argument.needs_conversion:
                 lines.line(f"const {ctype}* {name}_p = NULL;")
             lines.line(f"int {name}_size = 0;")
             if has_axes:
@@ -432,7 +463,10 @@ class CCallEmitter:
             lines.line(f"if ({name} != R_NilValue) {{")
             with lines.indent():
                 lines.line(f"{name}_size = (int) Rf_length({name});")
-                if not argument.needs_conversion:
+                if converts_in_place:
+                    lines.line(f"{name}_v = {self._scalar_value(argument)};")
+                    lines.line(f"{name}_p = &{name}_v;")
+                elif not argument.needs_conversion:
                     lines.line(f"{name}_p = {self._c_pointer(argument, name)};")
                 if has_axes:
                     lines.line(f"SEXP {name}_d = Rf_getAttrib({name}, R_DimSymbol);")
