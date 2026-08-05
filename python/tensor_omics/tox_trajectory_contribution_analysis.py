@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_trajectory_contribution_analysis
 
-Generated from tox_trajectory_contribution_analysis. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_trajectory_contribution_analysis. Do not edit.
 """
 
 import ctypes

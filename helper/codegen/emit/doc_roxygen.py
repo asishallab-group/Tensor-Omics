@@ -55,7 +55,12 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
         writer.line("#'")
 
     for argument in emitter._inputs(wrapper):
-        writer.line(f"#' @param {argument.name} {_param_line(argument)}")
+        first, *rest = _param_lines(argument)
+        writer.line(f"#' @param {argument.name} {first}")
+        # roxygen continues a tag until the next one, so the rest of the description is
+        # indented under it rather than dropped
+        for line in rest:
+            writer.line(f"#'   {line}")
 
     writer.line(f"#' @return {_return_line(wrapper, emitter)}")
     link = f"{procedure.module.name}::{procedure.name}" if procedure.module else procedure.name
@@ -65,12 +70,32 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
     return writer.render()
 
 
-def _param_line(argument: CArgument) -> str:
-    description = _first_line(argument.doc)
+def _param_lines(argument: CArgument) -> list[str]:
+    """The `@param` text, as the line the tag opens with plus any continuation lines.
+
+    An argument's description is often several source lines; taking only the first silently
+    dropped the rest, which is how "use `mask_chunk_count` for calculation" stopped reaching
+    an R reader.
+    """
     type_ = r_type_of(argument)
-    if description:
-        return f"{type_}. {description}"
-    return type_
+    lines = _prose_lines(argument.doc)
+    if not lines:
+        return [type_]
+    return [f"{type_}. {lines[0]}", *lines[1:]]
+
+
+def _prose_lines(doc: Doc) -> list[str]:
+    """Every non-table line of a doc, blanks trimmed from both ends."""
+    lines = [
+        _render(block.text, "r")
+        for block in doc
+        if not isinstance(block, DocTable)
+    ]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return lines
 
 
 def _return_line(wrapper: CWrapper, emitter) -> str:

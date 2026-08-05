@@ -1,6 +1,8 @@
-"""Python binding to Module for deserializing real arrays from files
+"""f42_serde_arrays_deserialize_real
 
-Generated from f42_serde_arrays_deserialize_real. Do not edit.
+Module for deserializing real arrays from files
+
+Python binding, generated from f42_serde_arrays_deserialize_real. Do not edit.
 """
 
 import ctypes

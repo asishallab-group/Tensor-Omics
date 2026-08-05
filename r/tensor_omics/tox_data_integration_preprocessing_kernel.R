@@ -8,7 +8,9 @@
 #' @param n_pool a integer scalar. Total number of pooled mean-expression values across both studies
 #' @param n_points a integer scalar. Number of reference points
 #' @param mean_S a numeric vector. Per-gene mean expression values
+#'   NaN is permitted for this value.
 #' @param desired_size a integer scalar. Optional desired neighborhood size
+#'   The default value is `1000`.
 #' @return Calculated neighborhood size
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing_kernel::calc_neighborhood_size}.

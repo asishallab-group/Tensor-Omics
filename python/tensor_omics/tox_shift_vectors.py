@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_shift_vectors
 
-Generated from tox_shift_vectors. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_shift_vectors. Do not edit.
 """
 
 import ctypes

@@ -1,6 +1,8 @@
-"""Python binding to Zip-archive backed persistence for TensorOmics data sets.
+"""tox_data_archive
 
-Generated from tox_data_archive. Do not edit.
+Zip-archive backed persistence for TensorOmics data sets.
+
+Python binding, generated from tox_data_archive. Do not edit.
 """
 
 import ctypes

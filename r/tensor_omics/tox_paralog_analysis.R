@@ -3,9 +3,18 @@
 #' Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis
 #'
 #' @param ancestors a numeric matrix. RAP projected unit length expression vector of ancestral ortholog
+#'   The minimum valid value is `-1.0`.
+#'   The maximum valid value is `1.0`.
 #' @param genes a numeric matrix. RAP projected unit length expression vectors of genes
+#'   The minimum valid value is `-1.0`.
+#'   The maximum valid value is `1.0`.
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_families`.
+#'   The value `0` is additionally accepted.
 #' @param thresholds a numeric vector. threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
+#'   The minimum valid value is `-1.0`.
+#'   The maximum valid value is `1.0`.
 #' @return `TRUE` if neofunctionalization has been detected for the respective axes, always `FALSE` for unassigned genes
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_neofunctionalization}.
@@ -35,8 +44,21 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
+#'   maximum valid size. The bindings cap it automatically while sizing the work
+#'   array; a Fortran caller caps it by calling
+#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   Zero is in range and means there is no subset to check -- the sizing routine reports
+#'   it whenever the filtered families hold a single gene each. It reports a work array
+#'   of zero slots along with it, which this routine does not accept, so a caller that
+#'   gets zero back has nothing to detect and should not call here at all.
+#'   The minimum valid value is `0`.
 #' @param max_angle a numeric scalar. maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+#'   The default value is `4.0*atan(1.0)`.
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `PI`.
 #' @param gain_gamma a numeric scalar. positive magnitude gain for dosage effect
+#'   The default value is `0.1`.
+#'   The minimum valid value is `above(0.0)`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}.
@@ -71,8 +93,21 @@ detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask,
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
+#'   maximum valid size. The bindings cap it automatically while sizing the work
+#'   array; a Fortran caller caps it by calling
+#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   Zero is in range and means there is no subset to check -- the sizing routine reports
+#'   it whenever the filtered families hold a single gene each. It reports a work array
+#'   of zero slots along with it, which this routine does not accept, so a caller that
+#'   gets zero back has nothing to detect and should not call here at all.
+#'   The minimum valid value is `0`.
 #' @param max_angle a numeric scalar. maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+#'   The default value is `4.0*atan(1.0)`.
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `PI`.
 #' @param gain_gamma a numeric scalar. positive magnitude gain for dosage effect
+#'   The default value is `0.1`.
+#'   The minimum valid value is `above(0.0)`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect_alloc}.
@@ -107,9 +142,21 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
+#'   maximum valid size. The bindings cap it automatically while sizing the work
+#'   array; a Fortran caller caps it by calling
+#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   Zero is in range and means there is no subset to check -- the sizing routine reports
+#'   it whenever the filtered families hold a single gene each. It reports a work array
+#'   of zero slots along with it, which this routine does not accept, so a caller that
+#'   gets zero back has nothing to detect and should not call here at all.
+#'   The minimum valid value is `0`.
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
+#'   The minimum valid value is `0.0`.
 #' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+#'   The minimum valid value is `0.0`.
 #' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}.
@@ -149,9 +196,21 @@ detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralog
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
+#'   maximum valid size. The bindings cap it automatically while sizing the work
+#'   array; a Fortran caller caps it by calling
+#'   [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
+#'   Zero is in range and means there is no subset to check -- the sizing routine reports
+#'   it whenever the filtered families hold a single gene each. It reports a work array
+#'   of zero slots along with it, which this routine does not accept, so a caller that
+#'   gets zero back has nothing to detect and should not call here at all.
+#'   The minimum valid value is `0`.
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
+#'   The minimum valid value is `0.0`.
 #' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+#'   The minimum valid value is `0.0`.
 #' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization_alloc}.
@@ -190,10 +249,17 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
 #' This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
 #'
 #' @param gene_angles a numeric vector. vector, holding the angles between ancestor and genes (0<=angle<=Pi)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `PI`.
 #' @param threshold a numeric scalar. filter threshold
 #' @param n_families a integer scalar. number of families
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes`.
 #' @param gene_to_fam a integer vector. a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_families`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
+#'   The minimum valid value is `(n_genes + 31) / 32`.
 #' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::filter_paralogs_by_pattern_dosage_effect}.
@@ -219,10 +285,17 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 #' This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
 #'
 #' @param gene_angles a numeric vector. vector, holding the angles between ancestor and genes (0<=angle<=Pi)
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `PI`.
 #' @param threshold a numeric scalar. filter threshold
 #' @param n_families a integer scalar. number of families
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes`.
 #' @param gene_to_fam a integer vector. a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_families`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
+#'   The minimum valid value is `(n_genes + 31) / 32`.
 #' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::filter_paralogs_by_pattern_subfunctionalization}.

@@ -4,7 +4,11 @@
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param dependent_indices a integer vector. indices of dependents to compute the contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'

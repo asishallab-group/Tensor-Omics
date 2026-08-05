@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_trajectory_normalization
 
-Generated from tox_trajectory_normalization. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_trajectory_normalization. Do not edit.
 """
 
 import ctypes

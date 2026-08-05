@@ -3,6 +3,8 @@
 #' Compute per-gene mean expression, ignoring NaN values
 #'
 #' @param expr a numeric matrix. Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return Per-gene mean expression values
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::compute_gene_means}.
@@ -19,7 +21,10 @@ compute_gene_means <- function(expr) {
 #' Compute signed residuals (centering by mean)
 #'
 #' @param expr a numeric matrix. Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param means a numeric vector. Per-gene mean expression values; NaN where every replicate of a gene was NaN
+#'   NaN is permitted for this value.
 #' @return Matrix of signed residuals
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::compute_residuals}.
@@ -43,6 +48,7 @@ compute_residuals <- function(expr, means) {
 #' first, if that is what is at hand.
 #'
 #' @param pooled_means a numeric vector. Pooled means
+#'   NaN is permitted for this value.
 #' @param pooled_means_perm a integer vector. Sorting permutation for `pooled_means`
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
@@ -72,6 +78,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 #' first, if that is what is at hand.
 #'
 #' @param pooled_means a numeric vector. Pooled means
+#'   NaN is permitted for this value.
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
@@ -96,7 +103,9 @@ pool_means <- function(pooled_means, n_points) {
 #' points exactly as `pool_means` does.
 #'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
+#'   NaN is permitted for this value.
 #' @param mean_S2 a numeric vector. Per-gene mean expression values of study S2
+#'   NaN is permitted for this value.
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
@@ -122,7 +131,9 @@ pool_study_means_expert <- function(mean_S1, mean_S2, n_points) {
 #' points exactly as `pool_means` does.
 #'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
+#'   NaN is permitted for this value.
 #' @param mean_S2 a numeric vector. Per-gene mean expression values of study S2
+#'   NaN is permitted for this value.
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
@@ -145,9 +156,17 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 #' Construct neighborhood-based residual sets (kNN)
 #'
 #' @param x_star a numeric vector. Mean-expression reference points
+#'   NaN is permitted for this value.
 #' @param mean_S a numeric vector. Per-gene mean expression values
+#'   NaN is permitted for this value.
 #' @param resid_S a numeric matrix. Matrix of signed residuals
+#'   NaN is permitted for this value.
 #' @param n_neighbors a integer scalar. Number of neighbors; a gene whose mean is NaN can never be a neighbor, so this
+#'   cannot exceed the number of genes with a defined mean
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
+#'   It is recommended to compute this with
+#'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
 #' @return a named list with elements `neighborhood_residuals`, `neighborhood_indices`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods}.
@@ -173,9 +192,17 @@ construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors)
 #' Construct neighborhood-based residual sets (kNN)
 #'
 #' @param x_star a numeric vector. Mean-expression reference points
+#'   NaN is permitted for this value.
 #' @param mean_S a numeric vector. Per-gene mean expression values
+#'   NaN is permitted for this value.
 #' @param resid_S a numeric matrix. Matrix of signed residuals
+#'   NaN is permitted for this value.
 #' @param n_neighbors a integer scalar. Number of neighbors; a gene whose mean is NaN can never be a neighbor, so this
+#'   cannot exceed the number of genes with a defined mean
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
+#'   It is recommended to compute this with
+#'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
 #' @return a named list with elements `neighborhood_residuals`, `neighborhood_indices`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods_alloc}.

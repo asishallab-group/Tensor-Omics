@@ -259,11 +259,16 @@ class PythonEmitter:
 
     def module(self, module: CWrapperModule) -> str:
         writer = Writer()
-        summary = module.doc.summary or f"the {module.stripped_name} module"
+        # the name first, then whatever the module says about itself: interpolating that
+        # summary into a sentence turns a generated module's "do not edit" banner into
+        # "Python binding to Generated from the kernel; do not edit".
+        summary = module.doc.summary
+        body = f"{summary}\n\n" if summary else ""
         writer.block(
-            f'"""Python binding to {summary}\n'
+            f'"""{module.stripped_name}\n'
             f"\n"
-            f"Generated from {module.stripped_name}. Do not edit.\n"
+            f"{body}"
+            f"Python binding, generated from {module.stripped_name}. Do not edit.\n"
             f'"""'
         )
         writer.blank()

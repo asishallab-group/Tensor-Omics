@@ -10,6 +10,7 @@
 #' @param value_cols a integer vector. Indicies of columns containing values
 #' @param start_row a integer scalar. Row in the expression vectors to start in
 #' @param delimiter a string. optional delimiter
+#'   The default value is `char(9)`.
 #' @return Array of expression vectors
 #'
 #' Generated from the Fortran procedure \code{tox_data_tools::read_expression_vectors_tsv}.

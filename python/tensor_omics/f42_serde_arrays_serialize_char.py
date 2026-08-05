@@ -1,6 +1,8 @@
-"""Python binding to Module for serializing character arrays into files
+"""f42_serde_arrays_serialize_char
 
-Generated from f42_serde_arrays_serialize_char. Do not edit.
+Module for serializing character arrays into files
+
+Python binding, generated from f42_serde_arrays_serialize_char. Do not edit.
 """
 
 import ctypes

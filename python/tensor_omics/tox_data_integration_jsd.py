@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_data_integration_jsd
 
-Generated from tox_data_integration_jsd. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_data_integration_jsd. Do not edit.
 """
 
 import ctypes

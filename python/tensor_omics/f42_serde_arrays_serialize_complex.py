@@ -1,6 +1,8 @@
-"""Python binding to Module for serializing complex arrays into files
+"""f42_serde_arrays_serialize_complex
 
-Generated from f42_serde_arrays_serialize_complex. Do not edit.
+Module for serializing complex arrays into files
+
+Python binding, generated from f42_serde_arrays_serialize_complex. Do not edit.
 """
 
 import ctypes

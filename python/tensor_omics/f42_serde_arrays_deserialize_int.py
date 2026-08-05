@@ -1,6 +1,8 @@
-"""Python binding to Module for deserializing integer arrays from files
+"""f42_serde_arrays_deserialize_int
 
-Generated from f42_serde_arrays_deserialize_int. Do not edit.
+Module for deserializing integer arrays from files
+
+Python binding, generated from f42_serde_arrays_deserialize_int. Do not edit.
 """
 
 import ctypes

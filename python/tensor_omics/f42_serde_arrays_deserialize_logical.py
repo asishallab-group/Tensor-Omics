@@ -1,6 +1,8 @@
-"""Python binding to Module for deserializing logical arrays from files
+"""f42_serde_arrays_deserialize_logical
 
-Generated from f42_serde_arrays_deserialize_logical. Do not edit.
+Module for deserializing logical arrays from files
+
+Python binding, generated from f42_serde_arrays_deserialize_logical. Do not edit.
 """
 
 import ctypes

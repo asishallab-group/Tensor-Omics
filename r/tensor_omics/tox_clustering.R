@@ -4,6 +4,9 @@
 #'
 #' @param trajectories a numeric array of rank 3. matrix with data points to cluster
 #' @param centroids a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+#'   The centroids should be unique. This is not checked in this routine.
+#'
+#'   The final values will be the final centroids of the clusters
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering
 #' @return a named list with elements `centroids`, `labels`, `label_counts`.
 #'
@@ -35,7 +38,11 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #'
 #' @param data_points a numeric matrix. matrix with data points to cluster
 #' @param centroids a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+#'   The centroids should be unique. This is not checked in this routine.
+#'
+#'   The final values will be the final centroids of the clusters
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering.
+#'   The default value is `300`.
 #' @return a named list with elements `centroids`, `labels`, `label_counts`.
 #'
 #' Generated from the Fortran procedure \code{tox_clustering::k_means_clustering}.
@@ -66,7 +73,17 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #' @endnote
 #'
 #' @param distances a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
+#'
+#'   @note
+#'   This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
+#'   So there is no need to copy an existing distance matrix, just pass the original.
+#'   @endnote
+#'
+#'   Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+#'   distance-matrix naming convention in the generated wrapper.
 #' @param method a string, one of "average", "weighted", "ward". used algorithm
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @return a named list with elements `distances`, `merge_i`, `merge_j`, `heights`, `cluster_sizes`.
 #'
 #' Generated from the Fortran procedure \code{tox_clustering::linkage_clustering}.

@@ -1,6 +1,8 @@
-"""Python binding to Module for serializing logical arrays into files
+"""f42_serde_arrays_serialize_logical
 
-Generated from f42_serde_arrays_serialize_logical. Do not edit.
+Module for serializing logical arrays into files
+
+Python binding, generated from f42_serde_arrays_serialize_logical. Do not edit.
 """
 
 import ctypes

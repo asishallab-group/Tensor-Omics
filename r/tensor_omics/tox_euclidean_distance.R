@@ -30,6 +30,9 @@ euclidean_distance <- function(vec1, vec2) {
 #' @param genes a numeric matrix. Gene expression matrix (n_tissues × n_genes), column-major
 #' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_families`.
+#'   The value `0` is additionally accepted.
 #' @return Output distances array
 #'
 #' Generated from the Fortran procedure \code{tox_euclidean_distance::distance_to_centroid}.

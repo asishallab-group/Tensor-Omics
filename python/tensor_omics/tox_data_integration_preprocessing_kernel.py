@@ -1,6 +1,8 @@
-"""Python binding to # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
+"""tox_data_integration_preprocessing_kernel
 
-Generated from tox_data_integration_preprocessing_kernel. Do not edit.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
+
+Python binding, generated from tox_data_integration_preprocessing_kernel. Do not edit.
 """
 
 import ctypes

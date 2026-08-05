@@ -1,6 +1,8 @@
-"""Python binding to Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+"""tox_data_tools
 
-Generated from tox_data_tools. Do not edit.
+Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+
+Python binding, generated from tox_data_tools. Do not edit.
 """
 
 import ctypes

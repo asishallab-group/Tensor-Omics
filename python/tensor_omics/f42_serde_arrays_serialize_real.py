@@ -1,6 +1,8 @@
-"""Python binding to Module for serializing real arrays into files
+"""f42_serde_arrays_serialize_real
 
-Generated from f42_serde_arrays_serialize_real. Do not edit.
+Module for serializing real arrays into files
+
+Python binding, generated from f42_serde_arrays_serialize_real. Do not edit.
 """
 
 import ctypes

@@ -11,10 +11,16 @@
 #' @param weights a numeric vector. Weight array for data points
 #' @param eval_points a numeric matrix. Evaluation points (x values at which the fitted curve is computed)
 #' @param span a numeric scalar. Smoothing parameter for LOESS
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size
 #' @param compute_influence a logical scalar. Influence calculation flag
+#'   The default value is `FALSE`.
 #' @param save_factorization a logical scalar. Save matrix factorization flag
+#'   The default value is `FALSE`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain}.
@@ -58,10 +64,16 @@ loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max
 #' @param weights a numeric vector. Weight array for data points
 #' @param eval_points a numeric matrix. Evaluation points (x values at which the fitted curve is computed)
 #' @param span a numeric scalar. Smoothing parameter for LOESS
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size
 #' @param compute_influence a logical scalar. Influence calculation flag
+#'   The default value is `FALSE`.
 #' @param save_factorization a logical scalar. Save matrix factorization flag
+#'   The default value is `FALSE`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain_alloc}.
@@ -105,11 +117,19 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #' @param weights a numeric vector. Weight array for data points
 #' @param eval_points a numeric matrix. Evaluation points (x values at which the fitted curve is computed)
 #' @param span a numeric scalar. Smoothing parameter for LOESS
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size
 #' @param compute_influence a logical scalar. Influence calculation flag
+#'   The default value is `FALSE`.
 #' @param save_factorization a logical scalar. Save matrix factorization flag
+#'   The default value is `FALSE`.
 #' @param n_iters a integer scalar. Number of robust iterations
+#'   The minimum valid value is `1`.
+#'   The default value is `3`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust}.
@@ -158,11 +178,19 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 #' @param weights a numeric vector. Weight array for data points
 #' @param eval_points a numeric matrix. Evaluation points (x values at which the fitted curve is computed)
 #' @param span a numeric scalar. Smoothing parameter for LOESS
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size
 #' @param compute_influence a logical scalar. Influence calculation flag
+#'   The default value is `FALSE`.
 #' @param save_factorization a logical scalar. Save matrix factorization flag
+#'   The default value is `FALSE`.
 #' @param n_iters a integer scalar. Number of robust iterations
+#'   The minimum valid value is `1`.
+#'   The default value is `3`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust_alloc}.

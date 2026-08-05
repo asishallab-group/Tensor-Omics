@@ -7,6 +7,9 @@
 #' @param expression_vectors a numeric matrix. Gene expression matrix
 #' @param family_centroids a numeric matrix. Family centroid matrix
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_families`.
+#'   The value `0` is additionally accepted.
 #' @return Output, real matrix array, stores the centroid of the gene's family in `shift_vectors(:, 1, i_gene)` (zero vector if no family assigned) and the shift vectors in `shift_vectors(:, 2, i_gene)`
 #'
 #' Generated from the Fortran procedure \code{tox_shift_vectors::compute_shift_vector_field}.

@@ -88,7 +88,9 @@ def render_docstring(wrapper: CWrapper) -> str:
 
 def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
     annotations = []
-    if argument.intent is Intent.INOUT:
+    # an array really is mutated through the buffer the caller passed; a scalar cannot be --
+    # Python has no mutable int, so the binding passes by value and returns the new one
+    if argument.intent is Intent.INOUT and not argument.is_scalar:
         annotations.append("modified in place")
     if argument.optional:
         annotations.append("optional")

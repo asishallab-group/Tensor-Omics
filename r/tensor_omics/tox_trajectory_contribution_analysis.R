@@ -4,8 +4,14 @@
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_idx a integer scalar. index of factor to compute the permutation contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param dependent_idx a integer scalar. index of dependent to compute the permutation contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param sample_idx a integer scalar. index of sample to compute the permutation contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_samples`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
@@ -36,8 +42,14 @@ perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_idx a integer scalar. index of factor to compute the permutation contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param dependent_idx a integer scalar. index of dependent to compute the permutation contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param sample_idx a integer scalar. index of sample to compute the permutation contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_samples`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
@@ -127,7 +139,11 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param dependent_indices a integer vector. indices of dependents to compute the contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'
@@ -152,7 +168,11 @@ compute_all_contributions_expert <- function(trajectories, factor_indices, depen
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param dependent_indices a integer vector. indices of dependents to compute the contributions for
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_factors`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'

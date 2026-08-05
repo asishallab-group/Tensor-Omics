@@ -6,8 +6,14 @@
 #' the neighborhood residuals of two studies first, if that is what is at hand.
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
+#'   NaN is permitted for this value.
 #' @param abs_residual_pool_perm a integer vector. The permutation vector that sorts `abs_residual_pool`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `pool_size`.
 #' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range}.
@@ -32,7 +38,11 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 #' the neighborhood residuals of two studies first, if that is what is at hand.
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
+#'   NaN is permitted for this value.
 #' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range_alloc}.
@@ -53,8 +63,13 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
 #' as `determine_shared_residual_range` does.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range}.
@@ -81,8 +96,13 @@ determine_study_shared_residual_range_expert <- function(neighborhood_residuals_
 #' as `determine_shared_residual_range` does.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range_alloc}.
@@ -108,7 +128,9 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
 #' The probability mass function `pmf(residual, bin)` is actually a matrix.
 #'
 #' @param neighborhood_residuals a numeric array of rank 3. Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
 #' @param n_bins a integer scalar. Number of equally sized histogram bins in range [-R,R]
 #' @param neighbor_mask a logical matrix. Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 #' @return a named list with elements `counts`, `pmf`, `included_n_reps`.
@@ -137,7 +159,11 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
 #' Takes the probabilities `pmf` produced by `build_residual_histograms`.
 #'
 #' @param pmf_S1 a numeric matrix. Computed normalized histogram counts for study 1
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
 #' @param pmf_S2 a numeric matrix. Computed normalized histogram counts for study 2
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
 #' @return Jensen-Shannon divergence per reference point
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_divergence_per_reference_point}.
@@ -162,8 +188,11 @@ compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
 #' Takes the divergences produced by `compute_divergence_per_reference_point`.
 #'
 #' @param js_divergences a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2
+#'   The minimum valid value is `0.0`.
 #' @param included_n_reps_S1 a integer vector. Count of non-NaN residuals (included ones) in study 1
+#'   The minimum valid value is `0`.
 #' @param included_n_reps_S2 a integer vector. Count of non-NaN residuals (included ones) in study 2
+#'   The minimum valid value is `0`.
 #' @return a named list with elements `global_js_divergence`, `weights`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_weighted_global_divergence}.

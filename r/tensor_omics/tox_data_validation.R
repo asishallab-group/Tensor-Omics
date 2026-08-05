@@ -136,7 +136,9 @@ validate_string_array_uniqueness <- function(str_arr) {
 #' @param family_centroids a numeric matrix. family centroids
 #' @param shift_vectors a numeric matrix. shift vectors
 #' @param check_uniqueness a logical scalar. Check ID arrays for uniqueness.
+#'   The default value is `TRUE`.
 #' @param check_shift_consistency a logical scalar. Check consitency of shift array.
+#'   The default value is `TRUE`.
 #' @return invisibly `NULL`; called for its effect.
 #'
 #' Generated from the Fortran procedure \code{tox_data_validation::validate_all_data}.

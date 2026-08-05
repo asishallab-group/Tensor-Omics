@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_data_integration_per_family
 
-Generated from tox_data_integration_per_family. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_data_integration_per_family. Do not edit.
 """
 
 import ctypes

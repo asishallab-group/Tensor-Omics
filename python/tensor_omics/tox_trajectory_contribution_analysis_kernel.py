@@ -1,6 +1,8 @@
-"""Python binding to Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+"""tox_trajectory_contribution_analysis_kernel
 
-Generated from tox_trajectory_contribution_analysis_kernel. Do not edit.
+Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+
+Python binding, generated from tox_trajectory_contribution_analysis_kernel. Do not edit.
 """
 
 import ctypes

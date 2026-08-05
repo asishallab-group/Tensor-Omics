@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_relative_axis_plane_tools
 
-Generated from tox_relative_axis_plane_tools. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_relative_axis_plane_tools. Do not edit.
 """
 
 import ctypes

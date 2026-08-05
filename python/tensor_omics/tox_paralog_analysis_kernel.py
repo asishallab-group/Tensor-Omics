@@ -1,6 +1,8 @@
-"""Python binding to Kernels for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+"""tox_paralog_analysis_kernel
 
-Generated from tox_paralog_analysis_kernel. Do not edit.
+Kernels for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+
+Python binding, generated from tox_paralog_analysis_kernel. Do not edit.
 """
 
 import ctypes
@@ -151,7 +153,7 @@ def calc_work_arr_paralog_subsets_size(
 
     Parameters
     ----------
-    max_subset_size : int, modified in place
+    max_subset_size : int
         maximum size that a subset must not exceed. Zero is in range and means there is
         nothing to size a work array for, which is reported back as a size of zero.
         The minimum valid value is `0`.

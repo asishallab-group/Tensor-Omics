@@ -6,10 +6,13 @@
 #' the work copies, so the caller's own arrays are left untouched.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param global_jsd_observed a numeric scalar. Observed global JSD value for both studies
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
 #' @param n_permutations a integer scalar. Number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for shuffling
 #' @param neighbor_mask_S1 a logical matrix. Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
@@ -52,10 +55,13 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood
 #' the work copies, so the caller's own arrays are left untouched.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param global_jsd_observed a numeric scalar. Observed global JSD value for both studies
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
 #' @param n_permutations a integer scalar. Number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for shuffling
 #' @param neighbor_mask_S1 a logical matrix. Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)

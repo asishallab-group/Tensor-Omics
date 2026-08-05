@@ -1,6 +1,8 @@
-"""Python binding to Module for deserializing character arrays from files
+"""f42_serde_arrays_deserialize_char
 
-Generated from f42_serde_arrays_deserialize_char. Do not edit.
+Module for deserializing character arrays from files
+
+Python binding, generated from f42_serde_arrays_deserialize_char. Do not edit.
 """
 
 import ctypes

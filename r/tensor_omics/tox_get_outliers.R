@@ -6,11 +6,19 @@
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
 #' @param span a numeric scalar. Span parameter for LOESS smoothing
+#'   The default value is `0.7`.
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
+#'   The default value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
+#'   The default value is `1`.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
+#'   The default value is `3`.
 #' @return a named list with elements `dscale`, `loess_x`, `loess_y`, `indices_used`, `low_sd_cutoff`, `excluded_low_sd`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}.
@@ -50,11 +58,19 @@ compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, sp
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
 #' @param span a numeric scalar. Span parameter for LOESS smoothing
+#'   The default value is `0.7`.
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
+#'   The default value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
+#'   The default value is `1`.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
+#'   The default value is `3`.
 #' @return a named list with elements `dscale`, `loess_x`, `loess_y`, `indices_used`, `low_sd_cutoff`, `excluded_low_sd`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}.
@@ -89,8 +105,12 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #' RDI = Euclidean distance / family scaling factor
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param dscale a numeric vector. Array of scaling factors for each family
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return a named list with elements `rdi`, `sorted_rdi`, `perm`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}.
@@ -118,8 +138,12 @@ compute_rdi_expert <- function(distances, gene_to_fam, dscale) {
 #' RDI = Euclidean distance / family scaling factor
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param dscale a numeric vector. Array of scaling factors for each family
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return a named list with elements `rdi`, `sorted_rdi`, `perm`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi_alloc}.
@@ -148,9 +172,14 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
 #'
 #' @param rdi a numeric vector. Array of RDI values for each gene
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param sorted_rdi a numeric vector. Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param perm a integer vector. Permutation array with sorted indices
 #' @param percentile a numeric scalar. Percentile threshold (top 5% for the default).
+#'   The default value is `95.0`.
 #' @return a named list with elements `is_outlier`, `threshold`, `quantile`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::identify_outliers}.
@@ -185,8 +214,11 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param percentile a numeric scalar. Percentile threshold for outlier detection.
+#'   The default value is `95.0`.
 #' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `quantile`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}.
@@ -225,8 +257,11 @@ detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentil
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param percentile a numeric scalar. Percentile threshold for outlier detection.
+#'   The default value is `95.0`.
 #' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `quantile`.
 #'
 #' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers_alloc}.

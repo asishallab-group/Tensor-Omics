@@ -1,6 +1,8 @@
-"""Python binding to Generated from the kernel; do not edit -- regenerate instead.
+"""tox_gene_centroids
 
-Generated from tox_gene_centroids. Do not edit.
+Generated from the kernel; do not edit -- regenerate instead.
+
+Python binding, generated from tox_gene_centroids. Do not edit.
 """
 
 import ctypes

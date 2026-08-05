@@ -1,6 +1,8 @@
-"""Python binding to Module for serializing integer arrays into files
+"""f42_serde_arrays_serialize_int
 
-Generated from f42_serde_arrays_serialize_int. Do not edit.
+Module for serializing integer arrays into files
+
+Python binding, generated from f42_serde_arrays_serialize_int. Do not edit.
 """
 
 import ctypes

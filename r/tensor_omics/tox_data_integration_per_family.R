@@ -6,14 +6,24 @@
 #' the residual samples to the genes belonging to the family `family_idx`.
 #'
 #' @param family_idx a integer scalar. Index of the family that should be analyzed
+#'   The minimum valid value is `1`.
 #' @param gene_to_family_S1 a integer vector. Mapping for study 1: Each index (gene) holds the index of its family
+#'   The minimum valid value is `0`.
 #' @param gene_to_family_S2 a integer vector. Mapping for study 2: Each index (gene) holds the index of its family
+#'   The minimum valid value is `0`.
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_genes_S1 a integer matrix. Indices of the selected neighborhood genes of study 1
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes_S1`.
 #' @param neighborhood_genes_S2 a integer matrix. Indices of the selected neighborhood genes of study 2
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes_S2`.
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_jsd}.
@@ -61,14 +71,24 @@ fjct_compute_jsd_expert <- function(family_idx, gene_to_family_S1, gene_to_famil
 #' the residual samples to the genes belonging to the family `family_idx`.
 #'
 #' @param family_idx a integer scalar. Index of the family that should be analyzed
+#'   The minimum valid value is `1`.
 #' @param gene_to_family_S1 a integer vector. Mapping for study 1: Each index (gene) holds the index of its family
+#'   The minimum valid value is `0`.
 #' @param gene_to_family_S2 a integer vector. Mapping for study 2: Each index (gene) holds the index of its family
+#'   The minimum valid value is `0`.
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_genes_S1 a integer matrix. Indices of the selected neighborhood genes of study 1
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes_S1`.
 #' @param neighborhood_genes_S2 a integer matrix. Indices of the selected neighborhood genes of study 2
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_genes_S2`.
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_jsd_alloc}.
@@ -118,11 +138,14 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
 #' the masks for from a family index.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighbor_mask_S1 a logical matrix. Mask selecting the neighbors of study 1 to include
 #' @param neighbor_mask_S2 a logical matrix. Mask selecting the neighbors of study 2 to include
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`, `pmf_S1`, `pmf_S2`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_masked_jsd}.
@@ -171,11 +194,14 @@ fjct_compute_masked_jsd_expert <- function(neighborhood_residuals_S1, neighborho
 #' the masks for from a family index.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
 #' @param neighbor_mask_S1 a logical matrix. Mask selecting the neighbors of study 1 to include
 #' @param neighbor_mask_S2 a logical matrix. Mask selecting the neighbors of study 2 to include
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
+#'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`, `pmf_S1`, `pmf_S2`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_masked_jsd_alloc}.
@@ -226,7 +252,9 @@ fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_resi
 #' using the outputs of `fjct_compute_jsd`, collected for the analyzed sub-neighborhoods.
 #'
 #' @param global_js_divergences a numeric vector. Per-sub-neighborhood weighted global JSD
+#'   The minimum valid value is `0.0`.
 #' @param total_included_n_reps_per_f a integer vector. Per-sub-neighborhood `total_included_n_reps`
+#'   The minimum valid value is `0`.
 #' @return a named list with elements `support_weights`, `contribution_scores`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_contribution_scores}.

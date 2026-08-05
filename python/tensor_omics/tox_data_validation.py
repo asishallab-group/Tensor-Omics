@@ -1,6 +1,8 @@
-"""Python binding to Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+"""tox_data_validation
 
-Generated from tox_data_validation. Do not edit.
+Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+
+Python binding, generated from tox_data_validation. Do not edit.
 """
 
 import ctypes

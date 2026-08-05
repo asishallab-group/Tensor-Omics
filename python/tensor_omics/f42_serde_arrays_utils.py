@@ -1,6 +1,8 @@
-"""Python binding to Module for array utilities.
+"""f42_serde_arrays_utils
 
-Generated from f42_serde_arrays_utils. Do not edit.
+Module for array utilities.
+
+Python binding, generated from f42_serde_arrays_utils. Do not edit.
 """
 
 import ctypes

@@ -1,6 +1,8 @@
-"""Python binding to Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
+"""tox_loess_kernel
 
-Generated from tox_loess_kernel. Do not edit.
+Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
+
+Python binding, generated from tox_loess_kernel. Do not edit.
 """
 
 import ctypes

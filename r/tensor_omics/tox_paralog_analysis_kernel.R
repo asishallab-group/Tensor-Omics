@@ -43,6 +43,13 @@ mask_chunk_count <- function(n_genes) {
 #' This subroutine calculates the needed size for the work array.
 #'
 #' @param max_subset_size a integer scalar. maximum size that a subset must not exceed. Zero is in range and means there is
+#'   nothing to size a work array for, which is reported back as a size of zero.
+#'   The minimum valid value is `0`.
+#'   @warning
+#'   If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
+#'
+#'   Also, size will be set to number of genes in `filtered_paralogs_mask` if larger.
+#'   @endwarning
 #' @param n_genes a integer scalar. number of genes
 #' @param filtered_paralogs_mask a integer vector. Output mask with all genes disabled that did not pass the filter
 #' @return a named list with elements `max_subset_size`, `work_array_size`.

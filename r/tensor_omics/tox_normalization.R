@@ -3,6 +3,8 @@
 #' Normalizes an input vector to unit length in-place
 #'
 #' @param vector a numeric vector. Vector that will be normalized to unit length
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return Vector that will be normalized to unit length
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::normalize_unit_length}.
@@ -21,10 +23,16 @@ normalize_unit_length <- function(vector) {
 #' Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param reps_per_tissue a integer vector. Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+#'   e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
 #' @param span a numeric scalar. LOESS span parameter.
+#'   The default value is `0.7`.
 #' @param degree a integer scalar. LOESS degree parameter.
+#'   The default value is `2`.
 #' @param use_quantile a logical scalar. Use quantile normalization.
+#'   The default value is `FALSE`.
 #' @return Log-transformed grouped `expr`
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::normalization_pipeline_alloc}.
@@ -48,8 +56,12 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #' gene-wise mean expression and empirical standard deviation.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @param span a numeric scalar. LOESS span parameter.
+#'   The default value is `0.7`.
 #' @param degree a integer scalar. LOESS degree parameter.
+#'   The default value is `2`.
 #' @return Normalized `expr`
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::normalize_by_std_dev_alloc}.
@@ -70,6 +82,8 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
 #' across tissues (not classical standard deviation).
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return Normalized `expr`
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::root_mean_sq_normalization}.
@@ -88,6 +102,8 @@ root_mean_sq_normalization <- function(expr) {
 #' Computes average expression per rank across tissues.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return a named list with elements `normalized_expr`, `rank_means`.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization}.
@@ -109,6 +125,8 @@ quantile_normalization_expert <- function(expr) {
 #' Computes average expression per rank across tissues.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return a named list with elements `normalized_expr`, `rank_means`.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization_alloc}.
@@ -133,6 +151,8 @@ quantile_normalization <- function(expr) {
 #' non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
 #'
 #' @param expr a numeric matrix. Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return Log-transformed `expr`
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::log2_transformation}.
@@ -152,7 +172,11 @@ log2_transformation <- function(expr) {
 #' expression per gene.
 #'
 #' @param reps_per_tissue a integer vector. Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+#'   e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+#'   The minimum valid value is `1`.
 #' @param expr a numeric matrix. Gene Expression matrix
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return Tissue averages per gene
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::calc_tiss_avg}.
@@ -174,8 +198,14 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' value in the condition group, for all genes.
 #'
 #' @param control_tissues a integer vector. Control tissue indices
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_tissues`.
 #' @param condition_tissues a integer vector. Condition tissue indices
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_tissues`.
 #' @param expr a numeric matrix. Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @return Output matrix for fold changes
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::calc_fchange}.

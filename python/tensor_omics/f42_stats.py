@@ -1,6 +1,8 @@
-"""Python binding to Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+"""f42_stats
 
-Generated from f42_stats. Do not edit.
+Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+
+Python binding, generated from f42_stats. Do not edit.
 """
 
 import ctypes
