@@ -198,6 +198,50 @@ def alloc_kernel_module():
     )
 
 
+def optional_producer_input_kernel_module():
+    """A recommend routine that takes, mandatorily, what the kernel takes optionally.
+
+    The allocating wrapper cannot forward an absent optional into a mandatory dummy, so it
+    has to resolve the documented default into a local first.
+    """
+    from codegen.ir.directives import Default
+
+    return module(
+        "tox_demo_kernel",
+        procedure(  # a recommend routine whose `exact` is not optional
+            "work_size",
+            integer("n", Intent.IN, doc="length"),
+            logical("exact", Intent.IN, doc="whether to size exactly"),
+            integer("wsize", Intent.OUT, doc="recommended work size"),
+            meta=C_BINDING,
+        ),
+        procedure(
+            "crunch_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length of `values`"),
+            logical(
+                "exact",
+                Intent.IN,
+                optional=True,
+                directives=Directives(default=Default(".false.")),
+                doc="whether to size exactly",
+            ),
+            real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+            integer(
+                "wsize",
+                Intent.IN,
+                directives=Directives(
+                    output_from=OutputFrom(
+                        "wsize", "work_size", "tox_demo_kernel", OutputFromMode.AUTO
+                    )
+                ),
+                doc="work-buffer size",
+            ),
+            meta=Meta(summary="Crunch the data", author="AUTHOR"),
+        ),
+    )
+
+
 def kernel_module():
     """A one-kernel module, as an author would write it: no ierr, no validation."""
     return module(

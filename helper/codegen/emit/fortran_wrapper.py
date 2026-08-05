@@ -41,6 +41,16 @@ from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 #: The exclusive-bound helpers a range expression may wrap a bound in, all from f42_utils.
 _BOUND_HELPERS = ("above", "below")
 
+#: The intrinsic-module functions a range expression may call, and where they come from.
+#: A bound is often "how many of these values are usable", which is a NaN test away.
+_BOUND_INTRINSICS = {
+    "ieee_is_nan": "ieee_arithmetic",
+    "ieee_is_finite": "ieee_arithmetic",
+}
+
+#: Modules that must be imported `use, intrinsic ::`, not plain `use`
+_INTRINSIC_MODULES = frozenset({"ieee_arithmetic"})
+
 
 @dataclass(frozen=True)
 class WrapperInfo:
@@ -162,8 +172,9 @@ class FortranWrapperEmitter:
             writer.line(f"use, intrinsic :: iso_fortran_env, only: {', '.join(chunk)}")
 
         for other_module, names in sorted(extra.items()):
+            intrinsic = ", intrinsic :: " if other_module in _INTRINSIC_MODULES else " "
             for chunk in _chunks(sorted(names), 4):
-                writer.line(f"use {other_module}, only: {', '.join(chunk)}")
+                writer.line(f"use{intrinsic}{other_module}, only: {', '.join(chunk)}")
 
         for chunk in _chunks(self._error_imports(module), 4):
             writer.line(f"use tox_errors, only: {', '.join(chunk)}")
@@ -171,9 +182,10 @@ class FortranWrapperEmitter:
     def _bound_imports(self, module: Module) -> dict[str, set[str]]:
         """Modules and names a range expression refers to and so must import.
 
-        A bound may be `above(0.0_real64)` (helpers from f42_utils) or name a module
-        constant like `PI`. Identifiers that are the wrapper's own arguments, or literals,
-        need nothing.
+        A bound may be `above(0.0_real64)` (helpers from f42_utils), call an IEEE inquiry
+        (`count(.not. ieee_is_nan(x))`, for a bound that is "how many of these are usable"),
+        or name a module constant like `PI`. Identifiers that are the wrapper's own
+        arguments, Fortran intrinsics, or literals need nothing.
         """
         identifiers: set[str] = set()
         for procedure in module:
@@ -191,6 +203,9 @@ class FortranWrapperEmitter:
         for helper in _BOUND_HELPERS:
             if helper in identifiers:
                 result.setdefault("f42_utils", set()).add(helper)
+        for name, source in _BOUND_INTRINSICS.items():
+            if name in identifiers:
+                result.setdefault(source, set()).add(name)
 
         dummies = {a.name.lower() for p in module for a in p.arguments}
         if self.project is not None:
@@ -313,14 +328,17 @@ class FortranWrapperEmitter:
         taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
 
         prologue = self._prologue_for(foo, module, is_allocating=True)
+        materialized = self._materialized_producer_inputs(foo, alloc, taken)
         self._declarations(writer, alloc.arguments)
         self._locals(writer, taken)
+        self._materialized_locals(writer, materialized)
         self._prologue_local(writer, prologue)
         writer.blank()
         self._validation(writer, alloc)
         writer.blank()
+        self._materialized_defaults(writer, materialized)
         self._prologue_call(writer, prologue, alloc, module)
-        self._recommend_calls(writer, foo, alloc, taken)
+        self._recommend_calls(writer, foo, alloc, taken, materialized)
         self._allocations(writer, taken)
         self._permutations(writer, taken)
         writer.blank()
@@ -611,8 +629,60 @@ class FortranWrapperEmitter:
 
     # -- allocation, recommend routines, permutations ---------------------------
 
+    def _materialized_producer_inputs(
+        self, foo: Procedure, alloc: Procedure, taken
+    ) -> dict[str, Argument]:
+        """Wrapper arguments a recommend routine needs by value, keyed by name.
+
+        A recommend routine is called directly, so an input the wrapper takes optionally
+        cannot simply be forwarded when the routine's own dummy is mandatory: an absent
+        optional passed there is not a Fortran program. Such an input has a `DM_DEFAULT`
+        (that is what makes it optional in the first place), so the wrapper resolves it into
+        a local first -- the argument when the caller gave one, the documented default when
+        not -- and hands the routine that.
+        """
+        materialized: dict[str, Argument] = {}
+        for argument in taken:
+            if not is_computed(argument):
+                continue
+            roles = foo.argument(argument.name).roles
+            plan = roles.computed_from if roles is not None else None
+            if plan is None:
+                continue
+            for dummy in plan.producer.arguments:
+                if dummy.optional:
+                    continue
+                supplied = alloc.argument(dummy.name)
+                if supplied is None or not supplied.optional:
+                    continue
+                if supplied.directives.default is None:
+                    continue
+                materialized[supplied.name] = supplied
+        return materialized
+
+    @staticmethod
+    def _materialized_name(name: str) -> str:
+        return f"{name}_value"
+
+    def _materialized_locals(self, writer: Writer, materialized: dict[str, Argument]) -> None:
+        for name, argument in materialized.items():
+            writer.line(f"{argument.type} :: {self._materialized_name(name)}")
+
+    def _materialized_defaults(
+        self, writer: Writer, materialized: dict[str, Argument]
+    ) -> None:
+        if not materialized:
+            return
+        for name, argument in materialized.items():
+            default = argument.directives.default.expression
+            writer.line(
+                f"M_DEFAULT_VAL({name}, {self._materialized_name(name)}, {default})"
+            )
+        writer.blank()
+
     def _recommend_calls(
-        self, writer: Writer, foo: Procedure, alloc: Procedure, taken
+        self, writer: Writer, foo: Procedure, alloc: Procedure, taken,
+        materialized: dict[str, Argument] | None = None,
     ) -> None:
         """Call each recommend routine once, into the sizes it produces.
 
@@ -654,16 +724,22 @@ class FortranWrapperEmitter:
                         if supply.argument is not None
                         else _fortran_literal(supply.constant, dummy)
                     )
-                    actuals.append((dummy.name, value))
+                    actuals.append((dummy.name, self._actual(value, materialized)))
                 elif alloc.argument(dummy.name) is not None:
                     # a producer input the wrapper carries under the same name -- e.g. an
                     # extent the producer's own binding would derive, which a direct call
                     # must still supply
-                    actuals.append((dummy.name, dummy.name))
+                    actuals.append((dummy.name, self._actual(dummy.name, materialized)))
             self._call(writer, producer.name, actuals)
 
         if reports_error:
             writer.line(f"if (is_err({self.conventions.error_arg})) return")
+
+    def _actual(self, name: str, materialized) -> str:
+        """The name a producer call passes: the materialised local where there is one."""
+        if materialized and name in materialized:
+            return self._materialized_name(name)
+        return name
 
     def _allocations(self, writer: Writer, taken) -> None:
         for argument in taken:

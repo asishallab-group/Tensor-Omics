@@ -433,3 +433,31 @@ class TestReexportModule:
 
     def test_it_carries_a_generated_doc(self):
         assert "do not edit" in self.text()
+
+
+class TestMaterialisedProducerInput:
+    """A recommend routine takes by value what the wrapper takes optionally.
+
+    Forwarding the optional straight into a mandatory dummy is not a Fortran program: when
+    the caller omits it, the routine reads an absent argument. The wrapper has to resolve
+    the documented default into a local first.
+    """
+
+    def text(self):
+        from builders import project
+
+        from test_synthesize import optional_producer_input_kernel_module
+
+        return emitted(project(optional_producer_input_kernel_module()))
+
+    def test_the_default_is_resolved_into_a_local(self):
+        text = self.text()
+        assert "logical :: exact_value" in text
+        assert "M_DEFAULT_VAL(exact, exact_value, .false.)" in text
+
+    def test_the_recommend_call_takes_the_local(self):
+        assert "exact = exact_value" in self.text()
+
+    def test_the_kernel_still_takes_the_argument_itself(self):
+        # the kernel declares it optional, so it is forwarded as it came
+        assert "exact = exact,&" in self.text()
