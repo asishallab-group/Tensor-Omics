@@ -83,8 +83,7 @@ something, the kernel gains an annotation, never the wrapper hand-written code.
 The corollary is the part worth internalising, because it will decide arguments you have one
 day:
 
-> **If the generator cannot express your procedure's contract, the procedure is wrong — not the
-> generator.**
+> **If the generator cannot express your procedure's contract, the procedure is wrong — not the generator.**
 
 The annotation vocabulary is the API review. A signature that needs a rule none of the macros
 can state is a signature that is asking its callers for the wrong thing. Redesign it; that is

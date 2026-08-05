@@ -15,7 +15,7 @@ module tox_data_integration_preprocessing_kernel
 contains
 
     !> summary: Compute per-gene mean expression, ignoring NaN values
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine compute_gene_means_kernel(n_genes, n_reps, expr, means)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
@@ -50,7 +50,7 @@ contains
     end subroutine compute_gene_means_kernel
 
     !> summary: Compute signed residuals (centering by mean)
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine compute_residuals_kernel(n_genes, n_reps, expr, means, resid)
         integer(int32), intent(in) :: n_genes
             !! Number of genes in the study
@@ -81,7 +81,7 @@ contains
     end subroutine compute_residuals_kernel
 
     !> summary: Turn a sorted pool of per-gene mean expression values into reference points
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| This takes the pool already built; `pool_study_means` pools the means of two studies
     !| first, if that is what is at hand.
     pure subroutine pool_means_kernel(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star)
@@ -127,7 +127,7 @@ contains
     end subroutine pool_means_kernel
 
     !> summary: Pool the per-gene mean expression values of two studies into reference points
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Concatenates the two studies' means, sorts the pool, and turns it into reference
     !| points exactly as `pool_means` does.
     pure subroutine pool_study_means_kernel(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, &
@@ -176,7 +176,7 @@ contains
 
     !> M_EXPORT_C
     !| summary: Calculate the number of neighbors to be used for constructing neighborhoods
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| The `desired_size` works as upper limit, as the actual neighborhood size might be lower
     !| due to few genes with non-NaN mean.
     pure function calc_neighborhood_size(n_pool, n_points, n_genes_S, mean_S, desired_size) result(n_neighbors)
@@ -224,7 +224,7 @@ contains
     end function calc_neighborhood_size
 
     !> summary: Construct neighborhood-based residual sets (kNN)
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine construct_neighborhoods_kernel(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
                                                    tmp_distances, tmp_distances_perm, &
                                                    neighborhood_residuals, neighborhood_indices, n_neighbors)

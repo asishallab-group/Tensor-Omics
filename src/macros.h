@@ -5,10 +5,6 @@
 ! risking a null dereference by calling set_err(ierr, ...).
 #define M_CHECK_IERR_NON_NULL if (.not. c_associated(c_loc(ierr))) return
 
-!TODO codegen: c_loc's target must not have zero size per the Fortran standard. C wrapper subroutines call
-!              M_CHECK_NON_NULL(array_arg) before the array's declared extent (e.g. n_points, n_values) has been
-!              validated to be > 0, so a caller passing a legitimately empty array (size 0) hits c_loc on a zero-size
-!              target here, which is not standard-conforming / is processor-dependent.
 #define M_CHECK_NON_NULL(ARG) if (.not. c_associated(c_loc(ARG))) then; call set_err(ierr, ERR_POINTER_NULL); return; endif
 
 ! `c_loc` may not be given a zero-size target, so an array cannot be null-checked until

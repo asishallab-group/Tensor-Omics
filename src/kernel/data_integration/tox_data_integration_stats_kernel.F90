@@ -16,7 +16,7 @@ module tox_data_integration_stats_kernel
 contains
 
     !> summary: Estimate how likely the observed divergence is to occur by chance
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
     !| the work copies, so the caller's own arrays are left untouched.
     subroutine gjct_permutation_test_kernel( &
@@ -120,7 +120,7 @@ contains
     end subroutine gjct_permutation_test_kernel
 
     !> summary: Shuffle the residuals of one reference point between the two studies
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Internal helper of `gjct_permutation_test_kernel`.
     subroutine shuffle_reference_point_helper(reference_point_S1, reference_point_S2, n_reps_S1, n_reps_S2, n_neighbors, pool_flat)
         integer(int32), intent(in) :: n_reps_S1

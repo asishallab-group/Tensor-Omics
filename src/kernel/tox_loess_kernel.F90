@@ -250,7 +250,7 @@ contains
     ! ============================================================
     !> M_EXPORT_C
     !| summary: Recommend workspace sizes based on Netlib exact formulas
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_VIVIAN_BASS
     !| Computes the required sizes for integer and real workspace arrays.
     !| These sizes depend on the dimensionality of the data and the maximum neighborhood size.
     subroutine tox_loess_required_workspace(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization)
@@ -286,7 +286,7 @@ contains
     ! Plain LOESS fitting
     ! ============================================================
     !> summary: Perform plain LOESS fitting
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_VIVIAN_BASS
     !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
@@ -379,7 +379,7 @@ contains
     ! Robust LOESS fitting
     ! ============================================================
     !> summary: Perform robust LOESS fitting with bisquare reweighting
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_VIVIAN_BASS
     !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:

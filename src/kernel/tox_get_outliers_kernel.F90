@@ -26,7 +26,7 @@ module tox_get_outliers_kernel
 contains
 
     !> summary: Compute family scaling factors (dscale) to normalize distances
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_AUTHOR_VIVIAN_BASS
     !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
     subroutine compute_family_scaling_kernel( &
         n_genes, n_families, distances, gene_to_fam, dscale, &
@@ -374,7 +374,7 @@ contains
     end subroutine compute_family_scaling_kernel
 
     !> summary: Compute the hybrid RDI (Relative Distance Index) for each gene
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_VIVIAN_BASS
     !| RDI = Euclidean distance / family scaling factor
     pure subroutine compute_rdi_kernel(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, &
                                 tmp_stack_left, tmp_stack_right)
@@ -444,7 +444,7 @@ contains
     end subroutine compute_rdi_kernel
 
     !> summary: Identify gene outliers based on the top percentile of RDI values
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_VIVIAN_BASS
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
     pure subroutine identify_outliers_kernel(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)
@@ -510,7 +510,7 @@ contains
     end subroutine identify_outliers_kernel
 
     !> summary: Main routine to detect outliers using RDI and LOESS-based scaling
-    !| AUTHOR_FRANZ_ERIC_SILL
+    !| AUTHOR_VIVIAN_BASS
     !| Orchestrates the full pipeline: per-family scaling via
     !| [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
     !| [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via

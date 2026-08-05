@@ -15,7 +15,7 @@ module tox_data_integration_jsd_kernel
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
     !| the neighborhood residuals of two studies first, if that is what is at hand.
     pure subroutine determine_shared_residual_range_kernel(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
@@ -60,7 +60,7 @@ contains
     end subroutine determine_shared_residual_range_kernel
 
     !> summary: Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
     !| as `determine_shared_residual_range` does.
     pure subroutine determine_study_shared_residual_range_kernel(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, &
@@ -122,7 +122,7 @@ contains
     end subroutine determine_study_shared_residual_range_kernel
 
     !> summary: Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.
     pure subroutine build_residual_histograms_kernel(neighborhood_residuals, n_reps, n_neighbors, n_points, shared_residual_range, n_bins, counts, pmf, included_n_reps, neighbor_mask)
         integer(int32), intent(in) :: n_reps
@@ -208,7 +208,7 @@ contains
     end subroutine build_residual_histograms_kernel
 
     !> summary: Compute the Jensen-Shannon divergence per reference point from two histograms
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Takes the probabilities `pmf` produced by `build_residual_histograms`.
     pure subroutine compute_divergence_per_reference_point_kernel(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         integer(int32), intent(in) :: n_points
@@ -261,7 +261,7 @@ contains
     end subroutine compute_divergence_per_reference_point_kernel
 
     !> summary: Compute the global weighted Jensen-Shannon divergence from the per-neighbor divergences
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Takes the divergences produced by `compute_divergence_per_reference_point`.
     pure subroutine compute_weighted_global_divergence_kernel(js_divergences, n_points, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights)
         integer(int32), intent(in) :: n_points
@@ -304,7 +304,7 @@ contains
     end subroutine compute_weighted_global_divergence_kernel
 
     !> summary: Run the pipeline build_residual_histograms => compute_weighted_global_divergence
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Internal helper: the permutation test and the per-family analysis both drive this.
     pure subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, neighbor_mask_S1, neighbor_mask_S2)
         integer(int32), intent(in) :: n_reps_S1

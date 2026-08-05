@@ -15,7 +15,7 @@ module tox_data_integration_per_family_kernel
 contains
 
     !> summary: Compute the family-level compatibility score between two studies for a single gene family
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
     !| the residual samples to the genes belonging to the family `family_idx`.
     pure subroutine fjct_compute_jsd_kernel(family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
@@ -100,7 +100,7 @@ contains
     end subroutine fjct_compute_jsd_kernel
 
     !> summary: Compute the compatibility score between two studies for a single masked sub-neighborhood
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts the
     !| residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2`. Typically
     !| those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
@@ -153,7 +153,7 @@ contains
     end subroutine fjct_compute_masked_jsd_kernel
 
     !> summary: Compute the per-sub-neighborhood contribution score
-    !| AUTHOR_ASIS_HALLAB
+    !| AUTHOR_FRANZ_ERIC_SILL
     !| Combines
     !|
     !| 1. how divergent the family is between the studies (`global_js_divergences`), and
