@@ -14,6 +14,7 @@ module tox_relative_axis_plane_tools_c
     public :: omics_field_RAP_projection_c
     public :: clock_hand_angle_between_vectors_c
     public :: clock_hand_angles_for_shift_vectors_c
+    public :: compute_relative_axis_contributions_c
     public :: relative_axes_changes_from_shift_vector_c
     public :: relative_axes_expression_from_expression_vector_c
 
@@ -241,6 +242,39 @@ contains
             ierr = ierr&
         )
     end subroutine clock_hand_angles_for_shift_vectors_c
+
+    !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):compute_relative_axis_contributions(subroutine)]]
+    !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
+    subroutine compute_relative_axis_contributions_c(&
+            vec,&
+            n_axes,&
+            contributions,&
+            ierr&
+        ) bind(C, name="compute_relative_axis_contributions_c")
+        use tox_relative_axis_plane_tools, only: compute_relative_axis_contributions
+
+        integer(c_int), intent(in), target :: n_axes
+            !! Number of axes (length of vec and contributions)
+        real(c_double), dimension(n_axes), intent(in), target :: vec
+            !! RAP-projected and normalized vector (expression or shift)
+        real(c_double), dimension(n_axes), intent(out), target :: contributions
+            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_axes)
+        M_CHECK_ARRAY_NON_NULL(vec, n_axes)
+        M_CHECK_ARRAY_NON_NULL(contributions, n_axes)
+
+        call compute_relative_axis_contributions(&
+            vec = vec,&
+            n_axes = n_axes,&
+            contributions = contributions,&
+            ierr = ierr&
+        )
+    end subroutine compute_relative_axis_contributions_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):relative_axes_changes_from_shift_vector(subroutine)]]
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)

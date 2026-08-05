@@ -3,8 +3,8 @@
 !> summary: Wrappers for [[tox_relative_axis_plane_tools_kernel(module)]]
 !| Generated from the kernel; do not edit -- regenerate instead.
 module tox_relative_axis_plane_tools
-    use tox_relative_axis_plane_tools_kernel, only: clock_hand_angle_between_vectors_kernel, clock_hand_angles_for_shift_vectors_kernel, omics_field_RAP_projection_kernel, omics_vector_RAP_projection_kernel
-    use tox_relative_axis_plane_tools_kernel, only: relative_axes_changes_from_shift_vector_kernel, relative_axes_expression_from_expression_vector_kernel
+    use tox_relative_axis_plane_tools_kernel, only: clock_hand_angle_between_vectors_kernel, clock_hand_angles_for_shift_vectors_kernel, compute_relative_axis_contributions_kernel, omics_field_RAP_projection_kernel
+    use tox_relative_axis_plane_tools_kernel, only: omics_vector_RAP_projection_kernel, relative_axes_changes_from_shift_vector_kernel, relative_axes_expression_from_expression_vector_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, set_err_once
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size
@@ -15,6 +15,7 @@ module tox_relative_axis_plane_tools
     public :: omics_field_RAP_projection
     public :: clock_hand_angle_between_vectors
     public :: clock_hand_angles_for_shift_vectors
+    public :: compute_relative_axis_contributions
     public :: relative_axes_changes_from_shift_vector
     public :: relative_axes_expression_from_expression_vector
 
@@ -213,6 +214,36 @@ contains
             ierr = ierr&
         )
     end subroutine clock_hand_angles_for_shift_vectors
+
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):compute_relative_axis_contributions_kernel]].
+    !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
+    subroutine compute_relative_axis_contributions(&
+            vec,&
+            n_axes,&
+            contributions,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_axes
+            !! Number of axes (length of vec and contributions)
+        real(real64), dimension(n_axes), intent(in) :: vec
+            !! RAP-projected and normalized vector (expression or shift)
+        real(real64), dimension(n_axes), intent(out) :: contributions
+            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+        call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(vec, n_axes, ierr, arg_pos=1_int32)
+        if (is_err(ierr)) return
+
+        call compute_relative_axis_contributions_kernel(&
+            vec = vec,&
+            n_axes = n_axes,&
+            contributions = contributions,&
+            ierr = ierr&
+        )
+    end subroutine compute_relative_axis_contributions
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):relative_axes_changes_from_shift_vector_kernel]].
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)

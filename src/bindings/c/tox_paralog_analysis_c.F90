@@ -132,7 +132,9 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-            !! The minimum valid value is `1_int32`.
+            !! Zero is valid and means there is no subset to check: the sizing routine reports it
+            !! whenever the filtered families hold a single gene each.
+            !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
@@ -233,7 +235,9 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-            !! The minimum valid value is `1_int32`.
+            !! Zero is valid and means there is no subset to check: the sizing routine reports it
+            !! whenever the filtered families hold a single gene each.
+            !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
@@ -330,7 +334,9 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-            !! The minimum valid value is `1_int32`.
+            !! Zero is valid and means there is no subset to check: the sizing routine reports it
+            !! whenever the filtered families hold a single gene each.
+            !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
@@ -441,7 +447,9 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-            !! The minimum valid value is `1_int32`.
+            !! Zero is valid and means there is no subset to check: the sizing routine reports it
+            !! whenever the filtered families hold a single gene each.
+            !! The minimum valid value is `0_int32`.
         integer(c_int), dimension(n_mask_chunks, n_paralog_subsets), intent(out), target :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note

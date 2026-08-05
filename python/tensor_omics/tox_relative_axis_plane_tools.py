@@ -73,6 +73,17 @@ _lib.clock_hand_angles_for_shift_vectors_c.argtypes = (
 #: The wrapped procedure's arguments, so an error can name one
 _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS = ("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "selected_axes_for_signed", "signed_angles", "ierr",)
 
+_lib.compute_relative_axis_contributions_c.restype = None
+_lib.compute_relative_axis_contributions_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS = ("vec", "n_axes", "contributions", "ierr",)
+
 _lib.relative_axes_changes_from_shift_vector_c.restype = None
 _lib.relative_axes_changes_from_shift_vector_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
@@ -422,6 +433,56 @@ def clock_hand_angles_for_shift_vectors(
     check_err_code(ierr.value, _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS)
 
     return signed_angles
+
+def compute_relative_axis_contributions(
+        vec,
+):
+    r"""Compute the fractional contribution of each axis to a RAP-projected and normalized vector
+
+    Parameters
+    ----------
+    vec : np.ndarray[np.float64] of shape (n_axes,)
+        RAP-projected and normalized vector (expression or shift)
+
+    Returns
+    -------
+    contributions : np.ndarray[np.float64] of shape (n_axes,)
+        Fractional contribution of each axis (output), values in [0,1], sum to 1
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::compute_relative_axis_contributions`.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        vec = np.ascontiguousarray(vec, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'vec' must be an array of np.float64: {error}") from None
+    if vec.ndim != 1:
+        raise ValueError(f"'vec' must have 1 dimension, but has {vec.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_axes = vec.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    contributions = np.empty((n_axes,), dtype=np.float64, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.compute_relative_axis_contributions_c(
+        vec,
+        ctypes.byref(ctypes.c_int(n_axes)),
+        contributions,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _COMPUTE_RELATIVE_AXIS_CONTRIBUTIONS_ARGUMENTS)
+
+    return contributions
 
 def relative_axes_changes_from_shift_vector(
         vec,

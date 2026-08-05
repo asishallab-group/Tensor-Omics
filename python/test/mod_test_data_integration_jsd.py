@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from test_helpers import run_all_tests, assert_error
 from tensor_omics import (
-    determine_shared_residual_range,
+    determine_study_shared_residual_range,
     determine_shared_residual_range_expert,
     build_residual_histograms,
     compute_divergence_per_reference_point,
@@ -45,24 +45,24 @@ def test_tox_determine_shared_residual_range():
     S2[:, 0, 1] = [5,  7,  9]
     S2[:, 1, 1] = [0,  1,  2]
 
-    R = determine_shared_residual_range(S1, S2, 95.0)
+    R = determine_study_shared_residual_range(S1, S2, 95.0)
     assert abs(R - 10.65) < TOL, f"Test 1 failed: expected 10.65, got {R}"
 
     # ============================================================
     # Test 2 — Custom quantile (50%)
     # ============================================================
-    R = determine_shared_residual_range(S1, S2, 50.0)
+    R = determine_study_shared_residual_range(S1, S2, 50.0)
     assert abs(R - 4.0) < TOL, f"Test 2 failed: expected 4.0, got {R}"
 
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    assert_error(lambda: determine_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_study_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 4 — Quantile > 100 → error
     # ============================================================
-    assert_error(lambda: determine_shared_residual_range(S1, S2, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_study_shared_residual_range(S1, S2, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -82,7 +82,7 @@ def test_tox_determine_shared_residual_range():
     S1[0, 0, 0] = np.nan
     S2[2, 1, 1] = np.nan
 
-    R = determine_shared_residual_range(S1, S2, 95.0)
+    R = determine_study_shared_residual_range(S1, S2, 95.0)
     assert abs(R - 11.0) < TOL, f"Test 5 failed: expected 11.0, got {R}"
 
     # ============================================================
@@ -91,7 +91,7 @@ def test_tox_determine_shared_residual_range():
     S1[:, :, :] = 0
     S2[:, :, :] = 0
 
-    R = determine_shared_residual_range(S1, S2, 95.0)
+    R = determine_study_shared_residual_range(S1, S2, 95.0)
     assert abs(R - 0.0) < TOL, f"Test 6 failed: expected 0.0, got {R}"
 
     # ============================================================
@@ -100,7 +100,7 @@ def test_tox_determine_shared_residual_range():
     S1 = np.array([[[3.0]]], dtype=np.float64, order="F")
     S2 = np.array([[[-4.0]]], dtype=np.float64, order="F")
 
-    R = determine_shared_residual_range(S1, S2, 95.0)
+    R = determine_study_shared_residual_range(S1, S2, 95.0)
     assert abs(R - 3.95) < TOL, f"Test 7 failed: expected 3.95, got {R}"
 
 

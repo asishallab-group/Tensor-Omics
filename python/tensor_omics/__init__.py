@@ -65,23 +65,38 @@ from .tox_data_archive import (
     get_tox_data_dims,
     read_tox_data_into,
 )
-from .tox_data_integration import (
-    compute_gene_means,
-    compute_residuals,
-    pool_means,
-    pool_means_expert,
-    calc_neighborhood_size,
-    construct_neighborhoods,
-    gjct_permutation_test,
-    gjct_permutation_test_expert,
+from .tox_data_integration_jsd import (
     determine_shared_residual_range_expert,
     determine_shared_residual_range,
+    determine_study_shared_residual_range_expert,
+    determine_study_shared_residual_range,
     build_residual_histograms,
     compute_divergence_per_reference_point,
     compute_weighted_global_divergence,
-    fjct_compute_jsd,
+)
+from .tox_data_integration_per_family import (
     fjct_compute_jsd_expert,
+    fjct_compute_jsd,
+    fjct_compute_masked_jsd_expert,
+    fjct_compute_masked_jsd,
     fjct_compute_contribution_scores,
+)
+from .tox_data_integration_preprocessing import (
+    compute_gene_means,
+    compute_residuals,
+    pool_means_expert,
+    pool_means,
+    pool_study_means_expert,
+    pool_study_means,
+    construct_neighborhoods_expert,
+    construct_neighborhoods,
+)
+from .tox_data_integration_preprocessing_kernel import (
+    calc_neighborhood_size,
+)
+from .tox_data_integration_stats import (
+    gjct_permutation_test_expert,
+    gjct_permutation_test,
 )
 from .tox_data_tools import (
     read_expression_vectors_tsv,
@@ -157,6 +172,7 @@ from .tox_relative_axis_plane_tools import (
     omics_field_RAP_projection,
     clock_hand_angle_between_vectors,
     clock_hand_angles_for_shift_vectors,
+    compute_relative_axis_contributions,
     relative_axes_changes_from_shift_vector,
     relative_axes_expression_from_expression_vector,
 )
@@ -228,6 +244,7 @@ __all__ = [
     "compute_p_values",
     "compute_rdi",
     "compute_rdi_expert",
+    "compute_relative_axis_contributions",
     "compute_residuals",
     "compute_scaled_distance_quantile",
     "compute_shift_vector_field",
@@ -240,6 +257,7 @@ __all__ = [
     "compute_velocity_trajectory_kernel",
     "compute_weighted_global_divergence",
     "construct_neighborhoods",
+    "construct_neighborhoods_expert",
     "create_zip_archive",
     "deserialize_char_helper",
     "deserialize_complex_helper",
@@ -255,6 +273,8 @@ __all__ = [
     "detect_subfunctionalization_expert",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
+    "determine_study_shared_residual_range",
+    "determine_study_shared_residual_range_expert",
     "distance_to_centroid",
     "euclidean_distance",
     "filter_paralogs_by_pattern_dosage_effect",
@@ -262,6 +282,8 @@ __all__ = [
     "fjct_compute_contribution_scores",
     "fjct_compute_jsd",
     "fjct_compute_jsd_expert",
+    "fjct_compute_masked_jsd",
+    "fjct_compute_masked_jsd_expert",
     "get_array_metadata",
     "get_tox_data_dims",
     "get_unassigned_mask",
@@ -296,6 +318,8 @@ __all__ = [
     "perform_permutation_test_expert",
     "pool_means",
     "pool_means_expert",
+    "pool_study_means",
+    "pool_study_means_expert",
     "quantile_normalization",
     "quantile_normalization_expert",
     "read_expression_vectors_tsv",

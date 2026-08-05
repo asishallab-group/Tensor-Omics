@@ -16,7 +16,7 @@ from tensor_omics import euclidean_distance, distance_to_centroid
 from tensor_omics import (
     compute_gene_means,
     compute_residuals,
-    pool_means,
+    pool_study_means,
     construct_neighborhoods,
     pool_means_expert,
     calc_neighborhood_size,
@@ -90,7 +90,7 @@ def test_compute_residuals():
 
 
 def test_pool_means():
-    """Test pool_means function"""
+    """Test pool_study_means function"""
 
     # Test 1: Basic pooling
     mean_S1 = np.array([1.0, 3.0, 5.0, 7.0, 9.0], dtype=np.float64, order='F')
@@ -103,7 +103,7 @@ def test_pool_means():
         perm = (np.argsort(pool, kind="mergesort").astype(np.int32) + 1)
         return pool_means_expert(pool, perm, n_points)
 
-    for pool in (pool_means, pooled):
+    for pool in (pool_study_means, pooled):
         result = pool(mean_S1, mean_S2, n_points)
 
         # Verify n_pool (no NaN values, so should be 10)
@@ -192,7 +192,7 @@ def test_integration():
 
     # Step 3: Pool means
     n_points = 5
-    pool_result = pool_means(means_S1, means_S2, n_points)
+    pool_result = pool_study_means(means_S1, means_S2, n_points)
 
     assert pool_result['n_pool'] == 8  # 4 + 4, no NaN values
     assert len(pool_result['x_star']) == n_points

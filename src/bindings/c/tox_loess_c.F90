@@ -63,20 +63,12 @@ contains
             !! | n_dim          | 1_int32     |
         real(c_double), dimension(n), intent(in), target :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n, 1), intent(in), target :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), intent(in), target :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -174,20 +166,12 @@ contains
             !! Total number of data points
         real(c_double), dimension(n), intent(in), target :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n, 1), intent(in), target :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), intent(in), target :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -298,20 +282,12 @@ contains
             !! | n_dim          | 1_int32     |
         real(c_double), dimension(n), intent(in), target :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n, 1), intent(in), target :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), intent(in), target :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -435,20 +411,12 @@ contains
             !! Total number of data points
         real(c_double), dimension(n), intent(in), target :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n), intent(in), target :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n, 1), intent(in), target :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), intent(in), target :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.

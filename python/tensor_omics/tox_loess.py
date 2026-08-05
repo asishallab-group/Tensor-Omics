@@ -122,20 +122,12 @@ def loess_fit_plain_expert(
     ----------
     x : np.ndarray[np.float64] of shape (n,)
         Predictor variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     y : np.ndarray[np.float64] of shape (n,)
         Response variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     weights : np.ndarray[np.float64] of shape (n,)
         Weight array for data points
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     eval_points : np.ndarray[np.float64] of shape (n, 1,), column-major (order='F')
         Evaluation points (x values at which the fitted curve is computed)
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
@@ -265,20 +257,12 @@ def loess_fit_plain(
     ----------
     x : np.ndarray[np.float64] of shape (n,)
         Predictor variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     y : np.ndarray[np.float64] of shape (n,)
         Response variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     weights : np.ndarray[np.float64] of shape (n,)
         Weight array for data points
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     eval_points : np.ndarray[np.float64] of shape (n, 1,), column-major (order='F')
         Evaluation points (x values at which the fitted curve is computed)
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
@@ -394,20 +378,12 @@ def loess_fit_robust_expert(
     ----------
     x : np.ndarray[np.float64] of shape (n,)
         Predictor variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     y : np.ndarray[np.float64] of shape (n,)
         Response variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     weights : np.ndarray[np.float64] of shape (n,)
         Weight array for data points
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     eval_points : np.ndarray[np.float64] of shape (n, 1,), column-major (order='F')
         Evaluation points (x values at which the fitted curve is computed)
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.
@@ -551,20 +527,12 @@ def loess_fit_robust(
     ----------
     x : np.ndarray[np.float64] of shape (n,)
         Predictor variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     y : np.ndarray[np.float64] of shape (n,)
         Response variable array
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     weights : np.ndarray[np.float64] of shape (n,)
         Weight array for data points
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     eval_points : np.ndarray[np.float64] of shape (n, 1,), column-major (order='F')
         Evaluation points (x values at which the fitted curve is computed)
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     span : float
         Smoothing parameter for LOESS
         The minimum valid value is `EPS_LOESS`.

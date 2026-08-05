@@ -105,7 +105,9 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-            !! DM_MIN(1_int32)
+            !! Zero is valid and means there is no subset to check: the sizing routine reports it
+            !! whenever the filtered families hold a single gene each.
+            !! DM_MIN(0_int32)
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
             !! DM_OUTPUT_FROM(work_array_size, calc_work_arr_paralog_subsets_size, tox_paralog_analysis_kernel, AUTO)

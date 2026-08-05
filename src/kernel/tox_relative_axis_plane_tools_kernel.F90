@@ -280,10 +280,10 @@ contains
         end do
     end subroutine clock_hand_angles_for_shift_vectors_kernel
 
-    !> AUTHOR_VIVIAN_BASS
-    !| Compute fractional contribution of each axis to a RAP-projected and normalized vector.
-    !| Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.
-    pure subroutine compute_relative_axis_contributions_helper(vec, n_axes, contributions, ierr)
+    !> summary: Compute the fractional contribution of each axis to a RAP-projected and normalized vector
+    !| AUTHOR_VIVIAN_BASS
+    !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
+    pure subroutine compute_relative_axis_contributions_kernel(vec, n_axes, contributions, ierr)
         real(real64), dimension(n_axes), intent(in) :: vec
             !! RAP-projected and normalized vector (expression or shift)
         integer(int32), intent(in) :: n_axes
@@ -313,7 +313,7 @@ contains
         do concurrent (i_axis = 1:n_axes) shared(contributions, vec, total_abs)
             contributions(i_axis) = abs(vec(i_axis))/total_abs
         end do
-    end subroutine compute_relative_axis_contributions_helper
+    end subroutine compute_relative_axis_contributions_kernel
 
     !> summary: Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
     !| AUTHOR_VIVIAN_BASS
@@ -328,7 +328,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        call compute_relative_axis_contributions_helper(vec, n_axes, contributions, ierr)
+        call compute_relative_axis_contributions_kernel(vec, n_axes, contributions, ierr)
     end subroutine relative_axes_changes_from_shift_vector_kernel
 
     !> summary: Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
@@ -344,7 +344,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        call compute_relative_axis_contributions_helper(vec, n_axes, contributions, ierr)
+        call compute_relative_axis_contributions_kernel(vec, n_axes, contributions, ierr)
     end subroutine relative_axes_expression_from_expression_vector_kernel
 
     !> AUTHOR_VIVIAN_BASS

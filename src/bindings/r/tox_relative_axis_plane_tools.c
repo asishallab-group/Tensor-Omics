@@ -9,6 +9,7 @@ void omics_vector_RAP_projection_c(const double*, const int*, const int*, const 
 void omics_field_RAP_projection_c(const double*, const int*, const int*, const unsigned char*, const int*, const unsigned char*, const int*, double*, int*);
 void clock_hand_angle_between_vectors_c(const double*, const double*, const int*, double*, const int*, int*);
 void clock_hand_angles_for_shift_vectors_c(const double*, const int*, const int*, const unsigned char*, const int*, const int*, double*, int*);
+void compute_relative_axis_contributions_c(const double*, const int*, double*, int*);
 void relative_axes_changes_from_shift_vector_c(const double*, const int*, double*, int*);
 void relative_axes_expression_from_expression_vector_c(const double*, const int*, double*, int*);
 
@@ -151,6 +152,33 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP fields, SEXP fields_selection
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("signed_angles"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP compute_relative_axis_contributions_call(SEXP vec) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_axes = (int) Rf_length(vec);
+
+    // outputs and work space
+    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, n_axes)); nprot++;
+    int ierr = 0;
+
+    compute_relative_axis_contributions_c(
+        REAL(vec),
+        &n_axes,
+        REAL(contributions),
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, contributions);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("contributions"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);

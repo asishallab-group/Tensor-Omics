@@ -99,6 +99,24 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, s
     .result$signed_angles
 }
 
+#' Compute the fractional contribution of each axis to a RAP-projected and normalized vector
+#'
+#' Shared utility: the shift-vector and expression-vector entry points below both drive it.
+#'
+#' @param vec a numeric vector. RAP-projected and normalized vector (expression or shift)
+#' @return Fractional contribution of each axis (output), values in [0,1], sum to 1
+#'
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::compute_relative_axis_contributions}.
+#' @export
+compute_relative_axis_contributions <- function(vec) {
+    vec <- .tox_as_double_vector(vec, "vec")
+    .result <- .Call("compute_relative_axis_contributions_call", vec)
+    .arguments <- c("vec", "n_axes", "contributions", "ierr")
+    .status <- check_err_code(.result$ierr, .arguments)
+
+    .result$contributions
+}
+
 #' Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
 #'
 #' Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)

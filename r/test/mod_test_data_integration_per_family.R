@@ -79,7 +79,7 @@ test_fjct <- function() {
     shared_residual_range
   )
 
-  res_expert <- fjct_compute_jsd_expert(
+  res_expert <- fjct_compute_masked_jsd_expert(
     neighborhood_residuals_S1,
     neighborhood_residuals_S2,
     mask_S1,
@@ -150,7 +150,7 @@ test_fjct <- function() {
     shared_residual_range
   )
 
-  res_expert <- fjct_compute_jsd_expert(
+  res_expert <- fjct_compute_masked_jsd_expert(
     neighborhood_residuals_S1,
     neighborhood_residuals_S2,
     mask_S1,

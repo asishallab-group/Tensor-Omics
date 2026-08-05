@@ -71,7 +71,7 @@ test_pool_means_basic <- function() {
   mean_S2 <- c(20, 22, NA, 26, 28)
   n_points <- 3
   
-  result <- pool_means(mean_S1, mean_S2, n_points)
+  result <- pool_study_means(mean_S1, mean_S2, n_points)
   
   # Verify
   # Non-NA values: 10,12,14,18 from S1 and 20,22,26,28 from S2 = 8 total
@@ -115,7 +115,7 @@ test_error_handling <- function() {
   mean_S1 <- c(1, 2, 3)
   mean_S2 <- c(4, 5, 6)
   
-  assert_error(pool_means(mean_S1, mean_S2, n_points = 0), "Test failed - should have caught invalid n_points")
+  assert_error(pool_study_means(mean_S1, mean_S2, n_points = 0), "Test failed - should have caught invalid n_points")
   
 }
 

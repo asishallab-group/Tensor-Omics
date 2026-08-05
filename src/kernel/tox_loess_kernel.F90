@@ -318,20 +318,12 @@ contains
             !! |       n_dim       |   1_int32   |
         real(real64), intent(in) :: x(n)
             !! Predictor variable array
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: y(n)
             !! Response variable array
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: weights(n)
             !! Weight array for data points
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: eval_points(n, 1)
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: span
             !! Smoothing parameter for LOESS
             !! DM_MIN(EPS_LOESS)
@@ -429,20 +421,12 @@ contains
 
         real(real64), intent(in) :: x(n)
             !! Predictor variable array
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: y(n)
             !! Response variable array
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: weights(n)
             !! Weight array for data points
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: eval_points(n, 1)
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: span
             !! Smoothing parameter for LOESS
             !! DM_MIN(EPS_LOESS)
@@ -506,8 +490,10 @@ contains
 
             ! Perform LOESS fitting for this robust iteration.
             ! `106` is netlib's packed `iv(19)` model-selection code, see loess_fit_plain for details.
-            call loess_decomposition(106_int32, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, predictor_dim, n, span, degree, max_neighborhood_size, save_factorization)
-            call loess_fitting(x, y, tmp_combined_weights, tmp_hat_diag, compute_influence, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace)
+            ! the netlib routines take these mandatorily, so hand them the resolved values --
+            ! passing the optional dummies straight through crashes whenever the caller omits them
+            call loess_decomposition(106_int32, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, predictor_dim, n, span, degree, max_neighborhood_size, actual_save_factorization)
+            call loess_fitting(x, y, tmp_combined_weights, tmp_hat_diag, actual_compute_influence, tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace)
             call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n, eval_points, fitted_values)
 
             ! Compute residuals for robust reweighting in next iteration

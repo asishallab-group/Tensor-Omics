@@ -7,7 +7,7 @@ module tox_loess
     use tox_loess_kernel, only: tox_loess_required_workspace
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -62,20 +62,12 @@ contains
             !! | n_dim          | 1_int32     |
         real(real64), dimension(n), intent(in) :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n, 1), intent(in) :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), intent(in) :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -110,6 +102,10 @@ contains
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
         call validate_in_range_int(int_workspace_size, ierr, arg_pos=12_int32, min=10000_int32)
         call validate_in_range_int(real_workspace_size, ierr, arg_pos=14_int32, min=100000_int32)
+        call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         call loess_degenerate_fit(&
@@ -168,20 +164,12 @@ contains
             !! Total number of data points
         real(real64), dimension(n), intent(in) :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n, 1), intent(in) :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), intent(in) :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -207,13 +195,20 @@ contains
         real(real64), dimension(:), allocatable :: tmp_real_workspace
         integer(int32) :: real_workspace_size
         real(real64), dimension(:), allocatable :: tmp_hat_diag
+        logical :: save_factorization_value
         logical :: handled
 
         call set_ok(ierr)
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+
+        M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
 
         call loess_degenerate_fit(&
             n = n,&
@@ -232,7 +227,7 @@ contains
             max_neighborhood_size = max_neighborhood_size,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = save_factorization&
+            save_factorization = save_factorization_value&
         )
         M_ALLOCATE(tmp_int_workspace(int_workspace_size))
         M_ALLOCATE(tmp_real_workspace(real_workspace_size))
@@ -311,20 +306,12 @@ contains
             !! | n_dim          | 1_int32     |
         real(real64), dimension(n), intent(in) :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n, 1), intent(in) :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), intent(in) :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -372,6 +359,10 @@ contains
         call validate_in_range_int(n_iters, ierr, arg_pos=11_int32, min=1_int32)
         call validate_in_range_int(int_workspace_size, ierr, arg_pos=13_int32, min=10000_int32)
         call validate_in_range_int(real_workspace_size, ierr, arg_pos=15_int32, min=100000_int32)
+        call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         call loess_degenerate_fit(&
@@ -439,20 +430,12 @@ contains
             !! Total number of data points
         real(real64), dimension(n), intent(in) :: x
             !! Predictor variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: y
             !! Response variable array
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n), intent(in) :: weights
             !! Weight array for data points
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n, 1), intent(in) :: eval_points
             !! Evaluation points (x values at which the fitted curve is computed)
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), intent(in) :: span
             !! Smoothing parameter for LOESS
             !! The minimum valid value is `EPS_LOESS`.
@@ -486,6 +469,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_combined_weights
         real(real64), dimension(:), allocatable :: tmp_residuals
         integer(int32), dimension(:), allocatable :: tmp_permutation_indices
+        logical :: save_factorization_value
         logical :: handled
 
         call set_ok(ierr)
@@ -493,7 +477,13 @@ contains
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
         call validate_in_range_int(n_iters, ierr, arg_pos=11_int32, min=1_int32)
+        call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+
+        M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
 
         call loess_degenerate_fit(&
             n = n,&
@@ -512,7 +502,7 @@ contains
             max_neighborhood_size = max_neighborhood_size,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = save_factorization&
+            save_factorization = save_factorization_value&
         )
         M_ALLOCATE(tmp_int_workspace(int_workspace_size))
         M_ALLOCATE(tmp_real_workspace(real_workspace_size))
