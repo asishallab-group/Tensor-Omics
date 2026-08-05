@@ -25,7 +25,7 @@ class TestFortranTarget:
 
         assert result.ok, result.diagnostics.render()
         paths = [f.path.as_posix() for f in result.files]
-        assert any(p.endswith("src/tox/tox_demo.F90") for p in paths)
+        assert any(p.endswith("src/generated/tox/tox_demo.F90") for p in paths)
 
     def test_the_content_is_the_wrapper_module(self):
         result = generate(targets=("fortran",), parsed=parsed_of(alloc_kernel_module()))
@@ -57,24 +57,26 @@ class TestGeneratedWrapperPaths:
         result = generated_wrapper_paths(Paths(root=root))
 
         assert [p.name for p in result] == ["tox_loess.F90"]
-        assert result[0] == root / "src/tox/tox_loess.F90"
+        assert result[0] == root / "src/generated/tox/tox_loess.F90"
 
     def test_none_when_there_is_no_kernel_tree(self, tmp_path):
         assert generated_wrapper_paths(Paths(root=tmp_path)) == []
 
 
-class TestCleanIsMigrationSafe:
-    def test_clean_removes_only_the_generated_wrapper(self, tmp_path):
+class TestCleanRemovesWhatItOwns:
+    def test_clean_removes_only_the_files_the_generator_owns(self, tmp_path):
         (tmp_path / "src/kernel").mkdir(parents=True)
         (tmp_path / "src/kernel/tox_loess_kernel.F90").write_text(
             "module tox_loess_kernel\nend module\n"
         )
-        tox = tmp_path / "src/tox"
+        tox = tmp_path / "src/generated/tox"
         tox.mkdir(parents=True)
-        (tox / "tox_loess.F90").write_text("generated")     # the generator owns this
-        (tox / "tox_errors.F90").write_text("hand-written")  # must survive the migration
+        (tox / "tox_loess.F90").write_text("generated")   # one kernel, so one owned file
+        # anything else in the tree is not the generator's to delete, even though nothing
+        # hand-written lives there any more
+        (tox / "stray.F90").write_text("not ours")
 
         _clean(("fortran",), Paths(root=tmp_path))
 
         assert not (tox / "tox_loess.F90").exists()
-        assert (tox / "tox_errors.F90").exists()
+        assert (tox / "stray.F90").exists()

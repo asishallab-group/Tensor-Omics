@@ -249,8 +249,8 @@ def _clean(targets: tuple[str, ...], paths: Paths,
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
         globs.append((paths.resolve(paths.r_out_dir), "*.R"))
     if "fortran" in targets:
-        # src/tox holds hand-written modules during the migration, so remove only the
-        # files the generator owns (one per kernel), never the whole directory
+        # one file per kernel, rather than the whole directory: the same list the Ford
+        # frontend excludes, so the two cannot drift apart
         files += generated_wrapper_paths(paths, conventions)
     for directory in directories:
         if directory.is_dir():

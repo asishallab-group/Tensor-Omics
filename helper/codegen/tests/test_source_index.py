@@ -50,7 +50,7 @@ end module tox_normalization
 
 @pytest.fixture
 def source():
-    return SourceFile(Path("src/tox/tox_normalization.F90"), SOURCE)
+    return SourceFile(Path("src/kernel/tox_normalization_kernel.F90"), SOURCE)
 
 
 def line_of(text):

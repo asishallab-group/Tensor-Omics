@@ -28,7 +28,7 @@ function init() {
   get_c_flags
 }
 
-# Flags for the C sources (the R .Call shims in src/bindings/r). fpm's --flag is Fortran
+# Flags for the C sources (the R .Call shims in src/generated/bindings/r). fpm's --flag is Fortran
 # only, so C needs its own. The shims are guarded by NO_R_BINDING / NO_C_BINDING, so when
 # either is set they compile to empty objects that need no R headers; otherwise they need R's
 # include path. If the R layer is wanted but R is not installed, drop it with a warning.

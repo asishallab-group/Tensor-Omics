@@ -135,10 +135,10 @@ class FordFrontend:
         settings.exclude_dir = list(settings.exclude_dir) + [
             str(self.paths.resolve(self.paths.c_binding_dir).resolve())
         ]
-        # The generated wrappers live in src/tox alongside hand-written modules, so they
-        # cannot be excluded by directory. Excluding them by name keeps Ford from re-reading
-        # the generator's own output and defining `tox_<name>` twice (once parsed, once
-        # synthesised). Only their basenames are needed -- Ford matches `**/<name>`.
+        # Excluding the generated wrappers by name keeps Ford from re-reading the
+        # generator's own output and defining `tox_<name>` twice (once parsed, once
+        # synthesised). By name rather than by directory because the same list is what
+        # `clean` deletes, so the two cannot drift apart. Ford matches `**/<name>`.
         settings.exclude = list(getattr(settings, "exclude", None) or []) + [
             path.name for path in generated_wrapper_paths(self.paths, self.conventions)
         ]

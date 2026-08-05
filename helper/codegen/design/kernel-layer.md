@@ -32,7 +32,7 @@ The framework splits a procedure into three:
 - `foo_alloc` — allocates the kernel's work arrays, builds and sorts its permutations, calls
   its "recommend" sizing routines, then calls the kernel. **Generated.**
 
-Both generated wrappers land in `src/tox/tox_X.F90` (`module tox_X`, `use tox_X_kernel`) and
+Both generated wrappers land in `src/generated/tox/tox_X.F90` (`module tox_X`, `use tox_X_kernel`) and
 carry `M_EXPORT_C`, so the ordinary binding pipeline wraps them to C/Python/R with no special
 casing. The clean name — `tox_X`, `loess_fit`, without the `_kernel` suffix — *is* the
 recommended public API.
@@ -90,21 +90,26 @@ kernel-generation feature is tox-scoped; it reads only `src/kernel/`.
 
 ---
 
-## `src/tox/` is generated-only
+## The tree says who writes what
 
-Because the wrappers land in `src/tox/`, the simplest and least error-prone arrangement is for
-`src/tox/` to contain *nothing but* generated files. Then the generator treats it exactly like
-`src/bindings/c`: Ford excludes the whole directory (`exclude_dir`), and `clean` removes the
-whole directory (`rmtree`). No per-file markers, no glob that might spare or delete the wrong
-thing.
+```
+src/
+  macros.h            included by every source, by this path
+  f42/                infrastructure, library-agnostic
+  kernel/             the kernels -- the API's source of truth, hand-written
+  io/                 file and archive IO, hand-written
+  generated/          NOTHING here is hand-written
+    tox/                the wrappers
+    bindings/c/         the Fortran C wrappers
+    bindings/r/         the R `.Call` shims
+```
 
-**Rejected — a mixed `src/tox/` (generated wrappers beside a few hand-written modules).** It
-would force per-file Ford exclusion and a marker-based clean that must delete only generated
-files and never the hand-written ones — permanent complexity and a sharp edge in `clean`, in
-exchange for avoiding a one-time reorg.
+The rule a reader needs is one line: **edit anything outside `src/generated/`.** That is also
+what `.gitattributes` marks, what a review can collapse, and what an editor can be told to
+ignore — one path prefix rather than a list that has to be kept in step with the generator.
 
-Reaching generated-only required relocating the modules in `src/tox/` that are neither kernels
-nor wrappers:
+Reaching that required two things. The generated wrappers had to *become* the whole of their
+directory, which meant relocating what used to sit in `src/tox` beside them:
 
 | Module(s) | New home | Why it was misplaced |
 |---|---|---|
@@ -117,6 +122,26 @@ nor wrappers:
 
 The `tox_data_*` modules are hand-written for now; the intended end state is that they become
 adapters over generic CSV and zip modules — a separate day's work.
+
+Then the three generated trees moved under one root. Fortran locates modules by name and fpm
+scans `src/` recursively, so no `use` statement changes — the move is a `git mv` plus the
+`Paths` fields in `config.py`.
+
+**Rejected — a mixed generated/hand-written directory.** Sorting a directory's files by who
+owns them is a per-file rule, and every tool that has to respect it (Ford's exclusion, `clean`,
+review, search) needs its own copy. A path prefix is one rule that all of them already
+understand.
+
+**Rejected — grouping the hand-written trees under a `tox/` parent** (`src/tox/kernel`,
+`src/tox/io`), leaving `src/f42`, `src/tox` and `src/generated` at the top. Tidier on paper,
+but it renames the tree the author edits most, and `src/tox` would come to mean hand-written
+code after years of meaning the opposite. The generated/hand-written split is the one that
+earns its churn; this one does not.
+
+**Rejected — deleting `src/generated` wholesale in `clean`, now that it is generated-only.**
+`clean` removes exactly the files the generator is about to write, derived from the kernel
+tree, and Ford excludes that same list. One list, two consumers, no way for them to disagree
+about what is generated. `rmtree` would be a second, independent answer to the same question.
 
 ---
 
@@ -225,7 +250,7 @@ column already carries.
 Only the frontend reads Fortran; everything after it works on the in-memory IR, which is
 hand-constructible by design. So the wrappers are **synthesised as IR and injected into the
 project** before analysis — the C/Python/R pipeline then treats them like any procedure it
-read, and a new Fortran emitter renders them to `src/tox/`.
+read, and a new Fortran emitter renders them to `src/generated/tox/`.
 
 1. **Directives.** The new `DM_*` macros are wired end-to-end (`src/macros.h`,
    `ir/directives.py`, `frontend/macros.py`) like the existing ones; the mode-table reader
@@ -246,11 +271,11 @@ read, and a new Fortran emitter renders them to `src/tox/`.
    validation block, and — for `foo_alloc` — the recommend calls, `M_ALLOCATE`s, `init_perm`/
    sort, and the kernel call. These are ordinary library sources: no `NO_C_BINDING` guard.
 4. **Orchestration.** A new `fortran` target and `_fortran_files` builder in `generate.py`;
-   `kernel_src_dir` and `tox_out_dir` in `config.py`; `src/tox` added to Ford's `exclude_dir`
+   `kernel_src_dir` and `tox_out_dir` in `config.py`; `src/generated/tox` added to Ford's `exclude_dir`
    so the generated wrappers are never read back; `clean` `rmtree`s `tox_out_dir`. `--check`
    diffs the emitted `.F90` against disk for free, like every other target.
 
-**Rejected — a two-pass round-trip** (emit the wrappers, then re-run Ford over `src/tox` to
+**Rejected — a two-pass round-trip** (emit the wrappers, then re-run Ford over `src/generated/tox` to
 read them for binding generation). On the first run, or after any kernel change, the on-disk
 wrappers are stale, so the bindings would be generated from the old API. Synthesising in memory
 keeps the kernel the single source of truth and needs Ford only once.
@@ -269,13 +294,13 @@ proven on pilots before the bulk migration:
 1. Build the feature (macros, synthesis, emitter, target, wiring) with unit tests and an
    end-to-end test that compiles and runs an emitted wrapper.
 2. Relocate the six blocker modules (green build at each step), reaching generated-only
-   `src/tox`.
+   `src/generated/tox`.
 3. Pilot A — a validation-only family (e.g. `tox_shift_vectors`).
 4. Pilot B — an alloc + permutation + recommend family (e.g. `tox_get_outliers`).
 5. Pilot C — a mode-split family (`tox_paralog_analysis`).
 6. Full rollout, ending with `tox_data_integration`, whose parent-interface + submodule
    structure dissolves: the kernels become plain `src/kernel` procedures, the wrappers
-   regenerate into one `src/tox/tox_data_integration.F90`.
+   regenerate into one `src/generated/tox/tox_data_integration.F90`.
 
 Verification at each stage: the generator test suite plus `--check` idempotency; `./build.sh`
 producing the `_c`/`_call` symbols for the wrappers in one library; and the full Python and R

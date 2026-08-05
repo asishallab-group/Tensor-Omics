@@ -58,7 +58,7 @@ Not in the source files they wrap. From issue #131:
 
 ## Decision: the R C shims are bundled into the library, omittable like the C binding
 
-The R binding is pure C (`.Call`) shims — generated into `src/bindings/r/*.c` — that
+The R binding is pure C (`.Call`) shims — generated into `src/generated/bindings/r/*.c` — that
 marshal R objects and call the `bind(C)` wrappers. They are **compiled by fpm into the one
 `libtensor-omics.so`** (fpm already scans `src/` recursively and rebuilds only changed
 files), so there is a single artifact and no separate R build step; the R loader just

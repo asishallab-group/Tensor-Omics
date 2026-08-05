@@ -129,12 +129,14 @@ class Paths:
     root: Path = field(default_factory=Path)
     src_dir: Path = Path("src")
     macros_header: Path = Path("src/macros.h")
-    c_binding_dir: Path = Path("src/bindings/c")
-    r_binding_dir: Path = Path("src/bindings/r")
+    #: Everything this generator writes lives under `src/generated`, and nothing hand-written
+    #: does. That is the whole rule a reader (or a review, or an editor's ignore list) needs.
+    c_binding_dir: Path = Path("src/generated/bindings/c")
+    r_binding_dir: Path = Path("src/generated/bindings/r")
     #: Hand-written kernels; the generated wrappers derived from them land in `tox_out_dir`
     kernel_src_dir: Path = Path("src/kernel")
-    #: Where the generated `foo` / `foo_alloc` wrapper modules are written (generated-only)
-    tox_out_dir: Path = Path("src/tox")
+    #: Where the generated `foo` / `foo_alloc` wrapper modules are written
+    tox_out_dir: Path = Path("src/generated/tox")
     python_out_dir: Path = Path("python/tensor_omics")
     r_out_dir: Path = Path("r/tensor_omics")
     snippets_dir: Path = Path("snippets")

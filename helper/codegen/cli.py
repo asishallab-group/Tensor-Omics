@@ -13,7 +13,7 @@ from pathlib import Path
 from .config import Paths
 from .generate import generate, generate_and_write
 
-#: the generated Fortran wrappers of the kernels (src/tox)
+#: the generated Fortran wrappers of the kernels (src/generated/tox)
 SOURCE_TARGETS = ("fortran",)
 C_BINDING_TARGETS = ("c", "python", "r")
 SNIPPETS_TARGETS = ("snippets",)

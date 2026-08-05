@@ -1,6 +1,9 @@
 #include <src/macros.h>
 
 !> error handling module for tensor-omics
+!|
+!| It keeps its `tox_` name because it defines Tensor Omics' error vocabulary, but it lives in
+!| `src/f42/` because f42 itself depends on it: it sits *below* f42 in the stack, not above.
 module tox_errors
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite

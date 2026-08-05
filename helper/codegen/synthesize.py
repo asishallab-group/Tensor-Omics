@@ -43,12 +43,11 @@ _REEXPORT_DOC = (
 def generated_wrapper_paths(
     paths: Paths, conventions: Conventions = CONVENTIONS
 ) -> list[Path]:
-    """The `src/tox` files the generator owns, one per kernel module found on disk.
+    """The `src/generated/tox` files the generator owns, one per kernel module on disk.
 
     Derived from the kernel tree so the Ford frontend (which excludes them from the parse)
     and the cleaner (which removes them before rewriting) agree on the set without parsing
-    -- and so `src/tox` can hold hand-written modules during the migration without either
-    touching them.
+    -- without either of them having to parse anything.
     """
     kernel_dir = paths.resolve(paths.kernel_src_dir)
     out_dir = paths.resolve(paths.tox_out_dir)

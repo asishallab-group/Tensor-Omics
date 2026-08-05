@@ -39,9 +39,9 @@ From one exported Fortran procedure, three things:
 
 | Target | Output | What it is |
 |---|---|---|
-| C | `src/bindings/c/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
+| C | `src/generated/bindings/c/<module>_c.F90` | a `bind(C)` wrapper: a plain-pointer ABI, null validation, type conversion |
 | Python | `python/tensor_omics/<module>.py` | a `ctypes` function with a numpydoc docstring |
-| R | `src/bindings/r/<module>.c` + `r/tensor_omics/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
+| R | `src/generated/bindings/r/<module>.c` + `r/tensor_omics/<module>.R` | a C `.Call` shim (marshalling, bundled into the `.so`) under an R function (validation, docs) |
 | Snippets | `snippets/<Language>_<root>_snippets.json` | VS Code call/setup snippets, split by language and module root |
 
 Plus, once per project: an error module for each language, generated from `tox_errors`, and
@@ -103,8 +103,8 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 |---|---|---|
 | `src_dir` | `src` | the sources to read (`--src`) |
 | `macros_header` | `src/macros.h` | the macro definitions, incl. the `DM_` doc macros |
-| `c_binding_dir` | `src/bindings/c` | **output**: the Fortran C wrappers |
-| `r_binding_dir` | `src/bindings/r` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
+| `c_binding_dir` | `src/generated/bindings/c` | **output**: the Fortran C wrappers |
+| `r_binding_dir` | `src/generated/bindings/r` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
 | `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
 | `r_out_dir` | `r/tensor_omics` | **output**: the R wrappers + loader |
 | `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, git-ignored) |
@@ -112,8 +112,8 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 So a default run writes:
 
 ```
-src/bindings/c/<module>_c.F90        # Fortran C wrappers, one per module
-src/bindings/r/                      # R C .Call shims -- fpm compiles them into the .so
+src/generated/bindings/c/<module>_c.F90        # Fortran C wrappers, one per module
+src/generated/bindings/r/                      # R C .Call shims -- fpm compiles them into the .so
     tox_marshal.h  init.c  <module>.c
 python/tensor_omics/
     __init__.py  library.py  error_handling.py

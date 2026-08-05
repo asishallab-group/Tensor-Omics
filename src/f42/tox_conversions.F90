@@ -3,6 +3,9 @@
 !> Module with conversion helpers between Fortran-native types and their `iso_c_binding` counterparts.
 !| Used by the C interface wrapper subroutines throughout tensor-omics to translate arguments (logicals,
 !| characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.
+!|
+!| It keeps its `tox_` name for continuity, but it lives in `src/f42/` because it is C-interop
+!| glue with no exports of its own -- infrastructure the binding layer stands on.
 module tox_conversions
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_ok, set_err
