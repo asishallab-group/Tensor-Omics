@@ -123,7 +123,6 @@ directory, which meant relocating what used to sit in `src/tox` beside them:
 | `tox_errors` | `src/f42/` | no exports; `use`d by f42 itself (72 sites) — it always sat *below* f42 in the dependency stack, so it was never tox application code |
 | `tox_conversions` | `src/f42/` | no exports; C-interop glue for the binding layer (27 sites) |
 | `tox_data_archive`, `tox_data_tools`, `tox_data_read_write` | `src/io/` | hand-written, exported, but file-I/O and external-library (`libzip`, netlib) code — not numeric kernels. Their bindings still auto-generate from `M_EXPORT_C` wherever they live |
-| `tox_data_accessors` | `test/` (or delete) | unused anywhere in `src/` |
 | recommend routines (`*_required_workspace`, `calc_*_size`, `calc_neighborhood_size`) | `src/kernel/` (public in the kernel module) | called by the generated allocs and by the `_expert` bindings |
 | mode/enum params (`MODE_*`, `METHOD_*`, `*_PATTERN`) | `src/kernel/` (kernel module) | referenced by kernel signatures and `DM_REQUIRED_IF_MODE` |
 
