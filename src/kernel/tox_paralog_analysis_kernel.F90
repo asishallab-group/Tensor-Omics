@@ -105,8 +105,10 @@ contains
             !! maximum valid size. The bindings cap it automatically while sizing the work
             !! array; a Fortran caller caps it by calling
             !! [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-            !! Zero is valid and means there is no subset to check: the sizing routine reports it
-            !! whenever the filtered families hold a single gene each.
+            !! Zero is in range and means there is no subset to check -- the sizing routine reports
+            !! it whenever the filtered families hold a single gene each. It reports a work array
+            !! of zero slots along with it, which this routine does not accept, so a caller that
+            !! gets zero back has nothing to detect and should not call here at all.
             !! DM_MIN(0_int32)
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`.
@@ -632,7 +634,9 @@ contains
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
         integer(int32), intent(inout) :: max_subset_size
-            !! maximum size that a subset must not exceed.
+            !! maximum size that a subset must not exceed. Zero is in range and means there is
+            !! nothing to size a work array for, which is reported back as a size of zero.
+            !! DM_MIN(0_int32)
             !! @warning
             !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
             !!

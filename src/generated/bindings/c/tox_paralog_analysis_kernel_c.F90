@@ -113,7 +113,9 @@ contains
         integer(c_int), intent(in), target :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
         integer(c_int), intent(inout), target :: max_subset_size
-            !! maximum size that a subset must not exceed.
+            !! maximum size that a subset must not exceed. Zero is in range and means there is
+            !! nothing to size a work array for, which is reported back as a size of zero.
+            !! The minimum valid value is `0_int32`.
             !! @warning
             !! If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
             !!

@@ -276,8 +276,10 @@ def detect_dosage_effect_expert(
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-        Zero is valid and means there is no subset to check: the sizing routine reports it
-        whenever the filtered families hold a single gene each.
+        Zero is in range and means there is no subset to check -- the sizing routine reports
+        it whenever the filtered families hold a single gene each. It reports a work array
+        of zero slots along with it, which this routine does not accept, so a caller that
+        gets zero back has nothing to detect and should not call here at all.
         The minimum valid value is `0_int32`.
     max_angle : float, optional, default 3.141592653589793
         in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
@@ -405,8 +407,10 @@ def detect_dosage_effect(
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-        Zero is valid and means there is no subset to check: the sizing routine reports it
-        whenever the filtered families hold a single gene each.
+        Zero is in range and means there is no subset to check -- the sizing routine reports
+        it whenever the filtered families hold a single gene each. It reports a work array
+        of zero slots along with it, which this routine does not accept, so a caller that
+        gets zero back has nothing to detect and should not call here at all.
         The minimum valid value is `0_int32`.
     max_angle : float, optional, default 3.141592653589793
         in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
@@ -531,8 +535,10 @@ def detect_subfunctionalization_expert(
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-        Zero is valid and means there is no subset to check: the sizing routine reports it
-        whenever the filtered families hold a single gene each.
+        Zero is in range and means there is no subset to check -- the sizing routine reports
+        it whenever the filtered families hold a single gene each. It reports a work array
+        of zero slots along with it, which this routine does not accept, so a caller that
+        gets zero back has nothing to detect and should not call here at all.
         The minimum valid value is `0_int32`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`
@@ -686,8 +692,10 @@ def detect_subfunctionalization(
         maximum valid size. The bindings cap it automatically while sizing the work
         array; a Fortran caller caps it by calling
         [[tox_paralog_analysis_kernel(module):calc_work_arr_paralog_subsets_size(subroutine)]] first.
-        Zero is valid and means there is no subset to check: the sizing routine reports it
-        whenever the filtered families hold a single gene each.
+        Zero is in range and means there is no subset to check -- the sizing routine reports
+        it whenever the filtered families hold a single gene each. It reports a work array
+        of zero slots along with it, which this routine does not accept, so a caller that
+        gets zero back has nothing to detect and should not call here at all.
         The minimum valid value is `0_int32`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`

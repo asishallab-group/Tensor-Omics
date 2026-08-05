@@ -152,7 +152,9 @@ def calc_work_arr_paralog_subsets_size(
     Parameters
     ----------
     max_subset_size : int, modified in place
-        maximum size that a subset must not exceed.
+        maximum size that a subset must not exceed. Zero is in range and means there is
+        nothing to size a work array for, which is reported back as a size of zero.
+        The minimum valid value is `0_int32`.
         @warning
         If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
 
@@ -169,7 +171,9 @@ def calc_work_arr_paralog_subsets_size(
         with keys:
 
         max_subset_size : int
-            maximum size that a subset must not exceed.
+            maximum size that a subset must not exceed. Zero is in range and means there is
+            nothing to size a work array for, which is reported back as a size of zero.
+            The minimum valid value is `0_int32`.
             @warning
             If the desired size is too large and leads to an integer overflow, `max_subset_size` will be set to the maximum valid size.
 
