@@ -169,9 +169,15 @@ does.
 
 ## Writing generator-compliant Fortran
 
-This is the dev guide: what to write so a procedure is wrapped correctly. The generator
+This is the reference for what to write so a procedure is wrapped correctly. The generator
 reads conventions from names and from documentation macros; nothing here requires editing
 the generator.
+
+> **Writing a kernel?** [`codegen_guide.md`](../../codegen_guide.md) at the repository root is
+> the task-shaped version of this — the same contract plus the kernel layer, organised case by
+> case with a worked example for each. This section stays the reference for the binding rules
+> themselves, which apply to a hand-written exported procedure just as much as to a generated
+> wrapper.
 
 ### Marking a procedure for export
 
@@ -401,11 +407,6 @@ code.
 
 ## Open items
 
-- **`DM_OUTPUT_FROM(AUTO)` with a producer input that is a *constant*** rather than another
-  argument. `tox_loess_required_workspace(n_dim, max_neighborhood_size, save_factorization)`
-  is the real case: a consumer can now supply `max_neighborhood_size` by renaming, but
-  `n_dim` is always `1` and `save_factorization` always `.false.`, and neither is an
-  argument of the consumer to point at. Errors clearly until implemented.
 - **ifx**: the F2018 features used (`OPTIONAL` in `bind(C)`, `implicit none (type,
   external)`) are verified with gfortran only. ifx is expected to agree; worth a check.
 - **Compile check in CI**: the end-to-end tests need a compiler. They are marked to skip
