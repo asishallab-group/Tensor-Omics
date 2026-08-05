@@ -56,26 +56,33 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
 
 #' Compute the signed clock hand angle between two RAP-projected and normalized vectors.
 #'
-#' Calculates the signed rotation angle between two normalized vectors in RAP space.
-#' For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
+#' The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+#' which way round the plane the two vectors span counts as positive. Reports
+#' `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angle_between_vectors}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param v1 a numeric vector. First normalized vector in RAP space
 #' @param v2 a numeric vector. Second normalized vector in RAP space
-#' @param selected_axes_for_signed a integer vector. Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
-#' @return a numeric scalar. Signed angle between vectors in radians [-π, π]
+#' @param orientation_reference a numeric vector. Orients the plane the rotation happens in, so the angle can carry a sign. A
+#'   rotation from one vector to another has no inherent direction above two
+#'   dimensions -- and in RAP space not even in two, since the axes are tissues or
+#'   factors and carry no handedness -- so the caller states which way round counts
+#'   as positive. The sign is that of this vector's component along the rotation.
+#' @return a numeric scalar. Signed angle between vectors in radians [-pi, pi]
 #' @export
-clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
+clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
     v1 <- .tox_as_double_vector(v1, "v1")
     v2 <- .tox_as_double_vector(v2, "v2")
-    selected_axes_for_signed <- .tox_as_integer_vector(selected_axes_for_signed, "selected_axes_for_signed")
+    orientation_reference <- .tox_as_double_vector(orientation_reference, "orientation_reference")
     if (length(v2) != length(v1))
         .tox_shape_error("v2", length(v2), "v1", length(v1))
+    if (length(orientation_reference) != length(v1))
+        .tox_shape_error("orientation_reference", length(orientation_reference), "v1", length(v1))
 
-    .result <- .Call("clock_hand_angle_between_vectors_call", v1, v2, selected_axes_for_signed)
-    .arguments <- c("v1", "v2", "n_dims", "signed_angle", "selected_axes_for_signed", "ierr")
+    .result <- .Call("clock_hand_angle_between_vectors_call", v1, v2, orientation_reference)
+    .arguments <- c("v1", "v2", "n_dims", "orientation_reference", "signed_angle", "ierr")
     .sources <- c(NA_character_, NA_character_, "v1", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -84,23 +91,34 @@ clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
 
 #' Compute signed rotation angles between for shift vectors, so between their origin and target
 #'
+#' Each selected field is angled by the rule of
+#' \code{\link{clock_hand_angle_between_vectors}},
+#' with one `orientation_reference` shared by the whole batch. A single field whose rotation
+#' the reference fails to orient fails the call.
+#'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
 #' @param fields_selection_mask a logical vector. TRUE for vector pairs where angle should be computed
-#' @param selected_axes_for_signed a integer vector. Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
+#' @param orientation_reference a numeric vector. Orients the plane the rotation happens in, so the angle can carry a sign. A
+#'   rotation from one vector to another has no inherent direction above two
+#'   dimensions -- and in RAP space not even in two, since the axes are tissues or
+#'   factors and carry no handedness -- so the caller states which way round counts
+#'   as positive. The sign is that of this vector's component along the rotation.
 #' @return a numeric vector. Signed rotation angles between vector pairs in radians [-π, π]
 #' @export
-clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, selected_axes_for_signed) {
+clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, orientation_reference) {
     fields <- .tox_as_double_array(fields, "fields", 3L)
     fields_selection_mask <- .tox_as_logical(fields_selection_mask, "fields_selection_mask")
-    selected_axes_for_signed <- .tox_as_integer_vector(selected_axes_for_signed, "selected_axes_for_signed")
+    orientation_reference <- .tox_as_double_vector(orientation_reference, "orientation_reference")
+    if (length(orientation_reference) != dim(fields)[1])
+        .tox_shape_error("orientation_reference", length(orientation_reference), "fields", dim(fields)[1])
     if (length(fields_selection_mask) != dim(fields)[3])
         .tox_shape_error("fields_selection_mask", length(fields_selection_mask), "fields", dim(fields)[3])
 
-    .result <- .Call("clock_hand_angles_for_shift_vectors_call", fields, fields_selection_mask, selected_axes_for_signed)
-    .arguments <- c("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "selected_axes_for_signed", "signed_angles", "ierr")
+    .result <- .Call("clock_hand_angles_for_shift_vectors_call", fields, fields_selection_mask, orientation_reference)
+    .arguments <- c("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "orientation_reference", "signed_angles", "ierr")
     .sources <- c(NA_character_, "fields", "fields", NA_character_, "signed_angles", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 

@@ -128,14 +128,15 @@ contains
     end subroutine omics_field_RAP_projection
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angle_between_vectors_kernel]].
-    !| Calculates the signed rotation angle between two normalized vectors in RAP space.
-    !| For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
+    !| The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+    !| which way round the plane the two vectors span counts as positive. Reports
+    !| `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
     subroutine clock_hand_angle_between_vectors(&
             v1,&
             v2,&
             n_dims,&
+            orientation_reference,&
             signed_angle,&
-            selected_axes_for_signed,&
             ierr&
         )
         integer(int32), intent(in) :: n_dims
@@ -144,10 +145,14 @@ contains
             !! First normalized vector in RAP space
         real(real64), dimension(n_dims), intent(in) :: v2
             !! Second normalized vector in RAP space
+        real(real64), dimension(n_dims), intent(in) :: orientation_reference
+            !! Orients the plane the rotation happens in, so the angle can carry a sign. A
+            !! rotation from one vector to another has no inherent direction above two
+            !! dimensions -- and in RAP space not even in two, since the axes are tissues or
+            !! factors and carry no handedness -- so the caller states which way round counts
+            !! as positive. The sign is that of this vector's component along the rotation.
         real(real64), intent(out) :: signed_angle
-            !! Signed angle between vectors in radians [-π, π]
-        integer(int32), dimension(3), intent(in) :: selected_axes_for_signed
-            !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
+            !! Signed angle between vectors in radians [-pi, pi]
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -155,27 +160,32 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(v1, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(v2, n_dims, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(orientation_reference, n_dims, ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
 
         call clock_hand_angle_between_vectors_kernel(&
             v1 = v1,&
             v2 = v2,&
             n_dims = n_dims,&
+            orientation_reference = orientation_reference,&
             signed_angle = signed_angle,&
-            selected_axes_for_signed = selected_axes_for_signed,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
     end subroutine clock_hand_angle_between_vectors
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angles_for_shift_vectors_kernel]].
+    !| Each selected field is angled by the rule of
+    !| [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angle_between_vectors_kernel(subroutine)]],
+    !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
+    !| the reference fails to orient fails the call.
     subroutine clock_hand_angles_for_shift_vectors(&
             fields,&
             n_dims,&
             n_fields,&
             fields_selection_mask,&
             n_selected_fields,&
-            selected_axes_for_signed,&
+            orientation_reference,&
             signed_angles,&
             ierr&
         )
@@ -189,8 +199,12 @@ contains
             !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         logical, dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
-        integer(int32), dimension(3), intent(in) :: selected_axes_for_signed
-            !! Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
+        real(real64), dimension(n_dims), intent(in) :: orientation_reference
+            !! Orients the plane the rotation happens in, so the angle can carry a sign. A
+            !! rotation from one vector to another has no inherent direction above two
+            !! dimensions -- and in RAP space not even in two, since the axes are tissues or
+            !! factors and carry no handedness -- so the caller states which way round counts
+            !! as positive. The sign is that of this vector's component along the rotation.
         real(real64), dimension(n_selected_fields), intent(out) :: signed_angles
             !! Signed rotation angles between vector pairs in radians [-π, π]
         integer(int32), intent(out) :: ierr
@@ -201,6 +215,7 @@ contains
         call validate_dimension_size(n_fields, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(fields, n_dims * 2 * n_fields, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(orientation_reference, n_dims, ierr, arg_pos=6_int32)
         if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 
@@ -210,7 +225,7 @@ contains
             n_fields = n_fields,&
             fields_selection_mask = fields_selection_mask,&
             n_selected_fields = n_selected_fields,&
-            selected_axes_for_signed = selected_axes_for_signed,&
+            orientation_reference = orientation_reference,&
             signed_angles = signed_angles,&
             ierr = ierr&
         )

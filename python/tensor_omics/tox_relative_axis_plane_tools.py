@@ -56,13 +56,13 @@ _lib.clock_hand_angle_between_vectors_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_double),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS = ("v1", "v2", "n_dims", "signed_angle", "selected_axes_for_signed", "ierr",)
+_CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENTS = ("v1", "v2", "n_dims", "orientation_reference", "signed_angle", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CLOCK_HAND_ANGLE_BETWEEN_VECTORS_ARGUMENT_SOURCES = (None, None, "v1", None, None, None,)
 
@@ -73,13 +73,13 @@ _lib.clock_hand_angles_for_shift_vectors_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS = ("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "selected_axes_for_signed", "signed_angles", "ierr",)
+_CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENTS = ("fields", "n_dims", "n_fields", "fields_selection_mask", "n_selected_fields", "orientation_reference", "signed_angles", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _CLOCK_HAND_ANGLES_FOR_SHIFT_VECTORS_ARGUMENT_SOURCES = (None, "fields", "fields", None, "signed_angles", None, None, None,)
 
@@ -299,7 +299,7 @@ def omics_field_RAP_projection(
 def clock_hand_angle_between_vectors(
         v1,
         v2,
-        selected_axes_for_signed,
+        orientation_reference,
 ):
     r"""Compute the signed clock hand angle between two RAP-projected and normalized vectors.
 
@@ -309,13 +309,17 @@ def clock_hand_angle_between_vectors(
         First normalized vector in RAP space
     v2 : np.ndarray[np.float64] of shape (n_dims,)
         Second normalized vector in RAP space
-    selected_axes_for_signed : np.ndarray[np.int32] of shape (3,)
-        Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
+    orientation_reference : np.ndarray[np.float64] of shape (n_dims,)
+        Orients the plane the rotation happens in, so the angle can carry a sign. A
+        rotation from one vector to another has no inherent direction above two
+        dimensions -- and in RAP space not even in two, since the axes are tissues or
+        factors and carry no handedness -- so the caller states which way round counts
+        as positive. The sign is that of this vector's component along the rotation.
 
     Returns
     -------
     signed_angle : float
-        Signed angle between vectors in radians [-π, π]
+        Signed angle between vectors in radians [-pi, pi]
 
     Raises
     ------
@@ -341,11 +345,11 @@ def clock_hand_angle_between_vectors(
     if v2.ndim != 1:
         raise ValueError(f"'v2' must have 1 dimension, but has {v2.ndim}")
     try:
-        selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)
+        orientation_reference = np.ascontiguousarray(orientation_reference, dtype=np.float64)
     except (TypeError, ValueError) as error:
-        raise TypeError(f"'selected_axes_for_signed' must be an array of np.int32: {error}") from None
-    if selected_axes_for_signed.ndim != 1:
-        raise ValueError(f"'selected_axes_for_signed' must have 1 dimension, but has {selected_axes_for_signed.ndim}")
+        raise TypeError(f"'orientation_reference' must be an array of np.float64: {error}") from None
+    if orientation_reference.ndim != 1:
+        raise ValueError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}")
 
     # what the inputs already say, rather than asking for it again
     n_dims = v1.shape[0]
@@ -353,6 +357,10 @@ def clock_hand_angle_between_vectors(
     # Fortran cannot check that shared extents agree; this can
     if v2.shape[0] != n_dims:
         raise ValueError(f"'v2' has {v2.shape[0]} along axis 0, but "
+            f"'v1' implies n_dims == {n_dims}"
+        )
+    if orientation_reference.shape[0] != n_dims:
+        raise ValueError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but "
             f"'v1' implies n_dims == {n_dims}"
         )
 
@@ -364,8 +372,8 @@ def clock_hand_angle_between_vectors(
         v1,
         v2,
         ctypes.byref(ctypes.c_int(n_dims)),
+        orientation_reference,
         ctypes.byref(signed_angle),
-        selected_axes_for_signed,
         ctypes.byref(ierr),
     )
 
@@ -376,7 +384,7 @@ def clock_hand_angle_between_vectors(
 def clock_hand_angles_for_shift_vectors(
         fields,
         fields_selection_mask,
-        selected_axes_for_signed,
+        orientation_reference,
 ):
     r"""Compute signed rotation angles between for shift vectors, so between their origin and target
 
@@ -386,8 +394,12 @@ def clock_hand_angles_for_shift_vectors(
         matrix with vector fields; each field holds two vectors, the origin first and the target second
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
         True for vector pairs where angle should be computed
-    selected_axes_for_signed : np.ndarray[np.int32] of shape (3,)
-        Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
+    orientation_reference : np.ndarray[np.float64] of shape (n_dims,)
+        Orients the plane the rotation happens in, so the angle can carry a sign. A
+        rotation from one vector to another has no inherent direction above two
+        dimensions -- and in RAP space not even in two, since the axes are tissues or
+        factors and carry no handedness -- so the caller states which way round counts
+        as positive. The sign is that of this vector's component along the rotation.
 
     Returns
     -------
@@ -418,11 +430,11 @@ def clock_hand_angles_for_shift_vectors(
     if fields_selection_mask.ndim != 1:
         raise ValueError(f"'fields_selection_mask' must have 1 dimension, but has {fields_selection_mask.ndim}")
     try:
-        selected_axes_for_signed = np.ascontiguousarray(selected_axes_for_signed, dtype=np.int32)
+        orientation_reference = np.ascontiguousarray(orientation_reference, dtype=np.float64)
     except (TypeError, ValueError) as error:
-        raise TypeError(f"'selected_axes_for_signed' must be an array of np.int32: {error}") from None
-    if selected_axes_for_signed.ndim != 1:
-        raise ValueError(f"'selected_axes_for_signed' must have 1 dimension, but has {selected_axes_for_signed.ndim}")
+        raise TypeError(f"'orientation_reference' must be an array of np.float64: {error}") from None
+    if orientation_reference.ndim != 1:
+        raise ValueError(f"'orientation_reference' must have 1 dimension, but has {orientation_reference.ndim}")
 
     # what the inputs already say, rather than asking for it again
     n_dims = fields.shape[0]
@@ -430,6 +442,10 @@ def clock_hand_angles_for_shift_vectors(
     n_selected_fields = int(fields_selection_mask.sum())
 
     # Fortran cannot check that shared extents agree; this can
+    if orientation_reference.shape[0] != n_dims:
+        raise ValueError(f"'orientation_reference' has {orientation_reference.shape[0]} along axis 0, but "
+            f"'fields' implies n_dims == {n_dims}"
+        )
     if fields_selection_mask.shape[0] != n_fields:
         raise ValueError(f"'fields_selection_mask' has {fields_selection_mask.shape[0]} along axis 0, but "
             f"'fields' implies n_fields == {n_fields}"
@@ -445,7 +461,7 @@ def clock_hand_angles_for_shift_vectors(
         ctypes.byref(ctypes.c_int(n_fields)),
         fields_selection_mask,
         ctypes.byref(ctypes.c_int(n_selected_fields)),
-        selected_axes_for_signed,
+        orientation_reference,
         signed_angles,
         ctypes.byref(ierr),
     )

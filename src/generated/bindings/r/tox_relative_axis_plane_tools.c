@@ -7,8 +7,8 @@
 // the Fortran C-ABI symbols this module calls
 void omics_vector_RAP_projection_c(const double*, const int*, const int*, const unsigned char*, const int*, const unsigned char*, const int*, double*, int*);
 void omics_field_RAP_projection_c(const double*, const int*, const int*, const unsigned char*, const int*, const unsigned char*, const int*, double*, int*);
-void clock_hand_angle_between_vectors_c(const double*, const double*, const int*, double*, const int*, int*);
-void clock_hand_angles_for_shift_vectors_c(const double*, const int*, const int*, const unsigned char*, const int*, const int*, double*, int*);
+void clock_hand_angle_between_vectors_c(const double*, const double*, const int*, const double*, double*, int*);
+void clock_hand_angles_for_shift_vectors_c(const double*, const int*, const int*, const unsigned char*, const int*, const double*, double*, int*);
 void compute_relative_axis_contributions_c(const double*, const int*, double*, int*);
 void relative_axes_changes_from_shift_vector_c(const double*, const int*, double*, int*);
 void relative_axes_expression_from_expression_vector_c(const double*, const int*, double*, int*);
@@ -93,7 +93,7 @@ SEXP omics_field_RAP_projection_call(SEXP fields, SEXP fields_selection_mask, SE
     return _out;
 }
 
-SEXP clock_hand_angle_between_vectors_call(SEXP v1, SEXP v2, SEXP selected_axes_for_signed) {
+SEXP clock_hand_angle_between_vectors_call(SEXP v1, SEXP v2, SEXP orientation_reference) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_dims = (int) Rf_length(v1);
@@ -106,8 +106,8 @@ SEXP clock_hand_angle_between_vectors_call(SEXP v1, SEXP v2, SEXP selected_axes_
         REAL(v1),
         REAL(v2),
         &n_dims,
+        REAL(orientation_reference),
         &signed_angle,
-        INTEGER(selected_axes_for_signed),
         &ierr
     );
 
@@ -122,7 +122,7 @@ SEXP clock_hand_angle_between_vectors_call(SEXP v1, SEXP v2, SEXP selected_axes_
     return _out;
 }
 
-SEXP clock_hand_angles_for_shift_vectors_call(SEXP fields, SEXP fields_selection_mask, SEXP selected_axes_for_signed) {
+SEXP clock_hand_angles_for_shift_vectors_call(SEXP fields, SEXP fields_selection_mask, SEXP orientation_reference) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_dims = INTEGER(Rf_getAttrib(fields, R_DimSymbol))[0];
@@ -142,7 +142,7 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP fields, SEXP fields_selection
         &n_fields,
         fields_selection_mask_c,
         &n_selected_fields,
-        INTEGER(selected_axes_for_signed),
+        REAL(orientation_reference),
         REAL(signed_angles),
         &ierr
     );
