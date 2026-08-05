@@ -399,7 +399,7 @@ def loess_fit_robust_expert(
         max_neighborhood_size,
         compute_influence,
         save_factorization,
-        n_iters,
+        n_iters=3,
 ):
     r"""Perform robust LOESS fitting with bisquare reweighting
 
@@ -435,9 +435,10 @@ def loess_fit_robust_expert(
         Influence calculation flag
     save_factorization : bool
         Save matrix factorization flag
-    n_iters : int
+    n_iters : int, optional, default 3
         Number of robust iterations
         The minimum valid value is `1_int32`.
+        The default value is `3_int32`.
 
     Returns
     -------
@@ -553,7 +554,7 @@ def loess_fit_robust(
         max_neighborhood_size,
         compute_influence,
         save_factorization,
-        n_iters,
+        n_iters=3,
 ):
     r"""Perform robust LOESS fitting with bisquare reweighting
 
@@ -589,9 +590,10 @@ def loess_fit_robust(
         Influence calculation flag
     save_factorization : bool
         Save matrix factorization flag
-    n_iters : int
+    n_iters : int, optional, default 3
         Number of robust iterations
         The minimum valid value is `1_int32`.
+        The default value is `3_int32`.
 
     Returns
     -------

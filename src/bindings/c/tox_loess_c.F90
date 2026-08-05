@@ -324,6 +324,7 @@ contains
         integer(c_int), intent(in), target :: n_iters
             !! Number of robust iterations
             !! The minimum valid value is `1_int32`.
+            !! The default value is `3_int32`.
         integer(c_int), dimension(int_workspace_size), intent(out), target :: tmp_int_workspace
             !! Integer workspace array
         real(c_double), dimension(real_workspace_size), intent(out), target :: tmp_real_workspace
@@ -457,6 +458,7 @@ contains
         integer(c_int), intent(in), target :: n_iters
             !! Number of robust iterations
             !! The minimum valid value is `1_int32`.
+            !! The default value is `3_int32`.
         real(c_double), dimension(n), intent(out), target :: fitted_values
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr

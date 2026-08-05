@@ -140,13 +140,17 @@ from .tox_normalization import (
     calc_fchange,
 )
 from .tox_paralog_analysis import (
-    mask_check_state,
     detect_neofunctionalization,
+    detect_dosage_effect_expert,
     detect_dosage_effect,
+    detect_subfunctionalization_expert,
     detect_subfunctionalization,
-    mask_chunk_count,
-    filter_paralogs_by_pattern_subfunctionalization,
     filter_paralogs_by_pattern_dosage_effect,
+    filter_paralogs_by_pattern_subfunctionalization,
+)
+from .tox_paralog_analysis_kernel import (
+    mask_check_state,
+    mask_chunk_count,
     calc_work_arr_paralog_subsets_size,
 )
 from .tox_relative_axis_plane_tools import (
@@ -229,10 +233,12 @@ __all__ = [
     "deserialize_logical_helper",
     "deserialize_real_helper",
     "detect_dosage_effect",
+    "detect_dosage_effect_expert",
     "detect_neofunctionalization",
     "detect_outliers",
     "detect_outliers_expert",
     "detect_subfunctionalization",
+    "detect_subfunctionalization_expert",
     "determine_shared_residual_range",
     "determine_shared_residual_range_expert",
     "distance_to_centroid",

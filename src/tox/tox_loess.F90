@@ -307,9 +307,10 @@ contains
             !! Influence calculation flag
         logical, intent(in) :: save_factorization
             !! Save matrix factorization flag
-        integer(int32), intent(in) :: n_iters
+        integer(int32), intent(in), optional :: n_iters
             !! Number of robust iterations
             !! The minimum valid value is `1_int32`.
+            !! The default value is `3_int32`.
         integer(int32), dimension(int_workspace_size), intent(out) :: tmp_int_workspace
             !! Integer workspace array
         real(real64), dimension(real_workspace_size), intent(out) :: tmp_real_workspace
@@ -418,9 +419,10 @@ contains
             !! Influence calculation flag
         logical, intent(in) :: save_factorization
             !! Save matrix factorization flag
-        integer(int32), intent(in) :: n_iters
+        integer(int32), intent(in), optional :: n_iters
             !! Number of robust iterations
             !! The minimum valid value is `1_int32`.
+            !! The default value is `3_int32`.
         real(real64), dimension(n), intent(out) :: fitted_values
             !! Fitted (smoothed) values of y at the evaluation points
         integer(int32), intent(out) :: ierr

@@ -270,11 +270,21 @@ contains
         integer(int32) :: neighborhood_size
             !! Size of the local neighborhood used at the current span (points per local fit)
 
+        real(real64) :: range_x
+
         call set_ok(ierr)
 
         if (n == 1) then
             write (*, '(A)') "LOESS: Single point detected. Skipping adjustment (fitted_values = y)."
             fitted_values(1) = y(1)
+            return
+        end if
+
+        range_x = maxval(x) - minval(x)
+        if (range_x <= EPS_LOESS) then
+            write (*, '(A, E12.4)') "LOESS: Range of x is too small (<= EPS). Skipping adjustment. Range =", range_x
+            fitted_values = y
+            call set_ok(ierr)
             return
         end if
 
@@ -318,9 +328,10 @@ contains
             !! DM_MAX(2_int32)
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        integer(int32), intent(in) :: n_iters
+        integer(int32), intent(in), optional :: n_iters
             !! Number of robust iterations
             !! DM_MIN(1_int32)
+            !! DM_DEFAULT(CM_DEFAULT_LOESS_ITERS)
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
             !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
@@ -387,12 +398,23 @@ contains
             !! Size of the local neighborhood used at the current span (points per local fit)
 
         integer(int32) :: iter, i, predictor_dim
+        integer(int32) :: actual_n_iters
 
         call set_ok(ierr)
+
+        M_DEFAULT_VAL(n_iters, actual_n_iters, CM_DEFAULT_LOESS_ITERS)
 
         if (n == 1) then
             write (*, '(A)') "LOESS: Single point detected. Skipping adjustment (fitted_values = y)."
             fitted_values(1) = y(1)
+            return
+        end if
+
+        range_x = maxval(x) - minval(x)
+        if (range_x <= EPS_LOESS) then
+            write (*, '(A, E12.4)') "LOESS: Range of x is too small (<= EPS). Skipping adjustment. Range =", range_x
+            fitted_values = y
+            call set_ok(ierr)
             return
         end if
 
@@ -498,43 +520,10 @@ contains
         call set_ok(ierr)
         call set_ok(istat)
 
-        if (present(n_iters)) then
-            actual_n_iters = n_iters
-        else
-            actual_n_iters = CM_DEFAULT_LOESS_ITERS
-        end if
-
         if (size(x) /= size(y)) then
             call set_err(ierr, ERR_SIZE_MISMATCH)
             return
         end if
-
-        call validate_dimension_size(n, ierr)
-        if (is_err(ierr)) return
-
-        call validate_in_range_int(mode, ierr, min=0_int32, max=1_int32)
-        if (is_err(ierr)) return
-
-        call validate_in_range_int(degree, ierr, min=0_int32, max=2_int32)
-        if (is_err(ierr)) return
-
-        call validate_in_range_real(span, ierr, min=EPS_LOESS, max=1.0_real64)
-        if (is_err(ierr)) return
-
-        if (mode == 1_int32) then
-            call validate_in_range_int(n_iters, ierr, min=1_int32)
-            if (is_err(ierr)) return
-        end if
-
-        if (n == 1) then
-            write (*, '(A)') "LOESS: Single point detected. Skipping adjustment (fitted_values = y)."
-            fitted_values(1) = y(1)
-            call set_ok(ierr)
-            return
-        end if
-
-        call validate_all_in_range_real(x, n, ierr)
-        if (is_err(ierr)) return
 
         range_x = maxval(x) - minval(x)
         if (range_x <= EPS_LOESS) then

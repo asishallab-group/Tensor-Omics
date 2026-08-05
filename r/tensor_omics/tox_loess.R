@@ -113,7 +113,7 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust}.
 #' @export
-loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters) {
+loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters = 3L) {
     x <- .tox_as_double_vector(x, "x")
     y <- .tox_as_double_vector(y, "y")
     weights <- .tox_as_double_vector(weights, "weights")
@@ -165,7 +165,7 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 #'
 #' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust_alloc}.
 #' @export
-loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters) {
+loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters = 3L) {
     x <- .tox_as_double_vector(x, "x")
     y <- .tox_as_double_vector(y, "y")
     weights <- .tox_as_double_vector(weights, "weights")
