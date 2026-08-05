@@ -359,9 +359,16 @@ Three layers, fastest first:
 2. **Frontend tests** parsing small fixture modules through the real Ford, plus a parse of
    the entire real `src/` that must come out with no diagnostics.
 3. **End-to-end tests** that generate from the fixtures, **compile** the output
-   (`gfortran -std=f2018`), build a shared library, and **call it** — from generated Python
-   and from generated R. This is the only thing that proves the output is not just
-   plausible but correct: `fx_sum_matrix` really sums a matrix.
+   (`gfortran -std=f2018`), build a shared library, and **call it** — from generated Python,
+   from generated R, and from Fortran itself. This is the only thing that proves the output
+   is not just plausible but correct: `fx_sum_matrix` really sums a matrix, and the kernel
+   layer's `rank_scores_alloc` really allocates, seeds and sorts a permutation and rejects a
+   value below its documented minimum with the argument position its own caller sees.
+
+   The Fortran one holds *generated* code to `-std=f2018` but compiles the f42 modules it
+   links against without it, exactly as fpm does — `f42_math` uses the F2023 `reduce()`
+   locality spec and `f42_sort` declares `array(n)` before `n` is typed. Neither is generated,
+   so holding them to the generator's conformance bar would only break the test.
 
 The fixture modules in [`tests/fixtures/`](tests/fixtures/) are the generator's
 specification — a deliberate, complete set of the constructs it supports, held to a
