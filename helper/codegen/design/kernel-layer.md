@@ -197,9 +197,39 @@ propagates in from f42, which is exactly the `compute_family_scaling` case above
 keep their annotations: they are correct for anyone calling a kernel directly, and the test
 suite does.
 
+Two of the six are recovered rather than lost: a mode argument the wrapper still takes is now
+checked against the values its own table names (see below), which puts the position back — the
+wrapper's own this time, not the kernel's.
+
 `map_err_arg_pos` stays for hand-written code where the two dummy lists really are known to
 correspond. The recommend-routine call site would need the same clear, but no recommend routine
 reachable from generated code takes an `ierr` today, so nothing is emitted there.
+
+### Mode membership
+
+A mode argument the wrapper still takes — one whose table has no per-mode procedure column, so
+it was not split — is checked against exactly the values that table names:
+
+```fortran
+if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) &
+    call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
+```
+
+The generator parsed the table, so it knows the accepted set exactly. An optional mode is
+guarded by `present()`: absent means "use the documented default", which is one of the accepted
+values by construction, and reading an absent optional to discover that is not a Fortran program.
+
+A chain of `/=` rather than `all(x /= [...])`, so the check costs a few integer comparisons and
+no temporary array.
+
+**Rejected — annotating the mode argument with `DM_MIN`/`DM_MAX`.** The accepted set need not be
+contiguous, and a hand-written range duplicates knowledge the generator already holds and goes
+stale the moment a mode is added, silently admitting the new value everywhere it was not updated.
+
+**Rejected — leaving it to the kernel.** The kernel's own `case default` is what used to report
+this, and its `arg_pos` is in the kernel's numbering — which the wrapper now clears. The check
+has to be the wrapper's for the position to mean anything. A direct Fortran caller is the one
+this protects: the C layer already rejects an unknown mode *string* before Fortran is entered.
 
 ### Validation ranges
 

@@ -3,13 +3,14 @@
 !> summary: Wrappers for [[tox_trajectory_contribution_analysis_kernel(module)]]
 !| Generated from the kernel; do not edit -- regenerate instead.
 module tox_trajectory_contribution_analysis
-    use tox_trajectory_contribution_analysis_kernel, only: compute_acceleration_from_velocity_kernel, compute_acceleration_from_velocity_trajectory_kernel, compute_all_contributions_kernel, compute_baselines_factor_dependent_kernel
-    use tox_trajectory_contribution_analysis_kernel, only: compute_contributions_kernel, compute_p_values_kernel, compute_velocity_acceleration_contributions_kernel, compute_velocity_trajectories_kernel
-    use tox_trajectory_contribution_analysis_kernel, only: compute_velocity_trajectory_kernel, perform_permutation_test_kernel
+    use tox_trajectory_contribution_analysis_kernel, only: MODE_MEAN, MODE_MIN, MODE_RAW, compute_acceleration_from_velocity_kernel
+    use tox_trajectory_contribution_analysis_kernel, only: compute_acceleration_from_velocity_trajectory_kernel, compute_all_contributions_kernel, compute_baselines_factor_dependent_kernel, compute_contributions_kernel
+    use tox_trajectory_contribution_analysis_kernel, only: compute_p_values_kernel, compute_velocity_acceleration_contributions_kernel, compute_velocity_trajectories_kernel, compute_velocity_trajectory_kernel
+    use tox_trajectory_contribution_analysis_kernel, only: perform_permutation_test_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
-    use tox_errors, only: validate_in_range_int, validate_in_range_real
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -97,6 +98,7 @@ contains
         call validate_in_range_int(sample_idx, ierr, arg_pos=7_int32, min=1_int32, max=n_samples)
         call validate_dimension_size(n_permutations, ierr, arg_pos=9_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
         if (is_err(ierr)) return
 
         call perform_permutation_test_kernel(&
@@ -183,6 +185,7 @@ contains
         call validate_in_range_int(sample_idx, ierr, arg_pos=7_int32, min=1_int32, max=n_samples)
         call validate_dimension_size(n_permutations, ierr, arg_pos=9_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_factor(n_timepoints))
@@ -295,6 +298,7 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(factor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(dependent, n_dims, ierr, arg_pos=2_int32)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
         if (is_err(ierr)) return
 
         call compute_contributions_kernel(&
@@ -372,6 +376,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(factor_indices, n_selected_factors, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, arg_pos=7_int32, min=1_int32, max=n_factors)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
         if (is_err(ierr)) return
 
         call compute_all_contributions_kernel(&
@@ -452,6 +457,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(factor_indices, n_selected_factors, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, arg_pos=7_int32, min=1_int32, max=n_factors)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_factors(n_timepoints, n_selected_factors))
@@ -509,6 +515,7 @@ contains
         call validate_dimension_size(n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(factor, n_timepoints, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(dependent, n_timepoints, ierr, arg_pos=3_int32)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
         if (is_err(ierr)) return
 
         call compute_baselines_factor_dependent_kernel(&
@@ -717,6 +724,7 @@ contains
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         call compute_velocity_acceleration_contributions_kernel(&
@@ -795,6 +803,7 @@ contains
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
+        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_factors(n_timepoints - 1, n_factors))

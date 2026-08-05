@@ -476,3 +476,33 @@ class TestMaterialisedProducerInput:
     def test_the_kernel_still_takes_the_argument_itself(self):
         # the kernel declares it optional, so it is forwarded as it came
         assert "exact = exact,&" in self.text()
+
+
+class TestModeMembership:
+    """A runtime-mode argument is checked against the values its own table names."""
+
+    def text(self, module_source):
+        from builders import project
+
+        return emitted(project(module_source))
+
+    def test_the_wrapper_rejects_a_value_the_table_does_not_name(self):
+        from test_synthesize import mode_kernel_module
+
+        text = self.text(mode_kernel_module())
+        assert ("if (mode /= MODE_FAST .and. mode /= MODE_EXACT) "
+                "call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=2_int32)") in text
+
+    def test_the_parameters_it_compares_against_are_imported(self):
+        from test_synthesize import mode_kernel_module
+
+        text = self.text(mode_kernel_module()).split("contains", 1)[0]
+        assert "MODE_FAST" in text and "MODE_EXACT" in text
+
+    def test_a_mode_split_wrapper_has_no_mode_to_check(self):
+        from builders import project
+
+        from test_synthesize import mode_split_kernel_module
+
+        # it *is* its mode; there is no argument left to compare
+        assert "/= MODE_" not in emitted_with_info(project(mode_split_kernel_module()))

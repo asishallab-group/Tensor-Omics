@@ -163,6 +163,13 @@ class FortranWrapperEmitter:
             fix = self._mode_fix(procedure)
             if fix is not None:  # the parameter a per-mode wrapper fixes the mode to
                 extra.setdefault(fix.module, set()).add(fix.parameter)
+            # and the parameters a runtime-mode wrapper checks its argument against
+            for argument in procedure.arguments:
+                roles = argument.roles
+                if roles is None or roles.mode is None or roles.mode.is_split:
+                    continue
+                for value in roles.mode.values:
+                    extra.setdefault(value.module, set()).add(value.parameter)
 
         # the kernels, plus any recommend routine / constant that lives in the kernel module
         kernel_names = {self._kernel_name(p, module) for p in module}
@@ -233,8 +240,10 @@ class FortranWrapperEmitter:
             names |= {"set_err", "ERR_ALLOC_FAIL"}
         if any(self._is_distance_matrix(a) for p in module for a in p.arguments):
             names.add("validate_distance_matrix")
+        # both the mask-count convention and the mode-membership check report this way
         if any(
-            a.roles is not None and a.roles.mask_count_of is not None
+            (a.roles is not None and a.roles.mask_count_of is not None)
+            or self._mode_membership_check(a, 1) is not None
             for p in module
             for a in p.arguments
         ):
@@ -567,7 +576,48 @@ class FortranWrapperEmitter:
                 f"if (count({mask.name}, kind=int32) /= {argument.name}) "
                 f"call set_err_once({error}, ERR_INVALID_INPUT, arg_pos={position}_int32)"
             )
+        for position, argument in enumerate(procedure.arguments, start=1):
+            check = self._mode_membership_check(argument, position)
+            if check is not None:
+                lines.append(check)
         return lines
+
+    def _mode_membership_check(self, argument: Argument, position: int) -> str | None:
+        """Reject a mode value that is not one of the ones its table names.
+
+        The generator parsed that table, so it knows the accepted parameters exactly -- which
+        makes this a better answer than a hand-written `DM_MIN`/`DM_MAX` pair: the accepted
+        set need not be contiguous, and a range annotation goes stale the moment a mode is
+        added, while this is regenerated from the table.
+
+        A chain of `/=` rather than `all(x /= [...])`: the array constructor would build a
+        temporary on every call, for a check that is a handful of integer comparisons.
+
+        An optional mode is guarded by `present()`. Absent means "use the documented default",
+        which is by construction one of the accepted values -- and reading an absent optional
+        to find that out is not a Fortran program.
+
+        Only for a mode the wrapper still takes. A mode-split wrapper *is* its mode and has no
+        such argument, and the C layer rejects an unknown mode string before Fortran is
+        entered -- but a direct Fortran caller reaches this, and nothing else stops it.
+        """
+        roles = argument.roles
+        if roles is None or roles.mode is None or roles.mode.is_split:
+            return None
+        values = roles.mode.values
+        if not values:
+            return None
+        error = self.conventions.error_arg
+        comparisons = " .and. ".join(
+            f"{argument.name} /= {value.parameter}" for value in values
+        )
+        check = (
+            f"if ({comparisons}) "
+            f"call set_err_once({error}, ERR_INVALID_INPUT, arg_pos={position}_int32)"
+        )
+        if argument.optional:
+            return f"if (present({argument.name})) then; {check}; end if"
+        return check
 
     def _is_distance_matrix(self, argument: Argument) -> bool:
         """A square real matrix named by the distance-matrix convention.

@@ -5,9 +5,10 @@
 module tox_get_outliers
     use tox_get_outliers_kernel, only: compute_family_scaling_kernel, compute_rdi_kernel, detect_outliers_kernel, identify_outliers_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_kernel, only: tox_loess_required_workspace
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_real
+    use tox_loess_kernel, only: MODE_PLAIN, MODE_ROBUST, tox_loess_required_workspace
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
+    use tox_errors, only: validate_dimension_size, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -153,6 +154,7 @@ contains
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=15_int32)
         call validate_all_in_range_real(tmp_diagl, n_families, ierr, arg_pos=16_int32)
         call validate_all_in_range_real(tmp_eval_points, n_families * 1, ierr, arg_pos=18_int32)
+        if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=26_int32); end if
         if (is_err(ierr)) return
 
         call compute_family_scaling_kernel(&
@@ -273,6 +275,7 @@ contains
         call set_ok(ierr)
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
+        if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
         if (is_err(ierr)) return
 
         call tox_loess_required_workspace(&

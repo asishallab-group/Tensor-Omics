@@ -635,3 +635,29 @@ class TestReexportSynthesis:
 
         assert result.reexports == ()
         assert result.project.procedure("tox_demo_left", "left") is not None
+
+
+def mode_kernel_module():
+    """A kernel with a runtime mode argument: a table, but no per-mode procedure column.
+
+    Without that third column the mode stays an argument of one wrapper, which is what the
+    generated membership check is for.
+    """
+    # two columns: a third one is the per-mode-procedure opt-in, which is what this is not
+    mode_table = [
+        "which way to compute it",
+        "| Mode | Value |",
+        "|------|-------|",
+        "| fast | [[tox_demo_kernel(module):MODE_FAST(variable)]] |",
+        "| exact | [[tox_demo_kernel(module):MODE_EXACT(variable)]] |",
+    ]
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "compute_kernel",
+            real("values", Intent.INOUT, "(n)", doc="the data"),
+            integer("mode", Intent.IN, doc=mode_table),
+            integer("n", Intent.IN, doc="length of `values`"),
+            meta=Meta(summary="Compute", author="AUTHOR"),
+        ),
+    )

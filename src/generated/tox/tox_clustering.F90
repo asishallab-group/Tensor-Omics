@@ -3,10 +3,11 @@
 !> summary: Wrappers for [[tox_clustering_kernel(module)]]
 !| Generated from the kernel; do not edit -- regenerate instead.
 module tox_clustering
-    use tox_clustering_kernel, only: cluster_factor_trajectories_k_means_kernel, k_means_clustering_kernel, linkage_clustering_kernel
+    use tox_clustering_kernel, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED, cluster_factor_trajectories_k_means_kernel
+    use tox_clustering_kernel, only: k_means_clustering_kernel, linkage_clustering_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, validate_all_in_range_real, validate_dimension_size
-    use tox_errors, only: validate_distance_matrix, validate_in_range_int
+    use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, set_err_once
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_distance_matrix, validate_in_range_int
     M_IMPLICIT_NONE
     private
 
@@ -193,6 +194,7 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
         call validate_in_range_int(method, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
         call validate_distance_matrix(distances, n_points, ierr, arg_pos=1_int32)
+        if (method /= METHOD_AVERAGE .and. method /= METHOD_WEIGHTED .and. method /= METHOD_WARD) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
 
         call linkage_clustering_kernel(&

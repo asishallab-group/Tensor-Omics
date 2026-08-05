@@ -724,7 +724,9 @@ contains
         ! Case 5: invalid mode
         call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), 99_int32, &
                                                 factor_baseline, dependent_baseline, ierr)
-        call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_baselines_factor_dependent: invalid mode")
+        ! the wrapper checks the mode itself now, against the values its table names, so the
+        ! position is its own dummy list's and can be asserted again
+        call assert_err(ierr, ERR_INVALID_INPUT, "test_compute_baselines_factor_dependent: invalid mode", arg_pos=4_int32)
     end subroutine test_compute_baselines_factor_dependent
 
     !> Test the normalization of variable timeseries
