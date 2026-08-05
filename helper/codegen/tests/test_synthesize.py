@@ -365,6 +365,28 @@ class TestModeSplitSynthesis:
         # the now-unconditional requirement drops the directive
         assert threshold.directives.required_if_mode is None
 
+    def test_a_mode_scoped_argument_with_a_default_stays_optional(self):
+        # an argument the binding can default is never *required*: there the directive only
+        # scopes it to its mode, so the per-mode wrapper keeps it optional
+        from dataclasses import replace
+
+        from codegen.ir.directives import Default
+
+        source = mode_split_kernel_module()
+        kernel = source.procedure("detect_patterns_kernel")
+        threshold = kernel.argument("threshold")
+        object.__setattr__(
+            threshold,
+            "directives",
+            replace(threshold.directives, default=Default("0.5_real64")),
+        )
+
+        dosage = synthesize_wrappers(project(source)).project.procedure(
+            "tox_demo", "detect_dosage_effect"
+        )
+
+        assert dosage.argument("threshold").optional
+
     def test_a_required_in_another_mode_argument_is_absent(self):
         subfunc = self.result().project.procedure(
             "tox_demo", "detect_subfunctionalization"

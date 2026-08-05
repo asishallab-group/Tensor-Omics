@@ -243,17 +243,20 @@ def _mode_kept_arguments(
 
 
 def _as_required(argument: Argument) -> Argument:
-    """A copy of a required-in-this-mode optional as a mandatory argument.
+    """A copy of a mode-scoped optional, as this mode's wrapper takes it.
 
-    Its `DM_REQUIRED_IF_MODE` directive is dropped: in this wrapper it is unconditionally
-    required, so the conditional-requirement relation no longer applies.
+    Its `DM_REQUIRED_IF_MODE` directive is dropped: this wrapper is the mode, so the
+    conditional-requirement relation no longer applies. What is left is a plain argument,
+    mandatory -- unless it carries a `DM_DEFAULT`, which the binding supplies when the
+    caller omits it. Such an argument is never *required*; there the directive only scopes
+    it to its mode (absent from the others), and it stays optional.
     """
     return Argument(
         argument.name,
         argument.type,
         dimension=argument.dimension,
         intent=argument.intent,
-        optional=False,
+        optional=argument.directives.has_default,
         doc=argument.doc,
         directives=replace(argument.directives, required_if_mode=None),
         attributes=argument.attributes,
