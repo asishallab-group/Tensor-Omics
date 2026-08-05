@@ -344,7 +344,7 @@ contains
         v2 = [0.0_real64, 1.0_real64, 0.0_real64, 0.0_real64, 0.0_real64]
         selected_axes = [1, 1, 1]
         call clock_hand_angle_between_vectors(v1, v2, 5, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=5_int32), "ierr should be nonzero for invalid selected axes")
+        call assert_err(ierr, ERR_INVALID_INPUT, "ierr should be nonzero for invalid selected axes")
         call assert_false(ieee_is_nan(signed_angle), "Invalid axes should not produce NaN")
     end subroutine test_invalid_selected_axes
 
@@ -357,7 +357,7 @@ contains
         selected_axes = [1, 2, 5]
         call clock_hand_angle_between_vectors(v1, v2, 4, signed_angle, selected_axes, ierr)
 
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=5_int32), "ierr should be nonzero for out-of-bounds selected axes")
+        call assert_err(ierr, ERR_INVALID_INPUT, "ierr should be nonzero for out-of-bounds selected axes")
         call assert_false(ieee_is_nan(signed_angle), "Out-of-bounds axes should not produce NaN")
     end subroutine test_out_of_bounds_selected_axes
 

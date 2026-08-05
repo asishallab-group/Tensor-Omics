@@ -7,9 +7,9 @@ module tox_trajectory_contribution_analysis
     use tox_trajectory_contribution_analysis_kernel, only: compute_contributions_kernel, compute_p_values_kernel, compute_velocity_acceleration_contributions_kernel, compute_velocity_trajectories_kernel
     use tox_trajectory_contribution_analysis_kernel, only: compute_velocity_trajectory_kernel, perform_permutation_test_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
-    use tox_errors, only: validate_in_range_real
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
+    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -116,6 +116,7 @@ contains
             random_seed = random_seed,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine perform_permutation_test
 
     !> summary: Allocates its work arrays, then calls [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test_kernel]].
@@ -204,6 +205,7 @@ contains
             random_seed = random_seed,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine perform_permutation_test_alloc
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_kernel(module):compute_p_values_kernel]].
@@ -304,6 +306,7 @@ contains
             total_contribution = total_contribution,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_contributions
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_kernel(module):compute_all_contributions_kernel]].
@@ -387,6 +390,7 @@ contains
             tmp_dependent = tmp_dependent,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_all_contributions
 
     !> summary: Allocates its work arrays, then calls [[tox_trajectory_contribution_analysis_kernel(module):compute_all_contributions_kernel]].
@@ -469,6 +473,7 @@ contains
             tmp_dependent = tmp_dependent,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_all_contributions_alloc
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_kernel(module):compute_baselines_factor_dependent_kernel]].
@@ -515,6 +520,7 @@ contains
             dependent_baseline = dependent_baseline,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_baselines_factor_dependent
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_kernel(module):compute_velocity_trajectory_kernel]].
@@ -728,6 +734,7 @@ contains
             acceleration_contribution_series = acceleration_contribution_series,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_velocity_acceleration_contributions
 
     !> summary: Allocates its work arrays, then calls [[tox_trajectory_contribution_analysis_kernel(module):compute_velocity_acceleration_contributions_kernel]].
@@ -809,6 +816,7 @@ contains
             acceleration_contribution_series = acceleration_contribution_series,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_velocity_acceleration_contributions_alloc
 
 end module tox_trajectory_contribution_analysis

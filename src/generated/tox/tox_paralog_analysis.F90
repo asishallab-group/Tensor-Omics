@@ -8,9 +8,9 @@ module tox_paralog_analysis
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math, only: PI, above
     use f42_sort, only: init_perm, sort_array_heapsort
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
-    use tox_errors, only: validate_in_range_real
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
+    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -185,6 +185,7 @@ contains
             gain_gamma = gain_gamma,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine detect_dosage_effect
 
     !> summary: Allocates its work arrays, then calls [[tox_paralog_analysis_kernel(module):detect_patterns_kernel]].
@@ -285,6 +286,7 @@ contains
             gain_gamma = gain_gamma,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine detect_dosage_effect_alloc
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_kernel(module):detect_patterns_kernel]].
@@ -396,6 +398,7 @@ contains
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine detect_subfunctionalization
 
     !> summary: Allocates its work arrays, then calls [[tox_paralog_analysis_kernel(module):detect_patterns_kernel]].
@@ -504,6 +507,7 @@ contains
             tmp_work_array = tmp_work_array,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine detect_subfunctionalization_alloc
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_kernel(module):filter_paralogs_by_pattern_kernel]].
@@ -562,6 +566,7 @@ contains
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine filter_paralogs_by_pattern_dosage_effect
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_kernel(module):filter_paralogs_by_pattern_kernel]].
@@ -620,6 +625,7 @@ contains
             n_mask_chunks = n_mask_chunks,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine filter_paralogs_by_pattern_subfunctionalization
 
 end module tox_paralog_analysis

@@ -73,6 +73,11 @@ class TestModuleShell:
     def test_the_wrapper_is_public(self):
         assert "public :: scale_vector" in demo()
 
+    def test_no_position_is_cleared_when_the_kernel_reports_nothing(self):
+        # a kernel with no ierr cannot have packed a position, so neither the call nor the
+        # import belongs here
+        assert "clear_err_arg_pos" not in demo()
+
     def test_the_module_carries_a_generated_doc(self):
         # a non-empty module doc avoids a Ford "module has no documentation" warning
         assert "do not edit" in demo()
@@ -201,6 +206,16 @@ class TestKernelThatDeclaresIerr:
         text = self.demo_ierr()
         assert "call set_ok(ierr)" in text
         assert "if (is_err(ierr)) return" in text
+
+    def test_the_argument_position_the_kernel_packed_is_cleared(self):
+        # whatever position came back numbers the kernel's dummy list -- or a private
+        # helper's, further down -- so it names nothing the wrapper's caller passed
+        text = self.demo_ierr()
+        after_call = text.split("call risky_kernel(&", 1)[1]
+        assert "call clear_err_arg_pos(ierr)" in after_call
+
+    def test_and_the_clear_is_imported(self):
+        assert "clear_err_arg_pos" in self.demo_ierr().split("contains", 1)[0]
 
 
 class TestModeSplitEmit:

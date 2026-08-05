@@ -221,6 +221,8 @@ class FortranWrapperEmitter:
 
     def _error_imports(self, module: Module) -> list[str]:
         names = {"set_ok", "is_err"}
+        if self._emits_arg_pos_clear(module):
+            names.add("clear_err_arg_pos")
         for procedure in module:
             for argument in procedure.arguments:
                 validator = self._validator_for(argument)
@@ -393,6 +395,7 @@ class FortranWrapperEmitter:
             elif wrapper.argument(dummy.name) is not None:
                 actuals.append((dummy.name, dummy.name))
         self._call(writer, prologue.name, actuals)
+        self._clear_arg_pos(writer)
         writer.line(f"if (is_err({error})) return")
         writer.line(f"if ({handled}) return")
         writer.blank()
@@ -429,6 +432,25 @@ class FortranWrapperEmitter:
         """
         error = self.conventions.error_arg.lower()
         return [a for a in foo.arguments if a.name.lower() != error]
+
+    def _kernel_declares_error(self, foo: Procedure, module: Module) -> bool:
+        """Whether the kernel takes `ierr`, so the wrapper has a position to clear."""
+        error = self.conventions.error_arg.lower()
+        return any(
+            a.name.lower() == error for a in self._kernel_call_arguments(foo, module)
+        )
+
+    def _emits_arg_pos_clear(self, module: Module) -> bool:
+        """Whether any body here calls out to hand-written code that returns `ierr`.
+
+        The one source of truth for both the emitted call and the `use` list -- deciding the
+        two separately is how a missing import gets shipped.
+        """
+        return any(
+            self._kernel_declares_error(procedure, module)
+            for procedure in module
+            if not self._is_allocating(procedure, module)
+        ) or bool(self._prologues(module))
 
     def _kernel_call_arguments(self, foo: Procedure, module: Module) -> list[Argument]:
         """The kernel's own signature, for the call.
@@ -778,6 +800,21 @@ class FortranWrapperEmitter:
             elif lowered in present:
                 actuals.append((argument.name, argument.name))
         self._call(writer, kernel, actuals)
+        if self._kernel_declares_error(foo, module):
+            self._clear_arg_pos(writer)
+
+    def _clear_arg_pos(self, writer: Writer) -> None:
+        """Drop the position an `ierr` carried in from a hand-written procedure.
+
+        It is that procedure's own numbering -- or a private helper's, further down, since a
+        position propagates unchanged through every call that does not rewrite it -- so it
+        names nothing in this wrapper's dummy list. The code itself is still true.
+
+        Safe because `ierr` is provably OK when the call is made: validation ends with
+        `if (is_err(ierr)) return`, and so do the prologue and recommend calls. Nothing this
+        clears can be a position the wrapper itself set.
+        """
+        writer.line(f"call clear_err_arg_pos({self.conventions.error_arg})")
 
     def _call(self, writer: Writer, name: str, actuals) -> None:
         writer.line(f"call {name}(&")

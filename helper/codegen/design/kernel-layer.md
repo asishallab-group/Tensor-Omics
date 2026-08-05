@@ -158,6 +158,49 @@ types; per-argument `!!` docs; `tmp_<name>` work arrays; `<arg>_shape`, `n_selec
 `mode`/`method`; `DM_DEFAULT`, `DM_REQUIRED_IF_MODE`, `DM_OPTIONAL_OUTPUT`, `DM_RESULT_SIZE_IS`;
 and `DM_OUTPUT_FROM(size_arg, recommend_proc, tox_X_kernel, AUTO)`.
 
+### The argument position an `ierr` carries
+
+An `ierr` packs the position of the argument it blames (`arg_pos * 10000 + code`). A kernel may
+report a genuine runtime error, and when it does the generated wrapper **clears that position**
+before returning — `call clear_err_arg_pos(ierr)` after every kernel call, and after every
+prologue call. The code survives; the position does not.
+
+The position is the *kernel's* numbering, and the wrapper's dummy list is a different list: it
+drops work arrays, permutations and recommend-sized values, appends `ierr` last, and a
+mode-split wrapper drops the mode argument too. Worse, a position propagates unchanged through
+every call that does not rewrite it, so what arrives is often not even the kernel's own
+numbering but that of some private helper three frames down — `compute_family_scaling` returns
+`calc_percentile`'s positions 1–3, which in *its* signature are `n_genes`, `n_families` and
+`distances`. Reporting any of that to a caller is worse than saying nothing, and "not argument
+related" is what position 0 means.
+
+This is safe because `ierr` is provably OK at the moment of the call: validation ends with
+`if (is_err(ierr)) return`, and so do the prologue and recommend calls. Nothing the clear
+discards can be a position the wrapper itself set. **A change that lets validation fall through
+without returning would break that, and silently.**
+
+The cost is real but small: six kernel-side positions are correct today and become 0. Three are
+already unreachable from Python and R, because the C wrapper converts the mode *string* and
+rejects an unknown one before Fortran is entered; only a direct Fortran caller ever saw them.
+
+**Rejected — remapping the kernel's position onto the wrapper's by name.** This is what the
+hand-written per-mode wrappers did, in runs of a dozen `map_err_arg_pos` calls apiece. It
+assumes the packed position refers to the kernel's own dummy, which is false wherever the
+position propagated in from a helper — the majority of sites.
+
+**Rejected — keeping the position when the leading arguments coincide.** `detect_dosage_effect`'s
+first four arguments *are* the kernel's first four, so a helper-borrowed 3 or 4 would survive
+looking perfectly plausible as `n_genes` or `n_dims`. There is no prefix a generator can trust.
+
+**Rejected — just deleting `arg_pos=` from the kernels.** It cannot reach a position that
+propagates in from f42, which is exactly the `compute_family_scaling` case above. The kernels
+keep their annotations: they are correct for anyone calling a kernel directly, and the test
+suite does.
+
+`map_err_arg_pos` stays for hand-written code where the two dummy lists really are known to
+correspond. The recommend-routine call site would need the same clear, but no recommend routine
+reachable from generated code takes an `ierr` today, so nothing is emitted there.
+
 ### Validation ranges
 
 Bounds are opt-in; **finiteness is not.** A real value that is NaN or infinite is a bug unless

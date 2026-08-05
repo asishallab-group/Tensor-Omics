@@ -145,6 +145,21 @@ contains
         end if
     end subroutine map_err_arg_pos
 
+    !> Drops the argument position from an error code, keeping the error itself.
+    !|
+    !| An `ierr` that crosses out of a procedure into a caller with a different dummy list
+    !| carries a position naming an argument the caller does not have -- and it may not even
+    !| be the callee's own position, since it propagates unchanged from whatever private
+    !| helper set it. Nothing can translate that, so the honest report is "not argument
+    !| related". Use [[tox_errors(module):map_err_arg_pos(subroutine)]] instead where the two
+    !| dummy lists really are known to correspond.
+    pure subroutine clear_err_arg_pos(ierr)
+        integer(int32), intent(inout) :: ierr
+            !! Error code
+
+        ierr = get_err_code(ierr)
+    end subroutine clear_err_arg_pos
+
     !> set the error code to OK, use at beginning of procedures
     elemental subroutine set_ok(ierr)
         integer(int32), intent(out) :: ierr

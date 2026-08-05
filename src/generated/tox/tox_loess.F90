@@ -6,8 +6,9 @@ module tox_loess
     use tox_loess_kernel, only: EPS_LOESS, loess_degenerate_fit, loess_fit_plain_kernel, loess_fit_robust_kernel
     use tox_loess_kernel, only: tox_loess_required_workspace
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
+    use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
+    use tox_errors, only: validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -117,6 +118,7 @@ contains
             handled = handled,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
         if (is_err(ierr)) return
         if (handled) return
 
@@ -139,6 +141,7 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine loess_fit_plain
 
     !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
@@ -219,6 +222,7 @@ contains
             handled = handled,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
         if (is_err(ierr)) return
         if (handled) return
 
@@ -252,6 +256,7 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine loess_fit_plain_alloc
 
     !> summary: Validates its inputs, then calls [[tox_loess_kernel(module):loess_fit_robust_kernel]].
@@ -374,6 +379,7 @@ contains
             handled = handled,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
         if (is_err(ierr)) return
         if (handled) return
 
@@ -401,6 +407,7 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine loess_fit_robust
 
     !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_robust_kernel]].
@@ -494,6 +501,7 @@ contains
             handled = handled,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
         if (is_err(ierr)) return
         if (handled) return
 
@@ -536,6 +544,7 @@ contains
             fitted_values = fitted_values,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine loess_fit_robust_alloc
 
 end module tox_loess

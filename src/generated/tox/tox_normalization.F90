@@ -6,8 +6,8 @@ module tox_normalization
     use tox_normalization_kernel, only: calc_fchange_kernel, calc_tiss_avg_kernel, log2_transformation_kernel, normalization_pipeline_alloc_kernel
     use tox_normalization_kernel, only: normalize_by_std_dev_alloc_kernel, normalize_unit_length_kernel, quantile_normalization_kernel, root_mean_sq_normalization_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_int, validate_dimension_size, validate_in_range_real
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
+    use tox_errors, only: set_err, validate_all_in_range_int, validate_dimension_size, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -47,6 +47,7 @@ contains
             n_dims = n_dims,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine normalize_unit_length
 
     !> summary: Validates its inputs, then calls [[tox_normalization_kernel(module):normalization_pipeline_alloc_kernel]].
@@ -109,6 +110,7 @@ contains
             use_quantile = use_quantile,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine normalization_pipeline_alloc
 
     !> summary: Validates its inputs, then calls [[tox_normalization_kernel(module):normalize_by_std_dev_alloc_kernel]].
@@ -157,6 +159,7 @@ contains
             degree = degree,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine normalize_by_std_dev_alloc
 
     !> summary: Validates its inputs, then calls [[tox_normalization_kernel(module):root_mean_sq_normalization_kernel]].
@@ -324,6 +327,7 @@ contains
             transformed_expr = transformed_expr,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine log2_transformation
 
     !> summary: Validates its inputs, then calls [[tox_normalization_kernel(module):calc_tiss_avg_kernel]].

@@ -6,8 +6,8 @@ module tox_get_outliers
     use tox_get_outliers_kernel, only: compute_family_scaling_kernel, compute_rdi_kernel, detect_outliers_kernel, identify_outliers_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_loess_kernel, only: tox_loess_required_workspace
-    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
-    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_real
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
+    use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -188,6 +188,7 @@ contains
             tmp_means_aux = tmp_means_aux,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_family_scaling
 
     !> summary: Allocates its work arrays, then calls [[tox_get_outliers_kernel(module):compute_family_scaling_kernel]].
@@ -329,6 +330,7 @@ contains
             tmp_means_aux = tmp_means_aux,&
             ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine compute_family_scaling_alloc
 
     !> summary: Validates its inputs, then calls [[tox_get_outliers_kernel(module):compute_rdi_kernel]].
@@ -672,6 +674,7 @@ contains
             ierr = ierr,&
             percentile = percentile&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine detect_outliers
 
     !> summary: Allocates its work arrays, then calls [[tox_get_outliers_kernel(module):detect_outliers_kernel]].
@@ -812,6 +815,7 @@ contains
             ierr = ierr,&
             percentile = percentile&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine detect_outliers_alloc
 
 end module tox_get_outliers
