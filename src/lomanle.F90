@@ -2795,8 +2795,22 @@ contains
     !| tier 1 whose spheres overlap (the same geometric test
     !| build_tier2_mst_edges later uses to fill the candidate list), so the
     !| caller can allocate the tier-2 candidate arrays to the exact size.
+    !|
+    !| Finds overlap candidates via the small anchor-only k-d tree built once
+    !| by build_anchor_mst_alloc, instead of an O(n_anchor^2) pairwise scan:
+    !| for each anchor `lo`, a single range query of radius
+    !| sphere_radii(lo) + max_anchor_radius is a superset of every `hi` that
+    !| can possibly satisfy the true overlap test -- since sphere_radii(hi)
+    !| <= max_anchor_radius for every anchor, dist(lo,hi) <= radius(lo) +
+    !| radius(hi) always implies dist(lo,hi) <= radius(lo) + max_anchor_radius,
+    !| so no true candidate is ever missed by the query. Each candidate the
+    !| query returns is then checked against the exact
+    !| sphere_radii(lo) + sphere_radii(hi) threshold below, same predicate as
+    !| the old pairwise scan. This turns O(n_anchor^2) into
+    !| O(n_anchor log n_anchor).
     pure subroutine count_tier2_candidate_pairs(n_points, dim, n_anchor, anchor_to_point, anchor_centers, &
-                                           sphere_radii, pair_seen_mask, n_cand2)
+                                           sphere_radii, pair_seen_mask, &
+                                           anchor_coords, anchor_kd_indices, anchor_dim_order, n_cand2)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -2812,16 +2826,29 @@ contains
             !! Per-anchor sphere radius
         logical,        intent(in) :: pair_seen_mask(n_anchor, n_anchor)
             !! .true. for anchor pairs already flagged by tier 1
+        real(real64),   intent(in) :: anchor_coords(dim, n_anchor)
+            !! Anchor centers, compacted to columns 1..n_anchor (see build_anchor_mst_alloc)
+        integer(int32), intent(in) :: anchor_kd_indices(n_anchor)
+            !! k-d tree indices over anchor_coords, see kd_tree module
+        integer(int32), intent(in) :: anchor_dim_order(dim)
+            !! k-d tree dimension-splitting order over anchor_coords
 
         integer(int32), intent(out) :: n_cand2
             !! Number of tier-2 candidate edges
 
-        integer(int32) :: lo, hi
-        real(real64)   :: dist_c
+        integer(int32) :: lo, hi, pos, n_found
+        real(real64)   :: dist_c, max_radius, query_radius
+        integer(int32) :: range_buf(n_anchor)
 
+        max_radius = maxval(sphere_radii(anchor_to_point))
         n_cand2 = 0
-        do hi = 2, n_anchor
-            do lo = 1, hi - 1
+        do lo = 1, n_anchor
+            query_radius = sphere_radii(anchor_to_point(lo)) + max_radius
+            call kd_range_query_list(anchor_coords, anchor_kd_indices, dim, n_anchor, anchor_dim_order, &
+                                     anchor_coords(:, lo), query_radius, range_buf, n_found)
+            do pos = 1, n_found
+                hi = range_buf(pos)
+                if (hi <= lo) cycle ! unordered pair (lo,hi) with lo<hi, counted once; also skips self (hi==lo)
                 if (pair_seen_mask(lo, hi)) cycle
                 dist_c = sqrt(sum((anchor_centers(:, anchor_to_point(hi)) - &
                                    anchor_centers(:, anchor_to_point(lo)))**2))
@@ -2837,6 +2864,14 @@ contains
     !| fallback for thin overlaps tier 1 misses) and delegates to
     !| build_anchor_mst, which runs Kruskal + union-find over them and
     !| classifies anchor roles. No further processing happens here.
+    !|
+    !| Also builds a small k-d tree over just the n_anchor anchor centers
+    !| (as opposed to the module-wide k-d tree over all n_points, built once
+    !| in Step 0), which count_tier2_candidate_pairs/build_tier2_mst_edges
+    !| below use to find sphere-overlap candidates in
+    !| O(n_anchor log n_anchor) instead of the O(n_anchor^2) pairwise scan
+    !| they used before. Built once here -- the _alloc layer owns allocation
+    !| -- and passed down as intent(in) to those pure workers.
     subroutine build_anchor_mst_alloc(n_points, dim, n_anchor, anchor_to_point, anchor_centers, &
                                       sphere_radii, point_to_anchor, primary_anchor_ids, &
                                       secondary_anchor_ids, mst_a1, mst_a2, n_mst, anchor_degree, &
@@ -2872,7 +2907,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code: 0 = success
 
-        integer(int32) :: n_cand, n_cand2
+        integer(int32) :: k, n_cand, n_cand2
         logical,        allocatable :: pair_seen_mask(:,:)
         integer(int32), allocatable :: tmp_cand_a1(:), tmp_cand_a2(:), tmp_cand_perm(:)
         integer(int32), allocatable :: tmp_cand_lstack(:), tmp_cand_rstack(:)
@@ -2881,8 +2916,34 @@ contains
         integer(int32), allocatable :: tmp_cand2_lstack(:), tmp_cand2_rstack(:)
         real(real64),   allocatable :: tmp_cand2_weight(:)
         integer(int32), allocatable :: tmp_uf_parent(:)
+        real(real64),   allocatable :: anchor_coords(:,:)
+        integer(int32), allocatable :: anchor_kd_indices(:), anchor_dim_order(:), anchor_kd_workspace(:)
+        integer(int32), allocatable :: anchor_kd_perm(:), anchor_kd_lstack(:), anchor_kd_rstack(:)
+        integer(int32), allocatable :: anchor_kd_rec_stack(:,:)
+        real(real64),   allocatable :: anchor_kd_val_buf(:)
 
         call set_ok(ierr)
+
+        ! Small k-d tree over the n_anchor anchor centers, used below by
+        ! count_tier2_candidate_pairs/build_anchor_mst (-> build_tier2_mst_edges)
+        ! for the sphere-overlap candidate search -- see those routines'
+        ! docstrings. Every scratch buffer here is sized to n_anchor, not
+        ! n_points: this tree indexes anchors, not points.
+        M_ALLOCATE(anchor_coords(dim, n_anchor))
+        do k = 1, n_anchor ; anchor_coords(:, k) = anchor_centers(:, anchor_to_point(k)) ; end do
+        M_ALLOCATE(anchor_kd_indices(n_anchor))
+        M_ALLOCATE(anchor_dim_order(dim))
+        M_ALLOCATE(anchor_kd_workspace(n_anchor))
+        M_ALLOCATE(anchor_kd_val_buf(n_anchor))
+        M_ALLOCATE(anchor_kd_perm(n_anchor))
+        M_ALLOCATE(anchor_kd_lstack(n_anchor))
+        M_ALLOCATE(anchor_kd_rstack(n_anchor))
+        M_ALLOCATE(anchor_kd_rec_stack(3, n_anchor))
+        do k = 1, dim ; anchor_dim_order(k) = k ; end do
+        call build_kd_index(anchor_coords, dim, n_anchor, anchor_kd_indices, anchor_dim_order, &
+                            anchor_kd_workspace, anchor_kd_val_buf, anchor_kd_perm, &
+                            anchor_kd_lstack, anchor_kd_rstack, anchor_kd_rec_stack, ierr)
+        if (.not. is_ok(ierr)) return
 
         M_ALLOCATE(pair_seen_mask(n_anchor, n_anchor))
         call mark_tier1_candidate_pairs(n_points, n_anchor, point_to_anchor, &
@@ -2897,7 +2958,8 @@ contains
         M_ALLOCATE(tmp_cand_rstack(max(1,n_cand)))
 
         call count_tier2_candidate_pairs(n_points, dim, n_anchor, anchor_to_point, anchor_centers, &
-                                         sphere_radii, pair_seen_mask, n_cand2)
+                                         sphere_radii, pair_seen_mask, &
+                                         anchor_coords, anchor_kd_indices, anchor_dim_order, n_cand2)
         M_ALLOCATE(tmp_cand2_a1(max(1,n_cand2)))
         M_ALLOCATE(tmp_cand2_a2(max(1,n_cand2)))
         M_ALLOCATE(tmp_cand2_weight(max(1,n_cand2)))
@@ -2911,7 +2973,8 @@ contains
                               sphere_radii, pair_seen_mask, n_cand, n_cand2, &
                               tmp_cand_a1, tmp_cand_a2, tmp_cand_weight, tmp_cand_perm, tmp_cand_lstack, tmp_cand_rstack, &
                               tmp_cand2_a1, tmp_cand2_a2, tmp_cand2_weight, tmp_cand2_perm, tmp_cand2_lstack, tmp_cand2_rstack, &
-                              tmp_uf_parent, mst_a1, mst_a2, n_mst, anchor_degree, anchor_role)
+                              tmp_uf_parent, anchor_coords, anchor_kd_indices, anchor_dim_order, &
+                              mst_a1, mst_a2, n_mst, anchor_degree, anchor_role)
 
     end subroutine build_anchor_mst_alloc
 
@@ -2923,7 +2986,8 @@ contains
                                 sphere_radii, pair_seen_mask, n_cand, n_cand2, &
                                 tmp_cand_a1, tmp_cand_a2, tmp_cand_weight, tmp_cand_perm, tmp_cand_lstack, tmp_cand_rstack, &
                                 tmp_cand2_a1, tmp_cand2_a2, tmp_cand2_weight, tmp_cand2_perm, tmp_cand2_lstack, tmp_cand2_rstack, &
-                                tmp_uf_parent, mst_a1, mst_a2, n_mst, anchor_degree, anchor_role)
+                                tmp_uf_parent, anchor_coords, anchor_kd_indices, anchor_dim_order, &
+                                mst_a1, mst_a2, n_mst, anchor_degree, anchor_role)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -2958,6 +3022,12 @@ contains
             !! Tier-2 candidate edge weight (anchor-center distance)
         integer(int32), intent(inout) :: tmp_uf_parent(n_anchor)
             !! Union-find parent array
+        real(real64),   intent(in) :: anchor_coords(dim, n_anchor)
+            !! Anchor centers, compacted to columns 1..n_anchor (see build_anchor_mst_alloc)
+        integer(int32), intent(in) :: anchor_kd_indices(n_anchor)
+            !! k-d tree indices over anchor_coords, see kd_tree module
+        integer(int32), intent(in) :: anchor_dim_order(dim)
+            !! k-d tree dimension-splitting order over anchor_coords
 
         integer(int32), intent(out) :: mst_a1(n_anchor), mst_a2(n_anchor)
             !! MST edge list, as compact anchor-index pairs
@@ -2983,7 +3053,8 @@ contains
         call build_tier2_mst_edges(n_points, dim, n_anchor, anchor_to_point, anchor_centers, &
                                    sphere_radii, pair_seen_mask, n_cand2, tmp_cand2_a1, tmp_cand2_a2, tmp_cand2_weight, &
                                    tmp_cand2_perm, tmp_cand2_lstack, tmp_cand2_rstack, &
-                                   tmp_uf_parent, mst_a1, mst_a2, n_mst, anchor_degree)
+                                   tmp_uf_parent, anchor_coords, anchor_kd_indices, anchor_dim_order, &
+                                   mst_a1, mst_a2, n_mst, anchor_degree)
 
         call classify_anchor_roles(n_points, n_anchor, anchor_to_point, anchor_degree, anchor_role)
 
@@ -3074,10 +3145,28 @@ contains
     !| neighboring anchors overlap thinly enough that no single point ranked
     !| them as its own top-2 -- leaving a visible gap in the backbone
     !| otherwise.
+    !|
+    !| Candidate discovery uses the same anchor-only k-d tree/range-query
+    !| technique as count_tier2_candidate_pairs above (see its docstring for
+    !| why the query is exact): O(n_anchor log n_anchor) instead of the
+    !| O(n_anchor^2) pairwise scan this used to be. One difference from the
+    !| old scan worth being explicit about: the old double loop enumerated
+    !| pairs primarily by `hi` (outer) then `lo` (inner); this enumerates
+    !| primarily by `lo`, and each `lo`'s candidates come back from
+    !| kd_range_query_list in k-d tree traversal order, not index order. The
+    !| resulting *set* of candidate edges and their weights is identical
+    !| either way -- each edge's weight is computed the same way regardless
+    !| of discovery order -- so the MST has the same total weight and
+    !| connectivity. The only place enumeration order could matter is
+    !| tie-breaking between two *exactly* equal-weight candidate edges in
+    !| the sort_array call below, which is not guaranteed stable; for
+    !| real-valued anchor-center distances this is a measure-zero case in
+    !| practice.
     pure subroutine build_tier2_mst_edges(n_points, dim, n_anchor, anchor_to_point, anchor_centers, &
                                      sphere_radii, pair_seen_mask, n_cand2, tmp_cand2_a1, tmp_cand2_a2, tmp_cand2_weight, &
                                      tmp_cand2_perm, tmp_cand2_lstack, tmp_cand2_rstack, &
-                                     tmp_uf_parent, mst_a1, mst_a2, n_mst, anchor_degree)
+                                     tmp_uf_parent, anchor_coords, anchor_kd_indices, anchor_dim_order, &
+                                     mst_a1, mst_a2, n_mst, anchor_degree)
 
         integer(int32), intent(in) :: n_points
             !! Number of points in the dataset
@@ -3104,6 +3193,12 @@ contains
             !! Tier-2 candidate edge weight (anchor-center distance)
         integer(int32), intent(inout) :: tmp_uf_parent(n_anchor)
             !! Union-find parent array
+        real(real64),   intent(in) :: anchor_coords(dim, n_anchor)
+            !! Anchor centers, compacted to columns 1..n_anchor (see build_anchor_mst_alloc)
+        integer(int32), intent(in) :: anchor_kd_indices(n_anchor)
+            !! k-d tree indices over anchor_coords, see kd_tree module
+        integer(int32), intent(in) :: anchor_dim_order(dim)
+            !! k-d tree dimension-splitting order over anchor_coords
 
         integer(int32), intent(inout) :: mst_a1(n_anchor), mst_a2(n_anchor)
             !! MST edge list, as compact anchor-index pairs
@@ -3112,14 +3207,21 @@ contains
         integer(int32), intent(inout) :: anchor_degree(n_anchor)
             !! Degree of each anchor in the MST
 
-        integer(int32) :: a1, a2, lo, hi, e_idx, root1, root2, idx
-        real(real64)   :: dist_c
+        integer(int32) :: a1, a2, lo, hi, e_idx, root1, root2, idx, pos, n_found
+        real(real64)   :: dist_c, max_radius, query_radius
+        integer(int32) :: range_buf(n_anchor)
 
         if (n_cand2 <= 0) return
 
+        max_radius = maxval(sphere_radii(anchor_to_point))
         e_idx = 0
-        do hi = 2, n_anchor
-            do lo = 1, hi - 1
+        do lo = 1, n_anchor
+            query_radius = sphere_radii(anchor_to_point(lo)) + max_radius
+            call kd_range_query_list(anchor_coords, anchor_kd_indices, dim, n_anchor, anchor_dim_order, &
+                                     anchor_coords(:, lo), query_radius, range_buf, n_found)
+            do pos = 1, n_found
+                hi = range_buf(pos)
+                if (hi <= lo) cycle ! unordered pair (lo,hi) with lo<hi, counted once; also skips self (hi==lo)
                 if (pair_seen_mask(lo, hi)) cycle
                 dist_c = sqrt(sum((anchor_centers(:, anchor_to_point(hi)) - &
                                    anchor_centers(:, anchor_to_point(lo)))**2))
