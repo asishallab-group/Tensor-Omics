@@ -1,11 +1,41 @@
 FROM archlinux:latest
 
+# Everything the repository needs to build itself, generate its bindings, and run all four
+# test suites. The repository is mounted at /opt (see the README), so nothing is copied in.
+#
+# Python packages go into a virtualenv rather than system-wide: Arch marks its Python as
+# externally managed (PEP 668), so pip refuses to touch it. The venv lives outside /opt on
+# purpose -- the bind mount over /opt would hide anything placed there.
+
 # Always update keyring first to avoid verification failures
 RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
-    pacman -Sy --noconfirm gcc-fortran gcc make xxhash libzip python python-pip python-numpy && \
-    pacman -Sy --noconfirm r gcc-fortran git && \
+    pacman -Sy --noconfirm \
+        gcc-fortran gcc make git curl \
+        xxhash libzip \
+        python python-pip \
+        r && \
     pacman -Scc --noconfirm
+
+# gcc-fortran, gcc, make  the build itself
+# git                     build.sh reads the current branch to decide on a clean build
+# xxhash, libzip          linked by f42_xxh3_hashmap and tox_data_archive (see fpm.toml)
+# r                       the R test suite, and `R CMD config --cppflags` during the build
+
+ENV VIRTUAL_ENV=/usr/local/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN python -m venv "$VIRTUAL_ENV" && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+        "FORD>=7" "pcpp>=1.30" "numpy>=2" \
+        pandas \
+        "pytest>=8"
+
+# FORD, pcpp, numpy   the code generator, which ./build.sh runs before compiling. Keep in step
+#                     with helper/codegen/requirements-dev.txt. FORD also builds the docs
+#                     (`ford concise_project_info.md`)
+# pandas              the Python test suite
+# pytest              the code generator's own test suite
 
 # Install fpm binary
 RUN curl -L --output /usr/local/bin/fpm \
