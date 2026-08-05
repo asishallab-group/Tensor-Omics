@@ -267,6 +267,23 @@ This requires one small extension to `tox_errors`: `validate_in_range_real` and
 tolerated) would be silent. Finite-by-default with explicit opt-out states the tolerance where
 the tolerance actually lives.
 
+**Rejected — `DM_VALIDATE`, a hook for a kernel's own validation helper.** The proposal was an
+argument-level directive letting the generated wrapper call a hand-written validation routine
+inside the kernel, passing *the wrapper's* position for that argument — the one number the
+kernel cannot know, and the reason `clear_err_arg_pos` has to zero what a kernel returns. It had
+exactly two customers, both the same check: `clock_hand_angle_between_vectors` needed its three
+axis indices to be mutually distinct, a relation between an argument and itself that no
+per-argument bound can state.
+
+That check is gone, because the argument that needed it was the wrong argument. The signed angle
+now takes an orientation *vector* rather than three axis indices, so the rule is a bound like any
+other. The general lesson, and the reason this stays rejected rather than deferred: **a procedure
+that needs a validation nothing in the contract can express is a procedure whose signature is
+wrong.** The generator's vocabulary is the API review. If a genuine new kind of constraint ever
+turns up, it earns a *convention* — a directive with a name, a meaning, and every kernel that
+qualifies using it — not a per-procedure escape hatch that hides one bad signature and stops
+anyone from noticing the next.
+
 ### Sorting and work arrays (`foo_alloc`)
 
 `foo_alloc` exists only when the kernel needs work arrays, a pre-sorted permutation, or a
