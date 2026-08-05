@@ -101,6 +101,35 @@ def output_sizing_computed_kernel_module():
     )
 
 
+def prologue_kernel_module(scope):
+    """A kernel with a prologue, plus the prologue procedure it names."""
+    from codegen.ir.directives import Prologue
+
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "guard",  # the prologue: may handle the call and skip the kernel
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+            logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            ierr(),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        ),
+        procedure(
+            "crunch_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+            meta=Meta(summary="Crunch", author="AUTHOR"),
+            directives=Directives(
+                prologue=Prologue("guard", "tox_demo_kernel", scope)
+            ),
+        ),
+    )
+
+
 def mode_split_kernel_module():
     """A kernel with a mode argument whose table names a procedure per mode."""
     mode_table = [

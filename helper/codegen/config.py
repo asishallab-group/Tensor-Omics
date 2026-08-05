@@ -69,6 +69,9 @@ class Conventions:
     #: an alias verbatim (`mode`) or carries one as a suffix (`link_method`).
     mode_aliases: tuple[str, ...] = ("mode", "method")
 
+    #: The flag a prologue sets to say it handled the call, so the kernel is skipped
+    prologue_handled_arg: str = "handled"
+
     #: Header of the optional third mode-table column. Its presence opts a mode argument
     #: into per-mode wrapper generation: one procedure per mode, named in that column
     #: (e.g. `detect_dosage_effect`), instead of a single procedure taking the mode.

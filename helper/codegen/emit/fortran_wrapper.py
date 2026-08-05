@@ -118,6 +118,8 @@ class FortranWrapperEmitter:
         extra: dict[str, set[str]] = {}
         for producer_module, names in self._producers(module).items():
             extra.setdefault(producer_module, set()).update(names)
+        for prologue_module, names in self._prologues(module).items():
+            extra.setdefault(prologue_module, set()).update(names)
         f42 = set()
         if self._has_permutations(module):
             f42 |= {"init_perm", "sort_array_heapsort"}
@@ -201,6 +203,21 @@ class FortranWrapperEmitter:
         ordered = ["set_ok", "is_err"]
         return ordered + sorted(names - set(ordered))
 
+    def _prologues(self, module: Module) -> dict[str, set[str]]:
+        """The prologue procedures this module's wrappers call, by the module they live in."""
+        found: dict[str, set[str]] = {}
+        for procedure in module:
+            prologue = self._prologue_for(
+                self._sibling(module, procedure)
+                if self._is_allocating(procedure, module)
+                else procedure,
+                module,
+                is_allocating=self._is_allocating(procedure, module),
+            )
+            if prologue is not None and prologue.module is not None:
+                found.setdefault(prologue.module.name, set()).add(prologue.name)
+        return found
+
     def _producers(self, module: Module) -> dict[str, set[str]]:
         producers: dict[str, set[str]] = {}
         for alloc in module:
@@ -261,10 +278,13 @@ class FortranWrapperEmitter:
     def _validating_body(
         self, writer: Writer, foo: Procedure, module: Module
     ) -> None:
+        prologue = self._prologue_for(foo, module, is_allocating=False)
         self._declarations(writer, foo.arguments)
+        self._prologue_local(writer, prologue)
         writer.blank()
         self._validation(writer, foo)
         writer.blank()
+        self._prologue_call(writer, prologue, foo, module)
         self._kernel_call(writer, foo, module)
 
     def _allocating_body(
@@ -273,16 +293,69 @@ class FortranWrapperEmitter:
         foo = self._sibling(module, alloc)
         taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
 
+        prologue = self._prologue_for(foo, module, is_allocating=True)
         self._declarations(writer, alloc.arguments)
         self._locals(writer, taken)
+        self._prologue_local(writer, prologue)
         writer.blank()
         self._validation(writer, alloc)
         writer.blank()
+        self._prologue_call(writer, prologue, alloc, module)
         self._recommend_calls(writer, foo, alloc, taken)
         self._allocations(writer, taken)
         self._permutations(writer, taken)
         writer.blank()
         self._kernel_call(writer, foo, module)
+
+    # -- prologue ---------------------------------------------------------------
+
+    def _prologue_for(self, foo: Procedure, module: Module, is_allocating: bool):
+        """The prologue this wrapper runs, resolved to the procedure it names.
+
+        Declared on the kernel, since it is the kernel's own contract; which wrappers run it
+        is the directive's scope. Returns None when there is none, or when the project is
+        unavailable (a unit test), so the ordinary path is unaffected.
+        """
+        if self.project is None:
+            return None
+        kernel = self.project.procedure(
+            self._kernel_module(module), self._kernel_name(foo, module)
+        )
+        if kernel is None:
+            return None
+        directive = kernel.directives.prologue
+        if directive is None or not directive.runs_in(is_allocating):
+            return None
+        return self.project.procedure(directive.module, directive.procedure)
+
+    def _prologue_local(self, writer: Writer, prologue) -> None:
+        if prologue is not None:
+            writer.line(f"logical :: {self.conventions.prologue_handled_arg}")
+
+    def _prologue_call(self, writer: Writer, prologue, wrapper: Procedure, module: Module) -> None:
+        """Run the prologue, and return early if it handled the call itself.
+
+        Its dummies are supplied by name from the wrapper's own arguments, as a recommend
+        routine's are; `handled` and `ierr` come from the wrapper. An argument the wrapper
+        does not have is left out, so a prologue may take fewer arguments than the kernel.
+        """
+        if prologue is None:
+            return
+        error = self.conventions.error_arg
+        handled = self.conventions.prologue_handled_arg
+        actuals = []
+        for dummy in prologue.arguments:
+            lowered = dummy.name.lower()
+            if lowered == error.lower():
+                actuals.append((dummy.name, error))
+            elif lowered == handled.lower():
+                actuals.append((dummy.name, handled))
+            elif wrapper.argument(dummy.name) is not None:
+                actuals.append((dummy.name, dummy.name))
+        self._call(writer, prologue.name, actuals)
+        writer.line(f"if (is_err({error})) return")
+        writer.line(f"if ({handled}) return")
+        writer.blank()
 
     # -- names ------------------------------------------------------------------
 

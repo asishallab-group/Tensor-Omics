@@ -334,3 +334,66 @@ class TestAllocatingWrapper:
         assert body.index("M_ALLOCATE(values_perm(n))") < body.index(
             "call sort_array_heapsort(values, values_perm)"
         )
+
+
+class TestPrologue:
+    """A routine the wrapper runs before the kernel, which may handle the call itself."""
+
+    def emitted_with(self, scope):
+        from builders import project
+        from test_synthesize import prologue_kernel_module
+
+        return emitted(project(prologue_kernel_module(scope)))
+
+    def body(self, text, name):
+        start = text.index(f"subroutine {name}(")
+        return text[start : text.index(f"end subroutine {name}")]
+
+    def test_both_runs_it_in_each_wrapper(self):
+        from codegen.ir.directives import PrologueScope
+
+        text = self.emitted_with(PrologueScope.BOTH)
+
+        for name in ("crunch", "crunch_alloc"):
+            body = self.body(text, name)
+            assert "call guard(&" in body, name
+            assert "handled = handled" in body, name
+
+    def test_it_returns_early_when_the_prologue_handled_the_call(self):
+        from codegen.ir.directives import PrologueScope
+
+        body = self.body(self.emitted_with(PrologueScope.BOTH), "crunch")
+
+        assert "logical :: handled" in body
+        assert "if (handled) return" in body
+        # and the kernel is only reached afterwards
+        assert body.index("if (handled) return") < body.index("call crunch_kernel(")
+
+    def test_alloc_scope_runs_it_only_in_the_allocating_wrapper(self):
+        from codegen.ir.directives import PrologueScope
+
+        text = self.emitted_with(PrologueScope.ALLOC)
+
+        assert "call guard(&" in self.body(text, "crunch_alloc")
+        assert "call guard(&" not in self.body(text, "crunch")
+
+    def test_expert_scope_runs_it_only_in_the_validating_wrapper(self):
+        from codegen.ir.directives import PrologueScope
+
+        text = self.emitted_with(PrologueScope.EXPERT)
+
+        assert "call guard(&" in self.body(text, "crunch")
+        assert "call guard(&" not in self.body(text, "crunch_alloc")
+
+    def test_it_runs_before_the_allocation_it_may_make_unnecessary(self):
+        from codegen.ir.directives import PrologueScope
+
+        body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")
+
+        assert body.index("call guard(&") < body.index("M_ALLOCATE(tmp_scratch(n))")
+
+    def test_the_prologue_is_imported(self):
+        from codegen.ir.directives import PrologueScope
+
+        header = self.emitted_with(PrologueScope.BOTH).split("contains", 1)[0]
+        assert "guard" in header

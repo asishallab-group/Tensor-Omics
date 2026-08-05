@@ -174,6 +174,7 @@ class DocMacroNames:
     optional_output: str = "DM_OPTIONAL_OUTPUT"
     result_size_is: str = "DM_RESULT_SIZE_IS"
     output_from: str = "DM_OUTPUT_FROM"
+    prologue: str = "DM_PROLOGUE"
     minimum: str = "DM_MIN"
     maximum: str = "DM_MAX"
     sentinel: str = "DM_SENTINEL"
@@ -187,6 +188,7 @@ class DocMacroNames:
             self.optional_output,
             self.result_size_is,
             self.output_from,
+            self.prologue,
             self.minimum,
             self.maximum,
             self.sentinel,

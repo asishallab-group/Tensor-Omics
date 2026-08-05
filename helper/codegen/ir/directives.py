@@ -95,6 +95,40 @@ class OutputFrom:
         return self.mode is OutputFromMode.AUTO
 
 
+class PrologueScope(Enum):
+    """Which generated wrappers run a prologue."""
+
+    #: Only the validating wrapper
+    EXPERT = "expert"
+    #: Only the allocating wrapper
+    ALLOC = "alloc"
+    #: Both
+    BOTH = "both"
+
+
+@dataclass(frozen=True)
+class Prologue:
+    """`DM_PROLOGUE(PROCEDURE, MODULE, SCOPE)` -- a procedure-level directive.
+
+    The named procedure runs in the generated wrapper before the kernel and may handle the
+    call itself, in which case the kernel is skipped. It is where work lives that is not the
+    kernel's own: preparing what the caller should not have to, or deciding an input is too
+    degenerate to compute on.
+    """
+
+    procedure: str
+    module: str
+    scope: PrologueScope
+    line_number: int | None = None
+
+    def runs_in(self, is_allocating: bool) -> bool:
+        """Whether this prologue runs in the wrapper of the given tier."""
+        if self.scope is PrologueScope.BOTH:
+            return True
+        wanted = PrologueScope.ALLOC if is_allocating else PrologueScope.EXPERT
+        return self.scope is wanted
+
+
 @dataclass(frozen=True)
 class Minimum:
     """`DM_MIN(EXPR)` -- the inclusive lower bound of a numeric argument.
@@ -146,6 +180,7 @@ Directive = (
     | OptionalOutput
     | ResultSizeIs
     | OutputFrom
+    | Prologue
     | Minimum
     | Maximum
     | Sentinel
@@ -163,6 +198,7 @@ class Directives:
     optional_output: OptionalOutput | None = None
     result_size_is: ResultSizeIs | None = None
     output_from: OutputFrom | None = None
+    prologue: Prologue | None = None
     minimum: Minimum | None = None
     maximum: Maximum | None = None
     sentinel: Sentinel | None = None
@@ -177,6 +213,7 @@ class Directives:
             self.optional_output,
             self.result_size_is,
             self.output_from,
+            self.prologue,
             self.minimum,
             self.maximum,
             self.sentinel,
@@ -230,6 +267,9 @@ class DirectivePatterns:
     result_size_is: re.Pattern
     output_from_auto: re.Pattern
     output_from_just_info: re.Pattern
+    prologue_expert: re.Pattern
+    prologue_alloc: re.Pattern
+    prologue_both: re.Pattern
     minimum: re.Pattern
     maximum: re.Pattern
     sentinel: re.Pattern
@@ -254,6 +294,15 @@ class DirectivePatterns:
             "output_from_just_info": (
                 f"DM_OUTPUT_FROM({_group('argument')}, {_group('procedure')}, "
                 f"{_group('module')}, JUST_INFO)"
+            ),
+            "prologue_expert": (
+                f"DM_PROLOGUE({_group('procedure')}, {_group('module')}, EXPERT)"
+            ),
+            "prologue_alloc": (
+                f"DM_PROLOGUE({_group('procedure')}, {_group('module')}, ALLOC)"
+            ),
+            "prologue_both": (
+                f"DM_PROLOGUE({_group('procedure')}, {_group('module')}, BOTH)"
             ),
             "minimum": f"DM_MIN({_group('expression')})",
             "maximum": f"DM_MAX({_group('expression')})",
@@ -318,6 +367,19 @@ class DirectiveParser:
                     mode=mode,
                     line_number=number,
                 )
+
+        for pattern, scope in (
+            (self.patterns.prologue_expert, PrologueScope.EXPERT),
+            (self.patterns.prologue_alloc, PrologueScope.ALLOC),
+            (self.patterns.prologue_both, PrologueScope.BOTH),
+        ):
+            if (match := pattern.search(text)) is not None:
+                yield "prologue", Prologue(
+                    procedure=match.group("procedure").strip(),
+                    module=match.group("module").strip(),
+                    scope=scope,
+                    line_number=number,
+                )
                 break
 
         if (match := self.patterns.minimum.search(text)) is not None:
@@ -352,6 +414,7 @@ _MACRO_NAMES = {
     "optional_output": "DM_OPTIONAL_OUTPUT",
     "result_size_is": "DM_RESULT_SIZE_IS",
     "output_from": "DM_OUTPUT_FROM",
+    "prologue": "DM_PROLOGUE",
     "minimum": "DM_MIN",
     "maximum": "DM_MAX",
     "sentinel": "DM_SENTINEL",

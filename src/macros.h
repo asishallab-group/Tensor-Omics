@@ -101,6 +101,18 @@
 #define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*
 #define DM_OUTPUT_FROM_JUST_INFO It is recommended
 
+! A prologue runs in the generated wrapper before the kernel, and may handle the call
+! itself -- it writes the outputs and reports `handled`, and the kernel is then skipped.
+! It is where work belongs that is not the kernel's: preparing what a caller should not
+! have to prepare, or deciding that an input is too degenerate to compute on. `SCOPE` is
+! EXPERT for the validating wrapper, ALLOC for the allocating one, or BOTH.
+! The prologue's dummies are supplied by name from the wrapper's own arguments, plus
+! `handled` and `ierr`.
+#define DM_PROLOGUE(PROCEDURE, MODULE, SCOPE) DM_PROLOGUE_##SCOPE runs [[MODULE(module):PROCEDURE]] first, which may handle the call and skip this one.
+#define DM_PROLOGUE_EXPERT The validating wrapper
+#define DM_PROLOGUE_ALLOC The allocating wrapper
+#define DM_PROLOGUE_BOTH Every generated wrapper
+
 ! `DM_MIN` / `DM_MAX` document the inclusive valid range of a numeric argument; the
 ! generator turns them into a `validate_in_range_*` call in the generated wrapper. `EXPR`
 ! is Fortran source and may refer to other arguments or module constants; wrap it in
