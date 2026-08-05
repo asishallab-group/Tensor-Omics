@@ -159,7 +159,8 @@ def loess_fit_plain_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_loess`.
+    Generated from the Fortran procedure `tox_loess::loess_fit_plain`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -294,7 +295,8 @@ def loess_fit_plain(
 
     Notes
     -----
-    Generated from the Fortran module `tox_loess`.
+    Generated from the Fortran procedure `tox_loess::loess_fit_plain_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -419,7 +421,8 @@ def loess_fit_robust_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_loess`.
+    Generated from the Fortran procedure `tox_loess::loess_fit_robust`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -568,7 +571,8 @@ def loess_fit_robust(
 
     Notes
     -----
-    Generated from the Fortran module `tox_loess`.
+    Generated from the Fortran procedure `tox_loess::loess_fit_robust_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

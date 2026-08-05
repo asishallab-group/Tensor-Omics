@@ -62,7 +62,8 @@ def calc_neighborhood_size(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_preprocessing_kernel`.
+    Generated from the Fortran procedure `tox_data_integration_preprocessing_kernel::calc_neighborhood_size`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

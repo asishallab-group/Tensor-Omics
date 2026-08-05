@@ -2,7 +2,8 @@
 
 #' Deserialize a flat real array from a file
 #'
-#' Generated from the Fortran module \code{f42_serde_arrays_deserialize_real}.
+#' Generated from the Fortran procedure \code{f42_serde_arrays_deserialize_real::deserialize_real_helper}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
 #' @return a numeric vector. Pre-allocated array to read the data into

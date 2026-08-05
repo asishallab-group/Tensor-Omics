@@ -213,7 +213,8 @@ def fjct_compute_jsd_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_per_family`.
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_jsd`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -411,7 +412,8 @@ def fjct_compute_jsd(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_per_family`.
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_jsd_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -587,7 +589,8 @@ def fjct_compute_masked_jsd_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_per_family`.
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_masked_jsd`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -752,7 +755,8 @@ def fjct_compute_masked_jsd(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_per_family`.
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_masked_jsd_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -890,7 +894,8 @@ def fjct_compute_contribution_scores(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_per_family`.
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_contribution_scores`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

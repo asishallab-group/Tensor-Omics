@@ -66,7 +66,8 @@ def build_kd_index(
 
     Notes
     -----
-    Generated from the Fortran module `f42_kd_tree`.
+    Generated from the Fortran procedure `f42_kd_tree::build_kd_index_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -134,7 +135,8 @@ def build_spherical_kd(
 
     Notes
     -----
-    Generated from the Fortran module `f42_kd_tree`.
+    Generated from the Fortran procedure `f42_kd_tree::build_spherical_kd_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

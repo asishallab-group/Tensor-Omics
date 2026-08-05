@@ -8,7 +8,8 @@
 #' The masks follow the `n_selected_` convention, so the generated wrapper validates that each
 #' selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
 #'
-#' Generated from the Fortran module \code{tox_tissue_versatility}.
+#' Generated from the Fortran procedure \code{tox_tissue_versatility::compute_tissue_versatility}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. 2D array (n_axes, n_vectors), each column is a gene expression vector
 #' @param vectors_selection_mask a logical vector. Logical array (n_vectors), TRUE for vectors to process

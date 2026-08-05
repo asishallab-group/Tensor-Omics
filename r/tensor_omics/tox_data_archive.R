@@ -2,7 +2,8 @@
 
 #' Creates a zip archive with generic file lists
 #'
-#' Generated from the Fortran module \code{tox_data_archive}.
+#' Generated from the Fortran procedure \code{tox_data_archive::create_zip_archive}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Name of the zip file to create
 #' @param keys a character vector. Array of keys for manifest entries
@@ -22,7 +23,8 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
 
 #' Save standard tox data
 #'
-#' Generated from the Fortran module \code{tox_data_archive}.
+#' Generated from the Fortran procedure \code{tox_data_archive::save_tox_data}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Zip filename
 #' @param gene_ids a character vector. Gene ids array, will be saved if provided
@@ -79,7 +81,8 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
 #' count and a per-element string length. Pairs with
 #' [[tox_data_archive(module):read_tox_data_into(subroutine)]].
 #'
-#' Generated from the Fortran module \code{tox_data_archive}.
+#' Generated from the Fortran procedure \code{tox_data_archive::get_tox_data_dims}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Name of the zip file
 #' @return a named list with elements:
@@ -122,7 +125,8 @@ get_tox_data_dims <- function(zip_filename) {
 #' [[tox_data_archive(module):get_tox_data_dims(subroutine)]] first. A member that is absent
 #' has a zero extent and is left untouched.
 #'
-#' Generated from the Fortran module \code{tox_data_archive}.
+#' Generated from the Fortran procedure \code{tox_data_archive::read_tox_data_into}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param zip_filename a string. Name of the zip file
 #' @return a named list with elements:

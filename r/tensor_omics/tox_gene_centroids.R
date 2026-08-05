@@ -2,7 +2,8 @@
 
 #' Computes the element-wise mean for a given set of vectors.
 #'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' Generated from the Fortran procedure \code{tox_gene_centroids::mean_vector}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_indices a integer vector. An array containing the column indices of the selected genes in 'expression_vectors'.
@@ -22,7 +23,8 @@ mean_vector <- function(expression_vectors, gene_indices) {
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_orthologs}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
@@ -52,7 +54,8 @@ group_centroid_orthologs_expert <- function(expression_vectors, gene_to_family, 
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_orthologs_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
@@ -82,7 +85,8 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_all}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
@@ -108,7 +112,8 @@ group_centroid_all_expert <- function(expression_vectors, gene_to_family, n_fami
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_all_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes

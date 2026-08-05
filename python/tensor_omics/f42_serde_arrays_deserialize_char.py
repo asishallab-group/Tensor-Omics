@@ -52,7 +52,8 @@ def deserialize_char_helper(
 
     Notes
     -----
-    Generated from the Fortran module `f42_serde_arrays_deserialize_char`.
+    Generated from the Fortran procedure `f42_serde_arrays_deserialize_char::deserialize_char_helper`, whose argument names are
+    the ones an error message reports.
     """
     # kept before conversion, for the producers called below
     _filename_raw = filename

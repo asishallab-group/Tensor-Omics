@@ -2,7 +2,8 @@
 
 #' Subroutine to serialize a flat character array into a file
 #'
-#' Generated from the Fortran module \code{f42_serde_arrays_serialize_char}.
+#' Generated from the Fortran procedure \code{f42_serde_arrays_serialize_char::serialize_char_helper}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param arr a character vector. Array to be serialized
 #' @param filename a string. Name of the file to write to

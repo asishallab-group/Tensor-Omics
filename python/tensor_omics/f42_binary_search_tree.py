@@ -63,7 +63,8 @@ def build_bst_index(
 
     Notes
     -----
-    Generated from the Fortran module `f42_binary_search_tree`.
+    Generated from the Fortran procedure `f42_binary_search_tree::build_bst_index`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -123,7 +124,8 @@ def bst_range_query(
 
     Notes
     -----
-    Generated from the Fortran module `f42_binary_search_tree`.
+    Generated from the Fortran procedure `f42_binary_search_tree::bst_range_query`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

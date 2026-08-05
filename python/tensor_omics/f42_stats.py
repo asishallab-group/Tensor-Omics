@@ -111,7 +111,8 @@ def loess_smooth_2d(
 
     Notes
     -----
-    Generated from the Fortran module `f42_stats`.
+    Generated from the Fortran procedure `f42_stats::loess_smooth_2d`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -204,7 +205,8 @@ def compute_edf_expert(
 
     Notes
     -----
-    Generated from the Fortran module `f42_stats`.
+    Generated from the Fortran procedure `f42_stats::compute_edf`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -281,7 +283,8 @@ def compute_edf(
 
     Notes
     -----
-    Generated from the Fortran module `f42_stats`.
+    Generated from the Fortran procedure `f42_stats::compute_edf_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -347,7 +350,8 @@ def compute_scaled_distance_quantile(
 
     Notes
     -----
-    Generated from the Fortran module `f42_stats`.
+    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

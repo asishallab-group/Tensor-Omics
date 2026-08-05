@@ -2,7 +2,8 @@
 
 #' Build the BST index by sorting indices using values in x
 #'
-#' Generated from the Fortran module \code{f42_binary_search_tree}.
+#' Generated from the Fortran procedure \code{f42_binary_search_tree::build_bst_index}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param values a numeric vector. Input real array to be indexed
 #' @return a integer vector. Output permutation index
@@ -18,7 +19,8 @@ build_bst_index <- function(values) {
 
 #' Perform a 1D range query over the sorted index
 #'
-#' Generated from the Fortran module \code{f42_binary_search_tree}.
+#' Generated from the Fortran procedure \code{f42_binary_search_tree::bst_range_query}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param values a numeric vector. Input real array
 #' @param sorted_indices a integer vector. Permutation index array (sorted)

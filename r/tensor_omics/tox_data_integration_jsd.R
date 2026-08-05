@@ -5,7 +5,8 @@
 #' This takes the pool already built; `determine_study_shared_residual_range` builds it from
 #' the neighborhood residuals of two studies first, if that is what is at hand.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
 #'   NaN is permitted for this value.
@@ -37,7 +38,8 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 #' This takes the pool already built; `determine_study_shared_residual_range` builds it from
 #' the neighborhood residuals of two studies first, if that is what is at hand.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
 #'   NaN is permitted for this value.
@@ -62,7 +64,8 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
 #' Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
 #' as `determine_shared_residual_range` does.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
@@ -95,7 +98,8 @@ determine_study_shared_residual_range_expert <- function(neighborhood_residuals_
 #' Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
 #' as `determine_shared_residual_range` does.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
@@ -127,7 +131,8 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
 #'
 #' The probability mass function `pmf(residual, bin)` is actually a matrix.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::build_residual_histograms}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param neighborhood_residuals a numeric array of rank 3. Computed neighborhood residuals for a study, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
@@ -161,7 +166,8 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
 #'
 #' Takes the probabilities `pmf` produced by `build_residual_histograms`.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_divergence_per_reference_point}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param pmf_S1 a numeric matrix. Computed normalized histogram counts for study 1
 #'   The minimum valid value is `0.0`.
@@ -190,7 +196,8 @@ compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
 #'
 #' Takes the divergences produced by `compute_divergence_per_reference_point`.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_jsd}.
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_weighted_global_divergence}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param js_divergences a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2
 #'   The minimum valid value is `0.0`.

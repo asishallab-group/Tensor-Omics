@@ -136,7 +136,8 @@ def omics_vector_RAP_projection(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_vector_RAP_projection`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -222,7 +223,8 @@ def omics_field_RAP_projection(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_field_RAP_projection`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -308,7 +310,8 @@ def clock_hand_angle_between_vectors(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angle_between_vectors`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -384,7 +387,8 @@ def clock_hand_angles_for_shift_vectors(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -458,7 +462,8 @@ def compute_relative_axis_contributions(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::compute_relative_axis_contributions`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -508,7 +513,8 @@ def relative_axes_changes_from_shift_vector(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -558,7 +564,8 @@ def relative_axes_expression_from_expression_vector(
 
     Notes
     -----
-    Generated from the Fortran module `tox_relative_axis_plane_tools`.
+    Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

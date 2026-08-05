@@ -5,7 +5,8 @@
 #' Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.
 #' The user must pre-filter data and provide only valid indices in indices_used.
 #'
-#' Generated from the Fortran module \code{f42_stats}.
+#' Generated from the Fortran procedure \code{f42_stats::loess_smooth_2d}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param x_ref a numeric vector. Reference x-coordinates.
 #' @param y_ref a numeric vector. Reference y-coordinates (length n_total).
@@ -38,7 +39,8 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
 #' Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
 #' The number of unique values can be determined by finding the last non-zero cdf_value.
 #'
-#' Generated from the Fortran module \code{f42_stats}.
+#' Generated from the Fortran procedure \code{f42_stats::compute_edf}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
 #' @param perm a integer vector. Pre-sorted permutation indices (must be sorted by values[perm]).
@@ -69,7 +71,8 @@ compute_edf_expert <- function(values, perm) {
 #' Allocates workspace internally and performs sorting before computing EDF.
 #' Use this for convenience; use compute_edf directly for custom sorting.
 #'
-#' Generated from the Fortran module \code{f42_stats}.
+#' Generated from the Fortran procedure \code{f42_stats::compute_edf_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
 #' @return a named list with elements:
@@ -105,7 +108,8 @@ compute_edf <- function(values) {
 #' - sorted_rdi(1:n_genes) contains the empirical distribution D.
 #' - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 #'
-#' Generated from the Fortran module \code{f42_stats}.
+#' Generated from the Fortran procedure \code{f42_stats::compute_scaled_distance_quantile}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param rdi a numeric vector. empirical distribution D
 #' @param sorted_rdi a numeric vector. empirical distribution D with non negative values

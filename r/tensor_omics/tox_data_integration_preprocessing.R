@@ -2,7 +2,8 @@
 
 #' Compute per-gene mean expression, ignoring NaN values
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::compute_gene_means}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Expression matrix
 #'   NaN is permitted for this value.
@@ -20,7 +21,8 @@ compute_gene_means <- function(expr) {
 
 #' Compute signed residuals (centering by mean)
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::compute_residuals}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Expression matrix
 #'   NaN is permitted for this value.
@@ -47,7 +49,8 @@ compute_residuals <- function(expr, means) {
 #' This takes the pool already built; `pool_study_means` pools the means of two studies
 #' first, if that is what is at hand.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
@@ -79,7 +82,8 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 #' This takes the pool already built; `pool_study_means` pools the means of two studies
 #' first, if that is what is at hand.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
@@ -106,7 +110,8 @@ pool_means <- function(pooled_means, n_points) {
 #' Concatenates the two studies' means, sorts the pool, and turns it into reference
 #' points exactly as `pool_means` does.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_study_means}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
 #'   NaN is permitted for this value.
@@ -136,7 +141,8 @@ pool_study_means_expert <- function(mean_S1, mean_S2, n_points) {
 #' Concatenates the two studies' means, sorts the pool, and turns it into reference
 #' points exactly as `pool_means` does.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_study_means_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
 #'   NaN is permitted for this value.
@@ -163,7 +169,8 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 
 #' Construct neighborhood-based residual sets (kNN)
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param x_star a numeric vector. Mean-expression reference points
 #'   NaN is permitted for this value.
@@ -201,7 +208,8 @@ construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors)
 
 #' Construct neighborhood-based residual sets (kNN)
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param x_star a numeric vector. Mean-expression reference points
 #'   NaN is permitted for this value.

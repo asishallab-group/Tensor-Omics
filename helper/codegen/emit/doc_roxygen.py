@@ -54,15 +54,22 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
             writer.line(f"#' {line}" if line else "#'")
         writer.line("#'")
 
-    # the module, not the procedure: `_alloc` and `_expert` are the binding layer's own tiers,
-    # so naming `loess_fit_plain_alloc` in the docstring of a function called `loess_fit_plain`
-    # points a reader at a symbol that exists nowhere they can reach. The module does.
+    # the procedure, not just the module: an error message names an argument from
+    # *its* dummy list -- including extents, work arrays and ierr, which no caller of this
+    # binding passes -- and the suffix mapping is not guessable (`loess_fit_plain` here is
+    # `loess_fit_plain_alloc` there, while `loess_fit_plain_expert` is `loess_fit_plain`).
+    # Naming it is what lets a reader take "(argument 'n_dscale_elements')" back to a signature.
     #
     # And it goes here, in the description, rather than after @return: roxygen gives untagged
     # text to whichever tag precedes it, so trailing it after @return filed the provenance
     # under Value, where it described the return value of nothing.
-    origin = procedure.module.name if procedure.module else procedure.name
-    writer.line(f"#' Generated from the Fortran module \\code{{{origin}}}.")
+    origin = (
+        f"{procedure.module.name}::{procedure.name}" if procedure.module else procedure.name
+    )
+    writer.line(
+        f"#' Generated from the Fortran procedure \\code{{{origin}}}, whose argument names"
+    )
+    writer.line("#' are the ones an error message reports.")
     writer.line("#'")
 
     for argument in emitter._inputs(wrapper):

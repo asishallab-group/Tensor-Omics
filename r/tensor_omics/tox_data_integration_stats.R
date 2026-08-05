@@ -5,7 +5,8 @@
 #' Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
 #' the work copies, so the caller's own arrays are left untouched.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_stats}.
+#' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
@@ -56,7 +57,8 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood
 #' Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
 #' the work copies, so the caller's own arrays are left untouched.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_stats}.
+#' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.

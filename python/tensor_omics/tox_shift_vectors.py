@@ -61,7 +61,8 @@ def compute_shift_vector_field(
 
     Notes
     -----
-    Generated from the Fortran module `tox_shift_vectors`.
+    Generated from the Fortran procedure `tox_shift_vectors::compute_shift_vector_field`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

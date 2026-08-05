@@ -2,7 +2,8 @@
 
 #' Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_vector_RAP_projection}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param vecs a numeric matrix. matrix with expression vectors
 #' @param vecs_selection_mask a logical vector. `TRUE` for vectors where projection is to be computed
@@ -27,7 +28,8 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 
 #' Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_field_RAP_projection}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
 #' @param fields_selection_mask a logical vector. `TRUE` for vectors where projection is to be computed
@@ -55,7 +57,8 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
 #' Calculates the signed rotation angle between two normalized vectors in RAP space.
 #' For 2D/3D: automatic directionality calculation. For >3D: uses selected axes for directionality.
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angle_between_vectors}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param v1 a numeric vector. First normalized vector in RAP space
 #' @param v2 a numeric vector. Second normalized vector in RAP space
@@ -78,7 +81,8 @@ clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
 
 #' Compute signed rotation angles between for shift vectors, so between their origin and target
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
 #' @param fields_selection_mask a logical vector. TRUE for vector pairs where angle should be computed
@@ -103,7 +107,8 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, s
 #'
 #' Shared utility: the shift-vector and expression-vector entry points below both drive it.
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::compute_relative_axis_contributions}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param vec a numeric vector. RAP-projected and normalized vector (expression or shift)
 #' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
@@ -121,7 +126,8 @@ compute_relative_axis_contributions <- function(vec) {
 #'
 #' Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param vec a numeric vector. RAP-projected and normalized shift vector
 #' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
@@ -139,7 +145,8 @@ relative_axes_changes_from_shift_vector <- function(vec) {
 #'
 #' Wrapper for single RAP-projected expression vectors
 #'
-#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
+#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param vec a numeric vector. RAP-projected and normalized expression vector
 #' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1

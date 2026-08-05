@@ -2,7 +2,8 @@
 
 #' Deserialize a flat integer array from a file
 #'
-#' Generated from the Fortran module \code{f42_serde_arrays_deserialize_int}.
+#' Generated from the Fortran procedure \code{f42_serde_arrays_deserialize_int::deserialize_int_helper}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
 #' @return a integer vector. Pre-allocated array to read the data into

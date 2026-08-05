@@ -4,7 +4,8 @@
 #'
 #' Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
 #'
-#' Generated from the Fortran module \code{tox_shift_vectors}.
+#' Generated from the Fortran procedure \code{tox_shift_vectors::compute_shift_vector_field}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. Gene expression matrix
 #' @param family_centroids a numeric matrix. Family centroid matrix

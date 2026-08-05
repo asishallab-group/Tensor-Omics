@@ -51,7 +51,8 @@ def deserialize_logical_helper(
 
     Notes
     -----
-    Generated from the Fortran module `f42_serde_arrays_deserialize_logical`.
+    Generated from the Fortran procedure `f42_serde_arrays_deserialize_logical::deserialize_logical_helper`, whose argument names are
+    the ones an error message reports.
     """
     # kept before conversion, for the producers called below
     _filename_raw = filename

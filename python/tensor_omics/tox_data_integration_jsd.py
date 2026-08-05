@@ -153,7 +153,8 @@ def determine_shared_residual_range_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -224,7 +225,8 @@ def determine_shared_residual_range(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -286,7 +288,8 @@ def determine_study_shared_residual_range_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -375,7 +378,8 @@ def determine_study_shared_residual_range(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -467,7 +471,8 @@ def build_residual_histograms(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::build_residual_histograms`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -546,7 +551,8 @@ def compute_divergence_per_reference_point(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::compute_divergence_per_reference_point`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -629,7 +635,8 @@ def compute_weighted_global_divergence(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_jsd`.
+    Generated from the Fortran procedure `tox_data_integration_jsd::compute_weighted_global_divergence`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

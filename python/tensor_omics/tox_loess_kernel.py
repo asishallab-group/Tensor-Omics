@@ -61,7 +61,8 @@ def tox_loess_required_workspace(
 
     Notes
     -----
-    Generated from the Fortran module `tox_loess_kernel`.
+    Generated from the Fortran procedure `tox_loess_kernel::tox_loess_required_workspace`, whose argument names are
+    the ones an error message reports.
     """
     # outputs and work arrays, which the caller never sees
     int_workspace_size = ctypes.c_int(0)

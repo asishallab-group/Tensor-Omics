@@ -276,7 +276,8 @@ def perform_permutation_test_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -374,7 +375,8 @@ def perform_permutation_test(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -454,7 +456,8 @@ def compute_p_values(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_p_values`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -546,7 +549,8 @@ def compute_contributions(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_contributions`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -633,7 +637,8 @@ def compute_all_contributions_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -733,7 +738,8 @@ def compute_all_contributions(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -822,7 +828,8 @@ def compute_baselines_factor_dependent(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_baselines_factor_dependent`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -892,7 +899,8 @@ def compute_velocity_trajectory(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_trajectory`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -945,7 +953,8 @@ def compute_acceleration_from_velocity_trajectory(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_acceleration_from_velocity_trajectory`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -992,7 +1001,8 @@ def compute_velocity_trajectories(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_trajectories`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -1049,7 +1059,8 @@ def compute_acceleration_from_velocity(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_acceleration_from_velocity`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -1113,7 +1124,8 @@ def compute_velocity_acceleration_contributions_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -1197,7 +1209,8 @@ def compute_velocity_acceleration_contributions(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

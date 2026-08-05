@@ -4,7 +4,8 @@
 #'
 #' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
@@ -62,7 +63,8 @@ compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, sp
 #'
 #' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
@@ -116,7 +118,8 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #'
 #' RDI = Euclidean distance / family scaling factor
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
 #'   NaN is permitted for this value.
@@ -152,7 +155,8 @@ compute_rdi_expert <- function(distances, gene_to_fam, dscale) {
 #'
 #' RDI = Euclidean distance / family scaling factor
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
 #'   NaN is permitted for this value.
@@ -189,7 +193,8 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
 #' If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::identify_outliers}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param rdi a numeric vector. Array of RDI values for each gene
 #'   NaN is permitted for this value.
@@ -236,7 +241,8 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #' [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
 #' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
@@ -287,7 +293,8 @@ detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentil
 #' [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
 #' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
 #'
-#' Generated from the Fortran module \code{tox_get_outliers}.
+#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid

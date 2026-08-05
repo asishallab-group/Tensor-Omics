@@ -2,7 +2,8 @@
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_all_contributions_kernel}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
@@ -33,7 +34,8 @@ compute_all_contributions_kernel <- function(trajectories, factor_indices, depen
 
 #' Compute scalar baselines for a factor and dependent variable time series
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_baselines_factor_dependent_kernel}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
@@ -61,7 +63,8 @@ compute_baselines_factor_dependent_kernel <- function(factor, dependent, baselin
 
 #' Compute velocity trajectory from a single position trajectory
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_velocity_trajectory_kernel}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectory a numeric vector. input position trajectory
 #' @return a numeric vector. output velocity trajectory
@@ -77,7 +80,8 @@ compute_velocity_trajectory_kernel <- function(trajectory) {
 
 #' Compute acceleration trajectory from a single velocity trajectory
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_acceleration_from_velocity_trajectory_kernel}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param velocity a numeric vector. velocity trajectory
 #' @param n_timepoints a integer scalar. number of timepoints
@@ -106,7 +110,8 @@ compute_acceleration_from_velocity_trajectory_kernel <- function(velocity, n_tim
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_velocity_acceleration_contributions_kernel}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"

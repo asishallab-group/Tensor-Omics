@@ -4,7 +4,8 @@
 #'
 #' Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
 #'
-#' Generated from the Fortran module \code{tox_euclidean_distance}.
+#' Generated from the Fortran procedure \code{tox_euclidean_distance::euclidean_distance}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param vec1 a numeric vector. First expression vector
 #' @param vec2 a numeric vector. Second expression vector
@@ -27,7 +28,8 @@ euclidean_distance <- function(vec1, vec2) {
 #'
 #' For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
 #'
-#' Generated from the Fortran module \code{tox_euclidean_distance}.
+#' Generated from the Fortran procedure \code{tox_euclidean_distance::distance_to_centroid}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param genes a numeric matrix. Gene expression matrix (n_tissues × n_genes), column-major
 #' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes

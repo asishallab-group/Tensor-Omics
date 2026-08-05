@@ -53,7 +53,8 @@ def serialize_complex_helper(
 
     Notes
     -----
-    Generated from the Fortran module `f42_serde_arrays_serialize_complex`.
+    Generated from the Fortran procedure `f42_serde_arrays_serialize_complex::serialize_complex_helper`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     arr_shape = np.ascontiguousarray(np.shape(arr), dtype=np.int32)

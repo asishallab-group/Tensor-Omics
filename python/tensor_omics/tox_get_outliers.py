@@ -245,7 +245,8 @@ def compute_family_scaling_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::compute_family_scaling`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -408,7 +409,8 @@ def compute_family_scaling(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::compute_family_scaling_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -511,7 +513,8 @@ def compute_rdi_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::compute_rdi`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -612,7 +615,8 @@ def compute_rdi(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::compute_rdi_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -716,7 +720,8 @@ def identify_outliers(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::identify_outliers`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -825,7 +830,8 @@ def detect_outliers_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::detect_outliers`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -979,7 +985,8 @@ def detect_outliers(
 
     Notes
     -----
-    Generated from the Fortran module `tox_get_outliers`.
+    Generated from the Fortran procedure `tox_get_outliers::detect_outliers_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -2,7 +2,8 @@
 
 #' Read expression vectors from csv/tsv files
 #'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' Generated from the Fortran procedure \code{tox_data_tools::read_expression_vectors_tsv}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param file_list a character vector. List of files to read from
 #' @param gene_ids a character vector. Array of gene IDS
@@ -33,7 +34,8 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 
 #' Only read the gene ids from a tsv file
 #'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' Generated from the Fortran procedure \code{tox_data_tools::read_gene_ids_from_tsv_file}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
 #' @param gene_ids_strlen a integer scalar. length of the strings in `gene_ids`
@@ -57,7 +59,8 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
 
 #' Read a family file (Orthofinder)
 #'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' Generated from the Fortran procedure \code{tox_data_tools::read_orthofinder_file}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
 #' @param gene_ids a character vector. gene ids array
@@ -86,7 +89,8 @@ read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_famil
 
 #' Helper to create a mask of genes that are unassigned
 #'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' Generated from the Fortran procedure \code{tox_data_tools::get_unassigned_mask}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param gene_to_fam a integer vector. gene to family mapping
 #' @return a named list with elements:

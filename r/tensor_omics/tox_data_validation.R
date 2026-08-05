@@ -2,7 +2,8 @@
 
 #' Validate full data structure
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_data_structure}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_genes a integer scalar. Expected number of genes
 #' @param n_families a integer scalar. Expected number of families
@@ -34,7 +35,8 @@ validate_data_structure <- function(n_genes, n_families, n_samples, gene_ids, ge
 
 #' Validate gene to family mapping
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_gene_to_family_mapping}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param gene_to_fam a integer vector. gene to family mapping
 #' @param n_families a integer scalar. number of families
@@ -52,7 +54,8 @@ validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
 
 #' Validate expresssion data
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_expression_data}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. Expression vectors
 #' @param check_non_negative a logical scalar. Defines if non negative should be checked
@@ -70,7 +73,8 @@ validate_expression_data <- function(expression_vectors, check_non_negative) {
 
 #' Validate the family centroids
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_family_centroids}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param family_centroids a numeric matrix. Family centroids array
 #' @return invisibly `NULL`; called for its effect.
@@ -86,7 +90,8 @@ validate_family_centroids <- function(family_centroids) {
 
 #' Validates shift vectors
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_shift_vectors}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param shift_vectors a numeric matrix. shift vectors
 #' @param expression_vectors a numeric matrix. expression vectors
@@ -110,7 +115,8 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
 
 #' Validate that no string appears more than once
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_string_array_uniqueness}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param str_arr a character vector. string array
 #' @return invisibly `NULL`; called for its effect.
@@ -126,7 +132,8 @@ validate_string_array_uniqueness <- function(str_arr) {
 
 #' Comprehensive validation routine, combining all checks
 #'
-#' Generated from the Fortran module \code{tox_data_validation}.
+#' Generated from the Fortran procedure \code{tox_data_validation::validate_all_data}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_genes a integer scalar. Number of genes
 #' @param n_families a integer scalar. Number of families

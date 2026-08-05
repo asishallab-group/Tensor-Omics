@@ -75,7 +75,8 @@ def mask_check_state(
 
     Notes
     -----
-    Generated from the Fortran module `tox_paralog_analysis_kernel`.
+    Generated from the Fortran procedure `tox_paralog_analysis_kernel::mask_check_state`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -128,7 +129,8 @@ def mask_chunk_count(
 
     Notes
     -----
-    Generated from the Fortran module `tox_paralog_analysis_kernel`.
+    Generated from the Fortran procedure `tox_paralog_analysis_kernel::mask_chunk_count`, whose argument names are
+    the ones an error message reports.
     """
     # outputs and work arrays, which the caller never sees
     count = ctypes.c_int(0)
@@ -187,7 +189,8 @@ def calc_work_arr_paralog_subsets_size(
 
     Notes
     -----
-    Generated from the Fortran module `tox_paralog_analysis_kernel`.
+    Generated from the Fortran procedure `tox_paralog_analysis_kernel::calc_work_arr_paralog_subsets_size`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     max_subset_size = ctypes.c_int(max_subset_size)

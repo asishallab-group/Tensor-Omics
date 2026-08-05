@@ -2,7 +2,8 @@
 
 #' Checks the state of a bit/paralog in `bit_mask` -> TRUE if 1 else FALSE
 #'
-#' Generated from the Fortran module \code{tox_paralog_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_paralog_analysis_kernel::mask_check_state}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param bit_mask a integer vector. chunked mask to mark active paralogs
 #' @param i_gene a integer scalar. index of paralog to be marked active
@@ -20,7 +21,8 @@ mask_check_state <- function(bit_mask, i_gene) {
 
 #' Determines the needed chunk count for subset bit masks (an integer has only 32 bits)
 #'
-#' Generated from the Fortran module \code{tox_paralog_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_paralog_analysis_kernel::mask_chunk_count}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_genes a integer scalar. number of genes
 #' @return a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
@@ -44,7 +46,8 @@ mask_chunk_count <- function(n_genes) {
 #'
 #' This subroutine calculates the needed size for the work array.
 #'
-#' Generated from the Fortran module \code{tox_paralog_analysis_kernel}.
+#' Generated from the Fortran procedure \code{tox_paralog_analysis_kernel::calc_work_arr_paralog_subsets_size}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param max_subset_size a integer scalar. maximum size that a subset must not exceed. Zero is in range and means there is
 #'   nothing to size a work array for, which is reported back as a size of zero.

@@ -125,7 +125,8 @@ def gjct_permutation_test_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_stats`.
+    Generated from the Fortran procedure `tox_data_integration_stats::gjct_permutation_test`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -276,7 +277,8 @@ def gjct_permutation_test(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_integration_stats`.
+    Generated from the Fortran procedure `tox_data_integration_stats::gjct_permutation_test_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

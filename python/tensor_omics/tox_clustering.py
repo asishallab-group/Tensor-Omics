@@ -101,7 +101,8 @@ def cluster_factor_trajectories_k_means(
 
     Notes
     -----
-    Generated from the Fortran module `tox_clustering`.
+    Generated from the Fortran procedure `tox_clustering::cluster_factor_trajectories_k_means`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -193,7 +194,8 @@ def k_means_clustering(
 
     Notes
     -----
-    Generated from the Fortran module `tox_clustering`.
+    Generated from the Fortran procedure `tox_clustering::k_means_clustering`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -287,7 +289,8 @@ def linkage_clustering(
 
     Notes
     -----
-    Generated from the Fortran module `tox_clustering`.
+    Generated from the Fortran procedure `tox_clustering::linkage_clustering`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     if not isinstance(distances, np.ndarray) or distances.dtype != np.float64:

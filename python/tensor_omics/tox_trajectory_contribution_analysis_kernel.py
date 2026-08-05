@@ -131,7 +131,8 @@ def compute_all_contributions_kernel(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis_kernel`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis_kernel::compute_all_contributions_kernel`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -224,7 +225,8 @@ def compute_baselines_factor_dependent_kernel(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis_kernel`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis_kernel::compute_baselines_factor_dependent_kernel`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -294,7 +296,8 @@ def compute_velocity_trajectory_kernel(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis_kernel`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis_kernel::compute_velocity_trajectory_kernel`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -347,7 +350,8 @@ def compute_acceleration_from_velocity_trajectory_kernel(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis_kernel`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis_kernel::compute_acceleration_from_velocity_trajectory_kernel`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -405,7 +409,8 @@ def compute_velocity_acceleration_contributions_kernel(
 
     Notes
     -----
-    Generated from the Fortran module `tox_trajectory_contribution_analysis_kernel`.
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis_kernel::compute_velocity_acceleration_contributions_kernel`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -159,7 +159,8 @@ def normalize_unit_length(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::normalize_unit_length`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     if not isinstance(vector, np.ndarray) or vector.dtype != np.float64:
@@ -223,7 +224,8 @@ def normalization_pipeline(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::normalization_pipeline_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -297,7 +299,8 @@ def normalize_by_std_dev(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -353,7 +356,8 @@ def root_mean_sq_normalization(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::root_mean_sq_normalization`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -412,7 +416,8 @@ def quantile_normalization_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::quantile_normalization`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -480,7 +485,8 @@ def quantile_normalization(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::quantile_normalization_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -539,7 +545,8 @@ def log2_transformation(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::log2_transformation`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -598,7 +605,8 @@ def calc_tiss_avg(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::calc_tiss_avg`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -669,7 +677,8 @@ def calc_fchange(
 
     Notes
     -----
-    Generated from the Fortran module `tox_normalization`.
+    Generated from the Fortran procedure `tox_normalization::calc_fchange`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

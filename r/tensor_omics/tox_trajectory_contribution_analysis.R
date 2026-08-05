@@ -2,7 +2,8 @@
 
 #' For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_idx a integer scalar. index of factor to compute the permutation contributions for
@@ -42,7 +43,8 @@ perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_
 
 #' For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_idx a integer scalar. index of factor to compute the permutation contributions for
@@ -85,7 +87,8 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 #' Given the permutation tests ([[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test_kernel(subroutine)]]),
 #' this counts how many of the permutation contributions were at least as high as the real ones.
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_p_values}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param local_contributions_observed a numeric vector. Per-timepoint contributions for the observed factor-dependent-sample combination
 #' @param total_contribution_observed a numeric scalar. Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
@@ -117,7 +120,8 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 
 #' Performs contribution analysis for a specific factor-dependent pair
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_contributions}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
@@ -145,7 +149,8 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
@@ -176,7 +181,8 @@ compute_all_contributions_expert <- function(trajectories, factor_indices, depen
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
@@ -207,7 +213,8 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 
 #' Compute scalar baselines for a factor and dependent variable time series
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_baselines_factor_dependent}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
@@ -235,7 +242,8 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
 
 #' Compute velocity trajectory from a single position trajectory
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_trajectory}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectory a numeric vector. input position trajectory
 #' @return a numeric vector. output velocity trajectory
@@ -251,7 +259,8 @@ compute_velocity_trajectory <- function(trajectory) {
 
 #' Compute acceleration trajectory from a single velocity trajectory
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_acceleration_from_velocity_trajectory}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param velocity a numeric vector. velocity trajectory
 #' @param n_timepoints a integer scalar. number of timepoints
@@ -269,7 +278,8 @@ compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints
 
 #' Computes velocity trajectories from position trajectories
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_trajectories}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @return a numeric array of rank 3. output velocity trajectories
@@ -285,7 +295,8 @@ compute_velocity_trajectories <- function(trajectories) {
 
 #' Computes acceleration trajectories from velocity trajectories
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_acceleration_from_velocity}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param velocity a numeric array of rank 3. input velocity trajectories
 #' @param n_timepoints a integer scalar. number of timepoints
@@ -314,7 +325,8 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"
@@ -352,7 +364,8 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"

@@ -183,7 +183,8 @@ def validate_data_structure(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_data_structure`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -291,7 +292,8 @@ def validate_gene_to_family_mapping(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_gene_to_family_mapping`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -342,7 +344,8 @@ def validate_expression_data(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_expression_data`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -392,7 +395,8 @@ def validate_family_centroids(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_family_centroids`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -453,7 +457,8 @@ def validate_shift_vectors(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_shift_vectors`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -534,7 +539,8 @@ def validate_string_array_uniqueness(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_string_array_uniqueness`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -615,7 +621,8 @@ def validate_all_data(
 
     Notes
     -----
-    Generated from the Fortran module `tox_data_validation`.
+    Generated from the Fortran procedure `tox_data_validation::validate_all_data`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

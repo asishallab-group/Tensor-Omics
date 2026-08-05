@@ -116,7 +116,8 @@ def mean_vector(
 
     Notes
     -----
-    Generated from the Fortran module `tox_gene_centroids`.
+    Generated from the Fortran procedure `tox_gene_centroids::mean_vector`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -189,7 +190,8 @@ def group_centroid_orthologs_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_gene_centroids`.
+    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_orthologs`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -280,7 +282,8 @@ def group_centroid_orthologs(
 
     Notes
     -----
-    Generated from the Fortran module `tox_gene_centroids`.
+    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_orthologs_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -366,7 +369,8 @@ def group_centroid_all_expert(
 
     Notes
     -----
-    Generated from the Fortran module `tox_gene_centroids`.
+    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_all`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -443,7 +447,8 @@ def group_centroid_all(
 
     Notes
     -----
-    Generated from the Fortran module `tox_gene_centroids`.
+    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_all_alloc`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

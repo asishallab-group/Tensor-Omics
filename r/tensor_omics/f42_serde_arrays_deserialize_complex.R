@@ -2,7 +2,8 @@
 
 #' Deserialize a flat complex array from a file
 #'
-#' Generated from the Fortran module \code{f42_serde_arrays_deserialize_complex}.
+#' Generated from the Fortran procedure \code{f42_serde_arrays_deserialize_complex::deserialize_complex_helper}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
 #' @return a complex vector. Pre-allocated array to read the data into

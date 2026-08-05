@@ -2,7 +2,8 @@
 
 #' Get the metadata of an array file
 #'
-#' Generated from the Fortran module \code{f42_serde_arrays_utils}.
+#' Generated from the Fortran procedure \code{f42_serde_arrays_utils::get_array_metadata}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param filename a string. Name of the file
 #' @param dims_out_capacity a integer scalar. Capacity of the dims_out array

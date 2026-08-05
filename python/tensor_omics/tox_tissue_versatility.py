@@ -65,7 +65,8 @@ def compute_tissue_versatility(
 
     Notes
     -----
-    Generated from the Fortran module `tox_tissue_versatility`.
+    Generated from the Fortran procedure `tox_tissue_versatility::compute_tissue_versatility`, whose argument names are
+    the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -5,7 +5,8 @@
 #' Computes the required sizes for integer and real workspace arrays.
 #' These sizes depend on the dimensionality of the data and the maximum neighborhood size.
 #'
-#' Generated from the Fortran module \code{tox_loess_kernel}.
+#' Generated from the Fortran procedure \code{tox_loess_kernel::tox_loess_required_workspace}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_dim a integer scalar. Dimensionality of the data
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size

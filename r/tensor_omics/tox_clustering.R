@@ -2,7 +2,8 @@
 
 #' Performs k-means clustering on factor trajectories, so factor evolution over time
 #'
-#' Generated from the Fortran module \code{tox_clustering}.
+#' Generated from the Fortran procedure \code{tox_clustering::cluster_factor_trajectories_k_means}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. matrix with data points to cluster
 #' @param centroids a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
@@ -44,7 +45,8 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #' 2. Recalculates the centroids using the mean of its assigned points
 #' 3. repeat 1-2 until assignment remains unchanged
 #'
-#' Generated from the Fortran module \code{tox_clustering}.
+#' Generated from the Fortran procedure \code{tox_clustering::k_means_clustering}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param data_points a numeric matrix. matrix with data points to cluster
 #' @param centroids a numeric matrix. matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
@@ -87,7 +89,8 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #' returning, on success or on error, so the matrix comes back unchanged. There is no
 #' need to copy it before calling.
 #'
-#' Generated from the Fortran module \code{tox_clustering}.
+#' Generated from the Fortran procedure \code{tox_clustering::linkage_clustering}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param distances a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
 #'

@@ -2,7 +2,8 @@
 
 #' Normalize a single variable across time using min-max scaling
 #'
-#' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_variable_timeseries}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param v a numeric vector. Original time series
 #' @return a named list with elements:
@@ -23,7 +24,8 @@ normalize_variable_timeseries <- function(v) {
 
 #' Normalize all factors in a single trajectory independently across time
 #'
-#' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_single_trajectory}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectory a numeric matrix. Original trajectory for one sample
 #' @return a named list with elements:
@@ -46,7 +48,8 @@ normalize_single_trajectory <- function(trajectory) {
 #'
 #' independently across time for each sample.
 #'
-#' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. Original trajectories
 #' @return a named list with elements:
@@ -69,7 +72,8 @@ normalize_all_trajectories_expert <- function(trajectories) {
 #'
 #' independently across time for each sample.
 #'
-#' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories_alloc}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. Original trajectories
 #' @return a named list with elements:

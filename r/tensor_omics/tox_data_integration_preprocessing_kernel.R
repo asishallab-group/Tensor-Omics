@@ -5,7 +5,8 @@
 #' The `desired_size` works as upper limit, as the actual neighborhood size might be lower
 #' due to few genes with non-NaN mean.
 #'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing_kernel}.
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing_kernel::calc_neighborhood_size}, whose argument names
+#' are the ones an error message reports.
 #'
 #' @param n_pool a integer scalar. Total number of pooled mean-expression values across both studies
 #' @param n_points a integer scalar. Number of reference points

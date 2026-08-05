@@ -51,7 +51,8 @@ def deserialize_complex_helper(
 
     Notes
     -----
-    Generated from the Fortran module `f42_serde_arrays_deserialize_complex`.
+    Generated from the Fortran procedure `f42_serde_arrays_deserialize_complex::deserialize_complex_helper`, whose argument names are
+    the ones an error message reports.
     """
     # kept before conversion, for the producers called below
     _filename_raw = filename
