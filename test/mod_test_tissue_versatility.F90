@@ -36,7 +36,7 @@ contains
         select_vec = [.true.]
         select_axes = [.true., .false., .true.]
         call compute_tissue_versatility(3, 1, expr, select_vec, 1, select_axes, 2, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Partial axis selection should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Partial axis selection should succeed")
         ! Should behave as a 2D vector [1,3]
         call assert_true(tv(1) >= 0.0_real64 .and. tv(1) <= 1.0_real64, "Partial axis TV in [0,1]")
         call assert_true(angle(1) >= 0.0_real64 .and. angle(1) <= 90.0_real64, "Partial axis angle in [0,90]")
@@ -53,7 +53,7 @@ contains
         select_vec = [.true., .true., .true.]
         select_axes = [.true., .true., .true.]
         call compute_tissue_versatility(3, 3, expr, select_vec, 3, select_axes, 3, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Mixed vectors should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Mixed vectors should succeed")
         call assert_equal_real(tv(1), 0.0_real64, 1e-12_real64, "Mixed: uniform TV")
         call assert_equal_real(tv(2), 1.0_real64, 1e-12_real64, "Mixed: single axis TV")
         call assert_equal_real(tv(3), 1.0_real64, 1e-12_real64, "Mixed: null TV")
@@ -71,7 +71,7 @@ contains
         select_vec = [.true.]
         select_axes = [.true., .true.]
         call compute_tissue_versatility(2, 1, expr, select_vec, 1, select_axes, 2, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Angle degrees test should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Angle degrees test should succeed")
         ! Angle should be 45 degrees (between [1,0] and [1,1])
         call assert_true(abs(angle(1) - 45.0_real64) < 1e-12_real64, "Angle output is 45 degrees")
     end subroutine test_angle_degrees
@@ -108,7 +108,7 @@ contains
         select_vec = [.true., .true., .true., .true.]
         select_axes = [.true., .false., .true., .false., .true.]
         call compute_tissue_versatility(n_axes, n_vecs, expr, select_vec, 4, select_axes, 3, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Randomized vectors should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Randomized vectors should succeed")
         do i = 1, n_vecs
             call assert_true(tv(i) >= 0.0_real64 .and. tv(i) <= 1.0_real64, "Randomized TV in [0,1]")
             call assert_true(angle(i) >= 0.0_real64 .and. angle(i) <= 90.0_real64, "Randomized angle in [0,90]")
@@ -124,7 +124,9 @@ contains
         select_vec = [.true.]
         select_axes = [.false., .false., .false.]
         call compute_tissue_versatility(3, 1, expr, select_vec, 1, select_axes, 0, tv, angle, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=7_int32), "No axes selected should return ERR_EMPTY_INPUT")
+        ! `n_selected_axes` is not an array extent, so its floor is a documented range rather
+        ! than a dimension check, and zero is reported as an out-of-range value
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "No axes selected should return ERR_INVALID_INPUT")
     end subroutine test_invalid_input_no_axes
 
     !> Test epsilon threshold stability with extremely small vectors.
@@ -157,7 +159,7 @@ contains
         select_axes = [.true., .true., .true.]
 
         call compute_tissue_versatility(3, 4, expr, select_vec, 4, select_axes, 3, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Epsilon threshold stability should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Epsilon threshold stability should succeed")
 
         ! Test case 1: At threshold - should be treated as zero
         call assert_equal_real(tv(1), 1.0_real64, 1e-12_real64, "Epsilon threshold: TV=1")
@@ -205,7 +207,7 @@ contains
         select_axes = [.true., .true., .true.]
 
         call compute_tissue_versatility(3, 1, expr, select_vec, 1, select_axes, 3, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Edge case clamp should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Edge case clamp should succeed")
 
         ! This vector passes the sqrt(epsilon) threshold so gets full processing
         ! The clamp ensures we get mathematically valid results
@@ -242,7 +244,7 @@ contains
         select_axes = [.true., .true., .true.]
 
         call compute_tissue_versatility(3, 2, expr, select_vec, 2, select_axes, 3, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unbalanced components should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unbalanced components should succeed")
 
         ! Both vectors pass sqrt(epsilon) threshold and get full processing
         ! The clamp ensures mathematically valid cos_phi values
@@ -295,7 +297,7 @@ contains
         select_axes = [.true., .true., .true.]
 
         call compute_tissue_versatility(3, 6, expr, select_vec, 6, select_axes, 3, tv, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Comprehensive edge cases should succeed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Comprehensive edge cases should succeed")
 
         ! Case 1: Large numbers should work normally (uniform → TV=0)
         call assert_equal_real(tv(1), 0.0_real64, 1e-12_real64, "Large numbers TV")

@@ -141,7 +141,7 @@ contains
         expected_ix = [ 23, 25, 18, 34, 62, 35, 41, 69, 15, 30, 6, 19, 42, 10, 63, 43, 5, 40, 98, 16, 12, 28, 90, 58, 75, 96, 94, 36, 22, 2, 76, 11, 92, 44, 14, 61, 4, 20, 65, 60, 84, 54, 82, 100, 29, 39, 50, 56, 57, 64, 45, 7, 51, 71, 99, 38, 55, 97, 17, 95, 93, 73, 59, 1, 80, 78, 87, 68, 72, 9, 74, 85, 13, 21, 3, 83, 86, 47, 67, 37, 66, 33, 89, 31, 91, 70, 88, 8, 77, 32, 49, 79, 46, 27, 81, 52, 53, 26, 48, 24 ]
         
         call build_bst_index(x, n, ix, ierr)
-        call assert_equal_int(ierr, ERR_OK, "bst construction failed")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "bst construction failed")
         call assert_permutation(ix, n, "ix not permutation")
 
         ! Check monotonicity of x
@@ -168,9 +168,9 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for sorted values')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Build bst index failed for sorted values')
         val = get_sorted_value(x, ix, 3, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Get sorted value failed')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Get sorted value failed')
 
         call assert_equal_real(val, 3.0d0, 1d-12, "get_sorted_value returned incorrect value")
     end subroutine test_bst_sorted_values
@@ -185,9 +185,9 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Build bst index failed')
         call bst_range_query(x, ix, n, 2.5d0, 7.5d0, res_ix, res_n, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Bst range query failed')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Bst range query failed')
 
         call assert_true(res_n == 5, "BST range query returned incorrect count")
     end subroutine test_bst_range_query
@@ -212,7 +212,7 @@ contains
         integer(int32) :: ix(n), ierr
 
         call build_bst_index(x, n, ix, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for single element')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Build bst index failed for single element')
         call assert_equal_int(ix(1), 1, "BST single element index incorrect")
         call assert_equal_real(x(ix(1)), 42.0d0, 1d-12, "BST single element value incorrect")
     end subroutine test_bst_single_element
@@ -227,7 +227,7 @@ contains
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for identical values')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Build bst index failed for identical values')
         ! Should still be a valid permutation
         do i = 1, n
             call assert_true(ix(i) >= 1 .and. ix(i) <= n, "BST identical values index out of bounds")
@@ -245,7 +245,7 @@ contains
         call set_ok(ierr)
         call random_array(x, n)
         call build_bst_index(x, n, ix, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Build bst index failed for large random values')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Build bst index failed for large random values')
         ! Check monotonicity of x(ix)
         is_sorted = .true.
         do i = 2, n

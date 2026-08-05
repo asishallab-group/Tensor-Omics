@@ -29,9 +29,9 @@ contains
         v = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
         expected = [0.0_real64, 0.25_real64, 0.5_real64, 0.75_real64, 1.0_real64]
 
-        call normalize_variable_timeseries(v, v_norm, n_points, ierr, status)
+        call normalize_variable_timeseries(v, v_norm, n_points, status, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "test_normalize_variable_timeseries: ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_variable_timeseries: ierr")
         call assert_equal_array_real(v_norm, expected, n_points, TOL, "test_normalize_variable_timeseries: values")
     end subroutine test_normalize_variable_timeseries
 
@@ -46,9 +46,9 @@ contains
         trajectory(:, 2) = [20.0_real64, 21.0_real64, 22.0_real64, 23.0_real64]
         expected = [0.0_real64, 1.0_real64/3.0_real64, 2.0_real64/3.0_real64, 1.0_real64]
 
-        call normalize_single_trajectory(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status)
+        call normalize_single_trajectory(trajectory, trajectory_norm, n_factors, n_timepoints, status, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "test_normalize_single_trajectory: ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_single_trajectory: ierr")
         do i = 1, n_factors
             call assert_equal_array_real(trajectory_norm(:, i), expected, n_timepoints, TOL, "test_normalize_single_trajectory: factor in iteration " // i)
             call assert_equal_int(status(i), ERR_OK, "test_normalize_single_trajectory: status in iteration " // i)
@@ -67,9 +67,9 @@ contains
         trajectories(1, 2, :) = [5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64]
         trajectories(2, 2, :) = [2.0_real64, 4.0_real64, 6.0_real64, 8.0_real64]
 
-        call normalize_all_trajectories_alloc(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status)
+        call normalize_all_trajectories_alloc(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "test_normalize_all_trajectories: ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_all_trajectories: ierr")
         do i_sample = 1, n_samples
             do i_factor = 1, n_factors
                 call assert_equal_real(minval(trajectories_norm(i_factor, i_sample, :)), 0.0_real64, TOL, "test_normalize_all_trajectories: min in iteration i_sample=" // i_sample // ", i_factor=" // i_factor)

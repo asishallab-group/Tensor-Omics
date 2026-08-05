@@ -48,7 +48,7 @@ contains
 
         call omics_vector_RAP_projection(vecs, n_axes, n_vecs, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: "//trim(test_name))
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: "//trim(test_name))
 
         do i_vec = 1, n_selected_vecs
             call assert_equal_real( &
@@ -81,7 +81,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: all selected")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: all selected")
 
         ! Check the projection
         do i_vec = 1, n_selected_vecs
@@ -111,7 +111,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: one axis selected")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: one axis selected")
     end subroutine test_one_axis_selected
 
     !> Test all axes and one vector are selected
@@ -131,7 +131,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: one vector selected")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: one vector selected")
     end subroutine test_one_vector_selected
 
     !> Test constant vector
@@ -152,7 +152,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: constant vector")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: constant vector")
         call assert_equal_array_real( &
             projections(:, 1), &
             [0.0_real64, 0.0_real64, 0.0_real64], &
@@ -180,7 +180,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: orthogonal vector")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: orthogonal vector")
     end subroutine test_orthogonal_vector
 
     !> Test no axes
@@ -240,7 +240,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: mixed selection")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: mixed selection")
     end subroutine test_mixed_selection
 
     !> Test non-square vecs
@@ -264,7 +264,7 @@ contains
         projections = 1
 
         call omics_vector_RAP_projection(vecs, 4, 2, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: non-square vecs")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: non-square vecs")
     end subroutine test_non_square_vecs
 
 end module mod_test_rap_tools_omics_vector_RAP_projection

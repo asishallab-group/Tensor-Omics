@@ -44,7 +44,7 @@ contains
     cond_cols = [2]
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -65,7 +65,7 @@ contains
     cond_cols = [2]
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -89,7 +89,7 @@ contains
     cond_cols = [2, 4, 6]     ! Condition samples
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -112,7 +112,7 @@ contains
     cond_cols = [2, 4]     ! Columns with positive values
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -134,7 +134,7 @@ contains
     cond_cols = [2]
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -156,7 +156,7 @@ contains
     cond_cols = [2]
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -179,7 +179,7 @@ contains
     cond_cols = [2, 4]
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -206,7 +206,7 @@ contains
     cond_cols = [2, 4, 6]
     
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_OK, "calc_fchange returned error")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_fchange returned error")
 
     expected_matrix = i_matrix(cond_cols, :) - i_matrix(control_cols, :)
 
@@ -221,7 +221,7 @@ contains
     real(real64), dimension(0) :: i_matrix, o_matrix
     n_genes = 0; n_cols = 0; n_pairs = 0
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
-    call assert_equal_int(ierr, ERR_EMPTY_INPUT, "calc_fchange should return error for empty input")
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "calc_fchange should return error for empty input")
   end subroutine test_calc_fchange_empty_matrix
 
 end module mod_test_calc_fchange

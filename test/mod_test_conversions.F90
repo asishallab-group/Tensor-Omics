@@ -85,13 +85,13 @@ contains
 
         c_char_array = ["H", "e", "l", "l", "o"]
         call c_char_1d_as_string(c_char_array, f_char, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
         call assert_true(f_char == "Hello", "test_conversions_c_char_1d_as_string: value mismatch")
 
         ! test empty string
         c_char_array = [c_null_char, "e", "l", "l", "o"]
         call c_char_1d_as_string(c_char_array, f_char, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
         call assert_true(f_char == "", "test_conversions_c_char_1d_as_string: value mismatch")
     end subroutine test_c_char_1d_as_string
 
@@ -107,7 +107,7 @@ contains
         c_char_array(:, 2) = [c_null_char, "e", "l", "l", "o"]
 
         call c_char_2d_as_string(c_char_array, f_char, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
         call assert_equal_int(size(f_char, 1), 2, "test_conversions_c_char_2d_as_string: Did not get two strings")
         call assert_true(f_char(1) == "Hello" .and. f_char(2) == "", "test_conversions_c_char_2d_as_string: value mismatch")
     end subroutine test_c_char_2d_as_string

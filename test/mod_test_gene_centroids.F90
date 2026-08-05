@@ -13,7 +13,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_gene_centroids() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(13))
+        allocate (all_tests(10))
         all_tests(1) = test_case("test_basic_all_mode", test_basic_all_mode)
         all_tests(2) = test_case("test_basic_ortho_mode", test_basic_ortho_mode)
         all_tests(3) = test_case("test_empty_family", test_empty_family)
@@ -24,9 +24,6 @@ contains
         all_tests(8) = test_case("test_gene_order_invariance", test_gene_order_invariance)
         all_tests(9) = test_case("test_invalid_input_arguments", test_invalid_input_arguments)
         all_tests(10) = test_case("test_invalid_family_mapping", test_invalid_family_mapping)
-        all_tests(11) = test_case("test_invalid_mode", test_invalid_mode)
-        all_tests(12) = test_case("test_missing_ortholog_set", test_missing_ortholog_set)
-        all_tests(13) = test_case("test_present_ortholog_set_in_all_mode", test_present_ortholog_set_in_all_mode)
     end function get_all_tests_gene_centroids
 
     ! --------------------------------------------------------------------------
@@ -44,8 +41,8 @@ contains
         gene_to_family = [1, 1, 2, 2, 1]
         expected = reshape([3.0, 3.0, 15.0, 15.0], [n_axes, n_families])
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_all_mode")
     end subroutine test_basic_all_mode
 
@@ -62,9 +59,9 @@ contains
         ortholog_set = [.true., .false., .true., .true., .true.]
         expected = reshape([3.0, 3.0, 15.0, 15.0], [n_axes, n_families])
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ORTHOLOGS, selected_indices, ierr, ortholog_set)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ortholog_set, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_ortho_mode")
     end subroutine test_basic_ortho_mode
 
@@ -80,8 +77,8 @@ contains
         expected = 0.0
         expected(:, 1) = 1.0 ! Centroid of family 1 is just the vector itself
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_empty_family")
     end subroutine test_empty_family
 
@@ -98,9 +95,9 @@ contains
         ortholog_set = .false. ! No genes are orthologs
         expected = 0.0 ! Expect a zero vector
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ORTHOLOGS, selected_indices, ierr, ortholog_set)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call group_centroid_orthologs(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ortholog_set, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_no_matching_orthologs")
     end subroutine test_no_matching_orthologs
 
@@ -113,9 +110,9 @@ contains
         vectors(:, 1) = [12.3, -4.5, 6.7]
         gene_to_family = [1]
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, vectors, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_single_gene_family")
     end subroutine test_single_gene_family
 
@@ -133,9 +130,9 @@ contains
         gene_to_family = [1, 1, 1, 1]
         expected(:, 1) = [0.0, 0.0]
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_extreme_values")
     end subroutine test_extreme_values
 
@@ -155,9 +152,9 @@ contains
         expected = 0.0
         expected(:, 1) = sum(vectors(:, 1:n_genes:n_families), dim=2)/real(count(gene_to_family == 1), real64)
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_allclose_array_real(centroids(:, 1), expected(:, 1), n_axes, 0.0_real64, 1e-9_real64, "test_higher_dimensions")
     end subroutine test_higher_dimensions
 
@@ -182,12 +179,12 @@ contains
         gene_to_family2 = [1, 2, 1, 1, 2]
         ortholog_set2 = [.true., .true., .true., .false., .true.]
 
-        call group_centroid(vectors1, n_axes, n_genes, gene_to_family1, n_families, &
-                            centroids1, MODE_GROUP_ORTHOLOGS, selected_indices1, ierr, ortholog_set1)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
-        call group_centroid(vectors2, n_axes, n_genes, gene_to_family2, n_families, &
-                            centroids2, MODE_GROUP_ORTHOLOGS, selected_indices2, ierr, ortholog_set2)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call group_centroid_orthologs(vectors1, n_axes, n_genes, gene_to_family1, n_families, &
+                            centroids1, selected_indices1, ortholog_set1, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
+        call group_centroid_orthologs(vectors2, n_axes, n_genes, gene_to_family2, n_families, &
+                            centroids2, selected_indices2, ortholog_set2, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         call assert_allclose_array_real(centroids1, centroids2, n_axes*n_families, &
                                         0.0_real64, 1e-9_real64, "test_gene_order_invariance")
@@ -202,16 +199,16 @@ contains
         vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
         gene_to_family = [1, 1, 2, 2, 1]
 
-        call group_centroid(vectors, n_axes_invalid, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call group_centroid_all(vectors, n_axes_invalid, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=2_int32), "Invalid 0 n_axes should return ERR_EMPTY_INPUT")
 
-        call group_centroid(vectors, n_axes, n_genes_invalid, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes_invalid, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=3_int32), "Invalid 0 n_genes should return ERR_EMPTY_INPUT")
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families_invalid, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families_invalid, &
+                            centroids, selected_indices, ierr=ierr)
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=5_int32), "Invalid 0 n_families should return ERR_EMPTY_INPUT")
     end subroutine test_invalid_input_arguments
 
@@ -224,60 +221,9 @@ contains
         vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
         gene_to_family = [1, 1, 2, 3, 1] ! Invalid family mapping since family 3 does not exist
 
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr)
+        call group_centroid_all(vectors, n_axes, n_genes, gene_to_family, n_families, &
+                            centroids, selected_indices, ierr=ierr)
         call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=4_int32), "Invalid family mapping should return ERR_INVALID_INPUT")
     end subroutine test_invalid_family_mapping
 
-    ! Test case 11: Test for invalid mode string.
-    subroutine test_invalid_mode()
-        integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
-        real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
-        integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
-
-        vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
-        gene_to_family = [1, 1, 2, 2, 1]
-
-        ! Check with empty mode string
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, 2, selected_indices, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "Invalid mode constant should return ERR_INVALID_INPUT")
-        ! Check with invalid mode string
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, -1, selected_indices, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=7_int32), "Invalid mode constant should return ERR_INVALID_INPUT")
-    end subroutine test_invalid_mode
-
-    ! Test case 12: Test for missing ortholog_set in 'orthologs' mode.
-    subroutine test_missing_ortholog_set()
-        integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
-        real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
-        integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
-
-        vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
-        gene_to_family = [1, 1, 2, 2, 1]
-
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ORTHOLOGS, selected_indices, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=10_int32), "Missing ortholog_set in 'orthologs' mode should return ERR_INVALID_INPUT")
-    end subroutine test_missing_ortholog_set
-
-    ! Test case 13: Test for present ortholog_set in 'all' mode. In this case, the function should ignore the ortholog_set and proceed without error.
-    subroutine test_present_ortholog_set_in_all_mode()
-        integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
-        real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
-        integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
-        real(real64) :: expected(n_axes, n_families)
-        logical :: ortholog_set(n_genes)
-
-        vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
-        gene_to_family = [1, 1, 2, 2, 1]
-        expected = reshape([3.0, 3.0, 15.0, 15.0], [n_axes, n_families])
-        ortholog_set = [.true., .false., .true., .true., .true.]
-
-        call group_centroid(vectors, n_axes, n_genes, gene_to_family, n_families, &
-                            centroids, MODE_GROUP_ALL, selected_indices, ierr, ortholog_set)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
-        call assert_allclose_array_real(centroids, expected, n_axes*n_families, 0.0_real64, 1e-9_real64, "test_basic_all_mode")
-    end subroutine test_present_ortholog_set_in_all_mode
 end module mod_test_gene_centroids

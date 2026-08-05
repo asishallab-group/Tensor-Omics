@@ -5,8 +5,10 @@ module asserts
     use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET, COLOR_GREEN, COLOR_YELLOW, COLOR_LIGHT_GRAY
+    use tox_errors, only: get_err_code, get_err_arg_pos, ERR_OK
     implicit none
     private
+    public :: assert_err
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
     public :: assert_equal_real, assert_not_equal_real, assert_equal_array_int
     public :: assert_equal_array_real, assert_no_nan_real, assert_no_inf_real
@@ -150,6 +152,32 @@ contains
         character(*), intent(in) :: msg
         if (a /= b) then
             call assertion_error(trim(msg), got=""//a, expected=""//b)
+        end if
+    end subroutine
+
+    !> Assert an error code, comparing the code and -- when asked -- the argument it blames.
+    !|
+    !| `ierr` packs both, so a mismatch reported as a single number ("expected 202, got 80201")
+    !| costs the reader an unpacking step every time. This reports them apart. Omitting
+    !| `arg_pos` checks the code alone, which is what a caller that does not care which dummy
+    !| was rejected wants; `ERR_OK` needs no position either.
+    subroutine assert_err(ierr, expected_code, msg, arg_pos)
+        integer(int32), intent(in) :: ierr, expected_code
+        character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: arg_pos
+
+        if (get_err_code(ierr) /= expected_code) then
+            call assertion_error(trim(msg), additional_msg="wrong error code", &
+                                 got=""//get_err_code(ierr)//" at argument "//get_err_arg_pos(ierr), &
+                                 expected=""//expected_code)
+            return
+        end if
+
+        if (present(arg_pos)) then
+            if (get_err_arg_pos(ierr) /= arg_pos) then
+                call assertion_error(trim(msg), additional_msg="right error code, wrong argument", &
+                                     got=""//get_err_arg_pos(ierr), expected=""//arg_pos)
+            end if
         end if
     end subroutine
 

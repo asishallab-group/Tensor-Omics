@@ -56,7 +56,7 @@ contains
         v2 = [1.0_real64, 0.0_real64]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: identical 2D vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: identical 2D vectors")
         call assert_equal_real(signed_angle, 0.0_real64, TOL, "Identical 2D vectors")
     end subroutine test_identical_vectors_2d
 
@@ -68,7 +68,7 @@ contains
         v2 = [-1.0_real64, 0.0_real64]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: opposite 2D vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: opposite 2D vectors")
         call assert_equal_real(signed_angle, PI, TOL, "Opposite 2D vectors magnitude")
     end subroutine test_opposite_vectors_2d
 
@@ -80,7 +80,7 @@ contains
         v2 = [0.0_real64, 1.0_real64]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: perpendicular 2D vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: perpendicular 2D vectors")
         call assert_equal_real(signed_angle, PI/2.0_real64, TOL, "Perpendicular 2D vectors magnitude")
         call assert_true(signed_angle > 0.0_real64, "Counterclockwise rotation should be positive")
     end subroutine test_perpendicular_vectors_2d
@@ -94,7 +94,7 @@ contains
         expected = PI/4.0_real64
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: 45-degree rotation")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: 45-degree rotation")
         call assert_equal_real(signed_angle, expected, TOL, "45-degree counterclockwise rotation")
     end subroutine test_45_degree_rotation_2d
 
@@ -125,7 +125,7 @@ contains
         v2 = [1.0_real64, 1.0_real64, 1.0_real64]
         selected_axes = [1, 2, 3]
         call clock_hand_angle_between_vectors(v1, v2, 3, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: identical 3D vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: identical 3D vectors")
         call assert_equal_real(signed_angle, 0.0_real64, TOL, "Identical 3D vectors")
     end subroutine test_identical_vectors_3d
 
@@ -137,7 +137,7 @@ contains
         v2 = [0.0_real64, 1.0_real64, 0.0_real64]
         selected_axes = [1, 2, 3]
         call clock_hand_angle_between_vectors(v1, v2, 3, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: perpendicular 3D vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: perpendicular 3D vectors")
         call assert_equal_real(signed_angle, PI/2.0_real64, TOL, "Perpendicular 3D vectors")
     end subroutine test_perpendicular_vectors_3d
 
@@ -151,7 +151,7 @@ contains
         v1 = v1/sqrt(sum(v1**2))
         v2 = v2/sqrt(sum(v2**2))
         call clock_hand_angle_between_vectors(v1, v2, 3, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: arbitrary 3D rotation")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: arbitrary 3D rotation")
         dot_product = sum(v1*v2)
         expected_magnitude = acos(max(-1.0_real64, min(1.0_real64, dot_product)))
         call assert_equal_real(signed_angle, expected_magnitude, TOL, "3D arbitrary rotation magnitude")
@@ -167,7 +167,7 @@ contains
         v2 = [0.0_real64, 1.0_real64, 0.0_real64, 0.0_real64, 0.0_real64]
         selected_axes = [1, 2, 3]
         call clock_hand_angle_between_vectors(v1, v2, 5, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: high-dimensional basic")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: high-dimensional basic")
         call assert_equal_real(signed_angle, PI/2.0_real64, TOL, "High-dimensional perpendicular vectors")
     end subroutine test_high_dimensional_basic
 
@@ -179,7 +179,7 @@ contains
         v2 = [0.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 1.0_real64, 0.0_real64, 0.0_real64]
         selected_axes = [3, 5, 1]
         call clock_hand_angle_between_vectors(v1, v2, 7, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: high-dimensional selected axes")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: high-dimensional selected axes")
         call assert_equal_real(signed_angle, PI/2.0_real64, TOL, "High-dimensional with selected axes")
     end subroutine test_high_dimensional_selected_axes
 
@@ -205,7 +205,7 @@ contains
         v2 = [0.0_real64, 50.0_real64]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: denormalized vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: denormalized vectors")
         call assert_equal_real(signed_angle, PI/2.0_real64, TOL, "Denormalized vectors")
     end subroutine test_denormalized_vectors
 
@@ -218,7 +218,7 @@ contains
         v2 = [0.0_real64, tiny]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: tiny vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: tiny vectors")
         call assert_equal_real(signed_angle, PI/2.0_real64, 1e-10_real64, "Tiny vectors precision")
     end subroutine test_tiny_vectors_precision
 
@@ -231,7 +231,7 @@ contains
         v2 = [0.0_real64, huge_val]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: huge vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: huge vectors")
         call assert_equal_real(signed_angle, PI/2.0_real64, TOL, "Huge vectors precision")
     end subroutine test_huge_vectors_precision
 
@@ -244,7 +244,7 @@ contains
         v2 = [1.0_real64, epsilon]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: nearly identical vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: nearly identical vectors")
         call assert_equal_real(signed_angle, 0.0_real64, 1e-10_real64, "Nearly identical vectors should have tiny angle")
     end subroutine test_nearly_identical_vectors
 
@@ -257,7 +257,7 @@ contains
         v2 = [-1.0_real64, epsilon]
         selected_axes = [1, 2, 1]
         call clock_hand_angle_between_vectors(v1, v2, 2, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: nearly opposite vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: nearly opposite vectors")
         call assert_equal_real(signed_angle, PI, 1e-10_real64, "Nearly opposite vectors should be close to π")
     end subroutine test_nearly_opposite_vectors
 
@@ -271,7 +271,7 @@ contains
         v1 = v1/sqrt(sum(v1**2))
         v2 = v2/sqrt(sum(v2**2))
         call clock_hand_angle_between_vectors(v1, v2, 3, signed_angle, selected_axes, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: mixed positive/negative vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: mixed positive/negative vectors")
         call assert_equal_real(signed_angle, -2.7613414468968598_real64, TOL, "Mixed sign vectors in valid range")
     end subroutine test_mixed_positive_negative
 
@@ -288,7 +288,7 @@ contains
         selected_axes = [1, 2, 1]
         call clock_hand_angles_for_shift_vectors(fields, 2, 1, vecs_selection_mask, 1, &
                                                  selected_axes, signed_angles, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: single pair shift vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: single pair shift vectors")
         call assert_equal_real(signed_angles(1), PI/2.0_real64, TOL, "Single pair shift vectors")
     end subroutine test_single_pair_shift_vectors
 
@@ -306,7 +306,7 @@ contains
         vecs_selection_mask = [.true., .true., .true.]
         selected_axes = [1, 2, 1]
         call clock_hand_angles_for_shift_vectors(fields, 2, 3, vecs_selection_mask, 3, selected_axes, signed_angles, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: multiple pairs shift vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: multiple pairs shift vectors")
         call assert_equal_real(signed_angles(1), PI/2.0_real64, TOL, "First rotation (90° CCW)")
         call assert_equal_real(signed_angles(2), PI, TOL, "Second rotation (180°)")
         call assert_equal_real(signed_angles(3), -PI/2.0_real64, TOL, "Third rotation (90° CW)")
@@ -328,7 +328,7 @@ contains
         vecs_selection_mask = [.false., .true., .false., .true.]
         selected_axes = [1, 2, 1]
         call clock_hand_angles_for_shift_vectors(fields, 2, 4, vecs_selection_mask, 2, selected_axes, signed_angles, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: shift vectors with selection mask")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: shift vectors with selection mask")
         call assert_equal_real(signed_angles(1), PI, TOL, "Second vector (180°)")
         call assert_equal_real(signed_angles(2), PI/4.0_real64, TOL, "Fourth vector (45°)")
     end subroutine test_shift_vectors_with_selection_mask
@@ -376,7 +376,7 @@ contains
         vecs_selection_mask = .true.
         selected_axes = [1, 2, 3]
         call clock_hand_angles_for_shift_vectors(fields, n_dims, n_vecs, vecs_selection_mask, n_vecs, selected_axes, signed_angles, ierr)
-        call assert_equal_int(ierr, ERR_OK, "ierr should be 0 for valid input: performance large scale")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: performance large scale")
         do i = 1, n_vecs
             call assert_true(signed_angles(i) <= PI, "Large-scale angles in valid range")
         end do

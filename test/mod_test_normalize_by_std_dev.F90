@@ -3,6 +3,8 @@ module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
+  ! the tox_normalization module used to re-export it; it is f42 infrastructure
+  use f42_utils, only: std_dev
   use test_suite
   use tox_errors
   implicit none
@@ -86,7 +88,7 @@ contains
 
     call normalize_by_std_dev_alloc(ng, nt, mat, res, span, deg, ierr)
 
-    call assert_equal_int(ierr, ERR_OK, "test_loess_normalization_outlier_correction: LOESS normalization failed")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_normalization_outlier_correction: LOESS normalization failed")
 
     call assert_no_nan_real(res, ng*nt, "test_loess_normalization_outlier_correction: NaNs in LOESS result")
   end subroutine test_loess_normalization_outlier_correction
@@ -106,7 +108,7 @@ contains
 
         call normalize_by_std_dev_alloc(ng, nt, mat, res, 0.75d0, 1_int32, ierr)
         
-        call assert_equal_int(ierr, ERR_OK, "test_loess_zero_variance_handling: LOESS failed even with valid points")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_zero_variance_handling: LOESS failed even with valid points")
         
         call assert_equal_real(res(1, 10), 1.0_real64, 1d-12, "test_loess_zero_variance_handling: Zero variance gene altered")
     end subroutine test_loess_zero_variance_handling
