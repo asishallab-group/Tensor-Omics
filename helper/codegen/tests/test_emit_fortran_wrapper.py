@@ -397,3 +397,39 @@ class TestPrologue:
 
         header = self.emitted_with(PrologueScope.BOTH).split("contains", 1)[0]
         assert "guard" in header
+
+
+class TestReexportModule:
+    def text(self):
+        from builders import project
+
+        from test_synthesize import split_family_modules
+
+        synthesis = synthesize_wrappers(project(*split_family_modules()))
+        analyse_project(synthesis.project, DiagnosticBag(), CONVENTIONS)
+        return FortranWrapperEmitter(project=synthesis.project).module(
+            synthesis.project.module("tox_demo")
+        )
+
+    def test_it_is_a_module_of_nothing_but_uses(self):
+        text = self.text()
+        assert "module tox_demo" in text
+        assert "use tox_demo_left" in text
+        assert "use tox_demo_right" in text
+        assert "end module tox_demo" in text
+        assert "contains" not in text
+
+    def test_nothing_is_hidden(self):
+        # re-exporting is the point: no `only` list to filter what a child made public,
+        # and no `private` to hide it again
+        text = self.text()
+        assert "only:" not in text
+        assert "private" not in text
+
+    def test_it_declares_nothing_so_needs_no_macros(self):
+        text = self.text()
+        assert "#include" not in text
+        assert "M_IMPLICIT_NONE" not in text
+
+    def test_it_carries_a_generated_doc(self):
+        assert "do not edit" in self.text()

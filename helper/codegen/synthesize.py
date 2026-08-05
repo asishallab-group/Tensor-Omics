@@ -32,6 +32,12 @@ from .ir.types import BaseType, FortranType, Intent
 _ERROR_DOC = "Error code; zero on success, non-zero on failure."
 #: Documentation body of a generated wrapper module (the emitter adds the summary above it)
 _MODULE_DOC = "Generated from the kernel; do not edit -- regenerate instead."
+#: Documentation body of a generated re-export module
+_REEXPORT_DOC = (
+    "Generated from the kernel tree; do not edit -- regenerate instead. "
+    "Use this module to reach the whole family; the split into the modules below is an "
+    "implementation detail."
+)
 
 
 def generated_wrapper_paths(
@@ -165,6 +171,14 @@ class WrapperSpec:
 class SynthesisResult:
     project: Project
     specs: tuple[WrapperSpec, ...]
+    #: names of the generated modules that only re-export their children (see
+    #: `_reexport_modules`); they hold no procedures, so no `WrapperSpec` names them
+    reexports: tuple[str, ...] = ()
+
+    @property
+    def generated_names(self) -> set[str]:
+        """Every module this synthesis put into the project."""
+        return {spec.module_name for spec in self.specs} | set(self.reexports)
 
 
 def synthesize_wrappers(
@@ -189,10 +203,9 @@ def synthesize_wrappers(
     by_module: dict[str, list[Procedure]] = {}
     sources: dict[str, Module] = {}
     specs: list[WrapperSpec] = []
+    kernel_modules = [m for m in project if m.name.lower().endswith(suffix)]
 
-    for module in project:
-        if not module.name.lower().endswith(suffix):
-            continue
+    for module in kernel_modules:
         generated_name = module.name[: -len(suffix)]
         for kernel in module.procedures:
             if not kernel.name.lower().endswith(suffix):
@@ -228,9 +241,72 @@ def synthesize_wrappers(
         )
         for name, procedures in by_module.items()
     ]
+    reexports = _reexport_modules(kernel_modules, set(by_module), conventions)
+    generated_modules += reexports
 
     augmented = Project(list(project.modules) + generated_modules, name=project.name)
-    return SynthesisResult(project=augmented, specs=tuple(specs))
+    return SynthesisResult(
+        project=augmented,
+        specs=tuple(specs),
+        reexports=tuple(module.name for module in reexports),
+    )
+
+
+def _reexport_modules(
+    kernel_modules: Sequence[Module], wrapper_modules: set[str], conventions: Conventions
+) -> list[Module]:
+    """The generated counterparts of the kernel tree's re-export modules.
+
+    A family too big for one file is split into several kernel modules and gathered by a
+    parent that holds no procedures of its own and only `use`s its children -- the shape f42
+    uses for its serde tree. That parent generates the matching parent over the *wrappers*,
+    so `use tox_data_integration` still reaches the whole family and the split stays an
+    implementation detail of the kernel tree.
+
+    Only children that generate something are re-exported: a kernel module used for its
+    constants or its recommend routines has no generated counterpart to `use`. Parents are
+    resolved to a fixed point, so a parent may gather other parents.
+    """
+    suffix = conventions.kernel_suffix
+    candidates = {
+        module.name[: -len(suffix)]: sorted(
+            {
+                used[: -len(suffix)]
+                for used in module.uses
+                if used.lower().endswith(suffix)
+            }
+        )
+        for module in kernel_modules
+        if not module.procedures and module.uses
+    }
+    if not candidates:
+        return []
+
+    locations = {
+        module.name[: -len(suffix)]: module.location for module in kernel_modules
+    }
+    generated = set(wrapper_modules)
+    while True:
+        resolved = {
+            name
+            for name, children in candidates.items()
+            if any(child in generated for child in children)
+        }
+        if resolved <= generated:
+            break
+        generated |= resolved
+
+    return [
+        Module(
+            name,
+            doc=Doc.parse([_REEXPORT_DOC]),
+            meta=Meta(),
+            location=locations[name],
+            uses=[child for child in children if child in generated],
+        )
+        for name, children in sorted(candidates.items())
+        if name in generated
+    ]
 
 
 def _base_name(kernel: Procedure, conventions: Conventions) -> str:

@@ -497,3 +497,97 @@ class TestModeSplitSynthesis:
         (spec,) = synthesize_wrappers(project(kernel_module())).specs
 
         assert spec.mode_fix is None
+
+
+def split_family_modules():
+    """A family split across two kernel modules, gathered by a parent that re-exports them.
+
+    The parent holds no procedures -- only `use` lines -- which is what makes it a
+    re-export rather than a kernel module of its own.
+    """
+    first = module(
+        "tox_demo_left_kernel",
+        procedure(
+            "left_kernel",
+            real("x", Intent.INOUT, doc="the value"),
+            meta=Meta(summary="Left", author="AUTHOR"),
+        ),
+    )
+    second = module(
+        "tox_demo_right_kernel",
+        procedure(
+            "right_kernel",
+            real("y", Intent.INOUT, doc="the value"),
+            meta=Meta(summary="Right", author="AUTHOR"),
+        ),
+    )
+    parent = module(
+        "tox_demo_kernel",
+        uses=("tox_demo_left_kernel", "tox_demo_right_kernel"),
+    )
+    return [parent, first, second]
+
+
+class TestReexportSynthesis:
+    def result(self):
+        return synthesize_wrappers(project(*split_family_modules()))
+
+    def test_the_parent_is_generated_alongside_its_children(self):
+        result = self.result()
+
+        assert result.project.module("tox_demo") is not None
+        assert result.project.module("tox_demo_left") is not None
+        assert result.project.module("tox_demo_right") is not None
+
+    def test_the_parent_re_exports_the_generated_children(self):
+        parent = self.result().project.module("tox_demo")
+
+        assert parent.uses == ("tox_demo_left", "tox_demo_right")
+        assert parent.procedures == ()
+
+    def test_the_parent_is_reported_as_a_re_export(self):
+        result = self.result()
+
+        assert result.reexports == ("tox_demo",)
+        assert result.generated_names == {"tox_demo", "tox_demo_left", "tox_demo_right"}
+
+    def test_a_child_that_generates_nothing_is_not_re_exported(self):
+        """A kernel module of constants or recommend routines has no generated counterpart."""
+        parent, first, _ = split_family_modules()
+        parent = module(
+            "tox_demo_kernel",
+            uses=("tox_demo_left_kernel", "tox_demo_constants_kernel"),
+        )
+        constants = module("tox_demo_constants_kernel")
+
+        result = synthesize_wrappers(project(parent, first, constants))
+
+        assert result.project.module("tox_demo").uses == ("tox_demo_left",)
+        assert result.project.module("tox_demo_constants") is None
+
+    def test_a_parent_may_gather_another_parent(self):
+        parent, first, second = split_family_modules()
+        grandparent = module("tox_demo_all_kernel", uses=("tox_demo_kernel",))
+
+        result = synthesize_wrappers(project(grandparent, parent, first, second))
+
+        assert result.project.module("tox_demo_all").uses == ("tox_demo",)
+
+    def test_a_kernel_module_that_uses_another_is_not_a_re_export(self):
+        """Only a module with no procedures of its own gathers; a kernel that `use`s a
+        sibling (for a constant, say) still generates its own wrappers."""
+        _, first, second = split_family_modules()
+        first = module(
+            "tox_demo_left_kernel",
+            procedure(
+                "left_kernel",
+                real("x", Intent.INOUT, doc="the value"),
+                meta=Meta(summary="Left", author="AUTHOR"),
+            ),
+            uses=("tox_demo_right_kernel",),
+        )
+
+        result = synthesize_wrappers(project(first, second))
+
+        assert result.reexports == ()
+        assert result.project.procedure("tox_demo_left", "left") is not None

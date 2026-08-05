@@ -52,6 +52,36 @@ separate marker macro: a procedure is a generatable kernel iff it is a `_kernel`
 **Rejected — a `M_KERNEL` marker macro.** It would restate what the suffix already says. The
 suffix cannot be forgotten (it is part of every call); a marker can.
 
+### A family too big for one file: re-export, not submodules
+
+A family whose kernels do not fit comfortably in one file splits into several kernel modules
+gathered by a **parent that holds no procedures of its own and only `use`s its children** —
+the shape `f42_serde_arrays_deserialize` already uses:
+
+```fortran
+module tox_data_integration_kernel
+    use tox_data_integration_preprocessing_kernel
+    use tox_data_integration_jsd_kernel
+    ...
+end module tox_data_integration_kernel
+```
+
+The generator mirrors it: a procedure-less kernel module that uses other kernel modules
+generates the matching parent over the *wrappers* (`use tox_data_integration_jsd`, …), so
+`use tox_data_integration` still reaches the whole family and the split stays an
+implementation detail of the kernel tree. Only children that actually generate something are
+re-exported — a kernel module of nothing but constants or recommend routines has no generated
+counterpart to `use` — and a parent may gather another parent.
+
+**Rejected — `submodule`s (what `tox_data_integration` used to be).** The parent had to
+restate every procedure's full signature and documentation inside an `interface` block, and
+each submodule then repeated the declarations a second time: two copies of every signature to
+keep in step, for no benefit the plain split does not give. It also cost the generator a
+special case, since Ford reports the implementing submodule as having no routines and the
+interface declaration is the only place the signature can be read from. Nothing in the
+framework needs submodules; a re-exporting parent is the same encapsulation with one copy of
+each signature.
+
 ### Why f42 is untouched
 
 `src/f42/` is generic infrastructure, not the Tensor Omics kernel. Whether an f42 procedure is

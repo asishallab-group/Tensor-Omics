@@ -74,6 +74,8 @@ class FortranWrapperEmitter:
     # -- module -----------------------------------------------------------------
 
     def module(self, module: Module, wrapper_info: dict[str, WrapperInfo] | None = None) -> str:
+        if not module.procedures and module.uses:
+            return self.reexport_module(module)
         self._wrapper_info = wrapper_info or {}
         writer = Writer()
         writer.line(f"#include <{self.macros_header}>")
@@ -103,6 +105,23 @@ class FortranWrapperEmitter:
                 writer.block(self.subroutine(procedure, module))
             writer.blank()
 
+        writer.line(f"end module {module.name}")
+        return writer.render(trailing_newline=True)
+
+    def reexport_module(self, module: Module) -> str:
+        """A parent that gathers a split family, `use`ing its children and nothing else.
+
+        No `only` list and no `private`: re-exporting is the whole point, so whatever a child
+        makes public this module makes public too. It declares nothing itself, so it needs
+        neither the macros header nor `implicit none`.
+        """
+        writer = Writer()
+        summary = f"Gathers the {module.name} family"
+        writer.block(render_doc(module.doc, kind="module", summary=summary))
+        writer.line(f"module {module.name}")
+        with writer.indent():
+            for used in module.uses:
+                writer.line(f"use {used}")
         writer.line(f"end module {module.name}")
         return writer.render(trailing_newline=True)
 

@@ -184,6 +184,20 @@ class FordFrontend:
             doc=doc,
             meta=self._meta(ford_module),
             location=location,
+            uses=self._module_uses(ford_module),
+        )
+
+    @staticmethod
+    def _module_uses(ford_module) -> list[str]:
+        """The names of the modules a module `use`s.
+
+        Ford turns `uses` into a set once it has correlated the project, holding the module
+        object where it resolved one and the bare name where it did not (the intrinsic
+        modules, anything outside the source tree). Sorted, so a re-export module generated
+        from these comes out the same on every run.
+        """
+        return sorted(
+            getattr(used, "name", used) for used in getattr(ford_module, "uses", ()) or ()
         )
 
     @staticmethod

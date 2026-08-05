@@ -255,6 +255,7 @@ class Module(Entity):
         doc: Doc = Doc(),
         meta: Meta = Meta(),
         location: SourceLocation = SourceLocation(),
+        uses: Sequence[str] = (),
     ):
         self.name = name
         self.procedures = tuple(procedures)
@@ -262,6 +263,9 @@ class Module(Entity):
         self.doc = doc
         self.meta = meta
         self.location = location
+        #: the modules this one `use`s, sorted; a module that only re-exports its children
+        #: has these and no procedures of its own
+        self.uses = tuple(uses)
         self.parent: Project | None = None
 
         self._adopt(self.procedures)

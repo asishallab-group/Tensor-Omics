@@ -57,6 +57,10 @@ class TestParsingProducesCleanIR:
     def test_the_arg_pos_factor_comes_from_the_macro(self, parsed):
         assert parsed[0].arg_pos_factor == 10000
 
+    def test_a_module_records_what_it_uses(self, project):
+        # the generated re-export modules are built from these
+        assert "tox_errors" in project.module("fx_edges").uses
+
 
 class TestExportSelection:
     def test_only_tagged_procedures_are_exported(self, project):

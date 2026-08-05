@@ -144,7 +144,7 @@ def _fortran_files(
         conventions, macros_header=str(paths.macros_header), project=project
     )
     out = paths.resolve(paths.tox_out_dir)
-    generated = {spec.module_name for spec in synthesis.specs}
+    generated = synthesis.generated_names
     # per generated module: what each wrapper needs beyond its own signature -- the kernel it
     # calls, and (for a per-mode wrapper) the mode it fixes
     info: dict[str, dict[str, WrapperInfo]] = {}
