@@ -32,15 +32,18 @@ jobs:
         with:
           compiler: ${{ inputs.compiler }}
 
+      # --skip-code-generation: neither Python nor ford is installed yet at this point, and the
+      # generated sources are committed, so a build here compiles the tree as it stands. The
+      # final step below installs the generator and checks that that is still the right tree.
       - name: Run Fortran Tests
-        run: bash test_runner.sh ${{ inputs.extra_build_args }} --compiler="${{ inputs.compiler }}"
+        run: bash test_runner.sh ${{ inputs.extra_build_args }} --skip-code-generation --compiler="${{ inputs.compiler }}"
 
       - name: Install R
         uses: ./.github/actions/install-R
 
       - name: Run R Tests
         run: |
-          bash build.sh ${{ inputs.extra_build_args }} --compiler="${{ inputs.compiler }}"
+          bash build.sh ${{ inputs.extra_build_args }} --skip-code-generation --compiler="${{ inputs.compiler }}"
           for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
 
       - name: Install Python

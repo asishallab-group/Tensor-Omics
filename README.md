@@ -175,6 +175,7 @@ Usage:
 - `--compiler=<ifx|gfortran|nvfortran>`: Specifies the compiler used for compilation, defaults to `gfortran`.
 - `--directive=<directive>`: Define a preprocessor directive, can be used multiple times, like `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`
 - `--diagnostics`: While `--max-performance` enables optimization flags, this one enables flags for diagnostics, which helps for debugging. Can be combined with `--max-performance` though.
+- `--skip-code-generation`: Every build first regenerates the C, Python and R bindings and the generated Fortran wrappers from `src/` (see [`helper/codegen`](./helper/codegen/README.md)), so a source change and its generated layers cannot drift apart. This option skips that. The generated sources are committed, so a build without Python or [`ford`](https://forddocs.readthedocs.io) installed works anyway -- it warns and compiles what is in the tree.
 - `--override-flags="<flags>"`: Specify custom flags to use during compilation, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"` could be used for `gfortran`.<br>
   *Note: With using this option, the `--max_performance` option won't have any effect*
 - environment variable `FC` is supported as well for specifying compiler, with precedence `--compiler > $TOX_COMPILER > $FC`.

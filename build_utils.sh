@@ -48,6 +48,34 @@ Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLO
   C_FLAGS="$C_FLAGS $(R CMD config --cppflags)"
 }
 
+# Regenerates the bindings and the generated Fortran wrappers from `src/` before compiling, so a
+# source change and its generated layers can never drift apart in a build. Everything under
+# `src/generated` is committed as well, so a machine without the generator's dependencies still
+# builds -- it just builds what is in the tree, which is what the warning below says.
+# `--skip-code-generation` skips the stage outright.
+function generate_code() {
+  if [[ "$TOX_SKIP_CODE_GENERATION" ]]; then
+    return
+  fi
+
+  declare python=$(command -v python3 || command -v python)
+  declare hint="pass '$COLOR_LIGHT_GRAY--skip-code-generation$COLOR_CREAM' to silence this."
+  if [[ -z "$python" ]]; then
+    warning "'$(echo_compiler python3)' not found -- building the generated sources as they stand in the tree.
+Install Python to regenerate them, or $hint"
+    return
+  fi
+  if ! "$python" -c "import ford" >/dev/null 2>&1; then
+    warning "'$(echo_compiler ford)' not found -- building the generated sources as they stand in the tree.
+Run '$COLOR_LIGHT_GRAY$(basename $python) -m pip install ford$COLOR_CREAM' to regenerate them, or $hint"
+    return
+  fi
+
+  cecho "${COLOR_CREAM}Generating the bindings from $(echo_compiler src/)"
+  "$python" helper/generate_code.py
+  check_exit_code "Code generation failed"
+}
+
 function utils_fpm() {
   cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
   declare prefix="fpm build"

@@ -31,6 +31,9 @@ fi
 rm -f build/*.so
 rm -f external/*.a
 
+# Bring the generated sources up to date before anything reads them
+generate_code
+
 # Build with FPM first
 # dependencies
 cd external/loess_netlib
