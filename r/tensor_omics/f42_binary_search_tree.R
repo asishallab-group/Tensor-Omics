@@ -5,7 +5,7 @@
 #' @param values a numeric vector. Input real array to be indexed
 #' @return Output permutation index
 #'
-#' Generated from the Fortran procedure \code{f42_binary_search_tree::build_bst_index}.
+#' Generated from the Fortran module \code{f42_binary_search_tree}.
 #' @export
 build_bst_index <- function(values) {
     values <- .tox_as_double_vector(values, "values")
@@ -24,7 +24,7 @@ build_bst_index <- function(values) {
 #' @param upper_bound a numeric scalar. Upper bound of range (inclusive)
 #' @return Output array of matching indices.
 #'
-#' Generated from the Fortran procedure \code{f42_binary_search_tree::bst_range_query}.
+#' Generated from the Fortran module \code{f42_binary_search_tree}.
 #' @export
 bst_range_query <- function(values, sorted_indices, lower_bound, upper_bound) {
     values <- .tox_as_double_vector(values, "values")

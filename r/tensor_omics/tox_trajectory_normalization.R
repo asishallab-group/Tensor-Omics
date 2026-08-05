@@ -5,7 +5,7 @@
 #' @param v a numeric vector. Original time series
 #' @return a named list with elements `v_norm`, `status`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_variable_timeseries}.
+#' Generated from the Fortran module \code{tox_trajectory_normalization}.
 #' @export
 normalize_variable_timeseries <- function(v) {
     v <- .tox_as_double_vector(v, "v")
@@ -24,7 +24,7 @@ normalize_variable_timeseries <- function(v) {
 #' @param trajectory a numeric matrix. Original trajectory for one sample
 #' @return a named list with elements `trajectory_norm`, `status`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_single_trajectory}.
+#' Generated from the Fortran module \code{tox_trajectory_normalization}.
 #' @export
 normalize_single_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_matrix(trajectory, "trajectory")
@@ -45,7 +45,7 @@ normalize_single_trajectory <- function(trajectory) {
 #' @param trajectories a numeric array of rank 3. Original trajectories
 #' @return a named list with elements `trajectories_norm`, `status`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories}.
+#' Generated from the Fortran module \code{tox_trajectory_normalization}.
 #' @export
 normalize_all_trajectories_expert <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -66,7 +66,7 @@ normalize_all_trajectories_expert <- function(trajectories) {
 #' @param trajectories a numeric array of rank 3. Original trajectories
 #' @return a named list with elements `trajectories_norm`, `status`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories_alloc}.
+#' Generated from the Fortran module \code{tox_trajectory_normalization}.
 #' @export
 normalize_all_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)

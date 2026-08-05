@@ -126,7 +126,7 @@ def read_expression_vectors_tsv(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_tools::read_expression_vectors_tsv`.
+    Generated from the Fortran module `tox_data_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -224,7 +224,7 @@ def read_gene_ids_from_tsv_file(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_tools::read_gene_ids_from_tsv_file`.
+    Generated from the Fortran module `tox_data_tools`.
     """
     # accept anything array-like, converting only when C needs it
     filename = np.array([str(filename).encode()], dtype="S")
@@ -290,7 +290,7 @@ def read_orthofinder_file(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_tools::read_orthofinder_file`.
+    Generated from the Fortran module `tox_data_tools`.
     """
     # accept anything array-like, converting only when C needs it
     filename = np.array([str(filename).encode()], dtype="S")
@@ -359,7 +359,7 @@ def get_unassigned_mask(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_tools::get_unassigned_mask`.
+    Generated from the Fortran module `tox_data_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:

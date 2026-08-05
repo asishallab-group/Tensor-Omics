@@ -21,7 +21,7 @@
 #'   The default value is `3`.
 #' @return a named list with elements `dscale`, `loess_x`, `loess_y`, `indices_used`, `low_sd_cutoff`, `excluded_low_sd`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, span = 0.7, degree = 2L, mode = "robust", n_iters = 3L) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
@@ -73,7 +73,7 @@ compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, sp
 #'   The default value is `3`.
 #' @return a named list with elements `dscale`, `loess_x`, `loess_y`, `indices_used`, `low_sd_cutoff`, `excluded_low_sd`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.7, degree = 2L, mode = "robust", n_iters = 3L) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
@@ -113,7 +113,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #'   Infinite values are permitted for this value.
 #' @return a named list with elements `rdi`, `sorted_rdi`, `perm`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 compute_rdi_expert <- function(distances, gene_to_fam, dscale) {
     distances <- .tox_as_double_vector(distances, "distances")
@@ -146,7 +146,7 @@ compute_rdi_expert <- function(distances, gene_to_fam, dscale) {
 #'   Infinite values are permitted for this value.
 #' @return a named list with elements `rdi`, `sorted_rdi`, `perm`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi_alloc}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 compute_rdi <- function(distances, gene_to_fam, dscale) {
     distances <- .tox_as_double_vector(distances, "distances")
@@ -182,7 +182,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #'   The default value is `95.0`.
 #' @return a named list with elements `is_outlier`, `threshold`, `quantile`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::identify_outliers}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
@@ -221,7 +221,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #'   The default value is `95.0`.
 #' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `quantile`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentile = 95.0) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
@@ -264,7 +264,7 @@ detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentil
 #'   The default value is `95.0`.
 #' @return a named list with elements `is_outlier`, `loess_x`, `loess_y`, `loess_n`, `quantile`.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers_alloc}.
+#' Generated from the Fortran module \code{tox_get_outliers}.
 #' @export
 detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.0) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")

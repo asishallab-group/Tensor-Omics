@@ -7,7 +7,7 @@
 #'   Infinite values are permitted for this value.
 #' @return Per-gene mean expression values
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::compute_gene_means}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 compute_gene_means <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -27,7 +27,7 @@ compute_gene_means <- function(expr) {
 #'   NaN is permitted for this value.
 #' @return Matrix of signed residuals
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::compute_residuals}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 compute_residuals <- function(expr, means) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -53,7 +53,7 @@ compute_residuals <- function(expr, means) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
@@ -82,7 +82,7 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 pool_means <- function(pooled_means, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
@@ -109,7 +109,7 @@ pool_means <- function(pooled_means, n_points) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_study_means}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 pool_study_means_expert <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
@@ -137,7 +137,7 @@ pool_study_means_expert <- function(mean_S1, mean_S2, n_points) {
 #' @param n_points a integer scalar. Number of reference points to define
 #' @return a named list with elements `n_pool`, `x_star`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_study_means_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 pool_study_means <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
@@ -169,7 +169,7 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 #'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
 #' @return a named list with elements `neighborhood_residuals`, `neighborhood_indices`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors) {
     x_star <- .tox_as_double_vector(x_star, "x_star")
@@ -205,7 +205,7 @@ construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors)
 #'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
 #' @return a named list with elements `neighborhood_residuals`, `neighborhood_indices`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
 #' @export
 construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
     x_star <- .tox_as_double_vector(x_star, "x_star")

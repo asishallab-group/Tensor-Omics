@@ -6,7 +6,7 @@
 #' @param i_gene a integer scalar. index of paralog to be marked active
 #' @return check result
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis_kernel::mask_check_state}.
+#' Generated from the Fortran module \code{tox_paralog_analysis_kernel}.
 #' @export
 mask_check_state <- function(bit_mask, i_gene) {
     bit_mask <- .tox_as_integer_vector(bit_mask, "bit_mask")
@@ -23,7 +23,7 @@ mask_check_state <- function(bit_mask, i_gene) {
 #' @param n_genes a integer scalar. number of genes
 #' @return number of 32 bit chunks a mask needs to encode `n_genes` genes
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis_kernel::mask_chunk_count}.
+#' Generated from the Fortran module \code{tox_paralog_analysis_kernel}.
 #' @export
 mask_chunk_count <- function(n_genes) {
     n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")
@@ -52,7 +52,7 @@ mask_chunk_count <- function(n_genes) {
 #' @param filtered_paralogs_mask a integer vector. Output mask with all genes disabled that did not pass the filter
 #' @return a named list with elements `max_subset_size`, `work_array_size`.
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis_kernel::calc_work_arr_paralog_subsets_size}.
+#' Generated from the Fortran module \code{tox_paralog_analysis_kernel}.
 #' @export
 calc_work_arr_paralog_subsets_size <- function(max_subset_size, n_genes, filtered_paralogs_mask) {
     max_subset_size <- .tox_as_integer_scalar(max_subset_size, "max_subset_size")

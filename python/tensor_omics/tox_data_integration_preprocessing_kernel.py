@@ -62,7 +62,7 @@ def calc_neighborhood_size(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing_kernel::calc_neighborhood_size`.
+    Generated from the Fortran module `tox_data_integration_preprocessing_kernel`.
     """
     # accept anything array-like, converting only when C needs it
     try:

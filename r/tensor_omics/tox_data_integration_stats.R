@@ -19,7 +19,7 @@
 #' @param neighbor_mask_S2 a logical matrix. Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
 #' @return a named list with elements `jsd_null`, `p_value`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test}.
+#' Generated from the Fortran module \code{tox_data_integration_stats}.
 #' @export
 gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed = NULL, neighbor_mask_S1 = NULL, neighbor_mask_S2 = NULL) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -68,7 +68,7 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood
 #' @param neighbor_mask_S2 a logical matrix. Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
 #' @return a named list with elements `jsd_null`, `p_value`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_stats::gjct_permutation_test_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_stats}.
 #' @export
 gjct_permutation_test <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed = NULL, neighbor_mask_S1 = NULL, neighbor_mask_S2 = NULL) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)

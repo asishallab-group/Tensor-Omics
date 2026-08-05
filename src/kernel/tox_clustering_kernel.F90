@@ -243,8 +243,9 @@ contains
     !| AUTHOR_FRANZ_ERIC_SILL
     !|
     !| @note
-    !| This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-    !| So there is no need to copy an existing distance matrix, just pass the original.
+    !| The bottom triangle is used as scratch and restored from the top triangle before
+    !| returning, on success or on error, so the matrix comes back unchanged. There is no
+    !| need to copy it before calling.
     !| @endnote
     pure subroutine linkage_clustering_kernel(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
         integer(int32), intent(in) :: n_points
@@ -253,8 +254,9 @@ contains
             !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
             !!
             !! @note
-            !! This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-            !! So there is no need to copy an existing distance matrix, just pass the original.
+            !! The bottom triangle is used as scratch and restored from the top triangle before
+            !! returning, on success or on error, so the matrix comes back unchanged. There is no
+            !! need to copy it before calling.
             !! @endnote
             !!
             !! Its structure (symmetry, non-negativity, zero diagonal) is validated by the
@@ -285,8 +287,9 @@ contains
     !| Perform linkage clustering on a distance matrix.
     !|
     !| @note
-    !| This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-    !| So there is no need to copy an existing distance matrix, just pass the original.
+    !| The bottom triangle is used as scratch and restored from the top triangle before
+    !| returning, on success or on error, so the matrix comes back unchanged. There is no
+    !| need to copy it before calling.
     !| @endnote
     pure subroutine linkage_clustering_helper(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
         integer(int32), intent(in) :: n_points
@@ -295,8 +298,9 @@ contains
             !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
             !!
             !! @note
-            !! This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-            !! So there is no need to copy an existing distance matrix, just pass the original.
+            !! The bottom triangle is used as scratch and restored from the top triangle before
+            !! returning, on success or on error, so the matrix comes back unchanged. There is no
+            !! need to copy it before calling.
             !! @endnote
         integer(int32), dimension(n_points - 1), intent(out) :: merge_i
             !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes

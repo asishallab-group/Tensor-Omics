@@ -10,7 +10,7 @@
 #' @param max_iterations a integer scalar. number of maximum iterations of the clustering
 #' @return a named list with elements `centroids`, `labels`, `label_counts`.
 #'
-#' Generated from the Fortran procedure \code{tox_clustering::cluster_factor_trajectories_k_means}.
+#' Generated from the Fortran module \code{tox_clustering}.
 #' @export
 cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_iterations) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -45,7 +45,7 @@ cluster_factor_trajectories_k_means <- function(trajectories, centroids, max_ite
 #'   The default value is `300`.
 #' @return a named list with elements `centroids`, `labels`, `label_counts`.
 #'
-#' Generated from the Fortran procedure \code{tox_clustering::k_means_clustering}.
+#' Generated from the Fortran module \code{tox_clustering}.
 #' @export
 k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
     data_points <- .tox_as_double_matrix(data_points, "data_points")
@@ -67,13 +67,15 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 
 #' Perform linkage clustering on a distance matrix.
 #'
-#' This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-#' So there is no need to copy an existing distance matrix, just pass the original.
+#' The bottom triangle is used as scratch and restored from the top triangle before
+#' returning, on success or on error, so the matrix comes back unchanged. There is no
+#' need to copy it before calling.
 #'
 #' @param distances a numeric matrix. symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
 #'
-#'   This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-#'   So there is no need to copy an existing distance matrix, just pass the original.
+#'   The bottom triangle is used as scratch and restored from the top triangle before
+#'   returning, on success or on error, so the matrix comes back unchanged. There is no
+#'   need to copy it before calling.
 #'
 #'   Its structure (symmetry, non-negativity, zero diagonal) is validated by the
 #'   distance-matrix naming convention in the generated wrapper.
@@ -82,7 +84,7 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 #'   The maximum valid value is `2`.
 #' @return a named list with elements `distances`, `merge_i`, `merge_j`, `heights`, `cluster_sizes`.
 #'
-#' Generated from the Fortran procedure \code{tox_clustering::linkage_clustering}.
+#' Generated from the Fortran module \code{tox_clustering}.
 #' @export
 linkage_clustering <- function(distances, method) {
     distances <- .tox_as_double_matrix(distances, "distances")

@@ -7,7 +7,7 @@
 #' @param axes_selection_mask a logical vector. `TRUE` for axes to be included in RAP
 #' @return projected vectors
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_vector_RAP_projection}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selection_mask) {
     vecs <- .tox_as_double_matrix(vecs, "vecs")
@@ -27,12 +27,12 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 
 #' Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
 #'
-#' @param fields a numeric array of rank 3. matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+#' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
 #' @param fields_selection_mask a logical vector. `TRUE` for vectors where projection is to be computed
 #' @param axes_selection_mask a logical vector. `TRUE` for axes to be included in RAP
 #' @return projected vectors
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_field_RAP_projection}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selection_mask) {
     fields <- .tox_as_double_array(fields, "fields", 3L)
@@ -60,7 +60,7 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
 #' @param selected_axes_for_signed a integer vector. Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
 #' @return Signed angle between vectors in radians [-π, π]
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angle_between_vectors}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
     v1 <- .tox_as_double_vector(v1, "v1")
@@ -78,12 +78,12 @@ clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signed) {
 
 #' Compute signed rotation angles between for shift vectors, so between their origin and target
 #'
-#' @param fields a numeric array of rank 3. matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+#' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
 #' @param fields_selection_mask a logical vector. TRUE for vector pairs where angle should be computed
 #' @param selected_axes_for_signed a integer vector. Indices of 3 different axes to use for directionality calculation (ignored if n_dims <= 3, all indices must be unique)
 #' @return Signed rotation angles between vector pairs in radians [-π, π]
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, selected_axes_for_signed) {
     fields <- .tox_as_double_array(fields, "fields", 3L)
@@ -106,7 +106,7 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, s
 #' @param vec a numeric vector. RAP-projected and normalized vector (expression or shift)
 #' @return Fractional contribution of each axis (output), values in [0,1], sum to 1
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::compute_relative_axis_contributions}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 compute_relative_axis_contributions <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
@@ -124,7 +124,7 @@ compute_relative_axis_contributions <- function(vec) {
 #' @param vec a numeric vector. RAP-projected and normalized shift vector
 #' @return Fractional contribution of each axis (output), values in [0,1], sum to 1
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 relative_axes_changes_from_shift_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
@@ -142,7 +142,7 @@ relative_axes_changes_from_shift_vector <- function(vec) {
 #' @param vec a numeric vector. RAP-projected and normalized expression vector
 #' @return Fractional contribution of each axis (output), values in [0,1], sum to 1
 #'
-#' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector}.
+#' Generated from the Fortran module \code{tox_relative_axis_plane_tools}.
 #' @export
 relative_axes_expression_from_expression_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")

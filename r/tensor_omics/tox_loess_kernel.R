@@ -10,7 +10,7 @@
 #' @param save_factorization a logical scalar. Save matrix factorization flag
 #' @return a named list with elements `int_workspace_size`, `real_workspace_size`.
 #'
-#' Generated from the Fortran procedure \code{tox_loess_kernel::tox_loess_required_workspace}.
+#' Generated from the Fortran module \code{tox_loess_kernel}.
 #' @export
 tox_loess_required_workspace <- function(n_dim, max_neighborhood_size, save_factorization) {
     n_dim <- .tox_as_integer_scalar(n_dim, "n_dim")

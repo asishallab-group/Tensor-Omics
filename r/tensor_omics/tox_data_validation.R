@@ -13,7 +13,7 @@
 #' @param shift_vectors a numeric matrix. Shift vectors
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_data_structure}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_data_structure <- function(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors) {
     n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")
@@ -38,7 +38,7 @@ validate_data_structure <- function(n_genes, n_families, n_samples, gene_ids, ge
 #' @param n_families a integer scalar. number of families
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_gene_to_family_mapping}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
@@ -56,7 +56,7 @@ validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
 #' @param check_non_negative a logical scalar. Defines if non negative should be checked
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_expression_data}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_expression_data <- function(expression_vectors, check_non_negative) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -73,7 +73,7 @@ validate_expression_data <- function(expression_vectors, check_non_negative) {
 #' @param family_centroids a numeric matrix. Family centroids array
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_family_centroids}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_family_centroids <- function(family_centroids) {
     family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
@@ -93,7 +93,7 @@ validate_family_centroids <- function(family_centroids) {
 #' @param n_samples a integer scalar. Number of samples
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_shift_vectors}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_shift_vectors <- function(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples) {
     shift_vectors <- .tox_as_double_matrix(shift_vectors, "shift_vectors")
@@ -113,7 +113,7 @@ validate_shift_vectors <- function(shift_vectors, expression_vectors, family_cen
 #' @param str_arr a character vector. string array
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_string_array_uniqueness}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_string_array_uniqueness <- function(str_arr) {
     str_arr <- .tox_as_character(str_arr, "str_arr")
@@ -141,7 +141,7 @@ validate_string_array_uniqueness <- function(str_arr) {
 #'   The default value is `TRUE`.
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_validation::validate_all_data}.
+#' Generated from the Fortran module \code{tox_data_validation}.
 #' @export
 validate_all_data <- function(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, check_uniqueness = TRUE, check_shift_consistency = TRUE) {
     n_genes <- .tox_as_integer_scalar(n_genes, "n_genes")

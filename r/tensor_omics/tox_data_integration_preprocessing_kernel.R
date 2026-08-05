@@ -13,7 +13,7 @@
 #'   The default value is `1000`.
 #' @return Calculated neighborhood size
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing_kernel::calc_neighborhood_size}.
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing_kernel}.
 #' @export
 calc_neighborhood_size <- function(n_pool, n_points, mean_S, desired_size = 1000L) {
     n_pool <- .tox_as_integer_scalar(n_pool, "n_pool")

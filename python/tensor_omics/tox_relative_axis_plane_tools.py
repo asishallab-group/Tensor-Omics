@@ -136,7 +136,7 @@ def omics_vector_RAP_projection(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_vector_RAP_projection`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -204,7 +204,7 @@ def omics_field_RAP_projection(
     Parameters
     ----------
     fields : np.ndarray[np.float64] of shape (n_axes, 2, n_fields,), column-major (order='F')
-        matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+        matrix with vector fields; each field holds two vectors, the origin first and the target second
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
         `True` for vectors where projection is to be computed
     axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
@@ -222,7 +222,7 @@ def omics_field_RAP_projection(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::omics_field_RAP_projection`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -308,7 +308,7 @@ def clock_hand_angle_between_vectors(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angle_between_vectors`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -366,7 +366,7 @@ def clock_hand_angles_for_shift_vectors(
     Parameters
     ----------
     fields : np.ndarray[np.float64] of shape (n_dims, 2, n_fields,), column-major (order='F')
-        matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+        matrix with vector fields; each field holds two vectors, the origin first and the target second
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
         True for vector pairs where angle should be computed
     selected_axes_for_signed : np.ndarray[np.int32] of shape (3,)
@@ -384,7 +384,7 @@ def clock_hand_angles_for_shift_vectors(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -458,7 +458,7 @@ def compute_relative_axis_contributions(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::compute_relative_axis_contributions`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -508,7 +508,7 @@ def relative_axes_changes_from_shift_vector(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -558,7 +558,7 @@ def relative_axes_expression_from_expression_vector(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector`.
+    Generated from the Fortran module `tox_relative_axis_plane_tools`.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -159,7 +159,7 @@ def normalize_unit_length(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalize_unit_length`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     if not isinstance(vector, np.ndarray) or vector.dtype != np.float64:
@@ -200,7 +200,7 @@ def normalization_pipeline(
         Infinite values are permitted for this value.
     reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-        e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+        e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
@@ -223,7 +223,7 @@ def normalization_pipeline(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalization_pipeline_alloc`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -297,7 +297,7 @@ def normalize_by_std_dev(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev_alloc`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -353,7 +353,7 @@ def root_mean_sq_normalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::root_mean_sq_normalization`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -403,7 +403,7 @@ def quantile_normalization_expert(
         normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
             Normalized `expr`
         rank_means : np.ndarray[np.float64] of shape (n_genes,)
-            Preallocated vector to store rank means
+            The mean of each rank across tissues, one per gene
 
     Raises
     ------
@@ -412,7 +412,7 @@ def quantile_normalization_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::quantile_normalization`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -471,7 +471,7 @@ def quantile_normalization(
         normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
             Normalized `expr`
         rank_means : np.ndarray[np.float64] of shape (n_genes,)
-            Preallocated vector to store rank means
+            The mean of each rank across tissues, one per gene
 
     Raises
     ------
@@ -480,7 +480,7 @@ def quantile_normalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::quantile_normalization_alloc`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -539,7 +539,7 @@ def log2_transformation(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::log2_transformation`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -579,7 +579,7 @@ def calc_tiss_avg(
     ----------
     reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-        e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+        e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
         The minimum valid value is `1`.
     expr : np.ndarray[np.float64] of shape (sum(reps_per_tissue), n_genes,), column-major (order='F')
         Gene Expression matrix
@@ -598,7 +598,7 @@ def calc_tiss_avg(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::calc_tiss_avg`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -669,7 +669,7 @@ def calc_fchange(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::calc_fchange`.
+    Generated from the Fortran module `tox_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:

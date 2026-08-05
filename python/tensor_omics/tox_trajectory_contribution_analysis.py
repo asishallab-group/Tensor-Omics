@@ -276,7 +276,7 @@ def perform_permutation_test_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -374,7 +374,7 @@ def perform_permutation_test(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test_alloc`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -454,7 +454,7 @@ def compute_p_values(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_p_values`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -546,7 +546,7 @@ def compute_contributions(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_contributions`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -633,7 +633,7 @@ def compute_all_contributions_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -733,7 +733,7 @@ def compute_all_contributions(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions_alloc`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -822,7 +822,7 @@ def compute_baselines_factor_dependent(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_baselines_factor_dependent`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -892,7 +892,7 @@ def compute_velocity_trajectory(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_trajectory`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -945,7 +945,7 @@ def compute_acceleration_from_velocity_trajectory(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_acceleration_from_velocity_trajectory`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -992,7 +992,7 @@ def compute_velocity_trajectories(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_trajectories`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -1049,7 +1049,7 @@ def compute_acceleration_from_velocity(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_acceleration_from_velocity`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -1113,7 +1113,7 @@ def compute_velocity_acceleration_contributions_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -1197,7 +1197,7 @@ def compute_velocity_acceleration_contributions(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc`.
+    Generated from the Fortran module `tox_trajectory_contribution_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -7,7 +7,7 @@
 #' @param filenames a character vector. Array of filenames to add to zip
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_archive::create_zip_archive}.
+#' Generated from the Fortran module \code{tox_data_archive}.
 #' @export
 create_zip_archive <- function(zip_filename, keys, filenames) {
     zip_filename <- .tox_as_character(zip_filename, "zip_filename")
@@ -37,7 +37,7 @@ create_zip_archive <- function(zip_filename, keys, filenames) {
 #' @param shift_vectors_file a string. Name of the shift vectors file
 #' @return invisibly `NULL`; called for its effect.
 #'
-#' Generated from the Fortran procedure \code{tox_data_archive::save_tox_data}.
+#' Generated from the Fortran module \code{tox_data_archive}.
 #' @export
 save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, expression = NULL, expression_file = NULL, gene_to_family = NULL, gene_to_family_file = NULL, family_ids = NULL, family_ids_file = NULL, family_centroids = NULL, family_centroids_file = NULL, shift_vectors = NULL, shift_vectors_file = NULL) {
     zip_filename <- .tox_as_character(zip_filename, "zip_filename")
@@ -82,7 +82,7 @@ save_tox_data <- function(zip_filename, gene_ids = NULL, gene_ids_file = NULL, e
 #' @param zip_filename a string. Name of the zip file
 #' @return a named list with elements `n_gene_ids`, `gene_id_len`, `n_expression_rows`, `n_expression_cols`, `n_gene_to_family`, `n_family_ids`, `family_id_len`, `n_family_centroids_rows`, `n_family_centroids_cols`, `n_shift_vectors_rows`, `n_shift_vectors_cols`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_archive::get_tox_data_dims}.
+#' Generated from the Fortran module \code{tox_data_archive}.
 #' @export
 get_tox_data_dims <- function(zip_filename) {
     zip_filename <- .tox_as_character(zip_filename, "zip_filename")
@@ -114,7 +114,7 @@ get_tox_data_dims <- function(zip_filename) {
 #' @param zip_filename a string. Name of the zip file
 #' @return a named list with elements `gene_ids`, `expression`, `gene_to_family`, `family_ids`, `family_centroids`, `shift_vectors`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_archive::read_tox_data_into}.
+#' Generated from the Fortran module \code{tox_data_archive}.
 #' @export
 read_tox_data_into <- function(zip_filename) {
     zip_filename <- .tox_as_character(zip_filename, "zip_filename")

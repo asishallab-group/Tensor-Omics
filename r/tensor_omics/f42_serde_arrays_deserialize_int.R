@@ -5,7 +5,7 @@
 #' @param filename a string. Name of the file
 #' @return Pre-allocated array to read the data into
 #'
-#' Generated from the Fortran procedure \code{f42_serde_arrays_deserialize_int::deserialize_int_helper}.
+#' Generated from the Fortran module \code{f42_serde_arrays_deserialize_int}.
 #' @export
 deserialize_int_helper <- function(filename) {
     filename <- .tox_as_character(filename, "filename")

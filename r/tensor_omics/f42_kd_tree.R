@@ -6,7 +6,7 @@
 #' @param dimension_order a integer vector. Dimension order (by variance)
 #' @return Output index array (k-d tree order)
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::build_kd_index_alloc}.
+#' Generated from the Fortran module \code{f42_kd_tree}.
 #' @export
 build_kd_index <- function(points, dimension_order) {
     points <- .tox_as_double_matrix(points, "points")
@@ -31,7 +31,7 @@ build_kd_index <- function(points, dimension_order) {
 #' @param dimension_order a integer vector. Dimension order (by variance)
 #' @return Output index array (k-d tree order)
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::build_spherical_kd_alloc}.
+#' Generated from the Fortran module \code{f42_kd_tree}.
 #' @export
 build_spherical_kd <- function(points, dimension_order) {
     points <- .tox_as_double_matrix(points, "points")

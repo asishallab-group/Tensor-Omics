@@ -23,7 +23,7 @@
 #'   The default value is `FALSE`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
-#' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain}.
+#' Generated from the Fortran module \code{tox_loess}.
 #' @export
 loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE) {
     x <- .tox_as_double_vector(x, "x")
@@ -76,7 +76,7 @@ loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max
 #'   The default value is `FALSE`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
-#' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain_alloc}.
+#' Generated from the Fortran module \code{tox_loess}.
 #' @export
 loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE) {
     x <- .tox_as_double_vector(x, "x")
@@ -132,7 +132,7 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #'   The default value is `3`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
-#' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust}.
+#' Generated from the Fortran module \code{tox_loess}.
 #' @export
 loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE, n_iters = 3L) {
     x <- .tox_as_double_vector(x, "x")
@@ -193,7 +193,7 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 #'   The default value is `3`.
 #' @return Fitted (smoothed) values of y at the evaluation points
 #'
-#' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust_alloc}.
+#' Generated from the Fortran module \code{tox_loess}.
 #' @export
 loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE, n_iters = 3L) {
     x <- .tox_as_double_vector(x, "x")

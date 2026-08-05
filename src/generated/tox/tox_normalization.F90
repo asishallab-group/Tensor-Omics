@@ -78,7 +78,7 @@ contains
             !! Log-transformed grouped `expr`
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-            !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
@@ -220,7 +220,7 @@ contains
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
-            !! Preallocated vector to store rank means
+            !! The mean of each rank across tissues, one per gene
         real(real64), dimension(n_genes), intent(out) :: tmp_genes_row
             !! Temporary vector for sorting a tissue in `expr` across genes
         integer(int32), dimension(n_genes), intent(out) :: tmp_perm
@@ -265,7 +265,7 @@ contains
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
-            !! Preallocated vector to store rank means
+            !! The mean of each rank across tissues, one per gene
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:), allocatable :: tmp_genes_row
@@ -347,7 +347,7 @@ contains
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-            !! e.g. `[2,3]` means `5` total replicates per gene, with the `expr(1:2, i_gene)` related to the first tissue and `expr(3:, i_gene)` related to the second one.
+            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
             !! Gene Expression matrix

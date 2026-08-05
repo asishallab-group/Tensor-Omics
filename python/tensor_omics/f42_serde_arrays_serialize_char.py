@@ -54,7 +54,7 @@ def serialize_char_helper(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_serde_arrays_serialize_char::serialize_char_helper`.
+    Generated from the Fortran module `f42_serde_arrays_serialize_char`.
     """
     # accept anything array-like, converting only when C needs it
     arr_shape = np.ascontiguousarray(np.shape(arr), dtype=np.int32)

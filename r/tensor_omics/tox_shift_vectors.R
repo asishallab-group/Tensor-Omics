@@ -10,9 +10,9 @@
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
-#' @return Output, real matrix array, stores the centroid of the gene's family in `shift_vectors(:, 1, i_gene)` (zero vector if no family assigned) and the shift vectors in `shift_vectors(:, 2, i_gene)`
+#' @return Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
 #'
-#' Generated from the Fortran procedure \code{tox_shift_vectors::compute_shift_vector_field}.
+#' Generated from the Fortran module \code{tox_shift_vectors}.
 #' @export
 compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_fam) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

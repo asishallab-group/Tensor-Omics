@@ -8,7 +8,7 @@
 #' @param vec2 a numeric vector. Second expression vector
 #' @return Output scalar distance
 #'
-#' Generated from the Fortran procedure \code{tox_euclidean_distance::euclidean_distance}.
+#' Generated from the Fortran module \code{tox_euclidean_distance}.
 #' @export
 euclidean_distance <- function(vec1, vec2) {
     vec1 <- .tox_as_double_vector(vec1, "vec1")
@@ -35,7 +35,7 @@ euclidean_distance <- function(vec1, vec2) {
 #'   The value `0` is additionally accepted.
 #' @return Output distances array
 #'
-#' Generated from the Fortran procedure \code{tox_euclidean_distance::distance_to_centroid}.
+#' Generated from the Fortran module \code{tox_euclidean_distance}.
 #' @export
 distance_to_centroid <- function(genes, centroids, gene_to_fam) {
     genes <- .tox_as_double_matrix(genes, "genes")

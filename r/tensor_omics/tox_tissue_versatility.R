@@ -13,7 +13,7 @@
 #' @param axes_selection_mask a logical vector. Logical array (n_axes), TRUE for axes to include in calculation
 #' @return a named list with elements `tissue_versatilities`, `tissue_angles_deg`.
 #'
-#' Generated from the Fortran procedure \code{tox_tissue_versatility::compute_tissue_versatility}.
+#' Generated from the Fortran module \code{tox_tissue_versatility}.
 #' @export
 compute_tissue_versatility <- function(expression_vectors, vectors_selection_mask, axes_selection_mask) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

@@ -111,7 +111,7 @@ def loess_smooth_2d(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::loess_smooth_2d`.
+    Generated from the Fortran module `f42_stats`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -204,7 +204,7 @@ def compute_edf_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_edf`.
+    Generated from the Fortran module `f42_stats`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -281,7 +281,7 @@ def compute_edf(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_edf_alloc`.
+    Generated from the Fortran module `f42_stats`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -347,7 +347,7 @@ def compute_scaled_distance_quantile(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile`.
+    Generated from the Fortran module `f42_stats`.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -17,7 +17,7 @@
 #'   The maximum valid value is `1.0`.
 #' @return `TRUE` if neofunctionalization has been detected for the respective axes, always `FALSE` for unassigned genes
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_neofunctionalization}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, thresholds) {
     ancestors <- .tox_as_double_matrix(ancestors, "ancestors")
@@ -61,7 +61,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #'   The minimum valid value is `above(0.0)`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, max_angle = 3.141592653589793, gain_gamma = 0.1) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -110,7 +110,7 @@ detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask,
 #'   The minimum valid value is `above(0.0)`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect_alloc}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, max_angle = 3.141592653589793, gain_gamma = 0.1) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -159,7 +159,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 #'   The maximum valid value is `n_genes`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, rdi_threshold, paralog_norms, sorted_paralog_norms_perm) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -213,7 +213,7 @@ detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralog
 #'   The maximum valid value is `n_genes`.
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization_alloc}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, rdi_threshold, paralog_norms, sorted_paralog_norms_perm) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -262,7 +262,7 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
 #'   The minimum valid value is `(n_genes + 31) / 32`.
 #' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::filter_paralogs_by_pattern_dosage_effect}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks) {
     gene_angles <- .tox_as_double_vector(gene_angles, "gene_angles")
@@ -298,7 +298,7 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 #'   The minimum valid value is `(n_genes + 31) / 32`.
 #' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::filter_paralogs_by_pattern_subfunctionalization}.
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
 #' @export
 filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks) {
     gene_angles <- .tox_as_double_vector(gene_angles, "gene_angles")

@@ -51,7 +51,7 @@ def deserialize_real_helper(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_serde_arrays_deserialize_real::deserialize_real_helper`.
+    Generated from the Fortran module `f42_serde_arrays_deserialize_real`.
     """
     # kept before conversion, for the producers called below
     _filename_raw = filename

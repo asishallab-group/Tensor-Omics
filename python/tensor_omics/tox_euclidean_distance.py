@@ -67,7 +67,7 @@ def euclidean_distance(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_euclidean_distance::euclidean_distance`.
+    Generated from the Fortran module `tox_euclidean_distance`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -139,7 +139,7 @@ def distance_to_centroid(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_euclidean_distance::distance_to_centroid`.
+    Generated from the Fortran module `tox_euclidean_distance`.
     """
     # accept anything array-like, converting only when C needs it
     try:

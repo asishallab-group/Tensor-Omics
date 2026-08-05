@@ -60,7 +60,7 @@ def get_array_metadata(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_serde_arrays_utils::get_array_metadata`.
+    Generated from the Fortran module `f42_serde_arrays_utils`.
     """
     # accept anything array-like, converting only when C needs it
     filename = np.array([str(filename).encode()], dtype="S")

@@ -13,7 +13,7 @@
 #' @param kernel_cutoff a numeric scalar. Cutoff for the kernel, not used if zero
 #' @return Output smoothed values (length n_target).
 #'
-#' Generated from the Fortran procedure \code{f42_stats::loess_smooth_2d}.
+#' Generated from the Fortran module \code{f42_stats}.
 #' @export
 loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, kernel_cutoff) {
     x_ref <- .tox_as_double_vector(x_ref, "x_ref")
@@ -42,7 +42,7 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
 #' @param perm a integer vector. Pre-sorted permutation indices (must be sorted by values[perm]).
 #' @return a named list with elements `unique_values`, `cdf_values`.
 #'
-#' Generated from the Fortran procedure \code{f42_stats::compute_edf}.
+#' Generated from the Fortran module \code{f42_stats}.
 #' @export
 compute_edf_expert <- function(values, perm) {
     values <- .tox_as_double_vector(values, "values")
@@ -68,7 +68,7 @@ compute_edf_expert <- function(values, perm) {
 #' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
 #' @return a named list with elements `unique_values`, `cdf_values`.
 #'
-#' Generated from the Fortran procedure \code{f42_stats::compute_edf_alloc}.
+#' Generated from the Fortran module \code{f42_stats}.
 #' @export
 compute_edf <- function(values) {
     values <- .tox_as_double_vector(values, "values")
@@ -103,7 +103,7 @@ compute_edf <- function(values) {
 #' @param c_const a numeric scalar. Constant used in the computation, typically 1
 #' @return Output array to store the computed quantile for each gene.
 #'
-#' Generated from the Fortran procedure \code{f42_stats::compute_scaled_distance_quantile}.
+#' Generated from the Fortran module \code{f42_stats}.
 #' @export
 compute_scaled_distance_quantile <- function(rdi, sorted_rdi, perm, c_const) {
     rdi <- .tox_as_double_vector(rdi, "rdi")

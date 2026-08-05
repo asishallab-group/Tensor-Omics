@@ -101,7 +101,7 @@ def cluster_factor_trajectories_k_means(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_clustering::cluster_factor_trajectories_k_means`.
+    Generated from the Fortran module `tox_clustering`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -193,7 +193,7 @@ def k_means_clustering(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_clustering::k_means_clustering`.
+    Generated from the Fortran module `tox_clustering`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -255,8 +255,9 @@ def linkage_clustering(
     distances : np.ndarray[np.float64] of shape (n_points, n_points,), column-major (order='F'), modified in place
         symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
 
-        This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-        So there is no need to copy an existing distance matrix, just pass the original.
+        The bottom triangle is used as scratch and restored from the top triangle before
+        returning, on success or on error, so the matrix comes back unchanged. There is no
+        need to copy it before calling.
 
         Its structure (symmetry, non-negativity, zero diagonal) is validated by the
         distance-matrix naming convention in the generated wrapper.
@@ -286,7 +287,7 @@ def linkage_clustering(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_clustering::linkage_clustering`.
+    Generated from the Fortran module `tox_clustering`.
     """
     # accept anything array-like, converting only when C needs it
     if not isinstance(distances, np.ndarray) or distances.dtype != np.float64:

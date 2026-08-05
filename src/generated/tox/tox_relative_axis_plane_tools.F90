@@ -95,7 +95,7 @@ contains
         integer(int32), intent(in) :: n_selected_axes
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         logical, dimension(n_fields), intent(in) :: fields_selection_mask
             !! `.true.` for vectors where projection is to be computed
         logical, dimension(n_axes), intent(in) :: axes_selection_mask
@@ -186,7 +186,7 @@ contains
         integer(int32), intent(in) :: n_selected_fields
             !! Count of .true. values in fields_selection_mask
         real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         logical, dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         integer(int32), dimension(3), intent(in) :: selected_axes_for_signed

@@ -53,7 +53,7 @@ def serialize_int_helper(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_serde_arrays_serialize_int::serialize_int_helper`.
+    Generated from the Fortran module `f42_serde_arrays_serialize_int`.
     """
     # accept anything array-like, converting only when C needs it
     arr_shape = np.ascontiguousarray(np.shape(arr), dtype=np.int32)

@@ -12,7 +12,7 @@
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_all_contributions_kernel}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
 #' @export
 compute_all_contributions_kernel <- function(trajectories, factor_indices, dependent_indices, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -36,7 +36,7 @@ compute_all_contributions_kernel <- function(trajectories, factor_indices, depen
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `factor_baseline`, `dependent_baseline`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_baselines_factor_dependent_kernel}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
 #' @export
 compute_baselines_factor_dependent_kernel <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
@@ -60,7 +60,7 @@ compute_baselines_factor_dependent_kernel <- function(factor, dependent, baselin
 #' @param trajectory a numeric vector. input position trajectory
 #' @return output velocity trajectory
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_velocity_trajectory_kernel}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
 #' @export
 compute_velocity_trajectory_kernel <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
@@ -77,7 +77,7 @@ compute_velocity_trajectory_kernel <- function(trajectory) {
 #' @param n_timepoints a integer scalar. number of timepoints
 #' @return acceleration trajectory
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_acceleration_from_velocity_trajectory_kernel}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
 #' @export
 compute_acceleration_from_velocity_trajectory_kernel <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_vector(velocity, "velocity")
@@ -106,7 +106,7 @@ compute_acceleration_from_velocity_trajectory_kernel <- function(velocity, n_tim
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `contrib_velocity`, `velocity_contribution_series`, `contrib_acceleration`, `acceleration_contribution_series`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis_kernel::compute_velocity_acceleration_contributions_kernel}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
 #' @export
 compute_velocity_acceleration_contributions_kernel <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)

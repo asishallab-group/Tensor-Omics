@@ -61,7 +61,7 @@ contains
     !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine omics_field_RAP_projection_kernel(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_fields
@@ -247,7 +247,7 @@ contains
                                                         n_selected_fields, selected_axes_for_signed, &
                                                         signed_angles, ierr)
         real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields, `fields(:, 1, i_vec)` mean vector origin, `fields(:, 2, i_vec)` mean vector targets
+            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         integer(int32), intent(in) :: n_dims
             !! Dimension of each vector in RAP space
         integer(int32), intent(in) :: n_fields

@@ -63,9 +63,12 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
             writer.line(f"#'   {line}")
 
     writer.line(f"#' @return {_return_line(wrapper, emitter)}")
-    link = f"{procedure.module.name}::{procedure.name}" if procedure.module else procedure.name
+    # the module, not the procedure: `_alloc` and `_expert` are the binding layer's own tiers,
+    # so naming `loess_fit_plain_alloc` in the docstring of a function called `loess_fit_plain`
+    # points a reader at a symbol that exists nowhere they can reach. The module does.
+    origin = procedure.module.name if procedure.module else procedure.name
     writer.line("#'")
-    writer.line(f"#' Generated from the Fortran procedure \\code{{{link}}}.")
+    writer.line(f"#' Generated from the Fortran module \\code{{{origin}}}.")
     writer.line("#' @export")
     return writer.render()
 

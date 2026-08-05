@@ -17,7 +17,7 @@
 #' @param random_seed a integer scalar. Seed to use for random number generation.
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed = NULL) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -55,7 +55,7 @@ perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_
 #' @param random_seed a integer scalar. Seed to use for random number generation.
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test_alloc}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed = NULL) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -87,7 +87,7 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 #' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
 #' @return a named list with elements `local_p_values`, `total_p_value`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_p_values}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_p_values <- function(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test) {
     local_contributions_observed <- .tox_as_double_vector(local_contributions_observed, "local_contributions_observed")
@@ -116,7 +116,7 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contribution`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_contributions}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_contributions <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
@@ -147,7 +147,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_all_contributions_expert <- function(trajectories, factor_indices, dependent_indices, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -176,7 +176,7 @@ compute_all_contributions_expert <- function(trajectories, factor_indices, depen
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `local_contributions`, `total_contributions`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions_alloc}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_all_contributions <- function(trajectories, factor_indices, dependent_indices, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -200,7 +200,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `factor_baseline`, `dependent_baseline`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_baselines_factor_dependent}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
@@ -224,7 +224,7 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
 #' @param trajectory a numeric vector. input position trajectory
 #' @return output velocity trajectory
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_trajectory}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_velocity_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
@@ -241,7 +241,7 @@ compute_velocity_trajectory <- function(trajectory) {
 #' @param n_timepoints a integer scalar. number of timepoints
 #' @return acceleration trajectory
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_acceleration_from_velocity_trajectory}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_vector(velocity, "velocity")
@@ -258,7 +258,7 @@ compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @return output velocity trajectories
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_trajectories}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_velocity_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -275,7 +275,7 @@ compute_velocity_trajectories <- function(trajectories) {
 #' @param n_timepoints a integer scalar. number of timepoints
 #' @return output acceleration trajectories
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_acceleration_from_velocity}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_array(velocity, "velocity", 3L)
@@ -304,7 +304,7 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `contrib_velocity`, `velocity_contribution_series`, `contrib_acceleration`, `acceleration_contribution_series`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_velocity_acceleration_contributions_expert <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -338,7 +338,7 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @return a named list with elements `contrib_velocity`, `velocity_contribution_series`, `contrib_acceleration`, `acceleration_contribution_series`.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc}.
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
 #' @export
 compute_velocity_acceleration_contributions <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)

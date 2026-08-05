@@ -145,7 +145,7 @@ def create_zip_archive(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_archive::create_zip_archive`.
+    Generated from the Fortran module `tox_data_archive`.
     """
     # accept anything array-like, converting only when C needs it
     zip_filename = np.array([str(zip_filename).encode()], dtype="S")
@@ -245,7 +245,7 @@ def save_tox_data(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_archive::save_tox_data`.
+    Generated from the Fortran module `tox_data_archive`.
     """
     # accept anything array-like, converting only when C needs it
     zip_filename = np.array([str(zip_filename).encode()], dtype="S")
@@ -411,7 +411,7 @@ def get_tox_data_dims(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_archive::get_tox_data_dims`.
+    Generated from the Fortran module `tox_data_archive`.
     """
     # accept anything array-like, converting only when C needs it
     zip_filename = np.array([str(zip_filename).encode()], dtype="S")
@@ -501,7 +501,7 @@ def read_tox_data_into(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_archive::read_tox_data_into`.
+    Generated from the Fortran module `tox_data_archive`.
     """
     # kept before conversion, for the producers called below
     _zip_filename_raw = zip_filename

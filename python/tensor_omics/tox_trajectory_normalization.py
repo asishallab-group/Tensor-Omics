@@ -97,7 +97,7 @@ def normalize_variable_timeseries(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_variable_timeseries`.
+    Generated from the Fortran module `tox_trajectory_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -157,7 +157,7 @@ def normalize_single_trajectory(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_single_trajectory`.
+    Generated from the Fortran module `tox_trajectory_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -219,7 +219,7 @@ def normalize_all_trajectories_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories`.
+    Generated from the Fortran module `tox_trajectory_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -287,7 +287,7 @@ def normalize_all_trajectories(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories_alloc`.
+    Generated from the Fortran module `tox_trajectory_normalization`.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -188,7 +188,7 @@ def detect_neofunctionalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_neofunctionalization`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -311,7 +311,7 @@ def detect_dosage_effect_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -438,7 +438,7 @@ def detect_dosage_effect(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect_alloc`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -563,7 +563,7 @@ def detect_subfunctionalization_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -715,7 +715,7 @@ def detect_subfunctionalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization_alloc`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -844,7 +844,7 @@ def filter_paralogs_by_pattern_dosage_effect(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::filter_paralogs_by_pattern_dosage_effect`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -929,7 +929,7 @@ def filter_paralogs_by_pattern_subfunctionalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::filter_paralogs_by_pattern_subfunctionalization`.
+    Generated from the Fortran module `tox_paralog_analysis`.
     """
     # accept anything array-like, converting only when C needs it
     try:

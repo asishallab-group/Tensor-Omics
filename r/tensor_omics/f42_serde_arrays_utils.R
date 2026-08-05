@@ -6,7 +6,7 @@
 #' @param dims_out_capacity a integer scalar. Capacity of the dims_out array
 #' @return a named list with elements `dims_out`, `type_code`.
 #'
-#' Generated from the Fortran procedure \code{f42_serde_arrays_utils::get_array_metadata}.
+#' Generated from the Fortran module \code{f42_serde_arrays_utils}.
 #' @export
 get_array_metadata <- function(filename, dims_out_capacity) {
     filename <- .tox_as_character(filename, "filename")

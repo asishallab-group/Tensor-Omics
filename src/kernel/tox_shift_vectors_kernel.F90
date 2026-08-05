@@ -32,7 +32,7 @@ contains
             !! DM_MAX(n_families)
             !! DM_SENTINEL(M_GENE_TO_FAM_SENTINEL)
         real(real64), intent(out) :: shift_vectors(n_tissues, 2, n_genes)
-            !! Output, real matrix array, stores the centroid of the gene's family in `shift_vectors(:, 1, i_gene)` (zero vector if no family assigned) and the shift vectors in `shift_vectors(:, 2, i_gene)`
+            !! Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
 
         integer(int32) :: i_gene, fam_idx, i_tissue
 

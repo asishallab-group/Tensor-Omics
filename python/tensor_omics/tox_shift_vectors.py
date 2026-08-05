@@ -52,7 +52,7 @@ def compute_shift_vector_field(
     Returns
     -------
     shift_vectors : np.ndarray[np.float64] of shape (n_tissues, 2, n_genes,), column-major (order='F')
-        Output, real matrix array, stores the centroid of the gene's family in `shift_vectors(:, 1, i_gene)` (zero vector if no family assigned) and the shift vectors in `shift_vectors(:, 2, i_gene)`
+        Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
 
     Raises
     ------
@@ -61,7 +61,7 @@ def compute_shift_vector_field(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shift_vectors::compute_shift_vector_field`.
+    Generated from the Fortran module `tox_shift_vectors`.
     """
     # accept anything array-like, converting only when C needs it
     try:

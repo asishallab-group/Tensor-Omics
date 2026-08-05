@@ -53,7 +53,7 @@ def serialize_real_helper(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_serde_arrays_serialize_real::serialize_real_helper`.
+    Generated from the Fortran module `f42_serde_arrays_serialize_real`.
     """
     # accept anything array-like, converting only when C needs it
     arr_shape = np.ascontiguousarray(np.shape(arr), dtype=np.int32)

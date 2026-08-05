@@ -159,7 +159,7 @@ def compute_gene_means(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::compute_gene_means`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -217,7 +217,7 @@ def compute_residuals(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::compute_residuals`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -294,7 +294,7 @@ def pool_means_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -372,7 +372,7 @@ def pool_means(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means_alloc`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -441,7 +441,7 @@ def pool_study_means_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_study_means`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -523,7 +523,7 @@ def pool_study_means(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_study_means_alloc`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -610,7 +610,7 @@ def construct_neighborhoods_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -716,7 +716,7 @@ def construct_neighborhoods(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods_alloc`.
+    Generated from the Fortran module `tox_data_integration_preprocessing`.
     """
     # accept anything array-like, converting only when C needs it
     try:

@@ -26,7 +26,7 @@
 #'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_jsd}.
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
 #' @export
 fjct_compute_jsd_expert <- function(family_idx, gene_to_family_S1, gene_to_family_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_bins, shared_residual_range) {
     family_idx <- .tox_as_integer_scalar(family_idx, "family_idx")
@@ -91,7 +91,7 @@ fjct_compute_jsd_expert <- function(family_idx, gene_to_family_S1, gene_to_famil
 #'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_jsd_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
 #' @export
 fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_bins, shared_residual_range) {
     family_idx <- .tox_as_integer_scalar(family_idx, "family_idx")
@@ -148,7 +148,7 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
 #'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`, `pmf_S1`, `pmf_S2`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_masked_jsd}.
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
 #' @export
 fjct_compute_masked_jsd_expert <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -204,7 +204,7 @@ fjct_compute_masked_jsd_expert <- function(neighborhood_residuals_S1, neighborho
 #'   The minimum valid value is `0.0`.
 #' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`, `pmf_S1`, `pmf_S2`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_masked_jsd_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
 #' @export
 fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -257,7 +257,7 @@ fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_resi
 #'   The minimum valid value is `0`.
 #' @return a named list with elements `support_weights`, `contribution_scores`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_contribution_scores}.
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
 #' @export
 fjct_compute_contribution_scores <- function(global_js_divergences, total_included_n_reps_per_f) {
     global_js_divergences <- .tox_as_double_vector(global_js_divergences, "global_js_divergences")

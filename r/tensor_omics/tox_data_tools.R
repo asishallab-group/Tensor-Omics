@@ -13,7 +13,7 @@
 #'   The default value is `char(9)`.
 #' @return Array of expression vectors
 #'
-#' Generated from the Fortran procedure \code{tox_data_tools::read_expression_vectors_tsv}.
+#' Generated from the Fortran module \code{tox_data_tools}.
 #' @export
 read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter = "	") {
     file_list <- .tox_as_character(file_list, "file_list")
@@ -40,7 +40,7 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 #' @param gene_col a integer scalar. Index of the column containing gene ids
 #' @return gene ids array
 #'
-#' Generated from the Fortran procedure \code{tox_data_tools::read_gene_ids_from_tsv_file}.
+#' Generated from the Fortran module \code{tox_data_tools}.
 #' @export
 read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_elements, n_header_rows, gene_col) {
     filename <- .tox_as_character(filename, "filename")
@@ -64,7 +64,7 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
 #' @param n_gene_to_fam_elements a integer scalar. number of elements in `gene_to_fam`
 #' @return a named list with elements `family_ids`, `gene_to_fam`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_tools::read_orthofinder_file}.
+#' Generated from the Fortran module \code{tox_data_tools}.
 #' @export
 read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_family_ids_elements, n_gene_to_fam_elements) {
     filename <- .tox_as_character(filename, "filename")
@@ -87,7 +87,7 @@ read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_famil
 #' @param gene_to_fam a integer vector. gene to family mapping
 #' @return a named list with elements `mask`, `n_genes_kept`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_tools::get_unassigned_mask}.
+#' Generated from the Fortran module \code{tox_data_tools}.
 #' @export
 get_unassigned_mask <- function(gene_to_fam) {
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")

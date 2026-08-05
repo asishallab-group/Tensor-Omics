@@ -16,7 +16,7 @@
 #'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residual_pool_perm, residual_range_quantile = 95.0) {
     abs_residual_pool <- .tox_as_double_vector(abs_residual_pool, "abs_residual_pool")
@@ -45,7 +45,7 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 #'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 determine_shared_residual_range <- function(abs_residual_pool, residual_range_quantile = 95.0) {
     abs_residual_pool <- .tox_as_double_vector(abs_residual_pool, "abs_residual_pool")
@@ -72,7 +72,7 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
 #'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 determine_study_shared_residual_range_expert <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 95.0) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -105,7 +105,7 @@ determine_study_shared_residual_range_expert <- function(neighborhood_residuals_
 #'   The default value is `95.0`.
 #' @return Computed residual range (R)
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range_alloc}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 determine_study_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 95.0) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -135,7 +135,7 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
 #' @param neighbor_mask a logical matrix. Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 #' @return a named list with elements `counts`, `pmf`, `included_n_reps`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::build_residual_histograms}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 build_residual_histograms <- function(neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask = NULL) {
     neighborhood_residuals <- .tox_as_double_array(neighborhood_residuals, "neighborhood_residuals", 3L)
@@ -166,7 +166,7 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
 #'   The maximum valid value is `1.0`.
 #' @return Jensen-Shannon divergence per reference point
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_divergence_per_reference_point}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
     pmf_S1 <- .tox_as_double_matrix(pmf_S1, "pmf_S1")
@@ -195,7 +195,7 @@ compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
 #'   The minimum valid value is `0`.
 #' @return a named list with elements `global_js_divergence`, `weights`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_weighted_global_divergence}.
+#' Generated from the Fortran module \code{tox_data_integration_jsd}.
 #' @export
 compute_weighted_global_divergence <- function(js_divergences, included_n_reps_S1, included_n_reps_S2) {
     js_divergences <- .tox_as_double_vector(js_divergences, "js_divergences")

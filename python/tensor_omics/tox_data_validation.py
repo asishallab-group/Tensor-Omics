@@ -183,7 +183,7 @@ def validate_data_structure(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_data_structure`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -291,7 +291,7 @@ def validate_gene_to_family_mapping(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_gene_to_family_mapping`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -342,7 +342,7 @@ def validate_expression_data(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_expression_data`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -392,7 +392,7 @@ def validate_family_centroids(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_family_centroids`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -453,7 +453,7 @@ def validate_shift_vectors(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_shift_vectors`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -534,7 +534,7 @@ def validate_string_array_uniqueness(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_string_array_uniqueness`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -615,7 +615,7 @@ def validate_all_data(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_validation::validate_all_data`.
+    Generated from the Fortran module `tox_data_validation`.
     """
     # accept anything array-like, converting only when C needs it
     try:
