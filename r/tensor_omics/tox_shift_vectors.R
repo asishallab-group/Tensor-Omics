@@ -4,15 +4,15 @@
 #'
 #' Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
 #'
+#' Generated from the Fortran module \code{tox_shift_vectors}.
+#'
 #' @param expression_vectors a numeric matrix. Gene expression matrix
 #' @param family_centroids a numeric matrix. Family centroid matrix
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
-#' @return Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
-#'
-#' Generated from the Fortran module \code{tox_shift_vectors}.
+#' @return a numeric array of rank 3. Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
 #' @export
 compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_fam) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

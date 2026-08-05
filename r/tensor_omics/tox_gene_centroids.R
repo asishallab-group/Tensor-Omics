@@ -2,13 +2,13 @@
 
 #' Computes the element-wise mean for a given set of vectors.
 #'
+#' Generated from the Fortran module \code{tox_gene_centroids}.
+#'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_indices a integer vector. An array containing the column indices of the selected genes in 'expression_vectors'.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
-#' @return The output vector representing the computed centroid.
-#'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' @return a numeric vector. The output vector representing the computed centroid.
 #' @export
 mean_vector <- function(expression_vectors, gene_indices) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -22,6 +22,8 @@ mean_vector <- function(expression_vectors, gene_indices) {
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
+#' Generated from the Fortran module \code{tox_gene_centroids}.
+#'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
@@ -29,9 +31,7 @@ mean_vector <- function(expression_vectors, gene_indices) {
 #'   The value `0` is additionally accepted.
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
 #' @param ortholog_set a logical vector. A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
-#' @return The output matrix (n_axes x n_families) to store the computed centroids.
-#'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' @return a numeric matrix. The output matrix (n_axes x n_families) to store the computed centroids.
 #' @export
 group_centroid_orthologs_expert <- function(expression_vectors, gene_to_family, n_families, ortholog_set) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -52,6 +52,8 @@ group_centroid_orthologs_expert <- function(expression_vectors, gene_to_family, 
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
+#' Generated from the Fortran module \code{tox_gene_centroids}.
+#'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
@@ -59,9 +61,7 @@ group_centroid_orthologs_expert <- function(expression_vectors, gene_to_family, 
 #'   The value `0` is additionally accepted.
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
 #' @param ortholog_set a logical vector. A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
-#' @return The output matrix (n_axes x n_families) to store the computed centroids.
-#'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' @return a numeric matrix. The output matrix (n_axes x n_families) to store the computed centroids.
 #' @export
 group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_families, ortholog_set) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -82,15 +82,15 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
+#' Generated from the Fortran module \code{tox_gene_centroids}.
+#'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
-#' @return The output matrix (n_axes x n_families) to store the computed centroids.
-#'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' @return a numeric matrix. The output matrix (n_axes x n_families) to store the computed centroids.
 #' @export
 group_centroid_all_expert <- function(expression_vectors, gene_to_family, n_families) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
@@ -108,15 +108,15 @@ group_centroid_all_expert <- function(expression_vectors, gene_to_family, n_fami
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
+#' Generated from the Fortran module \code{tox_gene_centroids}.
+#'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
 #' @param gene_to_family a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
 #' @param n_families a integer scalar. Total number of gene families to compute centroids for.
-#' @return The output matrix (n_axes x n_families) to store the computed centroids.
-#'
-#' Generated from the Fortran module \code{tox_gene_centroids}.
+#' @return a numeric matrix. The output matrix (n_axes x n_families) to store the computed centroids.
 #' @export
 group_centroid_all <- function(expression_vectors, gene_to_family, n_families) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

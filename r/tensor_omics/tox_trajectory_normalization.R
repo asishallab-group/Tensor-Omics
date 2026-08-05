@@ -2,10 +2,12 @@
 
 #' Normalize a single variable across time using min-max scaling
 #'
-#' @param v a numeric vector. Original time series
-#' @return a named list with elements `v_norm`, `status`.
-#'
 #' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#'
+#' @param v a numeric vector. Original time series
+#' @return a named list with elements:
+#'   \item{v_norm}{a numeric vector. Normalized time series}
+#'   \item{status}{a integer scalar. Status code for specific warnings}
 #' @export
 normalize_variable_timeseries <- function(v) {
     v <- .tox_as_double_vector(v, "v")
@@ -21,10 +23,12 @@ normalize_variable_timeseries <- function(v) {
 
 #' Normalize all factors in a single trajectory independently across time
 #'
-#' @param trajectory a numeric matrix. Original trajectory for one sample
-#' @return a named list with elements `trajectory_norm`, `status`.
-#'
 #' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#'
+#' @param trajectory a numeric matrix. Original trajectory for one sample
+#' @return a named list with elements:
+#'   \item{trajectory_norm}{a numeric matrix. Normalized trajectory for one sample}
+#'   \item{status}{a integer vector. Status code for specific warnings, one per factor}
 #' @export
 normalize_single_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_matrix(trajectory, "trajectory")
@@ -42,10 +46,12 @@ normalize_single_trajectory <- function(trajectory) {
 #'
 #' independently across time for each sample.
 #'
-#' @param trajectories a numeric array of rank 3. Original trajectories
-#' @return a named list with elements `trajectories_norm`, `status`.
-#'
 #' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#'
+#' @param trajectories a numeric array of rank 3. Original trajectories
+#' @return a named list with elements:
+#'   \item{trajectories_norm}{a numeric array of rank 3. Normalized trajectories}
+#'   \item{status}{a integer matrix. Status code for specific warnings, one per factor per sample}
 #' @export
 normalize_all_trajectories_expert <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -63,10 +69,12 @@ normalize_all_trajectories_expert <- function(trajectories) {
 #'
 #' independently across time for each sample.
 #'
-#' @param trajectories a numeric array of rank 3. Original trajectories
-#' @return a named list with elements `trajectories_norm`, `status`.
-#'
 #' Generated from the Fortran module \code{tox_trajectory_normalization}.
+#'
+#' @param trajectories a numeric array of rank 3. Original trajectories
+#' @return a named list with elements:
+#'   \item{trajectories_norm}{a numeric array of rank 3. Normalized trajectories}
+#'   \item{status}{a integer matrix. Status code for specific warnings, one per factor per sample}
 #' @export
 normalize_all_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)

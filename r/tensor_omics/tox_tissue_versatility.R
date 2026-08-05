@@ -8,12 +8,14 @@
 #' The masks follow the `n_selected_` convention, so the generated wrapper validates that each
 #' selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
 #'
+#' Generated from the Fortran module \code{tox_tissue_versatility}.
+#'
 #' @param expression_vectors a numeric matrix. 2D array (n_axes, n_vectors), each column is a gene expression vector
 #' @param vectors_selection_mask a logical vector. Logical array (n_vectors), TRUE for vectors to process
 #' @param axes_selection_mask a logical vector. Logical array (n_axes), TRUE for axes to include in calculation
-#' @return a named list with elements `tissue_versatilities`, `tissue_angles_deg`.
-#'
-#' Generated from the Fortran module \code{tox_tissue_versatility}.
+#' @return a named list with elements:
+#'   \item{tissue_versatilities}{a numeric vector. Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities}
+#'   \item{tissue_angles_deg}{a numeric vector. Output, real array, length = n_selected_vectors, stores the calculated angles in degrees}
 #' @export
 compute_tissue_versatility <- function(expression_vectors, vectors_selection_mask, axes_selection_mask) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

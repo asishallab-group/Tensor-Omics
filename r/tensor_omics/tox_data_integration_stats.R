@@ -5,6 +5,8 @@
 #' Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
 #' the work copies, so the caller's own arrays are left untouched.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_stats}.
+#'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
@@ -17,9 +19,9 @@
 #' @param random_seed a integer scalar. Seed to use for shuffling
 #' @param neighbor_mask_S1 a logical matrix. Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
 #' @param neighbor_mask_S2 a logical matrix. Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
-#' @return a named list with elements `jsd_null`, `p_value`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_stats}.
+#' @return a named list with elements:
+#'   \item{jsd_null}{a numeric vector. Vector of global divergence values obtained under the null hypothesis}
+#'   \item{p_value}{a numeric scalar. Empirical p-value of the permutation test: \eqn{\frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1}}}
 #' @export
 gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed = NULL, neighbor_mask_S1 = NULL, neighbor_mask_S2 = NULL) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -54,6 +56,8 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood
 #' Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
 #' the work copies, so the caller's own arrays are left untouched.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_stats}.
+#'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
@@ -66,9 +70,9 @@ gjct_permutation_test_expert <- function(neighborhood_residuals_S1, neighborhood
 #' @param random_seed a integer scalar. Seed to use for shuffling
 #' @param neighbor_mask_S1 a logical matrix. Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
 #' @param neighbor_mask_S2 a logical matrix. Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
-#' @return a named list with elements `jsd_null`, `p_value`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_stats}.
+#' @return a named list with elements:
+#'   \item{jsd_null}{a numeric vector. Vector of global divergence values obtained under the null hypothesis}
+#'   \item{p_value}{a numeric scalar. Empirical p-value of the permutation test: \eqn{\frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1}}}
 #' @export
 gjct_permutation_test <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed = NULL, neighbor_mask_S1 = NULL, neighbor_mask_S2 = NULL) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)

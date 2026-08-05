@@ -2,11 +2,11 @@
 
 #' Build a k-d tree index using a stack-based, non-recursive approach
 #'
+#' Generated from the Fortran module \code{f42_kd_tree}.
+#'
 #' @param points a numeric matrix. Data points
 #' @param dimension_order a integer vector. Dimension order (by variance)
-#' @return Output index array (k-d tree order)
-#'
-#' Generated from the Fortran module \code{f42_kd_tree}.
+#' @return a integer vector. Output index array (k-d tree order)
 #' @export
 build_kd_index <- function(points, dimension_order) {
     points <- .tox_as_double_matrix(points, "points")
@@ -27,11 +27,11 @@ build_kd_index <- function(points, dimension_order) {
 #' [[f42_kd_tree(module):build_kd_index_alloc(subroutine)]] (plain per-axis median splits);
 #' callers are responsible for ensuring `points` are actually unit-normalized beforehand.
 #'
+#' Generated from the Fortran module \code{f42_kd_tree}.
+#'
 #' @param points a numeric matrix. Data points
 #' @param dimension_order a integer vector. Dimension order (by variance)
-#' @return Output index array (k-d tree order)
-#'
-#' Generated from the Fortran module \code{f42_kd_tree}.
+#' @return a integer vector. Output index array (k-d tree order)
 #' @export
 build_spherical_kd <- function(points, dimension_order) {
     points <- .tox_as_double_matrix(points, "points")

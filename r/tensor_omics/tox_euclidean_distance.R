@@ -4,11 +4,11 @@
 #'
 #' Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
 #'
+#' Generated from the Fortran module \code{tox_euclidean_distance}.
+#'
 #' @param vec1 a numeric vector. First expression vector
 #' @param vec2 a numeric vector. Second expression vector
-#' @return Output scalar distance
-#'
-#' Generated from the Fortran module \code{tox_euclidean_distance}.
+#' @return a numeric scalar. Output scalar distance
 #' @export
 euclidean_distance <- function(vec1, vec2) {
     vec1 <- .tox_as_double_vector(vec1, "vec1")
@@ -27,15 +27,15 @@ euclidean_distance <- function(vec1, vec2) {
 #'
 #' For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
 #'
+#' Generated from the Fortran module \code{tox_euclidean_distance}.
+#'
 #' @param genes a numeric matrix. Gene expression matrix (n_tissues × n_genes), column-major
 #' @param centroids a numeric matrix. Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
-#' @return Output distances array
-#'
-#' Generated from the Fortran module \code{tox_euclidean_distance}.
+#' @return a numeric vector. Output distances array
 #' @export
 distance_to_centroid <- function(genes, centroids, gene_to_fam) {
     genes <- .tox_as_double_matrix(genes, "genes")

@@ -2,6 +2,8 @@
 
 #' For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_idx a integer scalar. index of factor to compute the permutation contributions for
 #'   The minimum valid value is `1`.
@@ -15,9 +17,9 @@
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
-#' @return a named list with elements `local_contributions`, `total_contributions`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{local_contributions}{a numeric matrix. Per-timepoint contributions per permutation}
+#'   \item{total_contributions}{a numeric vector. Total contribution (`sum(local_contributions)`) per permutation}
 #' @export
 perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed = NULL) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -40,6 +42,8 @@ perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_
 
 #' For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_idx a integer scalar. index of factor to compute the permutation contributions for
 #'   The minimum valid value is `1`.
@@ -53,9 +57,9 @@ perform_permutation_test_expert <- function(trajectories, factor_idx, dependent_
 #' @param baseline_mode a string, one of "raw", "mean", "min"
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
-#' @return a named list with elements `local_contributions`, `total_contributions`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{local_contributions}{a numeric matrix. Per-timepoint contributions per permutation}
+#'   \item{total_contributions}{a numeric vector. Total contribution (`sum(local_contributions)`) per permutation}
 #' @export
 perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, random_seed = NULL) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -81,13 +85,15 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 #' Given the permutation tests ([[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test_kernel(subroutine)]]),
 #' this counts how many of the permutation contributions were at least as high as the real ones.
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param local_contributions_observed a numeric vector. Per-timepoint contributions for the observed factor-dependent-sample combination
 #' @param total_contribution_observed a numeric scalar. Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
 #' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
 #' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_kernel(module):perform_permutation_test(subroutine)]]
-#' @return a named list with elements `local_p_values`, `total_p_value`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{local_p_values}{a numeric vector. calculated p values for local contributions, like: `(local_contributions_perm_test >= local_contributions_observed)/n_permutations`}
+#'   \item{total_p_value}{a numeric scalar. calculated p values for total contributions, like: `(total_contributions_perm_test >= total_contribution_observed)/n_permutations`}
 #' @export
 compute_p_values <- function(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test) {
     local_contributions_observed <- .tox_as_double_vector(local_contributions_observed, "local_contributions_observed")
@@ -111,12 +117,14 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 
 #' Performs contribution analysis for a specific factor-dependent pair
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `local_contributions`, `total_contribution`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{local_contributions}{a numeric vector. Per-element contributions}
+#'   \item{total_contribution}{a numeric scalar. Total contribution (`sum(local_contributions)`)}
 #' @export
 compute_contributions <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
@@ -137,6 +145,8 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
 #'   The minimum valid value is `1`.
@@ -145,9 +155,9 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_factors`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `local_contributions`, `total_contributions`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{local_contributions}{a numeric array of rank 4. Per-timepoint contributions per sample-dependent-factor combination}
+#'   \item{total_contributions}{a numeric array of rank 3. Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination}
 #' @export
 compute_all_contributions_expert <- function(trajectories, factor_indices, dependent_indices, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -166,6 +176,8 @@ compute_all_contributions_expert <- function(trajectories, factor_indices, depen
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
 #'   The minimum valid value is `1`.
@@ -174,9 +186,9 @@ compute_all_contributions_expert <- function(trajectories, factor_indices, depen
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_factors`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `local_contributions`, `total_contributions`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{local_contributions}{a numeric array of rank 4. Per-timepoint contributions per sample-dependent-factor combination}
+#'   \item{total_contributions}{a numeric array of rank 3. Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination}
 #' @export
 compute_all_contributions <- function(trajectories, factor_indices, dependent_indices, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -195,12 +207,14 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 
 #' Compute scalar baselines for a factor and dependent variable time series
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `factor_baseline`, `dependent_baseline`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{factor_baseline}{a numeric scalar. Computed baseline for factor}
+#'   \item{dependent_baseline}{a numeric scalar. Computed baseline for dependent variable}
 #' @export
 compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
@@ -221,10 +235,10 @@ compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode)
 
 #' Compute velocity trajectory from a single position trajectory
 #'
-#' @param trajectory a numeric vector. input position trajectory
-#' @return output velocity trajectory
-#'
 #' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
+#' @param trajectory a numeric vector. input position trajectory
+#' @return a numeric vector. output velocity trajectory
 #' @export
 compute_velocity_trajectory <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
@@ -237,11 +251,11 @@ compute_velocity_trajectory <- function(trajectory) {
 
 #' Compute acceleration trajectory from a single velocity trajectory
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param velocity a numeric vector. velocity trajectory
 #' @param n_timepoints a integer scalar. number of timepoints
-#' @return acceleration trajectory
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a numeric vector. acceleration trajectory
 #' @export
 compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_vector(velocity, "velocity")
@@ -255,10 +269,10 @@ compute_acceleration_from_velocity_trajectory <- function(velocity, n_timepoints
 
 #' Computes velocity trajectories from position trajectories
 #'
-#' @param trajectories a numeric array of rank 3. input position trajectories
-#' @return output velocity trajectories
-#'
 #' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
+#' @param trajectories a numeric array of rank 3. input position trajectories
+#' @return a numeric array of rank 3. output velocity trajectories
 #' @export
 compute_velocity_trajectories <- function(trajectories) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -271,11 +285,11 @@ compute_velocity_trajectories <- function(trajectories) {
 
 #' Computes acceleration trajectories from velocity trajectories
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param velocity a numeric array of rank 3. input velocity trajectories
 #' @param n_timepoints a integer scalar. number of timepoints
-#' @return output acceleration trajectories
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a numeric array of rank 3. output acceleration trajectories
 #' @export
 compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_array(velocity, "velocity", 3L)
@@ -300,11 +314,15 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `contrib_velocity`, `velocity_contribution_series`, `contrib_acceleration`, `acceleration_contribution_series`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{contrib_velocity}{a numeric array of rank 3. output velocity contributions}
+#'   \item{velocity_contribution_series}{a numeric array of rank 4. output velocity contribution series}
+#'   \item{contrib_acceleration}{a numeric array of rank 3. output acceleration contributions}
+#'   \item{acceleration_contribution_series}{a numeric array of rank 4. output acceleration contribution series}
 #' @export
 compute_velocity_acceleration_contributions_expert <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -334,11 +352,15 @@ compute_velocity_acceleration_contributions_expert <- function(trajectories, bas
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `contrib_velocity`, `velocity_contribution_series`, `contrib_acceleration`, `acceleration_contribution_series`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis}.
+#' @return a named list with elements:
+#'   \item{contrib_velocity}{a numeric array of rank 3. output velocity contributions}
+#'   \item{velocity_contribution_series}{a numeric array of rank 4. output velocity contribution series}
+#'   \item{contrib_acceleration}{a numeric array of rank 3. output acceleration contributions}
+#'   \item{acceleration_contribution_series}{a numeric array of rank 4. output acceleration contribution series}
 #' @export
 compute_velocity_acceleration_contributions <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)

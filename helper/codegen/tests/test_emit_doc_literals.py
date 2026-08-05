@@ -59,3 +59,17 @@ class TestFordBlockTags:
 
         # only a line that is the delimiter and nothing else -- prose keeps its words
         assert not is_ford_block_tag(text)
+
+
+class TestInlineMaths:
+    def test_r_gets_rd_maths(self):
+        # `\(` is not an Rd macro; `\eqn` is, and it passes the LaTeX through to the manual
+        assert render(r"the ratio \( \frac{a}{b} \)", "r") == r"the ratio \eqn{\frac{a}{b}}"
+
+    def test_python_is_left_alone(self):
+        # numpydoc has no equivalent worth inventing here, and the text is harmless
+        text = r"the ratio \( \frac{a}{b} \)"
+        assert render(text, "python") == text
+
+    def test_several_on_one_line_each_convert(self):
+        assert render(r"\( a \) and \( b \)", "r") == r"\eqn{a} and \eqn{b}"

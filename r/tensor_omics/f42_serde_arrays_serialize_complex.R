@@ -2,11 +2,11 @@
 
 #' Subroutine to serialize a flat complex array into a file
 #'
+#' Generated from the Fortran module \code{f42_serde_arrays_serialize_complex}.
+#'
 #' @param arr a complex vector. Array to be serialized
 #' @param filename a string. Name of the file to write to
 #' @return invisibly `NULL`; called for its effect.
-#'
-#' Generated from the Fortran module \code{f42_serde_arrays_serialize_complex}.
 #' @export
 serialize_complex_helper <- function(arr, filename) {
     arr <- .tox_as_complex_shaped(arr, "arr")

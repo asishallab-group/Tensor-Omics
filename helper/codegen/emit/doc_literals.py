@@ -1,4 +1,4 @@
-"""Rendering the Fortran literals in a doc for the language that will read it.
+"""Rendering a Fortran doc for the language that will read it.
 
 The author writes documentation on a Fortran kernel, and the `DM_` range macros quote the
 author's own Fortran back verbatim -- so a bound arrives as `0_int32` and a default as
@@ -18,6 +18,11 @@ _KINDED_NUMBER = re.compile(
     r"\b(\d+(?:\.\d*)?(?:[eEdD][-+]?\d+)?)_(?:int8|int16|int32|int64|real32|real64|real128)\b"
 )
 
+#: Ford writes inline maths as `\\( ... \\)`. Rd writes it as `\\eqn{...}` and passes the
+#: LaTeX inside straight to the PDF manual, so the author's `\\frac{}{}` survives the trip --
+#: whereas `\\(` is not an Rd macro at all and would fail R CMD check.
+_FORD_INLINE_MATH = re.compile(r"\\\(\s*(.+?)\s*\\\)")
+
 _LOGICALS = {
     "python": {".true.": "True", ".false.": "False"},
     "r": {".true.": "TRUE", ".false.": "FALSE"},
@@ -29,6 +34,8 @@ def render(text: str, language: str) -> str:
     text = _KINDED_NUMBER.sub(r"\1", text)
     for fortran, native in _LOGICALS[language].items():
         text = re.sub(re.escape(fortran), native, text, flags=re.IGNORECASE)
+    if language == "r":
+        text = _FORD_INLINE_MATH.sub(r"\\eqn{\1}", text)
     return text
 
 

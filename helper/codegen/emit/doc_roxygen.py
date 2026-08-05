@@ -54,6 +54,17 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
             writer.line(f"#' {line}" if line else "#'")
         writer.line("#'")
 
+    # the module, not the procedure: `_alloc` and `_expert` are the binding layer's own tiers,
+    # so naming `loess_fit_plain_alloc` in the docstring of a function called `loess_fit_plain`
+    # points a reader at a symbol that exists nowhere they can reach. The module does.
+    #
+    # And it goes here, in the description, rather than after @return: roxygen gives untagged
+    # text to whichever tag precedes it, so trailing it after @return filed the provenance
+    # under Value, where it described the return value of nothing.
+    origin = procedure.module.name if procedure.module else procedure.name
+    writer.line(f"#' Generated from the Fortran module \\code{{{origin}}}.")
+    writer.line("#'")
+
     for argument in emitter._inputs(wrapper):
         first, *rest = _param_lines(argument)
         writer.line(f"#' @param {argument.name} {first}")
@@ -62,13 +73,8 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
         for line in rest:
             writer.line(f"#'   {line}")
 
-    writer.line(f"#' @return {_return_line(wrapper, emitter)}")
-    # the module, not the procedure: `_alloc` and `_expert` are the binding layer's own tiers,
-    # so naming `loess_fit_plain_alloc` in the docstring of a function called `loess_fit_plain`
-    # points a reader at a symbol that exists nowhere they can reach. The module does.
-    origin = procedure.module.name if procedure.module else procedure.name
-    writer.line("#'")
-    writer.line(f"#' Generated from the Fortran module \\code{{{origin}}}.")
+    for line in _return_lines(wrapper, emitter):
+        writer.line(line)
     writer.line("#' @export")
     return writer.render()
 
@@ -101,15 +107,29 @@ def _prose_lines(doc: Doc) -> list[str]:
     return lines
 
 
-def _return_line(wrapper: CWrapper, emitter) -> str:
+def _return_lines(wrapper: CWrapper, emitter) -> list[str]:
+    """The `@return` tag, as the lines it spans.
+
+    Says what R hands back, in R's terms: the type first, as `@param` does, then the
+    argument's own description. A list of several outputs documents each element with
+    `\\item`, which is how `\\value` describes a list's components -- naming them and
+    nothing else threw away every word the author wrote about them.
+    """
     outputs = emitter._outputs(wrapper)
     if not outputs:
-        return "invisibly `NULL`; called for its effect."
+        return ["#' @return invisibly `NULL`; called for its effect."]
+
     if len(outputs) == 1:
-        description = _first_line(outputs[0].doc)
-        return description or r_type_of(outputs[0])
-    names = ", ".join(f"`{a.name}`" for a in outputs)
-    return f"a named list with elements {names}."
+        first, *rest = _param_lines(outputs[0])
+        return [f"#' @return {first}", *(f"#'   {line}" for line in rest)]
+
+    lines = ["#' @return a named list with elements:"]
+    for argument in outputs:
+        first, *rest = _param_lines(argument)
+        lines.append(f"#'   \\item{{{argument.name}}}{{{first}")
+        lines += [f"#'     {line}" for line in rest]
+        lines[-1] += "}"
+    return lines
 
 
 def _notes(doc: Doc) -> list[str]:

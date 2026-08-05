@@ -2,12 +2,14 @@
 
 #' Normalizes an input vector to unit length in-place
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param vector a numeric vector. Vector that will be normalized to unit length
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return Vector that will be normalized to unit length
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric vector. Vector that will be normalized to unit length
+#'   NaN is permitted for this value.
+#'   Infinite values are permitted for this value.
 #' @export
 normalize_unit_length <- function(vector) {
     vector <- .tox_as_double_vector(vector, "vector")
@@ -22,6 +24,8 @@ normalize_unit_length <- function(vector) {
 #'
 #' Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param expr a numeric matrix. Gene Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
@@ -33,9 +37,7 @@ normalize_unit_length <- function(vector) {
 #'   The default value is `2`.
 #' @param use_quantile a logical scalar. Use quantile normalization.
 #'   The default value is `FALSE`.
-#' @return Log-transformed grouped `expr`
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric matrix. Log-transformed grouped `expr`
 #' @export
 normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2L, use_quantile = FALSE) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -55,6 +57,8 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #' This procedure applies a global stabilization based on the relationship between
 #' gene-wise mean expression and empirical standard deviation.
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param expr a numeric matrix. Gene Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
@@ -62,9 +66,7 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #'   The default value is `0.7`.
 #' @param degree a integer scalar. LOESS degree parameter.
 #'   The default value is `2`.
-#' @return Normalized `expr`
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric matrix. Normalized `expr`
 #' @export
 normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -81,12 +83,12 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
 #'
 #' across tissues (not classical standard deviation).
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param expr a numeric matrix. Gene Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return Normalized `expr`
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric matrix. Normalized `expr`
 #' @export
 root_mean_sq_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -101,12 +103,14 @@ root_mean_sq_normalization <- function(expr) {
 #'
 #' Computes average expression per rank across tissues.
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param expr a numeric matrix. Gene Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return a named list with elements `normalized_expr`, `rank_means`.
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a named list with elements:
+#'   \item{normalized_expr}{a numeric matrix. Normalized `expr`}
+#'   \item{rank_means}{a numeric vector. The mean of each rank across tissues, one per gene}
 #' @export
 quantile_normalization_expert <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -124,12 +128,14 @@ quantile_normalization_expert <- function(expr) {
 #'
 #' Computes average expression per rank across tissues.
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param expr a numeric matrix. Gene Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return a named list with elements `normalized_expr`, `rank_means`.
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a named list with elements:
+#'   \item{normalized_expr}{a numeric matrix. Normalized `expr`}
+#'   \item{rank_means}{a numeric vector. The mean of each rank across tissues, one per gene}
 #' @export
 quantile_normalization <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -150,12 +156,12 @@ quantile_normalization <- function(expr) {
 #' `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
 #' non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param expr a numeric matrix. Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return Log-transformed `expr`
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric matrix. Log-transformed `expr`
 #' @export
 log2_transformation <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -171,15 +177,15 @@ log2_transformation <- function(expr) {
 #' For each tissue of tissue replicates, this subroutine computes the average
 #' expression per gene.
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param reps_per_tissue a integer vector. Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
 #'   e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
 #'   The minimum valid value is `1`.
 #' @param expr a numeric matrix. Gene Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return Tissue averages per gene
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric matrix. Tissue averages per gene
 #' @export
 calc_tiss_avg <- function(reps_per_tissue, expr) {
     reps_per_tissue <- .tox_as_integer_vector(reps_per_tissue, "reps_per_tissue")
@@ -197,6 +203,8 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' by subtracting the expression value in the control group from the corresponding
 #' value in the condition group, for all genes.
 #'
+#' Generated from the Fortran module \code{tox_normalization}.
+#'
 #' @param control_tissues a integer vector. Control tissue indices
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_tissues`.
@@ -206,9 +214,7 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' @param expr a numeric matrix. Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return Output matrix for fold changes
-#'
-#' Generated from the Fortran module \code{tox_normalization}.
+#' @return a numeric matrix. Output matrix for fold changes
 #' @export
 calc_fchange <- function(control_tissues, condition_tissues, expr) {
     control_tissues <- .tox_as_integer_vector(control_tissues, "control_tissues")

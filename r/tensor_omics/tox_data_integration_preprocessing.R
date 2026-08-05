@@ -2,12 +2,12 @@
 
 #' Compute per-gene mean expression, ignoring NaN values
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param expr a numeric matrix. Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @return Per-gene mean expression values
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a numeric vector. Per-gene mean expression values
 #' @export
 compute_gene_means <- function(expr) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -20,14 +20,14 @@ compute_gene_means <- function(expr) {
 
 #' Compute signed residuals (centering by mean)
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param expr a numeric matrix. Expression matrix
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param means a numeric vector. Per-gene mean expression values; NaN where every replicate of a gene was NaN
 #'   NaN is permitted for this value.
-#' @return Matrix of signed residuals
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a numeric matrix. Matrix of signed residuals
 #' @export
 compute_residuals <- function(expr, means) {
     expr <- .tox_as_double_matrix(expr, "expr")
@@ -47,13 +47,15 @@ compute_residuals <- function(expr, means) {
 #' This takes the pool already built; `pool_study_means` pools the means of two studies
 #' first, if that is what is at hand.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
 #' @param pooled_means_perm a integer vector. Sorting permutation for `pooled_means`
 #' @param n_points a integer scalar. Number of reference points to define
-#' @return a named list with elements `n_pool`, `x_star`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a named list with elements:
+#'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points}
 #' @export
 pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
@@ -77,12 +79,14 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 #' This takes the pool already built; `pool_study_means` pools the means of two studies
 #' first, if that is what is at hand.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
 #' @param n_points a integer scalar. Number of reference points to define
-#' @return a named list with elements `n_pool`, `x_star`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a named list with elements:
+#'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points}
 #' @export
 pool_means <- function(pooled_means, n_points) {
     pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
@@ -102,14 +106,16 @@ pool_means <- function(pooled_means, n_points) {
 #' Concatenates the two studies' means, sorts the pool, and turns it into reference
 #' points exactly as `pool_means` does.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
 #'   NaN is permitted for this value.
 #' @param mean_S2 a numeric vector. Per-gene mean expression values of study S2
 #'   NaN is permitted for this value.
 #' @param n_points a integer scalar. Number of reference points to define
-#' @return a named list with elements `n_pool`, `x_star`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a named list with elements:
+#'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points}
 #' @export
 pool_study_means_expert <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
@@ -130,14 +136,16 @@ pool_study_means_expert <- function(mean_S1, mean_S2, n_points) {
 #' Concatenates the two studies' means, sorts the pool, and turns it into reference
 #' points exactly as `pool_means` does.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
 #'   NaN is permitted for this value.
 #' @param mean_S2 a numeric vector. Per-gene mean expression values of study S2
 #'   NaN is permitted for this value.
 #' @param n_points a integer scalar. Number of reference points to define
-#' @return a named list with elements `n_pool`, `x_star`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a named list with elements:
+#'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points}
 #' @export
 pool_study_means <- function(mean_S1, mean_S2, n_points) {
     mean_S1 <- .tox_as_double_vector(mean_S1, "mean_S1")
@@ -155,6 +163,8 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 
 #' Construct neighborhood-based residual sets (kNN)
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param x_star a numeric vector. Mean-expression reference points
 #'   NaN is permitted for this value.
 #' @param mean_S a numeric vector. Per-gene mean expression values
@@ -167,9 +177,9 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 #'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
 #'   It is recommended to compute this with
 #'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
-#' @return a named list with elements `neighborhood_residuals`, `neighborhood_indices`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a named list with elements:
+#'   \item{neighborhood_residuals}{a numeric array of rank 3. Collection of residual vectors for each neighborhood}
+#'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes}
 #' @export
 construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors) {
     x_star <- .tox_as_double_vector(x_star, "x_star")
@@ -191,6 +201,8 @@ construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors)
 
 #' Construct neighborhood-based residual sets (kNN)
 #'
+#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#'
 #' @param x_star a numeric vector. Mean-expression reference points
 #'   NaN is permitted for this value.
 #' @param mean_S a numeric vector. Per-gene mean expression values
@@ -203,9 +215,9 @@ construct_neighborhoods_expert <- function(x_star, mean_S, resid_S, n_neighbors)
 #'   The maximum valid value is `count(.not. ieee_is_nan(mean_S), kind=int32)`.
 #'   It is recommended to compute this with
 #'   [[tox_data_integration_preprocessing_kernel(module):calc_neighborhood_size(function)]].
-#' @return a named list with elements `neighborhood_residuals`, `neighborhood_indices`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_preprocessing}.
+#' @return a named list with elements:
+#'   \item{neighborhood_residuals}{a numeric array of rank 3. Collection of residual vectors for each neighborhood}
+#'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes}
 #' @export
 construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
     x_star <- .tox_as_double_vector(x_star, "x_star")

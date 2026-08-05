@@ -2,11 +2,14 @@
 
 #' Get the metadata of an array file
 #'
+#' Generated from the Fortran module \code{f42_serde_arrays_utils}.
+#'
 #' @param filename a string. Name of the file
 #' @param dims_out_capacity a integer scalar. Capacity of the dims_out array
-#' @return a named list with elements `dims_out`, `type_code`.
-#'
-#' Generated from the Fortran module \code{f42_serde_arrays_utils}.
+#' @return a named list with elements:
+#'   \item{dims_out}{a integer vector. Array to store output dimensions
+#'     The first `ndims` elements will hold the results.}
+#'   \item{type_code}{a integer scalar. Type code of the serialized array}
 #' @export
 get_array_metadata <- function(filename, dims_out_capacity) {
     filename <- .tox_as_character(filename, "filename")

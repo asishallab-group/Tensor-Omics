@@ -2,6 +2,8 @@
 
 #' Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param ancestors a numeric matrix. RAP projected unit length expression vector of ancestral ortholog
 #'   The minimum valid value is `-1.0`.
 #'   The maximum valid value is `1.0`.
@@ -15,9 +17,7 @@
 #' @param thresholds a numeric vector. threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
 #'   The minimum valid value is `-1.0`.
 #'   The maximum valid value is `1.0`.
-#' @return `TRUE` if neofunctionalization has been detected for the respective axes, always `FALSE` for unassigned genes
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a logical matrix. `TRUE` if neofunctionalization has been detected for the respective axes, always `FALSE` for unassigned genes
 #' @export
 detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, thresholds) {
     ancestors <- .tox_as_double_matrix(ancestors, "ancestors")
@@ -40,6 +40,8 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 
 #' Identifies subsets of paralogs matching this pattern
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
@@ -59,9 +61,10 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 #' @param gain_gamma a numeric scalar. positive magnitude gain for dosage effect
 #'   The default value is `0.1`.
 #'   The minimum valid value is `above(0.0)`.
-#' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a named list with elements:
+#'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`}
+#'   \item{work_arr_paralog_subsets}{a integer matrix. working array to hold bitmask encoded subsets for detection.
+#'     Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks}
 #' @export
 detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, max_angle = 3.141592653589793, gain_gamma = 0.1) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -89,6 +92,8 @@ detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask,
 
 #' Identifies subsets of paralogs matching this pattern
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
@@ -108,9 +113,10 @@ detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask,
 #' @param gain_gamma a numeric scalar. positive magnitude gain for dosage effect
 #'   The default value is `0.1`.
 #'   The minimum valid value is `above(0.0)`.
-#' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a named list with elements:
+#'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`}
+#'   \item{work_arr_paralog_subsets}{a integer matrix. working array to hold bitmask encoded subsets for detection.
+#'     Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks}
 #' @export
 detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, max_angle = 3.141592653589793, gain_gamma = 0.1) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -138,6 +144,8 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 
 #' Identifies subsets of paralogs matching this pattern
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
@@ -157,9 +165,10 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 #' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
-#' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a named list with elements:
+#'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`}
+#'   \item{work_arr_paralog_subsets}{a integer matrix. working array to hold bitmask encoded subsets for detection.
+#'     Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks}
 #' @export
 detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, rdi_threshold, paralog_norms, sorted_paralog_norms_perm) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -192,6 +201,8 @@ detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralog
 
 #' Identifies subsets of paralogs matching this pattern
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
 #' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
@@ -211,9 +222,10 @@ detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralog
 #' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
-#' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a named list with elements:
+#'   \item{n_results}{a integer scalar. number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`}
+#'   \item{work_arr_paralog_subsets}{a integer matrix. working array to hold bitmask encoded subsets for detection.
+#'     Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0)` and represents the number of chunks}
 #' @export
 detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask, max_subset_size, rdi_threshold, paralog_norms, sorted_paralog_norms_perm) {
     ancestor <- .tox_as_double_vector(ancestor, "ancestor")
@@ -248,6 +260,8 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
 #'
 #' This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param gene_angles a numeric vector. vector, holding the angles between ancestor and genes (0<=angle<=Pi)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `PI`.
@@ -260,9 +274,7 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
 #'   The maximum valid value is `n_families`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
 #'   The minimum valid value is `(n_genes + 31) / 32`.
-#' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a integer matrix. bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #' @export
 filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks) {
     gene_angles <- .tox_as_double_vector(gene_angles, "gene_angles")
@@ -284,6 +296,8 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 #'
 #' This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
 #'
+#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#'
 #' @param gene_angles a numeric vector. vector, holding the angles between ancestor and genes (0<=angle<=Pi)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `PI`.
@@ -296,9 +310,7 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 #'   The maximum valid value is `n_families`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
 #'   The minimum valid value is `(n_genes + 31) / 32`.
-#' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
-#'
-#' Generated from the Fortran module \code{tox_paralog_analysis}.
+#' @return a integer matrix. bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #' @export
 filter_paralogs_by_pattern_subfunctionalization <- function(gene_angles, threshold, n_families, gene_to_fam, n_mask_chunks) {
     gene_angles <- .tox_as_double_vector(gene_angles, "gene_angles")

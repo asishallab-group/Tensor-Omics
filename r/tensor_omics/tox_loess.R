@@ -6,6 +6,8 @@
 #' Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
 #' response array.
 #'
+#' Generated from the Fortran module \code{tox_loess}.
+#'
 #' @param x a numeric vector. Predictor variable array
 #' @param y a numeric vector. Response variable array
 #' @param weights a numeric vector. Weight array for data points
@@ -21,9 +23,7 @@
 #'   The default value is `FALSE`.
 #' @param save_factorization a logical scalar. Save matrix factorization flag
 #'   The default value is `FALSE`.
-#' @return Fitted (smoothed) values of y at the evaluation points
-#'
-#' Generated from the Fortran module \code{tox_loess}.
+#' @return a numeric vector. Fitted (smoothed) values of y at the evaluation points
 #' @export
 loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE) {
     x <- .tox_as_double_vector(x, "x")
@@ -59,6 +59,8 @@ loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max
 #' Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
 #' response array.
 #'
+#' Generated from the Fortran module \code{tox_loess}.
+#'
 #' @param x a numeric vector. Predictor variable array
 #' @param y a numeric vector. Response variable array
 #' @param weights a numeric vector. Weight array for data points
@@ -74,9 +76,7 @@ loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max
 #'   The default value is `FALSE`.
 #' @param save_factorization a logical scalar. Save matrix factorization flag
 #'   The default value is `FALSE`.
-#' @return Fitted (smoothed) values of y at the evaluation points
-#'
-#' Generated from the Fortran module \code{tox_loess}.
+#' @return a numeric vector. Fitted (smoothed) values of y at the evaluation points
 #' @export
 loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE) {
     x <- .tox_as_double_vector(x, "x")
@@ -112,6 +112,8 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #' - Computes residuals (y - fitted values)
 #' - Updates robust weights using bisquare function (suppresses large residuals)
 #'
+#' Generated from the Fortran module \code{tox_loess}.
+#'
 #' @param x a numeric vector. Predictor variable array
 #' @param y a numeric vector. Response variable array
 #' @param weights a numeric vector. Weight array for data points
@@ -130,9 +132,7 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #' @param n_iters a integer scalar. Number of robust iterations
 #'   The minimum valid value is `1`.
 #'   The default value is `3`.
-#' @return Fitted (smoothed) values of y at the evaluation points
-#'
-#' Generated from the Fortran module \code{tox_loess}.
+#' @return a numeric vector. Fitted (smoothed) values of y at the evaluation points
 #' @export
 loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE, n_iters = 3L) {
     x <- .tox_as_double_vector(x, "x")
@@ -173,6 +173,8 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 #' - Computes residuals (y - fitted values)
 #' - Updates robust weights using bisquare function (suppresses large residuals)
 #'
+#' Generated from the Fortran module \code{tox_loess}.
+#'
 #' @param x a numeric vector. Predictor variable array
 #' @param y a numeric vector. Response variable array
 #' @param weights a numeric vector. Weight array for data points
@@ -191,9 +193,7 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 #' @param n_iters a integer scalar. Number of robust iterations
 #'   The minimum valid value is `1`.
 #'   The default value is `3`.
-#' @return Fitted (smoothed) values of y at the evaluation points
-#'
-#' Generated from the Fortran module \code{tox_loess}.
+#' @return a numeric vector. Fitted (smoothed) values of y at the evaluation points
 #' @export
 loess_fit_robust <- function(x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence = FALSE, save_factorization = FALSE, n_iters = 3L) {
     x <- .tox_as_double_vector(x, "x")

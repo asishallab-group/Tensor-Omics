@@ -2,6 +2,8 @@
 
 #' Read expression vectors from csv/tsv files
 #'
+#' Generated from the Fortran module \code{tox_data_tools}.
+#'
 #' @param file_list a character vector. List of files to read from
 #' @param gene_ids a character vector. Array of gene IDS
 #' @param expression_vectors a numeric matrix. Array of expression vectors
@@ -11,9 +13,7 @@
 #' @param start_row a integer scalar. Row in the expression vectors to start in
 #' @param delimiter a string. optional delimiter
 #'   The default value is `char(9)`.
-#' @return Array of expression vectors
-#'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' @return a numeric matrix. Array of expression vectors
 #' @export
 read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, delimiter = "	") {
     file_list <- .tox_as_character(file_list, "file_list")
@@ -33,14 +33,14 @@ read_expression_vectors_tsv <- function(file_list, gene_ids, expression_vectors,
 
 #' Only read the gene ids from a tsv file
 #'
+#' Generated from the Fortran module \code{tox_data_tools}.
+#'
 #' @param filename a string. Name of the file
 #' @param gene_ids_strlen a integer scalar. length of the strings in `gene_ids`
 #' @param n_gene_ids_elements a integer scalar. number of elements in `gene_ids`
 #' @param n_header_rows a integer scalar. number of headers to skip
 #' @param gene_col a integer scalar. Index of the column containing gene ids
-#' @return gene ids array
-#'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' @return a character vector. gene ids array
 #' @export
 read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_elements, n_header_rows, gene_col) {
     filename <- .tox_as_character(filename, "filename")
@@ -57,14 +57,16 @@ read_gene_ids_from_tsv_file <- function(filename, gene_ids_strlen, n_gene_ids_el
 
 #' Read a family file (Orthofinder)
 #'
+#' Generated from the Fortran module \code{tox_data_tools}.
+#'
 #' @param filename a string. Name of the file
 #' @param gene_ids a character vector. gene ids array
 #' @param family_ids_strlen a integer scalar. length of the strings in `family_ids`
 #' @param n_family_ids_elements a integer scalar. number of elements in `family_ids`
 #' @param n_gene_to_fam_elements a integer scalar. number of elements in `gene_to_fam`
-#' @return a named list with elements `family_ids`, `gene_to_fam`.
-#'
-#' Generated from the Fortran module \code{tox_data_tools}.
+#' @return a named list with elements:
+#'   \item{family_ids}{a character vector. family ids array}
+#'   \item{gene_to_fam}{a integer vector. gene to family mapping}
 #' @export
 read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_family_ids_elements, n_gene_to_fam_elements) {
     filename <- .tox_as_character(filename, "filename")
@@ -84,10 +86,12 @@ read_orthofinder_file <- function(filename, gene_ids, family_ids_strlen, n_famil
 
 #' Helper to create a mask of genes that are unassigned
 #'
-#' @param gene_to_fam a integer vector. gene to family mapping
-#' @return a named list with elements `mask`, `n_genes_kept`.
-#'
 #' Generated from the Fortran module \code{tox_data_tools}.
+#'
+#' @param gene_to_fam a integer vector. gene to family mapping
+#' @return a named list with elements:
+#'   \item{mask}{a logical vector. mask for mapping}
+#'   \item{n_genes_kept}{a integer scalar. number of genes kept}
 #' @export
 get_unassigned_mask <- function(gene_to_fam) {
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")

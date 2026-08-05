@@ -2,10 +2,10 @@
 
 #' Subroutine to deserialize a flat character array from a file
 #'
-#' @param filename a string. Name of the file
-#' @return Pre-allocated array to read the data into
-#'
 #' Generated from the Fortran module \code{f42_serde_arrays_deserialize_char}.
+#'
+#' @param filename a string. Name of the file
+#' @return a character vector. Pre-allocated array to read the data into
 #' @export
 deserialize_char_helper <- function(filename) {
     filename <- .tox_as_character(filename, "filename")

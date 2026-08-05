@@ -5,6 +5,8 @@
 #' Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
 #' the residual samples to the genes belonging to the family `family_idx`.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#'
 #' @param family_idx a integer scalar. Index of the family that should be analyzed
 #'   The minimum valid value is `1`.
 #' @param gene_to_family_S1 a integer vector. Mapping for study 1: Each index (gene) holds the index of its family
@@ -24,9 +26,13 @@
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
 #'   The minimum valid value is `0.0`.
-#' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#' @return a named list with elements:
+#'   \item{js_divergences}{a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2}
+#'   \item{included_n_reps_S1}{a integer vector. Count of non-NaN residuals (included ones) in study 1}
+#'   \item{included_n_reps_S2}{a integer vector. Count of non-NaN residuals (included ones) in study 2}
+#'   \item{total_included_n_reps}{a integer scalar. Total number of included replicates from both studies (\eqn{\text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2)})}
+#'   \item{global_js_divergence}{a numeric scalar. Weighted global Jensen-Shannon divergence}
+#'   \item{weights}{a numeric vector. Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`}
 #' @export
 fjct_compute_jsd_expert <- function(family_idx, gene_to_family_S1, gene_to_family_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_bins, shared_residual_range) {
     family_idx <- .tox_as_integer_scalar(family_idx, "family_idx")
@@ -70,6 +76,8 @@ fjct_compute_jsd_expert <- function(family_idx, gene_to_family_S1, gene_to_famil
 #' Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
 #' the residual samples to the genes belonging to the family `family_idx`.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#'
 #' @param family_idx a integer scalar. Index of the family that should be analyzed
 #'   The minimum valid value is `1`.
 #' @param gene_to_family_S1 a integer vector. Mapping for study 1: Each index (gene) holds the index of its family
@@ -89,9 +97,13 @@ fjct_compute_jsd_expert <- function(family_idx, gene_to_family_S1, gene_to_famil
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
 #'   The minimum valid value is `0.0`.
-#' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#' @return a named list with elements:
+#'   \item{js_divergences}{a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2}
+#'   \item{included_n_reps_S1}{a integer vector. Count of non-NaN residuals (included ones) in study 1}
+#'   \item{included_n_reps_S2}{a integer vector. Count of non-NaN residuals (included ones) in study 2}
+#'   \item{total_included_n_reps}{a integer scalar. Total number of included replicates from both studies (\eqn{\text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2)})}
+#'   \item{global_js_divergence}{a numeric scalar. Weighted global Jensen-Shannon divergence}
+#'   \item{weights}{a numeric vector. Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`}
 #' @export
 fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_bins, shared_residual_range) {
     family_idx <- .tox_as_integer_scalar(family_idx, "family_idx")
@@ -137,6 +149,8 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
 #' those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
 #' the masks for from a family index.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
@@ -146,9 +160,15 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
 #'   The minimum valid value is `0.0`.
-#' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`, `pmf_S1`, `pmf_S2`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#' @return a named list with elements:
+#'   \item{js_divergences}{a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2}
+#'   \item{included_n_reps_S1}{a integer vector. Count of non-NaN residuals (included ones) in study 1}
+#'   \item{included_n_reps_S2}{a integer vector. Count of non-NaN residuals (included ones) in study 2}
+#'   \item{total_included_n_reps}{a integer scalar. Total number of included replicates from both studies (\eqn{\text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2)})}
+#'   \item{global_js_divergence}{a numeric scalar. Weighted global Jensen-Shannon divergence}
+#'   \item{weights}{a numeric vector. Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`}
+#'   \item{pmf_S1}{a numeric matrix. Normalized histogram counts for study 1}
+#'   \item{pmf_S2}{a numeric matrix. Normalized histogram counts for study 2}
 #' @export
 fjct_compute_masked_jsd_expert <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -193,6 +213,8 @@ fjct_compute_masked_jsd_expert <- function(neighborhood_residuals_S1, neighborho
 #' those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
 #' the masks for from a family index.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
@@ -202,9 +224,15 @@ fjct_compute_masked_jsd_expert <- function(neighborhood_residuals_S1, neighborho
 #' @param n_bins a integer scalar. Number of equally sized histogram bins used for the studies
 #' @param shared_residual_range a numeric scalar. Computed residual range for both studies
 #'   The minimum valid value is `0.0`.
-#' @return a named list with elements `js_divergences`, `included_n_reps_S1`, `included_n_reps_S2`, `total_included_n_reps`, `global_js_divergence`, `weights`, `pmf_S1`, `pmf_S2`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#' @return a named list with elements:
+#'   \item{js_divergences}{a numeric vector. Jensen-Shannon divergence per reference point, computed for studies S1 and S2}
+#'   \item{included_n_reps_S1}{a integer vector. Count of non-NaN residuals (included ones) in study 1}
+#'   \item{included_n_reps_S2}{a integer vector. Count of non-NaN residuals (included ones) in study 2}
+#'   \item{total_included_n_reps}{a integer scalar. Total number of included replicates from both studies (\eqn{\text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2)})}
+#'   \item{global_js_divergence}{a numeric scalar. Weighted global Jensen-Shannon divergence}
+#'   \item{weights}{a numeric vector. Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`}
+#'   \item{pmf_S1}{a numeric matrix. Normalized histogram counts for study 1}
+#'   \item{pmf_S2}{a numeric matrix. Normalized histogram counts for study 2}
 #' @export
 fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
@@ -251,13 +279,15 @@ fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_resi
 #'
 #' using the outputs of `fjct_compute_jsd`, collected for the analyzed sub-neighborhoods.
 #'
+#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#'
 #' @param global_js_divergences a numeric vector. Per-sub-neighborhood weighted global JSD
 #'   The minimum valid value is `0.0`.
 #' @param total_included_n_reps_per_f a integer vector. Per-sub-neighborhood `total_included_n_reps`
 #'   The minimum valid value is `0`.
-#' @return a named list with elements `support_weights`, `contribution_scores`.
-#'
-#' Generated from the Fortran module \code{tox_data_integration_per_family}.
+#' @return a named list with elements:
+#'   \item{support_weights}{a numeric vector. Per-sub-neighborhood calculated support weight (ratio between its `total_included_n_reps` and `sum(total_included_n_reps_per_f)`, zero if there were no replicates included at all)}
+#'   \item{contribution_scores}{a numeric vector. Per-sub-neighborhood calculated contribution ( \eqn{support\_weights_i * global\_js\_divergences_i} )}
 #' @export
 fjct_compute_contribution_scores <- function(global_js_divergences, total_included_n_reps_per_f) {
     global_js_divergences <- .tox_as_double_vector(global_js_divergences, "global_js_divergences")

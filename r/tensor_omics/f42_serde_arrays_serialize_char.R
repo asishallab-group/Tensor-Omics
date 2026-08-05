@@ -2,11 +2,11 @@
 
 #' Subroutine to serialize a flat character array into a file
 #'
+#' Generated from the Fortran module \code{f42_serde_arrays_serialize_char}.
+#'
 #' @param arr a character vector. Array to be serialized
 #' @param filename a string. Name of the file to write to
 #' @return invisibly `NULL`; called for its effect.
-#'
-#' Generated from the Fortran module \code{f42_serde_arrays_serialize_char}.
 #' @export
 serialize_char_helper <- function(arr, filename) {
     arr <- .tox_as_character_shaped(arr, "arr")

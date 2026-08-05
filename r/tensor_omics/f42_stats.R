@@ -5,15 +5,15 @@
 #' Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.
 #' The user must pre-filter data and provide only valid indices in indices_used.
 #'
+#' Generated from the Fortran module \code{f42_stats}.
+#'
 #' @param x_ref a numeric vector. Reference x-coordinates.
 #' @param y_ref a numeric vector. Reference y-coordinates (length n_total).
 #' @param indices_used a integer vector. Indices of reference points used for smoothing (only valid indices).
 #' @param x_query a numeric vector. Target x-coordinates to smooth.
 #' @param kernel_sigma a numeric scalar. Bandwidth parameter for the kernel.
 #' @param kernel_cutoff a numeric scalar. Cutoff for the kernel, not used if zero
-#' @return Output smoothed values (length n_target).
-#'
-#' Generated from the Fortran module \code{f42_stats}.
+#' @return a numeric vector. Output smoothed values (length n_target).
 #' @export
 loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, kernel_cutoff) {
     x_ref <- .tox_as_double_vector(x_ref, "x_ref")
@@ -38,11 +38,15 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
 #' Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
 #' The number of unique values can be determined by finding the last non-zero cdf_value.
 #'
+#' Generated from the Fortran module \code{f42_stats}.
+#'
 #' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
 #' @param perm a integer vector. Pre-sorted permutation indices (must be sorted by values[perm]).
-#' @return a named list with elements `unique_values`, `cdf_values`.
-#'
-#' Generated from the Fortran module \code{f42_stats}.
+#' @return a named list with elements:
+#'   \item{unique_values}{a numeric vector. Sorted unique data values.
+#'     The first `n_unique` elements will hold the results.}
+#'   \item{cdf_values}{a numeric vector. Corresponding cumulative frequencies between 0 and 1.
+#'     The first `n_unique` elements will hold the results.}
 #' @export
 compute_edf_expert <- function(values, perm) {
     values <- .tox_as_double_vector(values, "values")
@@ -65,10 +69,14 @@ compute_edf_expert <- function(values, perm) {
 #' Allocates workspace internally and performs sorting before computing EDF.
 #' Use this for convenience; use compute_edf directly for custom sorting.
 #'
-#' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
-#' @return a named list with elements `unique_values`, `cdf_values`.
-#'
 #' Generated from the Fortran module \code{f42_stats}.
+#'
+#' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
+#' @return a named list with elements:
+#'   \item{unique_values}{a numeric vector. Sorted unique data values.
+#'     The first `n_unique` elements will hold the results.}
+#'   \item{cdf_values}{a numeric vector. Corresponding cumulative frequencies between 0 and 1.
+#'     The first `n_unique` elements will hold the results.}
 #' @export
 compute_edf <- function(values) {
     values <- .tox_as_double_vector(values, "values")
@@ -97,13 +105,13 @@ compute_edf <- function(values) {
 #' - sorted_rdi(1:n_genes) contains the empirical distribution D.
 #' - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 #'
+#' Generated from the Fortran module \code{f42_stats}.
+#'
 #' @param rdi a numeric vector. empirical distribution D
 #' @param sorted_rdi a numeric vector. empirical distribution D with non negative values
 #' @param perm a integer vector. Permutation array with sorted indices for sorted_rdi
 #' @param c_const a numeric scalar. Constant used in the computation, typically 1
-#' @return Output array to store the computed quantile for each gene.
-#'
-#' Generated from the Fortran module \code{f42_stats}.
+#' @return a numeric vector. Output array to store the computed quantile for each gene.
 #' @export
 compute_scaled_distance_quantile <- function(rdi, sorted_rdi, perm, c_const) {
     rdi <- .tox_as_double_vector(rdi, "rdi")

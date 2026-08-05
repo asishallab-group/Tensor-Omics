@@ -5,12 +5,14 @@
 #' Computes the required sizes for integer and real workspace arrays.
 #' These sizes depend on the dimensionality of the data and the maximum neighborhood size.
 #'
+#' Generated from the Fortran module \code{tox_loess_kernel}.
+#'
 #' @param n_dim a integer scalar. Dimensionality of the data
 #' @param max_neighborhood_size a integer scalar. Maximum neighborhood size
 #' @param save_factorization a logical scalar. Save matrix factorization flag
-#' @return a named list with elements `int_workspace_size`, `real_workspace_size`.
-#'
-#' Generated from the Fortran module \code{tox_loess_kernel}.
+#' @return a named list with elements:
+#'   \item{int_workspace_size}{a integer scalar. Required size of the integer workspace array}
+#'   \item{real_workspace_size}{a integer scalar. Required size of the real workspace array}
 #' @export
 tox_loess_required_workspace <- function(n_dim, max_neighborhood_size, save_factorization) {
     n_dim <- .tox_as_integer_scalar(n_dim, "n_dim")

@@ -2,6 +2,8 @@
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
 #' @param factor_indices a integer vector. indices of factors to compute the contributions for
 #'   The minimum valid value is `1`.
@@ -10,9 +12,9 @@
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_factors`.
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `local_contributions`, `total_contributions`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' @return a named list with elements:
+#'   \item{local_contributions}{a numeric array of rank 4. Per-timepoint contributions per sample-dependent-factor combination}
+#'   \item{total_contributions}{a numeric array of rank 3. Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination}
 #' @export
 compute_all_contributions_kernel <- function(trajectories, factor_indices, dependent_indices, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
@@ -31,12 +33,14 @@ compute_all_contributions_kernel <- function(trajectories, factor_indices, depen
 
 #' Compute scalar baselines for a factor and dependent variable time series
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `factor_baseline`, `dependent_baseline`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' @return a named list with elements:
+#'   \item{factor_baseline}{a numeric scalar. Computed baseline for factor}
+#'   \item{dependent_baseline}{a numeric scalar. Computed baseline for dependent variable}
 #' @export
 compute_baselines_factor_dependent_kernel <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
@@ -57,10 +61,10 @@ compute_baselines_factor_dependent_kernel <- function(factor, dependent, baselin
 
 #' Compute velocity trajectory from a single position trajectory
 #'
-#' @param trajectory a numeric vector. input position trajectory
-#' @return output velocity trajectory
-#'
 #' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#'
+#' @param trajectory a numeric vector. input position trajectory
+#' @return a numeric vector. output velocity trajectory
 #' @export
 compute_velocity_trajectory_kernel <- function(trajectory) {
     trajectory <- .tox_as_double_vector(trajectory, "trajectory")
@@ -73,11 +77,11 @@ compute_velocity_trajectory_kernel <- function(trajectory) {
 
 #' Compute acceleration trajectory from a single velocity trajectory
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#'
 #' @param velocity a numeric vector. velocity trajectory
 #' @param n_timepoints a integer scalar. number of timepoints
-#' @return acceleration trajectory
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' @return a numeric vector. acceleration trajectory
 #' @export
 compute_acceleration_from_velocity_trajectory_kernel <- function(velocity, n_timepoints) {
     velocity <- .tox_as_double_vector(velocity, "velocity")
@@ -102,11 +106,15 @@ compute_acceleration_from_velocity_trajectory_kernel <- function(velocity, n_tim
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
+#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#'
 #' @param trajectories a numeric array of rank 3. input position trajectories
 #' @param baseline_mode a string, one of "raw", "mean", "min"
-#' @return a named list with elements `contrib_velocity`, `velocity_contribution_series`, `contrib_acceleration`, `acceleration_contribution_series`.
-#'
-#' Generated from the Fortran module \code{tox_trajectory_contribution_analysis_kernel}.
+#' @return a named list with elements:
+#'   \item{contrib_velocity}{a numeric array of rank 3. output velocity contributions}
+#'   \item{velocity_contribution_series}{a numeric array of rank 4. output velocity contribution series}
+#'   \item{contrib_acceleration}{a numeric array of rank 3. output acceleration contributions}
+#'   \item{acceleration_contribution_series}{a numeric array of rank 4. output acceleration contribution series}
 #' @export
 compute_velocity_acceleration_contributions_kernel <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
