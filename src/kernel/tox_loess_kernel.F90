@@ -289,8 +289,7 @@ contains
     !| AUTHOR_FRANZ_ERIC_SILL
     !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array. Caller-provided workspace must already be sized via
-    !| [[tox_loess_kernel(module):tox_loess_required_workspace(subroutine)]].
+    !| response array.
     subroutine loess_fit_plain_kernel(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, fitted_values, ierr)
         integer(int32), intent(in) :: n
             !! Total number of data points

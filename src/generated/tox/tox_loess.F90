@@ -22,8 +22,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
     !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array. Caller-provided workspace must already be sized via
-    !| [[tox_loess_kernel(module):tox_loess_required_workspace(subroutine)]].
+    !| response array.
     subroutine loess_fit_plain(&
             n,&
             x,&
@@ -147,8 +146,7 @@ contains
     !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
     !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array. Caller-provided workspace must already be sized via
-    !| [[tox_loess_kernel(module):tox_loess_required_workspace(subroutine)]].
+    !| response array.
     subroutine loess_fit_plain_alloc(&
             n,&
             x,&

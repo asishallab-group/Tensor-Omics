@@ -174,7 +174,6 @@ def group_centroid_orthologs_expert(
         Total number of gene families to compute centroids for.
     ortholog_set : np.ndarray[np.bool_] of shape (n_genes,)
         A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
-        This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids_kernel(module):MODE_GROUP_ORTHOLOGS(variable)]].
 
     Returns
     -------
@@ -266,7 +265,6 @@ def group_centroid_orthologs(
         Total number of gene families to compute centroids for.
     ortholog_set : np.ndarray[np.bool_] of shape (n_genes,)
         A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
-        This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids_kernel(module):MODE_GROUP_ORTHOLOGS(variable)]].
 
     Returns
     -------

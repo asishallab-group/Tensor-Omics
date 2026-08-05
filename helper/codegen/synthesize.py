@@ -366,6 +366,23 @@ def _mode_kept_arguments(
     return kept
 
 
+def _mode_prose_line(argument: Argument) -> int | None:
+    """The line `DM_REQUIRED_IF_MODE` wrote on this argument, if it can be identified.
+
+    The directive's line number comes from a declaration-line + 1 heuristic in the source
+    index, so it is confirmed against the line's own text before anything is deleted: a line
+    that does not name the mode parameter is not the macro's, and survives. If the numbering
+    assumption ever breaks, the failure is prose that stays rather than prose that vanishes.
+    """
+    directive = argument.directives.required_if_mode
+    if directive is None or directive.line_number is None:
+        return None
+    for block in argument.doc.blocks:
+        if block.line_number == directive.line_number and directive.mode_param in block.text:
+            return directive.line_number
+    return None
+
+
 def _as_required(argument: Argument) -> Argument:
     """A copy of a mode-scoped optional, as this mode's wrapper takes it.
 
@@ -374,6 +391,11 @@ def _as_required(argument: Argument) -> Argument:
     mandatory -- unless it carries a `DM_DEFAULT`, which the binding supplies when the
     caller omits it. Such an argument is never *required*; there the directive only scopes
     it to its mode (absent from the others), and it stays optional.
+
+    The prose the macro wrote goes with the directive. It conditions on a mode argument this
+    wrapper does not have, and calls an argument the split has just made mandatory
+    "optional" -- a Python reader sees `rdi_threshold : float` with "This optional argument
+    needs to be passed if..." directly beneath it.
     """
     return Argument(
         argument.name,
@@ -381,7 +403,7 @@ def _as_required(argument: Argument) -> Argument:
         dimension=argument.dimension,
         intent=argument.intent,
         optional=argument.directives.has_default,
-        doc=argument.doc,
+        doc=argument.doc.without_line(_mode_prose_line(argument)),
         directives=replace(argument.directives, required_if_mode=None),
         attributes=argument.attributes,
         location=argument.location,

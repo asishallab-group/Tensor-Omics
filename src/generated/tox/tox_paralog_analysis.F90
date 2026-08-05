@@ -119,7 +119,7 @@ contains
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
             !! expression vectors of genes
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
-            !! bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
@@ -142,14 +142,12 @@ contains
         real(real64), dimension(n_dims), intent(out) :: tmp_paralog_vector
             !! vector used for pruning subsets
         real(real64), intent(in), optional :: max_angle
-            !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
+            !! maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
             !! The default value is `4.0_real64*atan(1.0_real64)`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `PI`.
         real(real64), intent(in), optional :: gain_gamma
             !! positive magnitude gain for dosage effect
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
             !! The default value is `0.1_real64`.
             !! The minimum valid value is `above(0.0_real64)`.
         integer(int32), intent(out) :: ierr
@@ -219,7 +217,7 @@ contains
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
             !! expression vectors of genes
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
-            !! bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
@@ -238,14 +236,12 @@ contains
             !! Each bitmask is built of 32 bit chunks. `(n_genes + 31) / 32` is equivalent to `ceil(n_genes / 32.0_real64)` and represents the number of chunks
             !! @endnote
         real(real64), intent(in), optional :: max_angle
-            !! in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
+            !! maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
             !! The default value is `4.0_real64*atan(1.0_real64)`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `PI`.
         real(real64), intent(in), optional :: gain_gamma
             !! positive magnitude gain for dosage effect
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
             !! The default value is `0.1_real64`.
             !! The minimum valid value is `above(0.0_real64)`.
         integer(int32), intent(out) :: ierr
@@ -324,7 +320,7 @@ contains
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
             !! expression vectors of genes
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
-            !! bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
@@ -348,20 +344,16 @@ contains
             !! vector used for pruning subsets
         real(real64), intent(in) :: rdi_threshold
             !! max allowed residual distance from `ancestor`
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
             !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(n_genes), intent(in) :: paralog_norms
-            !! in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
             !! The minimum valid value is `0.0_real64`.
         integer(int32), dimension(n_genes), intent(in) :: sorted_paralog_norms_perm
-            !! in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         real(real64), dimension(n_genes), intent(out) :: tmp_work_array
-            !! in subfunctionalization mode needed for efficient check of minimum value after a certain index
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+            !! work array for checking the minimum value after a given index efficiently
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -433,7 +425,7 @@ contains
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
             !! expression vectors of genes
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
-            !! bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+            !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
         integer(int32), intent(out) :: n_results
             !! number of resulting subsets. They are stored as the first `n_results` elements of `work_arr_paralog_subsets`
         integer(int32), intent(in) :: max_subset_size
@@ -453,15 +445,12 @@ contains
             !! @endnote
         real(real64), intent(in) :: rdi_threshold
             !! max allowed residual distance from `ancestor`
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
             !! The minimum valid value is `0.0_real64`.
         real(real64), dimension(n_genes), intent(in) :: paralog_norms
-            !! in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
             !! The minimum valid value is `0.0_real64`.
         integer(int32), dimension(n_genes), intent(in) :: sorted_paralog_norms_perm
-            !! in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-            !! This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+            !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_genes`.
         integer(int32), intent(out) :: ierr
@@ -542,7 +531,7 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_families`.
         integer(int32), dimension(n_mask_chunks, n_families), intent(out) :: masks
-            !! bit mask that will have indices of genes kept by pattern_mode set to 1, else 0
+            !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -601,7 +590,7 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_families`.
         integer(int32), dimension(n_mask_chunks, n_families), intent(out) :: masks
-            !! bit mask that will have indices of genes kept by pattern_mode set to 1, else 0
+            !! bit mask that will have the indices of genes kept by this pattern set to 1, else 0
         integer(int32), intent(out) :: ierr
             !! Error code
 

@@ -20,8 +20,7 @@ contains
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain(subroutine)]]
     !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array. Caller-provided workspace must already be sized via
-    !| [[tox_loess_kernel(module):tox_loess_required_workspace(subroutine)]].
+    !| response array.
     subroutine loess_fit_plain_expert_c(&
             n,&
             x,&
@@ -144,8 +143,7 @@ contains
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain_alloc(subroutine)]]
     !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array. Caller-provided workspace must already be sized via
-    !| [[tox_loess_kernel(module):tox_loess_required_workspace(subroutine)]].
+    !| response array.
     subroutine loess_fit_plain_c(&
             n,&
             x,&

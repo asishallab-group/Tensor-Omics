@@ -181,9 +181,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #' Orchestrates the full pipeline: per-family scaling via
 #' [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
 #' [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-#' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]]. As an expert orchestrator it
-#' exposes every work array (allocated by the generated detect_outliers_alloc) and calls the three
-#' kernels directly, since a kernel module cannot call the generated allocating wrappers.
+#' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
@@ -223,9 +221,7 @@ detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentil
 #' Orchestrates the full pipeline: per-family scaling via
 #' [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
 #' [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-#' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]]. As an expert orchestrator it
-#' exposes every work array (allocated by the generated detect_outliers_alloc) and calls the three
-#' kernels directly, since a kernel module cannot call the generated allocating wrappers.
+#' [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
 #'
 #' @param n_families a integer scalar. Total number of gene families
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid

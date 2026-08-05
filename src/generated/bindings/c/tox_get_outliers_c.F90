@@ -559,9 +559,7 @@ contains
     !| Orchestrates the full pipeline: per-family scaling via
     !| [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
     !| [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-    !| [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]]. As an expert orchestrator it
-    !| exposes every work array (allocated by the generated detect_outliers_alloc) and calls the three
-    !| kernels directly, since a kernel module cannot call the generated allocating wrappers.
+    !| [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
     subroutine detect_outliers_expert_c(&
             n_genes,&
             n_families,&
@@ -765,9 +763,7 @@ contains
     !| Orchestrates the full pipeline: per-family scaling via
     !| [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
     !| [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-    !| [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]]. As an expert orchestrator it
-    !| exposes every work array (allocated by the generated detect_outliers_alloc) and calls the three
-    !| kernels directly, since a kernel module cannot call the generated allocating wrappers.
+    !| [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
     subroutine detect_outliers_c(&
             n_genes,&
             n_families,&

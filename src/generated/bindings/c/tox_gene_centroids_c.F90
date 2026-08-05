@@ -102,7 +102,6 @@ contains
             !! Work array for storing the indices of one family's genes.
         logical(c_bool), dimension(n_genes), intent(in), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
-            !! This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids_kernel(module):MODE_GROUP_ORTHOLOGS(variable)]].
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         logical, dimension(n_genes) :: ortholog_set_f
@@ -163,7 +162,6 @@ contains
             !! The output matrix (n_axes x n_families) to store the computed centroids.
         logical(c_bool), dimension(n_genes), intent(in), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
-            !! This optional argument needs to be passed if used mode (`mode`) is [[tox_gene_centroids_kernel(module):MODE_GROUP_ORTHOLOGS(variable)]].
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         logical, dimension(n_genes) :: ortholog_set_f

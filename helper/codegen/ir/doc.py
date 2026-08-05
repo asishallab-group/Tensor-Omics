@@ -307,6 +307,20 @@ class Doc:
     def replace(self, old: Block, new: Block) -> Doc:
         return Doc(tuple(new if block is old else block for block in self.blocks))
 
+    def without_line(self, line_number: int | None) -> Doc:
+        """A copy without the block at `line_number`.
+
+        For prose one of the generator's own `DM_` macros wrote and a wrapper has since
+        resolved: a mode-split wrapper *is* its mode, so the `DM_REQUIRED_IF_MODE` line it
+        inherited states a condition that no longer exists, on an argument the split has
+        already made mandatory. Only macro-written lines are ever removed this way -- author
+        prose is never rewritten. `None` is a no-op, so a doc built without line numbers
+        (every hand-made test fixture) is unaffected.
+        """
+        if line_number is None:
+            return self
+        return Doc(tuple(b for b in self.blocks if b.line_number != line_number))
+
     def __bool__(self) -> bool:
         return any(not block.is_blank for block in self.blocks)
 

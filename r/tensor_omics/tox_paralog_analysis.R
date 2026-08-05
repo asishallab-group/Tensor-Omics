@@ -29,13 +29,13 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
     .result$neofunc
 }
 
-#' Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+#' Identifies subsets of paralogs matching this pattern
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
-#' @param filtered_paralogs_mask a integer vector. bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+#' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
-#' @param max_angle a numeric scalar. in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+#' @param max_angle a numeric scalar. maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
 #' @param gain_gamma a numeric scalar. positive magnitude gain for dosage effect
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
@@ -65,13 +65,13 @@ detect_dosage_effect_expert <- function(ancestor, genes, filtered_paralogs_mask,
     )
 }
 
-#' Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+#' Identifies subsets of paralogs matching this pattern
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
-#' @param filtered_paralogs_mask a integer vector. bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+#' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
-#' @param max_angle a numeric scalar. in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
+#' @param max_angle a numeric scalar. maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
 #' @param gain_gamma a numeric scalar. positive magnitude gain for dosage effect
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
@@ -101,15 +101,15 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
     )
 }
 
-#' Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+#' Identifies subsets of paralogs matching this pattern
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
-#' @param filtered_paralogs_mask a integer vector. bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+#' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
-#' @param paralog_norms a numeric vector. in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-#' @param sorted_paralog_norms_perm a integer vector. in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
+#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+#' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}.
@@ -143,15 +143,15 @@ detect_subfunctionalization_expert <- function(ancestor, genes, filtered_paralog
     )
 }
 
-#' Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+#' Identifies subsets of paralogs matching this pattern
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
 #' @param genes a numeric matrix. expression vectors of genes
-#' @param filtered_paralogs_mask a integer vector. bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+#' @param filtered_paralogs_mask a integer vector. bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
 #' @param max_subset_size a integer scalar. maximum subset size of checked gene subsets. Too large a value is capped to the
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
-#' @param paralog_norms a numeric vector. in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-#' @param sorted_paralog_norms_perm a integer vector. in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
+#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+#' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
 #' @return a named list with elements `n_results`, `work_arr_paralog_subsets`.
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization_alloc}.
@@ -194,7 +194,7 @@ detect_subfunctionalization <- function(ancestor, genes, filtered_paralogs_mask,
 #' @param n_families a integer scalar. number of families
 #' @param gene_to_fam a integer vector. a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
-#' @return bit mask that will have indices of genes kept by pattern_mode set to 1, else 0
+#' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::filter_paralogs_by_pattern_dosage_effect}.
 #' @export
@@ -223,7 +223,7 @@ filter_paralogs_by_pattern_dosage_effect <- function(gene_angles, threshold, n_f
 #' @param n_families a integer scalar. number of families
 #' @param gene_to_fam a integer vector. a mapping of gene index to family index, so gene i is related to `gene_angles(i)` and part of family `j=gene_to_fam(i)`.
 #' @param n_mask_chunks a integer scalar. number of 32 bit chunks a mask needs to encode `n_genes` genes
-#' @return bit mask that will have indices of genes kept by pattern_mode set to 1, else 0
+#' @return bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 #'
 #' Generated from the Fortran procedure \code{tox_paralog_analysis::filter_paralogs_by_pattern_subfunctionalization}.
 #' @export

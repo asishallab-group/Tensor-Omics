@@ -261,7 +261,7 @@ def detect_dosage_effect_expert(
         max_angle=3.141592653589793,
         gain_gamma=0.1,
 ):
-    r"""Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    r"""Identifies subsets of paralogs matching this pattern
 
     Parameters
     ----------
@@ -270,7 +270,7 @@ def detect_dosage_effect_expert(
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
         expression vectors of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
@@ -282,14 +282,12 @@ def detect_dosage_effect_expert(
         gets zero back has nothing to detect and should not call here at all.
         The minimum valid value is `0_int32`.
     max_angle : float, optional, default 3.141592653589793
-        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
+        maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
         The default value is `4.0_real64*atan(1.0_real64)`.
         The minimum valid value is `0.0_real64`.
         The maximum valid value is `PI`.
     gain_gamma : float, optional, default 0.1
         positive magnitude gain for dosage effect
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
         The default value is `0.1_real64`.
         The minimum valid value is `above(0.0_real64)`.
 
@@ -392,7 +390,7 @@ def detect_dosage_effect(
         max_angle=3.141592653589793,
         gain_gamma=0.1,
 ):
-    r"""Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    r"""Identifies subsets of paralogs matching this pattern
 
     Parameters
     ----------
@@ -401,7 +399,7 @@ def detect_dosage_effect(
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
         expression vectors of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
@@ -413,14 +411,12 @@ def detect_dosage_effect(
         gets zero back has nothing to detect and should not call here at all.
         The minimum valid value is `0_int32`.
     max_angle : float, optional, default 3.141592653589793
-        in dosage mode maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
+        maximum angle in radians `0<=angle<=Pi` that a subset candidate must not exceed, otherwise pruned
         The default value is `4.0_real64*atan(1.0_real64)`.
         The minimum valid value is `0.0_real64`.
         The maximum valid value is `PI`.
     gain_gamma : float, optional, default 0.1
         positive magnitude gain for dosage effect
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_DOSAGE_PATTERN(variable)]].
         The default value is `0.1_real64`.
         The minimum valid value is `above(0.0_real64)`.
 
@@ -520,7 +516,7 @@ def detect_subfunctionalization_expert(
         paralog_norms,
         sorted_paralog_norms_perm,
 ):
-    r"""Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    r"""Identifies subsets of paralogs matching this pattern
 
     Parameters
     ----------
@@ -529,7 +525,7 @@ def detect_subfunctionalization_expert(
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
         expression vectors of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
@@ -542,15 +538,12 @@ def detect_subfunctionalization_expert(
         The minimum valid value is `0_int32`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
         The minimum valid value is `0.0_real64`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
-        in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+        euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
         The minimum valid value is `0.0_real64`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
-        in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+        ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
         The minimum valid value is `1_int32`.
         The maximum valid value is `n_genes`.
 
@@ -677,7 +670,7 @@ def detect_subfunctionalization(
         paralog_norms,
         sorted_paralog_norms_perm,
 ):
-    r"""Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on `pattern`
+    r"""Identifies subsets of paralogs matching this pattern
 
     Parameters
     ----------
@@ -686,7 +679,7 @@ def detect_subfunctionalization(
     genes : np.ndarray[np.float64] of shape (n_dims, n_genes,), column-major (order='F')
         expression vectors of genes
     filtered_paralogs_mask : np.ndarray[np.int32] of shape (n_mask_chunks,)
-        bit mask with genes' indices kept by pattern_mode set to 1, else 0. Use `filter_paralogs_by_pattern` for its calculation
+        bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
     max_subset_size : int
         maximum subset size of checked gene subsets. Too large a value is capped to the
         maximum valid size. The bindings cap it automatically while sizing the work
@@ -699,15 +692,12 @@ def detect_subfunctionalization(
         The minimum valid value is `0_int32`.
     rdi_threshold : float
         max allowed residual distance from `ancestor`
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
         The minimum valid value is `0.0_real64`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
-        in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the `norm` function from `f42_utils` function for this)
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+        euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
         The minimum valid value is `0.0_real64`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
-        in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor
-        This optional argument needs to be passed if used mode (`pattern_mode`) is [[tox_paralog_analysis_kernel(module):MODE_SUBFUNC_PATTERN(variable)]].
+        ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
         The minimum valid value is `1_int32`.
         The maximum valid value is `n_genes`.
 
@@ -851,7 +841,7 @@ def filter_paralogs_by_pattern_dosage_effect(
     Returns
     -------
     masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families,), column-major (order='F')
-        bit mask that will have indices of genes kept by pattern_mode set to 1, else 0
+        bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 
     Raises
     ------
@@ -936,7 +926,7 @@ def filter_paralogs_by_pattern_subfunctionalization(
     Returns
     -------
     masks : np.ndarray[np.int32] of shape (n_mask_chunks, n_families,), column-major (order='F')
-        bit mask that will have indices of genes kept by pattern_mode set to 1, else 0
+        bit mask that will have the indices of genes kept by this pattern set to 1, else 0
 
     Raises
     ------
