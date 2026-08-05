@@ -74,6 +74,7 @@ class _Validator:
     def _check_argument(self, argument: Argument) -> None:
         self._check_documented(argument)
         self._check_intent(argument)
+        self._check_optional_output(argument)
         self._check_attributes(argument)
         self._check_type(argument)
         self._check_temporary(argument)
@@ -90,6 +91,36 @@ class _Validator:
                 entity=argument,
                 note="it is inherited by the C wrapper and by the Python and R docstrings",
             )
+
+    def _check_optional_output(self, argument: Argument) -> None:
+        """An optional output generates a binding that contradicts its own signature.
+
+        The Fortran says the argument may be absent; every generated binding allocates it,
+        passes it and returns it regardless. Nothing says so, so the declaration and the
+        wrapper disagree and the reader has no way to tell which is true.
+
+        Honouring it instead is what cannot be generated well: Python would return a dict
+        whose keys vary per call and R a list of varying length, so a caller could not
+        write against the signature at all. The shape that expresses the same intent is an
+        optional *input* flag plus a `tmp_` work array -- what `loess_fit_plain` does with
+        `compute_influence`: the work stays skippable and the return type stays fixed.
+
+        Work arrays are exempt: they are dropped from the allocating wrapper and never
+        reach a caller.
+        """
+        if argument.intent is not Intent.OUT or not argument.optional:
+            return
+        if argument.roles is not None and argument.roles.is_temporary:
+            return
+        self.error(
+            f"argument '{argument.name}' is an optional output",
+            argument,
+            note=(
+                "the binding languages would have to vary their return shape per call. "
+                "Express it as an optional input flag plus a 'tmp_' work array, the way "
+                "'compute_influence' does"
+            ),
+        )
 
     def _check_intent(self, argument: Argument) -> None:
         if argument.is_result:

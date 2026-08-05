@@ -252,7 +252,6 @@ never expands is an error (as is a misspelt `M_`/`CM_`/`DM_` anywhere in a doc c
 |---|---|---|
 | `DM_DEFAULT(VALUE)` | an optional | the value used when omitted. A *constant expression* — evaluated at generation time |
 | `DM_REQUIRED_IF_MODE(MODE_ARG, MODULE, MODE_PARAM)` | an optional | required only in one mode; nullable otherwise |
-| `DM_OPTIONAL_OUTPUT` | an `intent(out)` | documents that the caller may decline it — **parsed and rendered, but no emitter reads it yet**: the generated bindings always allocate, pass and return the output |
 | `DM_RESULT_SIZE_IS(ARG)` | a result array | `ARG` holds how many leading elements are filled; the rest is trimmed |
 | `DM_OUTPUT_FROM(OUT, PROC, MODULE, AUTO)` | an input | obtained by calling `PROC`; the caller never supplies it |
 | `DM_OUTPUT_FROM(OUT, PROC, MODULE, JUST_INFO)` | an input | the caller supplies it; the doc says where to get it |
@@ -323,6 +322,8 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - a **`tmp_` argument that is `intent(in)`** — a work array is an output or in-out
 - a **kind with no C mapping** — an error, never a guess (a wrong guess compiles and lies)
 - an **optional shape or extent argument** — the wrapper must read it before `c_loc`
+- an **optional output** — no binding can honour it; use an optional input flag plus a `tmp_`
+  work array
 
 ---
 

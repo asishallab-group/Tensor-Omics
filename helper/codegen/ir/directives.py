@@ -55,13 +55,6 @@ class RequiredIfMode:
 
 
 @dataclass(frozen=True)
-class OptionalOutput:
-    """`DM_OPTIONAL_OUTPUT` -- an output the caller may decline to receive."""
-
-    line_number: int | None = None
-
-
-@dataclass(frozen=True)
 class ResultSizeIs:
     """`DM_RESULT_SIZE_IS(ARGUMENT)` -- how many leading elements carry results."""
 
@@ -177,7 +170,6 @@ class AllowInfinite:
 Directive = (
     Default
     | RequiredIfMode
-    | OptionalOutput
     | ResultSizeIs
     | OutputFrom
     | Prologue
@@ -195,7 +187,6 @@ class Directives:
 
     default: Default | None = None
     required_if_mode: RequiredIfMode | None = None
-    optional_output: OptionalOutput | None = None
     result_size_is: ResultSizeIs | None = None
     output_from: OutputFrom | None = None
     prologue: Prologue | None = None
@@ -210,7 +201,6 @@ class Directives:
         found = (
             self.default,
             self.required_if_mode,
-            self.optional_output,
             self.result_size_is,
             self.output_from,
             self.prologue,
@@ -225,10 +215,6 @@ class Directives:
     @property
     def has_default(self) -> bool:
         return self.default is not None
-
-    @property
-    def is_optional_output(self) -> bool:
-        return self.optional_output is not None
 
     @property
     def has_range(self) -> bool:
@@ -263,7 +249,6 @@ class DirectivePatterns:
 
     default: re.Pattern
     required_if_mode: re.Pattern
-    optional_output: re.Pattern
     result_size_is: re.Pattern
     output_from_auto: re.Pattern
     output_from_just_info: re.Pattern
@@ -285,7 +270,6 @@ class DirectivePatterns:
                 f"DM_REQUIRED_IF_MODE({_group('mode_arg')}, {_group('module')}, "
                 f"{_group('mode_param')})"
             ),
-            "optional_output": "DM_OPTIONAL_OUTPUT",
             "result_size_is": f"DM_RESULT_SIZE_IS({_group('argument')})",
             "output_from_auto": (
                 f"DM_OUTPUT_FROM({_group('argument')}, {_group('procedure')}, "
@@ -349,9 +333,6 @@ class DirectiveParser:
                 line_number=number,
             )
 
-        if self.patterns.optional_output.search(text) is not None:
-            yield "optional_output", OptionalOutput(number)
-
         if (match := self.patterns.result_size_is.search(text)) is not None:
             yield "result_size_is", ResultSizeIs(match.group("argument").strip(), number)
 
@@ -411,7 +392,6 @@ class DirectiveParser:
 _MACRO_NAMES = {
     "default": "DM_DEFAULT",
     "required_if_mode": "DM_REQUIRED_IF_MODE",
-    "optional_output": "DM_OPTIONAL_OUTPUT",
     "result_size_is": "DM_RESULT_SIZE_IS",
     "output_from": "DM_OUTPUT_FROM",
     "prologue": "DM_PROLOGUE",

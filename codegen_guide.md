@@ -42,16 +42,15 @@ Related reading, once this is not enough:
   - [5.4 A distance matrix](#54-a-distance-matrix)
   - [5.5 An optional argument and its default](#55-an-optional-argument-and-its-default)
   - [5.6 An output filled only partially](#56-an-output-filled-only-partially)
-  - [5.7 An output the caller may decline](#57-an-output-the-caller-may-decline)
-  - [5.8 Work arrays, and how `_alloc` appears](#58-work-arrays-and-how-_alloc-appears)
-  - [5.9 A permutation](#59-a-permutation)
-  - [5.10 A workspace sized by a recommend routine](#510-a-workspace-sized-by-a-recommend-routine)
-  - [5.11 A mode argument](#511-a-mode-argument)
-  - [5.12 One procedure per mode](#512-one-procedure-per-mode)
-  - [5.13 An argument only one mode needs](#513-an-argument-only-one-mode-needs)
-  - [5.14 Work that must happen before the kernel](#514-work-that-must-happen-before-the-kernel)
-  - [5.15 A genuine runtime error](#515-a-genuine-runtime-error)
-  - [5.16 A family too big for one file](#516-a-family-too-big-for-one-file)
+  - [5.7 Work arrays, and how `_alloc` appears](#57-work-arrays-and-how-_alloc-appears)
+  - [5.8 A permutation](#58-a-permutation)
+  - [5.9 A workspace sized by a recommend routine](#59-a-workspace-sized-by-a-recommend-routine)
+  - [5.10 A mode argument](#510-a-mode-argument)
+  - [5.11 One procedure per mode](#511-one-procedure-per-mode)
+  - [5.12 An argument only one mode needs](#512-an-argument-only-one-mode-needs)
+  - [5.13 Work that must happen before the kernel](#513-work-that-must-happen-before-the-kernel)
+  - [5.14 A genuine runtime error](#514-a-genuine-runtime-error)
+  - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
 
 **Part II — the export path** (IO, infrastructure, and everything that is not a kernel)
 
@@ -266,7 +265,7 @@ with your `summary:` as the docstring, your argument docs as the parameter docs,
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
 | An author tag (`AUTHOR_*` from [`authors.h`](authors.h)) | attribution, rendered into the Ford docs |
 | A `!!` doc on **every** argument | inherited by the C wrapper and by both language layers |
-| **No `ierr` for validation** | validation is the wrapper's job; see §5.15 for the one case where a kernel keeps an `ierr` |
+| **No `ierr` for validation** | validation is the wrapper's job; see §5.14 for the one case where a kernel keeps an `ierr` |
 
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
@@ -439,30 +438,7 @@ Fortran caller wants. Size the array for the worst case as usual — the languag
 > The example is `fx_masked` in [`helper/codegen/tests/fixtures/src/fx_edges.F90`](helper/codegen/tests/fixtures/src/fx_edges.F90).
 > No kernel in `src/` uses this yet, so the fixture is the worked case.
 
-### 5.7 An output the caller may decline
-
-**When** an `intent(out)` argument is expensive to produce and not every caller wants it.
-
-**Write** the Fortran `optional` attribute and `DM_OPTIONAL_OUTPUT`:
-
-```fortran
-real(real64), dimension(n_genes), intent(out), optional :: diagnostics
-    !! per-gene diagnostics
-    !! DM_OPTIONAL_OUTPUT
-```
-
-**You get** — today — the documentation and nothing else. **The directive has no consumer.** It
-parses, it renders its sentence into all four languages, and no emitter reads it: the generated
-Python and R always allocate the buffer, always pass it, and always return the result. Only the
-C wrapper treats the argument as nullable, which nothing generated ever exercises.
-
-So write it if it documents your intent for a Fortran caller, but do not rely on it to save
-work. If you want an output a caller can genuinely decline, that is a generator change — the
-language layers need a parameter to say no with, the allocation and the return need to be
-guarded by it — and it should be asked for rather than assumed. Nothing in `src/` uses it today,
-which is why the gap has gone unnoticed.
-
-### 5.8 Work arrays, and how `_alloc` appears
+### 5.7 Work arrays, and how `_alloc` appears
 
 **When** your kernel needs scratch space it does not want to allocate itself (because a hot loop
 should not allocate, and because a Fortran caller may want to reuse a buffer).
@@ -491,7 +467,7 @@ recommend-sized buffers generates only `foo`.
 > A `tmp_` argument that is `intent(in)` is an error. A work array is an output or an in-out;
 > nothing else makes sense.
 
-### 5.9 A permutation
+### 5.8 A permutation
 
 **When** the kernel needs an index permutation sorted against one of its arrays.
 
@@ -510,7 +486,7 @@ against `<base>`. `foo` still takes it, because an expert caller may already hav
 re-running an O(n) validation over `[1..n]` would be wasted work. A bare `perm` with no base
 name is not a permutation by this convention; it stays an ordinary argument.
 
-### 5.10 A workspace sized by a recommend routine
+### 5.9 A workspace sized by a recommend routine
 
 **When** a buffer's size can only be computed by calling something — netlib's LOESS workspaces
 are the standing example.
@@ -551,7 +527,7 @@ routines therefore live in the kernel module, public, tagged. Use `JUST_INFO` in
 when the caller genuinely has to make the call themselves — then the docs say where to get the
 value, and nothing is called for them.
 
-### 5.11 A mode argument
+### 5.10 A mode argument
 
 **When** one procedure does a related thing several ways, chosen at run time.
 
@@ -587,7 +563,7 @@ hand-written range goes stale the moment a mode is added — silently admitting 
 everywhere it was not updated. The table is the source of truth, and the generator already reads
 it.
 
-### 5.12 One procedure per mode
+### 5.11 One procedure per mode
 
 **When** the modes are really different procedures wearing one signature — the house style is
 `detect_dosage_effect` and `detect_subfunctionalization`, not `detect(pattern_mode)`.
@@ -606,7 +582,7 @@ integer(int32), intent(in) :: pattern_mode
 ```
 
 **You get** one wrapper per mode value — named from the column, with the `mode` dummy dropped
-and fixed internally — plus its `_alloc` where the kernel needs one (§5.8):
+and fixed internally — plus its `_alloc` where the kernel needs one (§5.7):
 `detect_dosage_effect`, `detect_dosage_effect_alloc`, `detect_subfunctionalization`,
 `detect_subfunctionalization_alloc`, and (no work arrays, so no `_alloc`)
 `filter_paralogs_by_pattern_dosage_effect` and `filter_paralogs_by_pattern_subfunctionalization`.
@@ -618,7 +594,7 @@ anywhere — which is exactly what the hand-written per-mode wrappers used to sp
 Without the column, nothing changes: one procedure, mode chosen at run time. Both shapes stay
 available, because some mode arguments genuinely are runtime choices.
 
-### 5.13 An argument only one mode needs
+### 5.12 An argument only one mode needs
 
 **When** an argument is meaningless outside one mode.
 
@@ -632,7 +608,7 @@ real(real64), intent(in), optional :: gain_gamma
     !! DM_MIN(above(0.0_real64))
 ```
 
-**You get** behaviour that depends on whether the mode splits (§5.12):
+**You get** behaviour that depends on whether the mode splits (§5.11):
 
 - **Split**: the argument is a **mandatory** dummy in that mode's wrapper and **absent** from
   every other mode's. Mode-independent optionals stay optional in all of them. A `DM_DEFAULT`
@@ -641,7 +617,7 @@ real(real64), intent(in), optional :: gain_gamma
   A `DM_DEFAULT` alongside is an **error** here: the binding always passes a defaulted argument
   on, so "required in that mode" would say nothing.
 
-### 5.14 Work that must happen before the kernel
+### 5.13 Work that must happen before the kernel
 
 **When** something has to run *before* the kernel and may make the kernel unnecessary — a
 degenerate input that already determines the answer, or preparation a caller should not have to
@@ -675,7 +651,7 @@ Reach for this only when the work is genuinely not the kernel's. A prologue that
 *validates* is a smell — that is what the range macros are for, and a pre-validation pass that
 duplicates them is a bug rather than a feature.
 
-### 5.15 A genuine runtime error
+### 5.14 A genuine runtime error
 
 **When** the kernel can fail for a reason no input check could have foreseen: an external
 library reporting failure, a division by zero, a configuration of otherwise-valid inputs that
@@ -703,7 +679,7 @@ from a private helper three frames down. A wrong argument name is worse than non
 Keep `arg_pos=` in your kernel anyway. It is correct for a direct Fortran caller, and the
 Fortran test suite is one.
 
-### 5.16 A family too big for one file
+### 5.15 A family too big for one file
 
 **When** one family's kernels no longer fit comfortably in a single file.
 
@@ -758,7 +734,7 @@ Because the procedure is not a numeric kernel of the pipeline:
   judgement, which is exactly why the marker stays explicit here.
 - **inside a kernel module** — a recommend/sizing routine (`tox_loess_required_workspace`,
   `calc_neighborhood_size`) or a utility a caller genuinely needs (`mask_chunk_count`). These
-  *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a wrapper to call (§5.10).
+  *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a wrapper to call (§5.9).
 
 If your procedure is a numeric kernel, take Part I instead. "It was easier to export it directly"
 is how an unvalidated API gets shipped.
@@ -805,7 +781,7 @@ subroutine serialize_int_helper(arr, n_elements, arr_shape, filename, ierr)
 ```
 
 Because you own the numbering, `arg_pos` here is *correct* and stays — nothing clears it (contrast
-§5.15). Use `set_err_once` so the first failure is the one reported, and end validation with
+§5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
 `if (is_err(ierr)) return` before touching the data.
 
 An exported procedure with no `ierr` gets one synthesised, because the binding languages always
@@ -826,7 +802,6 @@ Everything that is a *binding* rule rather than a wrapper rule, which is most of
 | `DM_OUTPUT_FROM(..., AUTO)` | the *language layer* calls the producer for the caller — `tox_data_archive` sizes eleven arguments this way from `get_tox_data_dims` |
 | `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
 | `DM_RESULT_SIZE_IS` | as in Part I (§5.6): Python and R trim the result, Fortran callers still get the full buffer |
-| `DM_OPTIONAL_OUTPUT` | as in Part I (§5.7): documentation only, no emitter reads it |
 | a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
 | `<p>_alloc` / `<p>` | the same pairing, written by hand (§6.5) |
 
@@ -916,7 +891,7 @@ docstring and the R `.Rd` help page. So:
 - **Write plainly about arguments the reader actually passes.** Terms like "pre-allocated" or
   "workspace" describe the Fortran expert signature; a Python caller who never sees that
   argument only finds them confusing.
-- **A `mode` mentioned in prose is misleading in a split wrapper** (§5.12), where that argument
+- **A `mode` mentioned in prose is misleading in a split wrapper** (§5.11), where that argument
   does not exist. Link to the mode-specific procedure instead.
 
 Errors follow the same principle. An error names the argument the *caller* passed, and points at
@@ -951,7 +926,8 @@ source and carries a note saying what to write instead.
 | a kind with no C mapping | an error, never a guess — a wrong guess compiles and lies |
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
-| `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (§5.12) the pair is meaningful and accepted |
+| an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain` does with `compute_influence`: the work stays skippable and the return type stays fixed |
+| `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (§5.11) the pair is meaningful and accepted |
 | a mode argument that is not a scalar integer | modes are compared against `MODE_*` parameters |
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |

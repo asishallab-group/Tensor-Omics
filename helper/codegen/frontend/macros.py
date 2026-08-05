@@ -171,7 +171,6 @@ class DocMacroNames:
 
     default: str = "DM_DEFAULT"
     required_if_mode: str = "DM_REQUIRED_IF_MODE"
-    optional_output: str = "DM_OPTIONAL_OUTPUT"
     result_size_is: str = "DM_RESULT_SIZE_IS"
     output_from: str = "DM_OUTPUT_FROM"
     prologue: str = "DM_PROLOGUE"
@@ -185,7 +184,6 @@ class DocMacroNames:
         return (
             self.default,
             self.required_if_mode,
-            self.optional_output,
             self.result_size_is,
             self.output_from,
             self.prologue,

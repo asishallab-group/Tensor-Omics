@@ -165,7 +165,6 @@ other's outputs and a module-level import would be circular.
 | **optional without a default** | nullable: a null pointer is how C says "absent" |
 | **null-checking an optional** | never — a null *is* the value. This is why extents and shape arguments may not be optional |
 | **host quirk** | `ctypes` rejects `None` for a checked `argtype`, so the argtype has to allow it explicitly. Expect your host's FFI to have an equivalent wrinkle |
-| **`DM_OPTIONAL_OUTPUT`** | *not implemented in any emitter today* — the directive parses and renders, and Python and R both allocate, pass and return the output regardless. If you wire it up, it needs all three: a parameter for the caller to decline with, a guarded allocation, and a guarded return. Doing it in one target only would break the parity suite, which is the point of that suite |
 
 ### 4.5 Types that do not cross cleanly
 

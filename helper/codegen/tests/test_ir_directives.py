@@ -21,7 +21,6 @@ from codegen.ir.directives import (
     Directives,
     Maximum,
     Minimum,
-    OptionalOutput,
     OutputFrom,
     OutputFromMode,
     RequiredIfMode,
@@ -123,17 +122,6 @@ class TestRequiredIfMode:
 
     def test_absent_when_not_documented(self, parser):
         assert parser.parse(Doc.parse(["prose"])).required_if_mode is None
-
-
-class TestOptionalOutput:
-    def test_recognised(self, macros, parser):
-        directives = parser.parse(documented(macros, "DM_OPTIONAL_OUTPUT"))
-
-        assert directives.optional_output == OptionalOutput(line_number=None)
-        assert directives.is_optional_output
-
-    def test_absent_when_not_documented(self, parser):
-        assert not parser.parse(Doc.parse(["prose"])).is_optional_output
 
 
 class TestResultSizeIs:
@@ -292,9 +280,9 @@ class TestDirectivesTogether:
         assert parser.parse(documented(macros, "DM_DEFAULT(1)"))
 
     def test_all_lists_only_what_was_found(self, macros, parser):
-        directives = parser.parse(documented(macros, "DM_OPTIONAL_OUTPUT"))
+        directives = parser.parse(documented(macros, "DM_MIN(1_int32)"))
 
-        assert directives.all == (OptionalOutput(line_number=None),)
+        assert directives.all == (Minimum("1_int32", line_number=None),)
 
     def test_an_undocumented_entity_yields_empty_directives(self, parser):
         assert parser.parse(Doc.parse([])) == Directives()

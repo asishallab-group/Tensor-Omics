@@ -155,7 +155,7 @@ about what is generated. `rmtree` would be a second, independent answer to the s
 
 The generator already reads, and this feature reuses unchanged: explicit `intent`; kinded
 types; per-argument `!!` docs; `tmp_<name>` work arrays; `<arg>_shape`, `n_selected_<arg>`,
-`mode`/`method`; `DM_DEFAULT`, `DM_REQUIRED_IF_MODE`, `DM_OPTIONAL_OUTPUT`, `DM_RESULT_SIZE_IS`;
+`mode`/`method`; `DM_DEFAULT`, `DM_REQUIRED_IF_MODE`, `DM_RESULT_SIZE_IS`;
 and `DM_OUTPUT_FROM(size_arg, recommend_proc, tox_X_kernel, AUTO)`.
 
 ### The argument position an `ierr` carries

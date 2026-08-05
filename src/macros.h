@@ -87,9 +87,6 @@
 ! `MODE_ARG` names the mode argument, `MODE_PARAM` the mode parameter in `MODULE`.
 #define DM_REQUIRED_IF_MODE(MODE_ARG, MODULE, MODE_PARAM) This optional argument needs to be passed if used mode (`MODE_ARG`) is [[MODULE(module):MODE_PARAM(variable)]].
 
-! An `intent(out)` argument the caller may decline to receive.
-#define DM_OPTIONAL_OUTPUT This output will only be present if desired.
-
 ! For a result array that is filled only partially: `ARGUMENT` names the scalar
 ! integer argument holding how many leading elements actually carry results.
 #define DM_RESULT_SIZE_IS(ARGUMENT) The first `ARGUMENT` elements will hold the results.

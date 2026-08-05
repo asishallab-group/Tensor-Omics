@@ -380,3 +380,48 @@ class TestEverythingTogether:
         assert any("deferred length" in m for m in messages(bag))
         assert any("is intent(in)" in m for m in messages(bag))
         assert any("is optional" in m for m in messages(bag))
+
+
+class TestOptionalOutputs:
+    """Refused: no binding can honour one, and every binding ignores it silently, so the
+    Fortran declaration and the generated wrapper disagree about the same argument."""
+
+    def test_an_optional_output_is_rejected(self, bag):
+        checked(
+            b.procedure(
+                "p",
+                b.real("values", Intent.IN, "(n)"),
+                b.real("diagnostics", Intent.OUT, "(n)", optional=True),
+                b.integer("n"),
+            ),
+            bag,
+        )
+
+        error = only_error(bag)
+        assert "'diagnostics' is an optional output" in error.message
+        assert "compute_influence" in error.note
+
+    def test_an_optional_work_array_is_accepted(self, bag):
+        # dropped from the allocating wrapper, so it never reaches a caller
+        checked(
+            b.procedure(
+                "p",
+                b.real("tmp_work", Intent.OUT, "(n)", optional=True),
+                b.integer("n"),
+            ),
+            bag,
+        )
+
+        assert bag.errors == ()
+
+    def test_an_optional_input_is_accepted(self, bag):
+        checked(b.procedure("p", b.logical("compute_influence", Intent.IN, optional=True)), bag)
+
+        assert bag.errors == ()
+
+    def test_a_mandatory_output_is_accepted(self, bag):
+        checked(
+            b.procedure("p", b.real("results", Intent.OUT, "(n)"), b.integer("n")), bag
+        )
+
+        assert bag.errors == ()

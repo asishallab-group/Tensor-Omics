@@ -156,11 +156,6 @@ class TestRealDocMacros:
 
         assert match.group("argument") == "n_results"
 
-    def test_optional_output(self, macros):
-        expanded = macros.expand("DM_OPTIONAL_OUTPUT")
-
-        assert macros.compiled("DM_OPTIONAL_OUTPUT").match(expanded) is not None
-
     def test_output_from(self, macros):
         template = (
             "DM_OUTPUT_FROM((?P<argument>.*), (?P<procedure>.*), (?P<module>.*), AUTO)"
@@ -183,7 +178,7 @@ class TestRealDocMacros:
         # pcpp tokenises a lone apostrophe as an unterminated character literal
         for invocation in (
             "DM_DEFAULT(1)",
-            "DM_OPTIONAL_OUTPUT",
+            "DM_MIN(1_int32)",
             "DM_RESULT_SIZE_IS(n)",
             "DM_OUTPUT_FROM(a, p, m, AUTO)",
             "DM_OUTPUT_FROM(a, p, m, JUST_INFO)",
