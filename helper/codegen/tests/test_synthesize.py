@@ -72,6 +72,35 @@ def distance_matrix_kernel_module():
     )
 
 
+def output_sizing_computed_kernel_module():
+    """A recommend-sized value that also gives the extent of a returned array.
+
+    The allocating wrapper must NOT take it over: the caller (and the binding) needs it to
+    size what comes back.
+    """
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "search_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            integer(
+                "n_subsets",
+                Intent.IN,
+                doc="how many subsets fit",
+                directives=Directives(
+                    output_from=OutputFrom(
+                        "work_size", "subset_size", "tox_demo_kernel", OutputFromMode.AUTO
+                    )
+                ),
+            ),
+            integer("subsets", Intent.OUT, "(n, n_subsets)", doc="the subsets found"),
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            meta=Meta(summary="Search", author="AUTHOR"),
+        ),
+    )
+
+
 def mode_split_kernel_module():
     """A kernel with a mode argument whose table names a procedure per mode."""
     mode_table = [
@@ -322,6 +351,37 @@ class TestAllocatingSynthesis:
         names = [a.name for a in alloc.arguments]
         # values + n survive; values_perm, tmp_scratch, tmp_work, wsize are taken over
         assert names == ["values", "n", "ierr"]
+
+    def test_a_permutation_whose_base_is_not_an_argument_is_kept(self):
+        # `ranking_perm` orders something the kernel never receives, so the wrapper cannot
+        # seed and sort it -- it is the caller's own data despite the name
+        result = synthesize_wrappers(
+            project(
+                module(
+                    "tox_demo_kernel",
+                    procedure(
+                        "rank_kernel",
+                        real("values", Intent.IN, "(n)", doc="the data"),
+                        integer("n", Intent.IN, doc="length"),
+                        integer("ranking_perm", Intent.IN, "(n)", doc="a caller-supplied order"),
+                        real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                        meta=Meta(summary="Rank", author="AUTHOR"),
+                    ),
+                )
+            )
+        )
+
+        alloc = result.project.procedure("tox_demo", "rank_alloc")
+        assert [a.name for a in alloc.arguments] == ["values", "n", "ranking_perm", "ierr"]
+
+    def test_a_computed_size_that_sizes_a_returned_array_is_kept(self):
+        # taking it over would leave neither the caller nor the binding able to size what
+        # comes back, so only the tmp_ scratch is taken over here
+        result = synthesize_wrappers(project(output_sizing_computed_kernel_module()))
+
+        alloc = result.project.procedure("tox_demo", "search_alloc")
+        names = [a.name for a in alloc.arguments]
+        assert names == ["values", "n", "n_subsets", "subsets", "ierr"]
 
     def test_the_validating_wrapper_keeps_everything(self):
         result = synthesize_wrappers(project(alloc_kernel_module()))

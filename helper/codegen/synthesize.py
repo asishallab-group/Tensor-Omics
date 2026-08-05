@@ -16,6 +16,8 @@ in the project but are inert -- nothing generates from an unexported procedure.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -85,6 +87,53 @@ def is_taken_over(argument: Argument, conventions: Conventions = CONVENTIONS) ->
         or is_permutation(argument, conventions)
         or is_computed(argument)
     )
+
+
+#: Identifiers named in an extent expression, to see which arguments an extent depends on
+_EXTENT_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
+
+
+def _sizes_a_kept_argument(
+    argument: Argument, arguments: Sequence[Argument], conventions: Conventions
+) -> bool:
+    """Whether an argument the caller still passes or receives is sized by `argument`."""
+    name = argument.name.lower()
+    for other in arguments:
+        if other is argument or is_taken_over(other, conventions):
+            continue
+        for extent in other.dimension.extents:
+            if name in {i.lower() for i in _EXTENT_IDENTIFIER_RE.findall(extent)}:
+                return True
+    return False
+
+
+def taken_over_arguments(
+    arguments: Sequence[Argument], conventions: Conventions = CONVENTIONS
+) -> list[Argument]:
+    """The arguments the allocating wrapper prepares itself, rather than taking from the caller.
+
+    Work arrays always qualify -- they are scratch. A `<base>_perm` qualifies only while the
+    wrapper can actually build it, which means the `<base>` it orders is an argument too:
+    `values_perm` is seeded and sorted against `values`, but a name that merely ends in `_perm`
+    and orders something the kernel never receives is the caller's own data. A recommend-sized
+    value qualifies as well, though only while nothing the caller still sees depends on it: an
+    argument that also gives an extent of a returned array has to stay in the signature, or
+    neither the caller nor the binding could size what comes back.
+    """
+    names = {argument.name.lower() for argument in arguments}
+    taken = []
+    for argument in arguments:
+        if is_temporary(argument, conventions):
+            taken.append(argument)
+        elif is_permutation(argument, conventions):
+            base = argument.name.lower()[: -len(conventions.perm_suffix)]
+            if base in names:
+                taken.append(argument)
+        elif is_computed(argument) and not _sizes_a_kept_argument(
+            argument, arguments, conventions
+        ):
+            taken.append(argument)
+    return taken
 
 
 @dataclass(frozen=True)
@@ -274,7 +323,8 @@ def _wrappers_for(
         base + conventions.validating_suffix, foo_arguments, kernel, conventions
     )
 
-    kept = [a for a in arguments if not is_taken_over(a, conventions)]
+    taken = taken_over_arguments(arguments, conventions)
+    kept = [a for a in arguments if a not in taken]
     allocating = None
     if len(kept) != len(arguments):
         alloc_arguments = [argument.with_name(argument.name) for argument in kept]

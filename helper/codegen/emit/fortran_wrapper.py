@@ -27,7 +27,13 @@ from ..config import CONVENTIONS, Conventions
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
 from ..render import Writer
-from ..synthesize import ModeFix, is_computed, is_permutation, is_taken_over, is_temporary
+from ..synthesize import (
+    ModeFix,
+    is_computed,
+    is_permutation,
+    is_temporary,
+    taken_over_arguments,
+)
 from .doc_ford import render_doc
 from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
@@ -201,7 +207,9 @@ class FortranWrapperEmitter:
             if not self._is_allocating(alloc, module):
                 continue
             foo = self._sibling(module, alloc)
-            for argument in self._kernel_arguments(foo):
+            for argument in taken_over_arguments(
+                self._kernel_arguments(foo), self.conventions
+            ):
                 if not is_computed(argument):
                     continue
                 plan = foo.argument(argument.name).roles.computed_from
@@ -263,7 +271,7 @@ class FortranWrapperEmitter:
         self, writer: Writer, alloc: Procedure, module: Module
     ) -> None:
         foo = self._sibling(module, alloc)
-        taken = [a for a in self._kernel_arguments(foo) if is_taken_over(a, self.conventions)]
+        taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
 
         self._declarations(writer, alloc.arguments)
         self._locals(writer, taken)
