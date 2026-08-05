@@ -150,7 +150,7 @@ test_5_zipping <- function() {
   assert_true(partial_dims$n_expression_cols == 0L, "the member that is not")
 
   assert_error(read_tox_data_into("no_such_archive_R.test.zip"),
-               "Expected an error for an archive that does not exist")
+               "Expected an error for an archive that does not exist", ERR_FILE_OPEN)
 
   # create_zip_archive directly, with arrays that are not part of the tox data set
   serialize_int_helper(array(seq_len(60), dim = c(5, 4, 3)), "temp_3d_int_R.test.bin")
@@ -183,7 +183,7 @@ test_5_zipping <- function() {
   assert_true(all(as.vector(restored) == seq_len(60)), "and its values")
 
   assert_error(create_zip_archive("error_R.test.zip", c("key1", "key2"), c("only_one.bin")),
-               "Expected an error for mismatched keys and filenames")
+               "Expected an error for mismatched keys and filenames", ERR_INVALID_INPUT)
 
   for (f in c(files, archive, partial, bundle)) if (file.exists(f)) file.remove(f)
 }

@@ -23,7 +23,7 @@ test_invalid_family_mapping <- function() {
   expression_vectors <- matrix(c(1,2,3,4,5,6), nrow=3, ncol=2)
   family_centroids <- matrix(c(5,4,3,2,1,0, -1,-2,-3), nrow=3, ncol=3)
   gene_to_centroid <- c(3,4) # 4 is invalid
-  assert_error(compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "expected error for invalid family")
+  assert_error(compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "expected error for invalid family", ERR_INVALID_INPUT)
 }
 
 # 3. Test for zero distance between paralog and centroid
@@ -70,7 +70,7 @@ test_dimension_edge_cases <- function() {
   expression_vectors <- matrix(numeric(0), nrow=1, ncol=0)
   family_centroids <- matrix(0, nrow=1, ncol=1)
   gene_to_centroid <- integer(0)
-  assert_error(compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "expected error for empty input")
+  assert_error(compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "expected error for empty input", ERR_EMPTY_INPUT)
 }
 
 run_all_tests()

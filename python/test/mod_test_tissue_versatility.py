@@ -12,6 +12,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from tensor_omics import compute_tissue_versatility as _compute_tissue_versatility
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 
 def compute_tissue_versatility(expression_vectors, exp_vecs_selection_index, axes_selection):
@@ -118,7 +119,7 @@ def test_numerical_stability():
 # 11. Invalid input: no axes selected (should raise RuntimeError)
 def test_invalid_input_no_axes():
     expr = np.array([[1],[2],[3]], dtype=np.float64)
-    assert_error(lambda: compute_tissue_versatility(expr, [True], [False, False, False]), "Expected error for no selected axes")
+    assert_error(lambda: compute_tissue_versatility(expr, [True], [False, False, False]), "Expected error for no selected axes", ERR_INVALID_INPUT)
 
 
 # 12. Multiple selection, partial axes

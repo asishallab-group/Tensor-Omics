@@ -98,9 +98,41 @@ assert_false <- function(expr, msg = "Assertion failed") {
   invisible(TRUE)
 }
 
-assert_error <- function(expr, msg = "Expected an error") {
+.tox_code_label <- function(code) {
+  code <- as.integer(code)
+  for (name in ls(globalenv(), pattern = "^ERR_")) {
+    value <- get(name, envir = globalenv())
+    if (is.numeric(value) && length(value) == 1L && as.integer(value) == code)
+      return(sprintf("%s (%d)", name, code))
+  }
+  sprintf("code %d", code)
+}
+
+# `code` is a bare tox_errors code (ERR_INVALID_INPUT), not a packed ierr: check_err_code
+# strips the argument position before it signals. Omit it to demand an error carrying no tox
+# code -- a plain R error, or one of the binding's own tox_type_error / tox_shape_error
+# conditions, which are tox_error conditions with code = NA by design.
+assert_error <- function(expr, msg = "Expected an error", code = NULL) {
+  if (!is.null(code) && as.integer(code) >= ARG_POS_FACTOR)
+    stop(sprintf("assert_error takes a bare error code, not a packed ierr: %d", as.integer(code)),
+         call. = FALSE)
+
   err <- tryCatch({ expr; NULL }, error = function(e) e)
-  if (is.null(err)) stop(msg, call. = FALSE)
+  if (is.null(err)) stop(msg, ": nothing was raised", call. = FALSE)
+
+  actual <- if (inherits(err, "tox_error")) err$code else NULL
+  actual <- if (is.null(actual) || length(actual) != 1L) NA_integer_ else as.integer(actual)
+
+  if (is.null(code)) {
+    if (!is.na(actual))
+      stop(msg, ": expected an error that is not a tensor-omics error, but got ",
+           .tox_code_label(actual), ": ", conditionMessage(err), call. = FALSE)
+  } else if (is.na(actual) || actual != as.integer(code)) {
+    got <- if (is.na(actual)) sprintf("<%s>", paste(class(err), collapse = ", "))
+           else .tox_code_label(actual)
+    stop(msg, ": expected ", .tox_code_label(code), ", but got ", got, ": ",
+         conditionMessage(err), call. = FALSE)
+  }
   invisible(TRUE)
 }
 

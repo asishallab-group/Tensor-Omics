@@ -67,7 +67,7 @@ test_euclidean_distance_invalid_inputs <- function() {
   assert_error(euclidean_distance(c(1, 2), c(1, 2, 3)), "case: same length")
   
   # Test empty vectors
-  assert_error(euclidean_distance(numeric(0), numeric(0)), "case: cannot be empty")
+  assert_error(euclidean_distance(numeric(0), numeric(0)), "case: cannot be empty", ERR_EMPTY_INPUT)
   
   # Test non-numeric input
   assert_error(euclidean_distance(c("a", "b"), c(1, 2)), "case: must be numeric")
@@ -172,11 +172,16 @@ test_distance_to_centroid_performance <- function() {
 
 # Test 9: Input validation for distance_to_centroid
 test_distance_to_centroid_input_validation <- function() {
-  # Test gene_to_fam length mismatch
-  assert_error(distance_to_centroid(c(1, 2, 3, 4), c(1, 2), c(1, 2, 3)), "wrong gene_to_fam length")
-  
+  # genes is (n_tissues, n_genes) and centroids (n_tissues, n_families); passing plain
+  # vectors makes both cases below die on the type before reaching what they are about
+  genes <- matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2)
+  centroids <- matrix(c(1, 2), nrow = 2, ncol = 1)
+
+  # Test gene_to_fam length mismatch: 3 entries for 2 genes
+  assert_error(distance_to_centroid(genes, centroids, c(1, 2, 3)), "wrong gene_to_fam length")
+
   # Test negative family indices (should throw error)
-  assert_error(distance_to_centroid(c(1, 2, 3, 4), c(1, 2), c(1, -1)), "negative family index")
+  assert_error(distance_to_centroid(genes, centroids, c(1, -1)), "negative family index", ERR_INVALID_INPUT)
 }
 
 # Test 10: Single-dimensional vectors

@@ -105,11 +105,11 @@ test_invalid_input_arguments <- function() {
   vectors <- matrix(c(1,1,3,3,10,10,20,20,5,5), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(c(1,1,2,2,1))
   # Invalid n_axes
-  assert_error(group_centroid_all(matrix(numeric(0), nrow=0, ncol=n_genes), gene_to_family, n_families), "Expected error for invalid n_axes")
+  assert_error(group_centroid_all(matrix(numeric(0), nrow=0, ncol=n_genes), gene_to_family, n_families), "Expected error for invalid n_axes", ERR_EMPTY_INPUT)
   # Invalid n_genes
-  assert_error(group_centroid_all(matrix(numeric(0), nrow=n_axes, ncol=0), integer(0), n_families), "Expected error for invalid n_genes")
+  assert_error(group_centroid_all(matrix(numeric(0), nrow=n_axes, ncol=0), integer(0), n_families), "Expected error for invalid n_genes", ERR_EMPTY_INPUT)
   # Invalid n_families
-  assert_error(group_centroid_all(vectors, gene_to_family, 0), "Expected error for invalid n_families")
+  assert_error(group_centroid_all(vectors, gene_to_family, 0), "Expected error for invalid n_families", ERR_EMPTY_INPUT)
 }
 
 # 10. Test for invalid family mapping
@@ -117,7 +117,7 @@ test_invalid_family_mapping <- function() {
   n_axes <- 2; n_genes <- 5; n_families <- 2
   vectors <- matrix(c(1,1,3,3,10,10,20,20,5,5), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(c(1,1,2,3,1)) # 3 is invalid
-  assert_error(group_centroid_all(vectors, gene_to_family, n_families), "Expected error for invalid families")
+  assert_error(group_centroid_all(vectors, gene_to_family, n_families), "Expected error for invalid families", ERR_INVALID_INPUT)
 }
 
 run_all_tests()

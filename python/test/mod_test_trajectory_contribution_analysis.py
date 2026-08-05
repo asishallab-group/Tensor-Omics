@@ -24,6 +24,7 @@ from tensor_omics import (
     compute_velocity_acceleration_contributions_expert
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
 
 
 # Constants
@@ -185,7 +186,7 @@ def test_tox_compute_baselines_factor_dependent():
     assert_error(lambda: compute_baselines_factor_dependent(factor, dependent[:-1], baseline_mode=1), "Expected ValueError for mismatched lengths")
 
     # Invalid mode should bubble up as RuntimeError from Fortran layer
-    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="unknown_mode"), "Expected RuntimeError for invalid mode")
+    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="unknown_mode"), "Expected RuntimeError for invalid mode", ERR_INVALID_INPUT)
 
 
 def test_compute_contributions():
@@ -363,14 +364,14 @@ def test_compute_p_values():
     # Case 2: NaN in observed contributions
     # -------------------------------
     local_obs_nan = np.array([2.0, 0.0, np.nan], dtype=np.float64, order="F")
-    assert_error(lambda: compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Expected RuntimeError for NaN input")
+    assert_error(lambda: compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Expected RuntimeError for NaN input", ERR_NAN_INF)
 
     # -------------------------------
     # Case 3: Inf in permutation contributions
     # -------------------------------
     local_perm_inf = local_perm.copy(order="F")
     local_perm_inf[2,3] = np.inf
-    assert_error(lambda: compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Expected RuntimeError for Infinity input")
+    assert_error(lambda: compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Expected RuntimeError for Infinity input", ERR_NAN_INF)
 
 
 def test_tox_compute_velocity_trajectory():

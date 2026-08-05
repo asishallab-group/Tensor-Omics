@@ -12,6 +12,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from tensor_omics import group_centroid_orthologs, group_centroid_all
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT
 
 
 def test_basic_all_mode():
@@ -113,11 +114,11 @@ def test_invalid_input_arguments():
                         [1, 3, 10, 20, 5]], dtype=np.float64)
     gene_to_family = np.array([1, 1, 2, 2, 1], dtype=np.int32)
     # Invalid n_axes (empty vectors)
-    assert_error(lambda: group_centroid_all(np.empty((0, n_genes)), gene_to_family, n_families), "Expected ValueError for n_axes=0")
+    assert_error(lambda: group_centroid_all(np.empty((0, n_genes)), gene_to_family, n_families), "Expected ValueError for n_axes=0", ERR_EMPTY_INPUT)
     # Invalid n_genes (empty gene set)
-    assert_error(lambda: group_centroid_all(np.empty((n_axes, 0)), np.array([], dtype=np.int32), n_families), "Expected ValueError for n_genes=0")
+    assert_error(lambda: group_centroid_all(np.empty((n_axes, 0)), np.array([], dtype=np.int32), n_families), "Expected ValueError for n_genes=0", ERR_EMPTY_INPUT)
     # Invalid n_families (0 families)
-    assert_error(lambda: group_centroid_all(vectors, gene_to_family, 0), "Expected ValueError for n_families=0")
+    assert_error(lambda: group_centroid_all(vectors, gene_to_family, 0), "Expected ValueError for n_families=0", ERR_EMPTY_INPUT)
 
 
 def test_invalid_family_mapping():
@@ -125,7 +126,7 @@ def test_invalid_family_mapping():
     vectors = np.array([[1, 3, 10, 20, 5],
                         [1, 3, 10, 20, 5]], dtype=np.float64)
     gene_to_family = np.array([1, 1, 2, 3, 1], dtype=np.int32)  # 3 is invalid
-    assert_error(lambda: group_centroid_all(vectors, gene_to_family, n_families), "Expected ValueError for invalid family mapping")
+    assert_error(lambda: group_centroid_all(vectors, gene_to_family, n_families), "Expected ValueError for invalid family mapping", ERR_INVALID_INPUT)
 
 
 def test_present_ortholog_set_in_all_mode():

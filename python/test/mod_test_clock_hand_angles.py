@@ -14,6 +14,7 @@ import math
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import clock_hand_angle_between_vectors, clock_hand_angles_for_shift_vectors
 from test_helpers import *
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 
 # Constants
@@ -322,7 +323,7 @@ def test_invalid_selected_axes():
     v1 = np.array([1.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float64)
     v2 = np.array([0.0, 1.0, 0.0, 0.0, 0.0], dtype=np.float64)
     selected_axes = np.array([1, 1, 1, 0, 0], dtype=np.int32)
-    assert_error(lambda: clock_hand_angle_between_vectors(v1, v2, selected_axes), "Expected Exception")
+    assert_error(lambda: clock_hand_angle_between_vectors(v1, v2, selected_axes), "Expected Exception", ERR_INVALID_INPUT)
 
 
 def test_out_of_bounds_selected_axes():
@@ -330,7 +331,7 @@ def test_out_of_bounds_selected_axes():
     v1 = np.array([1.0, 0.0, 0.0, 2.3], dtype=np.float64)
     v2 = np.array([0.0, 1.0, 0.0, 2.3], dtype=np.float64)
     selected_axes = np.array([1, 2, 5, 6], dtype=np.int32)
-    assert_error(lambda: clock_hand_angle_between_vectors(v1, v2, selected_axes), "Expected Exception")
+    assert_error(lambda: clock_hand_angle_between_vectors(v1, v2, selected_axes), "Expected Exception", ERR_INVALID_INPUT)
 
 
 def test_zero_vectors():

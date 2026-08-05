@@ -10,6 +10,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from tensor_omics import normalization_pipeline, normalize_by_std_dev, quantile_normalization, calc_tiss_avg, log2_transformation
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 
 def test_basic():
@@ -28,10 +29,12 @@ def test_basic():
 
 def test_edge_case():
     n_genes, n_tissues, n_grps = 10, 6, 2
-    input_matrix = np.zeros((n_genes, n_tissues), dtype=np.float64)
+    # (n_tissues, n_genes), as the working cases above build it -- the other way round the
+    # call dies on the shape and never reaches the zero-variance path this case is about
+    input_matrix = np.zeros((n_tissues, n_genes), dtype=np.float64, order="F")
     group_s = np.array([1,4], dtype=np.int32)
     group_c = np.array([3,3], dtype=np.int32)
-    assert_error(lambda: normalization_pipeline(input_matrix, group_c, span=0.75, degree=2, use_quantile=1), "Expected error for zero-variance input")
+    assert_error(lambda: normalization_pipeline(input_matrix, group_c, span=0.75, degree=2, use_quantile=1), "Expected error for zero-variance input", ERR_INVALID_INPUT)
 
 
 def test_pipeline_vs_manual():

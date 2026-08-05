@@ -12,6 +12,7 @@ from tensor_omics import (
     relative_axes_expression_from_expression_vector
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_DIVISION_BY_ZERO
 
 TOL = 1e-12
 
@@ -56,7 +57,7 @@ def test_shift_mixed_vector():
 
 def test_shift_zero_vector():
     vec = np.array([0, 0, 0], dtype=np.float64)
-    assert_error(lambda: relative_axes_changes_from_shift_vector(vec), "Expected exception for zero vector")
+    assert_error(lambda: relative_axes_changes_from_shift_vector(vec), "Expected exception for zero vector", ERR_DIVISION_BY_ZERO)
 
 
 def test_shift_one_nonzero_axis():
@@ -110,7 +111,7 @@ def test_expr_mixed_vector():
 
 def test_expr_zero_vector():
     vec = np.array([0, 0, 0], dtype=np.float64)
-    assert_error(lambda: relative_axes_expression_from_expression_vector(vec), "Expected exception for zero vector")
+    assert_error(lambda: relative_axes_expression_from_expression_vector(vec), "Expected exception for zero vector", ERR_DIVISION_BY_ZERO)
 
 
 def test_expr_one_nonzero_axis():

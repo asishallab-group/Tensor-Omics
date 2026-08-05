@@ -17,6 +17,7 @@ from tensor_omics import (
     normalize_unit_length
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, ERR_NAN_INF
 
 
 def test_normalize_unit_length():
@@ -34,7 +35,7 @@ def test_normalize_unit_length():
     # Case 2: Zero vector
     # -------------------------------
     vec = np.array([0.0, 0.0, 0.0], dtype=np.float64)
-    assert_error(lambda: normalize_unit_length(vec), "zero vector: should raise RuntimeError")
+    assert_error(lambda: normalize_unit_length(vec), "zero vector: should raise RuntimeError", ERR_DIVISION_BY_ZERO)
 
     # -------------------------------
     # Case 3: Already normalized
@@ -48,13 +49,13 @@ def test_normalize_unit_length():
     # Case 4: NaN
     # -------------------------------
     vec = np.array([0.6164770879765119, -0.42, np.nan], dtype=np.float64)
-    assert_error(lambda: normalize_unit_length(vec), "NaN vector: should raise RuntimeError")
+    assert_error(lambda: normalize_unit_length(vec), "NaN vector: should raise RuntimeError", ERR_NAN_INF)
 
     # -------------------------------
     # Case 5: Infinity
     # -------------------------------
     vec = np.array([0.6164770879765119, -0.42, np.inf], dtype=np.float64)
-    assert_error(lambda: normalize_unit_length(vec), "Infinity vector: should raise RuntimeError")
+    assert_error(lambda: normalize_unit_length(vec), "Infinity vector: should raise RuntimeError", ERR_NAN_INF)
 
 
 def test_stddev_example_1():
@@ -206,12 +207,12 @@ def test_error_handling():
     # Test NaN input
     mat_nan = np.array([[1.0, np.nan], [3.0, 4.0]], dtype=np.float64)
 
-    assert_error(lambda: normalize_by_std_dev(mat_nan, span=0.75, degree=2), "Should have raised ValueError for NaN input")
+    assert_error(lambda: normalize_by_std_dev(mat_nan, span=0.75, degree=2), "Should have raised ValueError for NaN input", ERR_INVALID_INPUT)
 
     # Test infinite input
     mat_inf = np.array([[1.0, np.inf], [3.0, 4.0]], dtype=np.float64)
 
-    assert_error(lambda: normalize_by_std_dev(mat_inf, span=0.75, degree=2), "Should have raised ValueError for infinite input")
+    assert_error(lambda: normalize_by_std_dev(mat_inf, span=0.75, degree=2), "Should have raised ValueError for infinite input", ERR_INVALID_INPUT)
 
 
 if __name__ == '__main__':

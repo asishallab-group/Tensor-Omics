@@ -41,7 +41,7 @@ test_shift_zero_vector <- function() {
   # as above: no direction to apportion, so this is an error, not zeros
   vec <- c(0, 0, 0)
   assert_error(relative_axes_changes_from_shift_vector(vec),
-               "Expected an error for a zero shift vector")
+               "Expected an error for a zero shift vector", ERR_DIVISION_BY_ZERO)
 }
 
 test_shift_one_nonzero_axis <- function() {
@@ -92,7 +92,7 @@ test_expr_zero_vector <- function() {
   # zero rather than returning zeros. The Python suite asserts the same.
   vec <- c(0, 0, 0)
   assert_error(relative_axes_expression_from_expression_vector(vec),
-               "Expected an error for a zero expression vector")
+               "Expected an error for a zero expression vector", ERR_DIVISION_BY_ZERO)
 }
 
 test_expr_one_nonzero_axis <- function() {

@@ -43,7 +43,7 @@ test_kd_functions <- function() {
   force(sphere_point)
   
   # Empty cases
-  assert_error(build_bst_index(numeric(0)), "Expected an error for empty bst input")
+  assert_error(build_bst_index(numeric(0)), "Expected an error for empty bst input", ERR_EMPTY_INPUT)
   
   # Single element
   single_bst <- build_bst_index(c(42.0))

@@ -32,13 +32,13 @@ test_determine_shared_residual_range <- function() {
   # Test 3 — Quantile < 0 → error
   assert_error(
     determine_study_shared_residual_range(S1, S2, -1),
-    "Test 3 failed: expected error for negative quantile"
+    "Test 3 failed: expected error for negative quantile", ERR_INVALID_INPUT
   )
 
   # Test 4 — Quantile > 100 → error
   assert_error(
     determine_study_shared_residual_range(S1, S2, 150),
-    "Test 4 failed: expected error for quantile > 100"
+    "Test 4 failed: expected error for quantile > 100", ERR_INVALID_INPUT
   )
 
   # Test 5 — NaNs ignored
@@ -108,13 +108,13 @@ test_determine_shared_residual_range_expert <- function() {
   # Test 3
   assert_error(
     determine_shared_residual_range_expert(pp$pool, pp$perm, -1),
-    "Test 3 failed"
+    "Test 3 failed", ERR_INVALID_INPUT
   )
 
   # Test 4
   assert_error(
     determine_shared_residual_range_expert(pp$pool, pp$perm, 150),
-    "Test 4 failed"
+    "Test 4 failed", ERR_INVALID_INPUT
   )
 
   # Test 5 — NaNs ignored

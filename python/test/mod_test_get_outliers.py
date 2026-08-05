@@ -18,6 +18,7 @@ from tensor_omics import (
     detect_outliers as _detect_outliers,
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # compute_rdi returns the sorted array and permutation that identify_outliers wants, so
 # the pipeline composes directly. Only the two shims below remain: one for calling
@@ -249,7 +250,7 @@ def test_compute_family_scaling_expert_input_validation():
     assert_error(
         lambda: compute_family_scaling_expert(
             n_families, distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
-        "Expected an error for an invalid mode string",
+        "Expected an error for an invalid mode string", ERR_INVALID_INPUT,
     )
 
 

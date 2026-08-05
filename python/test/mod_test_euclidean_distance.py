@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import euclidean_distance, distance_to_centroid
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT
 
 
 # =====================
@@ -69,7 +70,7 @@ def test_euclidean_distance_invalid_inputs():
     assert_error(lambda: euclidean_distance(np.array([1, 2]), np.array([1, 2, 3])), "Expected error")
 
     # Test empty vectors
-    assert_error(lambda: euclidean_distance(np.array([]), np.array([])), "Expected error")
+    assert_error(lambda: euclidean_distance(np.array([]), np.array([])), "Expected error", ERR_EMPTY_INPUT)
 
     # Test non-numeric input
     assert_error(lambda: euclidean_distance(np.array(["a", "b"]), np.array([1, 2])), "Expected error")
@@ -198,7 +199,7 @@ def test_distance_to_centroid_input_validation():
 
     gene_to_fam = np.array([1, 0, 0], dtype=np.int32)  # family 0 = no assignment
 
-    assert_error(lambda: distance_to_centroid(genes, centroids, -gene_to_fam), "Expected error")
+    assert_error(lambda: distance_to_centroid(genes, centroids, -gene_to_fam), "Expected error", ERR_INVALID_INPUT)
 
 
 if __name__ == "__main__":

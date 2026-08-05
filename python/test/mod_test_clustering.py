@@ -11,6 +11,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import k_means_clustering, linkage_clustering
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_NAN_INF
 
 
 def test_k_means_clustering():
@@ -138,7 +139,7 @@ def test_linkage_methods():
                 [1.0, 0.0, 1.0],
                 [np.nan, 1.0, 0.0]
             ])
-            assert_error(lambda: linkage_clustering(dist.copy(order="F"), method), f"{label}: NaN case should raise an error")
+            assert_error(lambda: linkage_clustering(dist.copy(order="F"), method), f"{label}: NaN case should raise an error", ERR_NAN_INF)
         except RuntimeError:
             raise AssertionError(f"{label}: Unexpected Error")
 

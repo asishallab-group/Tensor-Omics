@@ -181,11 +181,11 @@ test_compute_p_values <- function() {
   assert_true(abs(total_p - expected_total) < TOL)
   # Case 2: NaN in observed contributions
   local_obs_nan <- c(2.0, 0.0, NaN)
-  assert_error(compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Should have raised error for NaN input")
+  assert_error(compute_p_values(local_obs_nan, total_obs, local_perm, total_perm), "Should have raised error for NaN input", ERR_NAN_INF)
   # Case 3: Inf in permutation contributions
   local_perm_inf <- local_perm
   local_perm_inf[3, 4] <- Inf
-  assert_error(compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Should have raised error for Inf input")
+  assert_error(compute_p_values(local_obs, total_obs, local_perm_inf, total_perm), "Should have raised error for Inf input", ERR_NAN_INF)
 }
 
 

@@ -12,6 +12,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 from tensor_omics import compute_shift_vector_field
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT
 
 
 # 1. Test correct mapping between families and genes
@@ -57,7 +58,7 @@ def test_invalid_family_mapping():
     # gene_to_centroid contains invalid mapping (3)
     gene_to_centroid = np.array([1, 3], dtype=np.int32)
     # Check that error is raised
-    assert_error(lambda: compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error")
+    assert_error(lambda: compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error", ERR_INVALID_INPUT)
 
 
 # 3. Test for zero distance between paralog and centroid
@@ -136,7 +137,7 @@ def test_dimension_edge_cases():
     family_centroids = np.empty((1, 1), dtype=np.float64)
     gene_to_centroid = np.empty((0,), dtype=np.int32)
     # Check that error is raised
-    assert_error(lambda: compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error")
+    assert_error(lambda: compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error", ERR_EMPTY_INPUT)
 
 
 if __name__ == "__main__":

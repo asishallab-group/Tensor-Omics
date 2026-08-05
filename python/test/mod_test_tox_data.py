@@ -29,6 +29,7 @@ from tensor_omics import (
     deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_FILE_OPEN, ERR_INVALID_INPUT
 
 
 # The generated deserialize helpers read the file's own shape and hand back an array already
@@ -159,8 +160,8 @@ def test_calls():
     assert np.array_equal(result["gene_to_family"], filtered_gene_to_fam)
     assert np.allclose(result["family_centroids"], centroids)
 
-    assert_error(lambda: read_tox_data_into("archive_1_f.test.zip"), "Expected error for test_archive_1_f (not existing)")
-    assert_error(lambda: read_tox_data_into("archive_1_R.test.zip"), "Expected error for test_archive_1_R (not existing)")
+    assert_error(lambda: read_tox_data_into("archive_1_f.test.zip"), "Expected error for test_archive_1_f (not existing)", ERR_FILE_OPEN)
+    assert_error(lambda: read_tox_data_into("archive_1_R.test.zip"), "Expected error for test_archive_1_R (not existing)", ERR_FILE_OPEN)
 
 
 # ---- NEW TESTS: Non-standard arrays and direct create_zip_archive calls ----
@@ -265,7 +266,7 @@ def test_non_standard_arrays():
         os.remove("manifest.txt")
 
     # Test 4: Error handling - mismatched keys and filenames
-    assert_error(lambda: create_zip_archive("error.test.zip", ["key1", "key2"], ["file1.test.bin"]), "Expected error for mismatching key-file mapping")  # Mismatched lengths
+    assert_error(lambda: create_zip_archive("error.test.zip", ["key1", "key2"], ["file1.test.bin"]), "Expected error for mismatching key-file mapping", ERR_INVALID_INPUT)  # Mismatched lengths
 
     # Cleanup temporary files
     temp_files = [

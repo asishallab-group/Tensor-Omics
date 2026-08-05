@@ -115,7 +115,7 @@ test_error_handling <- function() {
   mean_S1 <- c(1, 2, 3)
   mean_S2 <- c(4, 5, 6)
   
-  assert_error(pool_study_means(mean_S1, mean_S2, n_points = 0), "Test failed - should have caught invalid n_points")
+  assert_error(pool_study_means(mean_S1, mean_S2, n_points = 0), "Test failed - should have caught invalid n_points", ERR_EMPTY_INPUT)
   
 }
 

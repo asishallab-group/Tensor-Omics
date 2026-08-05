@@ -16,6 +16,7 @@ from tensor_omics import (
     normalize_all_trajectories
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_NAN_INF
 
 TOL = 1e-12
 
@@ -193,19 +194,19 @@ def test_error_handling():
     # Case 1: NaN input
     # -------------------------------
     v = np.array([1.0, 2.0, np.nan, 4.0], dtype=np.float64)
-    assert_error(lambda: normalize_variable_timeseries(v), "Should raise RuntimeError for NaN")
+    assert_error(lambda: normalize_variable_timeseries(v), "Should raise RuntimeError for NaN", ERR_NAN_INF)
 
     # -------------------------------
     # Case 2: Infinity input
     # -------------------------------
     v = np.array([1.0, 2.0, np.inf, 4.0], dtype=np.float64)
-    assert_error(lambda: normalize_variable_timeseries(v), "Should raise RuntimeError for infinity")
+    assert_error(lambda: normalize_variable_timeseries(v), "Should raise RuntimeError for infinity", ERR_NAN_INF)
 
     # -------------------------------
     # Case 3: Empty array
     # -------------------------------
     v = np.array([], dtype=np.float64)
-    assert_error(lambda: normalize_variable_timeseries(v), "Should raise RuntimeError for empty array")
+    assert_error(lambda: normalize_variable_timeseries(v), "Should raise RuntimeError for empty array", ERR_EMPTY_INPUT)
 
 
 if __name__ == "__main__":

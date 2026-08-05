@@ -18,6 +18,7 @@ from tensor_omics import (
     compute_weighted_global_divergence,
     gjct_permutation_test,
 )
+from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # The filtered variants are gone: filtering is now the optional `neighbor_mask` /
 # `neighbor_mask_S1`/`_S2` argument of the base routine.
@@ -57,12 +58,12 @@ def test_tox_determine_shared_residual_range():
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    assert_error(lambda: determine_study_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_study_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 4 — Quantile > 100 → error
     # ============================================================
-    assert_error(lambda: determine_study_shared_residual_range(S1, S2, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_study_shared_residual_range(S1, S2, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -141,12 +142,12 @@ def test_tox_determine_shared_residual_range_expert():
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    assert_error(lambda: determine_shared_residual_range_expert(pool, perm, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_shared_residual_range_expert(pool, perm, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 4 — Quantile > 100 → error
     # ============================================================
-    assert_error(lambda: determine_shared_residual_range_expert(pool, perm, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_shared_residual_range_expert(pool, perm, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 5 — NaNs must be ignored

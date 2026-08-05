@@ -85,7 +85,7 @@ test_compute_edf_single_value <- function() {
 test_compute_edf_empty_input <- function() {
   x <- numeric(0)
   perm <- integer(0)
-  assert_error(compute_edf_expert(x, perm), "Should have raised error for empty input")
+  assert_error(compute_edf_expert(x, perm), "Should have raised error for empty input", ERR_EMPTY_INPUT)
 }
 
 # Test 7: Large Dataset

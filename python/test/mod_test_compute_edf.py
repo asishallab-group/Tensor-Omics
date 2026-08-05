@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import compute_edf, compute_edf_expert
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT
 
 
 # =====================
@@ -131,7 +132,7 @@ def test_edf_empty_input():
     """Test EDF with empty array (should fail with error 202)"""
     values = np.array([])
 
-    assert_error(lambda: compute_edf(values), "Expected error for empty input")
+    assert_error(lambda: compute_edf(values), "Expected error for empty input", ERR_EMPTY_INPUT)
 
 # =====================
 # Test 7: Large Dataset
