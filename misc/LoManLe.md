@@ -87,8 +87,8 @@ with one column $\mathbf{x}_i$ per observation.
 Required parameters:
 
 - $k_{\min}$: minimum neighborhood size.
-- $k_{\max}$: maximum allowed neighborhood size, potentially $n/4$.
-- $g>1$: geometric neighborhood growth factor, currently approximately $1.25$.
+- $k_{\max}$: maximum allowed neighborhood size, potentially $n/4$. **Not actually a caller parameter in the current implementation** -- hardcoded as $n/4$; see Phase III below.
+- $g>1$: geometric neighborhood growth factor, currently approximately $1.25$. **Also not a caller parameter currently** -- hardcoded to $1.25$; see Phase III below.
 - $d$: desired intrinsic manifold dimension, unless inferred locally.
 - overlap requirement for atlas construction.
 - numerical criteria for stable local tangent estimation.
@@ -575,11 +575,13 @@ $$
 k_i=k_{\min}.
 $$
 
-Obtain its neighborhood
+Here $k_i\in\mathbb{Z}_{>0}$ is a **count** -- the neighborhood's *size* -- not the neighborhood itself; it plays exactly the same role as $k_{\min}$ and $k_{\max}$, which are likewise integer sizes. The neighborhood itself (the actual *set* of nearby points) is a different symbol, $N_i(k_i)$, obtained next:
 
 $$
 N_i(k_i)=\operatorname{kNN}(\mathbf{x}_i,k_i).
 $$
+
+$N_i(k_i)$ is the set of the $k_i$ points nearest to $\mathbf{x}_i$, so $|N_i(k_i)|=k_i$ by definition. Everything below (the center $\boldsymbol\mu_i$, the covariance $C_i$) is computed over the *set* $N_i(k_i)$, not over the number $k_i$.
 
 Compute the neighborhood center
 
@@ -629,7 +631,7 @@ This is equivalent, for the required purpose, to obtaining the local principal d
 
 ##  Phase III — Grow neighborhoods until tangent estimation is stable
 
-For each $\mathbf{x}_i$, repeatedly increase the neighborhood geometrically:
+For each $\mathbf{x}_i$, repeatedly increase the neighborhood's **size** geometrically -- i.e. grow the integer $k_i^{(t)}$ from Phase II above, not $N_i$ itself, which is simply re-queried at each new size via $N_i(k_i^{(t)})=\operatorname{kNN}(\mathbf{x}_i,k_i^{(t)})$:
 
 $$
 k_i^{(t+1)}
@@ -638,8 +640,16 @@ k_i^{(t+1)}
 \left(
 \left\lceil gk_i^{(t)}\right\rceil,
 k_{\max}
-\right).
+\right),
+\qquad
+t=0,1,2,\ldots,
+\qquad
+k_i^{(0)}=k_{\min}.
 $$
+
+Here $gk_i^{(t)}$ means ordinary multiplication, $g\cdot k_i^{(t)}$, using the growth factor $g\approx1.25$ from the Input list above; $\lceil\cdot\rceil$ rounds up to the next integer, keeping $k_i^{(t)}$ an integer at every step.
+
+**How growth actually proceeds, step by step.** Concretely: $k_i^{(0)}=k_{\min}$, $k_i^{(1)}=\lceil g\,k_{\min}\rceil$, $k_i^{(2)}=\lceil g\,k_i^{(1)}\rceil$, and so on. The number of **new** points added at step $t$ is therefore $k_i^{(t+1)}-k_i^{(t)}\approx(g-1)k_i^{(t)}\approx0.25\,k_i^{(t)}$ -- not a fixed count, since it grows (in absolute terms) along with $k_i^{(t)}$ itself, even though the *relative* growth rate stays at $g\approx1.25\times$ every step. Growth continues until either $k_i^{(t)}$ reaches $k_{\max}$, or one of the stopping conditions below (tangent stability + spectral separation) fires earlier.
 
 At every scale, estimate the local eigensystem.
 
@@ -686,6 +696,15 @@ for one or more consecutive growth steps.
 
 The criterion should operate on the **subspace**, not individual eigenvectors, because rotations within a $d$-dimensional tangent space represent the same tangent space.
 
+**How this is actually computed -- yes, we do compute it.** Rather than extracting the $d$ individual angles $\theta_1,\ldots,\theta_d$ and thresholding $\theta_{\max}$ directly, the code computes a single number, `stability_i`, equal to $\cos\theta_{\max}$ -- so *larger* `stability_i` means *more* stable, and `stability_threshold` in the code plays the role of $\cos\tau_\theta$:
+
+- **$d=1$** (`manifold_dim==1`): there is only one principal angle, and $U_d^{(t)}$, $U_d^{(t+1)}$ are each single unit vectors $\mathbf u^{(t)},\mathbf u^{(t+1)}$ (`dsyev`'s eigenvectors are already orthonormal), so $\cos\theta_1=|\mathbf u^{(t)}\cdot\mathbf u^{(t+1)}|$ is just a plain dot product: `stability_i = abs(dot_product(previous_tangent(:,1), cov(:,dim)))`.
+- **$d>1$**: form $M=\left(U_d^{(t)}\right)^\top U_d^{(t+1)}$ (a $d\times d$ matrix; `previous_tangent` holds $U_d^{(t)}$, the top-$d$ eigenvector columns of `cov` hold $U_d^{(t+1)}$). By the standard SVD/principal-angle identity, the singular values of $M$ are $\cos\theta_1,\ldots,\cos\theta_d$, and the *smallest* singular value is $\cos\theta_{\max}$ -- exactly the quantity the boxed criterion above needs. The code obtains it via $M^\top M$'s smallest eigenvalue (`dsyev` on `gram_small = matmul(transpose(cov_small), cov_small)`, reusing the same LAPACK routine already needed elsewhere rather than a dedicated SVD call): `stability_i = sqrt(max(0, w_eig_small(1)))`, since the smallest eigenvalue of $M^\top M$ is the square of $M$'s smallest singular value.
+
+This is the same principal-angle mathematics as the $\cos\theta_j=s_j(U_a^\top U_b)$ formula used later in Tangent compatibility -- applied here between a *single point's own* tangent basis at two consecutive growth steps, not between two *different* anchors' charts. That separate, between-anchor use is the one flagged there as not implemented.
+
+$U_d^{(t)}$ itself is warm-started: on a point's very first growth step, it comes from the *previous outer* `lomanle_pass` iteration's tangent basis for that same point (zero on the very first call overall, in which case `stability_i` is simply defined as $1$ -- maximally stable, since there is nothing yet to compare against); on every later growth step within the same call, it is simply the immediately preceding step's own evaluated basis.
+
 ### Spectral separation
 
 Additionally require evidence that tangent variance is distinguishable from normal variance, for example through
@@ -697,11 +716,15 @@ G_i(d)
 {\lambda_{i,d+1}+\epsilon}.
 $$
 
+Here $d$ is not a free variable -- it is the same fixed target intrinsic dimension used throughout this document (`manifold_dim` in the code; the $d$ from the Objective section), and $\lambda_{i,d}$ denotes the **$d$-th largest eigenvalue** of point $i$'s local covariance $C_i$, from Phase II's ordered spectrum $\lambda_{i,1}\geq\cdots\geq\lambda_{i,D}$ ($D$ = ambient dimension, $D\geq d$). So $\lambda_{i,d}$ is the smallest of the $d$ "tangent" eigenvalues and $\lambda_{i,d+1}$ is the largest of the remaining $D-d$ "normal" eigenvalues -- $G_i(d)$ measures the gap exactly at the tangent/normal boundary, evaluated at this one fixed $d$. It is *not* swept over candidate values the way the similarly-named $G(r)$ is in Optional local intrinsic dimensionality estimation below, which deliberately uses the free index $r$ instead of $d$ for exactly this reason -- to avoid this notational collision when a range of candidate dimensionalities genuinely is being compared.
+
 Require
 
 $$
 G_i(d)\geq\tau_G.
 $$
+
+**How this is actually computed.** In the code this is `s_gap = sqrt(w_eig(d_idx)) / sqrt(w_eig(d_idx - 1))`, i.e. $\sqrt{\lambda_{i,d}/\lambda_{i,d+1}}=\sqrt{G_i(d)}$ -- a ratio of *square roots* of eigenvalues, not $G_i(d)$ itself -- compared against `g_threshold`, which plays the role of $\tau_G$ here (a name collision worth flagging: `g_threshold` is this gap threshold $\tau_G$, unrelated to the growth factor $g$ from Phase III above despite the similar name; see that section's status note). The code also has no additive $\epsilon$ regularizer in the denominator; instead, whenever $\lambda_{i,d+1}$ is below a small fixed floor, it falls back to `s_gap = g_threshold + 1` (guaranteeing the gap condition counts as satisfied) rather than regularizing the ratio itself.
 
 The precise stability criterion and thresholds are algorithm parameters and must be reported.
 
@@ -715,9 +738,11 @@ Phases II and III are implemented as a single unit — the code does not compute
 
 **Complexity:** time $O(n\log n + n\bar k)$, where $\bar k$ is a point's own converged neighborhood size (on the order of $k_{\min}$ unless growth needed several steps). Memory: $O(n)$ for the output arrays, plus **$O(n)$ of private automatic-array scratch per active OpenMP thread** inside the parallel region (`n_loc_i`, `d_loc_i`, `workspace_i`, `val_buf_i`, `perm_i`, `l_stack_i`, `r_stack_i` are each sized `n_points`, not $\bar k$) — i.e. $O(nT)$ total scratch for $T$ threads. This per-thread sizing is a genuine, currently-unaddressed memory cost that scales with thread count; it has not been flagged in the lab book before now.
 
-**Status vs. this document — the growth-acceptance rule was substantially redesigned.** The math above (grow geometrically, accept at the smallest scale where principal-angle stability + spectral separation both hold) is still the *intent*, but the *acceptance rule that actually decides which candidate to keep* is different from a literal reading of this section, for reasons the lab book records concretely.
+**Status vs. this document — the growth recurrence itself also differs from the boxed formula above, in three concrete ways** (distinct from the acceptance-rule redesign described next): (1) the code rounds to the *nearest* integer (Fortran `nint`), not up (`ceil`) -- `k_curr = nint(k_curr * 1.25)`; (2) $k_{\max}$ is **not** a caller-supplied parameter, despite being listed as a required input above -- it is hardcoded as `k_limit = n_points / 4` inside `grow_adaptive_neighborhoods`, matching only the doc's own parenthetical "potentially $n/4$", never exposed as an argument; (3) it is enforced as a **stop condition** checked *after* a candidate size has already been evaluated (`if (k_curr >= k_limit) exit`), not as a pre-emptive clamp on $k_i^{(t+1)}$ itself the way $\min(\cdot,k_{\max})$ in the formula implies -- so the very last candidate size evaluated for a point can end up slightly above $n/4$, bounded by at most one growth step ($\approx\!25\%$ over). The growth factor $g$ is likewise a hardcoded literal (`1.25`), not a caller parameter, despite being listed as one above. **Open experiment:** expose $g$ and $k_{\max}$ as real parameters, or explicitly document them as fixed algorithm constants and remove them from the Input section's "required parameters" list.
 
-**Lab notes** (`misc/smoothing_experiments.md` §4). What was wrong with "grow until the gap is big enough" (a literal implementation of §6 above):
+**Status vs. this document — the growth-acceptance rule was also substantially redesigned.** The math above (grow geometrically, accept at the smallest scale where principal-angle stability + spectral separation both hold) is still the *intent*, but the *acceptance rule that actually decides which candidate to keep* is different from a literal reading of this section, for reasons the lab book records concretely.
+
+**Lab notes** (`misc/smoothing_experiments.md` §4). What was wrong with "grow until the gap is big enough" (a literal implementation of the acceptance rule above):
 
 - A bad spectral gap $G_i(d)$ was always interpreted as "add more points," but a bad gap can also mean the neighborhood just crossed into a different branch, an intersection, or a region of high curvature — cases where growing further makes the estimate *worse*. The gap alone could not distinguish these.
 - The k-d tree query included the point itself (at distance 0) and returned neighbors unsorted, making naive radius/jump comparisons across growth steps meaningless until corrected.
