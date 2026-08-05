@@ -5,7 +5,9 @@ way. If you find yourself asking "why didn't they just...", the answer should be
 it isn't, that is a gap worth filling.
 
 Companion documents: [`c-layer.md`](c-layer.md) for the Fortran/C wrappers,
-[`../README.md`](../README.md) for the generator itself.
+[`../README.md`](../README.md) for the generator itself, and
+[`../emit/README.md`](../emit/README.md) — the same ground as a **checklist for adding a third
+language**, where this document is the argument for what Python and R chose.
 
 ---
 

@@ -393,7 +393,10 @@ The end-to-end tests skip cleanly without `gfortran` / `R`.
 ## Extending it
 
 - **A new target language** is a new module in `emit/` consuming the `abi` model. It never
-  touches the frontend or IR. The three existing emitters are the template.
+  touches the frontend or IR. **Read [`emit/README.md`](emit/README.md) first**: it is the
+  checklist of every edge case Python and R each had to answer — layout, ownership, absent
+  optionals, missing values, partial buffers, error decoding — plus what to wire in and how to
+  prove it works. The three existing emitters are the template.
 - **A new convention or `DM_` macro**: add the macro to `src/macros.h`, its recognition to
   `ir/directives.py` (or a naming rule to `config.py`), its meaning to `ir/roles.py`, and a
   validation rule if one applies. Nothing about a target language changes.
