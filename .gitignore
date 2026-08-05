@@ -13,6 +13,7 @@
 !/**/README.md
 
 # .
+!/.gitattributes
 !/.gitignore
 !/*.h
 !/build*.sh

@@ -1,0 +1,7 @@
+# Everything under src/generated is written by helper/generate_code.py from the kernels in
+# src/kernel. Marking it keeps it out of language statistics and collapses it in diffs, so a
+# review sees the kernel that changed rather than the fan-out it produced.
+src/generated/** linguist-generated=true
+python/tensor_omics/** linguist-generated=true
+r/tensor_omics/** linguist-generated=true
+snippets/** linguist-generated=true
