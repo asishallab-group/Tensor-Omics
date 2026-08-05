@@ -48,9 +48,21 @@ module f42_utils
         module procedure real_greater
     end interface operator(.greaterthan.)
 
-    !> Tolerance-based approximate equality operator for `real(real64)`; see [[f42_utils(module):is_close(function)]].
+    !> Tolerance-based approximate equality for `real(real64)`.
+    !| Called as `is_close(a, b)` with the machine-epsilon tolerance, or as
+    !| `is_close(a, b, eps)` where the caller has its own notion of "the same" -- a domain
+    !| epsilon such as a smoothing floor, which is coarser than anything the arithmetic
+    !| itself would justify. See [[f42_utils(module):is_close_within(function)]].
+    interface is_close
+        module procedure is_close_default
+        module procedure is_close_within
+    end interface is_close
+
+    !> Tolerance-based approximate equality operator for `real(real64)`; see [[f42_utils(module):is_close_default(function)]].
+    !| An operator takes exactly its two operands, so the custom-tolerance form is reachable
+    !| only by calling [[f42_utils(module):is_close(interface)]] directly.
     interface operator(.isclose.)
-        module procedure is_close
+        module procedure is_close_default
     end interface operator(.isclose.)
 
 #define CM_EPS epsilon(1.0_real64)
@@ -368,21 +380,35 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Checks if two values are close to eachother, using a tolerance of `max(1d-12, EPS*max(abs(a), abs(b)))` with `EPS=CM_EPS`
-    pure logical function is_close(a, b)
+    pure logical function is_close_default(a, b)
         real(real64), intent(in) :: a
             !! First variable of comparison `a==b`
         real(real64), intent(in) :: b
             !! Second variable of comparison `a==b`
 
+        is_close_default = is_close_within(a, b, EPS)
+    end function is_close_default
+
+    pure logical function is_close_within(a, b, eps)
+        real(real64), intent(in) :: a
+            !! First variable of comparison `a==b`
+        real(real64), intent(in) :: b
+            !! Second variable of comparison `a==b`
+        real(real64), intent(in) :: eps
+            !! Relative tolerance factor, scaled by the larger operand. Pass a domain epsilon
+            !! to compare on that domain's terms rather than the arithmetic's.
+
         real(real64) :: rel_tolerance
 
         if (ieee_is_finite(a) .and. ieee_is_finite(b)) then
-            rel_tolerance = EPS*max(abs(a), abs(b))
-            is_close = abs(a - b) <= max(rel_tolerance, 1d-12)
+            ! The absolute floor keeps the comparison meaningful where both operands are
+            ! near zero and the relative term collapses with them.
+            rel_tolerance = eps*max(abs(a), abs(b))
+            is_close_within = abs(a - b) <= max(rel_tolerance, 1d-12)
         else
-            is_close = a == b
+            is_close_within = a == b
         end if
-    end function is_close
+    end function is_close_within
 
     !> AUTHOR_AARON_SCHROEDER
     !| Find the next power of two greater than or equal to n
