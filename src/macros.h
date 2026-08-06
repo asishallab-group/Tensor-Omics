@@ -71,7 +71,8 @@
 ! name and its parameter order are load-bearing.
 !
 ! Prefixes: M_ code macros (this file), CM_ file-local code macros, DM_ doc macros.
-! See helper/codegen_reworked/README.md for the full contract.
+! codegen_guide.md (repository root) is the author's guide; helper/codegen/README.md is the
+! generator's own reference.
 ! =============================================================================
 
 ! `DEFAULT_VAL` is the value an optional argument takes when it is omitted. It must

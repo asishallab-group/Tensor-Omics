@@ -481,16 +481,28 @@ dropping the zero-variance genes only ever makes the fit smaller.
 
 **When** the kernel needs an index permutation sorted against one of its arrays.
 
-**Write** the argument as `<base>_perm`, where `<base>` is the array it orders.
+**Write** the argument as `<base>_perm`, where `<base>` is **an argument too** — the wrapper has
+to have the array in hand to sort against it:
 
 ```fortran
-real(real64), intent(in) :: distances(n_genes)
-integer(int32), intent(out) :: tmp_perm(n_genes)
-    !! Permutation array for sorting gene distances
+real(real64), intent(in) :: pooled_means(pool_size)
+    !! Pooled means
+integer(int32), intent(in) :: pooled_means_perm(pool_size)
+    !! Sorting permutation for `pooled_means`
 ```
 
-**You get**, in `foo_alloc` only: the array allocated, seeded with `init_perm`, and heapsorted
-against `<base>`. `foo` still takes it, because an expert caller may already have it sorted.
+**You get**, in `foo_alloc` only:
+
+```fortran
+M_ALLOCATE(pooled_means_perm(pool_size))
+call init_perm(pooled_means_perm)
+call sort_array_heapsort(pooled_means, pooled_means_perm)
+```
+
+`foo` still takes it, because an expert caller may already have it sorted. A `<base>` that is not
+an argument means the wrapper cannot build the permutation, so the argument stays an ordinary one
+the caller supplies — and a `tmp_`-prefixed permutation is the kernel's own scratch, allocated
+and left alone (`tmp_perm` in `compute_family_scaling_kernel` is seeded inside the kernel).
 
 **For a different ordering** — descending, stable, by magnitude — let the prologue (§5.13) build
 it: a permutation the prologue declares `intent(out)` is the prologue's, so `foo_alloc` allocates

@@ -213,8 +213,10 @@ Only tagged procedures are wrapped. Everything else is held to none of the rules
 
 | Pattern | Meaning |
 |---|---|
+| `<name>_kernel` in `src/kernel/` | a hand-written kernel. The generator writes `<name>`, and `<name>_alloc` too when it takes work arrays. Never exported itself |
 | `<p>_alloc` | the allocating variant; its wrapper is `<p>_c`. Its non-alloc twin `<p>` becomes `<p>_expert_c` |
 | `tmp_<name>` | a work array: allocated by the binding language, never returned, never asked for |
+| `<base>_perm` | a permutation. In `<p>_alloc` it is allocated, seeded with `init_perm` and heapsorted against `<base>` — unless it is `tmp_`-prefixed (the kernel builds it) or the prologue declares it `intent(out)` (the prologue does). Only when `<base>` is an argument too |
 | `<arg>_shape` | carries the shape of a flat `<arg>` passed separately (rank-independent serialization) |
 | `n_selected_<arg>` | the count of an `<arg>_mask` / `<arg>_selection_mask`; computed from the mask |
 | `mode`, `method`, `*_mode`, `*_method` | a mode argument (see below) |
@@ -255,6 +257,14 @@ never expands is an error (as is a misspelt `M_`/`CM_`/`DM_` anywhere in a doc c
 | `DM_RESULT_SIZE_IS(ARG)` | a result array | `ARG` holds how many leading elements are filled; the rest is trimmed |
 | `DM_OUTPUT_FROM(OUT, PROC, MODULE, AUTO)` | an input | obtained by calling `PROC`; the caller never supplies it |
 | `DM_OUTPUT_FROM(OUT, PROC, MODULE, JUST_INFO)` | an input | the caller supplies it; the doc says where to get it |
+| `DM_MIN(EXPR)` / `DM_MAX(EXPR)` | any numeric | inclusive bounds, emitted as a `validate_*_in_range_*` call. `EXPR` is Fortran and may name other arguments or module constants; wrap it in `above(...)` / `below(...)` for an exclusive bound |
+| `DM_SENTINEL(EXPR)` | any numeric | one further value accepted whatever the bounds say — a marker rather than a datum |
+| `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` | a real | opts out of the default finiteness check, separately for each |
+| `DM_PROLOGUE(PROC, MODULE)` | a kernel | the allocating wrapper runs `PROC` after preparing the work arrays and before the kernel; `PROC` may write the outputs, report `handled`, and the kernel is skipped |
+
+**Every real is checked for NaN and infinity by default**, bounds or no bounds — that is the
+framework's contract, and `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` are how an argument leaves it.
+An integer is checked only when it carries a bound, having no non-finite values to reject.
 
 An optional **with** a `DM_DEFAULT` is required in C — the binding languages know the
 default and pass it, which keeps the wrapper flat. Only an optional with no default is
