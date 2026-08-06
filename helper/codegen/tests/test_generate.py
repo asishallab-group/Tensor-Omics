@@ -313,6 +313,28 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
                     f"{spec.allocating.name}: '{argument.name}' is not passed to the kernel"
                 )
 
+    def test_every_allocating_dummy_is_accounted_for(self, real_project):
+        # the other direction: nothing reaches that signature except the kernel's arguments,
+        # the prologue's own, and ierr. Asserting only over the *exposed* set would miss a
+        # prologue argument entirely, since it is on the allocating wrapper alone.
+        from codegen.config import CONVENTIONS
+        from codegen.synthesize import prologue_only_arguments
+
+        for spec, _ in self.wrappers(real_project):
+            allowed = {a.name.lower() for a in spec.kernel.arguments}
+            allowed |= {
+                a.name.lower()
+                for a in prologue_only_arguments(
+                    spec.prologue, spec.kernel.arguments, CONVENTIONS
+                )
+            }
+            allowed.add(CONVENTIONS.error_arg.lower())
+            for argument in spec.allocating.arguments:
+                assert argument.name.lower() in allowed, (
+                    f"{spec.allocating.name}: '{argument.name}' is neither the kernel's, "
+                    f"the prologue's, nor ierr"
+                )
+
     def test_the_invariant_covers_the_real_families(self, real_project):
         # a property test that silently matched nothing would assert nothing
         specs = [spec for spec, _ in self.wrappers(real_project)]

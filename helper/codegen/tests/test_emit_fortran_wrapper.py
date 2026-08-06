@@ -777,6 +777,13 @@ class TestAPrologueWithArgumentsOfItsOwn:
         assert "threshold" not in alloc[: alloc.index(")")]
         assert alloc.index("call guard(&") < alloc.index("call crunch_kernel(")
 
+    def test_the_prologue_argument_comes_after_the_kernels_and_before_ierr(self):
+        alloc = self.body(self.built(), "crunch_alloc")
+        signature = alloc[: alloc.index(")")]
+
+        assert signature.index("result") < signature.index("percentile")
+        assert signature.index("percentile") < signature.index("ierr")
+
     def test_a_prologue_argument_is_validated_like_any_other(self):
         # it reaches the wrapper's own dummy list, so the range checks apply to it too
         alloc = self.body(self.built(), "crunch_alloc")

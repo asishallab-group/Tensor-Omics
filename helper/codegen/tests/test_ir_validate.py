@@ -6,7 +6,12 @@ from codegen.diagnostics import DiagnosticBag
 from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse
 from codegen.ir.types import Intent
-from codegen.ir.validate import validate_module, validate_procedure, validate_project
+from codegen.ir.validate import (
+    _within_one_edit,
+    validate_module,
+    validate_procedure,
+    validate_project,
+)
 
 import builders as b
 
@@ -926,3 +931,33 @@ class TestPrologueThatCouldNeverRun:
         validate_project(b.project(prologue_kernel_module()), bag)
 
         assert bag.errors == ()
+
+
+class TestTheMisspellingHeuristic:
+    """The last thing between a typo and a silently invented argument, so it has to be exact
+    in both directions: catching a near miss, and letting a real new name through."""
+
+    @pytest.mark.parametrize("dummy, kernel_name", [
+        ("n_gene", "n_genes"),      # a dropped letter
+        ("valuess", "values"),      # a doubled one
+        ("n_gnes", "n_genes"),      # a transposition that reads as one insertion
+        ("values", "values"),       # itself
+        ("n_genez", "n_genes"),     # a substitution
+    ])
+    def test_one_edit_apart(self, dummy, kernel_name):
+        assert _within_one_edit(dummy, kernel_name)
+
+    @pytest.mark.parametrize("dummy, kernel_name", [
+        ("percentile", "values"),   # a genuinely new argument
+        ("n_geens", "n_genes"),     # two substitutions: two names, not a typo
+        ("x", "values"),            # nothing alike
+        ("threshold", "thresh"),    # three characters apart
+    ])
+    def test_further_than_one_edit(self, dummy, kernel_name):
+        assert not _within_one_edit(dummy, kernel_name)
+
+    def test_it_names_the_argument_it_thinks_you_meant(self):
+        from codegen.ir.validate import _nearly
+
+        assert _nearly("n_gene", {"n_genes", "values", "result"}) == "n_genes"
+        assert _nearly("percentile", {"n_genes", "values", "result"}) is None

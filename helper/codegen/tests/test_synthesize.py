@@ -720,3 +720,63 @@ def prologue_feeding_a_producer_module():
             directives=Directives(prologue=Prologue("guard", "tox_demo_kernel")),
         ),
     )
+
+
+class TestAnAllocatingWrapperWithoutWorkArrays:
+    """`foo_alloc` exists when the two signatures would differ -- not only when something is
+    taken over. A prologue that takes nothing over but asks for an argument of its own is the
+    case that needs it: a degenerate-input guard with a tolerance to judge by."""
+
+    def synthesised(self):
+        from codegen.diagnostics import DiagnosticBag
+
+        from builders import ierr, integer, logical, project, real
+
+        # the prologue takes nothing over: `result` is intent(out) on both, so the two are
+        # alternative producers of it rather than one feeding the other. `tolerance` is the
+        # only thing that makes the signatures differ.
+        guard = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("tolerance", Intent.IN, doc="how degenerate is too degenerate"),
+            real("result", Intent.OUT, "(n)", doc="answered here when degenerate"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            ierr(),
+        )
+        kernel = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+        )
+        return synthesize_wrappers(
+            project(prologue_kernel_module(guard, kernel)), diagnostics=DiagnosticBag()
+        )
+
+    def test_nothing_is_taken_over_at_all(self):
+        # the premise: without this the test would pass on the old rule too
+        from codegen.config import CONVENTIONS
+        from codegen.synthesize import taken_over_arguments
+
+        spec = next(s for s in self.synthesised().specs if s.validating.name == "crunch")
+        assert taken_over_arguments(spec.kernel.arguments, CONVENTIONS, spec.prologue) == []
+
+    def test_the_allocating_wrapper_is_generated_anyway(self):
+        module = self.synthesised().project.module("tox_demo")
+
+        assert module.procedure("crunch_alloc") is not None
+        assert [a.name for a in module.procedure("crunch_alloc").arguments] == [
+            "values", "n", "result", "tolerance", "ierr",
+        ]
+
+    def test_the_expert_wrapper_does_not_take_it(self):
+        module = self.synthesised().project.module("tox_demo")
+
+        assert [a.name for a in module.procedure("crunch").arguments] == [
+            "values", "n", "result", "ierr",
+        ]
+
+    def test_it_counts_as_doing_more_than_allocating(self):
+        # so both tiers reach Python and R: they genuinely differ
+        spec = next(s for s in self.synthesised().specs if s.validating.name == "crunch")
+
+        assert spec.alloc_does_more
