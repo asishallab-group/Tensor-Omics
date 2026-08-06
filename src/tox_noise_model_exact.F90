@@ -76,20 +76,6 @@ module noise_model_exact
         !! `log2(r + c) - mean_i[log2(r_i + c)]` (see `prepare_sorted_data_helper`),
         !! used when `norm_method /= 0` to keep the logarithm defined at zero expression
 
-    !> Pre-computed residual pools for each gene family and its ortholog set.
-    type :: family_cache_t
-        real(real64), allocatable :: family_pools(:, :)
-        !! Residual pools for families: shape (max_pool_size, n_families)
-        real(real64), allocatable :: orth_pools(:, :)
-        !! Residual pools for ortholog sets: shape (max_pool_size, n_families)
-        integer(int32), allocatable :: family_pool_sizes(:)
-        !! Number of valid entries in each family pool
-        integer(int32), allocatable :: orth_pool_sizes(:)
-        !! Number of valid entries in each ortholog pool
-        logical, allocatable :: is_cached(:)
-        !! `.true.` if the pool for this family has been computed
-    end type family_cache_t
-
 contains
 
     ! =========================================================================
@@ -538,50 +524,6 @@ contains
         n_to_fill = new_size - current_size
         if (n_to_fill > 0) gene_ids(current_size + 1:new_size) = gene_id
     end subroutine add_gene_id_to_pool_helper
-
-    !> Validate inputs and gather an adaptive residual pool for `target_mean`.
-    !|
-    !| Delegates all computation to `gather_residuals_helper` after checking
-    !| that dimension parameters and `tau` are valid.
-    pure subroutine gather_residuals(target_mean, sorted_data, &
-                                     k_start, k_step, k_max, tau, &
-                                     pooled_residuals, gene_id_per_residual, n_pooled, &
-                                     max_pool_size, ierr)
-        real(real64), intent(in) :: target_mean
-        !! Mean value for which a matching residual neighbourhood is sought
-        type(sorted_data_t), intent(in) :: sorted_data
-        !! Pre-built sorted gene structure
-        integer(int32), intent(in) :: k_start
-        !! Minimum pool size before the adaptive stopping criterion is applied
-        integer(int32), intent(in) :: k_step
-        !! Number of new residuals added per adaptive round before re-evaluating
-        integer(int32), intent(in) :: k_max
-        !! Hard upper limit on pool size (also capped at `max_pool_size`)
-        real(real64), intent(in) :: tau
-        !! Relative-change threshold; expansion stops when the change exceeds this value
-        real(real64), intent(out) :: pooled_residuals(:)
-        !! Output residual pool (pre-allocated to at least `max_pool_size`)
-        integer(int32), intent(out) :: gene_id_per_residual(:)
-        !! Output: sorted-gene-slot that each entry of `pooled_residuals` was taken from
-        integer(int32), intent(out) :: n_pooled
-        !! Number of residuals written into `pooled_residuals`
-        integer(int32), intent(in) :: max_pool_size
-        !! Allocated size of `pooled_residuals`
-        integer(int32), intent(inout) :: ierr
-        !! Error code
-
-        call set_ok(ierr)
-        call validate_dimension_size(k_start, ierr)
-        call validate_dimension_size(k_step, ierr)
-        call validate_dimension_size(k_max, ierr)
-        call validate_dimension_size(max_pool_size, ierr)
-        if (is_err(ierr)) return
-
-        call gather_residuals_helper(target_mean, sorted_data, &
-                                     k_start, k_step, k_max, tau, &
-                                     pooled_residuals, gene_id_per_residual, n_pooled, &
-                                     max_pool_size)
-    end subroutine gather_residuals
 
     ! =========================================================================
     ! stratify_residuals
@@ -1145,18 +1087,14 @@ contains
     subroutine compute_noise_pvalue_pipeline_helper( &
         sorted_case, sorted_control, &
         means_case, means_control, &
-        observed_statistic_own, observed_statistic_family, observed_statistic_ortholog, &
-        family_means, ortholog_means, &
-        compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
-        family_sizes, gene_to_family, &
-        n_genes, n_families, k_start, k_step, k_max, tau, &
-        pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+        observed_statistic_own, &
+        compute_pvalue_own, &
+        n_genes, k_start, k_step, k_max, tau, &
+        pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
-        neighborhood_size_family, &
-        neighborhood_size_ortholog, neighborhood_size_case, &
+        neighborhood_size_case, &
         chosen_n_bins_own_case, chosen_n_bins_own_control, &
-        cache, &
         tmp_pool_case, tmp_gene_id_pool_case, &
         tmp_pool_control_own, tmp_gene_id_pool_control_own, &
         tmp_strat_bin_index_per_residual_case, tmp_chosen_bin_index_per_residual_case, &
@@ -1176,32 +1114,14 @@ contains
         !! Sorted control gene data
         integer(int32), intent(in) :: n_genes
         !! Total number of genes
-        integer(int32), intent(in) :: n_families
-        !! Total number of gene families
         real(real64), dimension(n_genes), intent(in) :: means_case
         !! Per-gene case expression means
         real(real64), dimension(n_genes), intent(in) :: means_control
         !! Per-gene control expression means
         real(real64), dimension(n_genes), intent(in) :: observed_statistic_own
         !! Observed gene-vs-own statistic for each gene
-        real(real64), dimension(n_genes), intent(in) :: observed_statistic_family
-        !! Observed gene-vs-family statistic for each gene
-        real(real64), dimension(n_genes), intent(in) :: observed_statistic_ortholog
-        !! Observed gene-vs-ortholog statistic for each gene
-        real(real64), dimension(n_families), intent(in) :: family_means
-        !! Mean expression of each gene family (control)
-        real(real64), dimension(n_families), intent(in) :: ortholog_means
-        !! Mean expression of each ortholog set (control)
         integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_own
         !! 1 if the gene-vs-own p-value should be computed, 0 otherwise
-        integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_family
-        !! 1 if the gene-vs-family p-value should be computed, 0 otherwise
-        integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_ortholog
-        !! 1 if the gene-vs-ortholog p-value should be computed, 0 otherwise
-        integer(int32), dimension(n_families), intent(in) :: family_sizes
-        !! Number of genes in each family
-        integer(int32), dimension(n_genes), intent(in) :: gene_to_family
-        !! Maps each gene index to its family index
         integer(int32), intent(in) :: k_start
         !! Minimum pool size before adaptive stopping is applied
         integer(int32), intent(in) :: k_step
@@ -1214,20 +1134,12 @@ contains
         !! Allocated size of all pool arrays
         real(real64), dimension(n_genes), intent(out) :: pvalues_own
         !! Output: gene-vs-own p-values (-1 if not computed)
-        real(real64), dimension(n_genes), intent(out) :: pvalues_family
-        !! Output: gene-vs-family p-values (-1 if not computed)
-        real(real64), dimension(n_genes), intent(out) :: pvalues_ortholog
-        !! Output: gene-vs-ortholog p-values (-1 if not computed)
         integer(int32), intent(out) :: n_genes_with_pvalue
-        !! Number of genes for which at least one p-value was computed
+        !! Number of genes for which the own p-value was computed
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_case
         !! Stratum size used for the gene-vs-own case pool (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_control
         !! Stratum size used for the gene-vs-own control pool (-1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_family
-        !! Control pool size used for gene-vs-family p-value (-1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_ortholog
-        !! Control pool size used for gene-vs-ortholog p-value (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_case
         !! Case pool size used for this gene (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_case
@@ -1236,8 +1148,6 @@ contains
         integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_control
         !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CONTROL stratification
         !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
-        type(family_cache_t), intent(in) :: cache
-        !! Pre-computed family and ortholog residual pools
         real(real64), dimension(max_pool_size * 2), intent(inout) :: tmp_pool_case
         !! Work array: output residual pool for this gene's case kNN neighbourhood
         integer(int32), dimension(max_pool_size * 2), intent(inout) :: tmp_gene_id_pool_case
@@ -1295,9 +1205,9 @@ contains
         !! Work array: control residuals restricted to the stratum containing the gene's own control mean
         integer(int32), intent(out) :: ierr
 
-        integer(int32) :: i_gene, family_id
+        integer(int32) :: i_gene
         real(real64) :: mean_case_val, mean_control_val
-        real(real64) :: observed_statistic_own_val, observed_statistic_family_val, observed_statistic_ortholog_val
+        real(real64) :: observed_statistic_own_val
         integer(int32) :: n_pool_case, n_pool_control_own
         integer(int32) :: case_stratum_count, control_stratum_count
         integer(int32) :: chosen_n_bins_case, chosen_n_bins_control
@@ -1318,12 +1228,8 @@ contains
         own_scale_control = 1.0_real64 / sqrt(real(sorted_control%max_resid_per_gene, real64))
 
         pvalues_own = -1.0_real64
-        pvalues_family = -1.0_real64
-        pvalues_ortholog = -1.0_real64
         neighborhood_size_own_case = -1
         neighborhood_size_own_control = -1
-        neighborhood_size_family = -1
-        neighborhood_size_ortholog = -1
         neighborhood_size_case = -1
         chosen_n_bins_own_case = -1
         chosen_n_bins_own_control = -1
@@ -1332,10 +1238,6 @@ contains
         do i_gene = 1, n_genes
             mean_case_val = means_case(i_gene)
             mean_control_val = means_control(i_gene)
-            family_id = gene_to_family(i_gene)
-
-            if (family_id < 1 .or. family_id > n_families) cycle
-            if (.not. cache%is_cached(family_id)) cycle
 
             call gather_residuals_helper(mean_case_val, sorted_case, &
                                          k_start, k_step, k_max, tau, &
@@ -1350,13 +1252,9 @@ contains
             if (n_pool_control_own < 10) cycle
 
             observed_statistic_own_val = observed_statistic_own(i_gene)
-            observed_statistic_family_val = observed_statistic_family(i_gene)
-            observed_statistic_ortholog_val = observed_statistic_ortholog(i_gene)
 
-            ! Skip genes with non-finite observed statistics
-            if (observed_statistic_own_val /= observed_statistic_own_val .or. &
-                observed_statistic_family_val /= observed_statistic_family_val .or. &
-                observed_statistic_ortholog_val /= observed_statistic_ortholog_val) cycle
+            ! Skip genes with a non-finite observed statistic
+            if (observed_statistic_own_val /= observed_statistic_own_val) cycle
 
             ! The exact p-value is computed at every pool size, so there is no
             ! Monte Carlo path here and nothing to pre-seed per gene.
@@ -1430,38 +1328,15 @@ contains
                 end if
             end if
 
-            if (compute_pvalue_family(i_gene) == 1) then
-                call compute_pvalue(tmp_pool_case(1:n_pool_case), n_pool_case, &
-                                    cache%family_pools(1:cache%family_pool_sizes(family_id), family_id), &
-                                    cache%family_pool_sizes(family_id), &
-                                    observed_statistic_family_val, &
-                                    pvalues_family(i_gene), ierr)
-                if (is_err(ierr)) return
-                neighborhood_size_family(i_gene) = cache%family_pool_sizes(family_id)
-            end if
-
-            if (compute_pvalue_ortholog(i_gene) == 1) then
-                call compute_pvalue(tmp_pool_case(1:n_pool_case), n_pool_case, &
-                                    cache%orth_pools(1:cache%orth_pool_sizes(family_id), family_id), &
-                                    cache%orth_pool_sizes(family_id), &
-                                    observed_statistic_ortholog_val, &
-                                    pvalues_ortholog(i_gene), ierr)
-                if (is_err(ierr)) return
-                neighborhood_size_ortholog(i_gene) = cache%orth_pool_sizes(family_id)
-            end if
-
             neighborhood_size_case(i_gene) = n_pool_case
-            ! Count genes that actually received at least one p-value, not merely those
-            ! that passed the gates -- the stratum gate can still skip the `own`
-            ! computation, and all three compute-flags can be 0.
-            if (pvalues_own(i_gene) >= 0.0_real64 .or. &
-                pvalues_family(i_gene) >= 0.0_real64 .or. &
-                pvalues_ortholog(i_gene) >= 0.0_real64) &
+            ! Count genes that received an own p-value (the stratum gate can still
+            ! skip the `own` computation, and compute_pvalue_own can be 0).
+            if (pvalues_own(i_gene) >= 0.0_real64) &
                 n_genes_with_pvalue = n_genes_with_pvalue + 1
         end do
     end subroutine compute_noise_pvalue_pipeline_helper
 
-    !> Validate inputs, build sorted structures, pre-cache family pools, and run the pipeline.
+    !> Validate inputs, build sorted structures, and run the per-gene pipeline.
     !|
     !| This is the alloc-layer entry point for the full noise-model pipeline. It owns
     !| every allocation needed by the computation (the per-gene work arrays). This
@@ -1469,22 +1344,17 @@ contains
     !| Internally it:
     !|   1. Validates all dimension and range arguments via `tox_errors`.
     !|   2. Calls `prepare_sorted_data` for both case and control data.
-    !|   3. Pre-computes family and ortholog residual pools via `gather_residuals_helper`.
-    !|   4. Allocates all per-gene work arrays used by the per-gene loop.
-    !|   5. Delegates the per-gene loop to `compute_noise_pvalue_pipeline_helper`.
+    !|   3. Allocates all per-gene work arrays used by the per-gene loop.
+    !|   4. Delegates the per-gene loop to `compute_noise_pvalue_pipeline_helper`.
     subroutine compute_noise_pvalue_pipeline( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
-        observed_statistic_own, observed_statistic_family, observed_statistic_ortholog, &
-        family_means, ortholog_means, &
-        compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
-        family_sizes, gene_to_family, &
-        n_genes, n_families, norm_method, k_start, k_step, k_max, tau, &
-        pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+        observed_statistic_own, compute_pvalue_own, &
+        n_genes, norm_method, k_start, k_step, k_max, tau, &
+        pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
-        neighborhood_size_family, &
-        neighborhood_size_ortholog, neighborhood_size_case, &
+        neighborhood_size_case, &
         chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 
@@ -1498,8 +1368,6 @@ contains
         !! Number of control replicates
         integer(int32), intent(in) :: n_genes
         !! Total number of genes for which p-values are computed
-        integer(int32), intent(in) :: n_families
-        !! Total number of gene families
         real(real64), dimension(n_genes_case), intent(in) :: means_case
         !! Per-gene case expression means
         real(real64), dimension(n_replicates_case, n_genes_case), intent(in) :: replicates_case
@@ -1510,24 +1378,8 @@ contains
         !! Control replicate expression matrix (n_replicates_control x n_genes_control)
         real(real64), dimension(n_genes), intent(in) :: observed_statistic_own
         !! Observed gene-vs-own statistic for each gene
-        real(real64), dimension(n_genes), intent(in) :: observed_statistic_family
-        !! Observed gene-vs-family statistic for each gene
-        real(real64), dimension(n_genes), intent(in) :: observed_statistic_ortholog
-        !! Observed gene-vs-ortholog statistic for each gene
-        real(real64), dimension(n_families), intent(in) :: family_means
-        !! Mean expression of each gene family (control)
-        real(real64), dimension(n_families), intent(in) :: ortholog_means
-        !! Mean expression of each ortholog set (control)
         integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_own
         !! 1 if the gene-vs-own p-value should be computed, 0 otherwise
-        integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_family
-        !! 1 if the gene-vs-family p-value should be computed, 0 otherwise
-        integer(int32), dimension(n_genes), intent(in) :: compute_pvalue_ortholog
-        !! 1 if the gene-vs-ortholog p-value should be computed, 0 otherwise
-        integer(int32), dimension(n_families), intent(in) :: family_sizes
-        !! Number of genes in each family
-        integer(int32), dimension(n_genes), intent(in) :: gene_to_family
-        !! Maps each gene index to its family index (1-based)
         integer(int32), intent(in) :: norm_method
         !! 0 = linear scale; non-zero = log2(x+1) transform
         integer(int32), intent(in) :: k_start
@@ -1542,20 +1394,12 @@ contains
         !! Maximum number of residuals in any pool
         real(real64), dimension(n_genes), intent(out) :: pvalues_own
         !! Output: gene-vs-own p-values (-1 if not computed)
-        real(real64), dimension(n_genes), intent(out) :: pvalues_family
-        !! Output: gene-vs-family p-values (-1 if not computed)
-        real(real64), dimension(n_genes), intent(out) :: pvalues_ortholog
-        !! Output: gene-vs-ortholog p-values (-1 if not computed)
         integer(int32), intent(out) :: n_genes_with_pvalue
-        !! Number of genes for which at least one p-value was computed
+        !! Number of genes for which the own p-value was computed
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_case
         !! Case stratum size used for gene-vs-own (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_control
         !! Control stratum size used for gene-vs-own (-1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_family
-        !! Control pool size used for gene-vs-family (-1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_ortholog
-        !! Control pool size used for gene-vs-ortholog (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_case
         !! Case pool size used for each gene (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_case
@@ -1568,10 +1412,8 @@ contains
         !! Error code
 
         type(sorted_data_t) :: sorted_case, sorted_control
-        type(family_cache_t) :: cache
         real(real64), allocatable :: tmp_pool_case(:), tmp_pool_control_own(:)
         integer(int32), allocatable :: tmp_gene_id_pool_case(:), tmp_gene_id_pool_control_own(:)
-        integer(int32), allocatable :: family_gene_id_pool(:), orth_gene_id_pool(:)
         ! Case stratification work arrays
         integer(int32), allocatable :: tmp_strat_bin_index_per_residual_case(:)
         integer(int32), allocatable :: tmp_chosen_bin_index_per_residual_case(:)
@@ -1591,7 +1433,7 @@ contains
         integer(int32), allocatable :: tmp_strat_c_g_control(:)
         integer(int32), allocatable :: tmp_strat_bin_counts_control(:)
         real(real64), allocatable :: tmp_own_stratum_pool_case(:), tmp_own_stratum_pool_control(:)
-        integer(int32) :: family_id, sort_ierr
+        integer(int32) :: sort_ierr
 
         call set_ok(ierr)
 
@@ -1600,7 +1442,6 @@ contains
         call validate_dimension_size(n_genes_control, ierr)
         call validate_dimension_size(n_replicates_control, ierr)
         call validate_dimension_size(n_genes, ierr)
-        call validate_dimension_size(n_families, ierr)
         call validate_dimension_size(k_start, ierr)
         call validate_dimension_size(k_step, ierr)
         call validate_dimension_size(k_max, ierr)
@@ -1609,7 +1450,6 @@ contains
         call validate_all_in_range_real(means_control, n_genes_control, ierr)
         call validate_all_in_range_real(replicates_case, n_replicates_case * n_genes_case, ierr)
         call validate_all_in_range_real(replicates_control, n_replicates_control * n_genes_control, ierr)
-        call validate_all_in_range_int(gene_to_family, n_genes, ierr, min=1, max=n_families)
         if (is_err(ierr)) return
 
         call prepare_sorted_data(means_case, replicates_case, &
@@ -1620,32 +1460,6 @@ contains
                                  n_replicates_control, n_genes_control, norm_method, sorted_control, sort_ierr)
         call set_err(ierr, sort_ierr)
         if (is_err(ierr)) return
-
-        M_ALLOCATE(cache%family_pools(max_pool_size, n_families))
-        M_ALLOCATE(cache%orth_pools(max_pool_size, n_families))
-        M_ALLOCATE(cache%family_pool_sizes(n_families))
-        M_ALLOCATE(cache%orth_pool_sizes(n_families))
-        M_ALLOCATE(cache%is_cached(n_families))
-        M_ALLOCATE(family_gene_id_pool(max_pool_size))
-        M_ALLOCATE(orth_gene_id_pool(max_pool_size))
-
-        cache%is_cached = .false.
-
-        do family_id = 1, n_families
-            if (family_sizes(family_id) > 0) then
-                call gather_residuals_helper(family_means(family_id), sorted_control, &
-                                             k_start, k_step, k_max, tau, &
-                                             cache%family_pools(:, family_id), family_gene_id_pool, &
-                                             cache%family_pool_sizes(family_id), &
-                                             max_pool_size)
-                call gather_residuals_helper(ortholog_means(family_id), sorted_control, &
-                                             k_start, k_step, k_max, tau, &
-                                             cache%orth_pools(:, family_id), orth_gene_id_pool, &
-                                             cache%orth_pool_sizes(family_id), &
-                                             max_pool_size)
-                cache%is_cached(family_id) = .true.
-            end if
-        end do
 
         ! Per-gene work arrays for compute_noise_pvalue_pipeline_helper, allocated
         ! once here so the helper itself performs no allocation.
@@ -1691,18 +1505,13 @@ contains
         call compute_noise_pvalue_pipeline_helper( &
             sorted_case, sorted_control, &
             means_case, means_control, &
-            observed_statistic_own, observed_statistic_family, observed_statistic_ortholog, &
-            family_means, ortholog_means, &
-            compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
-            family_sizes, gene_to_family, &
-            n_genes, n_families, k_start, k_step, k_max, tau, &
-            pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+            observed_statistic_own, compute_pvalue_own, &
+            n_genes, k_start, k_step, k_max, tau, &
+            pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
             neighborhood_size_own_case, neighborhood_size_own_control, &
-            neighborhood_size_family, &
-            neighborhood_size_ortholog, neighborhood_size_case, &
+            neighborhood_size_case, &
             chosen_n_bins_own_case, chosen_n_bins_own_control, &
-            cache, &
             tmp_pool_case, tmp_gene_id_pool_case, &
             tmp_pool_control_own, tmp_gene_id_pool_control_own, &
             tmp_strat_bin_index_per_residual_case, tmp_chosen_bin_index_per_residual_case, &
@@ -1805,21 +1614,6 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     integer(c_int), intent(out), target :: ierr
     !! Error code: 0 = success
 
-    ! ---- family/ortholog path retired at the interface. The internal pipeline
-    ! still accepts family arguments, so we feed it one trivial "all genes in a
-    ! single cached family" configuration (identical to what callers passed for a
-    ! family-free run): every gene is un-gated, no family/ortholog p-value is
-    ! requested, and the `own` result is bit-for-bit unchanged. These locals are
-    ! throwaway. ----
-    integer(c_int), parameter :: n_families = 1
-    real(c_double), allocatable :: dummy_obs_family(:), dummy_obs_ortholog(:)
-    real(c_double) :: dummy_family_means(1), dummy_ortholog_means(1)
-    integer(c_int), allocatable :: dummy_compute_family(:), dummy_compute_ortholog(:)
-    integer(c_int) :: dummy_family_sizes(1)
-    integer(c_int), allocatable :: dummy_gene_to_family(:)
-    real(c_double), allocatable :: dummy_pvalues_family(:), dummy_pvalues_ortholog(:)
-    integer(c_int), allocatable :: dummy_nbhd_family(:), dummy_nbhd_ortholog(:)
-
     M_CHECK_IERR_NON_NULL
     M_CHECK_NON_NULL(n_genes_case)
     M_CHECK_NON_NULL(n_replicates_case)
@@ -1846,35 +1640,15 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     M_CHECK_NON_NULL(chosen_n_bins_own_case)
     M_CHECK_NON_NULL(chosen_n_bins_own_control)
 
-    allocate(dummy_obs_family(n_genes), dummy_obs_ortholog(n_genes), &
-             dummy_compute_family(n_genes), dummy_compute_ortholog(n_genes), &
-             dummy_gene_to_family(n_genes), &
-             dummy_pvalues_family(n_genes), dummy_pvalues_ortholog(n_genes), &
-             dummy_nbhd_family(n_genes), dummy_nbhd_ortholog(n_genes))
-    dummy_obs_family     = 0.0_c_double
-    dummy_obs_ortholog   = 0.0_c_double
-    dummy_compute_family   = 0_c_int
-    dummy_compute_ortholog = 0_c_int
-    dummy_gene_to_family   = 1_c_int
-    dummy_family_sizes(1)  = 1_c_int
-    ! A finite, in-range target so the (unused) family cache builds and is marked
-    ! cached -- that cached flag is what un-gates every gene in the per-gene loop.
-    dummy_family_means(1)   = means_control(1)
-    dummy_ortholog_means(1) = means_control(1)
-
     call compute_noise_pvalue_pipeline( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
-        observed_statistic_own, dummy_obs_family, dummy_obs_ortholog, &
-        dummy_family_means, dummy_ortholog_means, &
-        compute_pvalue_own, dummy_compute_family, dummy_compute_ortholog, &
-        dummy_family_sizes, dummy_gene_to_family, &
-        n_genes, n_families, norm_method, k_start, k_step, k_max, tau, &
-        pvalues_own, dummy_pvalues_family, dummy_pvalues_ortholog, n_genes_with_pvalue, &
+        observed_statistic_own, compute_pvalue_own, &
+        n_genes, norm_method, k_start, k_step, k_max, tau, &
+        pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
-        dummy_nbhd_family, &
-        dummy_nbhd_ortholog, neighborhood_size_case, &
+        neighborhood_size_case, &
         chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 
