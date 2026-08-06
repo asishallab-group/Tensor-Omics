@@ -351,10 +351,19 @@ class FortranWrapperEmitter:
         self._validation(writer, alloc)
         writer.blank()
         self._materialized_defaults(writer, materialized)
-        self._prologue_call(writer, prologue, alloc, module)
+        # A prologue runs as early as it can, and no earlier. Before the work arrays exist it
+        # can still refuse a degenerate input and spare the whole setup, which is half of what
+        # a prologue is for -- so that is where it goes whenever it can. A prologue that takes
+        # one of those work arrays cannot run there, and moves below them instead.
+        late = self._prologue_needs_locals(prologue, taken)
+        if not late:
+            self._prologue_call(writer, prologue, alloc, module, taken)
         self._recommend_calls(writer, foo, alloc, taken, materialized)
         self._allocations(writer, taken)
         self._permutations(writer, taken)
+        if late:
+            writer.blank()
+            self._prologue_call(writer, prologue, alloc, module, taken)
         writer.blank()
         self._kernel_call(writer, foo, module)
 
@@ -383,17 +392,31 @@ class FortranWrapperEmitter:
         if prologue is not None:
             writer.line(f"logical :: {self.conventions.prologue_handled_arg}")
 
-    def _prologue_call(self, writer: Writer, prologue, wrapper: Procedure, module: Module) -> None:
+    def _prologue_needs_locals(self, prologue, taken) -> bool:
+        """Whether the prologue takes one of the work arrays the wrapper prepares itself.
+
+        Such a prologue cannot run before them: there would be nothing to hand it. It is the
+        only reason to emit a prologue below the allocations rather than above them.
+        """
+        if prologue is None:
+            return False
+        names = {argument.name.lower() for argument in taken}
+        return any(dummy.name.lower() in names for dummy in prologue.arguments)
+
+    def _prologue_call(self, writer: Writer, prologue, wrapper: Procedure, module: Module,
+                       taken=()) -> None:
         """Run the prologue, and return early if it handled the call itself.
 
-        Its dummies are supplied by name from the wrapper's own arguments, as a recommend
-        routine's are; `handled` and `ierr` come from the wrapper. An argument the wrapper
-        does not have is left out, so a prologue may take fewer arguments than the kernel.
+        Its dummies are supplied by name -- from the wrapper's own arguments, or from the
+        work arrays the allocating wrapper took over and prepared as locals; `handled` and
+        `ierr` come from the wrapper. A dummy that matches none of these is refused by
+        `validate._check_prologue`, so nothing is silently left out of the call here.
         """
         if prologue is None:
             return
         error = self.conventions.error_arg
         handled = self.conventions.prologue_handled_arg
+        local = {argument.name.lower() for argument in taken}
         actuals = []
         for dummy in prologue.arguments:
             lowered = dummy.name.lower()
@@ -401,7 +424,7 @@ class FortranWrapperEmitter:
                 actuals.append((dummy.name, error))
             elif lowered == handled.lower():
                 actuals.append((dummy.name, handled))
-            elif wrapper.argument(dummy.name) is not None:
+            elif wrapper.argument(dummy.name) is not None or lowered in local:
                 actuals.append((dummy.name, dummy.name))
         self._call(writer, prologue.name, actuals)
         self._clear_arg_pos(writer)

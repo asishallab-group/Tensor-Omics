@@ -634,7 +634,7 @@ degenerate input that already determines the answer, or preparation a caller sho
 do.
 
 **Write** `DM_PROLOGUE(<procedure>, <module>, <scope>)` in the procedure's own doc block, with
-scope `EXPERT`, `ALLOC` or `BOTH`. The prologue takes the wrapper's arguments by name, plus
+scope `EXPERT`, `ALLOC` or `BOTH`. The prologue takes the **kernel's** arguments by name, plus
 `handled` and `ierr`:
 
 ```fortran
@@ -656,6 +656,27 @@ call loess_degenerate_fit(n = n, x = x, y = y, degree = degree, &
 if (is_err(ierr)) return
 if (handled) return
 ```
+
+**Where it runs.** As early as it can. In the allocating wrapper that means *above* the work
+arrays, so a prologue that refuses a degenerate input spares the whole setup — half of why a
+prologue exists. A prologue that takes one of those work arrays cannot run there (there would be
+nothing to hand it), so it runs below them instead. You do not choose this; what the prologue
+takes decides it. The one consequence: a late prologue may not produce anything the allocations
+or the recommend calls above it read, and the generator refuses it if you try.
+
+```fortran
+!| DM_PROLOGUE(prepare_ranking, tox_outliers_kernel, ALLOC)
+...
+real(real64), intent(out) :: tmp_valid_perm(n_genes)
+    !! the prologue fills this, so the prologue runs after it is allocated
+```
+
+**What is refused**, all of it silent before: a `DM_PROLOGUE` naming a procedure that does not
+exist; a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` (the
+wrapper returns early on it regardless, so without it the branch reads an undefined value); a
+dummy naming nothing the kernel has. There is deliberately **no rename table** — unlike a
+`DM_OUTPUT_FROM` producer, a prologue is internal to the kernel module, so the fix is to rename
+its dummy.
 
 Reach for this only when the work is genuinely not the kernel's. A prologue that merely
 *validates* is a smell — that is what the range macros are for, and a pre-validation pass that
@@ -947,6 +968,10 @@ source and carries a note saying what to write instead.
 | an `M_EXPORT_C` on a **kernel** | its wrapper is the entry point; the export publishes an unvalidated twin beside it (§4) |
 | a kernel named `<something>_alloc_kernel` | `_alloc` is the generator's suffix, and such a kernel generates an allocating wrapper that allocates nothing (§4) |
 | an `allocatable` local anywhere in a **kernel module** | the generated `_alloc` owns the memory, not the kernel (§4, §5.7) |
+| a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
+| a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
+| a prologue dummy naming nothing the kernel has | it would be dropped from the generated call, and Fortran would reject code you did not write (§5.13) |
+| a late prologue producing something the allocations above it read | the name resolves either way, so it would compile and compute rubbish (§5.13) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:

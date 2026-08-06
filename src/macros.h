@@ -99,8 +99,14 @@
 ! It is where work belongs that is not the kernel's: preparing what a caller should not
 ! have to prepare, or deciding that an input is too degenerate to compute on. `SCOPE` is
 ! EXPERT for the validating wrapper, ALLOC for the allocating one, or BOTH.
-! The prologue's dummies are supplied by name from the wrapper's own arguments, plus
-! `handled` and `ierr`.
+! The prologue's dummies are supplied by name from the kernel's arguments, plus `handled`
+! and `ierr`; a name that matches neither is an error, so rename the prologue's dummy to
+! whatever the kernel calls the same thing. It must declare `logical, intent(out) ::
+! handled` and set it on every path -- the wrapper returns early on it.
+! It runs as early as it can: above the allocating wrapper's work arrays, where it can
+! still refuse a degenerate input and spare the whole setup. A prologue that takes one of
+! those work arrays runs below them instead, and may then not produce anything the
+! allocations or the recommend calls above it read.
 #define DM_PROLOGUE(PROCEDURE, MODULE, SCOPE) DM_PROLOGUE_##SCOPE runs [[MODULE(module):PROCEDURE]] first, which may handle the call and skip this one.
 #define DM_PROLOGUE_EXPERT The validating wrapper
 #define DM_PROLOGUE_ALLOC The allocating wrapper

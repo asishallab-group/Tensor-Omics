@@ -81,6 +81,14 @@ def generate(
     if parsed is None:
         parsed = FordFrontend(paths, diagnostics, conventions).parse()
 
+    # Stop if the source did not read cleanly. Everything below assumes a well-formed IR --
+    # an argument whose type the frontend could not map is left with no type at all, and the
+    # semantic pass then raises an AttributeError rather than adding to the report the author
+    # is about to read. Nothing would be written either way, so the only difference is
+    # whether the run ends with a diagnostic or a traceback.
+    if diagnostics.errors:
+        return Result(diagnostics=diagnostics)
+
     # Synthesise the wrappers each kernel implies and inject them before the semantic pass,
     # so the C / Python / R targets wrap them like any procedure read from source and the
     # single kernel parse is the one source of truth. Runs unconditionally -- a project with

@@ -354,11 +354,29 @@ class TestAllocatingWrapper:
 class TestPrologue:
     """A routine the wrapper runs before the kernel, which may handle the call itself."""
 
-    def emitted_with(self, scope):
+    def emitted_with(self, scope, scratch=False):
         from builders import project
         from test_synthesize import prologue_kernel_module
 
-        return emitted(project(prologue_kernel_module(scope)))
+        return emitted(project(prologue_kernel_module(scope, self._guard(scratch))))
+
+    @staticmethod
+    def _guard(scratch):
+        """The prologue's dummies; with `scratch` it also takes the kernel's work array."""
+        if not scratch:
+            return None
+        from codegen.ir.types import Intent
+
+        from builders import ierr, integer, logical, real
+
+        return (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch it fills itself"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+            logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            ierr(),
+        )
 
     def body(self, text, name):
         start = text.index(f"subroutine {name}(")
@@ -401,6 +419,31 @@ class TestPrologue:
         assert "call guard(&" not in self.body(text, "crunch_alloc")
 
     def test_it_runs_before_the_allocation_it_may_make_unnecessary(self):
+        from codegen.ir.directives import PrologueScope
+
+        body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")
+
+        assert body.index("call guard(&") < body.index("M_ALLOCATE(tmp_scratch(n))")
+
+    def test_a_prologue_that_takes_a_work_array_runs_below_the_allocation(self):
+        # it cannot run above one: there would be nothing to hand it
+        from codegen.ir.directives import PrologueScope
+
+        body = self.body(self.emitted_with(PrologueScope.ALLOC, scratch=True), "crunch_alloc")
+
+        assert body.index("M_ALLOCATE(tmp_scratch(n))") < body.index("call guard(&")
+        assert body.index("call guard(&") < body.index("call crunch_kernel(")
+
+    def test_it_is_handed_the_work_array_it_asked_for(self):
+        from codegen.ir.directives import PrologueScope
+
+        body = self.body(self.emitted_with(PrologueScope.ALLOC, scratch=True), "crunch_alloc")
+
+        assert "tmp_scratch = tmp_scratch" in body
+
+    def test_the_ordinary_prologue_still_runs_above_the_allocation(self):
+        # the placement is decided by what the prologue takes, so one that takes no work
+        # array keeps its chance to make the whole setup unnecessary
         from codegen.ir.directives import PrologueScope
 
         body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")

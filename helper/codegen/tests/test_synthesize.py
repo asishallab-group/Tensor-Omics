@@ -101,19 +101,29 @@ def output_sizing_computed_kernel_module():
     )
 
 
-def prologue_kernel_module(scope):
-    """A kernel with a prologue, plus the prologue procedure it names."""
+def prologue_kernel_module(scope, guard_arguments=None):
+    """A kernel with a prologue, plus the prologue procedure it names.
+
+    `guard_arguments` replaces the prologue's own dummies, for the cases where what it takes
+    is the point: a work array (which forces it below the allocations), or a name the kernel
+    does not have (which the validator refuses).
+    """
     from codegen.ir.directives import Prologue
 
-    return module(
-        "tox_demo_kernel",
-        procedure(
-            "guard",  # the prologue: may handle the call and skip the kernel
+    if guard_arguments is None:
+        guard_arguments = (
             real("values", Intent.IN, "(n)", doc="the data"),
             integer("n", Intent.IN, doc="length"),
             real("result", Intent.OUT, "(n)", doc="the answer"),
             logical("handled", Intent.OUT, doc="whether the call was dealt with"),
             ierr(),
+        )
+
+    return module(
+        "tox_demo_kernel",
+        procedure(
+            "guard",  # the prologue: may handle the call and skip the kernel
+            *guard_arguments,
             meta=Meta(summary="Guard", author="AUTHOR"),
         ),
         procedure(

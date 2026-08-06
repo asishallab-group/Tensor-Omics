@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from codegen.diagnostics import DiagnosticBag
@@ -530,3 +532,159 @@ class TestKernelModules:
         validate_module(module, bag)
 
         assert bag.errors == ()
+
+
+class TestPrologue:
+    """A DM_PROLOGUE must name something the wrapper can actually call.
+
+    Every one of these used to pass silently: the emitter was the directive's only consumer,
+    and an emitter has no author's line to point at.
+    """
+
+    def checked(self, scope=None, guard_arguments=None, kernel_arguments=None, bag=None):
+        from codegen.ir.directives import PrologueScope
+        from test_synthesize import prologue_kernel_module
+
+        scope = scope if scope is not None else PrologueScope.BOTH
+        module = prologue_kernel_module(scope, guard_arguments)
+        if kernel_arguments is not None:
+            crunch = module.procedure("crunch_kernel")
+            crunch.arguments = tuple(kernel_arguments)
+        project = b.project(module)
+        validate_project(project, bag if bag is not None else self.bag)
+        return self.bag
+
+    @pytest.fixture(autouse=True)
+    def _bag(self, bag):
+        self.bag = bag
+
+    def guard(self, *arguments):
+        return tuple(arguments)
+
+    def test_a_well_formed_prologue_is_accepted(self):
+        self.checked()
+
+        assert self.bag.errors == ()
+
+    def test_a_prologue_that_does_not_exist_is_rejected(self):
+        from codegen.ir.directives import Prologue, PrologueScope
+        from test_synthesize import prologue_kernel_module
+
+        module = prologue_kernel_module(PrologueScope.BOTH)
+        module.procedure("crunch_kernel").directives = replace(
+            module.procedure("crunch_kernel").directives,
+            prologue=Prologue("guardd", "tox_demo_kernel", PrologueScope.BOTH),
+        )
+        validate_project(b.project(module), self.bag)
+
+        error = only_error(self.bag)
+        assert "prologue 'tox_demo_kernel:guardd' does not exist" == error.message
+        assert "without a prologue at all" in error.note
+
+    def test_a_prologue_without_handled_is_rejected(self):
+        # the wrapper declares `handled` and branches on it regardless, so a prologue that
+        # never sets it leaves that branch reading an undefined logical -- which compiles
+        self.checked(guard_arguments=self.guard(
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            b.ierr(),
+        ))
+
+        error = only_error(self.bag)
+        assert "prologue 'guard' has no 'handled' argument" == error.message
+        assert "undefined value" in error.note
+
+    def test_a_handled_that_is_not_a_scalar_logical_is_rejected(self):
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.integer("handled", Intent.OUT, doc="not a logical"),
+            b.ierr(),
+        ))
+
+        assert "'handled' is not a scalar logical" in only_error(self.bag).message
+
+    def test_a_handled_the_prologue_reads_is_rejected(self):
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.logical("handled", Intent.IN, doc="read, not reported"),
+            b.ierr(),
+        ))
+
+        assert "'handled' is not intent(out)" in only_error(self.bag).message
+
+    def test_a_dummy_the_kernel_does_not_have_is_rejected(self):
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.integer("scratch_room", Intent.IN, doc="the kernel has never heard of it"),
+            b.logical("handled", Intent.OUT, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        error = only_error(self.bag)
+        assert "prologue argument 'scratch_room' names nothing in 'crunch_kernel'" == error.message
+        assert "rename this one" in error.note
+
+    def test_a_work_array_is_not_a_dummy_the_kernel_does_not_have(self):
+        # tmp_scratch is a kernel argument the allocating wrapper prepares, and a prologue
+        # may take it -- that is the whole point of running below the allocations
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            b.logical("handled", Intent.OUT, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        assert self.bag.errors == ()
+
+    def test_a_late_prologue_may_not_produce_what_sizes_a_work_array(self):
+        # tmp_scratch is allocated above the prologue, so its extent cannot be something the
+        # prologue only fills afterwards -- the name resolves either way and computes rubbish
+        from codegen.ir.directives import PrologueScope
+
+        self.checked(
+            scope=PrologueScope.ALLOC,
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="how much scratch is needed"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            kernel_arguments=[
+                b.real("values", Intent.IN, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.INOUT, doc="how much scratch is needed"),
+                b.real("tmp_scratch", Intent.OUT, "(room)", doc="scratch"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        error = only_error(self.bag)
+        assert "'tmp_scratch' is sized by 'room', which the prologue only fills afterwards" == error.message
+        assert "runs below the allocations" in error.note
+
+    def test_an_early_prologue_producing_the_same_value_is_accepted(self):
+        # without a work array among its dummies the prologue runs above the allocations,
+        # so the value is there in time
+        from codegen.ir.directives import PrologueScope
+
+        self.checked(
+            scope=PrologueScope.ALLOC,
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="how much scratch is needed"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            kernel_arguments=[
+                b.real("values", Intent.IN, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.INOUT, doc="how much scratch is needed"),
+                b.real("tmp_scratch", Intent.OUT, "(room)", doc="scratch"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        assert self.bag.errors == ()

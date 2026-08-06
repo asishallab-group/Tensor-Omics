@@ -10,6 +10,8 @@ what to do instead. A rule that merely encodes taste belongs in a review, not he
 
 from __future__ import annotations
 
+import re
+
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
 from .entities import Argument, Module, Procedure, Project
@@ -55,6 +57,7 @@ def validate_kernel_module(module: Module, diagnostics: DiagnosticBag,
             continue  # a recommend routine or a private helper, not a kernel
         _check_kernel_is_not_exported(procedure, diagnostics, conventions)
         _check_kernel_is_not_named_alloc(procedure, diagnostics, conventions)
+        _check_prologue(procedure, diagnostics, conventions)
 
 
 def _check_kernel_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> None:
@@ -395,6 +398,194 @@ class _Validator:
                 argument,
             )
 
+
+def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
+                    conventions: Conventions) -> None:
+    """A `DM_PROLOGUE` must name something the wrapper can actually call.
+
+    Nothing checked any of this before, and every way of getting it wrong failed silently:
+    the emitter is the only consumer of the directive, and an emitter has no line to point
+    at. A prologue that named nothing produced a wrapper with no prologue; a dummy that
+    matched nothing was dropped from the keyword call; a prologue with no `handled` left the
+    wrapper branching on an undefined logical, which compiles.
+    """
+    directive = kernel.directives.prologue
+    if directive is None:
+        return
+    project = kernel.module.project if kernel.module is not None else None
+    if project is None:
+        return  # a hand-built procedure in a unit test; the real pipeline always has one
+
+    prologue = project.procedure(directive.module, directive.procedure)
+    if prologue is None:
+        diagnostics.error(
+            f"prologue '{directive.module}:{directive.procedure}' does not exist",
+            entity=kernel,
+            note=(
+                "the wrapper would be generated without a prologue at all, which is why "
+                "this is an error rather than a warning"
+            ),
+        )
+        return
+
+    _check_prologue_reports_handled(kernel, prologue, diagnostics, conventions)
+    _check_prologue_arguments_resolve(kernel, prologue, diagnostics, conventions)
+    _check_prologue_outputs_are_not_read_first(kernel, prologue, diagnostics, conventions)
+
+
+def _check_prologue_reports_handled(kernel: Procedure, prologue: Procedure,
+                                    diagnostics: DiagnosticBag,
+                                    conventions: Conventions) -> None:
+    """The wrapper returns early on `handled`, so the prologue has to set it.
+
+    The generated wrapper declares `handled` and branches on it unconditionally. A prologue
+    that does not take it never assigns it, and the branch reads an undefined logical --
+    which no compiler is obliged to reject and gfortran does not.
+    """
+    name = conventions.prologue_handled_arg
+    handled = prologue.argument(name)
+    if handled is None:
+        diagnostics.error(
+            f"prologue '{prologue.name}' has no '{name}' argument",
+            entity=kernel,
+            note=(
+                f"every wrapper returns early on `if ({name})`, so a prologue that never "
+                f"sets it leaves that branch reading an undefined value; declare "
+                f"`logical, intent(out) :: {name}` and set it on every path"
+            ),
+        )
+        return
+    if handled.type.base is not BaseType.LOGICAL or handled.is_array:
+        diagnostics.error(
+            f"prologue argument '{name}' is not a scalar logical", handled,
+            note="it is the flag the wrapper returns early on",
+        )
+    elif handled.intent is not Intent.OUT:
+        diagnostics.error(
+            f"prologue argument '{name}' is not intent(out)", handled,
+            note="the prologue reports through it; the wrapper never supplies a value",
+        )
+
+
+def _check_prologue_arguments_resolve(kernel: Procedure, prologue: Procedure,
+                                      diagnostics: DiagnosticBag,
+                                      conventions: Conventions) -> None:
+    """Every prologue dummy is supplied by name, so every name has to be there.
+
+    The wrapper supplies `handled` and `ierr` itself and everything else from the kernel's
+    own arguments -- either a dummy it passes on, or a work array it prepared. A name that
+    is neither used to vanish from the generated call, which Fortran then rejected in code
+    the author did not write.
+
+    There is no rename table, deliberately: a producer needs one because it is a published
+    routine whose own parameter names cannot move, whereas a prologue is internal to the
+    kernel module and its dummy can simply be renamed to match.
+    """
+    supplied = {argument.name.lower() for argument in kernel.arguments}
+    supplied |= {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    for dummy in prologue.arguments:
+        if dummy.name.lower() in supplied:
+            continue
+        diagnostics.error(
+            f"prologue argument '{dummy.name}' names nothing in '{kernel.name}'",
+            dummy,
+            note=(
+                f"a prologue's dummies are supplied by name from the kernel's arguments; "
+                f"rename this one to whatever '{kernel.name}' calls the same thing"
+            ),
+        )
+
+    # A mode-scoped argument is present in one mode's wrapper and absent from the others,
+    # while the prologue is declared once and runs in all of them.
+    for dummy in prologue.arguments:
+        argument = kernel.argument(dummy.name)
+        if argument is not None and argument.directives.required_if_mode is not None:
+            diagnostics.error(
+                f"prologue argument '{dummy.name}' is scoped to a mode",
+                argument,
+                note=(
+                    "the kernel splits into one wrapper per mode, and this argument is "
+                    "absent from all but one of them -- so the prologue could not be "
+                    "called there"
+                ),
+            )
+
+
+def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Procedure,
+                                               diagnostics: DiagnosticBag,
+                                               conventions: Conventions) -> None:
+    """A late prologue may not produce something the setup above it already read.
+
+    A prologue that takes one of the wrapper's work arrays runs below the allocations, since
+    there would be nothing to hand it above them. Anything it writes is therefore undefined
+    while those allocations and the recommend calls run -- and a name resolves the same
+    either way, so reading one early compiles and computes rubbish.
+    """
+    from ..synthesize import taken_over_arguments  # local: synthesize imports this module
+
+    if not prologue_runs_late(kernel, prologue, conventions):
+        return
+
+    written = {
+        dummy.name.lower()
+        for dummy in prologue.arguments
+        if dummy.intent is not None and dummy.intent.is_output
+    }
+    written -= {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    if not written:
+        return
+
+    taken = taken_over_arguments(kernel.arguments, conventions)
+    for argument in taken:
+        for extent in argument.dimension.extents:
+            for identifier in _IDENTIFIER_RE.findall(extent):
+                if identifier.lower() not in written:
+                    continue
+                diagnostics.error(
+                    f"'{argument.name}' is sized by '{identifier}', which the prologue "
+                    f"only fills afterwards",
+                    argument,
+                    note=_READ_FIRST_NOTE,
+                )
+
+    for argument in kernel.arguments:
+        plan = argument.roles.computed_from if argument.roles is not None else None
+        if plan is None:
+            continue
+        for supply in plan.inputs:
+            if supply.argument is None or supply.argument.lower() not in written:
+                continue
+            diagnostics.error(
+                f"'{plan.producer.name}' is passed '{supply.argument}', which the prologue "
+                f"only fills afterwards",
+                argument,
+                note=_READ_FIRST_NOTE,
+            )
+
+
+def prologue_runs_late(kernel: Procedure, prologue: Procedure,
+                       conventions: Conventions = CONVENTIONS) -> bool:
+    """Whether the allocating wrapper emits its prologue below the allocations.
+
+    Mirrors `emit.fortran_wrapper._prologue_needs_locals`, on the kernel side: a prologue
+    that takes a work array cannot precede the allocation of that work array.
+    """
+    from ..synthesize import taken_over_arguments
+
+    directive = kernel.directives.prologue
+    if directive is None or not directive.runs_in(True):
+        return False
+    taken = {a.name.lower() for a in taken_over_arguments(kernel.arguments, conventions)}
+    return any(dummy.name.lower() in taken for dummy in prologue.arguments)
+
+
+#: Identifiers named in an extent expression
+_IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
+
+_READ_FIRST_NOTE = (
+    "this prologue takes a work array, so it runs below the allocations; give it the value "
+    "as a 'tmp_' argument instead, or compute the size from something the caller passes"
+)
 
 _NON_OPTIONAL_NOTE = (
     "the C wrapper reads it before it may take c_loc of the arrays it describes, so it "
