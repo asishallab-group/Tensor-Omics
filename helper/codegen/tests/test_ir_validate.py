@@ -425,3 +425,108 @@ class TestOptionalOutputs:
         )
 
         assert bag.errors == ()
+
+
+class TestKernelModules:
+    """The rules that hold for a kernel, which is read rather than wrapped and so is not
+    reached by the exported-procedure rules above."""
+
+    def kernel_module(self, *procedures):
+        return b.module("tox_thing_kernel", *procedures, doc="a kernel module")
+
+    def test_a_kernel_that_allocates_is_rejected(self, bag):
+        module = self.kernel_module(
+            b.procedure(
+                "thing_kernel",
+                b.real("x", Intent.IN, "(n)"),
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+                allocatable_locals=("workspace",),
+            )
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "'thing_kernel' allocates: 'workspace'" == error.message
+        assert "tmp_" in error.note
+
+    def test_a_helper_that_allocates_is_rejected_too(self, bag):
+        # a kernel that allocates nothing but calls a helper that does is no better off
+        module = self.kernel_module(
+            b.procedure(
+                "thing_helper",
+                b.real("x", Intent.IN, "(n)"),
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+                allocatable_locals=("scratch",),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert "'thing_helper' allocates" in only_error(bag).message
+
+    def test_a_pointer_local_is_accepted(self, bag):
+        # aliasing a buffer the caller handed in allocates nothing
+        module = self.kernel_module(
+            b.procedure(
+                "thing_kernel",
+                b.real("x", Intent.IN, "(n)"),
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_exported_kernel_is_rejected(self, bag):
+        module = self.kernel_module(
+            b.procedure("thing_kernel", b.integer("n"))  # b.procedure exports by default
+        )
+
+        validate_module(module, bag)
+
+        errors = messages(bag)
+        assert "kernel 'thing_kernel' is exported" in errors
+        assert "M_EXPORT_C" in bag.errors[0].note
+
+    def test_an_exported_support_routine_is_accepted(self, bag):
+        # a recommend routine has no wrapper, so DM_OUTPUT_FROM needs it exported
+        module = self.kernel_module(b.procedure("thing_required_workspace", b.integer("n")))
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_a_kernel_named_for_the_alloc_wrapper_is_rejected(self, bag):
+        module = self.kernel_module(
+            b.procedure(
+                "thing_alloc_kernel",
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "kernel 'thing_alloc_kernel' is named for the allocating wrapper" == error.message
+        assert "tmp_" in error.note
+
+    def test_an_ordinary_module_is_not_held_to_these_rules(self, bag):
+        module = b.module(
+            "tox_thing",
+            b.procedure(
+                "thing_alloc",
+                b.integer("n"),
+                allocatable_locals=("workspace",),
+            ),
+            doc="an ordinary module",
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()

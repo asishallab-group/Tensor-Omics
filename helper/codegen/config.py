@@ -33,6 +33,9 @@ class Conventions:
     #: hand-built Conventions; a real run reads it from the `M_EXPORT_C` macro (see
     #: `frontend.export_category`), so the marker and the generator cannot drift.
     c_binding_category: str = "C-binding"
+    #: The doc macro an author writes to mark a procedure for export. The category above is
+    #: read from it, so this is the name the diagnostics quote back.
+    export_marker: str = "M_EXPORT_C"
 
     #: Suffix of the allocating variant of a procedure pair
     alloc_suffix: str = "_alloc"

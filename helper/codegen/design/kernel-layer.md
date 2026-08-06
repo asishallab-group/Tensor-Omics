@@ -318,6 +318,49 @@ the routine; `foo_alloc` internalises it.
 needed (the producer and how to supply its inputs, resolved by the existing output-from pass).
 A second mode would be a second name for the same fact.
 
+**Rejected — chaining producers, so one recommend routine feeds another.** The motivating case
+is a workspace whose exact size depends on a count the kernel only discovers at run time:
+`normalize_by_std_dev` fits LOESS through the `n_valid` genes that carry variance, not all
+`n_genes`, so the exact workspace needs an `n_valid` producer whose output becomes the
+`max_neighborhood_size` input of `tox_loess_required_workspace`. Supporting that means the
+generator resolves a dependency graph over producers and emits them in topological order,
+allocating each producer's own inputs before its call and the buffers that depend on it after —
+and it still cannot help a producer whose input is itself a `tmp_` buffer that does not exist
+yet.
+
+The kernels do not need it. Every such size has a cheap upper bound that is already an argument,
+and the recommend formulas are monotone in it, so the buffer is sized for the bound and sliced at
+the call: `compute_family_scaling_kernel` sizes for `n_families` and passes
+`loess_x(1:n_valid)`, and `normalize_by_std_dev_kernel` does the same with `n_genes`. What is
+over-allocated is the fraction of points the fit drops; what is bought is that `foo_alloc` stays
+a flat sequence of calls and allocations. Should a case appear where the bound is genuinely far
+from the truth, the topological version is the answer — not before.
+
+### No allocation in a kernel module
+
+Nothing in a kernel module allocates: every buffer is a `tmp_` argument, so the generated
+`_alloc` owns the memory and an expert caller can hand in buffers it already holds. The rule
+covers the module's helpers as well as its kernels — a kernel that allocates nothing itself but
+calls a helper that does gives its expert caller nothing.
+
+It is enforced on the **declaration**: a local declared `allocatable` is refused. The generator
+never reads a body, and an `M_ALLOCATE` needs an allocatable to allocate into, so the declaration
+is a complete proxy for this tree. (A `pointer` local that is `allocate`d would slip through. No
+kernel does that, and the gap is cheaper than teaching the frontend to read statements.) Ford
+hides a procedure's own variables by default, so the frontend sets `proc_internals`.
+
+A `pointer` local is explicitly fine. Aliasing a buffer the kernel was handed allocates nothing,
+and the `target` attribute it needs on a dummy never reaches the wrapper — the emitter carries
+intent, type and dimension, not attributes. `normalization_pipeline_kernel` relies on both: it
+points its LOESS scratch at the still-unwritten columns of its own output buffer.
+
+Two naming rules fall out of the same place. A kernel may not carry `M_EXPORT_C` — its wrapper is
+the entry point, and exporting it beside the wrapper publishes an unvalidated twin under a name
+(`foo_kernel`) a binding caller cannot tell apart from `foo`. And a kernel may not be named
+`<x>_alloc_kernel`: `_alloc` is the generator's suffix, and such a kernel generates a `foo_alloc`
+that allocates nothing, with no expert tier behind it. Support routines in a kernel module — the
+recommend routines above — are neither, and stay exported.
+
 ### Mode-dependent kernels (opt-in split)
 
 The house style is one procedure per mode — `detect_dosage_effect`,

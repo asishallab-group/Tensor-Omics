@@ -24,6 +24,7 @@ from pathlib import Path
 
 from pcpp import Preprocessor
 
+from ..config import CONVENTIONS
 from ..ir.directives import DirectivePatterns
 
 
@@ -117,7 +118,7 @@ class MissingMacroError(Exception):
 
 
 #: The macro marking a procedure for export, e.g. `!> M_EXPORT_C`
-EXPORT_MACRO = "M_EXPORT_C"
+EXPORT_MACRO = CONVENTIONS.export_marker
 
 
 def export_category(macros: MacroTable) -> str:

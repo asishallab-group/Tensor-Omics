@@ -159,6 +159,7 @@ class Procedure(Entity):
         meta: Meta = Meta(),
         location: SourceLocation = SourceLocation(),
         conventions: Conventions = CONVENTIONS,
+        allocatable_locals: Sequence[str] = (),
     ):
         self.name = name
         self.arguments = tuple(arguments)
@@ -168,6 +169,11 @@ class Procedure(Entity):
         self.meta = meta
         self.location = location
         self.conventions = conventions
+        #: names of the local variables declared `allocatable`. The body itself is never
+        #: read, so this is how the generator sees that a procedure allocates: an
+        #: `M_ALLOCATE` needs an allocatable to allocate into, and a kernel may not have one
+        #: (`validate._check_kernel_allocates`).
+        self.allocatable_locals = tuple(allocatable_locals)
         self.parent: Module | None = None
 
         self._adopt(self.arguments)

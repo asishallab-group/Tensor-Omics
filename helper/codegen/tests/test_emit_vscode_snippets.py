@@ -21,6 +21,7 @@ from codegen.frontend.ford_frontend import FordFrontend
 from codegen.ir.errors import ErrorCatalogue
 from codegen.ir.roles import analyse_project
 from codegen.ir.validate import validate_project
+from codegen.synthesize import synthesize_wrappers
 from conftest import REPO_ROOT
 
 #: `${1:name}` or `${1|a,b|}` -- a tabstop, with its default text or its choices
@@ -29,14 +30,21 @@ _TABSTOP = re.compile(r"\$\{(\d+)(?::([^}]*)|\|([^}]*)\|)?\}")
 
 @pytest.fixture(scope="module")
 def built():
+    """The real `src`, taken through the same stages as `generate.py`.
+
+    Synthesis included: the kernels are where most of the exported surface comes from, so a
+    fixture that skipped it would see only the handful of hand-written exports and quietly
+    stop covering whole shapes -- a mode argument among them.
+    """
     bag = DiagnosticBag()
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src")), bag).parse()
-    analyse_project(parsed.project, bag)
-    validate_project(parsed.project, bag)
-    binding = build_project(parsed.project, bag)
+    project = synthesize_wrappers(parsed.project, diagnostics=bag).project
+    analyse_project(project, bag)
+    validate_project(project, bag)
+    binding = build_project(project, bag)
     assert bag.errors == (), bag.render()
     catalogue = ErrorCatalogue.from_module(
-        parsed.project.module("tox_errors"), bag, parsed.project.constant_values()
+        project.module("tox_errors"), bag, project.constant_values()
     )
     return binding, catalogue
 

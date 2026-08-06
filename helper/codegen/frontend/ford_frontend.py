@@ -143,6 +143,12 @@ class FordFrontend:
             path.name for path in generated_wrapper_paths(self.paths, self.conventions)
         ]
 
+        # Ford's default drops a procedure's own variables, which is right for published
+        # documentation and wrong here: a local declared `allocatable` is how the generator
+        # sees that a procedure allocates (`validate._check_kernel_allocates`), and it never
+        # reads a body. Nothing is published from this parse, so keeping them costs a list.
+        settings.proc_internals = True
+
         # fpm.toml configures `pcpp -D__GFORTRAN__ -I.`, whose include path is relative
         # to the working directory. Run from anywhere else, `#include <src/macros.h>`
         # fails, every DM_ directive silently vanishes with it, and the wrappers come out
@@ -246,6 +252,25 @@ class FordFrontend:
             meta=self._meta(ford_procedure),
             location=location,
             conventions=self.conventions,
+            allocatable_locals=self._allocatable_locals(ford_procedure),
+        )
+
+    @staticmethod
+    def _allocatable_locals(ford_procedure) -> tuple[str, ...]:
+        """The local variables declared `allocatable`.
+
+        Ford splits a procedure's declarations into `args` and `variables` once the project
+        is correlated, so what is left here is local. Only the `allocatable` attribute is
+        collected: `pointer` locals are how a kernel aliases a buffer it was handed, which
+        allocates nothing and stays allowed.
+        """
+        return tuple(
+            variable.name
+            for variable in getattr(ford_procedure, "variables", ()) or ()
+            if "allocatable" in {
+                attribute.strip().lower()
+                for attribute in (getattr(variable, "attribs", ()) or ())
+            }
         )
 
     def _argument(self, variable, path: Path, procedure: str, is_result: bool = False) -> Argument:

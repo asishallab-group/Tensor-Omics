@@ -325,6 +325,18 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - an **optional output** — no binding can honour it; use an optional input flag plus a `tmp_`
   work array
 
+A kernel module is checked separately, because its procedures are read rather than exported and
+so are reached by none of the above:
+
+- an **`M_EXPORT_C` on a kernel** — its wrapper is the entry point, and the export publishes an
+  unvalidated twin beside it. Support routines in the same module (the `DM_OUTPUT_FROM` recommend
+  routines) have no wrapper and stay exported
+- a kernel named **`<x>_alloc_kernel`** — `_alloc` is the generator's suffix, and such a kernel
+  generates an allocating wrapper that allocates nothing
+- an **`allocatable` local** in any procedure of the module, kernels and helpers alike — the
+  generated `_alloc` owns the memory. Seen through the declaration, since no body is ever read;
+  a `pointer` local aliases and is fine
+
 ---
 
 ## Edge cases handled

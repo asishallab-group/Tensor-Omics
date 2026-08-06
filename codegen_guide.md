@@ -265,6 +265,9 @@ with your `summary:` as the docstring, your argument docs as the parameter docs,
 | An author tag (`AUTHOR_*` from [`authors.h`](authors.h)) | attribution, rendered into the Ford docs |
 | A `!!` doc on **every** argument | inherited by the C wrapper and by both language layers |
 | **No `ierr` for validation** | validation is the wrapper's job; see §5.14 for the one case where a kernel keeps an `ierr` |
+| **No `M_EXPORT_C` on the kernel** | the generated wrapper is what the bindings call; exporting the kernel beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of §5.9 — *are* exported: they have no wrapper |
+| **No `_alloc` in the kernel's name** | `_alloc` is the generator's suffix. Name the kernel for what it computes; whether an allocating wrapper appears is decided by its `tmp_` arguments (§5.7) |
+| **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `_alloc` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: a kernel that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
 
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
@@ -465,6 +468,14 @@ recommend-sized buffers generates only `foo`.
 
 > A `tmp_` argument that is `intent(in)` is an error. A work array is an output or an in-out;
 > nothing else makes sense.
+
+This is the *only* way a kernel module gets scratch space: an `allocatable` local anywhere in it
+is refused (§4). A buffer whose size is not an expression over the other arguments is still a
+`tmp_` argument — `DM_OUTPUT_FROM(..., AUTO)` (§5.9) names the routine that sizes it. Where even
+that routine cannot be called ahead of time because the size depends on something only the kernel
+discovers, size the buffer at the **upper bound** and slice it: `normalize_by_std_dev_kernel`
+takes its LOESS workspace for all `n_genes` and hands the fit `tmp_loess_x(1:n_valid)`, because
+dropping the zero-variance genes only ever makes the fit smaller.
 
 ### 5.8 A permutation
 
@@ -933,6 +944,9 @@ source and carries a note saying what to write instead.
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
+| an `M_EXPORT_C` on a **kernel** | its wrapper is the entry point; the export publishes an unvalidated twin beside it (§4) |
+| a kernel named `<something>_alloc_kernel` | `_alloc` is the generator's suffix, and such a kernel generates an allocating wrapper that allocates nothing (§4) |
+| an `allocatable` local anywhere in a **kernel module** | the generated `_alloc` owns the memory, not the kernel (§4, §5.7) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:

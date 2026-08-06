@@ -34,8 +34,101 @@ def validate_module(module: Module, diagnostics: DiagnosticBag,
                     conventions: Conventions = CONVENTIONS) -> None:
     if not module.doc:
         diagnostics.warn("module has no documentation", entity=module)
+    if module.name.lower().endswith(conventions.kernel_suffix):
+        validate_kernel_module(module, diagnostics, conventions)
     for procedure in module.exported_procedures:
         validate_procedure(procedure, diagnostics, conventions)
+
+
+def validate_kernel_module(module: Module, diagnostics: DiagnosticBag,
+                           conventions: Conventions = CONVENTIONS) -> None:
+    """Rules a hand-written kernel module must satisfy.
+
+    These hold for the *unexported* procedures the rules above skip, because a kernel is
+    read for what it makes the generator write rather than wrapped itself. They are what
+    keeps the kernel tree a tree of kernels: every entry point published through a
+    generated wrapper, every allocation owned by the generated `_alloc`.
+    """
+    for procedure in module.procedures:
+        _check_kernel_allocates(procedure, diagnostics)
+        if not procedure.name.lower().endswith(conventions.kernel_suffix):
+            continue  # a recommend routine or a private helper, not a kernel
+        _check_kernel_is_not_exported(procedure, diagnostics, conventions)
+        _check_kernel_is_not_named_alloc(procedure, diagnostics, conventions)
+
+
+def _check_kernel_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> None:
+    """A kernel module allocates nothing: the generated `_alloc` wrapper owns the memory.
+
+    A kernel that allocates for itself hides the allocation from the caller who is meant to
+    be able to avoid it -- the expert tier exists precisely so a caller can hand in reused
+    buffers -- and it hides `ERR_ALLOC_FAIL` behind a wrapper whose name promises no
+    allocation. The rule covers every procedure in the module, not only the kernels: a
+    kernel that allocates nothing itself but calls a helper that does is no better off.
+
+    What to do instead: declare the buffer as a `tmp_` dummy. It disappears from the
+    allocating wrapper's signature and is allocated there, which is the whole convention.
+    Where its size is not an expression over the other arguments, `DM_OUTPUT_FROM(..., AUTO)`
+    names the routine that computes it.
+    """
+    if not procedure.allocatable_locals:
+        return
+    names = ", ".join(f"'{name}'" for name in procedure.allocatable_locals)
+    diagnostics.error(
+        f"'{procedure.name}' allocates: {names}",
+        entity=procedure,
+        note=(
+            "a kernel module owns no memory -- pass the buffer as a 'tmp_' dummy and the "
+            "generated '_alloc' wrapper allocates it; size it with "
+            "'DM_OUTPUT_FROM(..., AUTO)' where no expression over the arguments will do"
+        ),
+    )
+
+
+def _check_kernel_is_not_exported(procedure: Procedure, diagnostics: DiagnosticBag,
+                                  conventions: Conventions) -> None:
+    """A kernel is reached through its wrapper, never directly.
+
+    Exporting it publishes a second entry point that skips every check the wrapper exists
+    to make, under a name (`foo_kernel`) that a binding caller cannot tell apart from the
+    validated `foo` beside it. Support procedures in the same module -- the recommend
+    routines a `DM_OUTPUT_FROM` producer names -- are exported as usual; they are not
+    kernels and have no wrapper.
+    """
+    if not procedure.is_exported:
+        return
+    diagnostics.error(
+        f"kernel '{procedure.name}' is exported",
+        entity=procedure,
+        note=(
+            f"drop the '{conventions.export_marker}': the generated wrapper is what the "
+            "bindings call, and exporting the kernel beside it publishes an unvalidated "
+            "twin of the same procedure"
+        ),
+    )
+
+
+def _check_kernel_is_not_named_alloc(procedure: Procedure, diagnostics: DiagnosticBag,
+                                     conventions: Conventions) -> None:
+    """`_alloc` is the generator's suffix, so a kernel may not claim it.
+
+    A `foo_alloc_kernel` generates `foo_alloc` as its *validating* wrapper -- a procedure
+    that allocates nothing wearing the name of the one that does, with no expert tier
+    behind it. Name the kernel for what it computes and let its `tmp_` arguments decide
+    whether an allocating wrapper is generated at all.
+    """
+    base = procedure.name.lower()[: -len(conventions.kernel_suffix)]
+    if not base.endswith(conventions.alloc_suffix):
+        return
+    diagnostics.error(
+        f"kernel '{procedure.name}' is named for the allocating wrapper",
+        entity=procedure,
+        note=(
+            f"'{conventions.alloc_suffix}' is the generator's suffix: name the kernel "
+            "for what it computes, and the allocating wrapper is generated from its "
+            f"'{conventions.temporary_prefix}' arguments"
+        ),
+    )
 
 
 def validate_procedure(procedure: Procedure, diagnostics: DiagnosticBag,
