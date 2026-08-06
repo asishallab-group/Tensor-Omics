@@ -175,3 +175,46 @@ def isolated_repo(tmp_path):
     for name in ("fpm.toml", "src", "helper"):
         (tmp_path / name).symlink_to(REPO_ROOT / name)
     return tmp_path
+
+
+class TestAParseThatFailed:
+    """A source the frontend could not read stops the run, rather than half-building an IR.
+
+    An argument whose type has no mapping is left with no type at all. Carrying that into the
+    semantic pass raised an AttributeError over the top of the diagnostic the author was
+    about to read -- a traceback instead of a report, for an ordinary authoring mistake.
+    """
+
+    def source(self, tmp_path):
+        src = tmp_path / "src"
+        src.mkdir()
+        (src / "fx_untyped.F90").write_text(
+            "#include <src/macros.h>\n"
+            "!> summary: a module\n"
+            "module fx_untyped\n"
+            "    use, intrinsic :: iso_fortran_env, only: int32\n"
+            "    M_IMPLICIT_NONE\n"
+            "contains\n"
+            "    !> M_EXPORT_C\n"
+            "    !| summary: p\n"
+            "    !| author: A\n"
+            "    subroutine fx_p(factor, ierr)\n"
+            "        double precision, intent(in) :: factor\n"
+            "            !! a type the generator has no C mapping for\n"
+            "        integer(int32), intent(out) :: ierr\n"
+            "            !! Error code\n"
+            "    end subroutine fx_p\n"
+            "end module fx_untyped\n"
+        )
+        return src
+
+    def test_it_reports_instead_of_raising(self, tmp_path):
+        result = generate(Paths(root=REPO_ROOT, src_dir=self.source(tmp_path)))
+
+        assert not result.ok
+        assert any("unsupported type" in d.message for d in result.diagnostics.errors)
+
+    def test_nothing_is_generated_from_it(self, tmp_path):
+        result = generate(Paths(root=REPO_ROOT, src_dir=self.source(tmp_path)))
+
+        assert result.files == []

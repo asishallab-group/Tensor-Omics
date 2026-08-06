@@ -429,8 +429,37 @@ def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
         return
 
     _check_prologue_reports_handled(kernel, prologue, diagnostics, conventions)
+    _check_prologue_runs_somewhere(kernel, prologue, diagnostics, conventions)
     _check_prologue_arguments_resolve(kernel, prologue, diagnostics, conventions)
     _check_prologue_outputs_are_not_read_first(kernel, prologue, diagnostics, conventions)
+
+
+def _check_prologue_runs_somewhere(kernel: Procedure, prologue: Procedure,
+                                   diagnostics: DiagnosticBag,
+                                   conventions: Conventions) -> None:
+    """A prologue scoped to a wrapper the kernel does not generate never runs.
+
+    An allocating wrapper exists only where the kernel has something to take over -- a work
+    array, a permutation, a recommend-sized value. Scope a prologue to `ALLOC` on a kernel
+    with none of those and it is attached to a procedure that is never generated: no call is
+    emitted anywhere, and nothing said so.
+    """
+    from ..synthesize import taken_over_arguments
+
+    directive = kernel.directives.prologue
+    if directive.runs_in(False):
+        return  # it runs in the validating wrapper, which every kernel has
+    if taken_over_arguments(kernel.arguments, conventions):
+        return
+    diagnostics.error(
+        f"prologue '{prologue.name}' is scoped to the allocating wrapper, which "
+        f"'{kernel.name}' does not generate",
+        entity=kernel,
+        note=(
+            f"an allocating wrapper appears only where the kernel has work arrays to take "
+            f"over, and this one has none -- so the prologue would never be called"
+        ),
+    )
 
 
 def _check_prologue_reports_handled(kernel: Procedure, prologue: Procedure,
@@ -483,32 +512,53 @@ def _check_prologue_arguments_resolve(kernel: Procedure, prologue: Procedure,
     """
     supplied = {argument.name.lower() for argument in kernel.arguments}
     supplied |= {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    supplied -= _dropped_by_the_mode_split(kernel)
     for dummy in prologue.arguments:
         if dummy.name.lower() in supplied:
             continue
         diagnostics.error(
-            f"prologue argument '{dummy.name}' names nothing in '{kernel.name}'",
+            f"prologue argument '{dummy.name}' names nothing every wrapper of "
+            f"'{kernel.name}' has",
             dummy,
             note=(
-                f"a prologue's dummies are supplied by name from the kernel's arguments; "
-                f"rename this one to whatever '{kernel.name}' calls the same thing"
+                f"a prologue's dummies are supplied by name from the wrapper's arguments; "
+                f"rename this one to whatever '{kernel.name}' calls the same thing, or -- "
+                f"if it is scoped to one mode -- take something every mode has"
             ),
         )
 
-    # A mode-scoped argument is present in one mode's wrapper and absent from the others,
-    # while the prologue is declared once and runs in all of them.
-    for dummy in prologue.arguments:
-        argument = kernel.argument(dummy.name)
-        if argument is not None and argument.directives.required_if_mode is not None:
-            diagnostics.error(
-                f"prologue argument '{dummy.name}' is scoped to a mode",
-                argument,
-                note=(
-                    "the kernel splits into one wrapper per mode, and this argument is "
-                    "absent from all but one of them -- so the prologue could not be "
-                    "called there"
-                ),
-            )
+
+def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:
+    """The kernel's arguments that some generated wrapper will not have.
+
+    A prologue is declared once and runs in every wrapper, so it may only name what every
+    wrapper has. That is all of them unless the kernel splits per mode, where the mode
+    argument is fixed in the call and dropped, and a `DM_REQUIRED_IF_MODE` argument belongs
+    to its own mode and is absent from the rest (`synthesize._mode_kept_arguments`).
+
+    Checking against the kernel alone was wrong in both directions: it accepted the mode
+    argument, which no wrapper has, and rejected every `DM_REQUIRED_IF_MODE` argument, which
+    on an unsplit mode every wrapper does have -- there the directive only says the argument
+    is required at run time, and the wrapper still passes it on.
+    """
+    mode = next(
+        (
+            argument
+            for argument in kernel.arguments
+            if argument.roles is not None
+            and argument.roles.mode is not None
+            and argument.roles.mode.is_split
+        ),
+        None,
+    )
+    if mode is None:
+        return set()
+    dropped = {mode.name.lower()}
+    for argument in kernel.arguments:
+        required = argument.directives.required_if_mode
+        if required is not None and required.mode_arg.lower() == mode.name.lower():
+            dropped.add(argument.name.lower())
+    return dropped
 
 
 def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Procedure,
@@ -521,7 +571,8 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
     while those allocations and the recommend calls run -- and a name resolves the same
     either way, so reading one early compiles and computes rubbish.
     """
-    from ..synthesize import taken_over_arguments  # local: synthesize imports this module
+    # local imports: synthesize imports this module
+    from ..synthesize import is_permutation, is_temporary, taken_over_arguments
 
     if not prologue_runs_late(kernel, prologue, conventions):
         return
@@ -536,6 +587,8 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
         return
 
     taken = taken_over_arguments(kernel.arguments, conventions)
+
+    # `M_ALLOCATE(tmp_x(<extent>))`
     for argument in taken:
         for extent in argument.dimension.extents:
             for identifier in _IDENTIFIER_RE.findall(extent):
@@ -548,10 +601,27 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
                     note=_READ_FIRST_NOTE,
                 )
 
-    for argument in kernel.arguments:
-        plan = argument.roles.computed_from if argument.roles is not None else None
-        if plan is None:
+    # `call sort_array_heapsort(<base>, <base>_perm)` -- the permutation is built from the
+    # data as it stands there, so a prologue that then rewrites the data leaves an order
+    # that describes something else. Nothing crashes; the kernel is handed a wrong answer.
+    for argument in taken:
+        if not is_permutation(argument, conventions) or is_temporary(argument, conventions):
             continue
+        base = argument.name[: -len(conventions.perm_suffix)]
+        if base.lower() not in written:
+            continue
+        diagnostics.error(
+            f"'{argument.name}' is sorted against '{base}' before the prologue rewrites it",
+            argument,
+            note=_READ_FIRST_NOTE,
+        )
+
+    # `call <recommend>(...)` -- its inputs are read where it is called, above the prologue.
+    # The plan is resolved on the generated wrapper rather than here: `analyse` runs on a
+    # kernel without a project, so it can never look a producer up, and a kernel argument's
+    # `computed_from` is always None. Reading it here would have made this half dead code.
+    for argument in _wrapper_arguments_with_plans(kernel, conventions):
+        plan = argument.roles.computed_from
         for supply in plan.inputs:
             if supply.argument is None or supply.argument.lower() not in written:
                 continue
@@ -561,6 +631,29 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
                 argument,
                 note=_READ_FIRST_NOTE,
             )
+
+
+def _wrapper_arguments_with_plans(kernel: Procedure, conventions: Conventions):
+    """The generated validating wrapper's arguments that a producer fills, if it is built.
+
+    `DM_OUTPUT_FROM` is only resolved into an `OutputFromPlan` by the project-wide pass, and
+    that runs on the wrappers, not on the kernels. So the plans live on `foo`, which is
+    reachable from here: the kernel `x_kernel` in module `tox_y_kernel` becomes `x` in
+    `tox_y`. Absent in a unit test that validates a kernel module on its own.
+    """
+    module = kernel.module
+    project = module.project if module is not None else None
+    if project is None:
+        return []
+    suffix = conventions.kernel_suffix
+    foo = project.procedure(module.name[: -len(suffix)], kernel.name[: -len(suffix)])
+    if foo is None:
+        return []
+    return [
+        argument
+        for argument in foo.arguments
+        if argument.roles is not None and argument.roles.computed_from is not None
+    ]
 
 
 def prologue_runs_late(kernel: Procedure, prologue: Procedure,

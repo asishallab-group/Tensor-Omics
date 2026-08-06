@@ -622,7 +622,7 @@ class TestPrologue:
         ))
 
         error = only_error(self.bag)
-        assert "prologue argument 'scratch_room' names nothing in 'crunch_kernel'" == error.message
+        assert error.message.startswith("prologue argument 'scratch_room' names nothing")
         assert "rename this one" in error.note
 
     def test_a_work_array_is_not_a_dummy_the_kernel_does_not_have(self):
@@ -665,6 +665,36 @@ class TestPrologue:
         assert "'tmp_scratch' is sized by 'room', which the prologue only fills afterwards" == error.message
         assert "runs below the allocations" in error.note
 
+    def test_a_late_prologue_may_not_rewrite_what_a_permutation_was_sorted_against(self):
+        # the wrapper heapsorts values_perm against values above the prologue, so a prologue
+        # that then rewrites values leaves an order describing data that no longer exists.
+        # Nothing crashes -- the kernel is simply handed a wrong answer.
+        from codegen.ir.directives import PrologueScope
+
+        self.checked(
+            scope=PrologueScope.ALLOC,
+            guard_arguments=self.guard(
+                b.real("values", Intent.INOUT, "(n)", doc="rewritten here"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            kernel_arguments=[
+                b.real("values", Intent.INOUT, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        error = only_error(self.bag)
+        assert (
+            "'values_perm' is sorted against 'values' before the prologue rewrites it"
+            == error.message
+        )
+
     def test_an_early_prologue_producing_the_same_value_is_accepted(self):
         # without a work array among its dummies the prologue runs above the allocations,
         # so the value is there in time
@@ -688,3 +718,107 @@ class TestPrologue:
         )
 
         assert self.bag.errors == ()
+
+
+class TestPrologueAndTheModeSplit:
+    """A prologue is declared once and runs in every wrapper, so it may only name what
+    every wrapper has -- which is all of the kernel's arguments unless it splits per mode."""
+
+    def checked(self, dummy, bag, split=True):
+        from codegen.ir.directives import Prologue, PrologueScope
+        from codegen.ir.roles import analyse_project
+        from test_synthesize import mode_split_kernel_module
+
+        source = mode_split_kernel_module()
+        if not split:
+            # same kernel, but the table names no procedure per mode, so nothing splits
+            table = source.procedure("detect_patterns_kernel").argument("pattern_mode").doc
+            source = _without_the_procedure_column(source, table)
+        kernel = source.procedure("detect_patterns_kernel")
+        kernel.directives = replace(
+            kernel.directives, prologue=Prologue("guard", "tox_demo_kernel", PrologueScope.BOTH)
+        )
+        source.procedures += (
+            b.procedure(
+                "guard",
+                dummy,
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+                meta=Meta(summary="Guard", author="AUTHOR"),
+            ),
+        )
+        source._adopt(source.procedures)
+        # the real stage order: synthesis analyses each kernel (which is where a mode table
+        # becomes roles.mode), then the project-wide pass, then validation
+        from codegen.synthesize import synthesize_wrappers
+
+        project = synthesize_wrappers(b.project(source), diagnostics=DiagnosticBag()).project
+        analyse_project(project, DiagnosticBag())
+        validate_project(project, bag)
+        return bag
+
+    def test_the_mode_argument_itself_is_rejected(self):
+        # every wrapper fixes the mode in the kernel call and drops it from its signature,
+        # so the prologue call would silently lose it
+        bag = self.checked(
+            b.integer("pattern_mode", Intent.IN, doc="which pattern"), DiagnosticBag()
+        )
+
+        assert any("'pattern_mode' names nothing every wrapper" in m for m in messages(bag)), messages(bag)
+
+    def test_a_mode_scoped_argument_is_rejected_when_the_mode_splits(self):
+        bag = self.checked(
+            b.real("threshold", Intent.IN, doc="dosage threshold"), DiagnosticBag()
+        )
+
+        assert any("'threshold' names nothing every wrapper" in m for m in messages(bag)), messages(bag)
+
+    def test_a_mode_scoped_argument_is_accepted_when_the_mode_does_not_split(self):
+        # without a Procedure column there is one wrapper, which carries the argument as an
+        # ordinary optional -- DM_REQUIRED_IF_MODE then only means "required at run time"
+        bag = self.checked(
+            b.real("threshold", Intent.IN, doc="dosage threshold"),
+            DiagnosticBag(),
+            split=False,
+        )
+
+        assert not any("names nothing every wrapper" in m for m in messages(bag)), messages(bag)
+
+
+def _without_the_procedure_column(source, doc):
+    """The same kernel module with the mode table's Procedure column removed."""
+    from codegen.ir.doc import Doc
+
+    lines = [
+        "Which pattern to detect.",
+        "| Mode | Value |",
+        "|------|-------|",
+        "| dosage effect | [[tox_demo_kernel(module):MODE_DOSAGE(variable)]] |",
+        "| subfunctionalisation | [[tox_demo_kernel(module):MODE_SUBFUNC(variable)]] |",
+    ]
+    source.procedure("detect_patterns_kernel").argument("pattern_mode").doc = Doc.parse(lines)
+    return source
+
+
+class TestPrologueThatCouldNeverRun:
+    def test_an_alloc_prologue_on_a_kernel_with_no_work_arrays_is_rejected(self, bag):
+        from codegen.ir.directives import PrologueScope
+        from test_synthesize import prologue_kernel_module
+
+        source = prologue_kernel_module(PrologueScope.ALLOC)
+        crunch = source.procedure("crunch_kernel")
+        # drop the work array, so no allocating wrapper is generated at all
+        crunch.arguments = tuple(a for a in crunch.arguments if a.name != "tmp_scratch")
+        validate_project(b.project(source), bag)
+
+        error = only_error(bag)
+        assert "scoped to the allocating wrapper, which 'crunch_kernel' does not generate" in error.message
+        assert "would never be called" in error.note
+
+    def test_it_is_accepted_when_the_kernel_does_generate_one(self, bag):
+        from codegen.ir.directives import PrologueScope
+        from test_synthesize import prologue_kernel_module
+
+        validate_project(b.project(prologue_kernel_module(PrologueScope.ALLOC)), bag)
+
+        assert bag.errors == ()

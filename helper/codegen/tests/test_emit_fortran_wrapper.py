@@ -434,12 +434,31 @@ class TestPrologue:
         assert body.index("M_ALLOCATE(tmp_scratch(n))") < body.index("call guard(&")
         assert body.index("call guard(&") < body.index("call crunch_kernel(")
 
+    def call_to(self, body, name):
+        """Just the `call <name>(...)` statement -- the whole body proves nothing.
+
+        Every actual is spelled `x = x`, so an assertion over the whole body is satisfied by
+        the *kernel* call two lines below and holds even when the prologue call is empty.
+        """
+        start = body.index(f"call {name}(")
+        return body[start : body.index(")", body.index("&\n", start))]
+
     def test_it_is_handed_the_work_array_it_asked_for(self):
         from codegen.ir.directives import PrologueScope
 
         body = self.body(self.emitted_with(PrologueScope.ALLOC, scratch=True), "crunch_alloc")
 
-        assert "tmp_scratch = tmp_scratch" in body
+        assert "tmp_scratch = tmp_scratch" in self.call_to(body, "guard")
+
+    def test_an_ordinary_prologue_is_handed_only_what_it_asked_for(self):
+        # the negative control for the assertion above: the plain prologue takes no work
+        # array, so its call must not mention one even though the body around it does
+        from codegen.ir.directives import PrologueScope
+
+        body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")
+
+        assert "tmp_scratch" not in self.call_to(body, "guard")
+        assert "tmp_scratch" in body
 
     def test_the_ordinary_prologue_still_runs_above_the_allocation(self):
         # the placement is decided by what the prologue takes, so one that takes no work
