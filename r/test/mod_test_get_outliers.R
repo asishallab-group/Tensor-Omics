@@ -345,11 +345,11 @@ test_detect_outliers_large_dataset <- function() {
 }
 
 # =====================
-# Tests for compute_family_scaling_expert
+# Tests for compute_family_scaling
 # =====================
 
 # Test 18: Expert version basic test
-test_compute_family_scaling_expert_basic <- function() {
+test_compute_family_scaling_buffers_basic <- function() {
   set.seed(42)  # For reproducibility
 
   # Test data
@@ -380,7 +380,7 @@ test_compute_family_scaling_expert_basic <- function() {
   stack_left_tmp <- integer(n_genes)
   stack_right_tmp <- integer(n_genes)
 
-  result <- compute_family_scaling_expert(n_families, distances, gene_to_fam,
+  result <- compute_family_scaling(n_families, distances, gene_to_fam,
                                   span, degree, mode, n_iters)
 
 
@@ -392,7 +392,7 @@ test_compute_family_scaling_expert_basic <- function() {
 }
 
 # Test 19: Expert version consistency with regular
-test_compute_family_scaling_expert_consistency <- function() {
+test_compute_family_scaling_consistency <- function() {
   set.seed(42)  # For reproducibility
 
   # Test data
@@ -428,7 +428,7 @@ test_compute_family_scaling_expert_consistency <- function() {
   assert_true(length(stack_left_tmp) == n_genes)
   assert_true(length(stack_right_tmp) == n_genes)
 
-  result_expert <- compute_family_scaling_expert(n_families, distances, gene_to_fam,
+  result_expert <- compute_family_scaling(n_families, distances, gene_to_fam,
                                          span, degree, mode, n_iters)
   result_regular <- compute_family_scaling(n_families, distances, gene_to_fam)
 

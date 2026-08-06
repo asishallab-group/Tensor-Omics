@@ -7,7 +7,6 @@
 // the Fortran C-ABI symbols this module calls
 void determine_shared_residual_range_expert_c(const double*, const int*, const int*, double*, const double*, int*);
 void determine_shared_residual_range_c(const double*, const int*, double*, const double*, int*);
-void determine_study_shared_residual_range_expert_c(const double*, const double*, const int*, const int*, const int*, const int*, double*, int*, double*, const double*, int*);
 void determine_study_shared_residual_range_c(const double*, const double*, const int*, const int*, const int*, const int*, double*, const double*, int*);
 void build_residual_histograms_c(const double*, const int*, const int*, const int*, const double*, const int*, int*, double*, int*, const unsigned char*, int*);
 void compute_divergence_per_reference_point_c(const double*, const double*, const int*, const int*, double*, int*);
@@ -60,48 +59,6 @@ SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_
     determine_shared_residual_range_c(
         REAL(abs_residual_pool),
         &pool_size,
-        &shared_residual_range,
-        &residual_range_quantile_v,
-        &ierr
-    );
-
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
-    SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(shared_residual_range));
-    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("shared_residual_range"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
-    Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
-    return _out;
-}
-
-SEXP determine_study_shared_residual_range_expert_call(SEXP neighborhood_residuals_S1, SEXP neighborhood_residuals_S2, SEXP residual_range_quantile) {
-    int nprot = 0;
-    // derived from the inputs, not asked of the caller
-    int n_reps_S1 = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[0];
-    int n_reps_S2 = INTEGER(Rf_getAttrib(neighborhood_residuals_S2, R_DimSymbol))[0];
-    int n_neighbors = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[1];
-    int n_points = INTEGER(Rf_getAttrib(neighborhood_residuals_S1, R_DimSymbol))[2];
-
-    // scalar inputs, pulled from their length-1 vectors
-    double residual_range_quantile_v = Rf_asReal(residual_range_quantile);
-
-    // outputs and work space
-    double* tmp_abs_residual_pool = (double*) R_alloc(((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), sizeof(double));
-    int* tmp_abs_residual_pool_perm = (int*) R_alloc(((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), sizeof(int));
-    double shared_residual_range = 0;
-    int ierr = 0;
-
-    determine_study_shared_residual_range_expert_c(
-        REAL(neighborhood_residuals_S1),
-        REAL(neighborhood_residuals_S2),
-        &n_reps_S1,
-        &n_reps_S2,
-        &n_neighbors,
-        &n_points,
-        tmp_abs_residual_pool,
-        tmp_abs_residual_pool_perm,
         &shared_residual_range,
         &residual_range_quantile_v,
         &ierr

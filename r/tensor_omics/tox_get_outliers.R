@@ -4,66 +4,6 @@
 #'
 #' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param n_families a integer scalar. Total number of gene families
-#' @param distances a numeric vector. Array of Euclidean distances for each gene
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
-#' @param span a numeric scalar. Span parameter for LOESS smoothing
-#'   The default value is `0.7`.
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @param degree a integer scalar. Degree of the LOESS polynomial
-#'   The default value is `2`.
-#' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
-#'   The default value is `1`.
-#' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
-#'   The default value is `3`.
-#' @return a named list with elements:
-#'   \item{dscale}{a numeric vector. Array of scaling factors per family (output)}
-#'   \item{loess_x}{a numeric vector. Reference x-coordinates for LOESS smoothing}
-#'   \item{loess_y}{a numeric vector. Reference y-coordinates for LOESS smoothing}
-#'   \item{indices_used}{a integer vector. Indices of reference points used for smoothing}
-#'   \item{low_sd_cutoff}{a numeric scalar. cutoff used to filter families with low std}
-#'   \item{excluded_low_sd}{a integer vector. Mask to save those families that have low sd}
-#' @export
-compute_family_scaling_expert <- function(n_families, distances, gene_to_fam, span = 0.7, degree = 2L, mode = "robust", n_iters = 3L) {
-    n_families <- .tox_as_integer_scalar(n_families, "n_families")
-    distances <- .tox_as_double_vector(distances, "distances")
-    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
-    span <- .tox_as_double_scalar(span, "span")
-    degree <- .tox_as_integer_scalar(degree, "degree")
-    mode <- .tox_as_mode(mode, "mode", c("plain", "robust"))
-    n_iters <- .tox_as_integer_scalar(n_iters, "n_iters")
-    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = n_families, save_factorization = FALSE)
-    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
-    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
-
-    if (length(gene_to_fam) != length(distances))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
-
-    .result <- .Call("compute_family_scaling_expert_call", n_families, distances, gene_to_fam, int_workspace_size, real_workspace_size, span, degree, mode, n_iters)
-    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "dscale", "loess_x", "loess_y", "indices_used", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "span", "degree", "mode", "n_iters", "low_sd_cutoff", "excluded_low_sd", "tmp_means_aux", "ierr")
-    .sources <- c("distances", "dscale", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "tmp_int_workspace", NA_character_, "tmp_real_workspace", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        dscale = .result$dscale,
-        loess_x = .result$loess_x,
-        loess_y = .result$loess_y,
-        indices_used = .result$indices_used,
-        low_sd_cutoff = .result$low_sd_cutoff,
-        excluded_low_sd = .result$excluded_low_sd
-    )
-}
-
-#' Compute family scaling factors (dscale) to normalize distances
-#'
-#' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
-#'
 #' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -113,44 +53,6 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
         indices_used = .result$indices_used,
         low_sd_cutoff = .result$low_sd_cutoff,
         excluded_low_sd = .result$excluded_low_sd
-    )
-}
-
-#' Compute the hybrid RDI (Relative Distance Index) for each gene
-#'
-#' RDI = Euclidean distance / family scaling factor
-#'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
-#' @param dscale a numeric vector. Array of scaling factors for each family
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @return a named list with elements:
-#'   \item{rdi}{a numeric vector. Output array of RDI values for each gene}
-#'   \item{sorted_rdi}{a numeric vector. Work array for sorting (dimension n_genes)}
-#'   \item{perm}{a integer vector. Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)}
-#' @export
-compute_rdi_expert <- function(distances, gene_to_fam, dscale) {
-    distances <- .tox_as_double_vector(distances, "distances")
-    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
-    dscale <- .tox_as_double_vector(dscale, "dscale")
-    if (length(gene_to_fam) != length(distances))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
-
-    .result <- .Call("compute_rdi_expert_call", distances, gene_to_fam, dscale)
-    .arguments <- c("n_genes", "distances", "gene_to_fam", "dscale", "rdi", "sorted_rdi", "perm", "tmp_stack_left", "tmp_stack_right", "ierr")
-    .sources <- c("distances", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        rdi = .result$rdi,
-        sorted_rdi = .result$sorted_rdi,
-        perm = .result$perm
     )
 }
 
@@ -235,59 +137,6 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
     list(
         is_outlier = .result$is_outlier,
         threshold = .result$threshold,
-        quantile = .result$quantile
-    )
-}
-
-#' Main routine to detect outliers using RDI and LOESS-based scaling
-#'
-#' Orchestrates the full pipeline: per-family scaling via
-#' \code{\link{compute_family_scaling}}, the RDI per gene via
-#' \code{\link{compute_rdi}}, then flags outliers via
-#' \code{\link{identify_outliers}}.
-#'
-#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param n_families a integer scalar. Total number of gene families
-#' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
-#' @param percentile a numeric scalar. Percentile threshold for outlier detection.
-#'   The default value is `95.0`.
-#' @return a named list with elements:
-#'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
-#'   \item{loess_x}{a numeric vector. Reference x-coordinates.}
-#'   \item{loess_y}{a numeric vector. Reference y-coordinates (length n_total).}
-#'   \item{loess_n}{a integer vector. Indices of reference points used for smoothing.}
-#'   \item{quantile}{a numeric vector. Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
-#'     observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
-#'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-#'     upper-tail quantile is used.}
-#' @export
-detect_outliers_expert <- function(n_families, distances, gene_to_fam, percentile = 95.0) {
-    n_families <- .tox_as_integer_scalar(n_families, "n_families")
-    distances <- .tox_as_double_vector(distances, "distances")
-    gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
-    percentile <- .tox_as_double_scalar(percentile, "percentile")
-    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = n_families, save_factorization = FALSE)
-    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
-    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
-
-    if (length(gene_to_fam) != length(distances))
-        .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
-
-    .result <- .Call("detect_outliers_expert_call", n_families, distances, gene_to_fam, int_workspace_size, real_workspace_size, percentile)
-    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "tmp_perm", "tmp_stack_left", "tmp_stack_right", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_diagl", "tmp_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "tmp_fitted_values", "tmp_means_aux", "tmp_dscale", "tmp_excluded_low_sd", "tmp_low_sd_cutoff", "tmp_rdi", "tmp_sorted_rdi", "tmp_threshold", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile")
-    .sources <- c("distances", "tmp_diagl", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "tmp_int_workspace", NA_character_, "tmp_real_workspace", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        is_outlier = .result$is_outlier,
-        loess_x = .result$loess_x,
-        loess_y = .result$loess_y,
-        loess_n = .result$loess_n,
         quantile = .result$quantile
     )
 }

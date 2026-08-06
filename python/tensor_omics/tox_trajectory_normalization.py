@@ -44,24 +44,6 @@ _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENTS = ("trajectory", "trajectory_norm", "n_fa
 #: For a derived argument, the one the caller passed it in
 _NORMALIZE_SINGLE_TRAJECTORY_ARGUMENT_SOURCES = (None, None, "trajectory", "trajectory", None, None,)
 
-_lib.normalize_all_trajectories_expert_c.restype = None
-_lib.normalize_all_trajectories_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENTS = ("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "tmp_series", "tmp_series_norm", "status", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENT_SOURCES = (None, None, "trajectories", "trajectories", "trajectories", None, None, None, None,)
-
 _lib.normalize_all_trajectories_c.restype = None
 _lib.normalize_all_trajectories_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
@@ -209,81 +191,6 @@ def normalize_single_trajectory(
 
     return {
         "trajectory_norm": trajectory_norm,
-        "status": status,
-    }
-
-def normalize_all_trajectories_expert(
-        trajectories,
-):
-    r"""Normalize all trajectories across multiple entities
-
-    Parameters
-    ----------
-    trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
-        Original trajectories
-
-    Returns
-    -------
-    dict
-        with keys:
-
-        trajectories_norm : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F'), read-only
-            Normalized trajectories
-            A result is a value; call `.copy()` to obtain a modifiable array.
-        status : np.ndarray[np.int32] of shape (n_factors, n_samples,), column-major (order='F'), read-only
-            Status code for specific warnings, one per factor per sample
-            A result is a value; call `.copy()` to obtain a modifiable array.
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories`, whose argument names are
-    the ones an error message reports.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        trajectories = np.asfortranarray(trajectories, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
-    if trajectories.ndim != 3:
-        raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-
-    # what the inputs already say, rather than asking for it again
-    n_factors = trajectories.shape[0]
-    n_samples = trajectories.shape[1]
-    n_timepoints = trajectories.shape[2]
-
-    # outputs and work arrays, which the caller never sees
-    trajectories_norm = np.empty((n_factors, n_samples, n_timepoints,), dtype=np.float64, order='F')
-    tmp_series = np.empty((n_timepoints,), dtype=np.float64, order='C')
-    tmp_series_norm = np.empty((n_timepoints,), dtype=np.float64, order='C')
-    status = np.empty((n_factors, n_samples,), dtype=np.int32, order='F')
-    ierr = ctypes.c_int(0)
-
-    _lib.normalize_all_trajectories_expert_c(
-        trajectories,
-        trajectories_norm,
-        ctypes.byref(ctypes.c_int(n_factors)),
-        ctypes.byref(ctypes.c_int(n_samples)),
-        ctypes.byref(ctypes.c_int(n_timepoints)),
-        tmp_series,
-        tmp_series_norm,
-        status,
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENTS, _NORMALIZE_ALL_TRAJECTORIES_EXPERT_ARGUMENT_SOURCES)
-
-    # a result is a value: modify a copy, not this
-    trajectories_norm.flags.writeable = False
-    status.flags.writeable = False
-
-    return {
-        "trajectories_norm": trajectories_norm,
         "status": status,
     }
 

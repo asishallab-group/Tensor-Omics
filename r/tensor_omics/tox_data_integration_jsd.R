@@ -66,41 +66,6 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
 #' Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
 #' as `determine_shared_residual_range` does.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-#'   NaN is permitted for this value.
-#' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-#'   NaN is permitted for this value.
-#' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
-#'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `100.0`.
-#'   The default value is `95.0`.
-#' @return a numeric scalar. Computed residual range (R)
-#' @export
-determine_study_shared_residual_range_expert <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 95.0) {
-    neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
-    neighborhood_residuals_S2 <- .tox_as_double_array(neighborhood_residuals_S2, "neighborhood_residuals_S2", 3L)
-    residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
-    if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])
-        .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[2], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[2])
-    if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])
-        .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[3], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
-
-    .result <- .Call("determine_study_shared_residual_range_expert_call", neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile)
-    .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "tmp_abs_residual_pool", "tmp_abs_residual_pool_perm", "shared_residual_range", "residual_range_quantile", "ierr")
-    .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    .result$shared_residual_range
-}
-
-#' Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
-#'
-#' Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
-#' as `determine_shared_residual_range` does.
-#'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_study_shared_residual_range_alloc}, whose argument names
 #' are the ones an error message reports.
 #'

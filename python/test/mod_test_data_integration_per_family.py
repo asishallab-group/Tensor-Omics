@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from test_helpers import run_all_tests
 from tensor_omics import (
     fjct_compute_jsd,
-    fjct_compute_masked_jsd_expert,
+    fjct_compute_masked_jsd,
     fjct_compute_contribution_scores,
 )
 
@@ -102,7 +102,7 @@ def test_fjct():
     expected_global_jsd = expected_weights[2] * expected_js_divergences[2]
     assert abs(res["global_js_divergence"] - expected_global_jsd) < TOL
 
-    res_expert = fjct_compute_masked_jsd_expert(
+    res_expert = fjct_compute_masked_jsd(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
         mask_S1,
@@ -163,7 +163,7 @@ def test_fjct():
     expected_global_jsd = expected_weights[2] * expected_js_divergences[2]
     assert abs(res["global_js_divergence"] - expected_global_jsd) < TOL
 
-    res_expert = fjct_compute_masked_jsd_expert(
+    res_expert = fjct_compute_masked_jsd(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
         mask_S1,

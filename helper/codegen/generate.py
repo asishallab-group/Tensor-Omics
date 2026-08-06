@@ -9,7 +9,7 @@ over this and the tests can call it directly.
 from __future__ import annotations
 
 import shutil
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from .abi.c_abi import build_project
@@ -105,15 +105,18 @@ def generate(
     if "fortran" in targets:
         files += _fortran_files(project, synthesis, paths, conventions)
     if "c" in targets:
+        # the full binding: the C layer publishes both tiers, so a caller who wants to hand
+        # in their own buffers still can
         files += _c_files(binding, paths)
     if any(target in targets for target in ("python", "r", "snippets")):
         catalogue = _catalogue(project, parsed.arg_pos_factor, diagnostics, conventions)
+        published = _published_to_the_languages(binding, synthesis)
         if "python" in targets:
-            files += _python_files(binding, catalogue, paths, library, synthesis)
+            files += _python_files(published, catalogue, paths, library, synthesis)
         if "r" in targets:
-            files += _r_files(binding, catalogue, paths, synthesis)
+            files += _r_files(published, catalogue, paths, synthesis)
         if "snippets" in targets:
-            files += _snippets_files(binding, catalogue, paths)
+            files += _snippets_files(published, catalogue, paths)
 
     return Result(diagnostics=diagnostics, files=files)
 
@@ -178,6 +181,38 @@ def _c_files(binding: CBinding, paths: Paths) -> list[GeneratedFile]:
         GeneratedFile(out / f"{module.name}.F90", emitter.module(module))
         for module in binding
     ]
+
+
+def _published_to_the_languages(
+    binding: CBinding, synthesis: SynthesisResult
+) -> CBinding:
+    """The binding as Python and R publish it: without the empty expert tiers.
+
+    `foo` reaches those languages as `foo_expert`, a name promising control over what is
+    handed to the kernel. Where `foo_alloc` only validates and allocates, there is no such
+    control to give -- the binding allocates the work arrays for both tiers and computes the
+    `DM_OUTPUT_FROM` sizes for both -- so the two are the same call and one of them lies
+    about it. Dropped here rather than in each emitter, so Python, R, the R `.Call` shims and
+    the snippets cannot disagree about what exists.
+
+    The C layer is built from the unfiltered binding and keeps every tier.
+    """
+    hidden = synthesis.expert_only_in_fortran
+    if not hidden:
+        return binding
+    return CBinding(
+        modules=tuple(
+            replace(
+                module,
+                wrappers=tuple(
+                    wrapper
+                    for wrapper in module
+                    if wrapper.procedure.name.lower() not in hidden
+                ),
+            )
+            for module in binding
+        )
+    )
 
 
 def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,

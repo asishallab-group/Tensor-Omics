@@ -50,31 +50,6 @@ normalize_single_trajectory <- function(trajectory) {
 #'
 #' independently across time for each sample.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param trajectories a numeric array of rank 3. Original trajectories
-#' @return a named list with elements:
-#'   \item{trajectories_norm}{a numeric array of rank 3. Normalized trajectories}
-#'   \item{status}{a integer matrix. Status code for specific warnings, one per factor per sample}
-#' @export
-normalize_all_trajectories_expert <- function(trajectories) {
-    trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
-    .result <- .Call("normalize_all_trajectories_expert_call", trajectories)
-    .arguments <- c("trajectories", "trajectories_norm", "n_factors", "n_samples", "n_timepoints", "tmp_series", "tmp_series_norm", "status", "ierr")
-    .sources <- c(NA_character_, NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        trajectories_norm = .result$trajectories_norm,
-        status = .result$status
-    )
-}
-
-#' Normalize all trajectories across multiple entities
-#'
-#' independently across time for each sample.
-#'
 #' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories_alloc}, whose argument names
 #' are the ones an error message reports.
 #'

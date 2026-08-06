@@ -292,7 +292,7 @@ test_compute_acceleration_from_velocity_trajectory <- function() {
 
 }
 # =====================================================
-# Test: compute_velocity_acceleration_contributions_expert
+# Test: compute_velocity_acceleration_contributions
 # =====================================================
 test_compute_velocity_acceleration_contributions <- function() {
 
@@ -312,7 +312,7 @@ test_compute_velocity_acceleration_contributions <- function() {
   assert_true(all(is.finite(trajectories)))
   # Ensure Fortran order (column-major)
   trajectories <- aperm(trajectories, c(1,2,3))
-  result <- compute_velocity_acceleration_contributions_expert(trajectories, baseline_mode = mode)
+  result <- compute_velocity_acceleration_contributions(trajectories, baseline_mode = mode)
 
   contrib_velocity <- result$contrib_velocity
   velocity_contribution_series <- result$velocity_contribution_series

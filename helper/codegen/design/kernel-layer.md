@@ -32,6 +32,14 @@ The framework splits a procedure into three:
 - `foo_alloc` — allocates the kernel's work arrays, builds and sorts its permutations, calls
   its "recommend" sizing routines, then calls the kernel. **Generated.**
 
+The pair is a **sugar/control** split rather than a fast/slow one: `foo_alloc` derives what `foo`
+lets a caller pass in -- the heapsorted permutation, a prologue's threshold or short-circuit, the
+recommend-computed workspace sizes. That is why a prologue belongs to `foo_alloc` alone (below),
+and why the expert tier is only published to Python and R where `foo_alloc` does one of those
+things: elsewhere those languages allocate the work arrays for both tiers, so `foo_expert` would
+be the same call under a name promising control it cannot give. Fortran and C always get both,
+because there the expert tier really does hand the buffers over.
+
 Both generated wrappers land in `src/generated/tox/tox_X.F90` (`module tox_X`, `use tox_X_kernel`) and
 carry `M_EXPORT_C`, so the ordinary binding pipeline wraps them to C/Python/R with no special
 casing. The clean name — `tox_X`, `loess_fit`, without the `_kernel` suffix — *is* the

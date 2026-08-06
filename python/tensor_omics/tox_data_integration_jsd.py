@@ -44,26 +44,6 @@ _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("abs_residual_pool", "pool_size", 
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", None, None, None,)
 
-_lib.determine_study_shared_residual_range_expert_c.restype = None
-_lib.determine_study_shared_residual_range_expert_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "tmp_abs_residual_pool", "tmp_abs_residual_pool_perm", "shared_residual_range", "residual_range_quantile", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None, None, None,)
-
 _lib.determine_study_shared_residual_range_c.restype = None
 _lib.determine_study_shared_residual_range_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
@@ -266,96 +246,6 @@ def determine_shared_residual_range(
     )
 
     check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
-
-    return shared_residual_range.value
-
-def determine_study_shared_residual_range_expert(
-        neighborhood_residuals_S1,
-        neighborhood_residuals_S2,
-        residual_range_quantile=95.0,
-):
-    r"""Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
-
-    Parameters
-    ----------
-    neighborhood_residuals_S1 : np.ndarray[np.float64] of shape (n_reps_S1, n_neighbors, n_points,), column-major (order='F')
-        Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-        NaN is permitted for this value.
-    neighborhood_residuals_S2 : np.ndarray[np.float64] of shape (n_reps_S2, n_neighbors, n_points,), column-major (order='F')
-        Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-        NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
-        The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
-
-    Returns
-    -------
-    shared_residual_range : float
-        Computed residual range (R)
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range`, whose argument names are
-    the ones an error message reports.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        neighborhood_residuals_S1 = np.asfortranarray(neighborhood_residuals_S1, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S1' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals_S1.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S1' must have 3 dimensions, but has {neighborhood_residuals_S1.ndim}")
-    try:
-        neighborhood_residuals_S2 = np.asfortranarray(neighborhood_residuals_S2, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'neighborhood_residuals_S2' must be an array of np.float64: {error}") from None
-    if neighborhood_residuals_S2.ndim != 3:
-        raise ValueError(f"'neighborhood_residuals_S2' must have 3 dimensions, but has {neighborhood_residuals_S2.ndim}")
-
-    # what the inputs already say, rather than asking for it again
-    n_reps_S1 = neighborhood_residuals_S1.shape[0]
-    n_reps_S2 = neighborhood_residuals_S2.shape[0]
-    n_neighbors = neighborhood_residuals_S1.shape[1]
-    n_points = neighborhood_residuals_S1.shape[2]
-
-    # Fortran cannot check that shared extents agree; this can
-    if neighborhood_residuals_S2.shape[1] != n_neighbors:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[1]} along axis 1, but "
-            f"'neighborhood_residuals_S1' implies n_neighbors == {n_neighbors}"
-        )
-    if neighborhood_residuals_S2.shape[2] != n_points:
-        raise ValueError(f"'neighborhood_residuals_S2' has {neighborhood_residuals_S2.shape[2]} along axis 2, but "
-            f"'neighborhood_residuals_S1' implies n_points == {n_points}"
-        )
-
-    # outputs and work arrays, which the caller never sees
-    tmp_abs_residual_pool = np.empty(((n_reps_S1 + n_reps_S2)*n_neighbors*n_points,), dtype=np.float64, order='C')
-    tmp_abs_residual_pool_perm = np.empty(((n_reps_S1 + n_reps_S2)*n_neighbors*n_points,), dtype=np.int32, order='C')
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
-
-    _lib.determine_study_shared_residual_range_expert_c(
-        neighborhood_residuals_S1,
-        neighborhood_residuals_S2,
-        ctypes.byref(ctypes.c_int(n_reps_S1)),
-        ctypes.byref(ctypes.c_int(n_reps_S2)),
-        ctypes.byref(ctypes.c_int(n_neighbors)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        tmp_abs_residual_pool,
-        tmp_abs_residual_pool_perm,
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile)),
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS, _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES)
 
     return shared_residual_range.value
 

@@ -216,6 +216,11 @@ class WrapperSpec:
     allocating: Procedure | None = None
     #: Set when this is one of a mode-split kernel's per-mode wrappers
     mode_fix: ModeFix | None = None
+    #: Whether the allocating wrapper does anything beyond validating and allocating --
+    #: builds a permutation, or runs a prologue. That is what an expert caller would be
+    #: overriding, and where there is none the two tiers only differ in who allocates,
+    #: which the binding languages do for both (`SynthesisResult.expert_only_in_fortran`).
+    alloc_does_more: bool = False
 
 
 @dataclass(frozen=True)
@@ -225,6 +230,26 @@ class SynthesisResult:
     #: names of the generated modules that only re-export their children (see
     #: `_reexport_modules`); they hold no procedures, so no `WrapperSpec` names them
     reexports: tuple[str, ...] = ()
+
+    @property
+    def expert_only_in_fortran(self) -> set[str]:
+        """The validating wrappers whose expert tier is Fortran-and-C only.
+
+        `foo` is published to Python and R as `foo_expert`, and the name promises control
+        over what reaches the kernel. It can only keep that promise where `foo_alloc` does
+        something an expert caller would want to do differently -- sort a permutation, run a
+        prologue. Where it merely validates and allocates, the binding languages allocate for
+        *both* tiers anyway, so `foo_expert` would be the same call under a name claiming
+        otherwise.
+
+        Fortran and C keep both: there the expert tier really does hand the buffers over, so
+        a caller who wants to reuse them still can.
+        """
+        return {
+            spec.validating.name.lower()
+            for spec in self.specs
+            if spec.allocating is not None and not spec.alloc_does_more
+        }
 
     @property
     def generated_names(self) -> set[str]:
@@ -263,11 +288,12 @@ def synthesize_wrappers(
                 continue  # a recommend routine or private helper, not a kernel
 
             analyse(kernel, diagnostics, conventions)
+            prologue = _prologue_of(kernel, project)
             mode_argument = _split_mode_argument(kernel)
 
             for base, arguments, mode_fix in _variants(kernel, mode_argument, conventions):
                 validating, allocating = _wrappers_for(
-                    base, arguments, kernel, conventions, _prologue_of(kernel, project)
+                    base, arguments, kernel, conventions, prologue
                 )
                 wrappers = [validating] + ([allocating] if allocating is not None else [])
                 by_module.setdefault(generated_name, []).extend(wrappers)
@@ -279,6 +305,7 @@ def synthesize_wrappers(
                         validating=validating,
                         allocating=allocating,
                         mode_fix=mode_fix,
+                        alloc_does_more=_alloc_does_more(arguments, prologue, conventions),
                     )
                 )
 
@@ -360,6 +387,21 @@ def _reexport_modules(
         for name, children in sorted(candidates.items())
         if name in generated
     ]
+
+
+def _alloc_does_more(
+    arguments: Sequence[Argument], prologue, conventions: Conventions
+) -> bool:
+    """Whether the allocating wrapper does anything beyond validating and allocating.
+
+    Two things qualify, and they are what an expert caller would be taking over: a
+    permutation it seeds and heapsorts, which fixes one ordering; and a prologue, which may
+    derive an input or decide the call is degenerate and answer it directly. Sizing a buffer
+    through `DM_OUTPUT_FROM` does not -- that is part of allocating it, and every tier does
+    it. Neither does validating, which both wrappers do.
+    """
+    taken = taken_over_arguments(arguments, conventions, prologue)
+    return prologue is not None or bool(sorted_permutations(taken, prologue, conventions))
 
 
 def _prologue_of(kernel: Procedure, project: Project):

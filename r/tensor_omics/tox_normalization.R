@@ -26,44 +26,6 @@ normalize_unit_length <- function(vector) {
 #'
 #' Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
 #'
-#' Generated from the Fortran procedure \code{tox_normalization::normalization_pipeline}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @param reps_per_tissue a integer vector. Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-#'   e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
-#' @param span a numeric scalar. LOESS span parameter.
-#'   The default value is `0.7`.
-#' @param degree a integer scalar. LOESS degree parameter.
-#'   The default value is `2`.
-#' @param use_quantile a logical scalar. Use quantile normalization.
-#'   The default value is `FALSE`.
-#' @return a numeric matrix. Log-transformed grouped `expr`
-#' @export
-normalization_pipeline_expert <- function(expr, reps_per_tissue, span = 0.7, degree = 2L, use_quantile = FALSE) {
-    expr <- .tox_as_double_matrix(expr, "expr")
-    reps_per_tissue <- .tox_as_integer_vector(reps_per_tissue, "reps_per_tissue")
-    span <- .tox_as_double_scalar(span, "span")
-    degree <- .tox_as_integer_scalar(degree, "degree")
-    use_quantile <- .tox_as_logical(use_quantile, "use_quantile")
-    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = dim(expr)[2], save_factorization = FALSE)
-    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
-    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
-
-    .result <- .Call("normalization_pipeline_expert_call", expr, reps_per_tissue, int_workspace_size, real_workspace_size, span, degree, use_quantile)
-    .arguments <- c("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "tmp_expr_copy", "tmp_loess_y", "tmp_indices_used", "tmp_yhat_global", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "tmp_loess_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "span", "degree", "use_quantile", "ierr")
-    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "log_transformed_expr", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "tmp_int_workspace", NA_character_, "tmp_real_workspace", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    .result$log_transformed_expr
-}
-
-#' Complete normalization pipeline for gene expression data.
-#'
-#' Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
-#'
 #' Generated from the Fortran procedure \code{tox_normalization::normalization_pipeline_alloc}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -92,39 +54,6 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$log_transformed_expr
-}
-
-#' Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
-#'
-#' This procedure applies a global stabilization based on the relationship between
-#' gene-wise mean expression and empirical standard deviation.
-#'
-#' Generated from the Fortran procedure \code{tox_normalization::normalize_by_std_dev}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @param span a numeric scalar. LOESS span parameter.
-#'   The default value is `0.7`.
-#' @param degree a integer scalar. LOESS degree parameter.
-#'   The default value is `2`.
-#' @return a numeric matrix. Normalized `expr`
-#' @export
-normalize_by_std_dev_expert <- function(expr, span = 0.7, degree = 2L) {
-    expr <- .tox_as_double_matrix(expr, "expr")
-    span <- .tox_as_double_scalar(span, "span")
-    degree <- .tox_as_integer_scalar(degree, "degree")
-    .tox_loess_required_workspace_result <- tox_loess_required_workspace(n_dim = 1L, max_neighborhood_size = dim(expr)[2], save_factorization = FALSE)
-    int_workspace_size <- .tox_loess_required_workspace_result$int_workspace_size
-    real_workspace_size <- .tox_loess_required_workspace_result$real_workspace_size
-
-    .result <- .Call("normalize_by_std_dev_expert_call", expr, int_workspace_size, real_workspace_size, span, degree)
-    .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "tmp_loess_x", "tmp_loess_y", "tmp_indices_used", "tmp_yhat_global", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "tmp_loess_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "span", "degree", "ierr")
-    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "tmp_int_workspace", NA_character_, "tmp_real_workspace", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    .result$normalized_expr
 }
 
 #' Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
@@ -176,33 +105,6 @@ root_mean_sq_normalization <- function(expr) {
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$normalized_expr
-}
-
-#' Quantile normalization of a gene expression matrix (F42-compliant).
-#'
-#' Computes average expression per rank across tissues.
-#'
-#' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization}, whose argument names
-#' are the ones an error message reports.
-#'
-#' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
-#' @return a named list with elements:
-#'   \item{normalized_expr}{a numeric matrix. Normalized `expr`}
-#'   \item{rank_means}{a numeric vector. The mean of each rank across tissues, one per gene}
-#' @export
-quantile_normalization_expert <- function(expr) {
-    expr <- .tox_as_double_matrix(expr, "expr")
-    .result <- .Call("quantile_normalization_expert_call", expr)
-    .arguments <- c("n_genes", "n_replicates", "expr", "normalized_expr", "rank_means", "tmp_genes_row", "tmp_perm", "ierr")
-    .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        normalized_expr = .result$normalized_expr,
-        rank_means = .result$rank_means
-    )
 }
 
 #' Quantile normalization of a gene expression matrix (F42-compliant).

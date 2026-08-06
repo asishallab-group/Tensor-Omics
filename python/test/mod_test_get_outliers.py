@@ -12,7 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from tensor_omics import (
     compute_family_scaling,
-    compute_family_scaling_expert,
+    compute_family_scaling,
     compute_rdi,
     identify_outliers as _identify_outliers,
     detect_outliers as _detect_outliers,
@@ -151,7 +151,7 @@ def test_compute_family_scaling_edge_cases():
     assert all(np.isfinite(result['dscale']))
 
 
-def test_tox_compute_family_scaling_expert():
+def test_tox_compute_family_scaling_buffers():
     """Test expert version with user-provided work arrays"""
 
     # Test data
@@ -188,7 +188,7 @@ def test_tox_compute_family_scaling_expert():
         np.full(genes_per_fam, 10)
     ]).astype(np.int32)
 
-    result = compute_family_scaling_expert(
+    result = compute_family_scaling(
         n_families, distances, gene_to_fam, span, degree, mode, n_iters
     )
 
@@ -211,7 +211,7 @@ def test_tox_compute_family_scaling_expert():
     np.testing.assert_allclose(result['loess_y'], result_regular['loess_y'], rtol=1e-10)
 
 
-def test_compute_family_scaling_expert_input_validation():
+def test_compute_family_scaling_input_validation():
     """Test expert version input validation"""
 
     n_families = 6
@@ -241,14 +241,14 @@ def test_compute_family_scaling_expert_input_validation():
 
     # distances and gene_to_fam share n_genes; a mismatch has to be rejected
     assert_error(
-        lambda: compute_family_scaling_expert(
+        lambda: compute_family_scaling(
             n_families, distances[:-1], gene_to_fam, span, degree, mode, n_iters),
         "Expected an error for mismatched distances / gene_to_fam lengths",
     )
 
     # an unknown mode string is not one of the tabulated values
     assert_error(
-        lambda: compute_family_scaling_expert(
+        lambda: compute_family_scaling(
             n_families, distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
         "Expected an error for an invalid mode string", ERR_INVALID_INPUT,
     )

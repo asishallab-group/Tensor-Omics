@@ -6,9 +6,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void detect_neofunctionalization_c(const double*, const int*, const double*, const int*, const int*, const int*, const double*, unsigned char*, int*);
-void detect_dosage_effect_expert_c(const double*, const double*, const int*, const int*, const int*, const int*, int*, const int*, int*, const int*, int*, double*, const double*, const double*, int*);
 void detect_dosage_effect_c(const double*, const double*, const int*, const int*, const int*, const int*, int*, const int*, int*, const int*, const double*, const double*, int*);
-void detect_subfunctionalization_expert_c(const double*, const double*, const int*, const int*, const int*, const int*, int*, const int*, int*, const int*, int*, double*, const double*, const double*, const int*, double*, int*);
 void detect_subfunctionalization_c(const double*, const double*, const int*, const int*, const int*, const int*, int*, const int*, int*, const int*, const double*, const double*, const int*, int*);
 void filter_paralogs_by_pattern_dosage_effect_c(const double*, const double*, const int*, const int*, const int*, int*, const int*, int*);
 void filter_paralogs_by_pattern_subfunctionalization_c(const double*, const double*, const int*, const int*, const int*, int*, const int*, int*);
@@ -51,58 +49,6 @@ SEXP detect_neofunctionalization_call(SEXP ancestors, SEXP genes, SEXP gene_to_f
     return _out;
 }
 
-SEXP detect_dosage_effect_expert_call(SEXP ancestor, SEXP genes, SEXP filtered_paralogs_mask, SEXP max_subset_size, SEXP n_paralog_subsets, SEXP max_angle, SEXP gain_gamma) {
-    int nprot = 0;
-    // derived from the inputs, not asked of the caller
-    int n_genes = INTEGER(Rf_getAttrib(genes, R_DimSymbol))[1];
-    int n_dims = (int) Rf_length(ancestor);
-    int n_mask_chunks = (int) Rf_length(filtered_paralogs_mask);
-
-    // scalar inputs, pulled from their length-1 vectors
-    int max_subset_size_v = Rf_asInteger(max_subset_size);
-    int n_paralog_subsets_v = Rf_asInteger(n_paralog_subsets);
-    double max_angle_v = Rf_asReal(max_angle);
-    double gain_gamma_v = Rf_asReal(gain_gamma);
-
-    // outputs and work space
-    int n_results = 0;
-    SEXP work_arr_paralog_subsets = PROTECT(Rf_allocVector(INTSXP, n_mask_chunks * n_paralog_subsets_v)); nprot++;
-    { SEXP work_arr_paralog_subsets_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(work_arr_paralog_subsets_dim)[0] = n_mask_chunks; INTEGER(work_arr_paralog_subsets_dim)[1] = n_paralog_subsets_v; Rf_setAttrib(work_arr_paralog_subsets, R_DimSymbol, work_arr_paralog_subsets_dim); UNPROTECT(1); }
-    int* tmp_active_mask = (int*) R_alloc(n_mask_chunks, sizeof(int));
-    double* tmp_paralog_vector = (double*) R_alloc(n_dims, sizeof(double));
-    int ierr = 0;
-
-    detect_dosage_effect_expert_c(
-        REAL(ancestor),
-        REAL(genes),
-        &n_genes,
-        &n_dims,
-        INTEGER(filtered_paralogs_mask),
-        &n_mask_chunks,
-        &n_results,
-        &max_subset_size_v,
-        INTEGER(work_arr_paralog_subsets),
-        &n_paralog_subsets_v,
-        tmp_active_mask,
-        tmp_paralog_vector,
-        &max_angle_v,
-        &gain_gamma_v,
-        &ierr
-    );
-
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
-    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_results));
-    SET_VECTOR_ELT(_out, 1, work_arr_paralog_subsets);
-    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("n_results"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("work_arr_paralog_subsets"));
-    SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
-    Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
-    return _out;
-}
-
 SEXP detect_dosage_effect_call(SEXP ancestor, SEXP genes, SEXP filtered_paralogs_mask, SEXP max_subset_size, SEXP n_paralog_subsets, SEXP max_angle, SEXP gain_gamma) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
@@ -135,60 +81,6 @@ SEXP detect_dosage_effect_call(SEXP ancestor, SEXP genes, SEXP filtered_paralogs
         &n_paralog_subsets_v,
         &max_angle_v,
         &gain_gamma_v,
-        &ierr
-    );
-
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 3)); nprot++;
-    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_results));
-    SET_VECTOR_ELT(_out, 1, work_arr_paralog_subsets);
-    SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 3)); nprot++;
-    SET_STRING_ELT(_nms, 0, Rf_mkChar("n_results"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("work_arr_paralog_subsets"));
-    SET_STRING_ELT(_nms, 2, Rf_mkChar("ierr"));
-    Rf_setAttrib(_out, R_NamesSymbol, _nms);
-    UNPROTECT(nprot);
-    return _out;
-}
-
-SEXP detect_subfunctionalization_expert_call(SEXP ancestor, SEXP genes, SEXP filtered_paralogs_mask, SEXP max_subset_size, SEXP n_paralog_subsets, SEXP rdi_threshold, SEXP paralog_norms, SEXP sorted_paralog_norms_perm) {
-    int nprot = 0;
-    // derived from the inputs, not asked of the caller
-    int n_genes = INTEGER(Rf_getAttrib(genes, R_DimSymbol))[1];
-    int n_dims = (int) Rf_length(ancestor);
-    int n_mask_chunks = (int) Rf_length(filtered_paralogs_mask);
-
-    // scalar inputs, pulled from their length-1 vectors
-    int max_subset_size_v = Rf_asInteger(max_subset_size);
-    int n_paralog_subsets_v = Rf_asInteger(n_paralog_subsets);
-    double rdi_threshold_v = Rf_asReal(rdi_threshold);
-
-    // outputs and work space
-    int n_results = 0;
-    SEXP work_arr_paralog_subsets = PROTECT(Rf_allocVector(INTSXP, n_mask_chunks * n_paralog_subsets_v)); nprot++;
-    { SEXP work_arr_paralog_subsets_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(work_arr_paralog_subsets_dim)[0] = n_mask_chunks; INTEGER(work_arr_paralog_subsets_dim)[1] = n_paralog_subsets_v; Rf_setAttrib(work_arr_paralog_subsets, R_DimSymbol, work_arr_paralog_subsets_dim); UNPROTECT(1); }
-    int* tmp_active_mask = (int*) R_alloc(n_mask_chunks, sizeof(int));
-    double* tmp_paralog_vector = (double*) R_alloc(n_dims, sizeof(double));
-    double* tmp_work_array = (double*) R_alloc(n_genes, sizeof(double));
-    int ierr = 0;
-
-    detect_subfunctionalization_expert_c(
-        REAL(ancestor),
-        REAL(genes),
-        &n_genes,
-        &n_dims,
-        INTEGER(filtered_paralogs_mask),
-        &n_mask_chunks,
-        &n_results,
-        &max_subset_size_v,
-        INTEGER(work_arr_paralog_subsets),
-        &n_paralog_subsets_v,
-        tmp_active_mask,
-        tmp_paralog_vector,
-        &rdi_threshold_v,
-        REAL(paralog_norms),
-        INTEGER(sorted_paralog_norms_perm),
-        tmp_work_array,
         &ierr
     );
 

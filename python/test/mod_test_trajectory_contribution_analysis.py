@@ -21,7 +21,7 @@ from tensor_omics import (
     compute_velocity_trajectories,
     compute_acceleration_from_velocity,
     compute_velocity_acceleration_contributions,
-    compute_velocity_acceleration_contributions_expert
+    compute_velocity_acceleration_contributions
 )
 from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_NAN_INF
@@ -146,14 +146,14 @@ def test_tox_compute_velocity_acceleration_contributions():
         f"series_acc mismatch"
 
 
-def test_tox_compute_velocity_acceleration_contributions_expert():
+def test_tox_compute_velocity_acceleration_contributions_alt():
     trajectories = np.array([
         [[1.0, 2.0, 3.0, 4.0],
          [2.0, 4.0, 6.0, 8.0]]
     ], dtype=np.float64)
 
     result_base = compute_velocity_acceleration_contributions(trajectories, "raw")
-    result_expert = compute_velocity_acceleration_contributions_expert(trajectories, "raw")
+    result_expert = compute_velocity_acceleration_contributions(trajectories, "raw")
 
     for key in result_base:
         assert key in result_expert, f"Missing key {key} in expert result"

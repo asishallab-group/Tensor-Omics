@@ -30,6 +30,7 @@ Related reading, once this is not enough:
 
 - [1. The one rule](#1-the-one-rule)
 - [2. Where code lives, and which path you are on](#2-where-code-lives-and-which-path-you-are-on)
+  - [The names, and who each is for](#the-names-and-who-each-is-for)
 
 **Part I — the kernel path** (a numeric procedure of the TOX pipeline)
 
@@ -137,6 +138,29 @@ matters, because calling a raw kernel means calling something with no input vali
 The generated wrapper takes the clean name: `compute_shift_vector_field_kernel` in
 `tox_shift_vectors_kernel` becomes `compute_shift_vector_field` in `tox_shift_vectors`. **That
 clean name is the public API** — in Fortran, C, Python and R alike.
+
+### The names, and who each is for
+
+One kernel becomes up to three entry points. They are not variants of one function; each is
+addressed at a different caller.
+
+| Name | Who it is for | What it does |
+|---|---|---|
+| `foo_kernel` | **nobody** — it is never exported | the implementation. No validation, no `ierr`. Reached only through a wrapper |
+| `foo_alloc` → published as **`foo`** | almost everyone | validates, allocates the work arrays, sizes them, builds and sorts the permutations, runs the prologue, calls the kernel |
+| `foo` → published as **`foo_expert`** | a caller who wants control over what reaches the kernel | validates and calls the kernel. Takes the buffers, the permutation and the derived values *from you* |
+
+The pair is a **sugar/control** split, not a fast/slow one. `foo_alloc` derives what the expert
+tier lets you pass: the heapsorted permutation of §5.8, the threshold or short-circuit a prologue
+computes (§5.13), the workspace sizes of §5.9. Want a different sort order, your own reused
+buffers, or the computation without a degenerate-input policy? That is what the expert tier is.
+
+**The expert tier is not published to Python and R unless it offers something.** Where `foo_alloc`
+only validates and allocates, those languages allocate the work arrays for *both* tiers anyway, so
+`foo_expert` would be the same call under a name claiming otherwise — the generator emits only
+`foo` there. Fortran and C always get both: there the expert tier really does hand the buffers
+over. Today three procedures keep a Python/R expert tier, each because it takes a permutation you
+may supply yourself.
 
 ### Which path is yours
 
