@@ -2,16 +2,18 @@
 
 !> Kernels for normalization routines for tensor omics.
 !| The generator turns the `*_kernel` procedures into the validating wrappers in module
-!| tox_normalization; the `*_alloc_kernel` ones are self-allocating pipelines that get a single
-!| wrapper each. Dimension and (where the original checked it) finiteness validation comes from the
+!| tox_normalization, and into an allocating `*_alloc` wrapper wherever a kernel takes `tmp_`
+!| work arrays. Dimension and (where the original checked it) finiteness validation comes from the
 !| wrappers; the kernels keep only what a per-argument validator cannot express -- the reps/replicate
 !| sum, the min-valid-points gate, and the runtime error paths (division-by-zero, log of a non-positive).
 !| The `*_inplace_helper` compute routines carry no `_kernel` suffix and stay here untouched.
+!| Nothing in this module allocates: every buffer is a `tmp_` argument, so the generated `_alloc`
+!| wrapper owns the memory and an expert caller can hand in buffers it already has.
 module tox_normalization_kernel
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_in_range_real, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
+    use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_in_range_real, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev
-    use tox_loess_kernel, only: loess_degenerate_fit, loess_fit_robust_kernel, tox_loess_required_workspace
+    use tox_loess_kernel, only: loess_degenerate_fit, loess_fit_robust_kernel
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
 #define CM_LOESS_DEGREE_DEFAULT 2_int32
@@ -54,7 +56,12 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| Performs: std dev normalization, quantile normalization, replicate averaging, log2(x+1) transformation.
     !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
-    subroutine normalization_pipeline_alloc_kernel(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile, ierr)
+    subroutine normalization_pipeline_kernel(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, &
+                                             tmp_expr_copy, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
+                                             tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
+                                             tmp_hat_diag, tmp_loess_weights, tmp_eval_points, &
+                                             tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, &
+                                             span, degree, use_quantile, ierr)
 
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -72,6 +79,57 @@ contains
         real(real64), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
 
+        ! The pipeline runs in place, so it works on a copy: `expr` is the caller's.
+        real(real64), dimension(n_replicates, n_genes), intent(out) :: tmp_expr_copy
+            !! Work matrix the pipeline normalizes in place
+        ! The (mean, sd) scatter the LOESS fit is built from. Only the vectors that cannot be
+        ! taken from the output buffer below are passed in; see the aliasing note in the body.
+        real(real64), dimension(n_genes), intent(out), target :: tmp_loess_y
+            !! Work vector for the empirical standard deviations (Y-axis for LOESS)
+        integer(int32), dimension(n_genes), intent(out) :: tmp_indices_used
+            !! Work vector mapping the fitted points back to gene indices
+        real(real64), dimension(n_genes), intent(out), target :: tmp_yhat_global
+            !! Work vector for the fitted standard deviations (LOESS predictions)
+
+        ! LOESS workspace. Sized for `n_genes`, the most points the fit can ever see: the
+        ! genes that carry no variance are dropped from it, never added to it.
+        integer(int32), intent(in) :: int_workspace_size
+            !! Length of integer workspace.
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        integer(int32), dimension(int_workspace_size), intent(out) :: tmp_int_workspace
+            !! Integer workspace array
+        integer(int32), intent(in) :: real_workspace_size
+            !! Length of real workspace.
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        real(real64), dimension(real_workspace_size), intent(out) :: tmp_real_workspace
+            !! Real workspace array
+        real(real64), dimension(n_genes), intent(out) :: tmp_hat_diag
+            !! Diagonal elements of the LOESS hat matrix
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_weights
+            !! Per-point weights handed to the LOESS fit
+        real(real64), dimension(n_genes, 1), intent(out) :: tmp_eval_points
+            !! Points the fitted curve is evaluated at
+        real(real64), dimension(n_genes), intent(out) :: tmp_robust_weights
+            !! Robust bisquare weights of the LOESS fit
+        real(real64), dimension(n_genes), intent(out) :: tmp_combined_weights
+            !! Combined weights of the LOESS fit
+        real(real64), dimension(n_genes), intent(out) :: tmp_residuals
+            !! Residuals of the LOESS fit
+        integer(int32), dimension(n_genes), intent(out) :: tmp_permutation_indices
+            !! Permutation indices of the LOESS fit
+
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! DM_DEFAULT(CM_LOESS_SPAN_DEFAULT)
@@ -87,13 +145,8 @@ contains
         ! Local variables
         logical :: actual_use_quantile
 
-        real(real64), dimension(:), allocatable, target :: tmp_loess_y, tmp_yhat_global
-        real(real64), dimension(:, :), allocatable :: expr_copy
-        integer(int32), dimension(:), allocatable, target :: tmp_indices_used
-
         real(real64), dimension(:, :), pointer :: log_transformed_expr_transposed_view
-        real(real64), dimension(:), pointer :: tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_yhat_global_ptr, tmp_genes_row_ptr, tmp_rank_means_ptr
-        integer(int32), dimension(:), pointer :: tmp_indices_used_ptr, tmp_perm_ptr
+        real(real64), dimension(:), pointer :: tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_yhat_global_ptr
 
         ! Error handling
         call set_ok(ierr)
@@ -107,58 +160,61 @@ contains
         M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
         ! Reuse spare columns of the (n_genes, n_tissues) output buffer as scratch space for the
-        ! per-gene LOESS x/y/yhat vectors (each length n_genes) below, instead of allocating fresh
-        ! (n_genes)-sized temporaries, since those columns are still unwritten at this point and get
-        ! fully overwritten by calc_tiss_avg_helper further down before they are read as output. Only
-        ! the columns that exist (n_tissues >= 2 for column 2, >= 3 for column 3) can be reused this
-        ! way; any remaining scratch vectors are heap-allocated instead.
+        ! per-gene LOESS x/y/yhat vectors (each length n_genes) below, instead of reading the
+        ! passed-in work vectors, since those columns are still unwritten at this point and get
+        ! fully overwritten by calc_tiss_avg_helper further down before they are read as output.
+        ! Only the columns that exist (n_tissues >= 2 for column 2, >= 3 for column 3) can be
+        ! reused this way; the remaining vectors come from the caller. Column 1 always exists, so
+        ! the x vector is never a dummy at all.
         log_transformed_expr_transposed_view(1:n_genes, 1:n_tissues) => log_transformed_expr
         tmp_loess_x_ptr => log_transformed_expr_transposed_view(:, 1)
         select case (n_tissues)
             case (1)
-                M_ALLOCATE(tmp_loess_y(n_genes))
                 tmp_loess_y_ptr => tmp_loess_y
-                M_ALLOCATE(tmp_yhat_global(n_genes))
                 tmp_yhat_global_ptr => tmp_yhat_global
             case (2)
                 tmp_loess_y_ptr => log_transformed_expr_transposed_view(:, 2)
-                M_ALLOCATE(tmp_yhat_global(n_genes))
                 tmp_yhat_global_ptr => tmp_yhat_global
             case (3:)
                 tmp_loess_y_ptr => log_transformed_expr_transposed_view(:, 2)
                 tmp_yhat_global_ptr => log_transformed_expr_transposed_view(:, 3)
         end select
 
-        M_ALLOCATE(tmp_indices_used(n_genes))
-        tmp_indices_used_ptr => tmp_indices_used
-
-        M_ALLOCATE(expr_copy(n_replicates, n_genes))
-        expr_copy = expr
+        tmp_expr_copy = expr
 
         ! Step 1: Normalize per-gene by std dev
-        call normalize_by_std_dev_inplace_helper(n_genes, n_replicates, expr_copy, tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used_ptr, tmp_yhat_global_ptr, span, degree, ierr)
+        call normalize_by_std_dev_inplace_helper(n_genes, n_replicates, tmp_expr_copy, &
+                                    tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used, tmp_yhat_global_ptr, &
+                                    tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
+                                    tmp_hat_diag, tmp_loess_weights, tmp_eval_points, &
+                                    tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, &
+                                    span, degree, ierr)
         if (is_err(ierr)) return
 
-        ! Step 2: Quantile normalization (conditional)
+        ! Step 2: Quantile normalization (conditional). The three LOESS vectors are spent by now,
+        ! so they serve as the rank/row/permutation scratch here.
         if (actual_use_quantile) then
-            tmp_perm_ptr => tmp_indices_used_ptr
-            tmp_genes_row_ptr => tmp_loess_x_ptr
-            tmp_rank_means_ptr => tmp_loess_y_ptr
-            call quantile_normalization_inplace_helper(n_genes, n_replicates, expr_copy, tmp_genes_row_ptr, tmp_rank_means_ptr, tmp_perm_ptr)
+            call quantile_normalization_inplace_helper(n_genes, n_replicates, tmp_expr_copy, &
+                                    tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used)
         end if
 
-        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr_copy, log_transformed_expr)
+        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
 
         ! Step 4: Log2(x+1) transformation
         call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
         if (is_err(ierr)) return
-    end subroutine normalization_pipeline_alloc_kernel
+    end subroutine normalization_pipeline_kernel
 
     !> summary: Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
     !| AUTHOR_VIVIAN_BASS
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
-    subroutine normalize_by_std_dev_alloc_kernel(n_genes, n_replicates, expr, normalized_expr, span, degree, ierr)
+    subroutine normalize_by_std_dev_kernel(n_genes, n_replicates, expr, normalized_expr, &
+                                    tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
+                                    tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
+                                    tmp_hat_diag, tmp_loess_weights, tmp_eval_points, &
+                                    tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, &
+                                    span, degree, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
@@ -169,6 +225,56 @@ contains
             !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
+
+        ! The (mean, sd) scatter the LOESS fit is built from
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_x
+            !! Work vector for the mean values (X-axis for LOESS)
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_y
+            !! Work vector for the empirical standard deviations (Y-axis for LOESS)
+        integer(int32), dimension(n_genes), intent(out) :: tmp_indices_used
+            !! Work vector mapping the fitted points back to gene indices
+        real(real64), dimension(n_genes), intent(out) :: tmp_yhat_global
+            !! Work vector for the fitted standard deviations (LOESS predictions)
+
+        ! LOESS workspace. Sized for `n_genes`, the most points the fit can ever see: the
+        ! genes that carry no variance are dropped from it, never added to it.
+        integer(int32), intent(in) :: int_workspace_size
+            !! Length of integer workspace.
+            !! DM_OUTPUT_FROM(int_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        integer(int32), dimension(int_workspace_size), intent(out) :: tmp_int_workspace
+            !! Integer workspace array
+        integer(int32), intent(in) :: real_workspace_size
+            !! Length of real workspace.
+            !! DM_OUTPUT_FROM(real_workspace_size, tox_loess_required_workspace, tox_loess_kernel, AUTO)
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        real(real64), dimension(real_workspace_size), intent(out) :: tmp_real_workspace
+            !! Real workspace array
+        real(real64), dimension(n_genes), intent(out) :: tmp_hat_diag
+            !! Diagonal elements of the LOESS hat matrix
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_weights
+            !! Per-point weights handed to the LOESS fit
+        real(real64), dimension(n_genes, 1), intent(out) :: tmp_eval_points
+            !! Points the fitted curve is evaluated at
+        real(real64), dimension(n_genes), intent(out) :: tmp_robust_weights
+            !! Robust bisquare weights of the LOESS fit
+        real(real64), dimension(n_genes), intent(out) :: tmp_combined_weights
+            !! Combined weights of the LOESS fit
+        real(real64), dimension(n_genes), intent(out) :: tmp_residuals
+            !! Residuals of the LOESS fit
+        integer(int32), dimension(n_genes), intent(out) :: tmp_permutation_indices
+            !! Permutation indices of the LOESS fit
+
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! DM_DEFAULT(CM_LOESS_SPAN_DEFAULT)
@@ -178,22 +284,16 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        ! Buffers for LOESS fitting (preallocated to avoid internal allocations)
-        real(real64), dimension(:), allocatable :: tmp_loess_x, tmp_loess_y, tmp_yhat_global
-        integer(int32), dimension(:), allocatable :: tmp_indices_used
-
         call set_ok(ierr)
-
-        M_ALLOCATE(tmp_loess_x(n_genes))
-        M_ALLOCATE(tmp_loess_y(n_genes))
-        M_ALLOCATE(tmp_yhat_global(n_genes))
-        M_ALLOCATE(tmp_indices_used(n_genes))
 
         normalized_expr = expr
         call normalize_by_std_dev_inplace_helper(n_genes, n_replicates, normalized_expr, &
                                     tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
+                                    tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
+                                    tmp_hat_diag, tmp_loess_weights, tmp_eval_points, &
+                                    tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, &
                                     span, degree, ierr)
-    end subroutine normalize_by_std_dev_alloc_kernel
+    end subroutine normalize_by_std_dev_kernel
 
     !> AUTHOR_VIVIAN_BASS
     !| Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
@@ -201,6 +301,9 @@ contains
     !| gene-wise mean expression and empirical standard deviation.
     subroutine normalize_by_std_dev_inplace_helper(n_genes, n_replicates, expr, &
                                     tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
+                                    tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
+                                    tmp_hat_diag, tmp_loess_weights, tmp_eval_points, &
+                                    tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, &
                                     span, degree, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -209,7 +312,7 @@ contains
         real(real64), dimension(n_replicates, n_genes), intent(inout) :: expr
             !! Gene Expression matrix
 
-        ! Buffers for LOESS fitting (preallocated to avoid internal allocations)
+        ! Buffers for LOESS fitting (owned by the caller, so this routine allocates nothing)
         real(real64), dimension(n_genes), intent(out) :: tmp_loess_x
             !! Mean values (X-axis for LOESS)
         real(real64), dimension(n_genes), intent(out) :: tmp_loess_y
@@ -218,6 +321,29 @@ contains
             !! Mapping back to gene indices
         real(real64), dimension(n_genes), intent(out) :: tmp_yhat_global
             !! Fitted standard deviation values (LOESS predictions)
+
+        integer(int32), intent(in) :: int_workspace_size
+            !! Length of integer workspace
+        integer(int32), dimension(int_workspace_size), intent(out) :: tmp_int_workspace
+            !! Integer workspace array
+        integer(int32), intent(in) :: real_workspace_size
+            !! Length of real workspace
+        real(real64), dimension(real_workspace_size), intent(out) :: tmp_real_workspace
+            !! Real workspace array
+        real(real64), dimension(n_genes), intent(out) :: tmp_hat_diag
+            !! Diagonal elements of the LOESS hat matrix
+        real(real64), dimension(n_genes), intent(out) :: tmp_loess_weights
+            !! Per-point weights handed to the LOESS fit
+        real(real64), dimension(n_genes, 1), intent(out) :: tmp_eval_points
+            !! Points the fitted curve is evaluated at
+        real(real64), dimension(n_genes), intent(out) :: tmp_robust_weights
+            !! Robust bisquare weights of the LOESS fit
+        real(real64), dimension(n_genes), intent(out) :: tmp_combined_weights
+            !! Combined weights of the LOESS fit
+        real(real64), dimension(n_genes), intent(out) :: tmp_residuals
+            !! Residuals of the LOESS fit
+        integer(int32), dimension(n_genes), intent(out) :: tmp_permutation_indices
+            !! Permutation indices of the LOESS fit
 
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
@@ -232,13 +358,8 @@ contains
         integer(int32) :: i_gene, i_valid, i_tissue, n_valid, gene_idx, actual_degree
         real(real64) :: mean_val, fitted_sd, actual_span
 
-        ! The LOESS fit below is driven at the expert tier, so its workspace lives here
+        ! The LOESS fit below is driven at the expert tier, so its workspace is passed in
         logical :: loess_handled
-        integer(int32) :: int_workspace_size, real_workspace_size
-        integer(int32), allocatable :: tmp_int_workspace(:), tmp_permutation_indices(:)
-        real(real64), allocatable :: tmp_real_workspace(:), tmp_hat_diag(:), tmp_loess_weights(:)
-        real(real64), allocatable :: tmp_robust_weights(:), tmp_combined_weights(:), tmp_residuals(:)
-        real(real64), allocatable :: tmp_eval_points(:, :)
 
         M_DEFAULT_VAL(span, actual_span, CM_LOESS_SPAN_DEFAULT)
         M_DEFAULT_VAL(degree, actual_degree, CM_LOESS_DEGREE_DEFAULT)
@@ -283,28 +404,18 @@ contains
         if (is_err(ierr)) return
 
         if (.not. loess_handled) then
-            call tox_loess_required_workspace(1_int32, n_valid, int_workspace_size, real_workspace_size, .false.)
-
-            M_ALLOCATE(tmp_int_workspace(int_workspace_size))
-            M_ALLOCATE(tmp_real_workspace(real_workspace_size))
-            M_ALLOCATE(tmp_hat_diag(n_valid))
-            M_ALLOCATE(tmp_loess_weights(n_valid))
-            M_ALLOCATE(tmp_eval_points(n_valid, 1))
-            M_ALLOCATE(tmp_robust_weights(n_valid))
-            M_ALLOCATE(tmp_combined_weights(n_valid))
-            M_ALLOCATE(tmp_residuals(n_valid))
-            M_ALLOCATE(tmp_permutation_indices(n_valid))
-
-            tmp_loess_weights = 1.0_real64
-            tmp_eval_points(:, 1) = tmp_loess_x(1:n_valid)
+            tmp_loess_weights(1:n_valid) = 1.0_real64
+            tmp_eval_points(1:n_valid, 1) = tmp_loess_x(1:n_valid)
 
             call loess_fit_robust_kernel(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
-                                         tmp_loess_weights, tmp_eval_points, actual_span, actual_degree, &
+                                         tmp_loess_weights(1:n_valid), tmp_eval_points(1:n_valid, :), &
+                                         actual_span, actual_degree, &
                                          n_valid, .false., .false., CM_LOESS_ROBUST_ITERS, &
                                          tmp_int_workspace, int_workspace_size, &
-                                         tmp_real_workspace, real_workspace_size, tmp_hat_diag, &
-                                         tmp_robust_weights, tmp_combined_weights, tmp_residuals, &
-                                         tmp_permutation_indices, tmp_yhat_global(1:n_valid), ierr)
+                                         tmp_real_workspace, real_workspace_size, tmp_hat_diag(1:n_valid), &
+                                         tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), &
+                                         tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), &
+                                         tmp_yhat_global(1:n_valid), ierr)
             if (is_err(ierr)) return
         end if
 

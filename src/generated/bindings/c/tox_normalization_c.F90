@@ -11,7 +11,9 @@ module tox_normalization_c
     private
 
     public :: normalize_unit_length_c
+    public :: normalization_pipeline_expert_c
     public :: normalization_pipeline_c
+    public :: normalize_by_std_dev_expert_c
     public :: normalize_by_std_dev_c
     public :: root_mean_sq_normalization_c
     public :: quantile_normalization_expert_c
@@ -50,6 +52,167 @@ contains
             ierr = ierr&
         )
     end subroutine normalize_unit_length_c
+
+    !> summary: C-wrapper for [[tox_normalization(module):normalization_pipeline(subroutine)]]
+    !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
+    subroutine normalization_pipeline_expert_c(&
+            n_genes,&
+            n_replicates,&
+            expr,&
+            log_transformed_expr,&
+            reps_per_tissue,&
+            n_tissues,&
+            tmp_expr_copy,&
+            tmp_loess_y,&
+            tmp_indices_used,&
+            tmp_yhat_global,&
+            tmp_int_workspace,&
+            int_workspace_size,&
+            tmp_real_workspace,&
+            real_workspace_size,&
+            tmp_hat_diag,&
+            tmp_loess_weights,&
+            tmp_eval_points,&
+            tmp_robust_weights,&
+            tmp_combined_weights,&
+            tmp_residuals,&
+            tmp_permutation_indices,&
+            span,&
+            degree,&
+            use_quantile,&
+            ierr&
+        ) bind(C, name="normalization_pipeline_expert_c")
+        use tox_normalization, only: normalization_pipeline
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene
+        integer(c_int), intent(in), target :: n_tissues
+            !! Number of tissues
+        integer(c_int), intent(in), target :: int_workspace_size
+            !! Length of integer workspace.
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        integer(c_int), intent(in), target :: real_workspace_size
+            !! Length of real workspace.
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+            !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
+            !! Log-transformed grouped `expr`
+        integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
+            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: tmp_expr_copy
+            !! Work matrix the pipeline normalizes in place
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_y
+            !! Work vector for the empirical standard deviations (Y-axis for LOESS)
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_indices_used
+            !! Work vector mapping the fitted points back to gene indices
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_yhat_global
+            !! Work vector for the fitted standard deviations (LOESS predictions)
+        integer(c_int), dimension(int_workspace_size), intent(out), target :: tmp_int_workspace
+            !! Integer workspace array
+        real(c_double), dimension(real_workspace_size), intent(out), target :: tmp_real_workspace
+            !! Real workspace array
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_hat_diag
+            !! Diagonal elements of the LOESS hat matrix
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_weights
+            !! Per-point weights handed to the LOESS fit
+        real(c_double), dimension(n_genes, 1), intent(out), target :: tmp_eval_points
+            !! Points the fitted curve is evaluated at
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_robust_weights
+            !! Robust bisquare weights of the LOESS fit
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_combined_weights
+            !! Combined weights of the LOESS fit
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_residuals
+            !! Residuals of the LOESS fit
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_permutation_indices
+            !! Permutation indices of the LOESS fit
+        real(c_double), intent(in), target :: span
+            !! LOESS span parameter.
+            !! The default value is `0.7_real64`.
+        integer(c_int), intent(in), target :: degree
+            !! LOESS degree parameter.
+            !! The default value is `2_int32`.
+        logical(c_bool), intent(in), target :: use_quantile
+            !! Use quantile normalization.
+            !! The default value is `.false.`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+        logical :: use_quantile_f
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
+        M_CHECK_NON_NULL(n_tissues)
+        M_CHECK_NON_NULL(int_workspace_size)
+        M_CHECK_NON_NULL(real_workspace_size)
+        M_CHECK_NON_NULL(span)
+        M_CHECK_NON_NULL(degree)
+        M_CHECK_NON_NULL(use_quantile)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(log_transformed_expr, n_tissues * n_genes)
+        M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
+        M_CHECK_ARRAY_NON_NULL(tmp_expr_copy, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_loess_y, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_indices_used, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_yhat_global, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_int_workspace, int_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_real_workspace, real_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_hat_diag, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_loess_weights, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_eval_points, n_genes * 1)
+        M_CHECK_ARRAY_NON_NULL(tmp_robust_weights, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_combined_weights, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_residuals, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n_genes)
+
+        use_quantile_f = use_quantile
+
+        call normalization_pipeline(&
+            n_genes = n_genes,&
+            n_replicates = n_replicates,&
+            expr = expr,&
+            log_transformed_expr = log_transformed_expr,&
+            reps_per_tissue = reps_per_tissue,&
+            n_tissues = n_tissues,&
+            tmp_expr_copy = tmp_expr_copy,&
+            tmp_loess_y = tmp_loess_y,&
+            tmp_indices_used = tmp_indices_used,&
+            tmp_yhat_global = tmp_yhat_global,&
+            tmp_int_workspace = tmp_int_workspace,&
+            int_workspace_size = int_workspace_size,&
+            tmp_real_workspace = tmp_real_workspace,&
+            real_workspace_size = real_workspace_size,&
+            tmp_hat_diag = tmp_hat_diag,&
+            tmp_loess_weights = tmp_loess_weights,&
+            tmp_eval_points = tmp_eval_points,&
+            tmp_robust_weights = tmp_robust_weights,&
+            tmp_combined_weights = tmp_combined_weights,&
+            tmp_residuals = tmp_residuals,&
+            tmp_permutation_indices = tmp_permutation_indices,&
+            span = span,&
+            degree = degree,&
+            use_quantile = use_quantile_f,&
+            ierr = ierr&
+        )
+    end subroutine normalization_pipeline_expert_c
 
     !> summary: C-wrapper for [[tox_normalization(module):normalization_pipeline_alloc(subroutine)]]
     !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
@@ -122,6 +285,148 @@ contains
             ierr = ierr&
         )
     end subroutine normalization_pipeline_c
+
+    !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev(subroutine)]]
+    !| This procedure applies a global stabilization based on the relationship between
+    !| gene-wise mean expression and empirical standard deviation.
+    subroutine normalize_by_std_dev_expert_c(&
+            n_genes,&
+            n_replicates,&
+            expr,&
+            normalized_expr,&
+            tmp_loess_x,&
+            tmp_loess_y,&
+            tmp_indices_used,&
+            tmp_yhat_global,&
+            tmp_int_workspace,&
+            int_workspace_size,&
+            tmp_real_workspace,&
+            real_workspace_size,&
+            tmp_hat_diag,&
+            tmp_loess_weights,&
+            tmp_eval_points,&
+            tmp_robust_weights,&
+            tmp_combined_weights,&
+            tmp_residuals,&
+            tmp_permutation_indices,&
+            span,&
+            degree,&
+            ierr&
+        ) bind(C, name="normalize_by_std_dev_expert_c")
+        use tox_normalization, only: normalize_by_std_dev
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene
+        integer(c_int), intent(in), target :: int_workspace_size
+            !! Length of integer workspace.
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        integer(c_int), intent(in), target :: real_workspace_size
+            !! Length of real workspace.
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !!
+            !! | Producer input        | Supplied by |
+            !! |-----------------------|-------------|
+            !! | n_dim                 | 1_int32     |
+            !! | max_neighborhood_size | n_genes     |
+            !! | save_factorization    | .false.     |
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+            !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+            !! Normalized `expr`
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_x
+            !! Work vector for the mean values (X-axis for LOESS)
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_y
+            !! Work vector for the empirical standard deviations (Y-axis for LOESS)
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_indices_used
+            !! Work vector mapping the fitted points back to gene indices
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_yhat_global
+            !! Work vector for the fitted standard deviations (LOESS predictions)
+        integer(c_int), dimension(int_workspace_size), intent(out), target :: tmp_int_workspace
+            !! Integer workspace array
+        real(c_double), dimension(real_workspace_size), intent(out), target :: tmp_real_workspace
+            !! Real workspace array
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_hat_diag
+            !! Diagonal elements of the LOESS hat matrix
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_weights
+            !! Per-point weights handed to the LOESS fit
+        real(c_double), dimension(n_genes, 1), intent(out), target :: tmp_eval_points
+            !! Points the fitted curve is evaluated at
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_robust_weights
+            !! Robust bisquare weights of the LOESS fit
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_combined_weights
+            !! Combined weights of the LOESS fit
+        real(c_double), dimension(n_genes), intent(out), target :: tmp_residuals
+            !! Residuals of the LOESS fit
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_permutation_indices
+            !! Permutation indices of the LOESS fit
+        real(c_double), intent(in), target :: span
+            !! LOESS span parameter.
+            !! The default value is `0.7_real64`.
+        integer(c_int), intent(in), target :: degree
+            !! LOESS degree parameter.
+            !! The default value is `2_int32`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
+        M_CHECK_NON_NULL(int_workspace_size)
+        M_CHECK_NON_NULL(real_workspace_size)
+        M_CHECK_NON_NULL(span)
+        M_CHECK_NON_NULL(degree)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(normalized_expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_loess_x, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_loess_y, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_indices_used, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_yhat_global, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_int_workspace, int_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_real_workspace, real_workspace_size)
+        M_CHECK_ARRAY_NON_NULL(tmp_hat_diag, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_loess_weights, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_eval_points, n_genes * 1)
+        M_CHECK_ARRAY_NON_NULL(tmp_robust_weights, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_combined_weights, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_residuals, n_genes)
+        M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n_genes)
+
+        call normalize_by_std_dev(&
+            n_genes = n_genes,&
+            n_replicates = n_replicates,&
+            expr = expr,&
+            normalized_expr = normalized_expr,&
+            tmp_loess_x = tmp_loess_x,&
+            tmp_loess_y = tmp_loess_y,&
+            tmp_indices_used = tmp_indices_used,&
+            tmp_yhat_global = tmp_yhat_global,&
+            tmp_int_workspace = tmp_int_workspace,&
+            int_workspace_size = int_workspace_size,&
+            tmp_real_workspace = tmp_real_workspace,&
+            real_workspace_size = real_workspace_size,&
+            tmp_hat_diag = tmp_hat_diag,&
+            tmp_loess_weights = tmp_loess_weights,&
+            tmp_eval_points = tmp_eval_points,&
+            tmp_robust_weights = tmp_robust_weights,&
+            tmp_combined_weights = tmp_combined_weights,&
+            tmp_residuals = tmp_residuals,&
+            tmp_permutation_indices = tmp_permutation_indices,&
+            span = span,&
+            degree = degree,&
+            ierr = ierr&
+        )
+    end subroutine normalize_by_std_dev_expert_c
 
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev_alloc(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between

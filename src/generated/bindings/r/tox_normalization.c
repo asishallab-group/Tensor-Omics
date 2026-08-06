@@ -6,7 +6,9 @@
 
 // the Fortran C-ABI symbols this module calls
 void normalize_unit_length_c(double*, const int*, int*);
+void normalization_pipeline_expert_c(const int*, const int*, const double*, double*, const int*, const int*, double*, double*, int*, double*, int*, const int*, double*, const int*, double*, double*, double*, double*, double*, double*, int*, const double*, const int*, const unsigned char*, int*);
 void normalization_pipeline_c(const int*, const int*, const double*, double*, const int*, const int*, const double*, const int*, const unsigned char*, int*);
+void normalize_by_std_dev_expert_c(const int*, const int*, const double*, double*, double*, double*, int*, double*, int*, const int*, double*, const int*, double*, double*, double*, double*, double*, double*, int*, const double*, const int*, int*);
 void normalize_by_std_dev_c(const int*, const int*, const double*, double*, const double*, const int*, int*);
 void root_mean_sq_normalization_c(const int*, const int*, const double*, double*, int*);
 void quantile_normalization_expert_c(const int*, const int*, const double*, double*, double*, double*, int*, int*);
@@ -37,6 +39,77 @@ SEXP normalize_unit_length_call(SEXP vector) {
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("vector"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP normalization_pipeline_expert_call(SEXP expr, SEXP reps_per_tissue, SEXP int_workspace_size, SEXP real_workspace_size, SEXP span, SEXP degree, SEXP use_quantile) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_genes = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[1];
+    int n_replicates = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
+    int n_tissues = (int) Rf_length(reps_per_tissue);
+
+    // scalar inputs, pulled from their length-1 vectors
+    int int_workspace_size_v = Rf_asInteger(int_workspace_size);
+    int real_workspace_size_v = Rf_asInteger(real_workspace_size);
+    double span_v = Rf_asReal(span);
+    int degree_v = Rf_asInteger(degree);
+    unsigned char use_quantile_v = (Rf_asLogical(use_quantile) == TRUE) ? 1 : 0;
+
+    // outputs and work space
+    SEXP log_transformed_expr = PROTECT(Rf_allocVector(REALSXP, n_tissues * n_genes)); nprot++;
+    { SEXP log_transformed_expr_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(log_transformed_expr_dim)[0] = n_tissues; INTEGER(log_transformed_expr_dim)[1] = n_genes; Rf_setAttrib(log_transformed_expr, R_DimSymbol, log_transformed_expr_dim); UNPROTECT(1); }
+    double* tmp_expr_copy = (double*) R_alloc(n_replicates * n_genes, sizeof(double));
+    double* tmp_loess_y = (double*) R_alloc(n_genes, sizeof(double));
+    int* tmp_indices_used = (int*) R_alloc(n_genes, sizeof(int));
+    double* tmp_yhat_global = (double*) R_alloc(n_genes, sizeof(double));
+    int* tmp_int_workspace = (int*) R_alloc(int_workspace_size_v, sizeof(int));
+    double* tmp_real_workspace = (double*) R_alloc(real_workspace_size_v, sizeof(double));
+    double* tmp_hat_diag = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_loess_weights = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_eval_points = (double*) R_alloc(n_genes * 1, sizeof(double));
+    double* tmp_robust_weights = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_combined_weights = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_residuals = (double*) R_alloc(n_genes, sizeof(double));
+    int* tmp_permutation_indices = (int*) R_alloc(n_genes, sizeof(int));
+    int ierr = 0;
+
+    normalization_pipeline_expert_c(
+        &n_genes,
+        &n_replicates,
+        REAL(expr),
+        REAL(log_transformed_expr),
+        INTEGER(reps_per_tissue),
+        &n_tissues,
+        tmp_expr_copy,
+        tmp_loess_y,
+        tmp_indices_used,
+        tmp_yhat_global,
+        tmp_int_workspace,
+        &int_workspace_size_v,
+        tmp_real_workspace,
+        &real_workspace_size_v,
+        tmp_hat_diag,
+        tmp_loess_weights,
+        tmp_eval_points,
+        tmp_robust_weights,
+        tmp_combined_weights,
+        tmp_residuals,
+        tmp_permutation_indices,
+        &span_v,
+        &degree_v,
+        &use_quantile_v,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, log_transformed_expr);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("log_transformed_expr"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
@@ -78,6 +151,72 @@ SEXP normalization_pipeline_call(SEXP expr, SEXP reps_per_tissue, SEXP span, SEX
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("log_transformed_expr"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
+SEXP normalize_by_std_dev_expert_call(SEXP expr, SEXP int_workspace_size, SEXP real_workspace_size, SEXP span, SEXP degree) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_genes = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[1];
+    int n_replicates = INTEGER(Rf_getAttrib(expr, R_DimSymbol))[0];
+
+    // scalar inputs, pulled from their length-1 vectors
+    int int_workspace_size_v = Rf_asInteger(int_workspace_size);
+    int real_workspace_size_v = Rf_asInteger(real_workspace_size);
+    double span_v = Rf_asReal(span);
+    int degree_v = Rf_asInteger(degree);
+
+    // outputs and work space
+    SEXP normalized_expr = PROTECT(Rf_allocVector(REALSXP, n_replicates * n_genes)); nprot++;
+    { SEXP normalized_expr_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(normalized_expr_dim)[0] = n_replicates; INTEGER(normalized_expr_dim)[1] = n_genes; Rf_setAttrib(normalized_expr, R_DimSymbol, normalized_expr_dim); UNPROTECT(1); }
+    double* tmp_loess_x = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_loess_y = (double*) R_alloc(n_genes, sizeof(double));
+    int* tmp_indices_used = (int*) R_alloc(n_genes, sizeof(int));
+    double* tmp_yhat_global = (double*) R_alloc(n_genes, sizeof(double));
+    int* tmp_int_workspace = (int*) R_alloc(int_workspace_size_v, sizeof(int));
+    double* tmp_real_workspace = (double*) R_alloc(real_workspace_size_v, sizeof(double));
+    double* tmp_hat_diag = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_loess_weights = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_eval_points = (double*) R_alloc(n_genes * 1, sizeof(double));
+    double* tmp_robust_weights = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_combined_weights = (double*) R_alloc(n_genes, sizeof(double));
+    double* tmp_residuals = (double*) R_alloc(n_genes, sizeof(double));
+    int* tmp_permutation_indices = (int*) R_alloc(n_genes, sizeof(int));
+    int ierr = 0;
+
+    normalize_by_std_dev_expert_c(
+        &n_genes,
+        &n_replicates,
+        REAL(expr),
+        REAL(normalized_expr),
+        tmp_loess_x,
+        tmp_loess_y,
+        tmp_indices_used,
+        tmp_yhat_global,
+        tmp_int_workspace,
+        &int_workspace_size_v,
+        tmp_real_workspace,
+        &real_workspace_size_v,
+        tmp_hat_diag,
+        tmp_loess_weights,
+        tmp_eval_points,
+        tmp_robust_weights,
+        tmp_combined_weights,
+        tmp_residuals,
+        tmp_permutation_indices,
+        &span_v,
+        &degree_v,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
+    SET_VECTOR_ELT(_out, 0, normalized_expr);
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("normalized_expr"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);

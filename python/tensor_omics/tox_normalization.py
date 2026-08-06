@@ -27,6 +27,40 @@ _NORMALIZE_UNIT_LENGTH_ARGUMENTS = ("vector", "n_dims", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _NORMALIZE_UNIT_LENGTH_ARGUMENT_SOURCES = (None, "vector", None,)
 
+_lib.normalization_pipeline_expert_c.restype = None
+_lib.normalization_pipeline_expert_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_NORMALIZATION_PIPELINE_EXPERT_ARGUMENTS = ("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "tmp_expr_copy", "tmp_loess_y", "tmp_indices_used", "tmp_yhat_global", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "tmp_loess_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "span", "degree", "use_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZATION_PIPELINE_EXPERT_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "log_transformed_expr", None, None, None, None, None, "tmp_int_workspace", None, "tmp_real_workspace", None, None, None, None, None, None, None, None, None, None, None,)
+
 _lib.normalization_pipeline_c.restype = None
 _lib.normalization_pipeline_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
@@ -45,6 +79,37 @@ _lib.normalization_pipeline_c.argtypes = (
 _NORMALIZATION_PIPELINE_ARGUMENTS = ("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _NORMALIZATION_PIPELINE_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, "log_transformed_expr", None, None, None, None,)
+
+_lib.normalize_by_std_dev_expert_c.restype = None
+_lib.normalize_by_std_dev_expert_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_NORMALIZE_BY_STD_DEV_EXPERT_ARGUMENTS = ("n_genes", "n_replicates", "expr", "normalized_expr", "tmp_loess_x", "tmp_loess_y", "tmp_indices_used", "tmp_yhat_global", "tmp_int_workspace", "int_workspace_size", "tmp_real_workspace", "real_workspace_size", "tmp_hat_diag", "tmp_loess_weights", "tmp_eval_points", "tmp_robust_weights", "tmp_combined_weights", "tmp_residuals", "tmp_permutation_indices", "span", "degree", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_NORMALIZE_BY_STD_DEV_EXPERT_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None, None, None, None, "tmp_int_workspace", None, "tmp_real_workspace", None, None, None, None, None, None, None, None, None, None,)
 
 _lib.normalize_by_std_dev_c.restype = None
 _lib.normalize_by_std_dev_c.argtypes = (
@@ -202,6 +267,128 @@ def normalize_unit_length(
 
     return None
 
+def normalization_pipeline_expert(
+        expr,
+        reps_per_tissue,
+        span=0.7,
+        degree=2,
+        use_quantile=False,
+):
+    r"""Complete normalization pipeline for gene expression data.
+
+    Parameters
+    ----------
+    expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+        Gene Expression matrix
+        NaN is permitted for this value.
+        Infinite values are permitted for this value.
+    reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
+        Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+        e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+    span : float, optional, default 0.7
+        LOESS span parameter.
+        The default value is `0.7`.
+    degree : int, optional, default 2
+        LOESS degree parameter.
+        The default value is `2`.
+    use_quantile : bool, optional, default False
+        Use quantile normalization.
+        The default value is `False`.
+
+    Returns
+    -------
+    log_transformed_expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F'), read-only
+        Log-transformed grouped `expr`
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_normalization::normalization_pipeline`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        expr = np.asfortranarray(expr, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+    if expr.ndim != 2:
+        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+    try:
+        reps_per_tissue = np.ascontiguousarray(reps_per_tissue, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'reps_per_tissue' must be an array of np.int32: {error}") from None
+    if reps_per_tissue.ndim != 1:
+        raise ValueError(f"'reps_per_tissue' must have 1 dimension, but has {reps_per_tissue.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_genes = expr.shape[1]
+    n_replicates = expr.shape[0]
+    n_tissues = reps_per_tissue.shape[0]
+
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    from .tox_loess_kernel import tox_loess_required_workspace
+    _tox_loess_required_workspace_result = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n_genes, save_factorization=False)
+    int_workspace_size = _tox_loess_required_workspace_result["int_workspace_size"]
+    from .tox_loess_kernel import tox_loess_required_workspace
+    real_workspace_size = _tox_loess_required_workspace_result["real_workspace_size"]
+
+    # outputs and work arrays, which the caller never sees
+    log_transformed_expr = np.empty((n_tissues, n_genes,), dtype=np.float64, order='F')
+    tmp_expr_copy = np.empty((n_replicates, n_genes,), dtype=np.float64, order='F')
+    tmp_loess_y = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_indices_used = np.empty((n_genes,), dtype=np.int32, order='C')
+    tmp_yhat_global = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_int_workspace = np.empty((int_workspace_size,), dtype=np.int32, order='C')
+    tmp_real_workspace = np.empty((real_workspace_size,), dtype=np.float64, order='C')
+    tmp_hat_diag = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_loess_weights = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_eval_points = np.empty((n_genes, 1,), dtype=np.float64, order='F')
+    tmp_robust_weights = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_combined_weights = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_residuals = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_permutation_indices = np.empty((n_genes,), dtype=np.int32, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.normalization_pipeline_expert_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_replicates)),
+        expr,
+        log_transformed_expr,
+        reps_per_tissue,
+        ctypes.byref(ctypes.c_int(n_tissues)),
+        tmp_expr_copy,
+        tmp_loess_y,
+        tmp_indices_used,
+        tmp_yhat_global,
+        tmp_int_workspace,
+        ctypes.byref(ctypes.c_int(int_workspace_size)),
+        tmp_real_workspace,
+        ctypes.byref(ctypes.c_int(real_workspace_size)),
+        tmp_hat_diag,
+        tmp_loess_weights,
+        tmp_eval_points,
+        tmp_robust_weights,
+        tmp_combined_weights,
+        tmp_residuals,
+        tmp_permutation_indices,
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        ctypes.byref(ctypes.c_bool(use_quantile)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _NORMALIZATION_PIPELINE_EXPERT_ARGUMENTS, _NORMALIZATION_PIPELINE_EXPERT_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    log_transformed_expr.flags.writeable = False
+
+    return log_transformed_expr
+
 def normalization_pipeline(
         expr,
         reps_per_tissue,
@@ -288,6 +475,110 @@ def normalization_pipeline(
     log_transformed_expr.flags.writeable = False
 
     return log_transformed_expr
+
+def normalize_by_std_dev_expert(
+        expr,
+        span=0.7,
+        degree=2,
+):
+    r"""Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
+
+    Parameters
+    ----------
+    expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
+        Gene Expression matrix
+        NaN is permitted for this value.
+        Infinite values are permitted for this value.
+    span : float, optional, default 0.7
+        LOESS span parameter.
+        The default value is `0.7`.
+    degree : int, optional, default 2
+        LOESS degree parameter.
+        The default value is `2`.
+
+    Returns
+    -------
+    normalized_expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F'), read-only
+        Normalized `expr`
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        expr = np.asfortranarray(expr, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'expr' must be an array of np.float64: {error}") from None
+    if expr.ndim != 2:
+        raise ValueError(f"'expr' must have 2 dimensions, but has {expr.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_genes = expr.shape[1]
+    n_replicates = expr.shape[0]
+
+    # work out what other procedures must supply, per DM_OUTPUT_FROM
+    from .tox_loess_kernel import tox_loess_required_workspace
+    _tox_loess_required_workspace_result = tox_loess_required_workspace(n_dim=1, max_neighborhood_size=n_genes, save_factorization=False)
+    int_workspace_size = _tox_loess_required_workspace_result["int_workspace_size"]
+    from .tox_loess_kernel import tox_loess_required_workspace
+    real_workspace_size = _tox_loess_required_workspace_result["real_workspace_size"]
+
+    # outputs and work arrays, which the caller never sees
+    normalized_expr = np.empty((n_replicates, n_genes,), dtype=np.float64, order='F')
+    tmp_loess_x = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_loess_y = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_indices_used = np.empty((n_genes,), dtype=np.int32, order='C')
+    tmp_yhat_global = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_int_workspace = np.empty((int_workspace_size,), dtype=np.int32, order='C')
+    tmp_real_workspace = np.empty((real_workspace_size,), dtype=np.float64, order='C')
+    tmp_hat_diag = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_loess_weights = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_eval_points = np.empty((n_genes, 1,), dtype=np.float64, order='F')
+    tmp_robust_weights = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_combined_weights = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_residuals = np.empty((n_genes,), dtype=np.float64, order='C')
+    tmp_permutation_indices = np.empty((n_genes,), dtype=np.int32, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.normalize_by_std_dev_expert_c(
+        ctypes.byref(ctypes.c_int(n_genes)),
+        ctypes.byref(ctypes.c_int(n_replicates)),
+        expr,
+        normalized_expr,
+        tmp_loess_x,
+        tmp_loess_y,
+        tmp_indices_used,
+        tmp_yhat_global,
+        tmp_int_workspace,
+        ctypes.byref(ctypes.c_int(int_workspace_size)),
+        tmp_real_workspace,
+        ctypes.byref(ctypes.c_int(real_workspace_size)),
+        tmp_hat_diag,
+        tmp_loess_weights,
+        tmp_eval_points,
+        tmp_robust_weights,
+        tmp_combined_weights,
+        tmp_residuals,
+        tmp_permutation_indices,
+        ctypes.byref(ctypes.c_double(span)),
+        ctypes.byref(ctypes.c_int(degree)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _NORMALIZE_BY_STD_DEV_EXPERT_ARGUMENTS, _NORMALIZE_BY_STD_DEV_EXPERT_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    normalized_expr.flags.writeable = False
+
+    return normalized_expr
 
 def normalize_by_std_dev(
         expr,
