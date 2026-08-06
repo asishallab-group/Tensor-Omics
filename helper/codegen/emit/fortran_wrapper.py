@@ -273,7 +273,8 @@ class FortranWrapperEmitter:
                 continue
             foo = self._sibling(module, alloc)
             for argument in taken_over_arguments(
-                self._kernel_arguments(foo), self.conventions
+                self._kernel_arguments(foo), self.conventions,
+                self._prologue_for(foo, module),
             ):
                 if not is_computed(argument):
                     continue
@@ -293,8 +294,10 @@ class FortranWrapperEmitter:
             if not self._is_allocating(alloc, module):
                 continue
             foo = self._sibling(module, alloc)
-            taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
             prologue = self._prologue_for(foo, module)
+            taken = taken_over_arguments(
+                self._kernel_arguments(foo), self.conventions, prologue
+            )
             if sorted_permutations(taken, prologue, self.conventions):
                 return True
         return False
@@ -344,9 +347,10 @@ class FortranWrapperEmitter:
         self, writer: Writer, alloc: Procedure, module: Module
     ) -> None:
         foo = self._sibling(module, alloc)
-        taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
-
         prologue = self._prologue_for(foo, module)
+        taken = taken_over_arguments(
+            self._kernel_arguments(foo), self.conventions, prologue
+        )
         materialized = self._materialized_producer_inputs(foo, alloc, taken)
         self._declarations(writer, alloc.arguments)
         self._locals(writer, taken)

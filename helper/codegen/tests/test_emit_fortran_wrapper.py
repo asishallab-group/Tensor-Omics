@@ -602,3 +602,78 @@ class TestAPrologueThatBuildsThePermutation:
         body = self.body(text)
         assert "call sort_array_heapsort(values, values_perm)" in body
         assert body.index("call sort_array_heapsort(values, values_perm)") < body.index("call guard(&")
+
+
+class TestAPrologueThatProducesAKernelInput:
+    """Prologue `intent(out)` over kernel `intent(in)`: the value never leaves the wrapper,
+    so the allocating wrapper drops it from its signature and declares it as a local."""
+
+    def emitted_with(self, extra_kernel, extra_guard):
+        from codegen.ir.types import Intent
+
+        from builders import ierr, integer, logical, project, real
+        from test_synthesize import prologue_kernel_module
+
+        guard = (
+            integer("n", Intent.IN, doc="length"),
+            extra_guard,
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            ierr(),
+        )
+        kernel = (
+            integer("n", Intent.IN, doc="length"),
+            extra_kernel,
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+        )
+        return emitted(project(prologue_kernel_module(guard, kernel)))
+
+    def bodies(self, text):
+        alloc = text[text.index("subroutine crunch_alloc(") : text.index("end subroutine crunch_alloc")]
+        foo = text[text.index("subroutine crunch(") : text.index("end subroutine crunch")]
+        return alloc, foo
+
+    def test_a_scalar_becomes_a_plain_local(self):
+        from codegen.ir.types import Intent
+
+        from builders import integer
+
+        alloc, foo = self.bodies(self.emitted_with(
+            integer("room", Intent.IN, doc="read by the kernel"),
+            integer("room", Intent.OUT, doc="written by the prologue"),
+        ))
+
+        assert "integer(int32) :: room" in alloc     # a local, not allocated
+        assert "M_ALLOCATE(room" not in alloc
+        assert "room" not in alloc[: alloc.index(")")]  # gone from the signature
+        # ... but the expert tier still takes it, because it has no prologue
+        assert "intent(in) :: room" in foo
+
+    def test_an_array_becomes_an_allocated_local(self):
+        from codegen.ir.types import Intent
+
+        from builders import integer
+
+        alloc, foo = self.bodies(self.emitted_with(
+            integer("ranking", Intent.IN, "(n)", doc="read by the kernel"),
+            integer("ranking", Intent.OUT, "(n)", doc="built by the prologue"),
+        ))
+
+        assert "integer(int32), dimension(:), allocatable :: ranking" in alloc
+        assert "M_ALLOCATE(ranking(n))" in alloc
+        assert "ranking" not in alloc[: alloc.index(")")]
+        assert "intent(in) :: ranking" in foo
+
+    def test_it_is_allocated_before_the_prologue_that_fills_it(self):
+        from codegen.ir.types import Intent
+
+        from builders import integer
+
+        alloc, _ = self.bodies(self.emitted_with(
+            integer("ranking", Intent.IN, "(n)", doc="read by the kernel"),
+            integer("ranking", Intent.OUT, "(n)", doc="built by the prologue"),
+        ))
+
+        assert alloc.index("M_ALLOCATE(ranking(n))") < alloc.index("call guard(&")
+        assert alloc.index("call guard(&") < alloc.index("call crunch_kernel(")

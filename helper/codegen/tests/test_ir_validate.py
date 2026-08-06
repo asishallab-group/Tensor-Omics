@@ -635,6 +635,62 @@ class TestPrologue:
 
         assert self.bag.errors == ()
 
+    def test_what_the_prologue_writes_and_the_kernel_reads_becomes_a_local(self):
+        # nobody outside the wrapper is involved, so the caller neither supplies nor
+        # receives it -- and both intents already say so
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="written here"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            kernel_arguments=[
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.IN, doc="only read here"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        assert self.bag.errors == ()
+
+    def test_it_is_refused_when_it_also_sizes_something_the_caller_gets(self):
+        # then it cannot be dropped, so it stays an intent(in) dummy -- which Fortran will
+        # not let the wrapper hand to something that writes it
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="written here"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            kernel_arguments=[
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.IN, doc="read here, and sizes result"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                b.real("result", Intent.OUT, "(room)", doc="the answer"),
+            ],
+        )
+
+        error = only_error(self.bag)
+        assert "cannot make a local" in error.message
+        assert "sizes something the caller still" in error.note
+
+    def test_two_alternative_producers_of_one_output_are_accepted(self):
+        # kernel intent(out) means the prologue and the kernel each may produce it: the
+        # prologue's value is what the caller gets on the handled path
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.real("result", Intent.OUT, "(n)", doc="answered here when degenerate"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+        )
+
+        assert self.bag.errors == ()
+
     def test_a_prologue_may_not_produce_what_sizes_a_work_array(self):
         # tmp_scratch is allocated above the prologue, so its extent cannot be something the
         # prologue only fills afterwards -- the name resolves either way and computes rubbish

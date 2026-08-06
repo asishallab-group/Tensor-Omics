@@ -431,6 +431,7 @@ def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
     _check_prologue_reports_handled(kernel, prologue, diagnostics, conventions)
     _check_prologue_runs_somewhere(kernel, prologue, diagnostics, conventions)
     _check_prologue_arguments_resolve(kernel, prologue, diagnostics, conventions)
+    _check_prologue_writes_what_it_may(kernel, prologue, diagnostics, conventions)
     _check_prologue_outputs_are_not_read_first(kernel, prologue, diagnostics, conventions)
 
 
@@ -446,7 +447,7 @@ def _check_prologue_runs_somewhere(kernel: Procedure, prologue: Procedure,
     """
     from ..synthesize import taken_over_arguments
 
-    if taken_over_arguments(kernel.arguments, conventions):
+    if taken_over_arguments(kernel.arguments, conventions, prologue):
         return
     diagnostics.error(
         f"prologue '{prologue.name}' is on a kernel that generates no allocating wrapper",
@@ -559,6 +560,50 @@ def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:
     return dropped
 
 
+def _check_prologue_writes_what_it_may(kernel: Procedure, prologue: Procedure,
+                                       diagnostics: DiagnosticBag,
+                                       conventions: Conventions) -> None:
+    """A prologue writing what the kernel reads makes it a local -- unless it cannot be one.
+
+    Prologue `intent(out)` over kernel `intent(in)` means the value never leaves the wrapper,
+    so it is dropped from the allocating signature and declared as a local
+    (`synthesize.is_prologue_produced`). That fails for the one argument that cannot be
+    dropped: one that also gives an extent of something the caller still passes or receives,
+    which has to stay in the signature or nothing could size what comes back. It is then an
+    `intent(in)` dummy the wrapper would have to hand to something that writes it, which
+    gfortran rejects -- in code the author never wrote.
+
+    The other pairings are meaningful and left alone. Kernel `intent(out)` means the two are
+    alternative producers of one output: the prologue's value is what the caller gets on the
+    `handled` path and the kernel overwrites it otherwise, exactly what `loess_degenerate_fit`
+    did with `fitted_values`. Kernel `intent(inout)` means the caller supplies a value the
+    prologue then refines.
+    """
+    from ..synthesize import taken_over_arguments  # local: synthesize imports this module
+
+    taken = {a.name.lower() for a in taken_over_arguments(kernel.arguments, conventions,
+                                                          prologue)}
+    for dummy in prologue.arguments:
+        if dummy.intent is None or not dummy.intent.is_output:
+            continue
+        argument = kernel.argument(dummy.name)
+        if argument is None or argument.intent is not Intent.IN:
+            continue
+        if argument.name.lower() in taken:
+            continue  # dropped from the signature and made a local, which is the point
+        diagnostics.error(
+            f"prologue writes '{dummy.name}', which '{kernel.name}' reads and the wrapper "
+            f"cannot make a local",
+            argument,
+            note=(
+                "it would become a local, but it also sizes something the caller still "
+                "passes, so it has to stay a dummy -- and Fortran will not hand an "
+                "intent(in) dummy to something that writes it. Size that argument from "
+                "something the caller passes instead"
+            ),
+        )
+
+
 def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Procedure,
                                                diagnostics: DiagnosticBag,
                                                conventions: Conventions) -> None:
@@ -581,7 +626,7 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
     if not written:
         return
 
-    taken = taken_over_arguments(kernel.arguments, conventions)
+    taken = taken_over_arguments(kernel.arguments, conventions, prologue)
 
     # `M_ALLOCATE(tmp_x(<extent>))`
     for argument in taken:

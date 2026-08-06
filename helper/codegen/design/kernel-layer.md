@@ -382,6 +382,27 @@ the expert tier's signature -- the one place a caller is supposed to be able to 
 `synthesize.sorted_permutations` is the single definition; the emitter and `validate` both read
 it, so the sort that is emitted and the sort the read-first check reasons about cannot diverge.
 
+**What the prologue writes and the kernel reads is a wrapper local.** An argument that is
+`intent(out)` on the prologue and `intent(in)` on the kernel involves nobody outside the wrapper,
+so it joins the `tmp_`/perm/recommend drop set: gone from `foo_alloc`'s signature, declared as a
+local there (allocated from the kernel's extents when it is an array), and still a dummy of `foo`,
+where the caller supplies it themselves. The two intents are the whole annotation.
+
+**Rejected -- requiring a `tmp_` name for it.** That was the first answer, and it forces the
+kernel to declare `intent(inout)` for a value it only reads, because `_check_temporary` rejects a
+`tmp_` argument that is `intent(in)`. A naming convention that makes an intent lie is worse than
+no convention: the intents already carry the fact, and deriving from them keeps `tmp_` meaning
+one thing (scratch) instead of two.
+
+The one case that stays an error is an argument that would be dropped but also gives an extent of
+something the caller still passes or receives -- the same brake `_sizes_a_kept_argument` puts on a
+recommend-sized value, for the same reason. It has to stay a dummy, and Fortran will not let the
+wrapper hand an `intent(in)` dummy to something that writes it.
+
+`taken_over_arguments` therefore takes the prologue, and both the signature (built in
+`synthesize`) and the body (written in the emitter) pass it, so the two cannot disagree about what
+the caller passes.
+
 **Rejected -- a rename table for prologue dummies.** A `DM_OUTPUT_FROM` producer needs one
 because it is published and its parameter names cannot move. A prologue is internal to the kernel
 module, so a mismatch is fixed by renaming its dummy, and the diagnostic says so.

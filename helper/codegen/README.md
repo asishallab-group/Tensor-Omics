@@ -206,6 +206,12 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
+- **The drop set of `<p>_alloc`** -- what it prepares rather than asks for -- is
+  `synthesize.taken_over_arguments`: `tmp_` work arrays, `<base>_perm` permutations,
+  `DM_OUTPUT_FROM` values, and anything the prologue writes that the kernel only reads. The
+  signature is shaped from it in `synthesize` and the body written from it in the emitter, so both
+  call it with the same prologue; an argument that also sizes something the caller still sees is
+  held back, or nothing could size what comes back.
 - **A serialized array is made assumed-size and sliced** to `product(<arg>_shape)` in the wrapper,
   which is why the shape argument may not be optional — the wrapper reads it before it may take
   `c_loc` of what it sizes. Python then accepts an array of any rank and flattens it in Fortran

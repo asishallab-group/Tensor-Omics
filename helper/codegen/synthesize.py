@@ -112,8 +112,28 @@ def _sizes_a_kept_argument(
     return False
 
 
+def is_prologue_produced(argument: Argument, prologue=None) -> bool:
+    """Whether the prologue writes this argument and the kernel only reads it.
+
+    Then nobody outside the wrapper is involved: the prologue produces the value, the kernel
+    consumes it, and the caller neither supplies nor receives it. Both intents say so
+    already, so this needs no naming convention on top -- and unlike a `tmp_` name, it lets
+    the kernel keep the honest `intent(in)` for something it only reads.
+
+    `foo` still takes it, because `foo` has no prologue: the expert tier is where a caller
+    supplies the value themselves. Exactly the relation `<base>_perm` and the recommend-sized
+    arguments already have with their two tiers.
+    """
+    if prologue is None or argument.intent is not Intent.IN:
+        return False
+    dummy = prologue.argument(argument.name)
+    return dummy is not None and dummy.intent is Intent.OUT
+
+
 def taken_over_arguments(
-    arguments: Sequence[Argument], conventions: Conventions = CONVENTIONS
+    arguments: Sequence[Argument],
+    conventions: Conventions = CONVENTIONS,
+    prologue=None,
 ) -> list[Argument]:
     """The arguments the allocating wrapper prepares itself, rather than taking from the caller.
 
@@ -121,9 +141,10 @@ def taken_over_arguments(
     wrapper can actually build it, which means the `<base>` it orders is an argument too:
     `values_perm` is seeded and sorted against `values`, but a name that merely ends in `_perm`
     and orders something the kernel never receives is the caller's own data. A recommend-sized
-    value qualifies as well, though only while nothing the caller still sees depends on it: an
-    argument that also gives an extent of a returned array has to stay in the signature, or
-    neither the caller nor the binding could size what comes back.
+    value qualifies as well, and so does one the prologue produces for the kernel to read --
+    both only while nothing the caller still sees depends on them: an argument that also gives
+    an extent of a returned array has to stay in the signature, or neither the caller nor the
+    binding could size what comes back.
     """
     names = {argument.name.lower() for argument in arguments}
     taken = []
@@ -134,8 +155,8 @@ def taken_over_arguments(
             base = argument.name.lower()[: -len(conventions.perm_suffix)]
             if base in names:
                 taken.append(argument)
-        elif is_computed(argument) and not _sizes_a_kept_argument(
-            argument, arguments, conventions
+        elif (is_computed(argument) or is_prologue_produced(argument, prologue)) and (
+            not _sizes_a_kept_argument(argument, arguments, conventions)
         ):
             taken.append(argument)
     return taken
@@ -245,7 +266,9 @@ def synthesize_wrappers(
             mode_argument = _split_mode_argument(kernel)
 
             for base, arguments, mode_fix in _variants(kernel, mode_argument, conventions):
-                validating, allocating = _wrappers_for(base, arguments, kernel, conventions)
+                validating, allocating = _wrappers_for(
+                    base, arguments, kernel, conventions, _prologue_of(kernel, project)
+                )
                 wrappers = [validating] + ([allocating] if allocating is not None else [])
                 by_module.setdefault(generated_name, []).extend(wrappers)
                 sources[generated_name] = module
@@ -337,6 +360,21 @@ def _reexport_modules(
         for name, children in sorted(candidates.items())
         if name in generated
     ]
+
+
+def _prologue_of(kernel: Procedure, project: Project):
+    """The procedure a kernel's `DM_PROLOGUE` names, or None.
+
+    Resolved here as well as in the emitter, because the drop set depends on it and the
+    signature is shaped here while the body is written there -- both call
+    `taken_over_arguments` with it, so the two cannot disagree about what the caller passes.
+    A name that resolves to nothing is `validate`'s to report; here it simply means no
+    prologue, which is what an unannotated kernel gets anyway.
+    """
+    directive = kernel.directives.prologue
+    if directive is None:
+        return None
+    return project.procedure(directive.module, directive.procedure)
 
 
 def _base_name(kernel: Procedure, conventions: Conventions) -> str:
@@ -442,7 +480,8 @@ def _as_required(argument: Argument) -> Argument:
 
 
 def _wrappers_for(
-    base: str, arguments: list[Argument], kernel: Procedure, conventions: Conventions
+    base: str, arguments: list[Argument], kernel: Procedure, conventions: Conventions,
+    prologue=None,
 ) -> tuple[Procedure, Procedure | None]:
     """The validating wrapper, and the allocating one when the exposed arguments need it."""
     foo_arguments = [argument.with_name(argument.name) for argument in arguments]
@@ -451,7 +490,7 @@ def _wrappers_for(
         base + conventions.validating_suffix, foo_arguments, kernel, conventions
     )
 
-    taken = taken_over_arguments(arguments, conventions)
+    taken = taken_over_arguments(arguments, conventions, prologue)
     kept = [a for a in arguments if a not in taken]
     allocating = None
     if len(kept) != len(arguments):

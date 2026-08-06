@@ -669,6 +669,18 @@ pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, ha
         !! `.true.` when the data was degenerate and the outputs already hold the answer
 ```
 
+**What the prologue writes and the kernel only reads never reaches a caller.** An argument that
+is `intent(out)` on the prologue and `intent(in)` on the kernel is dropped from `foo_alloc`'s
+signature and declared as a local there — a scalar as a plain one, an array allocated from the
+kernel's own extents. Both intents already say this, so no `tmp_` name is needed, and the kernel
+keeps the honest `intent(in)` for something it only reads. `foo` still takes it, because `foo` has
+no prologue: the expert tier is where a caller supplies the value themselves.
+
+The other two pairings mean different things and are left alone. Kernel `intent(out)` makes the
+two *alternative producers* of one output — the prologue's value is what the caller gets on the
+`handled` path, the kernel overwrites it otherwise. Kernel `intent(inout)` means the caller
+supplies a value the prologue then refines.
+
 **You get** the prologue called in `foo_alloc` — after the work arrays are prepared, before the
 kernel — and the kernel skipped when it says so:
 
@@ -695,6 +707,9 @@ directive. That is where LOESS's degenerate-input check lives.
 - a dummy naming nothing every wrapper has, including the mode argument or a mode-scoped
   argument of a kernel that splits per mode (§5.11)
 - a prologue on a kernel with no work arrays, which generates no `foo_alloc` for it to run in
+- a value the prologue writes and the kernel reads that *also* sizes something the caller still
+  passes or receives — it cannot become a local then, and Fortran will not hand an `intent(in)`
+  dummy to something that writes it
 - a value the prologue produces that the allocations, the permutation sorts or the recommend
   calls *above* it read — the name resolves either way, so it would compile and compute rubbish.
   (A permutation the prologue itself builds is not sorted above it, so rewriting that one's
