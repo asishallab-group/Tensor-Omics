@@ -94,23 +94,21 @@
 #define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*
 #define DM_OUTPUT_FROM_JUST_INFO It is recommended
 
-! A prologue runs in the generated wrapper before the kernel, and may handle the call
-! itself -- it writes the outputs and reports `handled`, and the kernel is then skipped.
-! It is where work belongs that is not the kernel's: preparing what a caller should not
-! have to prepare, or deciding that an input is too degenerate to compute on. `SCOPE` is
-! EXPERT for the validating wrapper, ALLOC for the allocating one, or BOTH.
-! The prologue's dummies are supplied by name from the kernel's arguments, plus `handled`
-! and `ierr`; a name that matches neither is an error, so rename the prologue's dummy to
-! whatever the kernel calls the same thing. It must declare `logical, intent(out) ::
-! handled` and set it on every path -- the wrapper returns early on it.
-! It runs as early as it can: above the allocating wrapper's work arrays, where it can
-! still refuse a degenerate input and spare the whole setup. A prologue that takes one of
-! those work arrays runs below them instead, and may then not produce anything the
-! allocations or the recommend calls above it read.
-#define DM_PROLOGUE(PROCEDURE, MODULE, SCOPE) DM_PROLOGUE_##SCOPE runs [[MODULE(module):PROCEDURE]] first, which may handle the call and skip this one.
-#define DM_PROLOGUE_EXPERT The validating wrapper
-#define DM_PROLOGUE_ALLOC The allocating wrapper
-#define DM_PROLOGUE_BOTH Every generated wrapper
+! A prologue is the sugar the *allocating* wrapper adds: it runs after the work arrays are
+! prepared and before the kernel, and may handle the call itself -- writing the outputs and
+! reporting `handled`, so the kernel is skipped. It derives what the expert tier lets a
+! caller pass in, exactly as the `<base>_perm` convention seeds and heapsorts a permutation.
+! There is no scope. Work that every wrapper needs is work every *caller of the kernel*
+! needs, and both wrappers call the kernel -- so it belongs at the top of the kernel, where
+! it needs no directive at all. A kernel with no work arrays generates no allocating wrapper,
+! so a prologue on one would never run, and that is an error.
+! The prologue's dummies are supplied by name from the kernel's arguments -- the work arrays
+! included -- plus `handled` and `ierr`; a name that matches neither is an error, so rename
+! the prologue's dummy to whatever the kernel calls the same thing. It must declare
+! `logical, intent(out) :: handled` and set it on every path.
+! It runs below the allocations, so it may not produce anything they, the permutation sorts
+! or the recommend calls above it read.
+#define DM_PROLOGUE(PROCEDURE, MODULE) The allocating wrapper runs [[MODULE(module):PROCEDURE]] first, which may handle the call and skip this one.
 
 ! `DM_MIN` / `DM_MAX` document the inclusive valid range of a numeric argument; the
 ! generator turns them into a `validate_in_range_*` call in the generated wrapper. `EXPR`

@@ -354,11 +354,11 @@ class TestAllocatingWrapper:
 class TestPrologue:
     """A routine the wrapper runs before the kernel, which may handle the call itself."""
 
-    def emitted_with(self, scope, scratch=False):
+    def emitted_with(self, scratch=False):
         from builders import project
         from test_synthesize import prologue_kernel_module
 
-        return emitted(project(prologue_kernel_module(scope, self._guard(scratch))))
+        return emitted(project(prologue_kernel_module(self._guard(scratch))))
 
     @staticmethod
     def _guard(scratch):
@@ -382,57 +382,36 @@ class TestPrologue:
         start = text.index(f"subroutine {name}(")
         return text[start : text.index(f"end subroutine {name}")]
 
-    def test_both_runs_it_in_each_wrapper(self):
-        from codegen.ir.directives import PrologueScope
+    def test_it_runs_only_in_the_allocating_wrapper(self):
+        # a prologue is the sugar that tier adds; the validating wrapper is the tier that
+        # lets a caller do the same preparation themselves, so it must not run there
+        text = self.emitted_with()
 
-        text = self.emitted_with(PrologueScope.BOTH)
-
-        for name in ("crunch", "crunch_alloc"):
-            body = self.body(text, name)
-            assert "call guard(&" in body, name
-            assert "handled = handled" in body, name
+        assert "call guard(&" in self.body(text, "crunch_alloc")
+        assert "call guard(&" not in self.body(text, "crunch")
+        assert "logical :: handled" not in self.body(text, "crunch")
 
     def test_it_returns_early_when_the_prologue_handled_the_call(self):
-        from codegen.ir.directives import PrologueScope
-
-        body = self.body(self.emitted_with(PrologueScope.BOTH), "crunch")
+        body = self.body(self.emitted_with(), "crunch_alloc")
 
         assert "logical :: handled" in body
         assert "if (handled) return" in body
         # and the kernel is only reached afterwards
         assert body.index("if (handled) return") < body.index("call crunch_kernel(")
 
-    def test_alloc_scope_runs_it_only_in_the_allocating_wrapper(self):
-        from codegen.ir.directives import PrologueScope
-
-        text = self.emitted_with(PrologueScope.ALLOC)
-
-        assert "call guard(&" in self.body(text, "crunch_alloc")
-        assert "call guard(&" not in self.body(text, "crunch")
-
-    def test_expert_scope_runs_it_only_in_the_validating_wrapper(self):
-        from codegen.ir.directives import PrologueScope
-
-        text = self.emitted_with(PrologueScope.EXPERT)
-
-        assert "call guard(&" in self.body(text, "crunch")
-        assert "call guard(&" not in self.body(text, "crunch_alloc")
-
-    def test_it_runs_before_the_allocation_it_may_make_unnecessary(self):
-        from codegen.ir.directives import PrologueScope
-
-        body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")
-
-        assert body.index("call guard(&") < body.index("M_ALLOCATE(tmp_scratch(n))")
-
-    def test_a_prologue_that_takes_a_work_array_runs_below_the_allocation(self):
-        # it cannot run above one: there would be nothing to hand it
-        from codegen.ir.directives import PrologueScope
-
-        body = self.body(self.emitted_with(PrologueScope.ALLOC, scratch=True), "crunch_alloc")
+    def test_it_runs_below_the_work_arrays_it_prepares(self):
+        # preparing them is what it is for, so there is nothing to hand it any earlier
+        body = self.body(self.emitted_with(scratch=True), "crunch_alloc")
 
         assert body.index("M_ALLOCATE(tmp_scratch(n))") < body.index("call guard(&")
         assert body.index("call guard(&") < body.index("call crunch_kernel(")
+
+    def test_it_runs_below_them_even_when_it_takes_none(self):
+        # the placement does not depend on what this prologue happens to take: it is where
+        # the tier's preparation belongs, so it is the same for every prologue
+        body = self.body(self.emitted_with(), "crunch_alloc")
+
+        assert body.index("M_ALLOCATE(tmp_scratch(n))") < body.index("call guard(&")
 
     def call_to(self, body, name):
         """Just the `call <name>(...)` statement -- the whole body proves nothing.
@@ -444,35 +423,23 @@ class TestPrologue:
         return body[start : body.index(")", body.index("&\n", start))]
 
     def test_it_is_handed_the_work_array_it_asked_for(self):
-        from codegen.ir.directives import PrologueScope
 
-        body = self.body(self.emitted_with(PrologueScope.ALLOC, scratch=True), "crunch_alloc")
+        body = self.body(self.emitted_with(scratch=True), "crunch_alloc")
 
         assert "tmp_scratch = tmp_scratch" in self.call_to(body, "guard")
 
     def test_an_ordinary_prologue_is_handed_only_what_it_asked_for(self):
         # the negative control for the assertion above: the plain prologue takes no work
         # array, so its call must not mention one even though the body around it does
-        from codegen.ir.directives import PrologueScope
 
-        body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")
+        body = self.body(self.emitted_with(), "crunch_alloc")
 
         assert "tmp_scratch" not in self.call_to(body, "guard")
         assert "tmp_scratch" in body
 
-    def test_the_ordinary_prologue_still_runs_above_the_allocation(self):
-        # the placement is decided by what the prologue takes, so one that takes no work
-        # array keeps its chance to make the whole setup unnecessary
-        from codegen.ir.directives import PrologueScope
-
-        body = self.body(self.emitted_with(PrologueScope.ALLOC), "crunch_alloc")
-
-        assert body.index("call guard(&") < body.index("M_ALLOCATE(tmp_scratch(n))")
-
     def test_the_prologue_is_imported(self):
-        from codegen.ir.directives import PrologueScope
 
-        header = self.emitted_with(PrologueScope.BOTH).split("contains", 1)[0]
+        header = self.emitted_with().split("contains", 1)[0]
         assert "guard" in header
 
 

@@ -13,7 +13,7 @@ module tox_normalization_kernel
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_in_range_real, ERR_SIZE_MISMATCH
     use f42_utils, only: norm, is_close, logx, mean, std_dev
-    use tox_loess_kernel, only: loess_degenerate_fit, loess_fit_robust_kernel
+    use tox_loess_kernel, only: loess_fit_robust_kernel
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
 #define CM_LOESS_DEGREE_DEFAULT 2_int32
@@ -358,9 +358,6 @@ contains
         integer(int32) :: i_gene, i_valid, i_tissue, n_valid, gene_idx, actual_degree
         real(real64) :: mean_val, fitted_sd, actual_span
 
-        ! The LOESS fit below is driven at the expert tier, so its workspace is passed in
-        logical :: loess_handled
-
         M_DEFAULT_VAL(span, actual_span, CM_LOESS_SPAN_DEFAULT)
         M_DEFAULT_VAL(degree, actual_degree, CM_LOESS_DEGREE_DEFAULT)
 
@@ -398,26 +395,20 @@ contains
         ! workspace, the uniform weights and the evaluation points are prepared here: the fit
         ! is evaluated at its own training points, every point weighted equally, and the
         ! neighbourhood may span the whole sample. The degenerate cases (too few points, a
-        ! near-constant x) answer the fit directly, exactly as they do for a wrapper caller.
-        call loess_degenerate_fit(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
-                                  actual_degree, tmp_yhat_global(1:n_valid), loess_handled, ierr)
+        ! near-constant x) the fit answers itself.
+        tmp_loess_weights(1:n_valid) = 1.0_real64
+        tmp_eval_points(1:n_valid, 1) = tmp_loess_x(1:n_valid)
+
+        call loess_fit_robust_kernel(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
+                                     tmp_loess_weights(1:n_valid), tmp_eval_points(1:n_valid, :), &
+                                     actual_span, actual_degree, &
+                                     n_valid, .false., .false., CM_LOESS_ROBUST_ITERS, &
+                                     tmp_int_workspace, int_workspace_size, &
+                                     tmp_real_workspace, real_workspace_size, tmp_hat_diag(1:n_valid), &
+                                     tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), &
+                                     tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), &
+                                     tmp_yhat_global(1:n_valid), ierr)
         if (is_err(ierr)) return
-
-        if (.not. loess_handled) then
-            tmp_loess_weights(1:n_valid) = 1.0_real64
-            tmp_eval_points(1:n_valid, 1) = tmp_loess_x(1:n_valid)
-
-            call loess_fit_robust_kernel(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
-                                         tmp_loess_weights(1:n_valid), tmp_eval_points(1:n_valid, :), &
-                                         actual_span, actual_degree, &
-                                         n_valid, .false., .false., CM_LOESS_ROBUST_ITERS, &
-                                         tmp_int_workspace, int_workspace_size, &
-                                         tmp_real_workspace, real_workspace_size, tmp_hat_diag(1:n_valid), &
-                                         tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), &
-                                         tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), &
-                                         tmp_yhat_global(1:n_valid), ierr)
-            if (is_err(ierr)) return
-        end if
 
         ! Step 3: apply normalization
         do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)

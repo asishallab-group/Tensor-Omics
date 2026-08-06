@@ -3,7 +3,7 @@
 !> Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
 !| The generator turns `loess_fit_plain_kernel` / `loess_fit_robust_kernel` into the expert fitting
 !| wrappers `loess_fit_plain` / `loess_fit_robust`, each with an allocating sibling, in module
-!| `tox_loess`. Both name `loess_degenerate_fit` as their prologue, so data too degenerate to fit is
+!| `tox_loess`. Both answer data too degenerate to fit with `loess_degenerate_fit`, so it is
 !| answered there and the netlib call is skipped -- the kernels themselves fit, and assume they were
 !| given something fittable. There is no combined entry point that dispatches on a mode: a caller
 !| chooses the plain or the robust routine, and supplies the weights and evaluation points it wants.
@@ -287,7 +287,8 @@ contains
     ! ============================================================
     !> summary: Perform plain LOESS fitting
     !| AUTHOR_VIVIAN_BASS
-    !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain_kernel(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, fitted_values, ierr)
@@ -350,8 +351,15 @@ contains
             !! Size of the local neighborhood used at the current span (points per local fit)
 
         logical :: actual_compute_influence, actual_save_factorization
+        logical :: degenerate
 
         call set_ok(ierr)
+
+        ! Answer degenerate data directly rather than handing netlib something it cannot fit.
+        ! Every caller of this kernel needs this, so it is the kernel's own contract.
+        call loess_degenerate_fit(n, x, y, degree, fitted_values, degenerate, ierr)
+        if (is_err(ierr)) return
+        if (degenerate) return
 
         M_DEFAULT_VAL(compute_influence, actual_compute_influence, .false.)
         M_DEFAULT_VAL(save_factorization, actual_save_factorization, .false.)
@@ -380,7 +388,8 @@ contains
     ! ============================================================
     !> summary: Perform robust LOESS fitting with bisquare reweighting
     !| AUTHOR_VIVIAN_BASS
-    !| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !|  - Combines original weights with robust weights (down-weights from previous iteration)
@@ -463,8 +472,15 @@ contains
         integer(int32) :: iter, i, predictor_dim
         integer(int32) :: actual_n_iters
         logical :: actual_compute_influence, actual_save_factorization
+        logical :: degenerate
 
         call set_ok(ierr)
+
+        ! Answer degenerate data directly rather than handing netlib something it cannot fit.
+        ! Every caller of this kernel needs this, so it is the kernel's own contract.
+        call loess_degenerate_fit(n, x, y, degree, fitted_values, degenerate, ierr)
+        if (is_err(ierr)) return
+        if (degenerate) return
 
         M_DEFAULT_VAL(n_iters, actual_n_iters, CM_DEFAULT_LOESS_ITERS)
         M_DEFAULT_VAL(compute_influence, actual_compute_influence, .false.)

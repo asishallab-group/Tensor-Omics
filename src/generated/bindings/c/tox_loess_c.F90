@@ -18,7 +18,8 @@ module tox_loess_c
 contains
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain(subroutine)]]
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain_expert_c(&
@@ -141,7 +142,8 @@ contains
     end subroutine loess_fit_plain_expert_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain_alloc(subroutine)]]
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain_c(&
@@ -227,7 +229,8 @@ contains
     end subroutine loess_fit_plain_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust(subroutine)]]
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !| - Combines original weights with robust weights (down-weights from previous iteration)
@@ -381,7 +384,8 @@ contains
     end subroutine loess_fit_robust_expert_c
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust_alloc(subroutine)]]
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !| - Combines original weights with robust weights (down-weights from previous iteration)

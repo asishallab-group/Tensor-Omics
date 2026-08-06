@@ -437,27 +437,25 @@ def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
 def _check_prologue_runs_somewhere(kernel: Procedure, prologue: Procedure,
                                    diagnostics: DiagnosticBag,
                                    conventions: Conventions) -> None:
-    """A prologue scoped to a wrapper the kernel does not generate never runs.
+    """A prologue on a kernel with no allocating wrapper never runs.
 
     An allocating wrapper exists only where the kernel has something to take over -- a work
-    array, a permutation, a recommend-sized value. Scope a prologue to `ALLOC` on a kernel
-    with none of those and it is attached to a procedure that is never generated: no call is
-    emitted anywhere, and nothing said so.
+    array, a permutation, a recommend-sized value. A prologue on a kernel with none of those
+    is attached to a procedure that is never generated: no call is emitted anywhere, and
+    nothing said so.
     """
     from ..synthesize import taken_over_arguments
 
-    directive = kernel.directives.prologue
-    if directive.runs_in(False):
-        return  # it runs in the validating wrapper, which every kernel has
     if taken_over_arguments(kernel.arguments, conventions):
         return
     diagnostics.error(
-        f"prologue '{prologue.name}' is scoped to the allocating wrapper, which "
-        f"'{kernel.name}' does not generate",
+        f"prologue '{prologue.name}' is on a kernel that generates no allocating wrapper",
         entity=kernel,
         note=(
-            f"an allocating wrapper appears only where the kernel has work arrays to take "
-            f"over, and this one has none -- so the prologue would never be called"
+            "a prologue is what the allocating wrapper prepares beyond allocating, and that "
+            "wrapper appears only where the kernel has work arrays to take over. This one "
+            "has none, so the prologue would never be called -- if the work belongs to every "
+            "caller of the kernel, put it at the top of the kernel instead"
         ),
     )
 
@@ -564,18 +562,15 @@ def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:
 def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Procedure,
                                                diagnostics: DiagnosticBag,
                                                conventions: Conventions) -> None:
-    """A late prologue may not produce something the setup above it already read.
+    """A prologue may not produce something the setup above it already read.
 
-    A prologue that takes one of the wrapper's work arrays runs below the allocations, since
-    there would be nothing to hand it above them. Anything it writes is therefore undefined
-    while those allocations and the recommend calls run -- and a name resolves the same
-    either way, so reading one early compiles and computes rubbish.
+    A prologue runs below the work arrays it exists to prepare, so anything it writes is
+    undefined while the recommend calls, the allocations and the permutation sorts run --
+    and a name resolves the same either way, so reading one early compiles and computes
+    rubbish rather than failing.
     """
     # local imports: synthesize imports this module
     from ..synthesize import is_permutation, is_temporary, taken_over_arguments
-
-    if not prologue_runs_late(kernel, prologue, conventions):
-        return
 
     written = {
         dummy.name.lower()
@@ -656,28 +651,12 @@ def _wrapper_arguments_with_plans(kernel: Procedure, conventions: Conventions):
     ]
 
 
-def prologue_runs_late(kernel: Procedure, prologue: Procedure,
-                       conventions: Conventions = CONVENTIONS) -> bool:
-    """Whether the allocating wrapper emits its prologue below the allocations.
-
-    Mirrors `emit.fortran_wrapper._prologue_needs_locals`, on the kernel side: a prologue
-    that takes a work array cannot precede the allocation of that work array.
-    """
-    from ..synthesize import taken_over_arguments
-
-    directive = kernel.directives.prologue
-    if directive is None or not directive.runs_in(True):
-        return False
-    taken = {a.name.lower() for a in taken_over_arguments(kernel.arguments, conventions)}
-    return any(dummy.name.lower() in taken for dummy in prologue.arguments)
-
-
 #: Identifiers named in an extent expression
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
 
 _READ_FIRST_NOTE = (
-    "this prologue takes a work array, so it runs below the allocations; give it the value "
-    "as a 'tmp_' argument instead, or compute the size from something the caller passes"
+    "a prologue runs below the work arrays it prepares; take this value as a 'tmp_' argument "
+    "instead, or derive it from something the caller passes"
 )
 
 _NON_OPTIONAL_NOTE = (

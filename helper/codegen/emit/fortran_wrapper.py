@@ -252,16 +252,15 @@ class FortranWrapperEmitter:
         return ordered + sorted(names - set(ordered))
 
     def _prologues(self, module: Module) -> dict[str, set[str]]:
-        """The prologue procedures this module's wrappers call, by the module they live in."""
+        """The prologue procedures this module's wrappers call, by the module they live in.
+
+        Only the allocating wrappers have one, so only they are asked.
+        """
         found: dict[str, set[str]] = {}
         for procedure in module:
-            prologue = self._prologue_for(
-                self._sibling(module, procedure)
-                if self._is_allocating(procedure, module)
-                else procedure,
-                module,
-                is_allocating=self._is_allocating(procedure, module),
-            )
+            if not self._is_allocating(procedure, module):
+                continue
+            prologue = self._prologue_for(self._sibling(module, procedure), module)
             if prologue is not None and prologue.module is not None:
                 found.setdefault(prologue.module.name, set()).add(prologue.name)
         return found
@@ -326,13 +325,10 @@ class FortranWrapperEmitter:
     def _validating_body(
         self, writer: Writer, foo: Procedure, module: Module
     ) -> None:
-        prologue = self._prologue_for(foo, module, is_allocating=False)
         self._declarations(writer, foo.arguments)
-        self._prologue_local(writer, prologue)
         writer.blank()
         self._validation(writer, foo)
         writer.blank()
-        self._prologue_call(writer, prologue, foo, module)
         self._kernel_call(writer, foo, module)
 
     def _allocating_body(
@@ -341,7 +337,7 @@ class FortranWrapperEmitter:
         foo = self._sibling(module, alloc)
         taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
 
-        prologue = self._prologue_for(foo, module, is_allocating=True)
+        prologue = self._prologue_for(foo, module)
         materialized = self._materialized_producer_inputs(foo, alloc, taken)
         self._declarations(writer, alloc.arguments)
         self._locals(writer, taken)
@@ -351,30 +347,23 @@ class FortranWrapperEmitter:
         self._validation(writer, alloc)
         writer.blank()
         self._materialized_defaults(writer, materialized)
-        # A prologue runs as early as it can, and no earlier. Before the work arrays exist it
-        # can still refuse a degenerate input and spare the whole setup, which is half of what
-        # a prologue is for -- so that is where it goes whenever it can. A prologue that takes
-        # one of those work arrays cannot run there, and moves below them instead.
-        late = self._prologue_needs_locals(prologue, taken)
-        if not late:
-            self._prologue_call(writer, prologue, alloc, module, taken)
         self._recommend_calls(writer, foo, alloc, taken, materialized)
         self._allocations(writer, taken)
         self._permutations(writer, taken)
-        if late:
-            writer.blank()
-            self._prologue_call(writer, prologue, alloc, module, taken)
         writer.blank()
+        # Below the work arrays, because preparing them is what a prologue is for -- it is the
+        # sugar this tier adds over the expert one, which lets a caller prepare them instead.
+        self._prologue_call(writer, prologue, alloc, module, taken)
         self._kernel_call(writer, foo, module)
 
     # -- prologue ---------------------------------------------------------------
 
-    def _prologue_for(self, foo: Procedure, module: Module, is_allocating: bool):
-        """The prologue this wrapper runs, resolved to the procedure it names.
+    def _prologue_for(self, foo: Procedure, module: Module):
+        """The prologue the allocating wrapper runs, resolved to the procedure it names.
 
-        Declared on the kernel, since it is the kernel's own contract; which wrappers run it
-        is the directive's scope. Returns None when there is none, or when the project is
-        unavailable (a unit test), so the ordinary path is unaffected.
+        Declared on the kernel, since it is the kernel's own contract. Returns None when
+        there is none, or when the project is unavailable (a unit test), so the ordinary
+        path is unaffected.
         """
         if self.project is None:
             return None
@@ -384,24 +373,13 @@ class FortranWrapperEmitter:
         if kernel is None:
             return None
         directive = kernel.directives.prologue
-        if directive is None or not directive.runs_in(is_allocating):
+        if directive is None:
             return None
         return self.project.procedure(directive.module, directive.procedure)
 
     def _prologue_local(self, writer: Writer, prologue) -> None:
         if prologue is not None:
             writer.line(f"logical :: {self.conventions.prologue_handled_arg}")
-
-    def _prologue_needs_locals(self, prologue, taken) -> bool:
-        """Whether the prologue takes one of the work arrays the wrapper prepares itself.
-
-        Such a prologue cannot run before them: there would be nothing to hand it. It is the
-        only reason to emit a prologue below the allocations rather than above them.
-        """
-        if prologue is None:
-            return False
-        names = {argument.name.lower() for argument in taken}
-        return any(dummy.name.lower() in names for dummy in prologue.arguments)
 
     def _prologue_call(self, writer: Writer, prologue, wrapper: Procedure, module: Module,
                        taken=()) -> None:

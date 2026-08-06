@@ -336,6 +336,44 @@ over-allocated is the fraction of points the fit drops; what is bought is that `
 a flat sequence of calls and allocations. Should a case appear where the bound is genuinely far
 from the truth, the topological version is the answer — not before.
 
+### The prologue is the allocating tier's sugar, and has no scope
+
+`DM_PROLOGUE(PROCEDURE, MODULE)` names a routine the *allocating* wrapper runs after the work
+arrays are prepared and before the kernel; it may write the outputs and report `handled`, and
+the kernel is then skipped. It is what `foo_alloc` derives that `foo` lets a caller pass in --
+the same relation the `<base>_perm` convention already has, where `foo_alloc` seeds and
+heapsorts and a caller wanting another sort reaches for `foo`. A prologue is that convention's
+general form.
+
+**Rejected -- a `SCOPE` of EXPERT / ALLOC / BOTH.** The macro carried one, and two of its three
+values were mistakes:
+
+- `BOTH` is inlinable. Both wrappers call the kernel, so anything that must run in both, before
+  the kernel body, *is* the first thing in the kernel body -- `handled` becomes a local and the
+  early return a plain statement. The prologue has no access the kernel lacks, so the directive
+  bought nothing. `loess_degenerate_fit` was the only user, and it moved into both LOESS kernels;
+  the third caller (`normalize_by_std_dev_inplace_helper`) had been performing the same check by
+  hand, which is what a precondition-every-caller-must-remember looks like when it should have
+  been the procedure's own contract.
+- `EXPERT` contradicts what the expert tier is. FES: *expert is the entry point for full control
+  over what reaches the kernel -- a specific threshold, a specific initialised permutation --
+  while `_alloc` derives the threshold from a percentile and sorts with heapsort.* A prologue
+  running in the expert tier would override exactly the control that tier exists to give.
+
+So the scope is not derived, it is fixed, and the placement with it: always in `foo_alloc`,
+always below the work arrays. A kernel with no work arrays generates no `foo_alloc`, so a
+prologue on one would never run -- an error, not a silence.
+
+**Nothing validated a prologue before this**: the emitter was the directive's only consumer, and
+an emitter has no author's line to point at. Every way of getting one wrong therefore passed --
+a name that resolved to nothing produced a wrapper with no prologue; a dummy that matched nothing
+was dropped from the keyword call; a prologue without `handled` left the wrapper branching on an
+undefined logical. All are errors now, in `ir/validate.py`.
+
+**Rejected -- a rename table for prologue dummies.** A `DM_OUTPUT_FROM` producer needs one
+because it is published and its parameter names cannot move. A prologue is internal to the kernel
+module, so a mismatch is fixed by renaming its dummy, and the diagnostic says so.
+
 ### No allocation in a kernel module
 
 Nothing in a kernel module allocates: every buffer is a `tmp_` argument, so the generated

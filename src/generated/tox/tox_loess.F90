@@ -3,8 +3,7 @@
 !> summary: Wrappers for [[tox_loess_kernel(module)]]
 !| Generated from the kernel; do not edit -- regenerate instead.
 module tox_loess
-    use tox_loess_kernel, only: EPS_LOESS, loess_degenerate_fit, loess_fit_plain_kernel, loess_fit_robust_kernel
-    use tox_loess_kernel, only: tox_loess_required_workspace
+    use tox_loess_kernel, only: EPS_LOESS, loess_fit_plain_kernel, loess_fit_robust_kernel, tox_loess_required_workspace
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
     use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -20,7 +19,8 @@ module tox_loess
 contains
 
     !> summary: Validates its inputs, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain(&
@@ -94,7 +94,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(int32), intent(out) :: ierr
             !! Error code
-        logical :: handled
 
         call set_ok(ierr)
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
@@ -107,19 +106,6 @@ contains
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
-
-        call loess_degenerate_fit(&
-            n = n,&
-            x = x,&
-            y = y,&
-            degree = degree,&
-            fitted_values = fitted_values,&
-            handled = handled,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-        if (is_err(ierr)) return
-        if (handled) return
 
         call loess_fit_plain_kernel(&
             n = n,&
@@ -144,7 +130,8 @@ contains
     end subroutine loess_fit_plain
 
     !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain_alloc(&
@@ -197,7 +184,6 @@ contains
         integer(int32) :: real_workspace_size
         real(real64), dimension(:), allocatable :: tmp_hat_diag
         logical :: save_factorization_value
-        logical :: handled
 
         call set_ok(ierr)
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
@@ -210,19 +196,6 @@ contains
         if (is_err(ierr)) return
 
         M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
-
-        call loess_degenerate_fit(&
-            n = n,&
-            x = x,&
-            y = y,&
-            degree = degree,&
-            fitted_values = fitted_values,&
-            handled = handled,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-        if (is_err(ierr)) return
-        if (handled) return
 
         call tox_loess_required_workspace(&
             n_dim = 1_int32,&
@@ -258,7 +231,8 @@ contains
     end subroutine loess_fit_plain_alloc
 
     !> summary: Validates its inputs, then calls [[tox_loess_kernel(module):loess_fit_robust_kernel]].
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !| - Combines original weights with robust weights (down-weights from previous iteration)
@@ -353,7 +327,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(int32), intent(out) :: ierr
             !! Error code
-        logical :: handled
 
         call set_ok(ierr)
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
@@ -367,19 +340,6 @@ contains
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
-
-        call loess_degenerate_fit(&
-            n = n,&
-            x = x,&
-            y = y,&
-            degree = degree,&
-            fitted_values = fitted_values,&
-            handled = handled,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-        if (is_err(ierr)) return
-        if (handled) return
 
         call loess_fit_robust_kernel(&
             n = n,&
@@ -409,7 +369,8 @@ contains
     end subroutine loess_fit_robust
 
     !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_robust_kernel]].
-    !| Every generated wrapper runs [[tox_loess_kernel(module):loess_degenerate_fit]] first, which may handle the call and skip this one.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !| - Combines original weights with robust weights (down-weights from previous iteration)
@@ -475,7 +436,6 @@ contains
         real(real64), dimension(:), allocatable :: tmp_residuals
         integer(int32), dimension(:), allocatable :: tmp_permutation_indices
         logical :: save_factorization_value
-        logical :: handled
 
         call set_ok(ierr)
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
@@ -489,19 +449,6 @@ contains
         if (is_err(ierr)) return
 
         M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
-
-        call loess_degenerate_fit(&
-            n = n,&
-            x = x,&
-            y = y,&
-            degree = degree,&
-            fitted_values = fitted_values,&
-            handled = handled,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-        if (is_err(ierr)) return
-        if (handled) return
 
         call tox_loess_required_workspace(&
             n_dim = 1_int32,&

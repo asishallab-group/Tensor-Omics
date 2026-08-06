@@ -48,7 +48,7 @@ Related reading, once this is not enough:
   - [5.10 A mode argument](#510-a-mode-argument)
   - [5.11 One procedure per mode](#511-one-procedure-per-mode)
   - [5.12 An argument only one mode needs](#512-an-argument-only-one-mode-needs)
-  - [5.13 Work that must happen before the kernel](#513-work-that-must-happen-before-the-kernel)
+  - [5.13 Work the allocating wrapper does beyond allocating](#513-work-the-allocating-wrapper-does-beyond-allocating)
   - [5.14 A genuine runtime error](#514-a-genuine-runtime-error)
   - [5.15 A family too big for one file](#515-a-family-too-big-for-one-file)
 
@@ -627,60 +627,65 @@ real(real64), intent(in), optional :: gain_gamma
   A `DM_DEFAULT` alongside is an **error** here: the binding always passes a defaulted argument
   on, so "required in that mode" would say nothing.
 
-### 5.13 Work that must happen before the kernel
+### 5.13 Work the allocating wrapper does beyond allocating
 
-**When** something has to run *before* the kernel and may make the kernel unnecessary — a
-degenerate input that already determines the answer, or preparation a caller should not have to
-do.
+**When** `foo_alloc` should *derive* something the expert tier lets a caller pass in — a
+threshold taken from a percentile of the data, a permutation built and sorted a particular way —
+or should decide the input is too degenerate to compute on and answer it directly.
 
-**Write** `DM_PROLOGUE(<procedure>, <module>, <scope>)` in the procedure's own doc block, with
-scope `EXPERT`, `ALLOC` or `BOTH`. The prologue takes the **kernel's** arguments by name, plus
-`handled` and `ierr`:
+This is the same idea as the `<base>_perm` convention of §5.8, which is a prologue hard-coded for
+one case: `foo_alloc` seeds and heapsorts, and a caller who wants a different sort reaches for
+`foo`. A prologue is the general form.
+
+**Write** `DM_PROLOGUE(<procedure>, <module>)` in the kernel's own doc block. The prologue takes
+the kernel's arguments by name — the `tmp_` work arrays included — plus `handled` and `ierr`:
 
 ```fortran
-!> summary: Perform plain LOESS fitting
-!| AUTHOR_FRANZ_ERIC_SILL
-!| DM_PROLOGUE(loess_degenerate_fit, tox_loess_kernel, BOTH)
+!> summary: Flag directional outliers
+!| AUTHOR_A_N_AUTHOR
+!| DM_PROLOGUE(prepare_ranking, tox_outliers_kernel)
 ```
 ```fortran
-pure subroutine loess_degenerate_fit(n, x, y, degree, fitted_values, handled, ierr)
+pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, handled, ierr)
     logical, intent(out) :: handled
-        !! `.true.` when the data was degenerate and `fitted_values` already holds the answer
+        !! `.true.` when the data was degenerate and the outputs already hold the answer
 ```
 
-**You get** the prologue called first in the wrapper, and the kernel skipped when it says so:
+**You get** the prologue called in `foo_alloc` — after the work arrays are prepared, before the
+kernel — and the kernel skipped when it says so:
 
 ```fortran
-call loess_degenerate_fit(n = n, x = x, y = y, degree = degree, &
-                          fitted_values = fitted_values, handled = handled, ierr = ierr)
+M_ALLOCATE(tmp_valid_perm(n_genes))
+call prepare_ranking(z_scores = z_scores, n_genes = n_genes, &
+                     tmp_valid_perm = tmp_valid_perm, threshold = threshold, &
+                     handled = handled, ierr = ierr)
 if (is_err(ierr)) return
 if (handled) return
 ```
 
-**Where it runs.** As early as it can. In the allocating wrapper that means *above* the work
-arrays, so a prologue that refuses a degenerate input spares the whole setup — half of why a
-prologue exists. A prologue that takes one of those work arrays cannot run there (there would be
-nothing to hand it), so it runs below them instead. You do not choose this; what the prologue
-takes decides it. The one consequence: a late prologue may not produce anything the allocations
-or the recommend calls above it read, and the generator refuses it if you try.
+**There is no scope**, and that is the point. `foo` is the tier that gives a caller full control
+over what reaches the kernel; a prologue running there would override exactly the control that
+tier exists to provide. And work that *both* tiers need is work every caller of the kernel needs
+— both call it — so it belongs at the top of the kernel, where it is three lines and no
+directive. That is where LOESS's degenerate-input check lives.
 
-```fortran
-!| DM_PROLOGUE(prepare_ranking, tox_outliers_kernel, ALLOC)
-...
-real(real64), intent(out) :: tmp_valid_perm(n_genes)
-    !! the prologue fills this, so the prologue runs after it is allocated
-```
+**What is refused**, all of it silent before:
 
-**What is refused**, all of it silent before: a `DM_PROLOGUE` naming a procedure that does not
-exist; a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` (the
-wrapper returns early on it regardless, so without it the branch reads an undefined value); a
-dummy naming nothing the kernel has. There is deliberately **no rename table** — unlike a
-`DM_OUTPUT_FROM` producer, a prologue is internal to the kernel module, so the fix is to rename
-its dummy.
+- a `DM_PROLOGUE` naming a procedure that does not exist
+- a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` — the wrapper
+  returns early on it regardless, so without it that branch reads an undefined value
+- a dummy naming nothing every wrapper has, including the mode argument or a mode-scoped
+  argument of a kernel that splits per mode (§5.11)
+- a prologue on a kernel with no work arrays, which generates no `foo_alloc` for it to run in
+- a value the prologue produces that the allocations, the permutation sorts or the recommend
+  calls *above* it read — the name resolves either way, so it would compile and compute rubbish
 
-Reach for this only when the work is genuinely not the kernel's. A prologue that merely
-*validates* is a smell — that is what the range macros are for, and a pre-validation pass that
-duplicates them is a bug rather than a feature.
+There is deliberately **no rename table**: unlike a `DM_OUTPUT_FROM` producer, a prologue is
+internal to the kernel module, so the fix is to rename its dummy.
+
+Reach for this only when the work is genuinely `foo_alloc`'s. A prologue that merely *validates*
+is a smell — that is what the range macros are for, and a pre-validation pass that duplicates them
+is a bug rather than a feature.
 
 ### 5.14 A genuine runtime error
 
@@ -970,8 +975,9 @@ source and carries a note saying what to write instead.
 | an `allocatable` local anywhere in a **kernel module** | the generated `_alloc` owns the memory, not the kernel (§4, §5.7) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
 | a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
-| a prologue dummy naming nothing the kernel has | it would be dropped from the generated call, and Fortran would reject code you did not write (§5.13) |
-| a late prologue producing something the allocations above it read | the name resolves either way, so it would compile and compute rubbish (§5.13) |
+| a prologue dummy naming nothing *every* wrapper has | it would be dropped from the generated call, and Fortran would reject code you did not write (§5.13) |
+| a prologue on a kernel with no work arrays | there is no allocating wrapper for it to run in (§5.13) |
+| a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (§5.13) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:

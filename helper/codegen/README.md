@@ -337,6 +337,13 @@ so are reached by none of the above:
   generated `_alloc` owns the memory. Seen through the declaration, since no body is ever read;
   a `pointer` local aliases and is fine
 
+A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before: the named
+procedure must exist; it must declare a scalar `logical, intent(out) :: handled` (the wrapper
+returns early on it regardless); every other dummy must name something *every* wrapper has — so
+not the mode argument or a mode-scoped argument of a kernel that splits per mode; the kernel must
+generate an allocating wrapper for it to run in; and it may not produce anything the allocations,
+permutation sorts or recommend calls above it read.
+
 ---
 
 ## Edge cases handled

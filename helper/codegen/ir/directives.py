@@ -88,38 +88,25 @@ class OutputFrom:
         return self.mode is OutputFromMode.AUTO
 
 
-class PrologueScope(Enum):
-    """Which generated wrappers run a prologue."""
-
-    #: Only the validating wrapper
-    EXPERT = "expert"
-    #: Only the allocating wrapper
-    ALLOC = "alloc"
-    #: Both
-    BOTH = "both"
-
-
 @dataclass(frozen=True)
 class Prologue:
-    """`DM_PROLOGUE(PROCEDURE, MODULE, SCOPE)` -- a procedure-level directive.
+    """`DM_PROLOGUE(PROCEDURE, MODULE)` -- a procedure-level directive.
 
-    The named procedure runs in the generated wrapper before the kernel and may handle the
-    call itself, in which case the kernel is skipped. It is where work lives that is not the
-    kernel's own: preparing what the caller should not have to, or deciding an input is too
-    degenerate to compute on.
+    The named procedure runs in the *allocating* wrapper, after the work arrays are prepared
+    and before the kernel, and may handle the call itself -- in which case the kernel is
+    skipped. It is the sugar that tier adds: deriving what the expert tier lets a caller pass
+    in, the way `<base>_perm` already seeds and heapsorts a permutation.
+
+    There is no scope. A prologue that runs in the *validating* wrapper too is work every
+    caller of the kernel needs, and both wrappers call the kernel -- so it belongs at the top
+    of the kernel, where it is three lines and needs no directive at all. One that runs only
+    in the validating wrapper is a contradiction: the allocating wrapper does everything the
+    validating one does and more.
     """
 
     procedure: str
     module: str
-    scope: PrologueScope
     line_number: int | None = None
-
-    def runs_in(self, is_allocating: bool) -> bool:
-        """Whether this prologue runs in the wrapper of the given tier."""
-        if self.scope is PrologueScope.BOTH:
-            return True
-        wanted = PrologueScope.ALLOC if is_allocating else PrologueScope.EXPERT
-        return self.scope is wanted
 
 
 @dataclass(frozen=True)
@@ -252,9 +239,7 @@ class DirectivePatterns:
     result_size_is: re.Pattern
     output_from_auto: re.Pattern
     output_from_just_info: re.Pattern
-    prologue_expert: re.Pattern
-    prologue_alloc: re.Pattern
-    prologue_both: re.Pattern
+    prologue: re.Pattern
     minimum: re.Pattern
     maximum: re.Pattern
     sentinel: re.Pattern
@@ -279,15 +264,7 @@ class DirectivePatterns:
                 f"DM_OUTPUT_FROM({_group('argument')}, {_group('procedure')}, "
                 f"{_group('module')}, JUST_INFO)"
             ),
-            "prologue_expert": (
-                f"DM_PROLOGUE({_group('procedure')}, {_group('module')}, EXPERT)"
-            ),
-            "prologue_alloc": (
-                f"DM_PROLOGUE({_group('procedure')}, {_group('module')}, ALLOC)"
-            ),
-            "prologue_both": (
-                f"DM_PROLOGUE({_group('procedure')}, {_group('module')}, BOTH)"
-            ),
+            "prologue": f"DM_PROLOGUE({_group('procedure')}, {_group('module')})",
             "minimum": f"DM_MIN({_group('expression')})",
             "maximum": f"DM_MAX({_group('expression')})",
             "sentinel": f"DM_SENTINEL({_group('expression')})",
@@ -349,19 +326,12 @@ class DirectiveParser:
                     line_number=number,
                 )
 
-        for pattern, scope in (
-            (self.patterns.prologue_expert, PrologueScope.EXPERT),
-            (self.patterns.prologue_alloc, PrologueScope.ALLOC),
-            (self.patterns.prologue_both, PrologueScope.BOTH),
-        ):
-            if (match := pattern.search(text)) is not None:
-                yield "prologue", Prologue(
-                    procedure=match.group("procedure").strip(),
-                    module=match.group("module").strip(),
-                    scope=scope,
-                    line_number=number,
-                )
-                break
+        if (match := self.patterns.prologue.search(text)) is not None:
+            yield "prologue", Prologue(
+                procedure=match.group("procedure").strip(),
+                module=match.group("module").strip(),
+                line_number=number,
+            )
 
         if (match := self.patterns.minimum.search(text)) is not None:
             yield "minimum", Minimum(match.group("expression").strip(), number)

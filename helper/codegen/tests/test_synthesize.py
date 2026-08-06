@@ -101,7 +101,7 @@ def output_sizing_computed_kernel_module():
     )
 
 
-def prologue_kernel_module(scope, guard_arguments=None):
+def prologue_kernel_module(guard_arguments=None):
     """A kernel with a prologue, plus the prologue procedure it names.
 
     `guard_arguments` replaces the prologue's own dummies, for the cases where what it takes
@@ -133,9 +133,7 @@ def prologue_kernel_module(scope, guard_arguments=None):
             real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
             real("result", Intent.OUT, "(n)", doc="the answer"),
             meta=Meta(summary="Crunch", author="AUTHOR"),
-            directives=Directives(
-                prologue=Prologue("guard", "tox_demo_kernel", scope)
-            ),
+            directives=Directives(prologue=Prologue("guard", "tox_demo_kernel")),
         ),
     )
 

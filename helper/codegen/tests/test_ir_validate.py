@@ -541,12 +541,10 @@ class TestPrologue:
     and an emitter has no author's line to point at.
     """
 
-    def checked(self, scope=None, guard_arguments=None, kernel_arguments=None, bag=None):
-        from codegen.ir.directives import PrologueScope
+    def checked(self, guard_arguments=None, kernel_arguments=None, bag=None):
         from test_synthesize import prologue_kernel_module
 
-        scope = scope if scope is not None else PrologueScope.BOTH
-        module = prologue_kernel_module(scope, guard_arguments)
+        module = prologue_kernel_module(guard_arguments)
         if kernel_arguments is not None:
             crunch = module.procedure("crunch_kernel")
             crunch.arguments = tuple(kernel_arguments)
@@ -567,13 +565,13 @@ class TestPrologue:
         assert self.bag.errors == ()
 
     def test_a_prologue_that_does_not_exist_is_rejected(self):
-        from codegen.ir.directives import Prologue, PrologueScope
+        from codegen.ir.directives import Prologue
         from test_synthesize import prologue_kernel_module
 
-        module = prologue_kernel_module(PrologueScope.BOTH)
+        module = prologue_kernel_module()
         module.procedure("crunch_kernel").directives = replace(
             module.procedure("crunch_kernel").directives,
-            prologue=Prologue("guardd", "tox_demo_kernel", PrologueScope.BOTH),
+            prologue=Prologue("guardd", "tox_demo_kernel"),
         )
         validate_project(b.project(module), self.bag)
 
@@ -637,13 +635,10 @@ class TestPrologue:
 
         assert self.bag.errors == ()
 
-    def test_a_late_prologue_may_not_produce_what_sizes_a_work_array(self):
+    def test_a_prologue_may_not_produce_what_sizes_a_work_array(self):
         # tmp_scratch is allocated above the prologue, so its extent cannot be something the
         # prologue only fills afterwards -- the name resolves either way and computes rubbish
-        from codegen.ir.directives import PrologueScope
-
         self.checked(
-            scope=PrologueScope.ALLOC,
             guard_arguments=self.guard(
                 b.integer("n", Intent.IN, doc="length"),
                 b.integer("room", Intent.OUT, doc="how much scratch is needed"),
@@ -663,16 +658,13 @@ class TestPrologue:
 
         error = only_error(self.bag)
         assert "'tmp_scratch' is sized by 'room', which the prologue only fills afterwards" == error.message
-        assert "runs below the allocations" in error.note
+        assert "runs below the work arrays it prepares" in error.note
 
-    def test_a_late_prologue_may_not_rewrite_what_a_permutation_was_sorted_against(self):
+    def test_a_prologue_may_not_rewrite_what_a_permutation_was_sorted_against(self):
         # the wrapper heapsorts values_perm against values above the prologue, so a prologue
         # that then rewrites values leaves an order describing data that no longer exists.
         # Nothing crashes -- the kernel is simply handed a wrong answer.
-        from codegen.ir.directives import PrologueScope
-
         self.checked(
-            scope=PrologueScope.ALLOC,
             guard_arguments=self.guard(
                 b.real("values", Intent.INOUT, "(n)", doc="rewritten here"),
                 b.integer("n", Intent.IN, doc="length"),
@@ -695,24 +687,22 @@ class TestPrologue:
             == error.message
         )
 
-    def test_an_early_prologue_producing_the_same_value_is_accepted(self):
-        # without a work array among its dummies the prologue runs above the allocations,
-        # so the value is there in time
-        from codegen.ir.directives import PrologueScope
-
+    def test_a_produced_value_nothing_above_reads_is_accepted(self):
+        # `room` is the kernel's business alone -- no allocation, sort or recommend call
+        # above the prologue names it, so filling it there is in time
         self.checked(
-            scope=PrologueScope.ALLOC,
             guard_arguments=self.guard(
                 b.integer("n", Intent.IN, doc="length"),
-                b.integer("room", Intent.OUT, doc="how much scratch is needed"),
+                b.integer("room", Intent.OUT, doc="something only the kernel reads"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
             kernel_arguments=[
                 b.real("values", Intent.IN, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
-                b.integer("room", Intent.INOUT, doc="how much scratch is needed"),
-                b.real("tmp_scratch", Intent.OUT, "(room)", doc="scratch"),
+                b.integer("room", Intent.INOUT, doc="something only the kernel reads"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
                 b.real("result", Intent.OUT, "(n)", doc="the answer"),
             ],
         )
@@ -725,7 +715,7 @@ class TestPrologueAndTheModeSplit:
     every wrapper has -- which is all of the kernel's arguments unless it splits per mode."""
 
     def checked(self, dummy, bag, split=True):
-        from codegen.ir.directives import Prologue, PrologueScope
+        from codegen.ir.directives import Prologue
         from codegen.ir.roles import analyse_project
         from test_synthesize import mode_split_kernel_module
 
@@ -736,7 +726,7 @@ class TestPrologueAndTheModeSplit:
             source = _without_the_procedure_column(source, table)
         kernel = source.procedure("detect_patterns_kernel")
         kernel.directives = replace(
-            kernel.directives, prologue=Prologue("guard", "tox_demo_kernel", PrologueScope.BOTH)
+            kernel.directives, prologue=Prologue("guard", "tox_demo_kernel")
         )
         source.procedures += (
             b.procedure(
@@ -801,24 +791,22 @@ def _without_the_procedure_column(source, doc):
 
 
 class TestPrologueThatCouldNeverRun:
-    def test_an_alloc_prologue_on_a_kernel_with_no_work_arrays_is_rejected(self, bag):
-        from codegen.ir.directives import PrologueScope
+    def test_a_prologue_on_a_kernel_with_no_work_arrays_is_rejected(self, bag):
         from test_synthesize import prologue_kernel_module
 
-        source = prologue_kernel_module(PrologueScope.ALLOC)
+        source = prologue_kernel_module()
         crunch = source.procedure("crunch_kernel")
         # drop the work array, so no allocating wrapper is generated at all
         crunch.arguments = tuple(a for a in crunch.arguments if a.name != "tmp_scratch")
         validate_project(b.project(source), bag)
 
         error = only_error(bag)
-        assert "scoped to the allocating wrapper, which 'crunch_kernel' does not generate" in error.message
+        assert "on a kernel that generates no allocating wrapper" in error.message
         assert "would never be called" in error.note
 
     def test_it_is_accepted_when_the_kernel_does_generate_one(self, bag):
-        from codegen.ir.directives import PrologueScope
         from test_synthesize import prologue_kernel_module
 
-        validate_project(b.project(prologue_kernel_module(PrologueScope.ALLOC)), bag)
+        validate_project(b.project(prologue_kernel_module()), bag)
 
         assert bag.errors == ()

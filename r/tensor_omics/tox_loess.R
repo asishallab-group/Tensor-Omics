@@ -2,7 +2,8 @@
 
 #' Perform plain LOESS fitting
 #'
-#' Every generated wrapper runs \code{loess_degenerate_fit} first, which may handle the call and skip this one.
+#' Data too degenerate to fit is answered directly, by the observations themselves; see
+#' \code{loess_degenerate_fit}.
 #' Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
 #' response array.
 #'
@@ -57,7 +58,8 @@ loess_fit_plain_expert <- function(x, y, weights, eval_points, span, degree, max
 
 #' Perform plain LOESS fitting
 #'
-#' Every generated wrapper runs \code{loess_degenerate_fit} first, which may handle the call and skip this one.
+#' Data too degenerate to fit is answered directly, by the observations themselves; see
+#' \code{loess_degenerate_fit}.
 #' Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
 #' response array.
 #'
@@ -108,7 +110,8 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 
 #' Perform robust LOESS fitting with bisquare reweighting
 #'
-#' Every generated wrapper runs \code{loess_degenerate_fit} first, which may handle the call and skip this one.
+#' Data too degenerate to fit is answered directly, by the observations themselves; see
+#' \code{loess_degenerate_fit}.
 #' Fits a LOESS model to the data using robust iterations to handle outliers.
 #' The robust fitting process iterates n_iters times, each iteration:
 #' - Combines original weights with robust weights (down-weights from previous iteration)
@@ -171,7 +174,8 @@ loess_fit_robust_expert <- function(x, y, weights, eval_points, span, degree, ma
 
 #' Perform robust LOESS fitting with bisquare reweighting
 #'
-#' Every generated wrapper runs \code{loess_degenerate_fit} first, which may handle the call and skip this one.
+#' Data too degenerate to fit is answered directly, by the observations themselves; see
+#' \code{loess_degenerate_fit}.
 #' Fits a LOESS model to the data using robust iterations to handle outliers.
 #' The robust fitting process iterates n_iters times, each iteration:
 #' - Combines original weights with robust weights (down-weights from previous iteration)
