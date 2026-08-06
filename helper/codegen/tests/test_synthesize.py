@@ -672,3 +672,51 @@ def mode_kernel_module():
             meta=Meta(summary="Compute", author="AUTHOR"),
         ),
     )
+
+
+def prologue_feeding_a_producer_module():
+    """A kernel whose recommend routine is passed something the prologue writes.
+
+    The recommend call is emitted above the prologue, so it would read the value before the
+    prologue fills it -- and a name resolves the same either way, so it compiles.
+    """
+    from codegen.ir.directives import OutputFrom, OutputFromMode, Prologue
+
+    return module(
+        "tox_demo_kernel",
+        procedure(  # the recommend routine, sized from `budget`
+            "work_size",
+            integer("budget", Intent.IN, doc="how much room to plan for"),
+            integer("wsize", Intent.OUT, doc="recommended work size"),
+            meta=C_BINDING,
+        ),
+        procedure(
+            "guard",
+            integer("n", Intent.IN, doc="length"),
+            integer("budget", Intent.OUT, doc="decided here -- too late for work_size"),
+            real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+            logical("handled", Intent.OUT, doc="whether the call was dealt with"),
+            ierr(),
+            meta=Meta(summary="Guard", author="AUTHOR"),
+        ),
+        procedure(
+            "crunch_kernel",
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length of `values`"),
+            integer("budget", Intent.INOUT, doc="how much room to plan for"),
+            real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+            integer(
+                "wsize",
+                Intent.IN,
+                directives=Directives(
+                    output_from=OutputFrom(
+                        "wsize", "work_size", "tox_demo_kernel", OutputFromMode.AUTO
+                    )
+                ),
+                doc="work-buffer size",
+            ),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+            meta=Meta(summary="Crunch the data", author="AUTHOR"),
+            directives=Directives(prologue=Prologue("guard", "tox_demo_kernel")),
+        ),
+    )

@@ -789,6 +789,27 @@ class TestPrologue:
         assert self.bag.errors == ()
 
 
+class TestAPrologueFeedingARecommendRoutine:
+    """The recommend calls sit above the prologue, so what they are passed must be there."""
+
+    def test_a_producer_input_the_prologue_writes_is_rejected(self, bag):
+        from codegen.ir.roles import analyse_project
+        from codegen.synthesize import synthesize_wrappers
+        from test_synthesize import prologue_feeding_a_producer_module
+
+        project = synthesize_wrappers(
+            b.project(prologue_feeding_a_producer_module()), diagnostics=DiagnosticBag()
+        ).project
+        analyse_project(project, DiagnosticBag())
+        validate_project(project, bag)
+
+        assert any(
+            "'work_size' is passed 'budget', which the prologue only fills afterwards"
+            == d.message
+            for d in bag.errors
+        ), messages(bag)
+
+
 class TestPrologueAndTheModeSplit:
     """A prologue is declared once and runs in every wrapper, so it may only name what
     every wrapper has -- which is all of the kernel's arguments unless it splits per mode."""

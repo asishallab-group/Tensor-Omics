@@ -218,3 +218,103 @@ class TestAParseThatFailed:
         result = generate(Paths(root=REPO_ROOT, src_dir=self.source(tmp_path)))
 
         assert result.files == []
+
+
+class TestDeterminism:
+    """The same sources must produce the same bytes, every run.
+
+    `--check` is what keeps the committed bindings honest, and it can only do that if
+    generation is deterministic. Much of the pipeline walks `set`s -- the prologue and
+    producer imports, the bound helpers -- and a set that reached the output unsorted would
+    make `--check` flap rather than fail, which is worse than either.
+    """
+
+    def test_two_runs_of_the_whole_tree_agree_byte_for_byte(self, real_project):
+        first = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
+        second = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
+
+        assert first.ok and second.ok
+        assert {f.path: f.content for f in first.files} == {
+            f.path: f.content for f in second.files
+        }
+
+    def test_the_file_list_is_ordered_the_same_way(self, real_project):
+        first = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
+        second = generate(paths(REPO_ROOT, REAL_SRC), parsed=real_project)
+
+        assert [f.path for f in first.files] == [f.path for f in second.files]
+
+
+class TestTheAllocatingSignatureAndItsBodyAgree:
+    """What the allocating wrapper does not ask for, it must declare -- and vice versa.
+
+    The drop set is computed twice: in `synthesize`, which shapes the signature, and in the
+    emitter, which writes the body. They are the same call, but they are separate call sites
+    with separate inputs, and every time those two have disagreed it has produced a wrapper
+    that either loses an argument or declares one twice. This asserts the invariant over the
+    real tree rather than over one fixture.
+    """
+
+    def wrappers(self, real_project):
+        from codegen.emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
+        from codegen.ir.roles import analyse_project
+        from codegen.synthesize import synthesize_wrappers
+
+        bag = DiagnosticBag()
+        synthesis = synthesize_wrappers(real_project.project, CONVENTIONS, bag)
+        analyse_project(synthesis.project, bag)
+        info = {}
+        for spec in synthesis.specs:
+            for wrapper in (spec.validating, spec.allocating):
+                if wrapper is not None:
+                    info[wrapper.name.lower()] = WrapperInfo(spec.kernel.name, spec.mode_fix)
+        emitter = FortranWrapperEmitter(project=synthesis.project)
+        for spec in synthesis.specs:
+            if spec.allocating is None:
+                continue
+            module = synthesis.project.module(spec.module_name)
+            emitter._wrapper_info = info
+            text = emitter.subroutine(spec.allocating, module)
+            yield spec, text
+
+    def exposed(self, spec):
+        """What this wrapper pair exposes of the kernel.
+
+        Read off the validating wrapper rather than off the kernel, because a mode-split
+        variant exposes less: the mode argument is fixed in the kernel call and dropped, and
+        an argument scoped to another mode is absent entirely. `foo` is exactly that set,
+        plus the `ierr` the wrapper may have synthesised.
+        """
+        return [
+            argument
+            for argument in spec.validating.arguments
+            if spec.kernel.argument(argument.name) is not None
+        ]
+
+    def test_every_exposed_argument_is_a_dummy_or_a_local_and_never_both(self, real_project):
+        for spec, text in self.wrappers(real_project):
+            signature = text[text.index("(") : text.index(")")]
+            body = text[text.index(")") :]
+            dummies = {a.name.lower() for a in spec.allocating.arguments}
+            for argument in self.exposed(spec):
+                if argument.name.lower() in dummies:
+                    continue
+                assert f":: {argument.name}" in body, (
+                    f"{spec.allocating.name}: '{argument.name}' is neither a dummy nor a "
+                    f"local -- the signature and the body disagree about the drop set"
+                )
+                assert argument.name not in signature, spec.allocating.name
+
+    def test_every_exposed_argument_still_reaches_the_kernel(self, real_project):
+        for spec, text in self.wrappers(real_project):
+            call = text[text.index(f"call {spec.kernel.name}(") :]
+            for argument in self.exposed(spec):
+                assert f"{argument.name} = " in call, (
+                    f"{spec.allocating.name}: '{argument.name}' is not passed to the kernel"
+                )
+
+    def test_the_invariant_covers_the_real_families(self, real_project):
+        # a property test that silently matched nothing would assert nothing
+        specs = [spec for spec, _ in self.wrappers(real_project)]
+        assert len(specs) >= 10
+        assert any(spec.mode_fix is not None for spec in specs), "no mode-split wrapper seen"
