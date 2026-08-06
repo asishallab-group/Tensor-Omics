@@ -3623,22 +3623,14 @@ compute_empirical_p_values <- function(distribution, c_const) {
 #' (sorted binary-search, no Monte Carlo) variant see
 #' \code{\link{tox_compute_noise_pvalues_pipeline_exact}}.
 #'
-#' @param cancer_means Numeric vector of cancer means.
-#' @param cancer_replicates Numeric matrix of cancer replicates
+#' @param case_means Numeric vector of case means.
+#' @param case_replicates Numeric matrix of case replicates
 #'   (samples x genes).
-#' @param healthy_means Numeric vector of healthy means.
-#' @param healthy_replicates Numeric matrix of healthy replicates
+#' @param control_means Numeric vector of control means.
+#' @param control_replicates Numeric matrix of control replicates
 #'   (samples x genes).
 #' @param obs_own Observed own statistics.
-#' @param obs_fam Observed family statistics.
-#' @param obs_orth Observed ortholog statistics.
-#' @param family_means Family mean expression values.
-#' @param ortholog_means Ortholog mean expression values.
 #' @param valid_genes_own Integer vector (1 = compute this gene's own p-value).
-#' @param valid_genes_fam Integer vector (1 = compute this gene's family p-value).
-#' @param valid_genes_orth Integer vector (1 = compute this gene's ortholog p-value).
-#' @param family_sizes Integer vector of family sizes.
-#' @param gene_to_fam Integer vector mapping genes to families (1-based).
 #' @param norm_method Integer normalization method (0 = linear, non-zero = log2).
 #' @param k_start Integer starting neighborhood size.
 #' @param k_step Integer adaptive increment.
@@ -3646,24 +3638,16 @@ compute_empirical_p_values <- function(distribution, c_const) {
 #' @param tau Numeric adaptive stopping threshold.
 #' @param max_pool_size Integer maximum residual pool size.
 #'
-#' @return A list with p-values (own/fam/orth), n_success, five neighborhood
-#'   sizes (own_case, own_control, fam, orth, cancer), and ierr.
+#' @return A list with pvalues_own, n_success, three neighborhood sizes
+#'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and ierr.
 #' @export
 tox_compute_noise_pvalues_pipeline <- function(
-    cancer_means,
-    cancer_replicates,
-    healthy_means,
-    healthy_replicates,
+    case_means,
+    case_replicates,
+    control_means,
+    control_replicates,
     obs_own,
-    obs_fam,
-    obs_orth,
-    family_means,
-    ortholog_means,
     valid_genes_own,
-    valid_genes_fam,
-    valid_genes_orth,
-    family_sizes,
-    gene_to_fam,
     norm_method = 0L,
     k_start = 100L,
     k_step = 100L,
@@ -3673,20 +3657,12 @@ tox_compute_noise_pvalues_pipeline <- function(
 ) {
 
     result <- tox_compute_noise_pvalues_pipeline_rcpp(
-        cancer_means = cancer_means,
-        cancer_replicates = cancer_replicates,
-        healthy_means = healthy_means,
-        healthy_replicates = healthy_replicates,
+        case_means = case_means,
+        case_replicates = case_replicates,
+        control_means = control_means,
+        control_replicates = control_replicates,
         obs_own = obs_own,
-        obs_fam = obs_fam,
-        obs_orth = obs_orth,
-        family_means = family_means,
-        ortholog_means = ortholog_means,
         valid_genes_own = as.integer(valid_genes_own),
-        valid_genes_fam = as.integer(valid_genes_fam),
-        valid_genes_orth = as.integer(valid_genes_orth),
-        family_sizes = as.integer(family_sizes),
-        gene_to_fam = as.integer(gene_to_fam),
         norm_method = as.integer(norm_method),
         k_start = as.integer(k_start),
         k_step = as.integer(k_step),
@@ -3707,24 +3683,16 @@ tox_compute_noise_pvalues_pipeline <- function(
 #'
 #' @inheritParams tox_compute_noise_pvalues_pipeline
 #'
-#' @return A list with p-values (own/fam/orth), n_success, five neighborhood
-#'   sizes (own_case, own_control, fam, orth, cancer), and ierr.
+#' @return A list with pvalues_own, n_success, three neighborhood sizes
+#'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and ierr.
 #' @export
 tox_compute_noise_pvalues_pipeline_exact <- function(
-    cancer_means,
-    cancer_replicates,
-    healthy_means,
-    healthy_replicates,
+    case_means,
+    case_replicates,
+    control_means,
+    control_replicates,
     obs_own,
-    obs_fam,
-    obs_orth,
-    family_means,
-    ortholog_means,
     valid_genes_own,
-    valid_genes_fam,
-    valid_genes_orth,
-    family_sizes,
-    gene_to_fam,
     norm_method = 0L,
     k_start = 100L,
     k_step = 100L,
@@ -3734,20 +3702,12 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 ) {
 
     result <- tox_compute_noise_pvalues_pipeline_exact_rcpp(
-        cancer_means = cancer_means,
-        cancer_replicates = cancer_replicates,
-        healthy_means = healthy_means,
-        healthy_replicates = healthy_replicates,
+        case_means = case_means,
+        case_replicates = case_replicates,
+        control_means = control_means,
+        control_replicates = control_replicates,
         obs_own = obs_own,
-        obs_fam = obs_fam,
-        obs_orth = obs_orth,
-        family_means = family_means,
-        ortholog_means = ortholog_means,
         valid_genes_own = as.integer(valid_genes_own),
-        valid_genes_fam = as.integer(valid_genes_fam),
-        valid_genes_orth = as.integer(valid_genes_orth),
-        family_sizes = as.integer(family_sizes),
-        gene_to_fam = as.integer(gene_to_fam),
         norm_method = as.integer(norm_method),
         k_start = as.integer(k_start),
         k_step = as.integer(k_step),
@@ -3771,26 +3731,18 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
 #'
 #' @inheritParams tox_compute_noise_pvalues_pipeline
 #'
-#' @return A list with p-values (own/fam/orth), n_success, five neighborhood
-#'   sizes (own_case, own_control, fam, orth, cancer), and ierr. The
+#' @return A list with pvalues_own, n_success, three neighborhood sizes
+#'   (own_case, own_control, case), and ierr. The
 #'   \code{chosen_n_bins_own_*} entries are 1 when the own p-value is computed
 #'   (this model does not stratify) and -1 otherwise.
 #' @export
 tox_compute_noise_pvalues_pipeline_lfcseq <- function(
-    cancer_means,
-    cancer_replicates,
-    healthy_means,
-    healthy_replicates,
+    case_means,
+    case_replicates,
+    control_means,
+    control_replicates,
     obs_own,
-    obs_fam,
-    obs_orth,
-    family_means,
-    ortholog_means,
     valid_genes_own,
-    valid_genes_fam,
-    valid_genes_orth,
-    family_sizes,
-    gene_to_fam,
     norm_method = 0L,
     k_start = 100L,
     k_step = 100L,
@@ -3800,20 +3752,12 @@ tox_compute_noise_pvalues_pipeline_lfcseq <- function(
 ) {
 
     result <- tox_compute_noise_pvalues_pipeline_lfcseq_rcpp(
-        cancer_means = cancer_means,
-        cancer_replicates = cancer_replicates,
-        healthy_means = healthy_means,
-        healthy_replicates = healthy_replicates,
+        case_means = case_means,
+        case_replicates = case_replicates,
+        control_means = control_means,
+        control_replicates = control_replicates,
         obs_own = obs_own,
-        obs_fam = obs_fam,
-        obs_orth = obs_orth,
-        family_means = family_means,
-        ortholog_means = ortholog_means,
         valid_genes_own = as.integer(valid_genes_own),
-        valid_genes_fam = as.integer(valid_genes_fam),
-        valid_genes_orth = as.integer(valid_genes_orth),
-        family_sizes = as.integer(family_sizes),
-        gene_to_fam = as.integer(gene_to_fam),
         norm_method = as.integer(norm_method),
         k_start = as.integer(k_start),
         k_step = as.integer(k_step),

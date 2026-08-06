@@ -1739,16 +1739,12 @@ end module noise_model_exact
 subroutine compute_noise_pvalues_pipeline_exact_c( &
     means_case, replicates_case, n_genes_case, n_replicates_case, &
     means_control, replicates_control, n_genes_control, n_replicates_control, &
-    observed_statistic_own, observed_statistic_family, observed_statistic_ortholog, &
-    family_means, ortholog_means, &
-    compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
-    family_sizes, gene_to_family, &
-    n_genes, n_families, norm_method, k_start, k_step, k_max, tau, &
-    pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+    observed_statistic_own, compute_pvalue_own, &
+    n_genes, norm_method, k_start, k_step, k_max, tau, &
+    pvalues_own, n_genes_with_pvalue, &
     max_pool_size, &
     neighborhood_size_own_case, neighborhood_size_own_control, &
-    neighborhood_size_family, &
-    neighborhood_size_ortholog, neighborhood_size_case, &
+    neighborhood_size_case, &
     chosen_n_bins_own_case, chosen_n_bins_own_control, &
     ierr) bind(C, name="compute_noise_pvalues_pipeline_exact_c")
 
@@ -1768,8 +1764,6 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     !! Number of control replicates
     integer(c_int), intent(in), target :: n_genes
     !! Total number of genes for which p-values are computed
-    integer(c_int), intent(in), target :: n_families
-    !! Total number of gene families
     real(c_double), dimension(n_genes_case), intent(in), target :: means_case
     !! Per-gene case expression means
     real(c_double), dimension(n_replicates_case, n_genes_case), intent(in), target :: replicates_case
@@ -1780,24 +1774,8 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     !! Control replicate expression matrix (n_replicates_control x n_genes_control)
     real(c_double), dimension(n_genes), intent(in), target :: observed_statistic_own
     !! Observed gene-vs-own statistic for each gene
-    real(c_double), dimension(n_genes), intent(in), target :: observed_statistic_family
-    !! Observed gene-vs-family statistic for each gene
-    real(c_double), dimension(n_genes), intent(in), target :: observed_statistic_ortholog
-    !! Observed gene-vs-ortholog statistic for each gene
-    real(c_double), dimension(n_families), intent(in), target :: family_means
-    !! Mean expression of each gene family (control)
-    real(c_double), dimension(n_families), intent(in), target :: ortholog_means
-    !! Mean expression of each ortholog set (control)
     integer(c_int), dimension(n_genes), intent(in), target :: compute_pvalue_own
     !! 1 if the gene-vs-own p-value should be computed, 0 otherwise
-    integer(c_int), dimension(n_genes), intent(in), target :: compute_pvalue_family
-    !! 1 if the gene-vs-family p-value should be computed, 0 otherwise
-    integer(c_int), dimension(n_genes), intent(in), target :: compute_pvalue_ortholog
-    !! 1 if the gene-vs-ortholog p-value should be computed, 0 otherwise
-    integer(c_int), dimension(n_families), intent(in), target :: family_sizes
-    !! Number of genes in each family
-    integer(c_int), dimension(n_genes), intent(in), target :: gene_to_family
-    !! Maps each gene index to its family index (1-based)
     integer(c_int), intent(in), target :: norm_method
     !! 0 = linear scale; non-zero = log2(x+1) transform
     integer(c_int), intent(in), target :: k_start
@@ -1812,20 +1790,12 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     !! Maximum number of residuals in any pool
     real(c_double), dimension(n_genes), intent(out), target :: pvalues_own
     !! Output: gene-vs-own p-values (-1 if not computed)
-    real(c_double), dimension(n_genes), intent(out), target :: pvalues_family
-    !! Output: gene-vs-family p-values (-1 if not computed)
-    real(c_double), dimension(n_genes), intent(out), target :: pvalues_ortholog
-    !! Output: gene-vs-ortholog p-values (-1 if not computed)
     integer(c_int), intent(out), target :: n_genes_with_pvalue
     !! Number of genes for which at least one p-value was computed
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_own_case
     !! Case stratum size used for gene-vs-own (-1 if not computed)
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_own_control
     !! Control stratum size used for gene-vs-own (-1 if not computed)
-    integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_family
-    !! Control pool size used for gene-vs-family (-1 if not computed)
-    integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_ortholog
-    !! Control pool size used for gene-vs-ortholog (-1 if not computed)
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_case
     !! Case pool size used for each gene (-1 if not computed)
     integer(c_int), dimension(n_genes), intent(out), target :: chosen_n_bins_own_case
@@ -1835,27 +1805,33 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     integer(c_int), intent(out), target :: ierr
     !! Error code: 0 = success
 
+    ! ---- family/ortholog path retired at the interface. The internal pipeline
+    ! still accepts family arguments, so we feed it one trivial "all genes in a
+    ! single cached family" configuration (identical to what callers passed for a
+    ! family-free run): every gene is un-gated, no family/ortholog p-value is
+    ! requested, and the `own` result is bit-for-bit unchanged. These locals are
+    ! throwaway. ----
+    integer(c_int), parameter :: n_families = 1
+    real(c_double), allocatable :: dummy_obs_family(:), dummy_obs_ortholog(:)
+    real(c_double) :: dummy_family_means(1), dummy_ortholog_means(1)
+    integer(c_int), allocatable :: dummy_compute_family(:), dummy_compute_ortholog(:)
+    integer(c_int) :: dummy_family_sizes(1)
+    integer(c_int), allocatable :: dummy_gene_to_family(:)
+    real(c_double), allocatable :: dummy_pvalues_family(:), dummy_pvalues_ortholog(:)
+    integer(c_int), allocatable :: dummy_nbhd_family(:), dummy_nbhd_ortholog(:)
+
     M_CHECK_IERR_NON_NULL
     M_CHECK_NON_NULL(n_genes_case)
     M_CHECK_NON_NULL(n_replicates_case)
     M_CHECK_NON_NULL(n_genes_control)
     M_CHECK_NON_NULL(n_replicates_control)
     M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
     M_CHECK_NON_NULL(means_case)
     M_CHECK_NON_NULL(replicates_case)
     M_CHECK_NON_NULL(means_control)
     M_CHECK_NON_NULL(replicates_control)
     M_CHECK_NON_NULL(observed_statistic_own)
-    M_CHECK_NON_NULL(observed_statistic_family)
-    M_CHECK_NON_NULL(observed_statistic_ortholog)
-    M_CHECK_NON_NULL(family_means)
-    M_CHECK_NON_NULL(ortholog_means)
     M_CHECK_NON_NULL(compute_pvalue_own)
-    M_CHECK_NON_NULL(compute_pvalue_family)
-    M_CHECK_NON_NULL(compute_pvalue_ortholog)
-    M_CHECK_NON_NULL(family_sizes)
-    M_CHECK_NON_NULL(gene_to_family)
     M_CHECK_NON_NULL(norm_method)
     M_CHECK_NON_NULL(k_start)
     M_CHECK_NON_NULL(k_step)
@@ -1863,30 +1839,42 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     M_CHECK_NON_NULL(tau)
     M_CHECK_NON_NULL(max_pool_size)
     M_CHECK_NON_NULL(pvalues_own)
-    M_CHECK_NON_NULL(pvalues_family)
-    M_CHECK_NON_NULL(pvalues_ortholog)
     M_CHECK_NON_NULL(n_genes_with_pvalue)
     M_CHECK_NON_NULL(neighborhood_size_own_case)
     M_CHECK_NON_NULL(neighborhood_size_own_control)
-    M_CHECK_NON_NULL(neighborhood_size_family)
-    M_CHECK_NON_NULL(neighborhood_size_ortholog)
     M_CHECK_NON_NULL(neighborhood_size_case)
     M_CHECK_NON_NULL(chosen_n_bins_own_case)
     M_CHECK_NON_NULL(chosen_n_bins_own_control)
 
+    allocate(dummy_obs_family(n_genes), dummy_obs_ortholog(n_genes), &
+             dummy_compute_family(n_genes), dummy_compute_ortholog(n_genes), &
+             dummy_gene_to_family(n_genes), &
+             dummy_pvalues_family(n_genes), dummy_pvalues_ortholog(n_genes), &
+             dummy_nbhd_family(n_genes), dummy_nbhd_ortholog(n_genes))
+    dummy_obs_family     = 0.0_c_double
+    dummy_obs_ortholog   = 0.0_c_double
+    dummy_compute_family   = 0_c_int
+    dummy_compute_ortholog = 0_c_int
+    dummy_gene_to_family   = 1_c_int
+    dummy_family_sizes(1)  = 1_c_int
+    ! A finite, in-range target so the (unused) family cache builds and is marked
+    ! cached -- that cached flag is what un-gates every gene in the per-gene loop.
+    dummy_family_means(1)   = means_control(1)
+    dummy_ortholog_means(1) = means_control(1)
+
     call compute_noise_pvalue_pipeline( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
-        observed_statistic_own, observed_statistic_family, observed_statistic_ortholog, &
-        family_means, ortholog_means, &
-        compute_pvalue_own, compute_pvalue_family, compute_pvalue_ortholog, &
-        family_sizes, gene_to_family, &
+        observed_statistic_own, dummy_obs_family, dummy_obs_ortholog, &
+        dummy_family_means, dummy_ortholog_means, &
+        compute_pvalue_own, dummy_compute_family, dummy_compute_ortholog, &
+        dummy_family_sizes, dummy_gene_to_family, &
         n_genes, n_families, norm_method, k_start, k_step, k_max, tau, &
-        pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+        pvalues_own, dummy_pvalues_family, dummy_pvalues_ortholog, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
-        neighborhood_size_family, &
-        neighborhood_size_ortholog, neighborhood_size_case, &
+        dummy_nbhd_family, &
+        dummy_nbhd_ortholog, neighborhood_size_case, &
         chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 

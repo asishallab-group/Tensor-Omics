@@ -1188,31 +1188,18 @@ void compute_noise_pvalues_pipeline_c(
   const int* n_genes_control,
   const int* n_replicates_control,
   const double* observed_statistic_own,
-  const double* observed_statistic_family,
-  const double* observed_statistic_ortholog,
-  const double* family_means,
-  const double* ortholog_means,
   const int* compute_pvalue_own,
-  const int* compute_pvalue_family,
-  const int* compute_pvalue_ortholog,
-  const int* family_sizes,
-  const int* gene_to_family,
   const int* n_genes,
-  const int* n_families,
   const int* norm_method,
   const int* k_start,
   const int* k_step,
   const int* k_max,
   const double* tau,
   double* pvalues_own,
-  double* pvalues_family,
-  double* pvalues_ortholog,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
   int* neighborhood_size_own_case,
   int* neighborhood_size_own_control,
-  int* neighborhood_size_family,
-  int* neighborhood_size_ortholog,
   int* neighborhood_size_case,
   int* chosen_n_bins_own_case,
   int* chosen_n_bins_own_control,
@@ -1231,31 +1218,18 @@ void compute_noise_pvalues_pipeline_exact_c(
   const int* n_genes_control,
   const int* n_replicates_control,
   const double* observed_statistic_own,
-  const double* observed_statistic_family,
-  const double* observed_statistic_ortholog,
-  const double* family_means,
-  const double* ortholog_means,
   const int* compute_pvalue_own,
-  const int* compute_pvalue_family,
-  const int* compute_pvalue_ortholog,
-  const int* family_sizes,
-  const int* gene_to_family,
   const int* n_genes,
-  const int* n_families,
   const int* norm_method,
   const int* k_start,
   const int* k_step,
   const int* k_max,
   const double* tau,
   double* pvalues_own,
-  double* pvalues_family,
-  double* pvalues_ortholog,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
   int* neighborhood_size_own_case,
   int* neighborhood_size_own_control,
-  int* neighborhood_size_family,
-  int* neighborhood_size_ortholog,
   int* neighborhood_size_case,
   int* chosen_n_bins_own_case,
   int* chosen_n_bins_own_control,
@@ -1276,31 +1250,18 @@ void compute_noise_pvalues_pipeline_lfcseq_c(
   const int* n_genes_control,
   const int* n_replicates_control,
   const double* observed_statistic_own,
-  const double* observed_statistic_family,
-  const double* observed_statistic_ortholog,
-  const double* family_means,
-  const double* ortholog_means,
   const int* compute_pvalue_own,
-  const int* compute_pvalue_family,
-  const int* compute_pvalue_ortholog,
-  const int* family_sizes,
-  const int* gene_to_family,
   const int* n_genes,
-  const int* n_families,
   const int* norm_method,
   const int* k_start,
   const int* k_step,
   const int* k_max,
   const double* tau,
   double* pvalues_own,
-  double* pvalues_family,
-  double* pvalues_ortholog,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
   int* neighborhood_size_own_case,
   int* neighborhood_size_own_control,
-  int* neighborhood_size_family,
-  int* neighborhood_size_ortholog,
   int* neighborhood_size_case,
   int* chosen_n_bins_own_case,
   int* chosen_n_bins_own_control,
@@ -4894,20 +4855,12 @@ NumericVector tox_empirical_p_values_rcpp(
 // driver guarantees all three bindings stay in lock-step.
 static Rcpp::List run_noise_pvalues_pipeline(
     int model_variant,
-    Rcpp::NumericVector cancer_means,
-    Rcpp::NumericMatrix cancer_replicates,
-    Rcpp::NumericVector healthy_means,
-    Rcpp::NumericMatrix healthy_replicates,
+    Rcpp::NumericVector case_means,
+    Rcpp::NumericMatrix case_replicates,
+    Rcpp::NumericVector control_means,
+    Rcpp::NumericMatrix control_replicates,
     Rcpp::NumericVector obs_own,
-    Rcpp::NumericVector obs_fam,
-    Rcpp::NumericVector obs_orth,
-    Rcpp::NumericVector family_means,
-    Rcpp::NumericVector ortholog_means,
     Rcpp::IntegerVector valid_genes_own,
-    Rcpp::IntegerVector valid_genes_fam,
-    Rcpp::IntegerVector valid_genes_orth,
-    Rcpp::IntegerVector family_sizes,
-    Rcpp::IntegerVector gene_to_fam,
     int norm_method,
     int k_start,
     int k_step,
@@ -4915,27 +4868,21 @@ static Rcpp::List run_noise_pvalues_pipeline(
     double tau,
     int max_pool_size) {
 
-    int cancer_n_samples = cancer_replicates.nrow();
-    int cancer_n_genes   = cancer_replicates.ncol();
+    int case_n_samples = case_replicates.nrow();
+    int case_n_genes   = case_replicates.ncol();
 
-    int healthy_n_samples = healthy_replicates.nrow();
-    int healthy_n_genes   = healthy_replicates.ncol();
+    int control_n_samples = control_replicates.nrow();
+    int control_n_genes   = control_replicates.ncol();
 
-    int n_genes    = obs_own.size();
-    int n_families = family_means.size();
+    int n_genes = obs_own.size();
 
     Rcpp::NumericVector pvalues_own(n_genes);
-    Rcpp::NumericVector pvalues_fam(n_genes);
-    Rcpp::NumericVector pvalues_orth(n_genes);
 
     // The pipeline reports the own-comparison neighbourhood as two separate stratum
-    // sizes (case side and control side), plus the family/ortholog control-pool
-    // sizes and the case kNN-pool size: five outputs in total.
+    // sizes (case side and control side), plus the case kNN-pool size.
     Rcpp::IntegerVector neighborhood_size_own_case(n_genes);
     Rcpp::IntegerVector neighborhood_size_own_control(n_genes);
-    Rcpp::IntegerVector neighborhood_size_fam(n_genes);
-    Rcpp::IntegerVector neighborhood_size_orth(n_genes);
-    Rcpp::IntegerVector neighborhood_size_cancer(n_genes);
+    Rcpp::IntegerVector neighborhood_size_case(n_genes);
 
     // Diagnostics: sign-encoded chosen stratification bin count per side
     // (+ = criteria met, - = coarse 2-bin fallback, -1 = not computed).
@@ -4947,94 +4894,67 @@ static Rcpp::List run_noise_pvalues_pipeline(
 
     if (model_variant == 1) {
         compute_noise_pvalues_pipeline_exact_c(
-            cancer_means.begin(), cancer_replicates.begin(), &cancer_n_genes, &cancer_n_samples,
-            healthy_means.begin(), healthy_replicates.begin(), &healthy_n_genes, &healthy_n_samples,
-            obs_own.begin(), obs_fam.begin(), obs_orth.begin(),
-            family_means.begin(), ortholog_means.begin(),
-            valid_genes_own.begin(), valid_genes_fam.begin(), valid_genes_orth.begin(),
-            family_sizes.begin(), gene_to_fam.begin(),
-            &n_genes, &n_families, &norm_method,
+            case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
+            control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
+            obs_own.begin(), valid_genes_own.begin(),
+            &n_genes, &norm_method,
             &k_start, &k_step, &k_max, &tau,
-            pvalues_own.begin(), pvalues_fam.begin(), pvalues_orth.begin(),
-            &n_success, &max_pool_size,
+            pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
-            neighborhood_size_fam.begin(), neighborhood_size_orth.begin(),
-            neighborhood_size_cancer.begin(),
+            neighborhood_size_case.begin(),
             chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     } else if (model_variant == 2) {
         compute_noise_pvalues_pipeline_lfcseq_c(
-            cancer_means.begin(), cancer_replicates.begin(), &cancer_n_genes, &cancer_n_samples,
-            healthy_means.begin(), healthy_replicates.begin(), &healthy_n_genes, &healthy_n_samples,
-            obs_own.begin(), obs_fam.begin(), obs_orth.begin(),
-            family_means.begin(), ortholog_means.begin(),
-            valid_genes_own.begin(), valid_genes_fam.begin(), valid_genes_orth.begin(),
-            family_sizes.begin(), gene_to_fam.begin(),
-            &n_genes, &n_families, &norm_method,
+            case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
+            control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
+            obs_own.begin(), valid_genes_own.begin(),
+            &n_genes, &norm_method,
             &k_start, &k_step, &k_max, &tau,
-            pvalues_own.begin(), pvalues_fam.begin(), pvalues_orth.begin(),
-            &n_success, &max_pool_size,
+            pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
-            neighborhood_size_fam.begin(), neighborhood_size_orth.begin(),
-            neighborhood_size_cancer.begin(),
+            neighborhood_size_case.begin(),
             chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     } else {
         compute_noise_pvalues_pipeline_c(
-            cancer_means.begin(), cancer_replicates.begin(), &cancer_n_genes, &cancer_n_samples,
-            healthy_means.begin(), healthy_replicates.begin(), &healthy_n_genes, &healthy_n_samples,
-            obs_own.begin(), obs_fam.begin(), obs_orth.begin(),
-            family_means.begin(), ortholog_means.begin(),
-            valid_genes_own.begin(), valid_genes_fam.begin(), valid_genes_orth.begin(),
-            family_sizes.begin(), gene_to_fam.begin(),
-            &n_genes, &n_families, &norm_method,
+            case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
+            control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
+            obs_own.begin(), valid_genes_own.begin(),
+            &n_genes, &norm_method,
             &k_start, &k_step, &k_max, &tau,
-            pvalues_own.begin(), pvalues_fam.begin(), pvalues_orth.begin(),
-            &n_success, &max_pool_size,
+            pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
-            neighborhood_size_fam.begin(), neighborhood_size_orth.begin(),
-            neighborhood_size_cancer.begin(),
+            neighborhood_size_case.begin(),
             chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     }
 
     return Rcpp::List::create(
         Rcpp::Named("pvalues_own") = pvalues_own,
-        Rcpp::Named("pvalues_fam") = pvalues_fam,
-        Rcpp::Named("pvalues_orth") = pvalues_orth,
         Rcpp::Named("n_success") = n_success,
         Rcpp::Named("neighborhood_size_own_case") = neighborhood_size_own_case,
         Rcpp::Named("neighborhood_size_own_control") = neighborhood_size_own_control,
-        Rcpp::Named("neighborhood_size_fam") = neighborhood_size_fam,
-        Rcpp::Named("neighborhood_size_orth") = neighborhood_size_orth,
-        Rcpp::Named("neighborhood_size_cancer") = neighborhood_size_cancer,
+        Rcpp::Named("neighborhood_size_case") = neighborhood_size_case,
         Rcpp::Named("chosen_n_bins_own_case") = chosen_n_bins_own_case,
         Rcpp::Named("chosen_n_bins_own_control") = chosen_n_bins_own_control,
         Rcpp::Named("ierr") = ierr);
 }
 
-//' Compute noise-model p-values for own/family/ortholog comparisons
+//' Compute noise-model p-values (gene-vs-own comparison)
 //'
 //' Baseline model: the null tail is counted by exhaustive pairwise enumeration,
 //' falling back to Monte Carlo sampling for large residual pools.
 //'
-//' @param cancer_means NumericVector of cancer gene means (length = cancer_n_genes)
-//' @param cancer_replicates NumericMatrix of cancer replicates
-//'   (cancer_n_samples x cancer_n_genes)
-//' @param healthy_means NumericVector of healthy gene means
-//'   (length = healthy_n_genes)
-//' @param healthy_replicates NumericMatrix of healthy replicates
-//'   (healthy_n_samples x healthy_n_genes)
+//' @param case_means NumericVector of case gene means (length = case_n_genes)
+//' @param case_replicates NumericMatrix of case replicates
+//'   (case_n_samples x case_n_genes)
+//' @param control_means NumericVector of control gene means
+//'   (length = control_n_genes)
+//' @param control_replicates NumericMatrix of control replicates
+//'   (control_n_samples x control_n_genes)
 //' @param obs_own NumericVector of observed gene-vs-own statistics
-//' @param obs_fam NumericVector of observed gene-vs-family statistics
-//' @param obs_orth NumericVector of observed gene-vs-ortholog statistics
-//' @param family_means NumericVector of family means
-//' @param ortholog_means NumericVector of ortholog means
 //' @param valid_genes_own IntegerVector indicating which own p-values to compute
-//' @param valid_genes_fam IntegerVector indicating which family p-values to compute
-//' @param valid_genes_orth IntegerVector indicating which ortholog p-values to compute
-//' @param family_sizes IntegerVector of family sizes
-//' @param gene_to_fam IntegerVector mapping genes to family indices (1-based)
 //' @param norm_method Integer normalization method (0 = linear, non-zero = log2)
 //' @param k_start Integer initial pool size
 //' @param k_step Integer adaptive growth step
@@ -5042,24 +4962,16 @@ static Rcpp::List run_noise_pvalues_pipeline(
 //' @param tau Double adaptive stopping threshold
 //' @param max_pool_size Integer maximum neighborhood pool size
 //'
-//' @return List with p-values (own/fam/orth), success count, five neighborhood
-//'   sizes (own_case, own_control, fam, orth, cancer), and error code.
+//' @return List with pvalues_own, success count, three neighborhood sizes
+//'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
-    Rcpp::NumericVector cancer_means,
-    Rcpp::NumericMatrix cancer_replicates,
-    Rcpp::NumericVector healthy_means,
-    Rcpp::NumericMatrix healthy_replicates,
+    Rcpp::NumericVector case_means,
+    Rcpp::NumericMatrix case_replicates,
+    Rcpp::NumericVector control_means,
+    Rcpp::NumericMatrix control_replicates,
     Rcpp::NumericVector obs_own,
-    Rcpp::NumericVector obs_fam,
-    Rcpp::NumericVector obs_orth,
-    Rcpp::NumericVector family_means,
-    Rcpp::NumericVector ortholog_means,
     Rcpp::IntegerVector valid_genes_own,
-    Rcpp::IntegerVector valid_genes_fam,
-    Rcpp::IntegerVector valid_genes_orth,
-    Rcpp::IntegerVector family_sizes,
-    Rcpp::IntegerVector gene_to_fam,
     int norm_method,
     int k_start,
     int k_step,
@@ -5069,14 +4981,12 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
 
     return run_noise_pvalues_pipeline(
         0,  // baseline (bootstrap mean-difference null)
-        cancer_means, cancer_replicates, healthy_means, healthy_replicates,
-        obs_own, obs_fam, obs_orth, family_means, ortholog_means,
-        valid_genes_own, valid_genes_fam, valid_genes_orth,
-        family_sizes, gene_to_fam,
+        case_means, case_replicates, control_means, control_replicates,
+        obs_own, valid_genes_own,
         norm_method, k_start, k_step, k_max, tau, max_pool_size);
 }
 
-//' Compute noise-model p-values (EXACT variant) for own/family/ortholog comparisons
+//' Compute noise-model p-values (EXACT variant, gene-vs-own comparison)
 //'
 //' Exact model: the null tail is counted exactly at every pool size via a sorted
 //' control pool and binary search (no Monte Carlo). Same arguments and same return
@@ -5084,24 +4994,16 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
 //' \code{noise_model_exact} Fortran module.
 //'
 //' @inheritParams tox_compute_noise_pvalues_pipeline_rcpp
-//' @return List with p-values (own/fam/orth), success count, five neighborhood
-//'   sizes (own_case, own_control, fam, orth, cancer), and error code.
+//' @return List with pvalues_own, success count, three neighborhood sizes
+//'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
-    Rcpp::NumericVector cancer_means,
-    Rcpp::NumericMatrix cancer_replicates,
-    Rcpp::NumericVector healthy_means,
-    Rcpp::NumericMatrix healthy_replicates,
+    Rcpp::NumericVector case_means,
+    Rcpp::NumericMatrix case_replicates,
+    Rcpp::NumericVector control_means,
+    Rcpp::NumericMatrix control_replicates,
     Rcpp::NumericVector obs_own,
-    Rcpp::NumericVector obs_fam,
-    Rcpp::NumericVector obs_orth,
-    Rcpp::NumericVector family_means,
-    Rcpp::NumericVector ortholog_means,
     Rcpp::IntegerVector valid_genes_own,
-    Rcpp::IntegerVector valid_genes_fam,
-    Rcpp::IntegerVector valid_genes_orth,
-    Rcpp::IntegerVector family_sizes,
-    Rcpp::IntegerVector gene_to_fam,
     int norm_method,
     int k_start,
     int k_step,
@@ -5111,14 +5013,12 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
 
     return run_noise_pvalues_pipeline(
         1,  // exact (sorted binary-search + sqrt(n) scaling)
-        cancer_means, cancer_replicates, healthy_means, healthy_replicates,
-        obs_own, obs_fam, obs_orth, family_means, ortholog_means,
-        valid_genes_own, valid_genes_fam, valid_genes_orth,
-        family_sizes, gene_to_fam,
+        case_means, case_replicates, control_means, control_replicates,
+        obs_own, valid_genes_own,
         norm_method, k_start, k_step, k_max, tau, max_pool_size);
 }
 
-//' Compute noise-model p-values (LFCseq variant) for own/family/ortholog comparisons
+//' Compute noise-model p-values (LFCseq variant, gene-vs-own comparison)
 //'
 //' LFCseq model: the `own` null is built from WITHIN-neighbourhood mean comparisons
 //' (no variance stratification). For each draw, two group means (sizes n_rep_case and
@@ -5129,24 +5029,16 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
 //' outputs are 1 when the own p-value is computed (no stratification), -1 otherwise.
 //'
 //' @inheritParams tox_compute_noise_pvalues_pipeline_rcpp
-//' @return List with p-values (own/fam/orth), success count, five neighborhood
-//'   sizes (own_case, own_control, fam, orth, cancer), and error code.
+//' @return List with pvalues_own, success count, three neighborhood sizes
+//'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_lfcseq_rcpp(
-    Rcpp::NumericVector cancer_means,
-    Rcpp::NumericMatrix cancer_replicates,
-    Rcpp::NumericVector healthy_means,
-    Rcpp::NumericMatrix healthy_replicates,
+    Rcpp::NumericVector case_means,
+    Rcpp::NumericMatrix case_replicates,
+    Rcpp::NumericVector control_means,
+    Rcpp::NumericMatrix control_replicates,
     Rcpp::NumericVector obs_own,
-    Rcpp::NumericVector obs_fam,
-    Rcpp::NumericVector obs_orth,
-    Rcpp::NumericVector family_means,
-    Rcpp::NumericVector ortholog_means,
     Rcpp::IntegerVector valid_genes_own,
-    Rcpp::IntegerVector valid_genes_fam,
-    Rcpp::IntegerVector valid_genes_orth,
-    Rcpp::IntegerVector family_sizes,
-    Rcpp::IntegerVector gene_to_fam,
     int norm_method,
     int k_start,
     int k_step,
@@ -5156,9 +5048,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_lfcseq_rcpp(
 
     return run_noise_pvalues_pipeline(
         2,  // LFCseq (within-neighbourhood unioned mean comparisons)
-        cancer_means, cancer_replicates, healthy_means, healthy_replicates,
-        obs_own, obs_fam, obs_orth, family_means, ortholog_means,
-        valid_genes_own, valid_genes_fam, valid_genes_orth,
-        family_sizes, gene_to_fam,
+        case_means, case_replicates, control_means, control_replicates,
+        obs_own, valid_genes_own,
         norm_method, k_start, k_step, k_max, tau, max_pool_size);
 }
