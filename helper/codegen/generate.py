@@ -21,6 +21,7 @@ from .emit.errors_r import RErrorEmitter
 from .emit.fortran_c import FortranCEmitter
 from .emit.fortran_wrapper import FortranWrapperEmitter, WrapperInfo
 from .emit.doc_links import LinkResolver, build as build_links
+from .emit.doc_tiers import build as build_tiers
 from .emit.python_ctypes import PythonEmitter
 from .emit.r_wrapper import RWrapperEmitter
 from .emit.c_call import CCallEmitter
@@ -217,7 +218,11 @@ def _published_to_the_languages(
 
 def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,
                   synthesis: SynthesisResult | None = None) -> list[GeneratedFile]:
-    emitter = PythonEmitter(library=library, links=_links(binding, synthesis))
+    emitter = PythonEmitter(
+        library=library,
+        links=_links(binding, synthesis),
+        tiers=build_tiers(binding, synthesis.specs if synthesis else ()),
+    )
     out = paths.resolve(paths.python_out_dir)
     files = [
         GeneratedFile(out / "library.py", emitter.library_module()),
@@ -239,7 +244,11 @@ def _links(binding: CBinding, synthesis: SynthesisResult | None) -> LinkResolver
 
 def _r_files(binding: CBinding, catalogue, paths: Paths,
              synthesis: SynthesisResult | None = None) -> list[GeneratedFile]:
-    emitter, wrapper = CCallEmitter(), RWrapperEmitter(links=_links(binding, synthesis))
+    emitter = CCallEmitter()
+    wrapper = RWrapperEmitter(
+        links=_links(binding, synthesis),
+        tiers=build_tiers(binding, synthesis.specs if synthesis else ()),
+    )
     # the C `.Call` shims live under src/ so fpm compiles them into the one
     # libtensor-omics.so (mirroring the generated src/c_binding/*.F90); the R-language
     # wrappers live in the R package tree.

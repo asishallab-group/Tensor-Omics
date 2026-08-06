@@ -160,7 +160,9 @@ only validates and allocates, those languages allocate the work arrays for *both
 `foo_expert` would be the same call under a name claiming otherwise — the generator emits only
 `foo` there. Fortran and C always get both: there the expert tier really does hand the buffers
 over. Today three procedures keep a Python/R expert tier, each because it takes a permutation you
-may supply yourself.
+may supply yourself. Where both are published, **each docstring says what the other does** --
+which permutation the plain one seeds and sorts, which prologue it runs -- so a reader does not
+have to work out why there are two.
 
 ### Which path is yours
 

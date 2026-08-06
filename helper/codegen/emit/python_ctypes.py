@@ -131,11 +131,14 @@ def character_rank(argument: CArgument) -> int:
 
 
 class PythonEmitter:
-    def __init__(self, library: str = "build/libtensor-omics.so", links=None):
+    def __init__(self, library: str = "build/libtensor-omics.so", links=None, tiers=None):
         self.library = library
         #: resolves a Ford link to what it is called here; None in a unit test, where a link
         #: then renders as plain code rather than a cross-reference
         self.links = links
+        #: what each half of an expert/allocating pair says about the other, by published
+        #: name (`emit.doc_tiers`); empty where a procedure reaches this language only once
+        self.tiers = tiers or {}
 
     # -- package ----------------------------------------------------------------
 

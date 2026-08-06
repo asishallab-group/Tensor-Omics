@@ -283,6 +283,9 @@ def pool_means_expert(
     -----
     Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means`, whose argument names are
     the ones an error message reports.
+
+    The expert entry point: you supply `pooled_means_perm` yourself.
+    `pool_means` seeds `pooled_means_perm` and sorts it by `pooled_means`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -366,6 +369,9 @@ def pool_means(
     -----
     Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means_alloc`, whose argument names are
     the ones an error message reports.
+
+    This entry point seeds `pooled_means_perm` and sorts it by `pooled_means`.
+    Call `pool_means_expert` to do that yourself.
     """
     # accept anything array-like, converting only when C needs it
     try:

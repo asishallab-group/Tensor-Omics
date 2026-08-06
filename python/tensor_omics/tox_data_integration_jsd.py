@@ -149,6 +149,9 @@ def determine_shared_residual_range_expert(
     -----
     Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range`, whose argument names are
     the ones an error message reports.
+
+    The expert entry point: you supply `abs_residual_pool_perm` yourself.
+    `determine_shared_residual_range` seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -221,6 +224,9 @@ def determine_shared_residual_range(
     -----
     Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range_alloc`, whose argument names are
     the ones an error message reports.
+
+    This entry point seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
+    Call `determine_shared_residual_range_expert` to do that yourself.
     """
     # accept anything array-like, converting only when C needs it
     try:

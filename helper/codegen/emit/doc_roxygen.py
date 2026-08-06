@@ -74,6 +74,12 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
     writer.line("#' are the ones an error message reports.")
     writer.line("#'")
 
+    note = getattr(emitter, "tiers", {}).get(wrapper.stripped_name)
+    if note is not None:
+        for line in note.lines("\\code{{{}}}"):
+            writer.line(f"#' {line}")
+        writer.line("#'")
+
     for argument in emitter._inputs(wrapper):
         first, *rest = _param_lines(argument, resolver)
         writer.line(f"#' @param {argument.name} {first}")

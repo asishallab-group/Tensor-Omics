@@ -179,3 +179,81 @@ class TestTheTargetsAgreeOnTheRealProject:
                 overwritten[wrapper.stripped_name] = sorted(derived)
 
         assert not overwritten, f"asked for and then overwritten: {overwritten}"
+
+
+class TestTierNotes:
+    """What each half of a published pair says about the other."""
+
+    def note(self, is_expert, prepares=("`values_perm`",), how=("seeds `values_perm`",)):
+        from codegen.emit.doc_tiers import TierNote
+
+        return TierNote("crunch_expert" if not is_expert else "crunch", prepares, how,
+                        is_expert=is_expert)
+
+    def test_the_plain_half_says_what_it_does_and_offers_the_other(self):
+        lines = self.note(is_expert=False).lines("`{}`")
+
+        assert lines[0] == "This entry point seeds `values_perm`."
+        assert lines[1] == "Call `crunch_expert` to do that yourself."
+
+    def test_the_expert_half_says_what_it_leaves_to_you(self):
+        lines = self.note(is_expert=True).lines("`{}`")
+
+        assert lines[0] == "The expert entry point: you supply `values_perm` yourself."
+        assert lines[1] == "`crunch` seeds `values_perm`."
+
+    def test_a_prologue_alone_changes_no_argument_so_it_reads_differently(self):
+        lines = self.note(is_expert=True, prepares=(),
+                          how=("runs `guard` first, which may answer the call outright",)
+                          ).lines("`{}`")
+
+        assert lines == [
+            "The expert entry point: `crunch` runs `guard` first, which may answer the "
+            "call outright; this one does not."
+        ]
+
+    def test_r_marks_identifiers_its_own_way(self):
+        # the parts are stored with backticks; each language renders them as it marks code,
+        # and the rest of the generated roxygen uses \code{} for text the emitter wrote
+        lines = self.note(is_expert=False).lines("\\code{{{}}}")
+
+        assert lines[0] == "This entry point seeds \\code{values_perm}."
+        assert lines[1] == "Call \\code{crunch_expert} to do that yourself."
+
+    def test_only_pairs_that_both_reach_the_language_get_a_note(self, real_binding=None):
+        # over the real tree: a note exists for exactly the published _expert functions
+        from codegen.config import CONVENTIONS
+        from codegen.diagnostics import DiagnosticBag
+        from codegen.emit.doc_tiers import build
+
+        binding, synthesis = _real_published()
+        notes = build(binding, synthesis.specs, CONVENTIONS)
+        published = {w.stripped_name for m in binding for w in m}
+        experts = {name for name in published if name.endswith(CONVENTIONS.expert_infix)}
+        assert experts, "no expert tier survived, so this asserts nothing"
+        for expert in experts:
+            assert expert in notes, expert
+            assert expert[: -len(CONVENTIONS.expert_infix)] in notes, expert
+        assert set(notes) == experts | {e[: -len(CONVENTIONS.expert_infix)] for e in experts}
+
+
+def _real_published():
+    """The real tree's binding as Python and R publish it, plus its synthesis."""
+    from pathlib import Path
+
+    from codegen.abi.c_abi import build_project
+    from codegen.config import CONVENTIONS, Paths
+    from codegen.diagnostics import DiagnosticBag
+    from codegen.frontend.ford_frontend import FordFrontend
+    from codegen.generate import _published_to_the_languages
+    from codegen.ir.roles import analyse_project
+    from codegen.synthesize import synthesize_wrappers
+
+    from conftest import REPO_ROOT
+
+    bag = DiagnosticBag()
+    parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=Path("src")), bag).parse()
+    synthesis = synthesize_wrappers(parsed.project, CONVENTIONS, bag)
+    analyse_project(synthesis.project, bag)
+    binding = build_project(synthesis.project, bag, CONVENTIONS)
+    return _published_to_the_languages(binding, synthesis), synthesis

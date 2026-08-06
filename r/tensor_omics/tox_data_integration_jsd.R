@@ -8,6 +8,9 @@
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range}, whose argument names
 #' are the ones an error message reports.
 #'
+#' The expert entry point: you supply \code{abs_residual_pool_perm} yourself.
+#' \code{determine_shared_residual_range} seeds \code{abs_residual_pool_perm} and sorts it by \code{abs_residual_pool}.
+#'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
 #'   NaN is permitted for this value.
 #' @param abs_residual_pool_perm a integer vector. The permutation vector that sorts `abs_residual_pool`
@@ -41,6 +44,9 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_shared_residual_range_alloc}, whose argument names
 #' are the ones an error message reports.
+#'
+#' This entry point seeds \code{abs_residual_pool_perm} and sorts it by \code{abs_residual_pool}.
+#' Call \code{determine_shared_residual_range_expert} to do that yourself.
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
 #'   NaN is permitted for this value.

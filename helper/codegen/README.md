@@ -212,6 +212,11 @@ The parts a source author does not need, and a generator maintainer does:
   signature is shaped from it in `synthesize` and the body written from it in the emitter, so both
   call it with the same prologue; an argument that also sizes something the caller still sees is
   held back, or nothing could size what comes back.
+- **A published pair explains itself** (`emit/doc_tiers.py`). Where both `foo` and
+  `foo_expert` reach a language, each docstring says what the other does -- which permutation
+  the allocating half seeds and sorts, which prologue it runs -- because the two are otherwise
+  indistinguishable to a reader. The parts are stored with identifiers in backticks and
+  rendered per language: Python keeps them, R turns them into `\code{}`.
 - **A serialized array is made assumed-size and sliced** to `product(<arg>_shape)` in the wrapper,
   which is why the shape argument may not be optional — the wrapper reads it before it may take
   `c_loc` of what it sizes. Python then accepts an array of any rank and flattens it in Fortran

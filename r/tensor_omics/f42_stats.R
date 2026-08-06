@@ -43,6 +43,9 @@ loess_smooth_2d <- function(x_ref, y_ref, indices_used, x_query, kernel_sigma, k
 #' Generated from the Fortran procedure \code{f42_stats::compute_edf}, whose argument names
 #' are the ones an error message reports.
 #'
+#' The expert entry point: you supply \code{perm} yourself.
+#' \code{compute_edf} prepares \code{perm}.
+#'
 #' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
 #' @param perm a integer vector. Pre-sorted permutation indices (must be sorted by values[perm]).
 #' @return a named list with elements:
@@ -75,6 +78,9 @@ compute_edf_expert <- function(values, perm) {
 #'
 #' Generated from the Fortran procedure \code{f42_stats::compute_edf_alloc}, whose argument names
 #' are the ones an error message reports.
+#'
+#' This entry point prepares \code{perm}.
+#' Call \code{compute_edf_expert} to do that yourself.
 #'
 #' @param values a numeric vector. Array of observed data values (e.g., contributions or spikes).
 #' @return a named list with elements:

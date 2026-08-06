@@ -221,6 +221,9 @@ def compute_edf_expert(
     -----
     Generated from the Fortran procedure `f42_stats::compute_edf`, whose argument names are
     the ones an error message reports.
+
+    The expert entry point: you supply `perm` yourself.
+    `compute_edf` prepares `perm`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -305,6 +308,9 @@ def compute_edf(
     -----
     Generated from the Fortran procedure `f42_stats::compute_edf_alloc`, whose argument names are
     the ones an error message reports.
+
+    This entry point prepares `perm`.
+    Call `compute_edf_expert` to do that yourself.
     """
     # accept anything array-like, converting only when C needs it
     try:

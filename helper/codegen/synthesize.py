@@ -216,6 +216,8 @@ class WrapperSpec:
     allocating: Procedure | None = None
     #: Set when this is one of a mode-split kernel's per-mode wrappers
     mode_fix: ModeFix | None = None
+    #: The procedure this kernel's `DM_PROLOGUE` names, resolved
+    prologue: Procedure | None = None
     #: Whether the allocating wrapper does anything beyond validating and allocating --
     #: builds a permutation, or runs a prologue. That is what an expert caller would be
     #: overriding, and where there is none the two tiers only differ in who allocates,
@@ -305,6 +307,7 @@ def synthesize_wrappers(
                         validating=validating,
                         allocating=allocating,
                         mode_fix=mode_fix,
+                        prologue=prologue,
                         alloc_does_more=_alloc_does_more(arguments, prologue, conventions),
                     )
                 )

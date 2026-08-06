@@ -85,7 +85,7 @@ def render_docstring(wrapper: CWrapper, emitter=None) -> str:
                 _result(writer, argument, emitter)
 
     _raises(writer, wrapper)
-    _notes(writer, wrapper)
+    _notes(writer, wrapper, emitter)
 
     writer.line('"""')
     return writer.render()
@@ -147,7 +147,7 @@ def _raises(writer: Writer, wrapper: CWrapper) -> None:
         writer.line("If the underlying Fortran reports an error.")
 
 
-def _notes(writer: Writer, wrapper: CWrapper) -> None:
+def _notes(writer: Writer, wrapper: CWrapper, emitter=None) -> None:
     procedure = wrapper.procedure
     # the procedure, not just the module: an error message names an argument from
     # *its* dummy list -- including extents, work arrays and ierr, which no caller of this
@@ -162,3 +162,8 @@ def _notes(writer: Writer, wrapper: CWrapper) -> None:
     writer.line("-----")
     writer.line(f"Generated from the Fortran procedure `{origin}`, whose argument names are")
     writer.line("the ones an error message reports.")
+    note = getattr(emitter, "tiers", {}).get(wrapper.stripped_name)
+    if note is not None:
+        writer.blank()
+        for line in note.lines("`{}`"):
+            writer.line(line)

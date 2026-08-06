@@ -54,6 +54,9 @@ compute_residuals <- function(expr, means) {
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means}, whose argument names
 #' are the ones an error message reports.
 #'
+#' The expert entry point: you supply \code{pooled_means_perm} yourself.
+#' \code{pool_means} seeds \code{pooled_means_perm} and sorts it by \code{pooled_means}.
+#'
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
 #' @param pooled_means_perm a integer vector. Sorting permutation for `pooled_means`
@@ -87,6 +90,9 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means_alloc}, whose argument names
 #' are the ones an error message reports.
+#'
+#' This entry point seeds \code{pooled_means_perm} and sorts it by \code{pooled_means}.
+#' Call \code{pool_means_expert} to do that yourself.
 #'
 #' @param pooled_means a numeric vector. Pooled means
 #'   NaN is permitted for this value.
