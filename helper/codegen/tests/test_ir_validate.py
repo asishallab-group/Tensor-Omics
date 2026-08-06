@@ -611,17 +611,33 @@ class TestPrologue:
 
         assert "'handled' is not intent(out)" in only_error(self.bag).message
 
-    def test_a_dummy_the_kernel_does_not_have_is_rejected(self):
+    def test_a_dummy_the_kernel_does_not_have_becomes_the_wrappers_own(self):
+        # what the prologue derives *from* is the allocating tier's vocabulary, not the
+        # kernel's: a threshold comes from a percentile, and the kernel takes the threshold
         self.checked(guard_arguments=self.guard(
             b.integer("n", Intent.IN, doc="length"),
-            b.integer("scratch_room", Intent.IN, doc="the kernel has never heard of it"),
+            b.real("percentile", Intent.IN, doc="where to put the threshold"),
+            b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            b.logical("handled", Intent.OUT, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        assert self.bag.errors == ()
+
+    def test_a_near_miss_of_a_kernel_argument_is_refused_as_a_typo(self):
+        # otherwise a misspelling reads as a new argument, and the prologue and the kernel
+        # would work from different numbers with nothing to say so
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("valuess", Intent.IN, "(n)", doc="one letter off 'values'"),
+            b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
             b.logical("handled", Intent.OUT, doc="dealt with"),
             b.ierr(),
         ))
 
         error = only_error(self.bag)
-        assert error.message.startswith("prologue argument 'scratch_room' names nothing")
-        assert "rename this one" in error.note
+        assert "'valuess' looks like a misspelling of 'values'" in error.message
+        assert "different values" in error.note
 
     def test_a_work_array_is_not_a_dummy_the_kernel_does_not_have(self):
         # tmp_scratch is a kernel argument the allocating wrapper prepares, and a prologue
@@ -854,14 +870,14 @@ class TestPrologueAndTheModeSplit:
             b.integer("pattern_mode", Intent.IN, doc="which pattern"), DiagnosticBag()
         )
 
-        assert any("'pattern_mode' names nothing every wrapper" in m for m in messages(bag)), messages(bag)
+        assert any("'pattern_mode' is not on every wrapper" in m for m in messages(bag)), messages(bag)
 
     def test_a_mode_scoped_argument_is_rejected_when_the_mode_splits(self):
         bag = self.checked(
             b.real("threshold", Intent.IN, doc="dosage threshold"), DiagnosticBag()
         )
 
-        assert any("'threshold' names nothing every wrapper" in m for m in messages(bag)), messages(bag)
+        assert any("'threshold' is not on every wrapper" in m for m in messages(bag)), messages(bag)
 
     def test_a_mode_scoped_argument_is_accepted_when_the_mode_does_not_split(self):
         # without a Procedure column there is one wrapper, which carries the argument as an
@@ -872,7 +888,7 @@ class TestPrologueAndTheModeSplit:
             split=False,
         )
 
-        assert not any("names nothing every wrapper" in m for m in messages(bag)), messages(bag)
+        assert not any("is not on every wrapper" in m for m in messages(bag)), messages(bag)
 
 
 def _without_the_procedure_column(source, doc):

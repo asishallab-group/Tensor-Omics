@@ -524,11 +524,41 @@ def _as_required(argument: Argument) -> Argument:
     )
 
 
+def prologue_only_arguments(
+    prologue, arguments: Sequence[Argument], conventions: Conventions = CONVENTIONS
+) -> list[Argument]:
+    """The prologue's own dummies -- the ones the kernel knows nothing about.
+
+    A prologue derives something for the kernel, and what it derives it *from* is often not
+    the kernel's business: a threshold comes from a percentile, and the kernel takes the
+    threshold. That percentile has to come from somewhere, so it becomes an argument of the
+    allocating wrapper -- of that one alone, because only it runs the prologue. The expert
+    tier takes the derived value directly and would have no use for it.
+
+    `handled` and `ierr` are the wrapper's own and never count.
+    """
+    if prologue is None:
+        return []
+    known = {argument.name.lower() for argument in arguments}
+    known |= {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    return [
+        dummy.with_name(dummy.name)
+        for dummy in prologue.arguments
+        if dummy.name.lower() not in known
+    ]
+
+
 def _wrappers_for(
     base: str, arguments: list[Argument], kernel: Procedure, conventions: Conventions,
     prologue=None,
 ) -> tuple[Procedure, Procedure | None]:
-    """The validating wrapper, and the allocating one when the exposed arguments need it."""
+    """The validating wrapper, and the allocating one when the two would differ.
+
+    They differ when the allocating one takes something over (a work array, a permutation, a
+    recommend-sized value) or when the prologue asks for something of its own. Either way the
+    caller sees a different signature, which is the whole reason for two entry points; where
+    neither happens there is one wrapper and nothing to choose between.
+    """
     foo_arguments = [argument.with_name(argument.name) for argument in arguments]
     _append_error(foo_arguments, kernel, conventions)
     validating = _wrapper(
@@ -537,9 +567,12 @@ def _wrappers_for(
 
     taken = taken_over_arguments(arguments, conventions, prologue)
     kept = [a for a in arguments if a not in taken]
+    extra = prologue_only_arguments(prologue, arguments, conventions)
     allocating = None
-    if len(kept) != len(arguments):
-        alloc_arguments = [argument.with_name(argument.name) for argument in kept]
+    if taken or extra:
+        # the prologue's own arguments go after the kernel's, before `ierr`: they are the
+        # allocating tier's own vocabulary, not part of what the kernel was asked for
+        alloc_arguments = [a.with_name(a.name) for a in kept] + extra
         _append_error(alloc_arguments, kernel, conventions)
         allocating = _wrapper(
             base + conventions.alloc_suffix, alloc_arguments, kernel, conventions

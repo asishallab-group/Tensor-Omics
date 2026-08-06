@@ -682,7 +682,24 @@ one case: `foo_alloc` seeds and heapsorts, and a caller who wants a different so
 `foo`. A prologue is the general form.
 
 **Write** `DM_PROLOGUE(<procedure>, <module>)` in the kernel's own doc block. The prologue takes
-the kernel's arguments by name — the `tmp_` work arrays included — plus `handled` and `ierr`:
+the kernel's arguments by name — the `tmp_` work arrays included — plus `handled` and `ierr`.
+
+**A dummy the kernel does not have becomes an argument of `foo_alloc`.** What the prologue
+derives *from* is usually no business of the kernel's: a threshold comes from a `percentile`, and
+the kernel takes the threshold. So `percentile` joins the allocating wrapper's signature — that
+one alone, since only it runs the prologue — and is validated there like any other argument, its
+range macros included. `foo` takes the derived value directly and never sees it:
+
+```
+foo         (values, n, threshold, tmp_scratch, result, ierr)   ← you supply the threshold
+foo_alloc   (values, n, result, percentile, ierr)               ← you supply the percentile
+```
+
+The prologue's own arguments come after the kernel's and before `ierr`.
+
+A name that is *nearly* one the kernel has is refused as a misspelling — `n_gene` beside
+`n_genes` would otherwise become a new argument silently, leaving the prologue and the kernel
+working from different numbers.
 
 ```fortran
 !> summary: Flag directional outliers
@@ -730,8 +747,9 @@ directive. That is where LOESS's degenerate-input check lives.
 - a `DM_PROLOGUE` naming a procedure that does not exist
 - a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` — the wrapper
   returns early on it regardless, so without it that branch reads an undefined value
-- a dummy naming nothing every wrapper has, including the mode argument or a mode-scoped
-  argument of a kernel that splits per mode (§5.11)
+- a dummy that is one edit from a kernel argument — a misspelling, not a new argument
+- a dummy that is the mode argument, or one scoped to a mode, of a kernel that splits per mode
+  (§5.11) — the wrappers for the other modes do not have it
 - a prologue on a kernel with no work arrays, which generates no `foo_alloc` for it to run in
 - a value the prologue writes and the kernel reads that *also* sizes something the caller still
   passes or receives — it cannot become a local then, and Fortran will not hand an `intent(in)`
@@ -1036,7 +1054,8 @@ source and carries a note saying what to write instead.
 | an `allocatable` local anywhere in a **kernel module** | the generated `_alloc` owns the memory, not the kernel (§4, §5.7) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
 | a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
-| a prologue dummy naming nothing *every* wrapper has | it would be dropped from the generated call, and Fortran would reject code you did not write (§5.13) |
+| a prologue dummy one edit from a kernel argument | a misspelling would otherwise become a new argument, and the two would be different values (§5.13) |
+| a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (§5.13) |
 | a prologue on a kernel with no work arrays | there is no allocating wrapper for it to run in (§5.13) |
 | a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (§5.13) |
 

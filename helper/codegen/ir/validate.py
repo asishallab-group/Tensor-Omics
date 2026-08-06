@@ -440,15 +440,17 @@ def _check_prologue_runs_somewhere(kernel: Procedure, prologue: Procedure,
                                    conventions: Conventions) -> None:
     """A prologue on a kernel with no allocating wrapper never runs.
 
-    An allocating wrapper exists only where the kernel has something to take over -- a work
-    array, a permutation, a recommend-sized value. A prologue on a kernel with none of those
-    is attached to a procedure that is never generated: no call is emitted anywhere, and
-    nothing said so.
+    An allocating wrapper exists where the kernel has something to take over -- a work array,
+    a permutation, a recommend-sized value -- or where the prologue asks for an argument of
+    its own. A prologue with neither is attached to a procedure that is never generated: no
+    call is emitted anywhere, and nothing said so.
     """
-    from ..synthesize import taken_over_arguments
+    from ..synthesize import prologue_only_arguments, taken_over_arguments
 
     if taken_over_arguments(kernel.arguments, conventions, prologue):
         return
+    if prologue_only_arguments(prologue, kernel.arguments, conventions):
+        return  # the wrapper exists to carry those, whether or not anything is allocated
     diagnostics.error(
         f"prologue '{prologue.name}' is on a kernel that generates no allocating wrapper",
         entity=kernel,
@@ -498,33 +500,85 @@ def _check_prologue_reports_handled(kernel: Procedure, prologue: Procedure,
 def _check_prologue_arguments_resolve(kernel: Procedure, prologue: Procedure,
                                       diagnostics: DiagnosticBag,
                                       conventions: Conventions) -> None:
-    """Every prologue dummy is supplied by name, so every name has to be there.
+    """Every prologue dummy is supplied by name, so every name has to mean something.
 
-    The wrapper supplies `handled` and `ierr` itself and everything else from the kernel's
-    own arguments -- either a dummy it passes on, or a work array it prepared. A name that
-    is neither used to vanish from the generated call, which Fortran then rejected in code
-    the author did not write.
+    A name the kernel has is passed straight on. A name it does not becomes an argument of
+    the allocating wrapper -- what the prologue derives from, which is the allocating tier's
+    own vocabulary and no business of the kernel's: a threshold's `percentile`.
+
+    Which leaves a misspelling nowhere to be caught, since it now reads as a new argument.
+    So a name that is *nearly* one the kernel has is refused: `n_gene` beside `n_genes` is a
+    typo, and silently turning it into something the caller must pass would mean the prologue
+    and the kernel working from different numbers.
 
     There is no rename table, deliberately: a producer needs one because it is a published
     routine whose own parameter names cannot move, whereas a prologue is internal to the
     kernel module and its dummy can simply be renamed to match.
     """
     supplied = {argument.name.lower() for argument in kernel.arguments}
-    supplied |= {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
-    supplied -= _dropped_by_the_mode_split(kernel)
+    reserved = {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
+    dropped = _dropped_by_the_mode_split(kernel)
+
     for dummy in prologue.arguments:
-        if dummy.name.lower() in supplied:
+        name = dummy.name.lower()
+        if name in reserved:
             continue
-        diagnostics.error(
-            f"prologue argument '{dummy.name}' names nothing every wrapper of "
-            f"'{kernel.name}' has",
-            dummy,
-            note=(
-                f"a prologue's dummies are supplied by name from the wrapper's arguments; "
-                f"rename this one to whatever '{kernel.name}' calls the same thing, or -- "
-                f"if it is scoped to one mode -- take something every mode has"
-            ),
-        )
+        if name in dropped:
+            diagnostics.error(
+                f"prologue argument '{dummy.name}' is not on every wrapper of "
+                f"'{kernel.name}'",
+                dummy,
+                note=(
+                    "the kernel splits per mode, and this argument is the mode or belongs to "
+                    "one of them, so the wrappers for the other modes do not have it -- take "
+                    "something every mode has"
+                ),
+            )
+            continue
+        if name in supplied:
+            continue
+        near = _nearly(name, supplied - dropped)
+        if near is not None:
+            diagnostics.error(
+                f"prologue argument '{dummy.name}' looks like a misspelling of '{near}'",
+                dummy,
+                note=(
+                    f"a name '{kernel.name}' does not have becomes an argument of the "
+                    f"allocating wrapper, which is right for something the prologue derives "
+                    f"from -- but '{dummy.name}' is one edit from '{near}', and the two would "
+                    f"then be different values. Rename it either way"
+                ),
+            )
+
+
+def _nearly(name: str, candidates) -> str | None:
+    """A candidate one edit away from `name`, or None.
+
+    One edit only: two names that differ by more than that are two names. Cheap enough to
+    run over a handful of arguments, and it is the last thing standing between a typo and a
+    silently invented argument.
+    """
+    for candidate in sorted(candidates):
+        if abs(len(candidate) - len(name)) > 1:
+            continue
+        if _within_one_edit(name, candidate):
+            return candidate
+    return None
+
+
+def _within_one_edit(a: str, b: str) -> bool:
+    if a == b:
+        return True
+    if len(a) > len(b):
+        a, b = b, a
+    if len(b) - len(a) > 1:
+        return False
+    for index, (x, y) in enumerate(zip(a, b)):
+        if x != y:
+            if len(a) == len(b):  # a substitution
+                return a[index + 1:] == b[index + 1:]
+            return a[index:] == b[index + 1:]  # an insertion in the longer one
+    return True
 
 
 def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:

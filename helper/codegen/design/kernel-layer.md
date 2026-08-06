@@ -411,6 +411,20 @@ wrapper hand an `intent(in)` dummy to something that writes it.
 `synthesize`) and the body (written in the emitter) pass it, so the two cannot disagree about what
 the caller passes.
 
+**A prologue dummy the kernel does not have becomes an argument of `foo_alloc`.** What a
+prologue derives *from* is the allocating tier's own vocabulary -- a threshold's `percentile` --
+and the kernel, which takes the threshold, has no use for it. So it joins that wrapper's
+signature and is validated there like any other argument. `foo` is untouched: it takes the
+derived value directly. This is also why `foo_alloc` now exists whenever the two signatures
+would differ, rather than only when something is taken over -- a prologue with an argument of
+its own is reason enough.
+
+The cost is that a misspelling has nowhere left to be caught, since it reads as a new argument.
+So a name one edit from a kernel argument is refused with "looks like a misspelling of ...":
+`n_gene` beside `n_genes` would otherwise leave the prologue and the kernel working from
+different numbers, silently. One edit only -- two names differing by more than that are two
+names.
+
 **Rejected -- a rename table for prologue dummies.** A `DM_OUTPUT_FROM` producer needs one
 because it is published and its parameter names cannot move. A prologue is internal to the kernel
 module, so a mismatch is fixed by renaming its dummy, and the diagnostic says so.

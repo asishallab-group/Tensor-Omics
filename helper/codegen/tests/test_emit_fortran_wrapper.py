@@ -724,3 +724,61 @@ class TestValidationCanBeCompiledOut:
         text = emitted(project(kernel_module()))
         for procedure in ("scale_vector",):
             assert "call set_ok(ierr)" in text
+
+
+class TestAPrologueWithArgumentsOfItsOwn:
+    """What a prologue derives *from* is the allocating tier's vocabulary: a threshold comes
+    from a percentile, and the kernel takes the threshold."""
+
+    def built(self):
+        from codegen.ir.types import Intent
+
+        from builders import ierr, integer, logical, project, real
+        from test_synthesize import prologue_kernel_module
+
+        guard = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("percentile", Intent.IN, doc="where to put the threshold"),
+            real("threshold", Intent.OUT, doc="derived here"),
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            ierr(),
+        )
+        kernel = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            real("threshold", Intent.IN, doc="what counts as an outlier"),
+            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+        )
+        return emitted(project(prologue_kernel_module(guard, kernel)))
+
+    def body(self, text, name):
+        return text[text.index(f"subroutine {name}(") : text.index(f"end subroutine {name}")]
+
+    def test_the_allocating_wrapper_takes_it(self):
+        alloc = self.body(self.built(), "crunch_alloc")
+
+        assert "real(real64), intent(in) :: percentile" in alloc
+        assert "percentile = percentile" in alloc
+
+    def test_the_expert_wrapper_does_not(self):
+        # it takes the derived value directly, so what it was derived from means nothing here
+        expert = self.body(self.built(), "crunch")
+
+        assert "percentile" not in expert
+        assert "intent(in) :: threshold" in expert
+
+    def test_the_derived_value_is_a_local_of_the_allocating_wrapper(self):
+        alloc = self.body(self.built(), "crunch_alloc")
+
+        assert "real(real64) :: threshold" in alloc      # a local, not a dummy
+        assert "threshold" not in alloc[: alloc.index(")")]
+        assert alloc.index("call guard(&") < alloc.index("call crunch_kernel(")
+
+    def test_a_prologue_argument_is_validated_like_any_other(self):
+        # it reaches the wrapper's own dummy list, so the range checks apply to it too
+        alloc = self.body(self.built(), "crunch_alloc")
+
+        assert "call validate_in_range_real(percentile, ierr" in alloc
