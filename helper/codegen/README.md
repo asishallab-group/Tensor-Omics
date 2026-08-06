@@ -212,6 +212,13 @@ The parts a source author does not need, and a generator maintainer does:
   signature is shaped from it in `synthesize` and the body written from it in the emitter, so both
   call it with the same prologue; an argument that also sizes something the caller still sees is
   held back, or nothing could size what comes back.
+- **Every `use ..., only:` names what the body uses, and nothing more.** An unused `only:`
+  name is not a compile error in any Fortran and no compiler warns about one, so a fixed
+  import list goes stale in silence -- which is what happened to the C bindings' `tox_errors`
+  list. Each conditional import now has a predicate beside the code that emits it
+  (`_converts_an_input`, `_conversion_helpers`), with tests that a module needing none asks
+  for none. When auditing this by hand, expand `src/macros.h` first: most apparent unused
+  imports are named inside `M_ALLOCATE` and `M_CHECK_NON_NULL`.
 - **A published pair explains itself** (`emit/doc_tiers.py`). Where both `foo` and
   `foo_expert` reach a language, each docstring says what the other does -- which permutation
   the allocating half seeds and sorts, which prologue it runs -- because the two are otherwise
