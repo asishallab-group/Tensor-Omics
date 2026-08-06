@@ -535,3 +535,70 @@ class TestModeMembership:
 
         # it *is* its mode; there is no argument left to compare
         assert "/= MODE_" not in emitted_with_info(project(mode_split_kernel_module()))
+
+
+class TestAPrologueThatBuildsThePermutation:
+    """`<base>_perm` is seeded and heapsorted by the allocating wrapper -- unless the prologue
+    says it builds that permutation itself, which is how a family gets a non-default ordering
+    without giving up the expert tier's ability to take one from the caller."""
+
+    def emitted_with(self, perm_intent):
+        from codegen.ir.types import Intent
+
+        from builders import ierr, integer, logical, project, real
+        from test_synthesize import prologue_kernel_module
+
+        guard = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            logical("handled", Intent.OUT, doc="dealt with"),
+            ierr(),
+        )
+        if perm_intent is not None:
+            guard = guard[:2] + (
+                integer("values_perm", perm_intent, "(n)", doc="ordered how this family wants"),
+            ) + guard[2:]
+        kernel = (
+            real("values", Intent.IN, "(n)", doc="the data"),
+            integer("n", Intent.IN, doc="length"),
+            integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+            real("result", Intent.OUT, "(n)", doc="the answer"),
+        )
+        return emitted(project(prologue_kernel_module(guard, kernel)))
+
+    def body(self, text):
+        start = text.index("subroutine crunch_alloc(")
+        return text[start : text.index("end subroutine crunch_alloc")]
+
+    def test_by_default_the_wrapper_seeds_and_sorts_it(self):
+        text = self.emitted_with(perm_intent=None)
+
+        body = self.body(text)
+        assert "M_ALLOCATE(values_perm(n))" in body
+        assert "call init_perm(values_perm)" in body
+        assert "call sort_array_heapsort(values, values_perm)" in body
+        assert "use f42_sort" in text
+
+    def test_a_prologue_that_declares_it_intent_out_takes_it_over(self):
+        from codegen.ir.types import Intent
+
+        text = self.emitted_with(perm_intent=Intent.OUT)
+
+        body = self.body(text)
+        # still allocated for it, but neither seeded nor sorted -- and it is handed over
+        assert "M_ALLOCATE(values_perm(n))" in body
+        assert "init_perm" not in body
+        assert "sort_array_heapsort" not in body
+        assert "values_perm = values_perm" in body
+        # ... so the helpers are not imported either
+        assert "use f42_sort" not in text
+
+    def test_intent_inout_refines_the_default_instead_of_replacing_it(self):
+        # an in-out prologue dummy reads what it is given, so the wrapper still builds it
+        from codegen.ir.types import Intent
+
+        text = self.emitted_with(perm_intent=Intent.INOUT)
+
+        body = self.body(text)
+        assert "call sort_array_heapsort(values, values_perm)" in body
+        assert body.index("call sort_array_heapsort(values, values_perm)") < body.index("call guard(&")

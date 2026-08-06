@@ -570,7 +570,7 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
     rubbish rather than failing.
     """
     # local imports: synthesize imports this module
-    from ..synthesize import is_permutation, is_temporary, taken_over_arguments
+    from ..synthesize import sorted_permutations, taken_over_arguments
 
     written = {
         dummy.name.lower()
@@ -599,9 +599,8 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
     # `call sort_array_heapsort(<base>, <base>_perm)` -- the permutation is built from the
     # data as it stands there, so a prologue that then rewrites the data leaves an order
     # that describes something else. Nothing crashes; the kernel is handed a wrong answer.
-    for argument in taken:
-        if not is_permutation(argument, conventions) or is_temporary(argument, conventions):
-            continue
+    # A permutation the prologue builds itself is not sorted here, so it reads nothing.
+    for argument in sorted_permutations(taken, prologue, conventions):
         base = argument.name[: -len(conventions.perm_suffix)]
         if base.lower() not in written:
             continue

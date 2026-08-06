@@ -687,6 +687,29 @@ class TestPrologue:
             == error.message
         )
 
+    def test_a_prologue_may_rewrite_the_base_of_a_permutation_it_builds_itself(self):
+        # the counterpart of the test above: nothing sorts values_perm above the prologue,
+        # because the prologue is what builds it, so rewriting values reads nothing early
+        self.checked(
+            guard_arguments=self.guard(
+                b.real("values", Intent.INOUT, "(n)", doc="rewritten here"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("values_perm", Intent.OUT, "(n)", doc="built here too"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="a work array"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            kernel_arguments=[
+                b.real("values", Intent.INOUT, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="a work array"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        assert self.bag.errors == ()
+
     def test_a_produced_value_nothing_above_reads_is_accepted(self):
         # `room` is the kernel's business alone -- no allocation, sort or recommend call
         # above the prologue names it, so filling it there is in time

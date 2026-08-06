@@ -141,6 +141,37 @@ def taken_over_arguments(
     return taken
 
 
+def sorted_permutations(
+    taken: Sequence[Argument], prologue=None, conventions: Conventions = CONVENTIONS
+) -> list[Argument]:
+    """The permutations the allocating wrapper seeds and heapsorts itself.
+
+    Every `<base>_perm` it took over, except the ones something else builds:
+
+    - a `tmp_` permutation is the kernel's own scratch, seeded and ordered inside it;
+    - a permutation the prologue declares `intent(out)` is the prologue's. That is what makes
+      a non-default ordering expressible without giving up the expert tier: name the argument
+      `<base>_perm` so an expert caller can still supply their own order, and let the prologue
+      build it however this family needs. `intent(inout)` means the opposite -- the prologue
+      refines an order, so the default sort still runs first and hands it one.
+
+    Shared by the emitter (which emits the calls) and `validate` (which checks nothing the
+    sort reads is written afterwards), so the two cannot disagree about what gets sorted.
+    """
+    built = {
+        dummy.name.lower()
+        for dummy in (prologue.arguments if prologue is not None else ())
+        if dummy.intent is Intent.OUT
+    }
+    return [
+        argument
+        for argument in taken
+        if is_permutation(argument, conventions)
+        and not is_temporary(argument, conventions)
+        and argument.name.lower() not in built
+    ]
+
+
 @dataclass(frozen=True)
 class ModeFix:
     """The mode a per-mode wrapper fixes: the argument dropped, and what it is set to."""

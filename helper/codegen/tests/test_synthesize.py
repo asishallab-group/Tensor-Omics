@@ -101,12 +101,13 @@ def output_sizing_computed_kernel_module():
     )
 
 
-def prologue_kernel_module(guard_arguments=None):
+def prologue_kernel_module(guard_arguments=None, kernel_arguments=None):
     """A kernel with a prologue, plus the prologue procedure it names.
 
     `guard_arguments` replaces the prologue's own dummies, for the cases where what it takes
-    is the point: a work array (which forces it below the allocations), or a name the kernel
-    does not have (which the validator refuses).
+    is the point: a work array, or a name the kernel does not have (which the validator
+    refuses). `kernel_arguments` replaces the kernel's, for the cases where what the wrapper
+    prepares is the point -- a permutation, say.
     """
     from codegen.ir.directives import Prologue
 
@@ -128,10 +129,12 @@ def prologue_kernel_module(guard_arguments=None):
         ),
         procedure(
             "crunch_kernel",
-            real("values", Intent.IN, "(n)", doc="the data"),
-            integer("n", Intent.IN, doc="length"),
-            real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
-            real("result", Intent.OUT, "(n)", doc="the answer"),
+            *(kernel_arguments if kernel_arguments is not None else (
+                real("values", Intent.IN, "(n)", doc="the data"),
+                integer("n", Intent.IN, doc="length"),
+                real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                real("result", Intent.OUT, "(n)", doc="the answer"),
+            )),
             meta=Meta(summary="Crunch", author="AUTHOR"),
             directives=Directives(prologue=Prologue("guard", "tox_demo_kernel")),
         ),

@@ -32,6 +32,7 @@ from ..synthesize import (
     is_computed,
     is_permutation,
     is_temporary,
+    sorted_permutations,
     taken_over_arguments,
 )
 from .doc_ford import render_doc
@@ -283,12 +284,20 @@ class FortranWrapperEmitter:
         return producers
 
     def _has_permutations(self, module: Module) -> bool:
-        return any(
-            is_permutation(a, self.conventions) and not is_temporary(a, self.conventions)
-            for alloc in module
-            if self._is_allocating(alloc, module)
-            for a in self._kernel_arguments(self._sibling(module, alloc))
-        )
+        """Whether anything here is seeded and sorted, so `f42_sort` is worth importing.
+
+        Asks the same question the emission does, prologue included -- a family whose only
+        permutation the prologue builds needs neither helper.
+        """
+        for alloc in module:
+            if not self._is_allocating(alloc, module):
+                continue
+            foo = self._sibling(module, alloc)
+            taken = taken_over_arguments(self._kernel_arguments(foo), self.conventions)
+            prologue = self._prologue_for(foo, module)
+            if sorted_permutations(taken, prologue, self.conventions):
+                return True
+        return False
 
     # -- subroutine -------------------------------------------------------------
 
@@ -349,7 +358,7 @@ class FortranWrapperEmitter:
         self._materialized_defaults(writer, materialized)
         self._recommend_calls(writer, foo, alloc, taken, materialized)
         self._allocations(writer, taken)
-        self._permutations(writer, taken)
+        self._permutations(writer, taken, prologue)
         writer.blank()
         # Below the work arrays, because preparing them is what a prologue is for -- it is the
         # sugar this tier adds over the expert one, which lets a caller prepare them instead.
@@ -823,14 +832,11 @@ class FortranWrapperEmitter:
                 extents = ", ".join(argument.dimension.extents)
                 writer.line(f"M_ALLOCATE({argument.name}({extents}))")
 
-    def _permutations(self, writer: Writer, taken) -> None:
-        for argument in taken:
-            if is_permutation(argument, self.conventions) and not is_temporary(
-                argument, self.conventions
-            ):
-                base = argument.name[: -len(self.conventions.perm_suffix)]
-                writer.line(f"call init_perm({argument.name})")
-                writer.line(f"call sort_array_heapsort({base}, {argument.name})")
+    def _permutations(self, writer: Writer, taken, prologue) -> None:
+        for argument in sorted_permutations(taken, prologue, self.conventions):
+            base = argument.name[: -len(self.conventions.perm_suffix)]
+            writer.line(f"call init_perm({argument.name})")
+            writer.line(f"call sort_array_heapsort({base}, {argument.name})")
 
     # -- the kernel call --------------------------------------------------------
 

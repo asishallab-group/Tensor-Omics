@@ -492,6 +492,12 @@ integer(int32), intent(out) :: tmp_perm(n_genes)
 **You get**, in `foo_alloc` only: the array allocated, seeded with `init_perm`, and heapsorted
 against `<base>`. `foo` still takes it, because an expert caller may already have it sorted.
 
+**For a different ordering** — descending, stable, by magnitude — let the prologue (§5.13) build
+it: a permutation the prologue declares `intent(out)` is the prologue's, so `foo_alloc` allocates
+it and stops. The argument keeps its `<base>_perm` name, so the expert tier still accepts an order
+from the caller; only the default `_alloc` builds changes. Declare it `intent(inout)` instead and
+the wrapper still seeds and sorts first, handing the prologue an order to refine.
+
 `foo_alloc` calls the **kernel directly**, not `foo` — it just built that permutation itself, so
 re-running an O(n) validation over `[1..n]` would be wasted work. A bare `perm` with no base
 name is not a permutation by this convention; it stays an ordinary argument.
@@ -678,7 +684,9 @@ directive. That is where LOESS's degenerate-input check lives.
   argument of a kernel that splits per mode (§5.11)
 - a prologue on a kernel with no work arrays, which generates no `foo_alloc` for it to run in
 - a value the prologue produces that the allocations, the permutation sorts or the recommend
-  calls *above* it read — the name resolves either way, so it would compile and compute rubbish
+  calls *above* it read — the name resolves either way, so it would compile and compute rubbish.
+  (A permutation the prologue itself builds is not sorted above it, so rewriting that one's
+  `<base>` is fine.)
 
 There is deliberately **no rename table**: unlike a `DM_OUTPUT_FROM` producer, a prologue is
 internal to the kernel module, so the fix is to rename its dummy.

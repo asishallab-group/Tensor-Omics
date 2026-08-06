@@ -370,6 +370,18 @@ a name that resolved to nothing produced a wrapper with no prologue; a dummy tha
 was dropped from the keyword call; a prologue without `handled` left the wrapper branching on an
 undefined logical. All are errors now, in `ir/validate.py`.
 
+**Rejected -- letting the presence of a prologue switch off the `<base>_perm` sorting.** More
+explicit on the face of it, but at the wrong granularity: a prologue is per-kernel and a
+permutation is per-argument, so a kernel with two of them would lose both defaults, and adding a
+prologue to derive a threshold would silently change how an unrelated argument is prepared. What
+went in instead is per-argument and derived from the two signatures: **a permutation the prologue
+declares `intent(out)` is the prologue's**, and `foo_alloc` then allocates it and stops.
+`intent(inout)` keeps the default and hands the prologue an order to refine. This is what makes a
+non-default ordering expressible without the argument becoming `tmp_`, which would take it out of
+the expert tier's signature -- the one place a caller is supposed to be able to supply their own.
+`synthesize.sorted_permutations` is the single definition; the emitter and `validate` both read
+it, so the sort that is emitted and the sort the read-first check reasons about cannot diverge.
+
 **Rejected -- a rename table for prologue dummies.** A `DM_OUTPUT_FROM` producer needs one
 because it is published and its parameter names cannot move. A prologue is internal to the kernel
 module, so a mismatch is fixed by renaming its dummy, and the diagnostic says so.
