@@ -8,7 +8,7 @@
 module f42_binary_search_tree_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 

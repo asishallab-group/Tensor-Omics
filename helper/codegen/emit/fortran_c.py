@@ -107,11 +107,14 @@ class FortranCEmitter:
             for chunk in _chunks(conversions, 3):
                 writer.line(f"use tox_conversions, only: {', '.join(chunk)}")
 
-        errors = ["set_ok", "set_err", "is_err", "ERR_POINTER_NULL"]
+        # what the body will actually name -- an unused `only:` name is not a compile error
+        # in any Fortran, so a fixed list goes stale silently
+        errors = ["set_ok", "set_err"]
+        if _converts_an_input(module):
+            errors.append("is_err")  # every read-in conversion bails on its own error
+        errors.append("ERR_POINTER_NULL")
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
-        if _needs_allocation(module):
-            errors.append("ERR_ALLOC_FAIL")
         writer.line(f"use tox_errors, only: {', '.join(errors)}")
 
     # -- wrapper ----------------------------------------------------------------
@@ -527,11 +530,17 @@ def _is_declared_extent(argument: CArgument, wrapper: CWrapper) -> bool:
 
 
 def _conversion_helpers(wrapper: CWrapper) -> set[str]:
+    """The tox_conversions helpers this wrapper calls -- each direction on its own.
+
+    An `intent(out)` character is only written back, never read in, and the body already
+    skips the read-in for it; asking for the helper anyway imported a name nothing called.
+    """
     helpers: set[str] = set()
     for argument in wrapper:
         if argument.conversion is Conversion.CHARACTER:
             rank = argument.source.rank
-            helpers.add("c_char_1d_as_string" if rank == 0 else "c_char_2d_as_string")
+            if argument.intent is not Intent.OUT:
+                helpers.add("c_char_1d_as_string" if rank == 0 else "c_char_2d_as_string")
             if argument.intent is not Intent.IN:
                 helpers.add("string_as_c_char_1d" if rank == 0 else "string_as_c_char_2d")
         elif argument.conversion is Conversion.MODE:
@@ -539,9 +548,18 @@ def _conversion_helpers(wrapper: CWrapper) -> set[str]:
     return helpers
 
 
-def _needs_allocation(module: CWrapperModule) -> bool:
+def _converts_an_input(module: CWrapperModule) -> bool:
+    """Whether any wrapper here reads a value in through a conversion.
+
+    Those are the conversions that can fail -- a buffer that is not a valid string, a mode
+    string naming no parameter -- so they are what makes the body test `is_err`. Writing a
+    value back cannot fail that way, and a module doing only that never names it.
+    """
     return any(
-        a.conversion is Conversion.CHARACTER for wrapper in module for a in wrapper
+        (a.conversion is Conversion.CHARACTER and a.intent is not Intent.OUT)
+        or a.conversion is Conversion.MODE
+        for wrapper in module
+        for a in wrapper
     )
 
 

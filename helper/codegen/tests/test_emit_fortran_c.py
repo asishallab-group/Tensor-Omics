@@ -408,3 +408,49 @@ class TestItCompiles:
 
         assert result.returncode != 0
         assert "not explicitly declared" in result.stderr
+
+
+class TestImportsMatchTheBody:
+    """An unused `only:` name is not a compile error in any Fortran, so a fixed import list
+    goes stale in silence. These pin each conditional import to what the body actually names."""
+
+    def module_of(self, *arguments, bag=None, emitter=None):
+        bag = bag if bag is not None else DiagnosticBag()
+        emitter = emitter if emitter is not None else FortranCEmitter()
+        module = b.module("fx_x", b.procedure("fx_p", *arguments, b.ierr()))
+        return emit_module(module, bag, emitter)
+
+    def test_is_err_is_imported_where_an_input_is_converted(self):
+        # a character read in can fail (a buffer that is not a valid string), so the body
+        # bails on its own error and therefore names is_err
+        text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
+
+        assert "is_err" in _errors_imported(text)
+        assert "if (is_err(ierr)) return" in text
+
+    def test_is_err_is_not_imported_where_nothing_is_converted(self):
+        text = self.module_of(b.real("x", Intent.IN, doc="a plain input"))
+
+        assert "is_err" not in _errors_imported(text)
+        assert "is_err" not in text
+
+    def test_no_allocation_constant_is_imported(self):
+        # nothing in a C wrapper allocates: a deferred-length local is filled by assignment,
+        # which allocates on its own and cannot report through ierr
+        text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
+
+        assert "ERR_ALLOC_FAIL" not in text
+        assert "allocate(" not in text
+
+    def test_a_write_only_character_asks_for_no_read_in_helper(self):
+        text = self.module_of(b.character("s", Intent.OUT, length="*", doc="written back"))
+
+        assert "string_as_c_char_1d" in text
+        assert "c_char_1d_as_string" not in text
+
+
+def _errors_imported(text: str) -> str:
+    for line in text.splitlines():
+        if line.strip().startswith("use tox_errors, only:"):
+            return line
+    return ""
