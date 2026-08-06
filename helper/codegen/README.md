@@ -284,12 +284,20 @@ so are reached by none of the above:
   generated `_alloc` owns the memory. Seen through the declaration, since no body is ever read;
   a `pointer` local aliases and is fine
 
-A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before: the named
-procedure must exist; it must declare a scalar `logical, intent(out) :: handled` (the wrapper
-returns early on it regardless); every other dummy must name something *every* wrapper has — so
-not the mode argument or a mode-scoped argument of a kernel that splits per mode; the kernel must
-generate an allocating wrapper for it to run in; and it may not produce anything the allocations,
-permutation sorts or recommend calls above it read.
+A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
+
+- the named procedure must exist
+- it must declare a scalar `logical, intent(out) :: handled` — the wrapper returns early on it
+  regardless, so without it that branch reads an undefined value
+- a dummy naming a kernel argument is supplied from it; one naming nothing becomes an argument
+  of the allocating wrapper, which is what the prologue derives *from*. A name **one edit** from
+  a kernel argument is refused as a misspelling, since it would otherwise become a new argument
+  and leave the prologue and the kernel working from different values
+- a dummy that some mode's wrapper does not have — the mode argument, or one scoped to a mode —
+  is refused: the prologue runs in all of them
+- the kernel must generate an allocating wrapper for it to run in (it does when anything is
+  taken over, or when the prologue asks for an argument of its own)
+- it may not produce anything the allocations, permutation sorts or recommend calls above it read
 
 ---
 
