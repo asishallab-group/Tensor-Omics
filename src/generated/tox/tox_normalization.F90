@@ -42,8 +42,10 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dims, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call normalize_unit_length_kernel(&
             vector = vector,&
@@ -154,6 +156,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
@@ -161,6 +164,7 @@ contains
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=14_int32)
         call validate_in_range_real(span, ierr, arg_pos=22_int32)
         if (is_err(ierr)) return
+#endif
 
         call normalization_pipeline_kernel(&
             n_genes = n_genes,&
@@ -249,11 +253,13 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_permutation_indices
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_in_range_real(span, ierr, arg_pos=7_int32)
         if (is_err(ierr)) return
+#endif
 
         call tox_loess_required_workspace(&
             n_dim = 1_int32,&
@@ -397,12 +403,14 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=10_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=12_int32)
         call validate_in_range_real(span, ierr, arg_pos=20_int32)
         if (is_err(ierr)) return
+#endif
 
         call normalize_by_std_dev_kernel(&
             n_genes = n_genes,&
@@ -478,10 +486,12 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_permutation_indices
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_in_range_real(span, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         call tox_loess_required_workspace(&
             n_dim = 1_int32,&
@@ -554,9 +564,11 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call root_mean_sq_normalization_kernel(&
             n_genes = n_genes,&
@@ -598,9 +610,11 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call quantile_normalization_kernel(&
             n_genes = n_genes,&
@@ -641,9 +655,11 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_perm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_genes_row(n_genes))
         M_ALLOCATE(tmp_perm(n_genes))
@@ -685,9 +701,11 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call log2_transformation_kernel(&
             n_genes = n_genes,&
@@ -728,10 +746,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
         call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=3_int32, min=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call calc_tiss_avg_kernel(&
             n_genes = n_genes,&
@@ -780,12 +800,14 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_pairs, ierr, arg_pos=3_int32)
         call validate_all_in_range_int(control_tissues, n_pairs, ierr, arg_pos=4_int32, min=1_int32, max=n_tissues)
         call validate_all_in_range_int(condition_tissues, n_pairs, ierr, arg_pos=5_int32, min=1_int32, max=n_tissues)
         if (is_err(ierr)) return
+#endif
 
         call calc_fchange_kernel(&
             n_genes = n_genes,&

@@ -46,9 +46,11 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_reps, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_gene_means_kernel(&
             n_genes = n_genes,&
@@ -84,10 +86,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_reps, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(means, n_genes, ierr, arg_pos=4_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call compute_residuals_kernel(&
             n_genes = n_genes,&
@@ -127,10 +131,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call pool_means_kernel(&
             pooled_means = pooled_means,&
@@ -169,10 +175,12 @@ contains
         integer(int32), dimension(:), allocatable :: pooled_means_perm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(pooled_means_perm(pool_size))
         call init_perm(pooled_means_perm)
@@ -227,12 +235,14 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes_S1, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S2, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(mean_S1, n_genes_S1, ierr, arg_pos=2_int32, allow_nan=.true.)
         call validate_all_in_range_real(mean_S2, n_genes_S2, ierr, arg_pos=4_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call pool_study_means_kernel(&
             n_genes_S1 = n_genes_S1,&
@@ -282,12 +292,14 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_pooled_means_perm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes_S1, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S2, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(mean_S1, n_genes_S1, ierr, arg_pos=2_int32, allow_nan=.true.)
         call validate_all_in_range_real(mean_S2, n_genes_S2, ierr, arg_pos=4_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_pooled_means(n_genes_S1+n_genes_S2))
         M_ALLOCATE(tmp_pooled_means_perm(n_genes_S1+n_genes_S2))
@@ -354,6 +366,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S, ierr, arg_pos=5_int32)
@@ -362,6 +375,7 @@ contains
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true.)
         call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call construct_neighborhoods_kernel(&
             n_points = n_points,&
@@ -423,6 +437,7 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_distances_perm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S, ierr, arg_pos=5_int32)
@@ -431,6 +446,7 @@ contains
         call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true.)
         call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_distances(n_genes_S))
         M_ALLOCATE(tmp_distances_perm(n_genes_S))

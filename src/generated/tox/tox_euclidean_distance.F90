@@ -36,10 +36,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_elements, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(vec1, n_elements, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(vec2, n_elements, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call euclidean_distance_kernel(&
             vec1 = vec1,&
@@ -82,6 +84,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=7_int32)
@@ -89,6 +92,7 @@ contains
         call validate_all_in_range_real(centroids, n_tissues * n_families, ierr, arg_pos=4_int32)
         call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=5_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
+#endif
 
         call distance_to_centroid_kernel(&
             n_genes = n_genes,&

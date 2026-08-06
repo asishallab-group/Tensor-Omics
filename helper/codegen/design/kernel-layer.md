@@ -415,6 +415,27 @@ the caller passes.
 because it is published and its parameter names cannot move. A prologue is internal to the kernel
 module, so a mismatch is fixed by renaming its dummy, and the diagnostic says so.
 
+### Validation is compiled out as a whole, or not at all
+
+The validating wrapper's checks sit behind `#ifndef NO_INPUT_VALIDATION`, so a build can drop
+them. Two things decide the shape of that:
+
+**`call set_ok(ierr)` is outside the guard.** It is not a check -- it is what leaves `ierr`
+defined on the path where nothing goes wrong. Inside the guard, a validation-free build would
+hand every caller an undefined `ierr` and a kernel's own runtime errors (§ the `ierr` a kernel
+may keep) would be unreadable.
+
+**Rejected -- an optional `validate` argument, or a per-procedure opt-out.** Whether to check
+inputs is not a property of one call: a caller either trusts its data or does not, and mixing
+the two within a build gives the worst of both -- the cost of the checks and none of the
+confidence. A whole-build directive also costs nothing at run time, where an argument would
+branch on every call. It follows `NO_C_BINDING` and `NO_R_BINDING`, which are the same kind of
+decision (see [`c-layer.md`](c-layer.md)).
+
+The C layer's null checks are *not* under this directive. They prevent a segfault rather than
+reject a bad value, and a caller who has established that their inputs are good has established
+nothing about a binding language passing a null pointer.
+
 ### No allocation in a kernel module
 
 Nothing in a kernel module allocates: every buffer is a `tmp_` argument, so the generated

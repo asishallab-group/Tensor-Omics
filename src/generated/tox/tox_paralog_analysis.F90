@@ -64,6 +64,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_axes, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=6_int32)
@@ -72,6 +73,7 @@ contains
         call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=5_int32, min=1_int32, max=n_families, sentinel=0_int32)
         call validate_all_in_range_real(thresholds, n_axes, ierr, arg_pos=7_int32, min=-1.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
+#endif
 
         call detect_neofunctionalization_kernel(&
             ancestors = ancestors,&
@@ -153,6 +155,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=(n_genes + 31) / 32)
@@ -163,6 +166,7 @@ contains
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         call detect_patterns_kernel(&
             ancestor = ancestor,&
@@ -249,6 +253,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_paralog_vector
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=(n_genes + 31) / 32)
@@ -259,6 +264,7 @@ contains
         call validate_all_in_range_real(ancestor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(genes, n_dims * n_genes, ierr, arg_pos=2_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_active_mask(n_mask_chunks))
         M_ALLOCATE(tmp_paralog_vector(n_dims))
@@ -357,6 +363,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=(n_genes + 31) / 32)
@@ -368,6 +375,7 @@ contains
         call validate_all_in_range_real(paralog_norms, n_genes, ierr, arg_pos=14_int32, min=0.0_real64)
         call validate_all_in_range_int(sorted_paralog_norms_perm, n_genes, ierr, arg_pos=15_int32, min=1_int32, max=n_genes)
         if (is_err(ierr)) return
+#endif
 
         call detect_patterns_kernel(&
             ancestor = ancestor,&
@@ -459,6 +467,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_work_array
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_in_range_int(n_mask_chunks, ierr, arg_pos=6_int32, min=(n_genes + 31) / 32)
@@ -470,6 +479,7 @@ contains
         call validate_all_in_range_real(paralog_norms, n_genes, ierr, arg_pos=12_int32, min=0.0_real64)
         call validate_all_in_range_int(sorted_paralog_norms_perm, n_genes, ierr, arg_pos=13_int32, min=1_int32, max=n_genes)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_active_mask(n_mask_chunks))
         M_ALLOCATE(tmp_paralog_vector(n_dims))
@@ -535,6 +545,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_real(threshold, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_families, ierr, arg_pos=4_int32, min=1_int32, max=n_genes)
@@ -542,6 +553,7 @@ contains
         call validate_all_in_range_real(gene_angles, n_genes, ierr, arg_pos=1_int32, min=0.0_real64, max=PI)
         call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=5_int32, min=1_int32, max=n_families)
         if (is_err(ierr)) return
+#endif
 
         call filter_paralogs_by_pattern_kernel(&
             pattern_mode = MODE_DOSAGE_PATTERN,&
@@ -594,6 +606,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_real(threshold, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_families, ierr, arg_pos=4_int32, min=1_int32, max=n_genes)
@@ -601,6 +614,7 @@ contains
         call validate_all_in_range_real(gene_angles, n_genes, ierr, arg_pos=1_int32, min=0.0_real64, max=PI)
         call validate_all_in_range_int(gene_to_fam, n_genes, ierr, arg_pos=5_int32, min=1_int32, max=n_families)
         if (is_err(ierr)) return
+#endif
 
         call filter_paralogs_by_pattern_kernel(&
             pattern_mode = MODE_SUBFUNC_PATTERN,&

@@ -37,9 +37,11 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(v, n_points, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call normalize_variable_timeseries_kernel(&
             v = v,&
@@ -72,10 +74,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectory, n_timepoints * n_factors, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call normalize_single_trajectory_kernel(&
             trajectory = trajectory,&
@@ -119,11 +123,13 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call normalize_all_trajectories_kernel(&
             trajectories = trajectories,&
@@ -166,11 +172,13 @@ contains
         real(real64), dimension(:), allocatable :: tmp_series_norm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_series(n_timepoints))
         M_ALLOCATE(tmp_series_norm(n_timepoints))

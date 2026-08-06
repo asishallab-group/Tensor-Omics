@@ -90,6 +90,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
@@ -100,6 +101,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
         if (is_err(ierr)) return
+#endif
 
         call perform_permutation_test_kernel(&
             trajectories = trajectories,&
@@ -177,6 +179,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_dependent
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
@@ -187,6 +190,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_factor(n_timepoints))
         M_ALLOCATE(tmp_dependent(n_timepoints))
@@ -245,6 +249,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_real(total_contribution_observed, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_permutations, ierr, arg_pos=6_int32)
@@ -252,6 +257,7 @@ contains
         call validate_all_in_range_real(local_contributions_perm_test, n_timepoints * n_permutations, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(total_contributions_perm_test, n_permutations, ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_p_values_kernel(&
             local_contributions_observed = local_contributions_observed,&
@@ -295,11 +301,13 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dims, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(factor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(dependent, n_dims, ierr, arg_pos=2_int32)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_contributions_kernel(&
             factor = factor,&
@@ -368,6 +376,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
@@ -378,6 +387,7 @@ contains
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, arg_pos=7_int32, min=1_int32, max=n_factors)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_all_contributions_kernel(&
             trajectories = trajectories,&
@@ -449,6 +459,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_dependent
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
@@ -459,6 +470,7 @@ contains
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, arg_pos=7_int32, min=1_int32, max=n_factors)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_factors(n_timepoints, n_selected_factors))
         M_ALLOCATE(tmp_dependent(n_timepoints))
@@ -512,11 +524,13 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(factor, n_timepoints, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(dependent, n_timepoints, ierr, arg_pos=3_int32)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_baselines_factor_dependent_kernel(&
             n_timepoints = n_timepoints,&
@@ -547,9 +561,11 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_timepoints, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(trajectory, n_timepoints, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_velocity_trajectory_kernel(&
             trajectory = trajectory,&
@@ -575,8 +591,10 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_all_in_range_real(velocity, (max(0_int32, n_timepoints - 1)), ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_acceleration_from_velocity_trajectory_kernel(&
             velocity = velocity,&
@@ -608,11 +626,13 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_velocity_trajectories_kernel(&
             trajectories = trajectories,&
@@ -646,10 +666,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(velocity, (max(0_int32, n_timepoints - 1)) * n_factors * n_samples, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_acceleration_from_velocity_kernel(&
             velocity = velocity,&
@@ -720,12 +742,14 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_velocity_acceleration_contributions_kernel(&
             trajectories = trajectories,&
@@ -799,12 +823,14 @@ contains
         real(real64), dimension(:), allocatable :: tmp_contributions
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_factors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_factors(n_timepoints - 1, n_factors))
         M_ALLOCATE(tmp_dependent(n_timepoints - 1))

@@ -677,3 +677,50 @@ class TestAPrologueThatProducesAKernelInput:
 
         assert alloc.index("M_ALLOCATE(ranking(n))") < alloc.index("call guard(&")
         assert alloc.index("call guard(&") < alloc.index("call crunch_kernel(")
+
+
+class TestValidationCanBeCompiledOut:
+    """`NO_INPUT_VALIDATION` removes the checks for a caller who has already established
+    that the inputs are good. What must survive it is anything that is not a check."""
+
+    def body(self):
+        return alloc_body()
+
+    def test_the_checks_sit_behind_the_guard(self):
+        body = self.body()
+
+        assert "#ifndef NO_INPUT_VALIDATION" in body
+        assert "#endif" in body
+        guarded = body[body.index("#ifndef NO_INPUT_VALIDATION") : body.index("#endif")]
+        assert "validate_" in guarded
+        assert "if (is_err(ierr)) return" in guarded
+
+    def test_set_ok_stays_outside_it(self):
+        # not a check: it is what leaves ierr defined when nothing goes wrong, and a build
+        # without validation still reports the runtime errors a kernel raises
+        body = self.body()
+
+        assert body.index("call set_ok(ierr)") < body.index("#ifndef NO_INPUT_VALIDATION")
+
+    def test_the_kernel_call_stays_outside_it(self):
+        body = self.body()
+
+        assert body.index("#endif") < body.index("call crunch_kernel(")
+
+    def test_the_directives_are_at_column_zero(self):
+        # gfortran's preprocessor rejects an indented directive outright, and a body is
+        # rendered on its own writer before being nested into its module's
+        text = demo_alloc()
+
+        for line in text.splitlines():
+            if line.lstrip().startswith("#"):
+                assert line == line.lstrip(), repr(line)
+
+    def test_a_wrapper_with_nothing_to_check_emits_no_guard(self):
+        from builders import project
+        from test_synthesize import kernel_module
+
+        # an empty #ifndef/#endif pair would be noise, and there is no is_err to test either
+        text = emitted(project(kernel_module()))
+        for procedure in ("scale_vector",):
+            assert "call set_ok(ierr)" in text

@@ -117,6 +117,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(family_idx, ierr, arg_pos=1_int32, min=1_int32)
         call validate_dimension_size(n_genes_S1, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_genes_S2, ierr, arg_pos=5_int32)
@@ -133,6 +134,7 @@ contains
         call validate_all_in_range_int(neighborhood_genes_S1, n_neighbors * n_points, ierr, arg_pos=8_int32, min=1_int32, max=n_genes_S1)
         call validate_all_in_range_int(neighborhood_genes_S2, n_neighbors * n_points, ierr, arg_pos=9_int32, min=1_int32, max=n_genes_S2)
         if (is_err(ierr)) return
+#endif
 
         call fjct_compute_jsd_kernel(&
             family_idx = family_idx,&
@@ -252,6 +254,7 @@ contains
         integer(int32), dimension(:, :), allocatable :: tmp_counts
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(family_idx, ierr, arg_pos=1_int32, min=1_int32)
         call validate_dimension_size(n_genes_S1, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_genes_S2, ierr, arg_pos=5_int32)
@@ -267,6 +270,7 @@ contains
         call validate_all_in_range_int(neighborhood_genes_S1, n_neighbors * n_points, ierr, arg_pos=8_int32, min=1_int32, max=n_genes_S1)
         call validate_all_in_range_int(neighborhood_genes_S2, n_neighbors * n_points, ierr, arg_pos=9_int32, min=1_int32, max=n_genes_S2)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_neighbor_mask_S1(n_neighbors, n_points))
         M_ALLOCATE(tmp_neighbor_mask_S2(n_neighbors, n_points))
@@ -376,6 +380,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
@@ -385,6 +390,7 @@ contains
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call fjct_compute_masked_jsd_kernel(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
@@ -479,6 +485,7 @@ contains
         integer(int32), dimension(:, :), allocatable :: tmp_counts
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
@@ -488,6 +495,7 @@ contains
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_counts(n_points, n_bins))
 
@@ -545,10 +553,12 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(k_families, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(global_js_divergences, k_families, ierr, arg_pos=1_int32, min=0.0_real64)
         call validate_all_in_range_int(total_included_n_reps_per_f, k_families, ierr, arg_pos=2_int32, min=0_int32)
         if (is_err(ierr)) return
+#endif
 
         call fjct_compute_contribution_scores_kernel(&
             global_js_divergences = global_js_divergences,&

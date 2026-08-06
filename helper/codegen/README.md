@@ -75,6 +75,33 @@ committed bindings no longer match the sources.
 Requirements: Python 3.11+ (`contextlib.chdir`), and `FORD`, `pcpp`, `numpy` (see
 `requirements-dev.txt`). The generator reads the Ford settings from `fpm.toml`.
 
+### Build switches the output honours
+
+The generator always emits all of it; these decide what the *build* keeps. Pass them through
+`./build.sh --directive=NAME`, which forwards to the preprocessor.
+
+| Directive | Drops | Notes |
+|---|---|---|
+| `NO_C_BINDING` | the `bind(C)` wrappers, and the R shims with them | they call the `bind(C)` symbols; takes the `f42_safeguard` dependency with it |
+| `NO_R_BINDING` | the R `.Call` shims alone | keeps the C ABI for Python and direct C use; the build auto-disables this one with a warning when R is not installed |
+| `NO_INPUT_VALIDATION` | the generated wrappers' input checks | see below |
+
+`NO_INPUT_VALIDATION` is for a caller who has already established that the inputs are good —
+an inner loop over data it produced itself. It gives up every diagnostic the framework offers,
+so it is a whole-build decision rather than one to take per call site. What survives it:
+
+- **`call set_ok(ierr)`**, which is not a check. It is what leaves `ierr` defined on the path
+  where nothing goes wrong, and a kernel's own runtime errors are still reported through it.
+- **the C layer's null checks**, which guard against a segfault rather than a bad value.
+- **Python's and R's own validation**, which is a runtime layer and cannot be preprocessed out.
+  A caller who wants the checks gone calls through C or Fortran.
+
+A wrapper with nothing to check emits no guard at all, rather than an empty `#ifndef`/`#endif`.
+The directives are written at column 0 whatever the surrounding indent — gfortran's preprocessor
+rejects an indented one outright ("Invalid character in name"), and a subroutine body is
+rendered on its own writer before being nested into its module's, so `render/writer.py` keeps
+them there through that nesting.
+
 Diagnostics point at the offending line of the *original* source, with the entity chain and
 a note on what to do:
 

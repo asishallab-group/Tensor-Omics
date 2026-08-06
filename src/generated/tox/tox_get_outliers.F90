@@ -148,6 +148,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=13_int32)
@@ -156,6 +157,7 @@ contains
         call validate_all_in_range_real(tmp_eval_points, n_families * 1, ierr, arg_pos=18_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=26_int32); end if
         if (is_err(ierr)) return
+#endif
 
         call compute_family_scaling_kernel(&
             n_genes = n_genes,&
@@ -273,10 +275,12 @@ contains
         real(real64), dimension(:), allocatable :: tmp_means_aux
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
         if (is_err(ierr)) return
+#endif
 
         call tox_loess_required_workspace(&
             n_dim = 1_int32,&
@@ -376,8 +380,10 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_rdi_kernel(&
             n_genes = n_genes,&
@@ -428,8 +434,10 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_stack_right
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_stack_left(n_genes))
         M_ALLOCATE(tmp_stack_right(n_genes))
@@ -489,9 +497,11 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_in_range_real(percentile, ierr, arg_pos=8_int32)
         if (is_err(ierr)) return
+#endif
 
         call identify_outliers_kernel(&
             n_genes = n_genes,&
@@ -633,12 +643,14 @@ contains
             !! The default value is `95.0_real64`.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
         call validate_in_range_real(percentile, ierr, arg_pos=33_int32)
         if (is_err(ierr)) return
+#endif
 
         call detect_outliers_kernel(&
             n_genes = n_genes,&
@@ -748,10 +760,12 @@ contains
         real(real64) :: tmp_threshold
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(percentile, ierr, arg_pos=11_int32)
         if (is_err(ierr)) return
+#endif
 
         call tox_loess_required_workspace(&
             n_dim = 1_int32,&

@@ -13,7 +13,16 @@ the current generated wrappers have ragged vertical gaps.
 
 from __future__ import annotations
 
+import re
+
 from contextlib import contextmanager
+
+
+#: A C preprocessor directive, which must sit at column 0. Deliberately narrow: a Python
+#: comment (`# prose`, `#: an attribute doc`) and roxygen (`#'`) also open with a hash, and
+#: indenting those wrongly is exactly what a looser test did. No space is allowed between the
+#: hash and the keyword, so even `# include the header` as prose stays a comment.
+_DIRECTIVE = re.compile(r"#(if|ifdef|ifndef|elif|else|endif|include|define|undef)\b")
 
 
 class Writer:
@@ -43,11 +52,28 @@ class Writer:
         else:
             self.block(text)
 
+    def directive(self, text: str) -> None:
+        """Write a preprocessor directive, at column 0 whatever the current indent.
+
+        Not `line`: gfortran's preprocessor rejects an indented `#ifndef` outright ("Invalid
+        character in name at (1)"), so a directive inside an indented body cannot follow the
+        code around it. `block` keeps it there when this writer's output is later nested in
+        another one, which is how a subroutine body reaches its module.
+        """
+        self._lines.append(text.lstrip())
+
     def block(self, text: str) -> None:
-        """Write multi-line text, preserving its relative indentation."""
+        """Write multi-line text, preserving its relative indentation.
+
+        Except a preprocessor directive, which stays at column 0 -- see `directive`. That is
+        what makes the rule survive nesting: a body is rendered on its own writer and then
+        blocked into its module's, which would otherwise indent every line it contains.
+        """
         for raw in text.split("\n"):
             stripped = raw.rstrip()
-            if stripped:
+            if _DIRECTIVE.match(stripped.lstrip()):
+                self._lines.append(stripped.lstrip())
+            elif stripped:
                 self._lines.append(self.prefix + stripped)
             else:
                 self.blank()

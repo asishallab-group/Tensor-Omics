@@ -103,6 +103,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
@@ -114,6 +115,7 @@ contains
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call gjct_permutation_test_kernel(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
@@ -212,6 +214,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_weights
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
@@ -222,6 +225,7 @@ contains
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_residuals_S1(n_reps_S1, n_neighbors, n_points))
         M_ALLOCATE(tmp_residuals_S2(n_reps_S2, n_neighbors, n_points))

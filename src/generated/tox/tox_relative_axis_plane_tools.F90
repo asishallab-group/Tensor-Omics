@@ -53,6 +53,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_vecs, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_selected_vecs, ierr, arg_pos=5_int32)
@@ -61,6 +62,7 @@ contains
         if (count(vecs_selection_mask, kind=int32) /= n_selected_vecs) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
+#endif
 
         call omics_vector_RAP_projection_kernel(&
             vecs = vecs,&
@@ -106,6 +108,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_fields, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
@@ -114,6 +117,7 @@ contains
         if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
+#endif
 
         call omics_field_RAP_projection_kernel(&
             fields = fields,&
@@ -157,11 +161,13 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dims, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(v1, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(v2, n_dims, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(orientation_reference, n_dims, ierr, arg_pos=4_int32)
         if (is_err(ierr)) return
+#endif
 
         call clock_hand_angle_between_vectors_kernel(&
             v1 = v1,&
@@ -211,6 +217,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dims, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_fields, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_selected_fields, ierr, arg_pos=5_int32)
@@ -218,6 +225,7 @@ contains
         call validate_all_in_range_real(orientation_reference, n_dims, ierr, arg_pos=6_int32)
         if (count(fields_selection_mask, kind=int32) /= n_selected_fields) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         call clock_hand_angles_for_shift_vectors_kernel(&
             fields = fields,&
@@ -250,9 +258,11 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(vec, n_axes, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_relative_axis_contributions_kernel(&
             vec = vec,&
@@ -281,9 +291,11 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(vec, n_axes, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call relative_axes_changes_from_shift_vector_kernel(&
             vec = vec,&
@@ -312,9 +324,11 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(vec, n_axes, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
+#endif
 
         call relative_axes_expression_from_expression_vector_kernel(&
             vec = vec,&

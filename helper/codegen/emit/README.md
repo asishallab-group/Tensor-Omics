@@ -234,6 +234,12 @@ else.
 - **Invent a naming convention.** `stripped_name` is the name; `_alloc`/`_expert` pairing is
   already applied.
 - **Hardcode a constant that lives in `src/macros.h`** — the arg-pos factor above all.
+- **Mirror `NO_INPUT_VALIDATION`.** That directive drops the *Fortran* wrappers' checks at
+  compile time, for a caller who has established their inputs are good. Your layer's own
+  validation is a run-time thing and cannot be preprocessed out, so do not try to make it
+  conditional: a host caller who wants no checks calls through C or Fortran instead. The
+  cross-extent checks in particular (§4) are the one thing Fortran cannot do for itself, so
+  they are exactly what should *not* become optional.
 
 ---
 

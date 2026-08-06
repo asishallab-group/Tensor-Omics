@@ -55,6 +55,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_vectors, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_selected_vectors, ierr, arg_pos=5_int32)
@@ -63,6 +64,7 @@ contains
         if (count(vectors_selection_mask, kind=int32) /= n_selected_vectors) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (count(axes_selection_mask, kind=int32) /= n_selected_axes) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_tissue_versatility_kernel(&
             n_axes = n_axes,&

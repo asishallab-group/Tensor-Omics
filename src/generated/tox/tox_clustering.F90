@@ -59,6 +59,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(n_clusters, ierr, arg_pos=1_int32, min=1_int32, max=n_samples*n_timepoints)
         call validate_dimension_size(n_factors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_samples, ierr, arg_pos=4_int32)
@@ -66,6 +67,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(centroids, n_factors * n_clusters, ierr, arg_pos=6_int32)
         if (is_err(ierr)) return
+#endif
 
         call cluster_factor_trajectories_k_means_kernel(&
             n_clusters = n_clusters,&
@@ -123,12 +125,14 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(n_clusters, ierr, arg_pos=1_int32, min=1_int32, max=n_points)
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(data_points, n_dims * n_points, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(centroids, n_dims * n_clusters, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         call k_means_clustering_kernel(&
             n_clusters = n_clusters,&
@@ -193,11 +197,13 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
         call validate_in_range_int(method, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
         call validate_distance_matrix(distances, n_points, ierr, arg_pos=1_int32)
         if (method /= METHOD_AVERAGE .and. method /= METHOD_WEIGHTED .and. method /= METHOD_WARD) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
         if (is_err(ierr)) return
+#endif
 
         call linkage_clustering_kernel(&
             distances = distances,&

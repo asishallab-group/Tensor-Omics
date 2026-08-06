@@ -166,3 +166,50 @@ def test_lines_writes_each_item():
     w.lines(["a", "b"])
 
     assert w.render() == "a\nb"
+
+
+class TestPreprocessorDirectives:
+    """A directive must reach column 0; a comment that merely starts with a hash must not."""
+
+    def test_a_directive_ignores_the_current_indent(self):
+        writer = Writer()
+        with writer.indent(2):
+            writer.line("call thing()")
+            writer.directive("#ifndef NO_INPUT_VALIDATION")
+
+        assert writer.render().splitlines() == [
+            "        call thing()",
+            "#ifndef NO_INPUT_VALIDATION",
+        ]
+
+    def test_it_stays_at_column_zero_through_nesting(self):
+        # a body is rendered on its own writer, then blocked into its module's
+        inner = Writer()
+        with inner.indent():
+            inner.directive("#endif")
+            inner.line("x = 1")
+        outer = Writer()
+        with outer.indent():
+            outer.block(inner.render())
+
+        assert outer.render().splitlines() == ["#endif", "        x = 1"]
+
+    def test_a_python_comment_is_indented_like_any_other_line(self):
+        # it opens with a hash too, and a looser test once flattened every one of them
+        writer = Writer()
+        with writer.indent():
+            writer.line("# accept anything array-like, converting only when C needs it")
+            writer.line("#: the wrapped procedure's arguments")
+
+        assert writer.render().splitlines() == [
+            "    # accept anything array-like, converting only when C needs it",
+            "    #: the wrapped procedure's arguments",
+        ]
+
+    def test_prose_that_begins_with_a_directive_word_is_still_prose(self):
+        writer = Writer()
+        with writer.indent():
+            writer.line("# include the header before this")
+            writer.line("#' @param x roxygen, not a directive")
+
+        assert all(l.startswith("    ") for l in writer.render().splitlines())

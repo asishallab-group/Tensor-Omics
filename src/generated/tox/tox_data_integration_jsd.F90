@@ -53,11 +53,13 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
         call validate_in_range_real(residual_range_quantile, ierr, arg_pos=5_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_int(abs_residual_pool_perm, pool_size, ierr, arg_pos=2_int32, min=1_int32, max=pool_size)
         if (is_err(ierr)) return
+#endif
 
         call determine_shared_residual_range_kernel(&
             abs_residual_pool = abs_residual_pool,&
@@ -95,10 +97,12 @@ contains
         integer(int32), dimension(:), allocatable :: abs_residual_pool_perm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=2_int32)
         call validate_in_range_real(residual_range_quantile, ierr, arg_pos=4_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(abs_residual_pool_perm(pool_size))
         call init_perm(abs_residual_pool_perm)
@@ -158,6 +162,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
@@ -166,6 +171,7 @@ contains
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call determine_study_shared_residual_range_kernel(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
@@ -222,6 +228,7 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_abs_residual_pool_perm
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps_S1, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
@@ -230,6 +237,7 @@ contains
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_abs_residual_pool((n_reps_S1 + n_reps_S2)*n_neighbors*n_points))
         M_ALLOCATE(tmp_abs_residual_pool_perm((n_reps_S1 + n_reps_S2)*n_neighbors*n_points))
@@ -289,6 +297,7 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_reps, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
@@ -296,6 +305,7 @@ contains
         call validate_dimension_size(n_bins, ierr, arg_pos=6_int32)
         call validate_all_in_range_real(neighborhood_residuals, n_reps * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         if (is_err(ierr)) return
+#endif
 
         call build_residual_histograms_kernel(&
             neighborhood_residuals = neighborhood_residuals,&
@@ -339,11 +349,13 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_bins, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(pmf_S1, n_points * n_bins, ierr, arg_pos=1_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(pmf_S2, n_points * n_bins, ierr, arg_pos=2_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
+#endif
 
         call compute_divergence_per_reference_point_kernel(&
             pmf_S1 = pmf_S1,&
@@ -384,11 +396,13 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(js_divergences, n_points, ierr, arg_pos=1_int32, min=0.0_real64)
         call validate_all_in_range_int(included_n_reps_S1, n_points, ierr, arg_pos=3_int32, min=0_int32)
         call validate_all_in_range_int(included_n_reps_S2, n_points, ierr, arg_pos=4_int32, min=0_int32)
         if (is_err(ierr)) return
+#endif
 
         call compute_weighted_global_divergence_kernel(&
             js_divergences = js_divergences,&

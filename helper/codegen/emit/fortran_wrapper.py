@@ -548,6 +548,18 @@ class FortranWrapperEmitter:
     # -- validation -------------------------------------------------------------
 
     def _validation(self, writer: Writer, procedure: Procedure) -> None:
+        """Check every input, then bail -- all of it behind `NO_INPUT_VALIDATION`.
+
+        `set_ok` stays outside the guard. It is not a check: it is what leaves `ierr` defined
+        on the path where nothing goes wrong, and a build without validation still has to
+        report the runtime errors a kernel raises.
+
+        Compiling the checks out is for a caller who has already established that the inputs
+        are good -- an inner loop calling the same wrapper a million times over data it
+        produced itself. It buys the checks' cost and gives up every diagnostic the framework
+        offers, which is why it is a whole-build switch rather than a per-call argument: it is
+        not a decision to take one call site at a time.
+        """
         error = self.conventions.error_arg
         writer.line(f"call set_ok({error})")
         # scalars (extents, bounds) before arrays, as the hand-written wrappers do; arg_pos
@@ -557,13 +569,16 @@ class FortranWrapperEmitter:
             for position, argument in enumerate(procedure.arguments, start=1)
             if argument.name.lower() != error.lower()
         ]
-        for is_array in (False, True):
-            for array, call in calls:
-                if array is is_array and call:
-                    writer.line(call)
-        for line in self._convention_checks(procedure):
+        emitted = [c for is_array in (False, True) for array, c in calls
+                   if array is is_array and c]
+        emitted += self._convention_checks(procedure)
+        if not emitted:
+            return  # nothing to guard, and no `is_err` to test either
+        writer.directive("#ifndef NO_INPUT_VALIDATION")
+        for line in emitted:
             writer.line(line)
         writer.line(f"if (is_err({error})) return")
+        writer.directive("#endif")
 
     def _convention_checks(self, procedure: Procedure) -> list[str]:
         """Checks driven by a naming convention rather than a per-argument range.

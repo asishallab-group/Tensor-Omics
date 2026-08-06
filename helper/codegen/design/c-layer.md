@@ -76,6 +76,11 @@ the Fortran wrappers' `#ifndef NO_C_BINDING`. So:
 - if the R layer is wanted but R is not installed, the build **auto-disables it with a
   warning** (it needs R's headers, via `R CMD config --cppflags`, only when included).
 
+A third switch, `NO_INPUT_VALIDATION`, drops the *generated wrappers'* input checks rather than
+any binding layer; it is the same kind of whole-build decision and is designed in
+[`kernel-layer.md`](kernel-layer.md). It deliberately leaves the null checks here alone: those
+prevent a segfault rather than reject a bad value.
+
 The R headers reach the C compiler through fpm's `--c-flag` (its `--flag` is Fortran only);
 the `.so` links with R's symbols left undefined, resolved when R loads it, so it carries no
 `libR` dependency.

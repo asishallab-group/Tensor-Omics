@@ -1062,6 +1062,14 @@ python helper/generate_code.py --check    # write nothing; non-zero if the tree 
 python helper/generate_code.py --target python
 ```
 
+**Compiling the checks out.** `./build.sh --directive=NO_INPUT_VALIDATION` builds every
+generated wrapper without its input validation — for a caller who has already established that
+the inputs are good, typically an inner loop over data it produced itself. It gives up every
+diagnostic in this guide, so it is a whole-build decision rather than one to take per call site.
+What survives it: `call set_ok(ierr)`, so `ierr` is still defined, and every runtime error a
+kernel raises itself (§5.14) — those are not input checks. The C layer's null checks stay too;
+they guard against a segfault rather than a bad value.
+
 `build.sh` runs the generator before fpm, so a source change and its generated layers cannot
 drift apart in a build. It needs Python and [`ford`](https://forddocs.readthedocs.io); without
 them it warns and compiles what is committed. CI checks the same thing with `--check`.

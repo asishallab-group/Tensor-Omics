@@ -96,6 +96,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
@@ -106,6 +107,7 @@ contains
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         call loess_fit_plain_kernel(&
             n = n,&
@@ -186,6 +188,7 @@ contains
         logical :: save_factorization_value
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
@@ -194,6 +197,7 @@ contains
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
 
@@ -329,6 +333,7 @@ contains
             !! Error code
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
@@ -340,6 +345,7 @@ contains
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         call loess_fit_robust_kernel(&
             n = n,&
@@ -438,6 +444,7 @@ contains
         logical :: save_factorization_value
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
@@ -447,6 +454,7 @@ contains
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
+#endif
 
         M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
 

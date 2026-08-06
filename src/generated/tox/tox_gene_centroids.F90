@@ -48,12 +48,14 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_selected_genes, ierr, arg_pos=5_int32, min=0_int32, max=n_genes)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_indices, n_selected_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_genes)
         if (is_err(ierr)) return
+#endif
 
         call mean_vector_kernel(&
             expression_vectors = expression_vectors,&
@@ -100,12 +102,14 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
+#endif
 
         call group_centroid_kernel(&
             expression_vectors = expression_vectors,&
@@ -153,12 +157,14 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_group_indices
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_group_indices(n_genes))
 
@@ -207,12 +213,14 @@ contains
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
+#endif
 
         call group_centroid_kernel(&
             expression_vectors = expression_vectors,&
@@ -256,12 +264,14 @@ contains
         integer(int32), dimension(:), allocatable :: tmp_group_indices
 
         call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
         call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
         if (is_err(ierr)) return
+#endif
 
         M_ALLOCATE(tmp_group_indices(n_genes))
 

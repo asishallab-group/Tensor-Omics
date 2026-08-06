@@ -51,6 +51,16 @@
 ! Fortran would mean the generator had to hardcode the same number and could drift from it.
 #define M_ERR_ARG_POS_FACTOR 10000
 
+! Build switches the generator's output honours, defined by the *build* rather than here:
+!   NO_C_BINDING        omit the bind(C) wrappers, and with them the R shims
+!   NO_R_BINDING        omit the R shims alone
+!   NO_INPUT_VALIDATION omit the generated wrappers' input checks
+! The last is for a caller who has already established that the inputs are good -- an inner
+! loop over data it produced itself. It gives up every diagnostic the framework offers, so it
+! is a whole-build decision rather than a per-call one. `call set_ok(ierr)` survives it: that
+! is not a check, it is what leaves `ierr` defined, and a kernel's own runtime errors are
+! still reported. Pass it with `./build.sh --directive=NO_INPUT_VALIDATION`.
+
 ! Marks a procedure for export to C, Python and R. Written in the procedure's Ford
 ! pre-comment: `!> M_EXPORT_C`. Expands to a Ford `category` meta tag, so Ford still parses
 ! it, and the code generator reads the category value from this macro rather than
