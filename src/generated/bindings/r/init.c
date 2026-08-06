@@ -122,7 +122,9 @@ SEXP loess_fit_robust_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP
 SEXP loess_fit_robust_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_loess_required_workspace_call(SEXP, SEXP, SEXP);
 SEXP normalize_unit_length_call(SEXP);
+SEXP normalization_pipeline_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normalization_pipeline_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP normalize_by_std_dev_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normalize_by_std_dev_call(SEXP, SEXP, SEXP);
 SEXP root_mean_sq_normalization_call(SEXP);
 SEXP quantile_normalization_expert_call(SEXP);
@@ -162,11 +164,6 @@ SEXP compute_velocity_trajectories_call(SEXP);
 SEXP compute_acceleration_from_velocity_call(SEXP, SEXP);
 SEXP compute_velocity_acceleration_contributions_expert_call(SEXP, SEXP);
 SEXP compute_velocity_acceleration_contributions_call(SEXP, SEXP);
-SEXP compute_all_contributions_kernel_call(SEXP, SEXP, SEXP, SEXP);
-SEXP compute_baselines_factor_dependent_kernel_call(SEXP, SEXP, SEXP);
-SEXP compute_velocity_trajectory_kernel_call(SEXP);
-SEXP compute_acceleration_from_velocity_trajectory_kernel_call(SEXP, SEXP);
-SEXP compute_velocity_acceleration_contributions_kernel_call(SEXP, SEXP);
 SEXP normalize_variable_timeseries_call(SEXP);
 SEXP normalize_single_trajectory_call(SEXP);
 SEXP normalize_all_trajectories_expert_call(SEXP);
@@ -253,7 +250,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"loess_fit_robust_call", (DL_FUNC) &loess_fit_robust_call, 10},
     {"tox_loess_required_workspace_call", (DL_FUNC) &tox_loess_required_workspace_call, 3},
     {"normalize_unit_length_call", (DL_FUNC) &normalize_unit_length_call, 1},
+    {"normalization_pipeline_expert_call", (DL_FUNC) &normalization_pipeline_expert_call, 7},
     {"normalization_pipeline_call", (DL_FUNC) &normalization_pipeline_call, 5},
+    {"normalize_by_std_dev_expert_call", (DL_FUNC) &normalize_by_std_dev_expert_call, 5},
     {"normalize_by_std_dev_call", (DL_FUNC) &normalize_by_std_dev_call, 3},
     {"root_mean_sq_normalization_call", (DL_FUNC) &root_mean_sq_normalization_call, 1},
     {"quantile_normalization_expert_call", (DL_FUNC) &quantile_normalization_expert_call, 1},
@@ -293,11 +292,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_acceleration_from_velocity_call", (DL_FUNC) &compute_acceleration_from_velocity_call, 2},
     {"compute_velocity_acceleration_contributions_expert_call", (DL_FUNC) &compute_velocity_acceleration_contributions_expert_call, 2},
     {"compute_velocity_acceleration_contributions_call", (DL_FUNC) &compute_velocity_acceleration_contributions_call, 2},
-    {"compute_all_contributions_kernel_call", (DL_FUNC) &compute_all_contributions_kernel_call, 4},
-    {"compute_baselines_factor_dependent_kernel_call", (DL_FUNC) &compute_baselines_factor_dependent_kernel_call, 3},
-    {"compute_velocity_trajectory_kernel_call", (DL_FUNC) &compute_velocity_trajectory_kernel_call, 1},
-    {"compute_acceleration_from_velocity_trajectory_kernel_call", (DL_FUNC) &compute_acceleration_from_velocity_trajectory_kernel_call, 2},
-    {"compute_velocity_acceleration_contributions_kernel_call", (DL_FUNC) &compute_velocity_acceleration_contributions_kernel_call, 2},
     {"normalize_variable_timeseries_call", (DL_FUNC) &normalize_variable_timeseries_call, 1},
     {"normalize_single_trajectory_call", (DL_FUNC) &normalize_single_trajectory_call, 1},
     {"normalize_all_trajectories_expert_call", (DL_FUNC) &normalize_all_trajectories_expert_call, 1},

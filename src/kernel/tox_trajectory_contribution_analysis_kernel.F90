@@ -240,8 +240,7 @@ contains
         end do
     end subroutine compute_contributions_kernel
 
-    !> M_EXPORT_C
-    !| summary: Contribution analysis for every selected factor-dependent pair
+    !> summary: Contribution analysis for every selected factor-dependent pair
     !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine compute_all_contributions_kernel(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr)
         integer(int32), intent(in) :: n_factors
@@ -317,8 +316,7 @@ contains
         end do
     end subroutine compute_all_contributions_kernel
 
-    !> M_EXPORT_C
-    !| summary: Compute scalar baselines for a factor and dependent variable time series
+    !> summary: Compute scalar baselines for a factor and dependent variable time series
     !| AUTHOR_JITU_DABA
     pure subroutine compute_baselines_factor_dependent_kernel(n_timepoints, factor, dependent, baseline_mode, &
                                                        factor_baseline, dependent_baseline, ierr)
@@ -429,8 +427,7 @@ contains
         end do
     end subroutine compute_factor_velocity_from_trajectories_helper
 
-    !> M_EXPORT_C
-    !| summary: Compute velocity trajectory from a single position trajectory
+    !> summary: Compute velocity trajectory from a single position trajectory
     !| AUTHOR_JITU_DABA
     pure subroutine compute_velocity_trajectory_kernel(trajectory, velocity, n_timepoints)
 
@@ -444,8 +441,7 @@ contains
         call compute_velocity_trajectory_helper(trajectory, velocity, n_timepoints)
     end subroutine compute_velocity_trajectory_kernel
 
-    !> M_EXPORT_C
-    !| summary: Compute acceleration trajectory from a single velocity trajectory
+    !> summary: Compute acceleration trajectory from a single velocity trajectory
     !| AUTHOR_JITU_DABA
     pure subroutine compute_acceleration_from_velocity_trajectory_kernel(velocity, acceleration, &
                                                                   n_timepoints)
@@ -522,8 +518,7 @@ contains
 
 
 
-    !> M_EXPORT_C
-    !| summary: Compute velocity and acceleration contributions for all variable pairs
+    !> summary: Compute velocity and acceleration contributions for all variable pairs
     !| AUTHOR_JITU_DABA
     !| @note
     !| Performance layout:
