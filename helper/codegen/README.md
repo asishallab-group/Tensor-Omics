@@ -5,10 +5,11 @@ themselves. A procedure marked for export becomes a C-callable wrapper, a Python
 and an R function — with the documentation, error handling and argument validation derived
 from the Fortran, not restated by hand.
 
-This document is the whole of it: what it produces, how to run it, how it is built, and —
-the part a library author needs — **how to write Fortran the generator can wrap**. The
-design rationale (why each choice, and what was rejected) lives in [`design/`](design/);
-this points there rather than repeating it.
+This document covers the generator itself: what it produces, how to run it, how it is built
+and tested, and what it refuses. **What to write in the Fortran** is
+[`codegen_guide.md`](../../codegen_guide.md) at the repository root; the design rationale (why
+each choice, and what was rejected) is in [`design/`](design/). This points at both rather than
+repeating them.
 
 ---
 
@@ -18,13 +19,8 @@ this points there rather than repeating it.
 - [Running it](#running-it)
 - [Configuration: what is read, and where output goes](#configuration-what-is-read-and-where-output-goes)
 - [How it is built](#how-it-is-built)
-- [Writing generator-compliant Fortran](#writing-generator-compliant-fortran)
-  - [Marking a procedure for export](#marking-a-procedure-for-export)
-  - [What every exported procedure needs](#what-every-exported-procedure-needs)
-  - [Naming conventions](#naming-conventions)
-  - [Mode arguments](#mode-arguments)
-  - [Documentation macros (`DM_`)](#documentation-macros-dm_)
-  - [Serialized arrays](#serialized-arrays)
+- [The source contract](#the-source-contract)
+  - [What the generator makes of it](#what-the-generator-makes-of-it)
   - [What is rejected, and why](#what-is-rejected-and-why)
 - [Edge cases handled](#edge-cases-handled)
 - [How it is tested](#how-it-is-tested)
@@ -134,8 +130,8 @@ Two things worth knowing:
 
 The conventions the generator recognises in the sources (prefixes, suffixes, the
 `category` tag) are also in `config.py`, as `Conventions` — one place, no naming literals
-scattered through the code. They are the source-language contract, documented under
-[Writing generator-compliant Fortran](#writing-generator-compliant-fortran).
+scattered through the code. They are the source-language contract, which
+[`codegen_guide.md`](../../codegen_guide.md) documents from the author's side.
 
 ---
 
@@ -167,158 +163,54 @@ does.
 
 ---
 
-## Writing generator-compliant Fortran
+## The source contract
 
-This is the reference for what to write so a procedure is wrapped correctly. The generator
-reads conventions from names and from documentation macros; nothing here requires editing
-the generator.
+**[`codegen_guide.md`](../../codegen_guide.md), at the repository root, is the contract of
+record** — what to write so a procedure is wrapped correctly, case by case, with a worked
+example for each and a real snippet from the current tree. It covers both ways in: the kernel
+path, where you write one annotated kernel and the generator writes the wrappers, and the export
+path, where you write the whole procedure and mark it `M_EXPORT_C`.
 
-> **Writing a kernel?** [`codegen_guide.md`](../../codegen_guide.md) at the repository root is
-> the task-shaped version of this — the same contract plus the kernel layer, organised case by
-> case with a worked example for each. This section stays the reference for the binding rules
-> themselves, which apply to a hand-written exported procedure just as much as to a generated
-> wrapper.
-
-### Marking a procedure for export
-
-The `M_EXPORT_C` macro, in the procedure's Ford pre-comment (needs
-`#include <src/macros.h>`):
-
-```fortran
-!> M_EXPORT_C
-!| summary: Normalizes a vector to unit length in-place
-!| author: A Developer
-pure subroutine normalize_unit_length(vector, n_dims, ierr)
-```
-
-`M_EXPORT_C` expands to a Ford `category` meta tag, and the generator reads the category
-value from the *same* macro — so the marker and what the generator recognises cannot drift.
-Change the macro in one place and both follow.
-
-Only tagged procedures are wrapped. Everything else is held to none of the rules below.
-
-### What every exported procedure needs
-
-- **Explicit `intent`** on every dummy argument. It decides constness in C and R, and
-  whether an argument is an input, an output, or both.
-- **An error argument `ierr`**, `integer, intent(out)`. If a procedure has none, the wrapper
-  synthesises one — the binding languages always raise on error, so there must be a
-  channel. Give it one if it can fail.
-- **Kinded numeric types** (`real(real64)`, `integer(int32)`). A default kind has no
-  defensible C mapping.
-- **Documentation** — a `summary:` meta tag (becomes the docstring) and a `!!` comment on
-  each argument (inherited by all three targets).
-
-### Naming conventions
-
-| Pattern | Meaning |
+| If you want | Go to |
 |---|---|
-| `<name>_kernel` in `src/kernel/` | a hand-written kernel. The generator writes `<name>`, and `<name>_alloc` too when it takes work arrays. Never exported itself |
-| `<p>_alloc` | the allocating variant; its wrapper is `<p>_c`. Its non-alloc twin `<p>` becomes `<p>_expert_c` |
-| `tmp_<name>` | a work array: allocated by the binding language, never returned, never asked for |
-| `<base>_perm` | a permutation. In `<p>_alloc` it is allocated, seeded with `init_perm` and heapsorted against `<base>` — unless it is `tmp_`-prefixed (the kernel builds it) or the prologue declares it `intent(out)` (the prologue does). Only when `<base>` is an argument too |
-| `<arg>_shape` | carries the shape of a flat `<arg>` passed separately (rank-independent serialization) |
-| `n_selected_<arg>` | the count of an `<arg>_mask` / `<arg>_selection_mask`; computed from the mask |
-| `mode`, `method`, `*_mode`, `*_method` | a mode argument (see below) |
+| the whole contract, task by task | the guide |
+| valid ranges, finiteness, masks, distance matrices, optionals | guide §5.1–5.6 |
+| work arrays, permutations, recommend sizing | guide §5.7–5.9 |
+| modes, per-mode procedures | guide §5.10–5.12 |
+| prologues, runtime errors, split families | guide §5.13–5.15 |
+| exporting a hand-written procedure | guide §6 |
+| every `DM_` macro, with its contract in a comment | [`src/macros.h`](../../src/macros.h) |
 
-Extents (`n_dims` in `vector(n_dims)`) are recognised automatically and never asked of the
-caller — the binding language takes them from the array.
+None of that is repeated here. Two copies of one contract drift, and these two had; what stays
+in this document is what is about the *generator* rather than about the sources — what it makes
+of the contract, and what it refuses.
 
-### Mode arguments
+### What the generator makes of it
 
-An integer argument compared against `MODE_*` / `METHOD_*` parameters. The binding
-languages pass a **string**; the C wrapper maps it back. Document the accepted values in a
-markdown table — the argument's own name decides the prefix (`mode` → `MODE_`, `method` →
-`METHOD_`), and the header must agree:
+The parts a source author does not need, and a generator maintainer does:
 
-```fortran
-integer(int32), intent(in) :: link_method
-    !! how to link clusters
-    !!
-    !! | Method | Value |
-    !! |--------|-------|
-    !! | minimises variance | [[tox_clustering(module):METHOD_WARD(variable)]] |
-    !! | nearest neighbour   | [[tox_clustering(module):METHOD_SINGLE(variable)]] |
-```
-
-The string is the parameter name without its prefix, lower-cased: `METHOD_WARD` → `"ward"`.
-
-### Documentation macros (`DM_`)
-
-Written inside `!!` / `!|` comments, these carry what a signature cannot. They expand to
-prose in the rendered Ford docs, so they read naturally; the generator recognises the
-expansion. **Requires `#include <src/macros.h>` at the top of the file** — a `DM_` that
-never expands is an error (as is a misspelt `M_`/`CM_`/`DM_` anywhere in a doc comment).
-
-| Macro | On | Meaning |
-|---|---|---|
-| `DM_DEFAULT(VALUE)` | an optional | the value used when omitted. A *constant expression* — evaluated at generation time |
-| `DM_REQUIRED_IF_MODE(MODE_ARG, MODULE, MODE_PARAM)` | an optional | required only in one mode; nullable otherwise |
-| `DM_RESULT_SIZE_IS(ARG)` | a result array | `ARG` holds how many leading elements are filled; the rest is trimmed |
-| `DM_OUTPUT_FROM(OUT, PROC, MODULE, AUTO)` | an input | obtained by calling `PROC`; the caller never supplies it |
-| `DM_OUTPUT_FROM(OUT, PROC, MODULE, JUST_INFO)` | an input | the caller supplies it; the doc says where to get it |
-| `DM_MIN(EXPR)` / `DM_MAX(EXPR)` | any numeric | inclusive bounds, emitted as a `validate_*_in_range_*` call. `EXPR` is Fortran and may name other arguments or module constants; wrap it in `above(...)` / `below(...)` for an exclusive bound |
-| `DM_SENTINEL(EXPR)` | any numeric | one further value accepted whatever the bounds say — a marker rather than a datum |
-| `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` | a real | opts out of the default finiteness check, separately for each |
-| `DM_PROLOGUE(PROC, MODULE)` | a kernel | the allocating wrapper runs `PROC` after preparing the work arrays and before the kernel; `PROC` may write the outputs, report `handled`, and the kernel is skipped |
-
-**Every real is checked for NaN and infinity by default**, bounds or no bounds — that is the
-framework's contract, and `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` are how an argument leaves it.
-An integer is checked only when it carries a bound, having no non-finite values to reject.
-
-An optional **with** a `DM_DEFAULT` is required in C — the binding languages know the
-default and pass it, which keeps the wrapper flat. Only an optional with no default is
-nullable.
-
-`DM_OUTPUT_FROM(..., AUTO)` matches the producer's inputs to the consumer's arguments by
-name. `mask_chunk_count(n_genes, count)` is called wherever the consumer also has `n_genes`.
-The producer must be exported, so that there is a wrapper to call; it may live in any
-module. Python imports it inside the calling function rather than at the top of the file,
-because two modules may size each other's outputs and a module-level import would then be
-circular. R needs no import: every wrapper is sourced into one environment.
-
-Where the producer and consumer spell the same quantity differently, the consumer argument
-maps them in a table:
-
-```fortran
-integer(int32), intent(in) :: n_work
-    !! size of the work array.
-    !! DM_OUTPUT_FROM(n_work, fx_work_size, fx_edges, AUTO)
-    !!
-    !! | Producer input | Supplied by |
-    !! |----------------|-------------|
-    !! | n_values       | n_samples   |
-```
-
-Name-matching is tried first, so only the differences need a row. A producer input that is
-neither name-matched nor in the table is an error naming it.
-
-### Serialized arrays
-
-A flat array whose shape travels separately, so any rank can be passed through one
-signature:
-
-```fortran
-real(real64), dimension(:), intent(in) :: data
-    !! the values, flat
-integer(int32), dimension(:), intent(in) :: data_shape
-    !! the extents of `data`, one per dimension
-```
-
-`data_shape` must be `intent(in)`, a rank-1 integer, and **not optional** (the wrapper reads
-it to size `data`). `data` may be assumed-shape `(:)` or explicit `(n)`; the wrapper makes it
-assumed-size and slices it to `product(data_shape)`.
-
-Python then accepts an array of *any* rank and flattens it in Fortran order at the call, so
-the shape argument never has to be written out by hand:
-
-```python
-serialize_int_helper(np.arange(12).reshape(3, 4), path)   # shape derived
-deserialize_int_helper(shape, path)                       # count = product(shape)
-```
-
-Characters work the same way: the shape is read off the caller's array before the encode
-rebuilds the buffer, and the strings are encoded in Fortran order.
+- **`M_EXPORT_C` expands to a Ford `category` meta tag**, and the generator reads the category
+  value from that same macro (`frontend.export_category`) rather than hardcoding the string. The
+  marker and what the generator looks for therefore cannot disagree — change the macro and both
+  the sources and the generator follow. Only tagged procedures are wrapped; everything else is
+  held to none of the rules.
+- **`<p>_alloc` takes the plain C symbol `<p>_c`**, because it is the one callers want, and its
+  non-allocating twin `<p>` becomes `<p>_expert_c` — but only where such a twin exists, so a lone
+  `<p>` is never needlessly renamed (`abi/c_abi.stripped_name`).
+- **A mode crosses as a string.** The binding languages pass the parameter name without its
+  prefix, lower-cased (`METHOD_WARD` → `"ward"`), and the C wrapper maps it back to the integer,
+  rejecting an unknown one before Fortran is entered. The Fortran wrapper separately checks
+  membership against exactly the values the mode table names.
+- **`DM_OUTPUT_FROM(..., AUTO)` is called by the language layer**, so the producer must be
+  exported — there has to be a wrapper to call. Python imports it *inside* the calling function
+  rather than at the top of the file, because two modules may size each other's outputs and a
+  module-level import would then be circular. R needs no import: every wrapper is sourced into
+  one environment.
+- **A serialized array is made assumed-size and sliced** to `product(<arg>_shape)` in the wrapper,
+  which is why the shape argument may not be optional — the wrapper reads it before it may take
+  `c_loc` of what it sizes. Python then accepts an array of any rank and flattens it in Fortran
+  order at the call, so the shape is never written out by hand. Characters work the same way: the
+  shape is read off the caller's array before the encode rebuilds the buffer.
 
 ### What is rejected, and why
 
