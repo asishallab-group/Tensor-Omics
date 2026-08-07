@@ -5,47 +5,47 @@
 
 source build_utils.sh
 
-init "$@"
-
-mkdir -p build
+COMPILER=$(get_compiler)
+FLAGS=$(get_flags)
+ALIGN=$(get_alignment)
+handle_args "$@"
 
 # trigger clean build on branch switch
-if [[ $(command -v git) ]]; then
-  current_branch=$(git branch --show-current 2>/dev/null || true)
-  filename=".${COMPILER}.${current_branch}.branch"
-  filename=build/${filename//\//_.SLASH._} # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
-  if [[ ! -f "$filename" ]]; then
-    TOX_CLEAN_BUILD=1
-    rm -f build/.$COMPILER.*.branch # remove prev branch file (should only be one)
-    rm -f build/.branch # this one for backwards compatibility with other still existing branches
-    : > "$filename"
+if [[ $(which git) ]]; then
+  git branch --show-current 2>/dev/null 1> build/.branch.tmp || true
+  touch build/.branch
+  if [[ $(diff build/.branch.tmp build/.branch) ]]; then
+    CLEAN_BUILD=1
   fi
+  mv build/.branch.tmp build/.branch
 fi
 
-# Clean build directory if it exists
-if [[ "$TOX_CLEAN_BUILD" ]]; then
+# # Clean build directory if it exists
+if [[ "$CLEAN_BUILD" ]]; then
   rm -rf build/${COMPILER}_*
 fi
 
-# clean output directories for safety, so no wrong libs will be linked accidentally
-rm -f build/*.so
-rm -f external/*.a
+# Compile external libraries
+./build_externals.sh
 
 # Build with FPM first
-# dependencies
-cd external/loess_netlib
-root=../..
-fpm build --compiler "$COMPILER"
-find_and_mv_libs "$(fpm build --compiler "$COMPILER" --list 2>&1)" "$root/external"
-cd $root
-# tox
-utils_fpm build
+generate_fpm_toml .fpm.toml $COMPILER > fpm.toml
+
+export LIBRARY_PATH="$PWD/external/lib:${LIBRARY_PATH}"
+
+fpm build --compiler $COMPILER \
+          --flag "$FLAGS $DIRECTIVES" \
+          --flag "-DDEFAULT_ALIGNMENT=$ALIGN" \
+          --flag "$MAX_PERF_FLAG" 
 
 check_exit_code "Build with fpm failed"
 
-# Retrieve output path for .so from fpm and copy to build directory
-find_and_mv_libs "$(utils_fpm list 2>&1)" "build"
+rm fpm.toml
 
-stderr "
-${COLOR_GREEN}Build complete with compiler${COLOR_CREAM}: $(echo_compiler $COMPILER)
-"
+# Copy .mod, .o and .so files from FPM build directories to build
+rm -f build/*.o build/*.mod
+
+# Copy .so, .mod, .o files if they exist
+find build/"${COMPILER}"_*/ \( -name "*.so" -o -name "*.mod" -o -name "*.o" \) -exec cp {} build/ \;
+
+echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes"
