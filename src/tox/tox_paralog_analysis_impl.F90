@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Kernels for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+!> Implementations for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
 !|
 !| Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
 !| starting from single genes. At every extension step the candidate is scored against the pattern-specific
@@ -8,11 +8,11 @@
 !| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
 !| extended further, which keeps the combinatorial subset search tractable.
 !|
-!| Both pattern-taking kernels are **mode-split**: their `pattern` table names a procedure per value, so
+!| Both pattern-taking implementations are **mode-split**: their `pattern` table names a procedure per value, so
 !| the generator emits `detect_dosage_effect`/`detect_subfunctionalization` and
 !| `filter_paralogs_by_pattern_dosage_effect`/`_subfunctionalization` into module `tox_paralog_analysis`,
 !| replacing the hand-written per-mode wrappers -- and with them the `map_err_arg_pos` remapping, since
-!| each generated wrapper validates its own arguments at their own positions. The kernels keep `ierr`
+!| each generated wrapper validates its own arguments at their own positions. The implementations keep `ierr`
 !| only for their runtime paths (bit-mask writes, the subset-search bookkeeping).
 module tox_paralog_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

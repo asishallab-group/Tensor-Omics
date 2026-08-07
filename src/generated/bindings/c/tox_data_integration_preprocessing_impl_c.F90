@@ -4,7 +4,7 @@
 !> summary: C-wrappers for [[tox_data_integration_preprocessing_impl(module)]]
 !| # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
 !|
-!| Kernels for the pipeline that turns expression vectors into neighborhood residuals, the
+!| Implementations for the pipeline that turns expression vectors into neighborhood residuals, the
 !| input of the JCT based data integration. The generator turns the `*_impl` procedures
 !| into the validating and allocating wrappers in module tox_data_integration_preprocessing;
 !| `calc_neighborhood_size` is a recommend routine and is exported as it stands.

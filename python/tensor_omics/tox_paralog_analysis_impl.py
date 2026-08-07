@@ -1,6 +1,6 @@
 """tox_paralog_analysis_impl
 
-Kernels for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+Implementations for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
 
 Python binding, generated from tox_paralog_analysis_impl. Do not edit.
 """

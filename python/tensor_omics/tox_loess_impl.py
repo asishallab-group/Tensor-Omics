@@ -1,6 +1,6 @@
 """tox_loess_impl
 
-Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
+Implementations for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
 
 Python binding, generated from tox_loess_impl. Do not edit.
 """

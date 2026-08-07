@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Kernel for calculating normalized tissue (axis) versatility.
+!> Implementation for calculating normalized tissue (axis) versatility.
 !| This module implements the angle-based metric for tissue versatility, quantifying how uniformly a
 !| gene is expressed across selected axes (tissues). The generator turns
 !| `compute_tissue_versatility_impl` into the validating wrapper `compute_tissue_versatility` in

@@ -281,7 +281,7 @@ class _Validator:
                     argument,
                     note=(
                         "pass the data and its extents as separate arguments, and let the "
-                        "_alloc variant own the allocation"
+                        "generated wrapper own the allocation"
                     ),
                 )
 

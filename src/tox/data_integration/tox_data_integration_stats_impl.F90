@@ -2,8 +2,8 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test
 !|
-!| Kernel for a permutation test that estimates an empirical p-value for the weighted global JSD
-!| computed by the JSD kernels. Under the null hypothesis that both studies are exchangeable,
+!| Implementation for a permutation test that estimates an empirical p-value for the weighted global JSD
+!| computed by the JSD implementations. Under the null hypothesis that both studies are exchangeable,
 !| S1/S2 residuals are repeatedly shuffled within each reference point's pooled neighborhood and
 !| the JSD pipeline is recomputed, giving a null distribution against which the observed JSD is
 !| compared. The generator turns `gjct_permutation_test_impl` into the validating and

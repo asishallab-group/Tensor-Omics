@@ -2,7 +2,7 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation per family
 !|
-!| Kernels that obtain the JSD value for specific sub-neighborhoods -- typically the genes of
+!| Implementations that obtain the JSD value for specific sub-neighborhoods -- typically the genes of
 !| one family -- by driving the JSD pipeline over a masked set of neighbors. The generator
 !| turns the `*_impl` procedures into the validating and allocating wrappers in module
 !| tox_data_integration_per_family.

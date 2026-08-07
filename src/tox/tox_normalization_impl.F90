@@ -1,13 +1,13 @@
 #include <src/macros.h>
 
-!> Kernels for normalization routines for tensor omics.
+!> Implementations for normalization routines for tensor omics.
 !| The generator turns the `*_impl` procedures into the validating wrappers in module
-!| tox_normalization, and into an allocating `*_alloc` wrapper wherever a kernel takes `tmp_`
+!| tox_normalization, and into an allocating entry point wherever an implementation takes `tmp_`
 !| work arrays. Dimension and (where the original checked it) finiteness validation comes from the
-!| wrappers; the kernels keep only what a per-argument validator cannot express -- the reps/replicate
+!| wrappers; the implementations keep only what a per-argument validator cannot express -- the reps/replicate
 !| sum, the min-valid-points gate, and the runtime error paths (division-by-zero, log of a non-positive).
 !| The `*_inplace_helper` compute routines carry no `_impl` suffix and stay here untouched.
-!| Nothing in this module allocates: every buffer is a `tmp_` argument, so the generated `_alloc`
+!| Nothing in this module allocates: every buffer is a `tmp_` argument, so the generated entry point
 !| wrapper owns the memory and an expert caller can hand in buffers it already has.
 module tox_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32

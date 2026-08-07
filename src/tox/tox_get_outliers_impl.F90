@@ -1,12 +1,12 @@
 #include <src/macros.h>
 
-!> Kernels to identify gene outliers based on their distances to family centroids.
+!> Implementations to identify gene outliers based on their distances to family centroids.
 !| The generator turns the `*_impl` procedures into the validating wrappers in module
-!| tox_get_outliers. compute_family_scaling is an expert kernel (its ~15 LOESS work arrays + the
-!| recommend-sized workspace + tmp_perm are allocated by the generated compute_family_scaling_alloc);
+!| tox_get_outliers. compute_family_scaling is an expert implementation (its ~15 LOESS work arrays + the
+!| recommend-sized workspace + tmp_perm are allocated by the generated compute_family_scaling);
 !| span/degree/mode/n_iters are optional with defaults so the allocating wrapper matches the old
 !| hand-written one. compute_rdi and identify_outliers are pure. detect_outliers is an expert
-!| orchestrator that exposes every work array and calls the three kernels directly (a kernel module
+!| orchestrator that exposes every work array and calls the three implementations directly (an implementation module
 !| cannot call the generated allocating wrappers). The runtime error paths (percentile, logx, LOESS)
 !| keep ierr; the input-range validation the originals did not perform is not added back.
 module tox_get_outliers_impl
@@ -151,7 +151,7 @@ contains
         n_valid = 0
 
         ! Validate family indices; the -1 sentinel output on failure is part of the contract, so this
-        ! stays in the kernel rather than becoming a wrapper range check.
+        ! stays in the implementation rather than becoming a wrapper range check.
         do i_gene = 1, n_genes
             if (gene_to_fam(i_gene) < 1 .or. gene_to_fam(i_gene) > n_families) then
                 dscale = -1.0_real64

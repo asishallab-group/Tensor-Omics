@@ -1,10 +1,10 @@
 #include <src/macros.h>
 
-!> Kernels for clustering routines used in tensor-omics: k-means for factor/trajectory
+!> Implementations for clustering routines used in tensor-omics: k-means for factor/trajectory
 !| grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.
 !| The generator turns the `*_impl` procedures into the validating wrappers
 !| cluster_factor_trajectories_k_means, k_means_clustering and linkage_clustering in module
-!| tox_clustering. The kernels are pure: `n_clusters <= n_points` is an upper-bound annotation, and
+!| tox_clustering. The implementations are pure: `n_clusters <= n_points` is an upper-bound annotation, and
 !| the distance-matrix structure check comes from the distance-matrix naming convention -- both emitted
 !| into the wrappers. The many compute helpers below carry no `_impl` suffix and stay here untouched.
 module tox_clustering_impl

@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Kernels for Euclidean distance computation for tensor omics.
+!> Implementations for Euclidean distance computation for tensor omics.
 !| The generator turns `euclidean_distance_impl` and `distance_to_centroid_impl` into the
 !| validating wrappers `euclidean_distance` and `distance_to_centroid` in module
 !| `tox_euclidean_distance`.

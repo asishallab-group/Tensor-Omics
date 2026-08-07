@@ -1,13 +1,13 @@
 #include <src/macros.h>
 
-!> Kernels for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space.
+!> Implementations for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space.
 !| The generator turns the `*_impl` procedures into the validating wrappers omics_vector_RAP_projection,
 !| omics_field_RAP_projection, clock_hand_angle_between_vectors, clock_hand_angles_for_shift_vectors,
 !| relative_axes_changes_from_shift_vector and relative_axes_expression_from_expression_vector in module
-!| tox_relative_axis_plane_tools. The kernels keep only the checks a per-argument validator cannot express
+!| tox_relative_axis_plane_tools. The implementations keep only the checks a per-argument validator cannot express
 !| (a count(mask) matching its claimed size, and the unique-axes check); the mechanical dimension and
 !| finiteness checks come from the generated wrappers. The compute helpers below carry no `_impl` suffix
-!| and are shared by several kernels, so they stay here untouched.
+!| and are shared by several implementations, so they stay here untouched.
 module tox_relative_axis_plane_tools_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, set_err_once, ERR_DIVISION_BY_ZERO

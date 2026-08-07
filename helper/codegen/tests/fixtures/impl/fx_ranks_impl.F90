@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> summary: Kernel fixture for the compile-and-run test
+!> summary: Implementation fixture for the compile-and-run test
 !| author: A Developer
 !| One implementation exercising a documented minimum, a work array and a permutation, so that both
 !| generated wrappers are meaningful. Compiled and run by `test_end_to_end_fortran.py`.

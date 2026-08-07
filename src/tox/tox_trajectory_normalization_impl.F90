@@ -1,8 +1,8 @@
 #include <src/macros.h>
 
-!> Kernels for min-max normalization of factor trajectories over time.
+!> Implementations for min-max normalization of factor trajectories over time.
 !| Each factor's time series is independently rescaled to `[0,1]` per sample/entity. The
-!| generator turns these into the validating (and, for the all-trajectories kernel, the
+!| generator turns these into the validating (and, for the all-trajectories implementation, the
 !| allocating) wrappers in module `tox_trajectory_normalization`.
 module tox_trajectory_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32

@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Kernels for computing expression centroids of gene families.
+!> Implementations for computing expression centroids of gene families.
 !|
 !| The generator turns these into the `mean_vector` wrapper and, from the mode-split
 !| `group_centroid_impl`, the per-mode wrappers `group_centroid_orthologs` and

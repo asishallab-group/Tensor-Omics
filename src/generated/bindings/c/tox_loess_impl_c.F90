@@ -2,11 +2,11 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_loess_impl(module)]]
-!| Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
+!| Implementations for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
 !| The generator turns `loess_fit_plain_impl` / `loess_fit_robust_impl` into the expert fitting
 !| wrappers `loess_fit_plain` / `loess_fit_robust`, each with an allocating sibling, in module
 !| `tox_loess`. Both answer data too degenerate to fit with `loess_degenerate_fit`, so it is
-!| answered there and the netlib call is skipped -- the kernels themselves fit, and assume they were
+!| answered there and the netlib call is skipped -- the implementations themselves fit, and assume they were
 !| given something fittable. There is no combined entry point that dispatches on a mode: a caller
 !| chooses the plain or the robust routine, and supplies the weights and evaluation points it wants.
 !| The netlib

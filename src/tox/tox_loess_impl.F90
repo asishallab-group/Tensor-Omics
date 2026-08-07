@@ -1,10 +1,10 @@
 #include <src/macros.h>
 
-!> Kernels for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
+!> Implementations for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
 !| The generator turns `loess_fit_plain_impl` / `loess_fit_robust_impl` into the expert fitting
 !| wrappers `loess_fit_plain` / `loess_fit_robust`, each with an allocating sibling, in module
 !| `tox_loess`. Both answer data too degenerate to fit with `loess_degenerate_fit`, so it is
-!| answered there and the netlib call is skipped -- the kernels themselves fit, and assume they were
+!| answered there and the netlib call is skipped -- the implementations themselves fit, and assume they were
 !| given something fittable. There is no combined entry point that dispatches on a mode: a caller
 !| chooses the plain or the robust routine, and supplies the weights and evaluation points it wants.
 !| The netlib
@@ -167,12 +167,12 @@ contains
 
     !> summary: Decides whether the data is too degenerate to fit, and answers it directly if so
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| The prologue of both LOESS fitting kernels. A single point, an `x` range below
+    !| The prologue of both LOESS fitting implementations. A single point, an `x` range below
     !| `EPS_LOESS`, or fewer distinct `x` values than the polynomial degree needs cannot
     !| produce a meaningful fit; rather than hand netlib an input it cannot answer, the fitted
-    !| values are the observations themselves and the call reports `handled`, so the kernel is
+    !| values are the observations themselves and the call reports `handled`, so the implementation is
     !| skipped. This is policy, not validation, which is why it lives here and not in the
-    !| kernels: they fit, and assume they were given something fittable.
+    !| implementations: they fit, and assume they were given something fittable.
     pure subroutine loess_degenerate_fit(n, x, y, degree, fitted_values, handled, ierr)
         integer(int32), intent(in) :: n
             !! Total number of data points
@@ -356,7 +356,7 @@ contains
         call set_ok(ierr)
 
         ! Answer degenerate data directly rather than handing netlib something it cannot fit.
-        ! Every caller of this kernel needs this, so it is the kernel's own contract.
+        ! Every caller of this implementation needs this, so it is its own contract.
         call loess_degenerate_fit(n, x, y, degree, fitted_values, degenerate, ierr)
         if (is_err(ierr)) return
         if (degenerate) return
@@ -477,7 +477,7 @@ contains
         call set_ok(ierr)
 
         ! Answer degenerate data directly rather than handing netlib something it cannot fit.
-        ! Every caller of this kernel needs this, so it is the kernel's own contract.
+        ! Every caller of this implementation needs this, so it is its own contract.
         call loess_degenerate_fit(n, x, y, degree, fitted_values, degenerate, ierr)
         if (is_err(ierr)) return
         if (degenerate) return

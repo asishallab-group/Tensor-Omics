@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Kernel for computing the shift vector field for all genes.
+!> Implementation for computing the shift vector field for all genes.
 !|
 !| Hand-written implementation only. The generator turns this into the validating wrapper
 !| [[tox_shift_vectors(module):compute_shift_vector_field]] in module `tox_shift_vectors`.

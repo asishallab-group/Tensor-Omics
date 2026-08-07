@@ -2,8 +2,8 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
 !|
-!| Kernels for the pipeline that turns neighborhood residuals -- as produced by the
-!| preprocessing kernels -- into a JSD value. The generator turns the `*_impl` procedures
+!| Implementations for the pipeline that turns neighborhood residuals -- as produced by the
+!| preprocessing implementations -- into a JSD value. The generator turns the `*_impl` procedures
 !| into the validating and allocating wrappers in module tox_data_integration_jsd;
 !| `jct_compute_jsd_pipeline_helper` is an internal helper the permutation test and the
 !| per-family analysis both drive, and carries no `_impl` suffix.
