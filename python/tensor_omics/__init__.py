@@ -190,7 +190,6 @@ from .tox_shape_truthful_clustering_reconciliation import (
     ensemble_reconciliation,
 )
 from .tox_shape_truthful_clustering_seeding import (
-    calculate_density_radius,
     density_labels,
     seeds,
 )
@@ -232,7 +231,6 @@ __all__ = [
     "calc_neighborhood_size",
     "calc_tiss_avg",
     "calc_work_arr_paralog_subsets_size",
-    "calculate_density_radius",
     "clock_hand_angle_between_vectors",
     "clock_hand_angles_for_shift_vectors",
     "cluster_factor_trajectories_k_means",

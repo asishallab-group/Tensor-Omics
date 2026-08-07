@@ -218,3 +218,115 @@ correct in all three languages, at the cost of an avoidable 2x over-allocation.
    specification expressions are discussed, so a kernel author knows to avoid a bare integer
    `/` in a bound expression (or knows why doubling it, as done here, is a legitimate
    workaround) without having to hit the `TypeError` first.
+
+---
+
+# Third footgun: an omitted optional argument skips validation entirely, even when its `DM_DEFAULT` can violate a runtime-dependent `DM_MAX`
+
+## Where this lives in the generator
+
+The generated wrapper's own validation call, e.g.
+`src/generated/tox/tox_shape_truthful_clustering_seeding.F90`:
+
+```fortran
+call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+```
+
+and `validate_in_range_int` itself, `src/f42/tox_errors.F90`:
+
+```fortran
+pure subroutine validate_in_range_int(val, ierr, arg_pos, min, max, sentinel)
+    integer(int32), intent(in), optional :: val
+    ...
+    if (present(val)) then
+        ...
+        if ((val < actual_min) .or. (val > actual_max)) then
+            call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos)
+        end if
+    end if
+end subroutine validate_in_range_int
+```
+
+## The problem
+
+The wrapper passes its own (still-`optional`) `k_density` dummy straight through to
+`validate_in_range_int`'s own `val`, which is *also* `optional` and gates the entire check
+behind `if (present(val))`. If the original caller omitted `k_density`, it is never present
+at that call site either, so the bound check is skipped -- not "skipped because it's fine,"
+skipped as in *never evaluated at all*. The unresolved-absent optional is then passed on to
+the kernel unchanged, where `M_DEFAULT_VAL` resolves it to the literal `DM_DEFAULT` constant
+(e.g. 30) with no bound check ever having run.
+
+This is fine whenever the default constant is a legitimate value for every possible input --
+but `DM_MAX(n_vectors - 1_int32)` is not a constant, it depends on the *other* arguments of
+this specific call. A `DM_DEFAULT` of 30 is not a valid value once `n_vectors <= 30`, and
+nothing catches that.
+
+## Minimal example
+
+```fortran
+pure subroutine density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+                                      k_density, tmp_neighbors, tmp_distances, tmp_range_stack, ..., labels)
+    ...
+    integer(int32), intent(in), optional :: k_density
+        !! DM_MIN(1_int32)
+        !! DM_MAX(n_vectors - 1_int32)
+        !! DM_DEFAULT(30_int32)
+    integer(int32), intent(out) :: tmp_neighbors(n_vectors)
+    ...
+    integer(int32) :: actual_k_density, k_query
+    M_DEFAULT_VAL(k_density, actual_k_density, 30_int32)
+    k_query = actual_k_density + 1
+    call kd_knn_query_helper(..., tmp_neighbors(1:k_query), ...)   ! n_vectors=5, k_query=31
+```
+
+Calling the *generated, validating* wrapper with `k_density` omitted, on a 5-point dataset,
+never raises `ERR_INVALID_INPUT` -- it resolves `k_density` to 30 inside the kernel and asks
+`kd_knn_query_helper` to fill a 31-element slice of a 5-element array. That is an
+out-of-bounds write. We hit this directly: it corrupted memory silently, then crashed later
+in unrelated code (a `SIGSEGV` inside `libgfortran`'s `_dl_fini`, during process teardown,
+nowhere near the actual bug) -- the kind of failure that is very expensive to trace back to
+its real cause.
+
+## Why this is easy to miss
+
+Every *explicit* value is validated correctly -- `test_growth_radius_k_min_too_large` and
+`test_seeds_invalid_k_density` (both passing an explicit, too-large value) both correctly get
+`ERR_INVALID_INPUT`. The gap is specifically the combination of (a) omitting the optional and
+(b) a dataset smaller than the default. Python and R callers are not exposed to this in
+practice: both bindings always resolve and pass an explicit value at the C-ABI boundary
+(confirmed by reproducing the equivalent call from Python, which raised a clean
+`ToxInputError` rather than crashing) -- a Python/R caller never actually presents Fortran
+with a truly-absent optional. The risk is specifically a *Fortran* caller (another kernel, a
+hand-written test, a future orchestrator) that omits the argument on data smaller than the
+default -- exactly what one of our own first-draft tests did by accident.
+
+## Suggested fixes
+
+1. **Resolve the default before validating, not after.** If the wrapper computed
+   `actual_k_density` via the same `M_DEFAULT_VAL` logic the kernel uses, then validated
+   *that* (always present) against `DM_MIN`/`DM_MAX`, a default that violates a
+   runtime-dependent bound would be caught for every call, not just the ones that happen to
+   pass an explicit value. This also matches what a reader would reasonably assume
+   `DM_DEFAULT` already means: "a value that passes validation," not "a value substituted
+   after validation had its chance."
+2. **Failing that, warn at generation time when this is even possible.** If a `DM_MAX` (or
+   `DM_MIN`) expression references another argument (not a compile-time constant) *and* the
+   argument carries a `DM_DEFAULT`, that combination can never be verified as safe at
+   generation time -- flag it under `--check`, so a kernel author at least knows the default
+   is unchecked at the point they write it, rather than discovering it via a crash in
+   unrelated code.
+
+Neither fix has been made in the generator itself yet -- both are still open. What *has* been
+fixed, at the two call sites this actually bit us
+(`calc_ensemble_growth_radius_kernel`'s `k_min`, `density_labels_kernel`'s `k_density`), is a
+kernel-level stopgap: `actual_k = min(actual_k, n_vectors - 1)` right after `M_DEFAULT_VAL`,
+which makes the *resolved* value safe regardless of whether it came from an explicit
+(already wrapper-validated) argument or the unchecked default. This is a per-kernel patch,
+not a fix to the generator -- any *other* kernel with the same `DM_DEFAULT` +
+runtime-dependent-`DM_MAX` combination remains exposed until either it gets the same local
+clamp or the generator itself is fixed per the two suggestions above. Regression tests for
+the two fixed call sites:
+`test/mod_test_shape_truthful_clustering_seeding.F90::test_density_labels_omitted_k_density_is_clamped`/
+`test_seeds_omitted_k_density_is_clamped`, and
+`test/mod_test_shape_truthful_clustering_ensemble_growing.F90::test_growth_radius_omitted_k_min_is_clamped`.

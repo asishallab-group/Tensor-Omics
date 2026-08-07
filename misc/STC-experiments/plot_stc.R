@@ -53,7 +53,7 @@ params <- read_params_txt(paste0(prefix, "_params.txt"))
 
 param_caption <- function(params) {
   if (is.null(params)) return("")
-  keys <- c("k_min", "density_quantile", "alpha_max_deg", "d_max", "g_max", "f_max", "a", "o",
+  keys <- c("k_min", "k_density", "alpha_max_deg", "d_max", "g_max", "f_max", "a", "o",
             "reconciliation_mode", "min_jsi", "n_vectors", "n_dimensions", "n_ensembles")
   keys <- keys[keys %in% names(params)]
   paste(sprintf("%s = %s", keys, unlist(params[keys])), collapse = ", ")

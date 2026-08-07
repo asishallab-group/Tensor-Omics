@@ -70,6 +70,30 @@ Python/R functions for our framework into @r/tensor_omics,
 only `assert` statements and test helpers. No `stop()` in any R test file, just
 assertions.
 
+**Every crash or error is a regression test.** Whenever something -- a build, a test run, an
+experiment script, manual exploration -- crashes or raises an error you did not expect, that
+is a unit test you are missing, not just a bug to patch and move past. Before considering the
+issue resolved: (1) write a test in `test/` that reproduces the failure condition (never one
+that reproduces an actual crash/undefined-behavior itself -- see the note below), (2) confirm
+it fails against the current code, (3) fix the underlying code, (4) confirm the same test now
+passes, (5) mirror it to `python/test/` and `r/tests` per the convention above. If the
+failure is genuinely not reproducible from Python/R (e.g. it depended on a raw Fortran call
+omitting an optional argument -- something no binding does, since both always resolve
+defaults explicitly before crossing the ABI boundary), say so in a comment at the mirror site
+instead of forcing an artificial test; see
+`test/mod_test_shape_truthful_clustering_seeding.F90`'s
+`test_seeds_omitted_k_density_is_clamped` and its Python/R siblings for a worked example of
+both halves of this (the Fortran-only crash regression, and the adjacent behavior that *is*
+reachable from Python/R, covered there instead).
+
+If the failure was an actual crash (a segfault, corrupted memory, undefined behavior) rather
+than a clean, validated error: do not write a test that re-triggers the crash to prove it is
+fixed -- a test that sometimes segfaults is worse than no test, since a crash can take the
+whole test binary down with it, mask every later test in the same run, and behave differently
+across platforms/builds/compiler flags. Fix the code first, so the failure mode becomes a
+clean, deterministic result (a correct value, or a proper `ierr`) -- only then write the
+regression test, asserting *that* deterministic result.
+
 ## Shape Truthful Clustering (STC)
 
 STC (Shape Truthful Clustering) is a renormalization-group-inspired ensemble-growth
@@ -82,18 +106,20 @@ references only -- implement against `mod_STC.md`.
 Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/`:
 
 - `tox_shape_truthful_clustering_kernel.F90` -- parent; holds `ensemble_identification`'s
-  own kernel(s) directly (the family's natural top-level entry point) *and* `use`s the four
+  own kernel(s) directly (the family's natural top-level entry point) *and* `use`s the five
   children below -- a deliberate deviation from `codegen_guide.md` section 5.15's own
   `tox_data_integration_kernel` example, where the parent holds no procedures of its own.
-- `tox_shape_truthful_clustering_seeding_kernel.F90` -- `calculate_density_radius`,
-  `density_labels`, `seeds`.
+- `tox_shape_truthful_clustering_seeding_kernel.F90` -- `density_labels`, `seeds`. Also
+  `use`s its sibling `tox_shape_truthful_clustering_ensemble_growing_kernel` directly, to
+  reuse `calc_ensemble_growth_radius_kernel` for `seeds`' own coverage radius rather than a
+  second, separately-implemented computation -- the first sibling-to-sibling dependency in
+  this family.
 - `tox_shape_truthful_clustering_ensemble_growing_kernel.F90` -- `calc_ensemble_growth_radius`,
   `grow_ensemble`.
 - `tox_shape_truthful_clustering_observable_kernel.F90` -- `observable`, `normal_error`,
   `tangent_scales`.
 - `tox_shape_truthful_clustering_accept_kernel.F90` -- `accept_ensemble`.
-- `tox_shape_truthful_clustering_reconciliation_kernel.F90` -- ensemble reconciliation; not
-  yet implemented, deliberately deferred.
+- `tox_shape_truthful_clustering_reconciliation_kernel.F90` -- `ensemble_reconciliation`.
 
 `src/lomanle.F90`: existing module. Only integrate STC into LoManLe's pipeline after STC
 itself is implemented and tested in isolation -- do not interleave the two.

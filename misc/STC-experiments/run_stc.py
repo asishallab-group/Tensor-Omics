@@ -41,10 +41,16 @@ def parse_args():
     p.add_argument("input_csv", help="Point-cloud CSV; every numeric column is treated as one ambient dimension")
     p.add_argument("--out-prefix", default=None,
                     help="Prefix for the output CSVs (default: results/<input file stem> next to this script)")
-    p.add_argument("--density-quantile", type=float, default=0.15,
-                    help="Seeding: percentile of mean-to-vector distances used as the density radius (default 0.15)")
-    p.add_argument("--k-min", type=int, default=30,
-                    help="Growth radius: neighborhood size for the median-distance radius (default 30)")
+    p.add_argument("--k", type=int, default=None,
+                    help="Shortcut: sets both --k-min and --k-density at once (individual flags still override)")
+    p.add_argument("--k-min", type=int, default=None,
+                    help="Growth radius: neighborhood size for the median-distance radius (default 30, or --k)")
+    p.add_argument("--k-density", type=int, default=None,
+                    help="Seeding: neighborhood size for both the density estimate and the coverage radius, "
+                         "see density_labels/calc_ensemble_growth_radius (default 30, or --k -- the same "
+                         "default value k_min has, not a live reference: seeds() and "
+                         "ensemble_identification_merged() are separate top-level calls, so --k is the only "
+                         "way to move both together from the command line)")
     p.add_argument("--alpha-max-deg", type=float, default=30.0,
                     help="Accept: maximum tolerated principal angle between tangent bases, in degrees (default 30)")
     p.add_argument("--d-max", type=int, default=1,
@@ -63,7 +69,12 @@ def parse_args():
                     help="Reconciliation: minimum Jaccard Similarity Index for mode merge_jsi (default 0.1)")
     p.add_argument("--max-group-size", type=int, default=None,
                     help="Reconciliation: max ensembles per super-ensemble (default min(1024, n_ensembles))")
-    return p.parse_args()
+    args = p.parse_args()
+    # --k-min/--k-density, in that order, always win over --k; --k only fills in whichever of
+    # the two was not given explicitly; 30 is the hardcoded fallback if neither was.
+    args.k_min = args.k_min if args.k_min is not None else (args.k if args.k is not None else 30)
+    args.k_density = args.k_density if args.k_density is not None else (args.k if args.k is not None else 30)
+    return args
 
 
 def read_points(csv_path):
@@ -101,8 +112,7 @@ def main():
     dimension_order = np.arange(1, n_dimensions + 1, dtype=np.int32)
     kd_indices = build_kd_index(vectors, dimension_order)
 
-    seed_selection_mask = seeds(vectors, kd_indices, dimension_order,
-                                 mean_to_other_vecs_dist_quant=args.density_quantile)
+    seed_selection_mask = seeds(vectors, kd_indices, dimension_order, k_density=args.k_density)
     n_ensembles = int(np.count_nonzero(seed_selection_mask))
     print(f"[run_stc] {stem}: N={n_vectors}, D={n_dimensions}, seeds found={n_ensembles}")
 

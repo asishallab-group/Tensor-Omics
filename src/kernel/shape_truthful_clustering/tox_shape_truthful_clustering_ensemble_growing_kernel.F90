@@ -36,7 +36,9 @@ contains
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
         integer(int32), intent(in) :: n_vectors
-            !! Number of input vectors N
+            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
+            !! single point.
+            !! DM_MIN(2_int32)
         real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
             !! Input data matrix
         integer(int32), intent(in) :: kd_indices(n_vectors)
@@ -70,6 +72,13 @@ contains
         integer(int32) :: actual_k_min, k_query, self_pos, j
 
         M_DEFAULT_VAL(k_min, actual_k_min, CM_GROWTH_RADIUS_K_MIN_DEFAULT)
+        ! An *explicit* k_min is already wrapper-validated against DM_MAX(n_vectors - 1), so
+        ! this is a no-op for it -- what it actually guards is CM_GROWTH_RADIUS_K_MIN_DEFAULT
+        ! itself, a fixed constant that the wrapper never validates against a runtime-dependent
+        ! bound at all when k_min is omitted (see misc/code_gen_footgun.md's third entry): a
+        ! caller on fewer than 31 points who omits k_min would otherwise reach the k-NN query
+        ! below asking for more neighbors than exist, past the end of tmp_neighbors/tmp_distances.
+        actual_k_min = min(actual_k_min, n_vectors - 1)
         k_query = actual_k_min + 1
 
         call kd_knn_query_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &

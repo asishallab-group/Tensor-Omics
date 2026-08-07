@@ -41,7 +41,9 @@ contains
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
         integer(int32), intent(in) :: n_vectors
-            !! Number of input vectors N
+            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
+            !! single point.
+            !! The minimum valid value is `2_int32`.
         real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
             !! Input data matrix
         integer(int32), dimension(n_vectors), intent(in) :: kd_indices
@@ -77,7 +79,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
         call validate_in_range_int(seed_index, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors)
         call validate_in_range_int(k_min, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
@@ -121,7 +123,9 @@ contains
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
         integer(int32), intent(in) :: n_vectors
-            !! Number of input vectors N
+            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
+            !! single point.
+            !! The minimum valid value is `2_int32`.
         real(real64), dimension(n_dimensions, n_vectors), intent(in) :: vectors
             !! Input data matrix
         integer(int32), dimension(n_vectors), intent(in) :: kd_indices
@@ -153,7 +157,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
+        call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
         call validate_in_range_int(seed_index, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors)
         call validate_in_range_int(k_min, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)

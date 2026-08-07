@@ -93,7 +93,7 @@ Each major step gets its own kernel module under
 | Module file | SKGs |
 |---|---|
 | `tox_shape_truthful_clustering_kernel.F90` (parent) | `ensemble_identification` (its own kernel(s), directly in the parent -- see note below) |
-| `tox_shape_truthful_clustering_seeding_kernel.F90` | `calculate_density_radius`, `density_labels`, `seeds` |
+| `tox_shape_truthful_clustering_seeding_kernel.F90` | `density_labels`, `seeds` |
 | `tox_shape_truthful_clustering_ensemble_growing_kernel.F90` | `calc_ensemble_growth_radius`, `grow_ensemble` |
 | `tox_shape_truthful_clustering_observable_kernel.F90` | `observable`, `normal_error`, `tangent_scales` |
 | `tox_shape_truthful_clustering_accept_kernel.F90` | `accept_ensemble` |
@@ -109,32 +109,82 @@ natural "top" member.
 
 ## Seeding
 
-Seeding requires two dedicated SKGs. One to find the radius used to measure
-local density centered on a vector $\vec{x}_i$, the other to identify seeds.
+Seeding requires two dedicated SKGs: one to assign every vector a local
+density label, the other to greedily select seeds from those labels.
 
-The SKG `calculate_density_radius` to identify the radius receives a percentile
-as optional input (default 15%). The algorithm finds the mean vector
-$x = \frac{1}{N} \cdot \sum_{i=1}^{N} x_i$ with 
-$x_i \in \text{data\_vectors}$
-Next, all distances are computed to this mean vector. Finally, the argument
-percentile distance is returned as the radius to be used in density label
-calculation.
+### SKG `density_labels`
 
-A `seeds` SKG is used with input:
+Receives an optional $k_{\text{density}}$ (default 30 -- the same default
+`calc_ensemble_growth_radius`'s own $k_{\min}$ uses, see "Local Radius
+Identification" below, but a genuinely independent argument: `density_labels`
+and `seeds` are called before `ensemble_identification` in the pipeline, so
+there is no single call through which one value could reach both) and an
+optional $p_{\text{bw}}$, `bandwidth_percentile` (default 68.27). For each
+vector $x_i$:
+
+1. Find its $k_{\text{density}}$ nearest neighbors (excluding itself), giving
+   distances $d_{i,1}, \ldots, d_{i,k}$.
+2. $b_i = \text{percentile}_{p_{\text{bw}}}\big(d_{i,1}, \ldots,
+   d_{i,k}\big)$ -- the $p_{\text{bw}}$-th percentile of those distances
+   (linear interpolation, via `calc_percentile_helper`), floored at a small
+   epsilon (coincident neighbors at distance 0 would otherwise give $b_i = 0$,
+   a zero-bandwidth Gaussian below).
+3. $\text{density}(x_i) = \dfrac{1}{b_i^D}\sum_{j=1}^{k}
+   \exp\!\left(-\dfrac{d_{i,j}^2}{2\, b_i^2}\right)$, where $D$ is the
+   ambient dimensionality.
+
+This is an adaptive-bandwidth kernel density estimate: unlike a single
+dataset-wide radius, $b_i$ shrinks in dense regions and grows in sparse ones,
+so the resulting density labels reflect *local*, not global, density. The
+$1/b_i^D$ normalization is not optional polish -- without it, $d_{i,j}/b_i$ is
+scale-invariant, so a cluster and the same cluster uniformly stretched out
+score identically, which defeats the purpose of a *density* label.
+
+$p_{\text{bw}}$ is deliberately exposed as a tunable, undisguised heuristic,
+not presented as a calibrated standard deviation. The 68.27 default is
+anchored to the familiar 1-D-Gaussian fact "68.27% of the mass lies within
+one SD" -- but that fact is 1-D-specific: for distances (norms) in $D$
+dimensions under an isotropic-Gaussian-scatter assumption, distance$/\sigma
+\sim \chi_D$, and the correct percentile for "one SD" shrinks with $D$
+(39.35% at $D=2$, 19.88% at $D=3$, ...). Rigorously correcting for this would
+require each point's *local intrinsic dimension*, not the ambient $D$ -- and
+that is only available later, from `observable`'s per-ensemble SVD, not at
+the seeding stage. Using ambient $D$ instead would actively over-correct for
+STC's manifold-concentrated data (real local dimension is typically far
+below $D$). So $p_{\text{bw}}$ stays a plain tunable parameter, not a
+disguised statistical estimate.
+
+### SKG `seeds`
+
+Input:
 
 * data_vectors - 2D real array
+
 output:
+
 * logical mask defining the selected seed points.
 
 ### Algorithm
 
-First, assign each $x_i \in \text{data\_vectors}$ a density label. Use a or
-reuse the function `density_labels` for this that populates a 2D real array of
-length `n-columns(data_vectors)`. 
+First, assign each $x_i \in \text{data\_vectors}$ a density label via
+`density_labels`.
 
-Sort the density labels descending. Start with the first and identify all input
-data vectors within its radius. Mask those as visited. Continue with the next
-highest non visited density label until none remain.
+Sort the density labels descending. Start with the highest-density unvisited
+vector and mark it a seed. Its coverage radius is the *same computation*
+`calc_ensemble_growth_radius` uses for its own growth radius -- median
+distance to its own $k_{\text{density}}$ nearest neighbors -- called directly
+on the newly-selected seed with $k_{\text{density}}$ in place of $k_{\min}$,
+not a separate radius computed some other way. Mask every vector within that
+radius as visited. Continue with the next highest-density unvisited vector
+until none remain.
+
+Tying the coverage radius to the same local-scale notion growth itself uses,
+rather than a single dataset-wide radius as an earlier draft of this
+algorithm did, is deliberate: a fixed global radius can suppress seed
+placement across a region much larger than what that seed's own ensemble
+will ever actually grow into, leaving points "covered" by seed-exclusion but
+never reached by any grown ensemble -- see `misc/STC-experiments/README.md`
+for a concrete demonstration of the resulting coverage gaps.
 
 ## Ensemble identification
 
@@ -304,6 +354,10 @@ value 30.
 
 For each seed we store the growth radius in a 1D real array called
 `ensemble_growth_radii`.
+
+`seeds` reuses this exact SKG for its own coverage radius (see "Seeding"
+above), called with $k_{\text{density}}$ in place of $k_{\min}$ -- not a
+second, separately-implemented median-of-k-NN-distances computation.
 
 ### Tangent Space Variant
 

@@ -42,7 +42,9 @@ contains
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
         integer(c_int), intent(in), target :: n_vectors
-            !! Number of input vectors N
+            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
+            !! single point.
+            !! The minimum valid value is `2_int32`.
         real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
             !! Input data matrix
         integer(c_int), dimension(n_vectors), intent(in), target :: kd_indices
@@ -128,7 +130,9 @@ contains
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
         integer(c_int), intent(in), target :: n_vectors
-            !! Number of input vectors N
+            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
+            !! single point.
+            !! The minimum valid value is `2_int32`.
         real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
             !! Input data matrix
         integer(c_int), dimension(n_vectors), intent(in), target :: kd_indices

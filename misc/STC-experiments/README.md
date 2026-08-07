@@ -116,8 +116,9 @@ they mean algorithmically (see `misc/mod_STC.md` for the full definitions):
 
 | Option | STC concept | Default |
 |---|---|---|
-| `--density-quantile` | `seeds`' density-radius percentile | 0.15 |
+| `--k` | shortcut: sets both `--k-min` and `--k-density` at once (either still overrides individually) | -- |
 | `--k-min` | growth radius: k-NN pool size for the median-distance radius | 30 |
+| `--k-density` | seeding: k-NN pool size for both `density_labels`' adaptive bandwidth and `seeds`' coverage radius | 30 |
 | `--alpha-max-deg` | `accept_ensemble`'s max principal angle, in degrees (radians internally) | 30 |
 | `--d-max` | `accept_ensemble`'s max tolerated change in intrinsic dimension | 1 |
 | `--g-max` | `accept_ensemble`'s max tolerated `\|log(G_tp1/G_t)\|` | 3.0 |

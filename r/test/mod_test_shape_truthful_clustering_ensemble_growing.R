@@ -41,6 +41,17 @@ test_growth_radius_k_min_too_large <- function() {
                "Expected error for k_min > n_vectors-1", ERR_INVALID_INPUT)
 }
 
+# The Fortran suite's test_growth_radius_omitted_k_min_is_clamped is a regression test for a
+# crash that could only happen with k_min truly absent at the Fortran ABI boundary -- not
+# reproducible here, since the R binding always resolves and passes k_min=30 explicitly (see
+# misc/code_gen_footgun.md's third entry). What is worth covering from R: that this
+# always-explicit default still gets validated normally on a dataset smaller than it.
+test_growth_radius_default_k_min_too_large_for_dataset <- function() {
+  fx <- line_fixture(11)
+  assert_error(calc_ensemble_growth_radius(fx$vectors, fx$kd_indices, fx$dimension_order, 6),
+               "Expected error for the default k_min=30 on an 11-point dataset", ERR_INVALID_INPUT)
+}
+
 # =====================
 # grow_ensemble
 # =====================

@@ -146,9 +146,8 @@ SEXP tangent_scales_call(SEXP, SEXP);
 SEXP observable_call(SEXP, SEXP);
 SEXP tox_stc_observable_svd_workspace_call(SEXP, SEXP);
 SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP calculate_density_radius_call(SEXP, SEXP);
-SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP);
-SEXP seeds_call(SEXP, SEXP, SEXP, SEXP);
+SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -270,9 +269,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"observable_call", (DL_FUNC) &observable_call, 2},
     {"tox_stc_observable_svd_workspace_call", (DL_FUNC) &tox_stc_observable_svd_workspace_call, 2},
     {"ensemble_reconciliation_call", (DL_FUNC) &ensemble_reconciliation_call, 5},
-    {"calculate_density_radius_call", (DL_FUNC) &calculate_density_radius_call, 2},
-    {"density_labels_call", (DL_FUNC) &density_labels_call, 4},
-    {"seeds_call", (DL_FUNC) &seeds_call, 4},
+    {"density_labels_call", (DL_FUNC) &density_labels_call, 5},
+    {"seeds_call", (DL_FUNC) &seeds_call, 5},
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},

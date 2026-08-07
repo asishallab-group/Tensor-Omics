@@ -16,18 +16,19 @@ contains
     !> Get array of all available tests.
     function get_all_tests_shape_truthful_clustering_ensemble_growing() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(10))
+        allocate (all_tests(11))
 
         all_tests(1) = test_case("test_growth_radius_even_k", test_growth_radius_even_k)
         all_tests(2) = test_case("test_growth_radius_odd_k", test_growth_radius_odd_k)
         all_tests(3) = test_case("test_growth_radius_seed_index_out_of_range", test_growth_radius_seed_index_out_of_range)
         all_tests(4) = test_case("test_growth_radius_k_min_too_large", test_growth_radius_k_min_too_large)
-        all_tests(5) = test_case("test_growth_radius_zero_dimensions", test_growth_radius_zero_dimensions)
-        all_tests(6) = test_case("test_grow_ensemble_single_member", test_grow_ensemble_single_member)
-        all_tests(7) = test_case("test_grow_ensemble_multi_member_union", test_grow_ensemble_multi_member_union)
-        all_tests(8) = test_case("test_grow_ensemble_empty_ensemble_is_degenerate", test_grow_ensemble_empty_ensemble_is_degenerate)
-        all_tests(9) = test_case("test_grow_ensemble_negative_radius", test_grow_ensemble_negative_radius)
-        all_tests(10) = test_case("test_grow_ensemble_zero_dimensions", test_grow_ensemble_zero_dimensions)
+        all_tests(5) = test_case("test_growth_radius_omitted_k_min_is_clamped", test_growth_radius_omitted_k_min_is_clamped)
+        all_tests(6) = test_case("test_growth_radius_zero_dimensions", test_growth_radius_zero_dimensions)
+        all_tests(7) = test_case("test_grow_ensemble_single_member", test_grow_ensemble_single_member)
+        all_tests(8) = test_case("test_grow_ensemble_multi_member_union", test_grow_ensemble_multi_member_union)
+        all_tests(9) = test_case("test_grow_ensemble_empty_ensemble_is_degenerate", test_grow_ensemble_empty_ensemble_is_degenerate)
+        all_tests(10) = test_case("test_grow_ensemble_negative_radius", test_grow_ensemble_negative_radius)
+        all_tests(11) = test_case("test_grow_ensemble_zero_dimensions", test_grow_ensemble_zero_dimensions)
     end function get_all_tests_shape_truthful_clustering_ensemble_growing
 
     ! --- calc_ensemble_growth_radius ---------------------------------------
@@ -93,6 +94,37 @@ contains
                                                k_min=11_int32, growth_radius=growth_radius, ierr=ierr)
         call assert_true(is_err(ierr), "calc_ensemble_growth_radius should reject k_min > n_vectors-1")
     end subroutine test_growth_radius_k_min_too_large
+
+    !> Regression test for a genuine crash: calling `calc_ensemble_growth_radius_alloc` with
+    !| `k_min` *omitted* on this 11-point fixture (default 30, but DM_MAX(n_vectors - 1) is
+    !| only 10) used to corrupt memory -- see `misc/code_gen_footgun.md`'s third entry for the
+    !| generator-level root cause and `calc_ensemble_growth_radius_kernel`'s own
+    !| `min(actual_k_min, n_vectors - 1)` clamp for the fix. Asserts the fix itself: omitting
+    !| `k_min` here must resolve to exactly `n_vectors - 1 = 10`, matching an explicit call.
+    subroutine test_growth_radius_omitted_k_min_is_clamped()
+        real(real64)   :: vectors(2, 11)
+        integer(int32) :: kd_indices(11), dim_order(2), ierr
+        real(real64)   :: radius_omitted, radius_explicit
+
+        call build_line_fixture(vectors, kd_indices, dim_order)
+
+        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+                                               growth_radius=radius_omitted, ierr=ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'calc_ensemble_growth_radius_alloc (k_min omitted) failed unexpectedly: ', ierr
+            error stop
+        end if
+
+        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+                                               k_min=10_int32, growth_radius=radius_explicit, ierr=ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'calc_ensemble_growth_radius_alloc (k_min=10) failed unexpectedly: ', ierr
+            error stop
+        end if
+
+        call assert_equal_real(radius_omitted, radius_explicit, 1.0d-12, &
+                               "calc_ensemble_growth_radius: an omitted k_min on N=11 clamps to exactly k_min=10")
+    end subroutine test_growth_radius_omitted_k_min_is_clamped
 
     subroutine test_growth_radius_zero_dimensions()
         real(real64)   :: vectors(0, 11)

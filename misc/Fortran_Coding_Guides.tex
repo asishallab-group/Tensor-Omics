@@ -92,6 +92,16 @@ The correctness of the calculation, the correctness of the implemented algorithm
 
 \noindent If your test is created by an AI from the original Fortran code, and you thus do not lose work time on writing the test again in another programming language, please do feel free to do so.
 
+\subsection{Every crash or error becomes a regression test}
+
+Whenever a build, a test run, an experiment script, or manual exploration crashes or raises an error nobody expected, that failure is a missing unit test, not merely a bug to patch and move past.
+
+\noindent \textbf{The sequence is always:} (1) write a Fortran test in \texttt{test/} that reproduces the failure \emph{condition}, (2) confirm it fails against the current code, (3) fix the underlying code, (4) confirm the same test now passes, (5) mirror the test to \texttt{python/test/} and \texttt{r/tests} per the usual convention -- unless the failure is genuinely unreachable from Python or R (for example, it depended on a raw Fortran call omitting an optional argument, something neither binding ever does, since both always resolve defaults explicitly before crossing the ABI boundary), in which case say so in a comment at the mirror site instead of forcing an artificial test.
+
+\noindent \textbf{Never write a test that re-triggers an actual crash to prove it is fixed.} If the failure was a genuine crash -- a segfault, corrupted memory, undefined behavior -- fix the code \emph{first}, so the failure mode becomes a clean, deterministic result (a correct value, or a proper \texttt{ierr}), and only then write the regression test, asserting that deterministic result. A test that sometimes segfaults is worse than no test at all: it can take the whole test binary down with it, silently masking every test that would have run after it in the same suite, and it may behave differently across platforms, builds, and compiler flags.
+
+\noindent This is not optional test hygiene -- an incident that produced a crash or a wrong answer once, with no test guarding against a recurrence, will eventually recur silently.
+
 
 \section{Obligatory use of \texttt{intent} and \texttt{pure} }
 \begin{itemize}
