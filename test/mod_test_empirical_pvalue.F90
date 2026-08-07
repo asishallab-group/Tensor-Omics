@@ -4,7 +4,8 @@
 
 module mod_test_empirical_pvalue
   use asserts
-  use f42_utils, only: binary_search_insertion, compute_scaled_distance_quantile
+  use f42_sort_impl, only: binary_search_insertion
+  use f42_utils, only: compute_scaled_distance_quantile
   use tox_errors
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use test_suite

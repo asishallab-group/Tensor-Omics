@@ -7,7 +7,7 @@
 !| `group_centroid_all` in module `tox_gene_centroids`.
 module tox_gene_centroids_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: add_vector
+    use f42_vector_impl, only: add_vector
     M_IMPLICIT_NONE
 
 #define CM_MODE_GROUP_ORTHOLOGS 0_int32

@@ -7,7 +7,7 @@
 module tox_trajectory_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO
-    use f42_utils, only: is_close
+    use f42_math_impl, only: is_close
     M_IMPLICIT_NONE
 
     private

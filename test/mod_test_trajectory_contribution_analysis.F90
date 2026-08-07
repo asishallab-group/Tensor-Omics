@@ -9,7 +9,7 @@ module mod_test_trajectory_contribution_analysis
     ! the baseline-mode parameters stayed in the kernel module
     use tox_trajectory_contribution_analysis_impl, only: BASELINE_RAW, BASELINE_MIN, BASELINE_MEAN, select_random_sample
     use tox_errors
-    use f42_utils, only: init_random, rand_range
+    use f42_random_impl, only: init_random, rand_range
     use tox_trajectory_normalization
     use test_suite, only: test_case
     implicit none
@@ -422,7 +422,7 @@ contains
 
     !> Test the select_random_sample function with various cases.
     subroutine test_select_random_sample
-        use f42_utils, only: rand_range
+        use f42_random_impl, only: rand_range
         integer(int32), parameter :: n_samples = 10, current_sample = 5
         integer(int32) :: ierr, random_sample, i
         integer(int32), dimension(n_samples) :: sample_counts

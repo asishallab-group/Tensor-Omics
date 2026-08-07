@@ -12,7 +12,9 @@
 module tox_get_outliers_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array, calc_percentile, logx, is_close, compute_scaled_distance_quantile, init_perm
+    use f42_math_impl, only: logx, is_close
+    use f42_sort_impl, only: sort_array, init_perm
+    use f42_utils, only: calc_percentile, compute_scaled_distance_quantile
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess_impl, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
     M_IMPLICIT_NONE

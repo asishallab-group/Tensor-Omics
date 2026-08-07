@@ -6,7 +6,7 @@
 !| is safe to call from `pure` procedures. The tree is stored implicitly as an in-place-permuted
 !| index array rather than as linked nodes.
 module f42_kd_tree
-    use f42_utils, only: sort_array_heapsort, init_perm
+    use f42_sort_impl, only: sort_array_heapsort, init_perm
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, validate_dimension_size, validate_all_in_range_int, validate_in_range_int, is_err, set_err, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
@@ -205,7 +205,7 @@ contains
     !| (no input validation) sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:))
     pure subroutine partial_sort_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
                                               dim, tmp_workspace, tmp_value_buffer, tmp_permutation)
-        use f42_utils, only: sort_array
+        use f42_sort_impl, only: sort_array
         integer(int32), intent(in) :: n_dimensions
             !! Number of dimensions
         integer(int32), intent(in) :: left_idx

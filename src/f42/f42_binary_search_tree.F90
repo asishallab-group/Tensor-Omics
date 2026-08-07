@@ -4,7 +4,7 @@
 !| This module provides routines to build a BST index (via sorting), access sorted values,
 !| and perform range queries over a real-valued array using the sorted index.
 module f42_binary_search_tree
-    use f42_utils, only: sort_array_heapsort, init_perm, binary_search_insertion
+    use f42_sort_impl, only: sort_array_heapsort, init_perm, binary_search_insertion
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: is_err, set_ok, validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE

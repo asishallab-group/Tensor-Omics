@@ -5,7 +5,7 @@ module mod_test_tissue_versatility
     use tox_errors
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
-    use f42_utils, only: degrees
+    use f42_math_impl, only: degrees
     implicit none
     public
 

@@ -10,7 +10,7 @@
 !| allocating wrappers in module tox_data_integration_stats.
 module tox_data_integration_stats_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: init_random, shuffle_vector
+    use f42_random_impl, only: init_random, shuffle_vector
     use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
     M_IMPLICIT_NONE
 contains

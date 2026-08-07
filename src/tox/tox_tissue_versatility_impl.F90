@@ -7,7 +7,7 @@
 !| module `tox_tissue_versatility`.
 module tox_tissue_versatility_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use f42_utils, only: clamp, degrees
+    use f42_math_impl, only: clamp, degrees
     M_IMPLICIT_NONE
 contains
 

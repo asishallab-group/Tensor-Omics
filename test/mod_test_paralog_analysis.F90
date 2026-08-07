@@ -10,7 +10,8 @@ module mod_test_paralog_analysis
                                           add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper
     use test_suite, only: test_case
     use tox_errors
-    use f42_utils, only: angle_between, PI
+    use f42_math_impl, only: PI
+    use f42_vector_impl, only: angle_between
     implicit none
 
     real(real64), parameter :: TOL = epsilon(1.0_real64)
@@ -162,7 +163,7 @@ contains
 
     !> Test the input validation for the detect_patterns function.
     subroutine test_detect_patterns_input_validation()
-        use f42_utils, only: PI
+        use f42_math_impl, only: PI
         use ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
 
         integer(int32), parameter :: n_dims = 3, n_genes = 2 + 1
@@ -375,7 +376,7 @@ contains
 
     !> Test the detect_patterns function with mixed results.
     subroutine test_detect_patterns_mixed_results
-        use f42_utils, only: radians, PI
+        use f42_math_impl, only: radians, PI
 
         integer(int32), parameter :: n_genes = 4 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-3_real64
@@ -442,7 +443,7 @@ contains
 
     !> Test the detect_patterns function with dosage effect near angle margin
     subroutine test_detect_patterns_dosage_effect_near_angle_margin
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 2 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-6_real64
@@ -504,7 +505,7 @@ contains
 
     !> Test the detect_patterns function with dosage effect just within angle margin
     subroutine test_detect_patterns_dosage_effect
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 2 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-6_real64
@@ -570,7 +571,7 @@ contains
 
     !> Test the detect_patterns function with perfect subfunctionalization split
     subroutine test_detect_patterns_perfect_subfunc_split
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 3 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-6_real64
@@ -633,7 +634,7 @@ contains
 
     !> Test the detect_patterns function with subfunctionalization just at angle margin
     subroutine test_detect_patterns_subfunc_at_angle_margin
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 2 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-3_real64
@@ -728,7 +729,7 @@ contains
 
     !> Test the angle_between function with various vector configurations.
     subroutine test_angle_between
-        use f42_utils, only: PI
+        use f42_math_impl, only: PI
 
         integer(int32), parameter :: n_dims = 5
         real(real64), dimension(n_dims) :: v1, v2

@@ -7,7 +7,8 @@ module mod_test_data_integration
     ! an internal helper of the permutation test, so it stays in the kernel module
     use tox_data_integration_stats_impl, only: shuffle_reference_point_helper
     use tox_errors
-    use f42_utils, only: above, below, init_random, shuffle_vector
+    use f42_math_impl, only: above, below
+    use f42_random_impl, only: init_random, shuffle_vector
     use test_suite, only: test_case
 
     implicit none

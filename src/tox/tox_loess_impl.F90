@@ -14,7 +14,7 @@
 module tox_loess_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_real, check_io_stat, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH
-    use f42_utils, only: is_close
+    use f42_math_impl, only: is_close
     M_IMPLICIT_NONE
 
 #define CM_MODE_PLAIN 0_int32

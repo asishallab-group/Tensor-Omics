@@ -10,7 +10,9 @@
 module tox_data_integration_jsd_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_utils, only: clamp, calc_percentile_helper, is_close, sort_array_heapsort
+    use f42_math_impl, only: clamp, is_close
+    use f42_sort_impl, only: sort_array_heapsort
+    use f42_utils, only: calc_percentile_helper
     M_IMPLICIT_NONE
 contains
 

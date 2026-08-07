@@ -8,7 +8,7 @@
 !| tox_data_integration_per_family.
 module tox_data_integration_per_family_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: is_close
+    use f42_math_impl, only: is_close
     use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
     M_IMPLICIT_NONE
 

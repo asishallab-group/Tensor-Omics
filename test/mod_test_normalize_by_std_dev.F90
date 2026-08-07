@@ -4,7 +4,7 @@ module mod_test_normalize_by_std_dev
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
   ! the tox_normalization module used to re-export it; it is f42 infrastructure
-  use f42_utils, only: std_dev
+  use f42_math_impl, only: std_dev
   use test_suite
   use tox_errors
   implicit none

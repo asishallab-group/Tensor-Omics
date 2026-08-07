@@ -12,7 +12,8 @@
 module tox_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_in_range_real, ERR_SIZE_MISMATCH
-    use f42_utils, only: norm, is_close, logx, mean, std_dev
+    use f42_math_impl, only: is_close, logx, mean, std_dev
+    use f42_vector_impl, only: norm
     use tox_loess_impl, only: loess_fit_robust_impl
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
@@ -502,7 +503,7 @@ contains
     !| Quantile normalization of a gene expression matrix (F42-compliant).
     !| Computes average expression per rank across tissues.
     pure subroutine quantile_normalization_inplace_helper(n_genes, n_replicates, expr, rank_means, tmp_genes_row, tmp_perm)
-        use f42_utils, only: sort_array_heapsort
+        use f42_sort_impl, only: sort_array_heapsort
 
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)

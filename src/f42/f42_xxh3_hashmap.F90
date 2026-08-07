@@ -9,7 +9,7 @@
 module f42_xxh3_hashmap
     use, intrinsic :: iso_c_binding, only: c_loc
     use iso_fortran_env, only: int32, int64
-    use f42_utils, only: next_power_of_two
+    use f42_math_impl, only: next_power_of_two
     use f42_config, only: DEBUG, debug_hashing
     use tox_errors, only: set_ok, set_err, ERR_INVALID_INPUT
     M_IMPLICIT_NONE

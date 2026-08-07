@@ -9,7 +9,9 @@
 module tox_data_integration_preprocessing_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite, ieee_value, ieee_quiet_nan
-    use f42_utils, only: sort_array_heapsort, calc_percentile_helper, clamp
+    use f42_math_impl, only: clamp
+    use f42_sort_impl, only: sort_array_heapsort
+    use f42_utils, only: calc_percentile_helper
     M_IMPLICIT_NONE
 
 contains

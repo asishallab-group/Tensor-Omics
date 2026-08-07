@@ -17,7 +17,8 @@
 module tox_paralog_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int
-    use f42_utils, only: add_vector, subtract_vector, norm, angle_between, PI
+    use f42_math_impl, only: PI
+    use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
     M_IMPLICIT_NONE
 
 #define CM_MODE_DOSAGE_PATTERN 0_int32
@@ -262,7 +263,7 @@ contains
         select case (pattern)
         case (MODE_DOSAGE_PATTERN)
             block
-                use f42_utils, only: PI
+                use f42_math_impl, only: PI
                 real(real64) :: subset_angle, gain, max_angle
 
                 M_DEFAULT_VAL(dosage_gain_gamma, gain, 0.1_real64)

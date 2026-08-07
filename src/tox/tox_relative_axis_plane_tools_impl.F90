@@ -11,7 +11,7 @@
 module tox_relative_axis_plane_tools_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, set_err_once, ERR_DIVISION_BY_ZERO
-    use f42_utils, only: clamp, operator(.isclose.)
+    use f42_math_impl, only: clamp, operator(.isclose.)
     M_IMPLICIT_NONE
 
 contains
