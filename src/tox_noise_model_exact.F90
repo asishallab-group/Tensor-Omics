@@ -64,7 +64,7 @@ module noise_model_exact
         !! accepted unconditionally if no earlier step succeeds.
     real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.1_real64
         !! Criterion 2: `Pr(c_g > 2)` must stay below this fraction
-    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 50_int32
+    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 1000_int32
         !! Criterion 3: every occupied quantile interval must contain at least this
         !! many residuals to support a stable exact null distribution
     ! Note: this exact variant needs neither MAX_EXACT_COMBINATIONS nor
