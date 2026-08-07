@@ -9,7 +9,7 @@ module mod_test_loess_smoothing
   ! cases below compare the bare code rather than the packed one
   use tox_errors, only: ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH, ERR_EMPTY_INPUT, get_err_code
   use tox_loess,  only: loess_fit_plain, loess_fit_robust
-  use f42_utils
+  use f42_utils_impl
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use test_suite
   implicit none

@@ -1,6 +1,6 @@
 !> Unit test suite for f42_utils module.
 module mod_test_sorting
-    use f42_utils
+    use f42_utils_impl
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case

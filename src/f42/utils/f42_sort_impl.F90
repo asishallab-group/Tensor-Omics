@@ -2,7 +2,7 @@
 
 !> Indirect sorting -- every routine reorders a permutation vector rather than the data -- plus the searches over a sorted array.
 !|
-!| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
+!| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_sort_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, is_err, validate_in_range_int, validate_dimension_size

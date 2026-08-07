@@ -49,9 +49,13 @@ from .f42_serde_arrays_utils import (
     get_array_metadata,
 )
 from .f42_stats import (
-    loess_smooth_2d,
-    compute_edf_expert,
     compute_edf,
+    compute_edf_expert,
+    calc_percentile,
+    calc_percentile_expert,
+)
+from .f42_stats_impl import (
+    loess_smooth_2d,
     compute_scaled_distance_quantile,
 )
 from .tox_clustering import (
@@ -194,6 +198,8 @@ __all__ = [
     "build_spherical_kd",
     "calc_fchange",
     "calc_neighborhood_size",
+    "calc_percentile",
+    "calc_percentile_expert",
     "calc_tiss_avg",
     "calc_work_arr_paralog_subsets_size",
     "clock_hand_angle_between_vectors",

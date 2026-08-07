@@ -2,7 +2,7 @@
 
 !> Randomness: seeding, uniform draws in a range, and the in-place Fisher-Yates shuffle.
 !|
-!| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
+!| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_random_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use f42_sort_impl, only: swap_int, swap_real

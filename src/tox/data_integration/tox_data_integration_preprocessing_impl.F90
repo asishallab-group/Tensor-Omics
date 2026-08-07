@@ -11,7 +11,7 @@ module tox_data_integration_preprocessing_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_utils, only: calc_percentile_helper
+    use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
 
 contains
@@ -123,7 +123,8 @@ contains
                 quantile_level = real(i_point, real64)/real(n_points + 1, real64)*100.0_real64
 
                 ! Use calc_percentile to compute the value
-                call calc_percentile_helper(pooled_means, pooled_means_perm(:n_pool), quantile_level, x_star(i_point))
+                call calc_percentile_impl(pooled_means, size(pooled_means, kind=int32), pooled_means_perm, &
+                                          quantile_level, x_star(i_point), n_considered=n_pool)
             end do
         end if
     end subroutine pool_means_impl

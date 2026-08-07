@@ -491,7 +491,7 @@ class TestImplModules:
         module = b.module(
             "tox_thing_impl",
             doc="an implementation module",
-            uses=("iso_fortran_env", "tox_errors", "f42_utils"),
+            uses=("iso_fortran_env", "tox_errors", "f42_safeguard"),
         )
 
         validate_module(module, bag)

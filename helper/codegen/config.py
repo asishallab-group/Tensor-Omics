@@ -61,9 +61,9 @@ class Conventions:
     #: also fixes the direction of the dependency -- an implementation can no longer reach a
     #: generated wrapper, which would invert the layering and, within one family, be a cycle.
     #:
-    #: A curated boundary rather than a proof: `f42_utils` re-exports `f42_stats`, whose
-    #: hand-written `_alloc` halves still allocate. That is the one member which is not
-    #: allocation-free, and it stops being an exception when f42 is converted to `_impl`.
+    #: Every member is allocation-free. It was not always: `f42_utils` sat here while its
+    #: `f42_stats` child still had hand-written `_alloc` halves, and it left the list when
+    #: that family became `_impl` modules -- reached now by the general rule, not by name.
     #:
     #: The intrinsic modules sit here too rather than in a category of their own, so a future
     #: module re-exporting them is one more entry instead of a second rule.
@@ -78,7 +78,6 @@ class Conventions:
         "tox_conversions",
         "f42_config",
         "f42_safeguard",
-        "f42_utils",
     )
     #: Suffix marking a permutation vector. In the allocating wrapper a `<base>_perm`
     #: argument is seeded with `init_perm` and heapsorted against `<base>`.

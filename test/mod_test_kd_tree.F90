@@ -1,7 +1,7 @@
 !> Unit test suite for kd_tree module.
 module mod_test_kd_tree
     use f42_kd_tree
-    use f42_utils
+    use f42_utils_impl
     use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32

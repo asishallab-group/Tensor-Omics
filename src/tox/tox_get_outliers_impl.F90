@@ -14,7 +14,7 @@ module tox_get_outliers_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: logx, is_close
     use f42_sort_impl, only: sort_array, init_perm
-    use f42_utils, only: calc_percentile, compute_scaled_distance_quantile
+    use f42_stats_impl, only: calc_percentile_impl, compute_scaled_distance_quantile
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess_impl, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
     M_IMPLICIT_NONE
@@ -217,8 +217,7 @@ contains
         ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
         ! constant, so log2(mean + eps_mean) below stays well-scaled across datasets with very
         ! different absolute expression ranges.
-        call calc_percentile(loess_x(1:n_valid), tmp_perm(1:n_valid), 5.0_real64, eps_mean, ierr)
-        if (is_err(ierr)) return
+        call calc_percentile_impl(loess_x, n_valid, tmp_perm, 5.0_real64, eps_mean)
 
         eps_mean = max(eps_mean, EPS_LOESS)
 
@@ -256,9 +255,7 @@ contains
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
         ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
-        call calc_percentile(loess_y(1:n_valid), tmp_perm(1:n_valid), 1.0_real64, low_sd_cutoff, ierr)
-
-        if (is_err(ierr)) return
+        call calc_percentile_impl(loess_y, n_valid, tmp_perm, 1.0_real64, low_sd_cutoff)
 
         ! Compact loess_x/loess_y/indices_used in place, keeping only families at or above the low-sd
         ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)

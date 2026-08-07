@@ -2,13 +2,14 @@
 
 !> Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
 !|
-!| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
-module f42_stats
+!| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
+module f42_stats_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: validate_all_in_range_int, set_ok, set_err, validate_in_range_real
-    use tox_errors, only: is_err, validate_in_range_int, validate_dimension_size, validate_all_in_range_real
-    use tox_errors, only: validate_all_in_range_int, ERR_ALLOC_FAIL
-    use f42_sort_impl, only: binary_search_insertion, init_perm, sort_array_heapsort, sort_real_heapsort
+    ! loess_smooth_2d validates its own inputs; the two implementations below no longer
+    ! validate anything, because their generated wrappers do
+    use tox_errors, only: set_ok, is_err, validate_all_in_range_int, validate_dimension_size
+    use tox_errors, only: validate_in_range_real
+    use f42_sort_impl, only: binary_search_insertion
     M_IMPLICIT_NONE
 
 contains
@@ -116,54 +117,21 @@ contains
         end do
     end subroutine loess_smooth_2d
 
-    !> M_EXPORT_C
-    !| summary: Compute the Empirical Distribution Function (EDF) from pre-sorted permutation
+
+    !> summary: Compute the Empirical Distribution Function (EDF) from a sorted permutation
     !| AUTHOR_JITU_DABA
     !| Returns the sorted unique values and their cumulative frequencies in [0,1].
-    !| Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
     !| The number of unique values can be determined by finding the last non-zero cdf_value.
-    pure subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
+    pure subroutine compute_edf_impl(values, n_values, values_perm, unique_values, cdf_values, n_unique)
         real(real64), intent(in) :: values(n_values)
             !! Array of observed data values (e.g., contributions or spikes).
         integer(int32), intent(in) :: n_values
             !! Number of values in the input array.
-        integer(int32), intent(in) :: perm(n_values)
-            !! Pre-sorted permutation indices (must be sorted by values[perm]).
-        real(real64), intent(out) :: unique_values(n_values)
-            !! Sorted unique data values.
-            !! DM_RESULT_SIZE_IS(n_unique)
-        real(real64), intent(out) :: cdf_values(n_values)
-            !! Corresponding cumulative frequencies between 0 and 1.
-            !! DM_RESULT_SIZE_IS(n_unique)
-        integer(int32), intent(out) :: n_unique
-            !! Number of unique values found (actual size of output arrays)
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        ! Initialize error code and outputs
-        call set_ok(ierr)
-
-        call validate_dimension_size(n_values, ierr, arg_pos=2_int32)
-        call validate_all_in_range_int(perm, n_values, ierr, min=1_int32, max=n_values, arg_pos=3_int32)
-        call validate_all_in_range_real(values, n_values, ierr, arg_pos=1_int32)
-
-        if (is_err(ierr)) return
-
-        call compute_edf_helper(values, n_values, perm, unique_values, cdf_values, n_unique)
-    end subroutine compute_edf
-
-    !> AUTHOR_JITU_DABA
-    !| (no input validation) Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
-    !| Returns the sorted unique values and their cumulative frequencies in [0,1].
-    !| Assumes `values` is already sorted by `values[perm]`. Caller controls sorting algorithm.
-    !| The number of unique values can be determined by finding the last non-zero cdf_value.
-    pure subroutine compute_edf_helper(values, n_values, perm, unique_values, cdf_values, n_unique)
-        real(real64), intent(in) :: values(n_values)
-            !! Array of observed data values (e.g., contributions or spikes).
-        integer(int32), intent(in) :: n_values
-            !! Number of values in the input array.
-        integer(int32), intent(in) :: perm(n_values)
-            !! Pre-sorted permutation indices (must be sorted by values[perm]).
+        integer(int32), intent(in) :: values_perm(n_values)
+            !! Permutation of `values` in ascending order. The allocating entry point builds
+            !! and heapsorts it for you; the expert one takes whatever order you supply.
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_values)
         real(real64), intent(out) :: unique_values(n_values)
             !! Sorted unique data values.
             !! DM_RESULT_SIZE_IS(n_unique)
@@ -186,9 +154,9 @@ contains
 
         do i_value = 1, n_values
             ! Check if this is a new unique value (exact comparison)
-            if (values(perm(i_value)) /= current_val) then
+            if (values(values_perm(i_value)) /= current_val) then
                 ! New unique value found
-                current_val = values(perm(i_value))
+                current_val = values(values_perm(i_value))
                 n_unique = n_unique + 1
 
                 unique_values(n_unique) = current_val
@@ -198,80 +166,9 @@ contains
             cumulative_count = cumulative_count + 1.0_real64
             cdf_values(n_unique) = cumulative_count/real(n_values, real64)
         end do
-    end subroutine compute_edf_helper
+    end subroutine compute_edf_impl
 
-    !> M_EXPORT_C
-    !| summary: Sorts the values and computes the Empirical Distribution Function (EDF)
-    !| AUTHOR_JITU_DABA
-    !| Allocates workspace internally and performs sorting before computing EDF.
-    !| Use this for convenience; use compute_edf directly for custom sorting.
-    pure subroutine compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
-        real(real64), intent(in) :: values(n_values)
-            !! Array of observed data values (e.g., contributions or spikes).
-        integer(int32), intent(in) :: n_values
-            !! Number of values in the input array.
-        real(real64), intent(out) :: unique_values(n_values)
-            !! Sorted unique data values.
-            !! DM_RESULT_SIZE_IS(n_unique)
-        real(real64), intent(out) :: cdf_values(n_values)
-            !! Corresponding cumulative frequencies between 0 and 1.
-            !! DM_RESULT_SIZE_IS(n_unique)
-        integer(int32), intent(out) :: n_unique
-            !! Number of unique values found (actual size of output arrays)
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
-        ! Local workspace arrays with explicit size
-        integer(int32), dimension(:), allocatable :: perm
-
-        call set_ok(ierr)
-
-        call validate_dimension_size(n_values, ierr, arg_pos=2_int32)
-        call validate_all_in_range_real(values, n_values, ierr, arg_pos=1_int32)
-
-        if (is_err(ierr)) return
-
-        M_ALLOCATE(perm(n_values))
-
-        call init_perm(perm)
-
-        call sort_array_heapsort(values, perm)
-
-        ! Compute EDF with sorted permutation
-        call compute_edf_helper(values, n_values, perm, unique_values, cdf_values, n_unique)
-    end subroutine compute_edf_alloc
-
-    !> AUTHOR_AARON_SCHROEDER
-    !| Calculate the percentile of an array given a sorted permutation.
-    !| Uses linear interpolation between adjacent values.
-    pure subroutine calc_percentile(array, permutation, percentile, value, ierr)
-        real(real64), intent(in) :: array(:)
-            !! input array
-        integer(int32), intent(in) :: permutation(:)
-            !! permutation vector representing sorted order
-        real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
-        real(real64), intent(out) :: value
-            !! output percentile value
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        integer(int32) :: n
-
-        ! Initialize error
-        call set_ok(ierr)
-
-        ! Input validation
-        n = size(permutation, kind=int32)
-        call validate_dimension_size(n, ierr, arg_pos=2_int32)
-        call validate_in_range_int(size(array, kind=int32), ierr, min=1_int32, max=n, arg_pos=1_int32)
-        call validate_all_in_range_int(permutation, n, ierr, min=1_int32, max=size(array, kind=int32), arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=3_int32)
-
-        if (is_err(ierr)) return
-
-        call calc_percentile_helper(array, permutation, percentile, value)
-    end subroutine calc_percentile
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Calculate the fractional index using linear interpolation method
@@ -284,26 +181,44 @@ contains
         rank = (percentile/100.0_real64)*real(n - 1, real64) + 1.0_real64
     end function calc_percentile_rank
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| (no input validation) Calculate the percentile of an array given a sorted permutation.
+    !> summary: Calculate the percentile of an array given a sorted permutation
+    !| AUTHOR_AARON_SCHROEDER
     !| Uses linear interpolation between adjacent values.
-    pure subroutine calc_percentile_helper(array, permutation, percentile, value)
-        real(real64), intent(in) :: array(:)
+    pure subroutine calc_percentile_impl(array, n_array, array_perm, percentile, value, n_considered)
+        real(real64), intent(in) :: array(n_array)
             !! input array
-        integer(int32), intent(in) :: permutation(:)
-            !! permutation vector representing sorted order
+        integer(int32), intent(in) :: n_array
+            !! number of elements in `array`
+        integer(int32), intent(in) :: array_perm(n_array)
+            !! Permutation of `array` in ascending order. The allocating entry point builds and
+            !! heapsorts it for you; the expert one takes whatever order you supply.
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_array)
         real(real64), intent(in) :: percentile
             !! desired percentile (0-100)
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(100.0_real64)
         real(real64), intent(out) :: value
             !! output percentile value
+        integer(int32), intent(in), optional :: n_considered
+            !! How many leading entries of `array_perm` the percentile is taken over, for a
+            !! percentile of a subset -- the trailing entries are ignored rather than sliced
+            !! off, so the permutation stays the shape the sort produced. Zero, the default,
+            !! considers all `n_array` of them.
+            !! DM_DEFAULT(0_int32)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(n_array)
 
         integer(int32) :: n, lower_index
         real(real64) :: index, fraction, lower_value, upper_value
 
-        n = size(permutation, kind=int32)
+        n = n_array
+        if (present(n_considered)) then
+            if (n_considered > 0) n = n_considered
+        end if
 
         ! Handle single element case
-        if (size(array, kind=int32) == 1) then
+        if (n_array == 1) then
             value = array(1)
             return
         end if
@@ -314,52 +229,17 @@ contains
 
         ! Handle edge cases for indices
         if (lower_index < 1) then
-            value = array(permutation(1))  ! Smallest value in sorted order
+            value = array(array_perm(1))  ! Smallest value in sorted order
         else if (lower_index >= n) then
-            value = array(permutation(n))  ! Largest value in sorted order
+            value = array(array_perm(n))  ! Largest value in sorted order
         else
             ! Linear interpolation between adjacent values using permuted indices
-            lower_value = array(permutation(lower_index))
-            upper_value = array(permutation(lower_index + 1))
+            lower_value = array(array_perm(lower_index))
+            upper_value = array(array_perm(lower_index + 1))
             value = lower_value + fraction*(upper_value - lower_value)
         end if
-    end subroutine calc_percentile_helper
+    end subroutine calc_percentile_impl
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Calculate the percentile of an array, allocating necessary arrays when no sorting permutation is given
-    !| @note This subroutine uses quicksort internally which may cause a spike in memory usage for large arrays.
-    pure subroutine calc_percentile_alloc(array, percentile, value, ierr)
-        real(real64), intent(in) :: array(:)
-            !! Input array
-        real(real64), intent(in) :: percentile
-            !! Desired percentile (0-100)
-        real(real64), intent(out) :: value
-            !! Output percentile value
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        integer(int32) :: n
-        integer(int32), allocatable :: perm(:)
-
-        n = size(array, kind=int32)
-        ! Initialize error
-        call set_ok(ierr)
-
-        call validate_dimension_size(n, ierr, arg_pos=1_int32)
-        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=2_int32)
-
-        if (is_err(ierr)) return
-
-        M_ALLOCATE(perm(n))
-
-        call init_perm(perm)
-
-        ! Sort the array indirectly
-        call sort_real_heapsort(array, perm)
-
-        ! Calculate percentile using sorted permutation
-        call calc_percentile_helper(array, perm, percentile, value)
-    end subroutine calc_percentile_alloc
 
     !> M_EXPORT_C
     !| summary: Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
@@ -420,4 +300,4 @@ contains
         end do
 
     end subroutine compute_scaled_distance_quantile
-end module f42_stats
+end module f42_stats_impl

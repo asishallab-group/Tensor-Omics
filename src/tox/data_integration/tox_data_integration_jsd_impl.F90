@@ -12,7 +12,7 @@ module tox_data_integration_jsd_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp, is_close
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_utils, only: calc_percentile_helper
+    use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
 contains
 
@@ -58,7 +58,8 @@ contains
             return
         end if
 
-        call calc_percentile_helper(abs_residual_pool, abs_residual_pool_perm(:last_non_nan), actual_quantile, shared_residual_range)
+        call calc_percentile_impl(abs_residual_pool, pool_size, abs_residual_pool_perm, actual_quantile, &
+                                  shared_residual_range, n_considered=last_non_nan)
     end subroutine determine_shared_residual_range_impl
 
     !> summary: Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
