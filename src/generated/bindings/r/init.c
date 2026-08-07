@@ -46,6 +46,10 @@ SEXP build_bst_index_call(SEXP);
 SEXP bst_range_query_call(SEXP, SEXP, SEXP, SEXP);
 SEXP build_kd_index_call(SEXP, SEXP);
 SEXP build_spherical_kd_call(SEXP, SEXP);
+SEXP kd_knn_query_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_mask_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_list_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_count_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
 SEXP deserialize_complex_helper_call(SEXP, SEXP);
 SEXP deserialize_int_helper_call(SEXP, SEXP);
@@ -131,6 +135,20 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP, SEXP, SEXP);
 SEXP compute_relative_axis_contributions_call(SEXP);
 SEXP relative_axes_changes_from_shift_vector_call(SEXP);
 SEXP relative_axes_expression_from_expression_vector_call(SEXP);
+SEXP ensemble_identification_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP ensemble_identification_merged_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP accept_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP, SEXP);
+SEXP calc_ensemble_growth_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP grow_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP normal_error_call(SEXP, SEXP);
+SEXP tangent_scales_call(SEXP, SEXP);
+SEXP observable_call(SEXP, SEXP);
+SEXP tox_stc_observable_svd_workspace_call(SEXP, SEXP);
+SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calculate_density_radius_call(SEXP, SEXP);
+SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP);
+SEXP seeds_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -152,6 +170,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 4},
     {"build_kd_index_call", (DL_FUNC) &build_kd_index_call, 2},
     {"build_spherical_kd_call", (DL_FUNC) &build_spherical_kd_call, 2},
+    {"kd_knn_query_call", (DL_FUNC) &kd_knn_query_call, 5},
+    {"kd_range_query_mask_call", (DL_FUNC) &kd_range_query_mask_call, 5},
+    {"kd_range_query_list_call", (DL_FUNC) &kd_range_query_list_call, 5},
+    {"kd_range_query_count_call", (DL_FUNC) &kd_range_query_count_call, 5},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},
     {"deserialize_complex_helper_call", (DL_FUNC) &deserialize_complex_helper_call, 2},
     {"deserialize_int_helper_call", (DL_FUNC) &deserialize_int_helper_call, 2},
@@ -237,6 +259,20 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_relative_axis_contributions_call", (DL_FUNC) &compute_relative_axis_contributions_call, 1},
     {"relative_axes_changes_from_shift_vector_call", (DL_FUNC) &relative_axes_changes_from_shift_vector_call, 1},
     {"relative_axes_expression_from_expression_vector_call", (DL_FUNC) &relative_axes_expression_from_expression_vector_call, 1},
+    {"ensemble_identification_call", (DL_FUNC) &ensemble_identification_call, 11},
+    {"ensemble_identification_merged_call", (DL_FUNC) &ensemble_identification_merged_call, 11},
+    {"accept_ensemble_call", (DL_FUNC) &accept_ensemble_call, 9},
+    {"tox_stc_accept_ensemble_svd_workspace_call", (DL_FUNC) &tox_stc_accept_ensemble_svd_workspace_call, 2},
+    {"calc_ensemble_growth_radius_call", (DL_FUNC) &calc_ensemble_growth_radius_call, 5},
+    {"grow_ensemble_call", (DL_FUNC) &grow_ensemble_call, 5},
+    {"normal_error_call", (DL_FUNC) &normal_error_call, 2},
+    {"tangent_scales_call", (DL_FUNC) &tangent_scales_call, 2},
+    {"observable_call", (DL_FUNC) &observable_call, 2},
+    {"tox_stc_observable_svd_workspace_call", (DL_FUNC) &tox_stc_observable_svd_workspace_call, 2},
+    {"ensemble_reconciliation_call", (DL_FUNC) &ensemble_reconciliation_call, 5},
+    {"calculate_density_radius_call", (DL_FUNC) &calculate_density_radius_call, 2},
+    {"density_labels_call", (DL_FUNC) &density_labels_call, 4},
+    {"seeds_call", (DL_FUNC) &seeds_call, 4},
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},

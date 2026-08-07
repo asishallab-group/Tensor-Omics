@@ -14,6 +14,10 @@ from .f42_binary_search_tree import (
 from .f42_kd_tree import (
     build_kd_index,
     build_spherical_kd,
+    kd_knn_query,
+    kd_range_query_mask,
+    kd_range_query_list,
+    kd_range_query_count,
 )
 from .f42_serde_arrays_deserialize_char import (
     deserialize_char_helper,
@@ -160,6 +164,36 @@ from .tox_relative_axis_plane_tools import (
     relative_axes_changes_from_shift_vector,
     relative_axes_expression_from_expression_vector,
 )
+from .tox_shape_truthful_clustering import (
+    ensemble_identification,
+    ensemble_identification_merged,
+)
+from .tox_shape_truthful_clustering_accept import (
+    accept_ensemble,
+)
+from .tox_shape_truthful_clustering_accept_kernel import (
+    tox_stc_accept_ensemble_svd_workspace,
+)
+from .tox_shape_truthful_clustering_ensemble_growing import (
+    calc_ensemble_growth_radius,
+    grow_ensemble,
+)
+from .tox_shape_truthful_clustering_observable import (
+    normal_error,
+    tangent_scales,
+    observable,
+)
+from .tox_shape_truthful_clustering_observable_kernel import (
+    tox_stc_observable_svd_workspace,
+)
+from .tox_shape_truthful_clustering_reconciliation import (
+    ensemble_reconciliation,
+)
+from .tox_shape_truthful_clustering_seeding import (
+    calculate_density_radius,
+    density_labels,
+    seeds,
+)
 from .tox_shift_vectors import (
     compute_shift_vector_field,
 )
@@ -187,15 +221,18 @@ from .tox_trajectory_normalization import (
 __all__ = [
     "ToxError",
     "check_err_code",
+    "accept_ensemble",
     "bst_range_query",
     "build_bst_index",
     "build_kd_index",
     "build_residual_histograms",
     "build_spherical_kd",
+    "calc_ensemble_growth_radius",
     "calc_fchange",
     "calc_neighborhood_size",
     "calc_tiss_avg",
     "calc_work_arr_paralog_subsets_size",
+    "calculate_density_radius",
     "clock_hand_angle_between_vectors",
     "clock_hand_angles_for_shift_vectors",
     "cluster_factor_trajectories_k_means",
@@ -222,6 +259,7 @@ __all__ = [
     "compute_weighted_global_divergence",
     "construct_neighborhoods",
     "create_zip_archive",
+    "density_labels",
     "deserialize_char_helper",
     "deserialize_complex_helper",
     "deserialize_int_helper",
@@ -235,6 +273,9 @@ __all__ = [
     "determine_shared_residual_range_expert",
     "determine_study_shared_residual_range",
     "distance_to_centroid",
+    "ensemble_identification",
+    "ensemble_identification_merged",
+    "ensemble_reconciliation",
     "euclidean_distance",
     "filter_paralogs_by_pattern_dosage_effect",
     "filter_paralogs_by_pattern_subfunctionalization",
@@ -247,8 +288,13 @@ __all__ = [
     "gjct_permutation_test",
     "group_centroid_all",
     "group_centroid_orthologs",
+    "grow_ensemble",
     "identify_outliers",
     "k_means_clustering",
+    "kd_knn_query",
+    "kd_range_query_count",
+    "kd_range_query_list",
+    "kd_range_query_mask",
     "linkage_clustering",
     "loess_fit_plain",
     "loess_fit_robust",
@@ -257,12 +303,14 @@ __all__ = [
     "mask_check_state",
     "mask_chunk_count",
     "mean_vector",
+    "normal_error",
     "normalization_pipeline",
     "normalize_all_trajectories",
     "normalize_by_std_dev",
     "normalize_single_trajectory",
     "normalize_unit_length",
     "normalize_variable_timeseries",
+    "observable",
     "omics_field_RAP_projection",
     "omics_vector_RAP_projection",
     "perform_permutation_test",
@@ -278,12 +326,16 @@ __all__ = [
     "relative_axes_expression_from_expression_vector",
     "root_mean_sq_normalization",
     "save_tox_data",
+    "seeds",
     "serialize_char_helper",
     "serialize_complex_helper",
     "serialize_int_helper",
     "serialize_logical_helper",
     "serialize_real_helper",
+    "tangent_scales",
     "tox_loess_required_workspace",
+    "tox_stc_accept_ensemble_svd_workspace",
+    "tox_stc_observable_svd_workspace",
     "validate_all_data",
     "validate_data_structure",
     "validate_expression_data",

@@ -1,0 +1,250 @@
+#include <src/macros.h>
+
+!> # Shape Truthful Clustering (STC): Ensemble Reconciliation
+!|
+!| `ensemble_reconciliation`: identifies intersecting ensembles from Ensemble Identification's
+!| merged `ensemble_masks` output and, depending on `mode`, either just reports intersecting
+!| pairs or groups transitively-intersecting ensembles into "super-ensembles" via a union-find
+!| over the pairwise intersection graph. See `misc/mod_STC.md`, "Ensemble Reconciliation", for
+!| the full algorithm definition. Does not alter Ensemble Identification's own result -- this
+!| module only reports and groups, on the side.
+module tox_shape_truthful_clustering_reconciliation_kernel
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use tox_errors, only: set_ok, set_err_once, ERR_SIZE_MISMATCH
+    M_IMPLICIT_NONE
+
+#define CM_STC_MODE_REPORT 1_int32
+#define CM_STC_MODE_MERGE_JSI 2_int32
+#define CM_STC_MODE_MERGE_ANY 3_int32
+#define CM_STC_MIN_JSI_DEFAULT 0.1_real64
+
+    private
+
+    !> Mode 1: report every intersecting pair as its own 2-row column, no transitive grouping.
+    integer(int32), parameter, public :: MODE_REPORT = CM_STC_MODE_REPORT
+    !> Mode 2: transitively group ensembles connected by an edge whose JSI is >= `min_jsi`.
+    integer(int32), parameter, public :: MODE_MERGE_JSI = CM_STC_MODE_MERGE_JSI
+    !> Mode 3: transitively group ensembles connected by any nonempty intersection.
+    integer(int32), parameter, public :: MODE_MERGE_ANY = CM_STC_MODE_MERGE_ANY
+
+    public :: ensemble_reconciliation_kernel
+
+contains
+
+    !> summary: Identify and group intersecting ensembles from Ensemble Identification's merged output
+    !| AUTHOR_ASIS_HALLAB
+    !| Detecting an intersection at all already requires $|\mathcal{E}_i \cap \mathcal{E}_j|$,
+    !| needed by every mode; the JSI itself is a single extra $O(1)$ step per pair once each
+    !| ensemble's own size is known, via
+    !| $|\mathcal{E}_i \cup \mathcal{E}_j| = |\mathcal{E}_i| + |\mathcal{E}_j| - |\mathcal{E}_i \cap \mathcal{E}_j|$
+    !| -- but modes 1 and 3 do not need it for their own decision, so its computation is
+    !| guarded behind `report_jsi`, never unconditional (see `misc/mod_STC.md`'s explicit note
+    !| on this).
+    !|
+    !| Modes 2 and 3 group via a union-find over the qualifying-edge graph (`stc_uf_find`/
+    !| `stc_uf_union` below), unioning the smaller index under the larger's root so that a
+    !| component's root is always its own smallest member -- which is what makes the single
+    !| pass `do r = 1, n_ensembles` below both find every component exactly once and emit them
+    !| in ascending order of each group's smallest member, with no separate bookkeeping. A
+    !| discovered component larger than `max_group_size` is a genuine runtime condition no
+    !| static input check could foresee (it depends on the actual intersection pattern), so it
+    !| is reported via `ierr` rather than silently truncated -- see `codegen_guide.md` section
+    !| 5.14.
+    pure subroutine ensemble_reconciliation_kernel(ensemble_masks, n_vectors, n_ensembles, mode, min_jsi, report_jsi, &
+                                                    max_group_size, &
+                                                    super_ensembles, n_super_ensembles, super_ensembles_JSI, ierr)
+        integer(int32), intent(in) :: n_vectors
+            !! Number of input vectors N
+        integer(int32), intent(in) :: n_ensembles
+            !! Number of ensembles N_E, see Ensemble Identification's merged `ensemble_masks`.
+            !! At least 2: with fewer, no pair can ever intersect, so there is nothing this
+            !! module could report or group.
+            !! DM_MIN(2_int32)
+        logical, intent(in) :: ensemble_masks(n_vectors, n_ensembles)
+            !! Per-ensemble membership, see Ensemble Identification's merged output
+        integer(int32), intent(in), optional :: mode
+            !! How intersections are processed
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | Report intersecting pairs only        | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]     |
+            !! | Merge transitively at a minimum JSI    | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_JSI(variable)]]  |
+            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]  |
+            !! DM_DEFAULT(CM_STC_MODE_REPORT)
+        real(real64), intent(in), optional :: min_jsi
+            !! Minimum Jaccard Similarity Index for an edge to qualify in mode
+            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_JSI(variable)]];
+            !! ignored in every other mode
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+            !! DM_DEFAULT(CM_STC_MIN_JSI_DEFAULT)
+        logical, intent(in), optional :: report_jsi
+            !! Whether to compute and return `super_ensembles_JSI` at all -- see the note
+            !! above on this being guarded, not unconditional
+            !! DM_DEFAULT(.false.)
+        integer(int32), intent(in) :: max_group_size
+            !! Maximum number of ensembles one super-ensemble (one column of `super_ensembles`)
+            !! can hold; sizes its row dimension. `misc/mod_STC.md` suggests
+            !! $\min(1024, N_{\mathcal{E}})$ as a sensible default -- always required, never
+            !! optional with an auto-applied default here, for the same reason as
+            !! `ensemble_identification`'s own `o`: a Fortran array bound cannot depend on a
+            !! possibly-absent optional dummy, and a runtime-dependent value like
+            !! $\min(1024, N_{\mathcal{E}})$ is not the constant expression an auto-applied
+            !! default would need to be either.
+            !! DM_MIN(2_int32)
+            !! DM_MAX(n_ensembles)
+        integer(int32), intent(out) :: super_ensembles(max_group_size, n_ensembles*(n_ensembles - 1))
+            !! One super-ensemble per column: the 1-indexed column indices of `ensemble_masks`
+            !! belonging to that group, padded with 0 (invalid, ensembles are 1-indexed) below
+            !! the group's actual size, and 0 in every row of an unused trailing column beyond
+            !! `n_super_ensembles`. Sized at $N_{\mathcal{E}}(N_{\mathcal{E}}-1)$, twice mode
+            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]'s
+            !! own true worst case ($N_{\mathcal{E}}(N_{\mathcal{E}}-1)/2$, every pair
+            !! intersects) -- deliberately not divided by 2: the generator translates this
+            !! specification expression close to verbatim into the Python/R bindings, where
+            !! `/` on two integers is true division, not Fortran's own truncating integer
+            !! division, so a literal `/2` here breaks the generated Python binding (a `float`
+            !! where `np.empty`'s shape wants an `int`); see `misc/code_gen_footgun.md`. A
+            !! safe, if looser, upper bound for modes 2 and 3 too, whose groups can never
+            !! outnumber mode 1's own worst case.
+        integer(int32), intent(out) :: n_super_ensembles
+            !! Number of leading columns of `super_ensembles`/`super_ensembles_JSI` actually
+            !! filled
+        real(real64), intent(out) :: super_ensembles_JSI(max_group_size - 1, n_ensembles*(n_ensembles - 1))
+            !! Column $l$, row $c_i$: the JSI between the ensembles in `super_ensembles(c_i, l)`
+            !! and `super_ensembles(c_i + 1, l)`. All zero unless `report_jsi` was requested --
+            !! see the note above.
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success. Set only if a discovered component's size exceeds
+            !! `max_group_size` -- not a condition any input check could foresee, see above.
+
+        integer(int32) :: ensemble_size(n_ensembles)
+        integer(int32) :: parent(n_ensembles)
+        integer(int32) :: member(n_ensembles)
+        integer(int32) :: actual_mode
+        real(real64)   :: actual_min_jsi
+        logical        :: actual_report_jsi
+        integer(int32) :: i, j, l, r, group_size, intersect_count, root
+
+        call set_ok(ierr)
+
+        M_DEFAULT_VAL(mode, actual_mode, CM_STC_MODE_REPORT)
+        M_DEFAULT_VAL(min_jsi, actual_min_jsi, CM_STC_MIN_JSI_DEFAULT)
+        M_DEFAULT_VAL(report_jsi, actual_report_jsi, .false.)
+
+        super_ensembles     = 0
+        super_ensembles_JSI = 0.0_real64
+        n_super_ensembles   = 0
+
+        do i = 1, n_ensembles
+            ensemble_size(i) = count(ensemble_masks(:, i))
+            parent(i)        = i
+        end do
+
+        if (actual_mode == CM_STC_MODE_REPORT) then
+
+            do i = 1, n_ensembles - 1
+                do j = i + 1, n_ensembles
+                    intersect_count = count(ensemble_masks(:, i) .and. ensemble_masks(:, j))
+                    if (intersect_count < 1) cycle
+
+                    n_super_ensembles = n_super_ensembles + 1
+                    super_ensembles(1, n_super_ensembles) = i
+                    super_ensembles(2, n_super_ensembles) = j
+                    if (actual_report_jsi) then
+                        super_ensembles_JSI(1, n_super_ensembles) = real(intersect_count, real64) / &
+                            real(ensemble_size(i) + ensemble_size(j) - intersect_count, real64)
+                    end if
+                end do
+            end do
+
+        else
+
+            do i = 1, n_ensembles - 1
+                do j = i + 1, n_ensembles
+                    intersect_count = count(ensemble_masks(:, i) .and. ensemble_masks(:, j))
+                    if (intersect_count < 1) cycle
+                    if (actual_mode == CM_STC_MODE_MERGE_JSI) then
+                        if (real(intersect_count, real64) / &
+                            real(ensemble_size(i) + ensemble_size(j) - intersect_count, real64) < actual_min_jsi) cycle
+                    end if
+                    call stc_uf_union(parent, n_ensembles, i, j)
+                end do
+            end do
+
+            do i = 1, n_ensembles
+                call stc_uf_find(parent, n_ensembles, i, root)
+                parent(i) = root
+            end do
+
+            do r = 1, n_ensembles
+                group_size = count(parent == r)
+                if (group_size < 2) cycle
+
+                if (group_size > max_group_size) then
+                    call set_err_once(ierr, ERR_SIZE_MISMATCH)
+                    return
+                end if
+
+                l = 0
+                do i = 1, n_ensembles
+                    if (parent(i) /= r) cycle
+                    l = l + 1
+                    member(l) = i
+                end do
+
+                n_super_ensembles = n_super_ensembles + 1
+                super_ensembles(1:group_size, n_super_ensembles) = member(1:group_size)
+
+                if (actual_report_jsi) then
+                    do l = 1, group_size - 1
+                        intersect_count = count(ensemble_masks(:, member(l)) .and. ensemble_masks(:, member(l + 1)))
+                        super_ensembles_JSI(l, n_super_ensembles) = real(intersect_count, real64) / &
+                            real(ensemble_size(member(l)) + ensemble_size(member(l + 1)) - intersect_count, real64)
+                    end do
+                end if
+            end do
+
+        end if
+
+    end subroutine ensemble_reconciliation_kernel
+
+    !> Union-find root lookup with path compression. A `pure` function's dummy arguments
+    !| must all be `intent(in)` -- path compression mutates `parent`, so this has to be a
+    !| subroutine, not a function. Not itself a kernel (private, no wrapper): shared
+    !| bookkeeping for `ensemble_reconciliation_kernel`, not part of the public contract.
+    recursive pure subroutine stc_uf_find(parent, n, i, root)
+        integer(int32), intent(in) :: n
+        integer(int32), intent(inout) :: parent(n)
+        integer(int32), intent(in) :: i
+        integer(int32), intent(out) :: root
+
+        if (parent(i) == i) then
+            root = i
+        else
+            call stc_uf_find(parent, n, parent(i), root)
+            parent(i) = root
+        end if
+    end subroutine stc_uf_find
+
+    !> Union-find merge, always attaching the numerically larger root under the smaller --
+    !| so a component's root is always its own smallest member, see
+    !| `ensemble_reconciliation_kernel`'s own doc comment above.
+    pure subroutine stc_uf_union(parent, n, i, j)
+        integer(int32), intent(in) :: n
+        integer(int32), intent(inout) :: parent(n)
+        integer(int32), intent(in) :: i, j
+        integer(int32) :: root_i, root_j
+
+        call stc_uf_find(parent, n, i, root_i)
+        call stc_uf_find(parent, n, j, root_j)
+        if (root_i == root_j) return
+
+        if (root_i < root_j) then
+            parent(root_j) = root_i
+        else
+            parent(root_i) = root_j
+        end if
+    end subroutine stc_uf_union
+
+end module tox_shape_truthful_clustering_reconciliation_kernel

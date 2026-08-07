@@ -34,6 +34,13 @@ program main
     use mod_test_binary_search, only: get_all_tests_binary_search
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
     use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
+    use mod_test_shape_truthful_clustering, only: get_all_tests_shape_truthful_clustering
+    use mod_test_shape_truthful_clustering_merged, only: get_all_tests_shape_truthful_clustering_merged
+    use mod_test_shape_truthful_clustering_reconciliation, only: get_all_tests_shape_truthful_clustering_reconciliation
+    use mod_test_shape_truthful_clustering_observable, only: get_all_tests_shape_truthful_clustering_observable
+    use mod_test_shape_truthful_clustering_seeding, only: get_all_tests_shape_truthful_clustering_seeding
+    use mod_test_shape_truthful_clustering_ensemble_growing, only: get_all_tests_shape_truthful_clustering_ensemble_growing
+    use mod_test_shape_truthful_clustering_accept, only: get_all_tests_shape_truthful_clustering_accept
     implicit none
 
     integer :: nargs
@@ -73,6 +80,13 @@ program main
     call add_suite("binary_search", get_all_tests_binary_search)
     call add_suite("empirical_pvalue", get_all_tests_empirical_pvalue)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
+    call add_suite("shape_truthful_clustering", get_all_tests_shape_truthful_clustering)
+    call add_suite("shape_truthful_clustering_merged", get_all_tests_shape_truthful_clustering_merged)
+    call add_suite("shape_truthful_clustering_reconciliation", get_all_tests_shape_truthful_clustering_reconciliation)
+    call add_suite("shape_truthful_clustering_observable", get_all_tests_shape_truthful_clustering_observable)
+    call add_suite("shape_truthful_clustering_seeding", get_all_tests_shape_truthful_clustering_seeding)
+    call add_suite("shape_truthful_clustering_ensemble_growing", get_all_tests_shape_truthful_clustering_ensemble_growing)
+    call add_suite("shape_truthful_clustering_accept", get_all_tests_shape_truthful_clustering_accept)
 
     nargs = command_argument_count()
 
