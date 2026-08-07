@@ -32,6 +32,7 @@ from .ir.roles import analyse_project
 from .ir.validate import validate_project
 from .synthesize import (
     SynthesisResult,
+    generated_path_for,
     generated_wrapper_paths,
     synthesize_wrappers,
 )
@@ -90,10 +91,10 @@ def generate(
     if diagnostics.errors:
         return Result(diagnostics=diagnostics)
 
-    # Synthesise the wrappers each kernel implies and inject them before the semantic pass,
+    # Synthesise the wrappers each impl implies and inject them before the semantic pass,
     # so the C / Python / R targets wrap them like any procedure read from source and the
-    # single kernel parse is the one source of truth. Runs unconditionally -- a project with
-    # no kernels comes back unchanged, so this is a no-op until the first kernel exists.
+    # single impl parse is the one source of truth. Runs unconditionally -- a project with
+    # no implementations comes back unchanged, so this is a no-op until the first impl exists.
     synthesis = synthesize_wrappers(parsed.project, conventions, diagnostics)
     project = synthesis.project
 
@@ -156,23 +157,45 @@ def _fortran_files(
     emitter = FortranWrapperEmitter(
         conventions, macros_header=str(paths.macros_header), project=project
     )
-    out = paths.resolve(paths.tox_out_dir)
     generated = synthesis.generated_names
-    # per generated module: what each wrapper needs beyond its own signature -- the kernel it
-    # calls, and (for a per-mode wrapper) the mode it fixes
+    # per generated module: what each wrapper needs beyond its own signature -- the
+    # implementation it calls, and (for a per-mode wrapper) the mode it fixes
     info: dict[str, dict[str, WrapperInfo]] = {}
     for spec in synthesis.specs:
         module_info = info.setdefault(spec.module_name, {})
         for wrapper in (spec.validating, spec.allocating):
             if wrapper is not None:
                 module_info[wrapper.name.lower()] = WrapperInfo(
-                    spec.kernel.name, spec.mode_fix
+                    spec.impl.name, spec.mode_fix
                 )
-    return [
-        GeneratedFile(out / f"{module.name}.F90", emitter.module(module, info.get(module.name)))
-        for module in project
-        if module.name in generated
-    ]
+    files = []
+    for module in project:
+        if module.name not in generated:
+            continue
+        # Written beside the layer it came from, never into a directory named here: the
+        # same mirror `clean` and the Ford exclusion use, so all three agree by construction
+        # rather than by three literals staying in step.
+        path = _mirrored_path(module, paths, conventions)
+        files.append(GeneratedFile(path, emitter.module(module, info.get(module.name))))
+    return files
+
+
+def _mirrored_path(module, paths: Paths, conventions: Conventions) -> Path:
+    """Where a generated wrapper module is written, from the implementation it came from.
+
+    Raises rather than falling back. A default would put every layer's wrappers in one
+    directory, which for the tox layer is exactly right and therefore invisible -- and for
+    f42 would write them where nothing excludes them from the next parse.
+    """
+    source = module.location.file
+    path = generated_path_for(source, paths, conventions) if source is not None else None
+    if path is None:
+        raise ValueError(
+            f"cannot place the wrappers for '{module.name}': its implementation is at "
+            f"'{source}', which is not a '{conventions.impl_suffix}' file under "
+            f"'{paths.src_dir}'"
+        )
+    return path
 
 
 def _c_files(binding: CBinding, paths: Paths) -> list[GeneratedFile]:
@@ -189,12 +212,12 @@ def _published_to_the_languages(
 ) -> CBinding:
     """The binding as Python and R publish it: without the empty expert tiers.
 
-    `foo` reaches those languages as `foo_expert`, a name promising control over what is
-    handed to the kernel. Where `foo_alloc` only validates and allocates, there is no such
+    `foo` reaches those languages as `foo_expert`, a name promising control over what is handed
+    to the implementation. Where `foo_alloc` only validates and allocates, there is no such
     control to give -- the binding allocates the work arrays for both tiers and computes the
-    `DM_OUTPUT_FROM` sizes for both -- so the two are the same call and one of them lies
-    about it. Dropped here rather than in each emitter, so Python, R, the R `.Call` shims and
-    the snippets cannot disagree about what exists.
+    `DM_OUTPUT_FROM` sizes for both -- so the two are the same call and one of them lies about
+    it. Dropped here rather than in each emitter, so Python, R, the R `.Call` shims and the
+    snippets cannot disagree about what exists.
 
     The C layer is built from the unfiltered binding and keeps every tier.
     """
@@ -238,8 +261,8 @@ def _python_files(binding: CBinding, catalogue, paths: Paths, library: str,
 
 def _links(binding: CBinding, synthesis: SynthesisResult | None) -> LinkResolver:
     """One lookup of what every Ford link target is called in the language layers."""
-    bindings, kernels, modes = build_links(binding, synthesis.specs if synthesis else ())
-    return LinkResolver(bindings=bindings, kernels=kernels, modes=modes)
+    bindings, implementations, modes = build_links(binding, synthesis.specs if synthesis else ())
+    return LinkResolver(bindings=bindings, implementations=implementations, modes=modes)
 
 
 def _r_files(binding: CBinding, catalogue, paths: Paths,
@@ -309,7 +332,7 @@ def _clean(targets: tuple[str, ...], paths: Paths,
         # hand-written DESCRIPTION or NAMESPACE alongside them is left alone
         globs.append((paths.resolve(paths.r_out_dir), "*.R"))
     if "fortran" in targets:
-        # one file per kernel, rather than the whole directory: the same list the Ford
+        # one file per impl, rather than the whole directory: the same list the Ford
         # frontend excludes, so the two cannot drift apart
         files += generated_wrapper_paths(paths, conventions)
     for directory in directories:

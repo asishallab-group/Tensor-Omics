@@ -268,7 +268,7 @@ class PythonEmitter:
         writer = Writer()
         # the name first, then whatever the module says about itself: interpolating that
         # summary into a sentence turns a generated module's "do not edit" banner into
-        # "Python binding to Generated from the kernel; do not edit".
+        # "Python binding to Generated from the implementation; do not edit".
         summary = module.doc.summary
         body = f"{summary}\n\n" if summary else ""
         writer.block(

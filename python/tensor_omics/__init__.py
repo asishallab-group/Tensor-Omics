@@ -66,8 +66,8 @@ from .tox_data_archive import (
     read_tox_data_into,
 )
 from .tox_data_integration_jsd import (
-    determine_shared_residual_range_expert,
     determine_shared_residual_range,
+    determine_shared_residual_range_expert,
     determine_study_shared_residual_range,
     build_residual_histograms,
     compute_divergence_per_reference_point,
@@ -81,12 +81,12 @@ from .tox_data_integration_per_family import (
 from .tox_data_integration_preprocessing import (
     compute_gene_means,
     compute_residuals,
-    pool_means_expert,
     pool_means,
+    pool_means_expert,
     pool_study_means,
     construct_neighborhoods,
 )
-from .tox_data_integration_preprocessing_kernel import (
+from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,
 )
 from .tox_data_integration_stats import (
@@ -126,7 +126,7 @@ from .tox_loess import (
     loess_fit_plain,
     loess_fit_robust,
 )
-from .tox_loess_kernel import (
+from .tox_loess_impl import (
     tox_loess_required_workspace,
 )
 from .tox_normalization import (
@@ -146,7 +146,7 @@ from .tox_paralog_analysis import (
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
 )
-from .tox_paralog_analysis_kernel import (
+from .tox_paralog_analysis_impl import (
     mask_check_state,
     mask_chunk_count,
     calc_work_arr_paralog_subsets_size,

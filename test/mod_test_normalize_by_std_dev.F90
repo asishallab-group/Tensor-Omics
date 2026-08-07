@@ -86,7 +86,7 @@ contains
     ! Assign it a huge variance that breaks the linear trend
     mat(1, 10) = 1000.0_real64 
 
-    call normalize_by_std_dev_alloc(ng, nt, mat, res, span, deg, ierr)
+    call normalize_by_std_dev(ng, nt, mat, res, span, deg, ierr)
 
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_normalization_outlier_correction: LOESS normalization failed")
 
@@ -106,7 +106,7 @@ contains
           mat(1, i) = mat(1, i) + 0.5_real64
         end do
 
-        call normalize_by_std_dev_alloc(ng, nt, mat, res, 0.75d0, 1_int32, ierr)
+        call normalize_by_std_dev(ng, nt, mat, res, 0.75d0, 1_int32, ierr)
         
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_zero_variance_handling: LOESS failed even with valid points")
         

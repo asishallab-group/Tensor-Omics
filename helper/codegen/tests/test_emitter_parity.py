@@ -229,12 +229,12 @@ class TestTierNotes:
         binding, synthesis = _real_published()
         notes = build(binding, synthesis.specs, CONVENTIONS)
         published = {w.stripped_name for m in binding for w in m}
-        experts = {name for name in published if name.endswith(CONVENTIONS.expert_infix)}
+        experts = {name for name in published if name.endswith(CONVENTIONS.expert_suffix)}
         assert experts, "no expert tier survived, so this asserts nothing"
         for expert in experts:
             assert expert in notes, expert
-            assert expert[: -len(CONVENTIONS.expert_infix)] in notes, expert
-        assert set(notes) == experts | {e[: -len(CONVENTIONS.expert_infix)] for e in experts}
+            assert expert[: -len(CONVENTIONS.expert_suffix)] in notes, expert
+        assert set(notes) == experts | {e[: -len(CONVENTIONS.expert_suffix)] for e in experts}
 
 
 def _real_published():

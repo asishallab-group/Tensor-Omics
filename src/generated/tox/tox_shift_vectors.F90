@@ -1,9 +1,9 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_shift_vectors_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> summary: Wrappers for [[tox_shift_vectors_impl(module)]]
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_shift_vectors
-    use tox_shift_vectors_kernel, only: compute_shift_vector_field_kernel
+    use tox_shift_vectors_impl, only: compute_shift_vector_field_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, validate_all_in_range_int, validate_all_in_range_real
     use tox_errors, only: validate_dimension_size
@@ -14,7 +14,7 @@ module tox_shift_vectors
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_shift_vectors_kernel(module):compute_shift_vector_field_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl]].
     !| Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
     subroutine compute_shift_vector_field(&
             n_tissues,&
@@ -57,7 +57,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call compute_shift_vector_field_kernel(&
+        call compute_shift_vector_field_impl(&
             n_tissues = n_tissues,&
             n_genes = n_genes,&
             n_families = n_families,&

@@ -4,7 +4,7 @@
 #'
 #' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
@@ -60,7 +60,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #'
 #' RDI = Euclidean distance / family scaling factor
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
@@ -148,7 +148,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #' \code{\link{compute_rdi}}, then flags outliers via
 #' \code{\link{identify_outliers}}.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families

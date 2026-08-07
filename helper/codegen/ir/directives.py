@@ -93,15 +93,16 @@ class Prologue:
     """`DM_PROLOGUE(PROCEDURE, MODULE)` -- a procedure-level directive.
 
     The named procedure runs in the *allocating* wrapper, after the work arrays are prepared
-    and before the kernel, and may handle the call itself -- in which case the kernel is
-    skipped. It is the sugar that tier adds: deriving what the expert tier lets a caller pass
+    and before the implementation, and may handle the call itself -- in which case the
+    implementation is skipped. It is the sugar that tier adds: deriving what the expert tier
+    lets a caller pass
     in, the way `<base>_perm` already seeds and heapsorts a permutation.
 
     There is no scope. A prologue that runs in the *validating* wrapper too is work every
-    caller of the kernel needs, and both wrappers call the kernel -- so it belongs at the top
-    of the kernel, where it is three lines and needs no directive at all. One that runs only
-    in the validating wrapper is a contradiction: the allocating wrapper does everything the
-    validating one does and more.
+    caller of the implementation needs, and both wrappers call the implementation -- so it
+    belongs at the top of the implementation, where it is three lines and needs no directive at
+    all. One that runs only in the validating wrapper is a contradiction: the allocating
+    wrapper does everything the validating one does and more.
     """
 
     procedure: str
@@ -352,9 +353,9 @@ class DirectiveParser:
     def _reject_contradictions(found: dict[str, Directive]) -> None:
         # `DM_DEFAULT` together with `DM_REQUIRED_IF_MODE` is contradictory only where the
         # mode is resolved at runtime: there the argument is always passed on, so "required
-        # in that mode" says nothing. In a mode-*split* kernel the same pairing is meaningful
+        # in that mode" says nothing. In a mode-*split* impl the same pairing is meaningful
         # -- the directive scopes the argument to its mode, and the default applies within it
-        # -- and whether the kernel splits is not knowable from the documentation alone. The
+        # -- and whether the implementation splits is not knowable from the documentation alone. The
         # rule therefore lives in the semantic pass, which has the mode table.
         return
 

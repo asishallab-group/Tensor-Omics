@@ -36,38 +36,68 @@ def validate_module(module: Module, diagnostics: DiagnosticBag,
                     conventions: Conventions = CONVENTIONS) -> None:
     if not module.doc:
         diagnostics.warn("module has no documentation", entity=module)
-    if module.name.lower().endswith(conventions.kernel_suffix):
-        validate_kernel_module(module, diagnostics, conventions)
+    if module.name.lower().endswith(conventions.impl_suffix):
+        validate_impl_module(module, diagnostics, conventions)
     for procedure in module.exported_procedures:
         validate_procedure(procedure, diagnostics, conventions)
 
 
-def validate_kernel_module(module: Module, diagnostics: DiagnosticBag,
-                           conventions: Conventions = CONVENTIONS) -> None:
-    """Rules a hand-written kernel module must satisfy.
+def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
+                         conventions: Conventions = CONVENTIONS) -> None:
+    """Rules a hand-written implementation module must satisfy.
 
-    These hold for the *unexported* procedures the rules above skip, because a kernel is
-    read for what it makes the generator write rather than wrapped itself. They are what
-    keeps the kernel tree a tree of kernels: every entry point published through a
-    generated wrapper, every allocation owned by the generated `_alloc`.
+    These hold for the *unexported* procedures the rules above skip, because an
+    implementation is read for what it makes the generator write rather than wrapped itself.
+    They are what keeps an implementation module a module of implementations: every entry
+    point published through a generated wrapper, every allocation owned by that wrapper.
+
+    The module name is the whole trigger, so these rules follow the `_impl` suffix wherever
+    it is written -- under `src/tox`, under `src/f42`, anywhere. That is the price of
+    dropping the fixed directory the rules used to be scoped to, and it makes `_impl` a
+    reserved suffix for the entire source tree.
     """
+    _check_module_is_named_for_its_file(module, diagnostics)
     for procedure in module.procedures:
-        _check_kernel_allocates(procedure, diagnostics)
-        if not procedure.name.lower().endswith(conventions.kernel_suffix):
-            continue  # a recommend routine or a private helper, not a kernel
-        _check_kernel_is_not_exported(procedure, diagnostics, conventions)
-        _check_kernel_is_not_named_alloc(procedure, diagnostics, conventions)
+        _check_impl_allocates(procedure, diagnostics)
+        if not procedure.name.lower().endswith(conventions.impl_suffix):
+            continue  # a recommend routine or a private helper, not an implementation
+        _check_impl_is_not_exported(procedure, diagnostics, conventions)
+        _check_impl_is_not_named_for_a_wrapper(procedure, diagnostics, conventions)
         _check_prologue(procedure, diagnostics, conventions)
 
 
-def _check_kernel_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> None:
-    """A kernel module allocates nothing: the generated `_alloc` wrapper owns the memory.
+def _check_module_is_named_for_its_file(module: Module, diagnostics: DiagnosticBag) -> None:
+    """An implementation module lives in a file named after it.
 
-    A kernel that allocates for itself hides the allocation from the caller who is meant to
-    be able to avoid it -- the expert tier exists precisely so a caller can hand in reused
-    buffers -- and it hides `ERR_ALLOC_FAIL` behind a wrapper whose name promises no
-    allocation. The rule covers every procedure in the module, not only the kernels: a
-    kernel that allocates nothing itself but calls a helper that does is no better off.
+    Two independent things derive from that name and they have to agree. Synthesis triggers
+    on the *module* name and writes `tox_x.F90`; the cleaner and the Ford exclusion scan
+    *file* names, without parsing, to know what the generator owns. Let the two diverge and
+    the generator writes a wrapper that nothing cleans and nothing excludes -- so the next
+    run parses its own output and defines the module twice.
+
+    Skipped where there is no file to check: a hand-built project in a unit test.
+    """
+    path = module.location.file
+    if path is None or path.stem.lower() == module.name.lower():
+        return
+    diagnostics.error(
+        f"implementation module '{module.name}' is in '{path.name}'",
+        entity=module,
+        note=(
+            "the generated wrapper's path is derived from the file name and its contents "
+            f"from the module name -- name the file '{module.name}.F90' so the two agree"
+        ),
+    )
+
+
+def _check_impl_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> None:
+    """An implementation module allocates nothing: its generated wrapper owns the memory.
+
+    An implementation that allocates for itself hides the allocation from the caller who is
+    meant to be able to avoid it -- the expert tier exists precisely so a caller can hand in
+    reused buffers -- and it hides `ERR_ALLOC_FAIL` behind a name that promises no
+    allocation. The rule covers every procedure in the module, not only the implementations:
+    one that allocates nothing itself but calls a helper that does is no better off.
 
     What to do instead: declare the buffer as a `tmp_` dummy. It disappears from the
     allocating wrapper's signature and is allocated there, which is the whole convention.
@@ -81,57 +111,68 @@ def _check_kernel_allocates(procedure: Procedure, diagnostics: DiagnosticBag) ->
         f"'{procedure.name}' allocates: {names}",
         entity=procedure,
         note=(
-            "a kernel module owns no memory -- pass the buffer as a 'tmp_' dummy and the "
-            "generated '_alloc' wrapper allocates it; size it with "
+            "an implementation module owns no memory -- pass the buffer as a 'tmp_' dummy "
+            "and the generated wrapper allocates it; size it with "
             "'DM_OUTPUT_FROM(..., AUTO)' where no expression over the arguments will do"
         ),
     )
 
 
-def _check_kernel_is_not_exported(procedure: Procedure, diagnostics: DiagnosticBag,
-                                  conventions: Conventions) -> None:
-    """A kernel is reached through its wrapper, never directly.
+def _check_impl_is_not_exported(procedure: Procedure, diagnostics: DiagnosticBag,
+                                conventions: Conventions) -> None:
+    """An implementation is reached through its wrapper, never directly.
 
     Exporting it publishes a second entry point that skips every check the wrapper exists
-    to make, under a name (`foo_kernel`) that a binding caller cannot tell apart from the
+    to make, under a name (`foo_impl`) that a binding caller cannot tell apart from the
     validated `foo` beside it. Support procedures in the same module -- the recommend
     routines a `DM_OUTPUT_FROM` producer names -- are exported as usual; they are not
-    kernels and have no wrapper.
+    implementations and have no wrapper.
     """
     if not procedure.is_exported:
         return
     diagnostics.error(
-        f"kernel '{procedure.name}' is exported",
+        f"implementation '{procedure.name}' is exported",
         entity=procedure,
         note=(
             f"drop the '{conventions.export_marker}': the generated wrapper is what the "
-            "bindings call, and exporting the kernel beside it publishes an unvalidated "
-            "twin of the same procedure"
+            "bindings call, and exporting the implementation beside it publishes an "
+            "unvalidated twin of the same procedure"
         ),
     )
 
 
-def _check_kernel_is_not_named_alloc(procedure: Procedure, diagnostics: DiagnosticBag,
-                                     conventions: Conventions) -> None:
-    """`_alloc` is the generator's suffix, so a kernel may not claim it.
+#: The suffixes an implementation's base name may not carry, and what each would collide
+#: with. `_expert` is the generator's own: `foo_expert_impl` beside `foo_impl` makes two
+#: procedures called `foo_expert`, and the emitter would strip the suffix and call
+#: `foo_impl` from the wrong one -- wrong code that compiles, because `foo_impl` exists.
+#: `_alloc` is the hand-written pair convention `abi.c_abi.stripped_name` still reads, so
+#: `foo_alloc_impl` would generate `foo_alloc` and publish it to Python and R as `foo`,
+#: colliding with a real `foo` in the same family.
+_RESERVED_BASE_SUFFIXES = ("expert_suffix", "alloc_suffix")
 
-    A `foo_alloc_kernel` generates `foo_alloc` as its *validating* wrapper -- a procedure
-    that allocates nothing wearing the name of the one that does, with no expert tier
-    behind it. Name the kernel for what it computes and let its `tmp_` arguments decide
-    whether an allocating wrapper is generated at all.
+
+def _check_impl_is_not_named_for_a_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
+                                           conventions: Conventions) -> None:
+    """An implementation may not be named for one of the wrappers it generates.
+
+    Name it for what it computes, and let its `tmp_` arguments decide whether a second tier
+    is generated at all -- the suffix is never the author's to choose.
     """
-    base = procedure.name.lower()[: -len(conventions.kernel_suffix)]
-    if not base.endswith(conventions.alloc_suffix):
+    base = procedure.name.lower()[: -len(conventions.impl_suffix)]
+    for field in _RESERVED_BASE_SUFFIXES:
+        suffix = getattr(conventions, field)
+        if not base.endswith(suffix):
+            continue
+        diagnostics.error(
+            f"implementation '{procedure.name}' is named for a wrapper",
+            entity=procedure,
+            note=(
+                f"'{suffix}' is the generator's to add: name the implementation for what it "
+                "computes, and the wrappers are generated from its "
+                f"'{conventions.temporary_prefix}' arguments"
+            ),
+        )
         return
-    diagnostics.error(
-        f"kernel '{procedure.name}' is named for the allocating wrapper",
-        entity=procedure,
-        note=(
-            f"'{conventions.alloc_suffix}' is the generator's suffix: name the kernel "
-            "for what it computes, and the allocating wrapper is generated from its "
-            f"'{conventions.temporary_prefix}' arguments"
-        ),
-    )
 
 
 def validate_procedure(procedure: Procedure, diagnostics: DiagnosticBag,
@@ -309,7 +350,7 @@ class _Validator:
             )
 
     def _check_required_if_mode(self, argument: Argument) -> None:
-        """A default and a required-in mode contradict, unless the kernel splits per mode.
+        """A default and a required-in mode contradict, unless the implementation splits per mode.
 
         Where the mode is resolved at runtime the argument is always passed on -- the binding
         supplies the default -- so "required in that mode" says nothing. Where the mode table
@@ -399,7 +440,7 @@ class _Validator:
             )
 
 
-def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
+def _check_prologue(impl: Procedure, diagnostics: DiagnosticBag,
                     conventions: Conventions) -> None:
     """A `DM_PROLOGUE` must name something the wrapper can actually call.
 
@@ -409,10 +450,10 @@ def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
     matched nothing was dropped from the keyword call; a prologue with no `handled` left the
     wrapper branching on an undefined logical, which compiles.
     """
-    directive = kernel.directives.prologue
+    directive = impl.directives.prologue
     if directive is None:
         return
-    project = kernel.module.project if kernel.module is not None else None
+    project = impl.module.project if impl.module is not None else None
     if project is None:
         return  # a hand-built procedure in a unit test; the real pipeline always has one
 
@@ -420,7 +461,7 @@ def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
     if prologue is None:
         diagnostics.error(
             f"prologue '{directive.module}:{directive.procedure}' does not exist",
-            entity=kernel,
+            entity=impl,
             note=(
                 "the wrapper would be generated without a prologue at all, which is why "
                 "this is an error rather than a warning"
@@ -428,42 +469,42 @@ def _check_prologue(kernel: Procedure, diagnostics: DiagnosticBag,
         )
         return
 
-    _check_prologue_reports_handled(kernel, prologue, diagnostics, conventions)
-    _check_prologue_runs_somewhere(kernel, prologue, diagnostics, conventions)
-    _check_prologue_arguments_resolve(kernel, prologue, diagnostics, conventions)
-    _check_prologue_writes_what_it_may(kernel, prologue, diagnostics, conventions)
-    _check_prologue_outputs_are_not_read_first(kernel, prologue, diagnostics, conventions)
+    _check_prologue_reports_handled(impl, prologue, diagnostics, conventions)
+    _check_prologue_runs_somewhere(impl, prologue, diagnostics, conventions)
+    _check_prologue_arguments_resolve(impl, prologue, diagnostics, conventions)
+    _check_prologue_writes_what_it_may(impl, prologue, diagnostics, conventions)
+    _check_prologue_outputs_are_not_read_first(impl, prologue, diagnostics, conventions)
 
 
-def _check_prologue_runs_somewhere(kernel: Procedure, prologue: Procedure,
+def _check_prologue_runs_somewhere(impl: Procedure, prologue: Procedure,
                                    diagnostics: DiagnosticBag,
                                    conventions: Conventions) -> None:
-    """A prologue on a kernel with no allocating wrapper never runs.
+    """A prologue on an implementation with no allocating wrapper never runs.
 
-    An allocating wrapper exists where the kernel has something to take over -- a work array,
+    An allocating wrapper exists where the implementation has something to take over -- a work array,
     a permutation, a recommend-sized value -- or where the prologue asks for an argument of
     its own. A prologue with neither is attached to a procedure that is never generated: no
     call is emitted anywhere, and nothing said so.
     """
     from ..synthesize import prologue_only_arguments, taken_over_arguments
 
-    if taken_over_arguments(kernel.arguments, conventions, prologue):
+    if taken_over_arguments(impl.arguments, conventions, prologue):
         return
-    if prologue_only_arguments(prologue, kernel.arguments, conventions):
+    if prologue_only_arguments(prologue, impl.arguments, conventions):
         return  # the wrapper exists to carry those, whether or not anything is allocated
     diagnostics.error(
-        f"prologue '{prologue.name}' is on a kernel that generates no allocating wrapper",
-        entity=kernel,
+        f"prologue '{prologue.name}' is on an implementation that generates no allocating wrapper",
+        entity=impl,
         note=(
             "a prologue is what the allocating wrapper prepares beyond allocating, and that "
-            "wrapper appears only where the kernel has work arrays to take over. This one "
+            "wrapper appears only where the implementation has work arrays to take over. This one "
             "has none, so the prologue would never be called -- if the work belongs to every "
-            "caller of the kernel, put it at the top of the kernel instead"
+            "caller of the implementation, put it at the top of the implementation instead"
         ),
     )
 
 
-def _check_prologue_reports_handled(kernel: Procedure, prologue: Procedure,
+def _check_prologue_reports_handled(impl: Procedure, prologue: Procedure,
                                     diagnostics: DiagnosticBag,
                                     conventions: Conventions) -> None:
     """The wrapper returns early on `handled`, so the prologue has to set it.
@@ -477,7 +518,7 @@ def _check_prologue_reports_handled(kernel: Procedure, prologue: Procedure,
     if handled is None:
         diagnostics.error(
             f"prologue '{prologue.name}' has no '{name}' argument",
-            entity=kernel,
+            entity=impl,
             note=(
                 f"every wrapper returns early on `if ({name})`, so a prologue that never "
                 f"sets it leaves that branch reading an undefined value; declare "
@@ -497,27 +538,27 @@ def _check_prologue_reports_handled(kernel: Procedure, prologue: Procedure,
         )
 
 
-def _check_prologue_arguments_resolve(kernel: Procedure, prologue: Procedure,
+def _check_prologue_arguments_resolve(impl: Procedure, prologue: Procedure,
                                       diagnostics: DiagnosticBag,
                                       conventions: Conventions) -> None:
     """Every prologue dummy is supplied by name, so every name has to mean something.
 
-    A name the kernel has is passed straight on. A name it does not becomes an argument of
+    A name the implementation has is passed straight on. A name it does not becomes an argument of
     the allocating wrapper -- what the prologue derives from, which is the allocating tier's
-    own vocabulary and no business of the kernel's: a threshold's `percentile`.
+    own vocabulary and no business of the implementation's: a threshold's `percentile`.
 
     Which leaves a misspelling nowhere to be caught, since it now reads as a new argument.
-    So a name that is *nearly* one the kernel has is refused: `n_gene` beside `n_genes` is a
+    So a name that is *nearly* one the implementation has is refused: `n_gene` beside `n_genes` is a
     typo, and silently turning it into something the caller must pass would mean the prologue
-    and the kernel working from different numbers.
+    and the implementation working from different numbers.
 
     There is no rename table, deliberately: a producer needs one because it is a published
     routine whose own parameter names cannot move, whereas a prologue is internal to the
-    kernel module and its dummy can simply be renamed to match.
+    impl module and its dummy can simply be renamed to match.
     """
-    supplied = {argument.name.lower() for argument in kernel.arguments}
+    supplied = {argument.name.lower() for argument in impl.arguments}
     reserved = {conventions.error_arg.lower(), conventions.prologue_handled_arg.lower()}
-    dropped = _dropped_by_the_mode_split(kernel)
+    dropped = _dropped_by_the_mode_split(impl)
 
     for dummy in prologue.arguments:
         name = dummy.name.lower()
@@ -526,10 +567,10 @@ def _check_prologue_arguments_resolve(kernel: Procedure, prologue: Procedure,
         if name in dropped:
             diagnostics.error(
                 f"prologue argument '{dummy.name}' is not on every wrapper of "
-                f"'{kernel.name}'",
+                f"'{impl.name}'",
                 dummy,
                 note=(
-                    "the kernel splits per mode, and this argument is the mode or belongs to "
+                    "the implementation splits per mode, and this argument is the mode or belongs to "
                     "one of them, so the wrappers for the other modes do not have it -- take "
                     "something every mode has"
                 ),
@@ -543,7 +584,7 @@ def _check_prologue_arguments_resolve(kernel: Procedure, prologue: Procedure,
                 f"prologue argument '{dummy.name}' looks like a misspelling of '{near}'",
                 dummy,
                 note=(
-                    f"a name '{kernel.name}' does not have becomes an argument of the "
+                    f"a name '{impl.name}' does not have becomes an argument of the "
                     f"allocating wrapper, which is right for something the prologue derives "
                     f"from -- but '{dummy.name}' is one edit from '{near}', and the two would "
                     f"then be different values. Rename it either way"
@@ -581,15 +622,15 @@ def _within_one_edit(a: str, b: str) -> bool:
     return True
 
 
-def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:
-    """The kernel's arguments that some generated wrapper will not have.
+def _dropped_by_the_mode_split(impl: Procedure) -> set[str]:
+    """The implementation's arguments that some generated wrapper will not have.
 
     A prologue is declared once and runs in every wrapper, so it may only name what every
-    wrapper has. That is all of them unless the kernel splits per mode, where the mode
+    wrapper has. That is all of them unless the implementation splits per mode, where the mode
     argument is fixed in the call and dropped, and a `DM_REQUIRED_IF_MODE` argument belongs
     to its own mode and is absent from the rest (`synthesize._mode_kept_arguments`).
 
-    Checking against the kernel alone was wrong in both directions: it accepted the mode
+    Checking against the implementation alone was wrong in both directions: it accepted the mode
     argument, which no wrapper has, and rejected every `DM_REQUIRED_IF_MODE` argument, which
     on an unsplit mode every wrapper does have -- there the directive only says the argument
     is required at run time, and the wrapper still passes it on.
@@ -597,7 +638,7 @@ def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:
     mode = next(
         (
             argument
-            for argument in kernel.arguments
+            for argument in impl.arguments
             if argument.roles is not None
             and argument.roles.mode is not None
             and argument.roles.mode.is_split
@@ -607,19 +648,19 @@ def _dropped_by_the_mode_split(kernel: Procedure) -> set[str]:
     if mode is None:
         return set()
     dropped = {mode.name.lower()}
-    for argument in kernel.arguments:
+    for argument in impl.arguments:
         required = argument.directives.required_if_mode
         if required is not None and required.mode_arg.lower() == mode.name.lower():
             dropped.add(argument.name.lower())
     return dropped
 
 
-def _check_prologue_writes_what_it_may(kernel: Procedure, prologue: Procedure,
+def _check_prologue_writes_what_it_may(impl: Procedure, prologue: Procedure,
                                        diagnostics: DiagnosticBag,
                                        conventions: Conventions) -> None:
-    """A prologue writing what the kernel reads makes it a local -- unless it cannot be one.
+    """A prologue writing what the implementation reads makes it a local -- unless it cannot be one.
 
-    Prologue `intent(out)` over kernel `intent(in)` means the value never leaves the wrapper,
+    Prologue `intent(out)` over impl `intent(in)` means the value never leaves the wrapper,
     so it is dropped from the allocating signature and declared as a local
     (`synthesize.is_prologue_produced`). That fails for the one argument that cannot be
     dropped: one that also gives an extent of something the caller still passes or receives,
@@ -627,26 +668,26 @@ def _check_prologue_writes_what_it_may(kernel: Procedure, prologue: Procedure,
     `intent(in)` dummy the wrapper would have to hand to something that writes it, which
     gfortran rejects -- in code the author never wrote.
 
-    The other pairings are meaningful and left alone. Kernel `intent(out)` means the two are
+    The other pairings are meaningful and left alone. Impl `intent(out)` means the two are
     alternative producers of one output: the prologue's value is what the caller gets on the
-    `handled` path and the kernel overwrites it otherwise, exactly what `loess_degenerate_fit`
-    did with `fitted_values`. Kernel `intent(inout)` means the caller supplies a value the
+    `handled` path and the implementation overwrites it otherwise, exactly what `loess_degenerate_fit`
+    did with `fitted_values`. Impl `intent(inout)` means the caller supplies a value the
     prologue then refines.
     """
     from ..synthesize import taken_over_arguments  # local: synthesize imports this module
 
-    taken = {a.name.lower() for a in taken_over_arguments(kernel.arguments, conventions,
+    taken = {a.name.lower() for a in taken_over_arguments(impl.arguments, conventions,
                                                           prologue)}
     for dummy in prologue.arguments:
         if dummy.intent is None or not dummy.intent.is_output:
             continue
-        argument = kernel.argument(dummy.name)
+        argument = impl.argument(dummy.name)
         if argument is None or argument.intent is not Intent.IN:
             continue
         if argument.name.lower() in taken:
             continue  # dropped from the signature and made a local, which is the point
         diagnostics.error(
-            f"prologue writes '{dummy.name}', which '{kernel.name}' reads and the wrapper "
+            f"prologue writes '{dummy.name}', which '{impl.name}' reads and the wrapper "
             f"cannot make a local",
             argument,
             note=(
@@ -658,7 +699,7 @@ def _check_prologue_writes_what_it_may(kernel: Procedure, prologue: Procedure,
         )
 
 
-def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Procedure,
+def _check_prologue_outputs_are_not_read_first(impl: Procedure, prologue: Procedure,
                                                diagnostics: DiagnosticBag,
                                                conventions: Conventions) -> None:
     """A prologue may not produce something the setup above it already read.
@@ -680,7 +721,7 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
     if not written:
         return
 
-    taken = taken_over_arguments(kernel.arguments, conventions, prologue)
+    taken = taken_over_arguments(impl.arguments, conventions, prologue)
 
     # `M_ALLOCATE(tmp_x(<extent>))`
     for argument in taken:
@@ -697,7 +738,7 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
 
     # `call sort_array_heapsort(<base>, <base>_perm)` -- the permutation is built from the
     # data as it stands there, so a prologue that then rewrites the data leaves an order
-    # that describes something else. Nothing crashes; the kernel is handed a wrong answer.
+    # that describes something else. Nothing crashes; the implementation is handed a wrong answer.
     # A permutation the prologue builds itself is not sorted here, so it reads nothing.
     for argument in sorted_permutations(taken, prologue, conventions):
         base = argument.name[: -len(conventions.perm_suffix)]
@@ -711,9 +752,9 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
 
     # `call <recommend>(...)` -- its inputs are read where it is called, above the prologue.
     # The plan is resolved on the generated wrapper rather than here: `analyse` runs on a
-    # kernel without a project, so it can never look a producer up, and a kernel argument's
+    # impl without a project, so it can never look a producer up, and an implementation argument's
     # `computed_from` is always None. Reading it here would have made this half dead code.
-    for argument in _wrapper_arguments_with_plans(kernel, conventions):
+    for argument in _wrapper_arguments_with_plans(impl, conventions):
         plan = argument.roles.computed_from
         for supply in plan.inputs:
             if supply.argument is None or supply.argument.lower() not in written:
@@ -726,20 +767,28 @@ def _check_prologue_outputs_are_not_read_first(kernel: Procedure, prologue: Proc
             )
 
 
-def _wrapper_arguments_with_plans(kernel: Procedure, conventions: Conventions):
-    """The generated validating wrapper's arguments that a producer fills, if it is built.
+def _wrapper_arguments_with_plans(impl: Procedure, conventions: Conventions):
+    """The expert wrapper's arguments that a producer fills, if one is built.
 
     `DM_OUTPUT_FROM` is only resolved into an `OutputFromPlan` by the project-wide pass, and
-    that runs on the wrappers, not on the kernels. So the plans live on `foo`, which is
-    reachable from here: the kernel `x_kernel` in module `tox_y_kernel` becomes `x` in
-    `tox_y`. Absent in a unit test that validates a kernel module on its own.
+    that runs on the wrappers, not on the implementations. So the plans live on the wrapper
+    that still *has* the recommend-sized arguments, which is the expert tier: the
+    implementation `x_impl` in module `tox_y_impl` becomes `x_expert` in `tox_y`, and only
+    `x` where there is no second tier.
+
+    Asking for `x` first would find the allocating wrapper -- which has had exactly these
+    arguments taken over, so the plan list comes back empty and this whole rule quietly
+    stops firing. Absent in a unit test that validates an implementation module on its own.
     """
-    module = kernel.module
+    module = impl.module
     project = module.project if module is not None else None
     if project is None:
         return []
-    suffix = conventions.kernel_suffix
-    foo = project.procedure(module.name[: -len(suffix)], kernel.name[: -len(suffix)])
+    suffix = conventions.impl_suffix
+    generated, base = module.name[: -len(suffix)], impl.name[: -len(suffix)]
+    foo = project.procedure(generated, base + conventions.expert_suffix)
+    if foo is None:
+        foo = project.procedure(generated, base)
     if foo is None:
         return []
     return [

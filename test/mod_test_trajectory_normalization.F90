@@ -67,7 +67,7 @@ contains
         trajectories(1, 2, :) = [5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64]
         trajectories(2, 2, :) = [2.0_real64, 4.0_real64, 6.0_real64, 8.0_real64]
 
-        call normalize_all_trajectories_alloc(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, ierr)
+        call normalize_all_trajectories(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_all_trajectories: ierr")
         do i_sample = 1, n_samples

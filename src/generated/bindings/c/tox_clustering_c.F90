@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_clustering(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
@@ -171,7 +171,7 @@ contains
             ierr&
         ) bind(C, name="linkage_clustering_c")
         use tox_clustering, only: linkage_clustering
-        use tox_clustering_kernel, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED
+        use tox_clustering_impl, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED
 
         integer(c_int), intent(in), target :: n_points
             !! number of points to cluster
@@ -199,11 +199,11 @@ contains
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `2_int32`.
             !!
-            !! | Method           | Value                                                       |
-            !! |------------------|-------------------------------------------------------------|
-            !! | Average / UPGMA  | [[tox_clustering_kernel(module):METHOD_AVERAGE(variable)]]  |
-            !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
-            !! | Ward             | [[tox_clustering_kernel(module):METHOD_WARD(variable)]]     |
+            !! | Method           | Value                                                     |
+            !! |------------------|-----------------------------------------------------------|
+            !! | Average / UPGMA  | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]]  |
+            !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
+            !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32) :: method_mode_f

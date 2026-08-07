@@ -170,9 +170,9 @@ class Procedure(Entity):
         self.location = location
         self.conventions = conventions
         #: names of the local variables declared `allocatable`. The body itself is never
-        #: read, so this is how the generator sees that a procedure allocates: an
-        #: `M_ALLOCATE` needs an allocatable to allocate into, and a kernel may not have one
-        #: (`validate._check_kernel_allocates`).
+        #: read, so this is how the generator sees that a procedure allocates: `M_ALLOCATE`
+        #: needs an allocatable to allocate into, and an implementation may not have one
+        #: (`validate._check_impl_allocates`).
         self.allocatable_locals = tuple(allocatable_locals)
         self.parent: Module | None = None
 

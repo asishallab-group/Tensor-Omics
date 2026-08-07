@@ -50,7 +50,7 @@ normalize_single_trajectory <- function(trajectory) {
 #'
 #' independently across time for each sample.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_normalization::normalize_all_trajectories}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. Original trajectories

@@ -1,6 +1,6 @@
 """tox_normalization
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_normalization. Do not edit.
 """
@@ -226,7 +226,7 @@ def normalization_pipeline(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalization_pipeline_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_normalization::normalization_pipeline`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -305,7 +305,7 @@ def normalize_by_std_dev(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -431,7 +431,7 @@ def quantile_normalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::quantile_normalization_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_normalization::quantile_normalization`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

@@ -1,6 +1,6 @@
 """tox_data_integration_stats
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_data_integration_stats. Do not edit.
 """
@@ -95,7 +95,7 @@ def gjct_permutation_test(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_stats::gjct_permutation_test_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_stats::gjct_permutation_test`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

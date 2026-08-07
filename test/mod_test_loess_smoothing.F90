@@ -8,7 +8,7 @@ module mod_test_loess_smoothing
   ! the generated wrappers pack the offending argument's position into `ierr`, so the
   ! cases below compare the bare code rather than the packed one
   use tox_errors, only: ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH, ERR_EMPTY_INPUT, get_err_code
-  use tox_loess,  only: loess_fit_plain_alloc, loess_fit_robust_alloc
+  use tox_loess,  only: loess_fit_plain, loess_fit_robust
   use f42_utils
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use test_suite
@@ -392,10 +392,10 @@ contains
     eval_points(:, 1) = x
 
     if (robust) then
-      call loess_fit_robust_alloc(n, x, y, weights, eval_points, span, degree, n, &
+      call loess_fit_robust(n, x, y, weights, eval_points, span, degree, n, &
                                   n_iters=n_iters, fitted_values=yhat, ierr=ierr)
     else
-      call loess_fit_plain_alloc(n, x, y, weights, eval_points, span, degree, n, &
+      call loess_fit_plain(n, x, y, weights, eval_points, span, degree, n, &
                                  fitted_values=yhat, ierr=ierr)
     end if
   end subroutine loess_fit

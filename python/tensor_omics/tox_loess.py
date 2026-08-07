@@ -1,6 +1,6 @@
 """tox_loess
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_loess. Do not edit.
 """
@@ -111,7 +111,7 @@ def loess_fit_plain(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_loess::loess_fit_plain_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_loess::loess_fit_plain`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -241,7 +241,7 @@ def loess_fit_robust(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_loess::loess_fit_robust_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_loess::loess_fit_robust`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

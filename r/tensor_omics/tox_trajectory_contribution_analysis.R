@@ -2,7 +2,7 @@
 
 #' For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
@@ -52,8 +52,8 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 #'
 #' @param local_contributions_observed a numeric vector. Per-timepoint contributions for the observed factor-dependent-sample combination
 #' @param total_contribution_observed a numeric scalar. Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
-#' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from \code{perform_permutation_test}
-#' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from \code{perform_permutation_test}
+#' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from \code{\link{perform_permutation_test}}
+#' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from \code{\link{perform_permutation_test}}
 #' @return a named list with elements:
 #'   \item{local_p_values}{a numeric vector. calculated p values for local contributions, like: `(local_contributions_perm_test >= local_contributions_observed)/n_permutations`}
 #'   \item{total_p_value}{a numeric scalar. calculated p values for total contributions, like: `(total_contributions_perm_test >= total_contribution_observed)/n_permutations`}
@@ -111,7 +111,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
@@ -260,7 +260,7 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories

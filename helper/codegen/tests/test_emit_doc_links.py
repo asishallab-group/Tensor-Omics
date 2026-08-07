@@ -27,20 +27,20 @@ class TestAProcedureWithABinding:
                 == r"\code{\link{build_kd_index}}")
 
 
-class TestAKernel:
-    """A kernel is unreachable, but what it names is not: send the reader to the wrapper."""
+class TestAnImplementation:
+    """An implementation is unreachable, but what it names is not: send the reader to the wrapper."""
 
-    resolver = LinkResolver(kernels={"crunch_kernel": ["crunch"]})
+    resolver = LinkResolver(implementations={"crunch_impl": ["crunch"]})
 
     def test_it_resolves_to_the_wrapper(self):
-        assert (render_link(link("crunch_kernel"), self.resolver, "python")
+        assert (render_link(link("crunch_impl"), self.resolver, "python")
                 == ":func:`tensor_omics.crunch`")
 
-    def test_a_mode_split_kernel_names_every_variant(self):
+    def test_a_mode_split_impl_names_every_variant(self):
         resolver = LinkResolver(
-            kernels={"detect_patterns_kernel": ["detect_dosage_effect", "detect_subfunctionalization"]}
+            implementations={"detect_patterns_impl": ["detect_dosage_effect", "detect_subfunctionalization"]}
         )
-        rendered = render_link(link("detect_patterns_kernel"), resolver, "r")
+        rendered = render_link(link("detect_patterns_impl"), resolver, "r")
         assert rendered == r"\code{\link{detect_dosage_effect}}, \code{\link{detect_subfunctionalization}}"
 
     def test_the_expert_variant_is_not_the_one_offered(self):
@@ -82,8 +82,8 @@ class TestNothingToLinkTo:
 
 class TestProseIsUntouched:
     def test_only_the_link_span_changes(self):
-        line = DocLine.parse("use [[m(module):crunch_kernel(subroutine)]] for this")
-        resolver = LinkResolver(kernels={"crunch_kernel": ["crunch"]})
+        line = DocLine.parse("use [[m(module):crunch_impl(subroutine)]] for this")
+        resolver = LinkResolver(implementations={"crunch_impl": ["crunch"]})
 
         assert (render_spans(line, resolver, "python")
                 == "use :func:`tensor_omics.crunch` for this")

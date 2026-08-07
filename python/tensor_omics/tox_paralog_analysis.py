@@ -1,6 +1,6 @@
 """tox_paralog_analysis
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_paralog_analysis. Do not edit.
 """
@@ -281,7 +281,7 @@ def detect_dosage_effect(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -310,7 +310,7 @@ def detect_dosage_effect(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_paralog_analysis_kernel import calc_work_arr_paralog_subsets_size
+    from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
     _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
@@ -411,7 +411,7 @@ def detect_subfunctionalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -452,7 +452,7 @@ def detect_subfunctionalization(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_paralog_analysis_kernel import calc_work_arr_paralog_subsets_size
+    from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
     _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]

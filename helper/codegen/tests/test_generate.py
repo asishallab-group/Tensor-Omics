@@ -267,7 +267,7 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
         for spec in synthesis.specs:
             for wrapper in (spec.validating, spec.allocating):
                 if wrapper is not None:
-                    info[wrapper.name.lower()] = WrapperInfo(spec.kernel.name, spec.mode_fix)
+                    info[wrapper.name.lower()] = WrapperInfo(spec.impl.name, spec.mode_fix)
         emitter = FortranWrapperEmitter(project=synthesis.project)
         for spec in synthesis.specs:
             if spec.allocating is None:
@@ -278,17 +278,17 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
             yield spec, text
 
     def exposed(self, spec):
-        """What this wrapper pair exposes of the kernel.
+        """What this wrapper pair exposes of the implementation.
 
-        Read off the validating wrapper rather than off the kernel, because a mode-split
-        variant exposes less: the mode argument is fixed in the kernel call and dropped, and
+        Read off the validating wrapper rather than off the implementation, because a mode-split
+        variant exposes less: the mode argument is fixed in the implementation call and dropped, and
         an argument scoped to another mode is absent entirely. `foo` is exactly that set,
         plus the `ierr` the wrapper may have synthesised.
         """
         return [
             argument
             for argument in spec.validating.arguments
-            if spec.kernel.argument(argument.name) is not None
+            if spec.impl.argument(argument.name) is not None
         ]
 
     def test_every_exposed_argument_is_a_dummy_or_a_local_and_never_both(self, real_project):
@@ -305,33 +305,33 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
                 )
                 assert argument.name not in signature, spec.allocating.name
 
-    def test_every_exposed_argument_still_reaches_the_kernel(self, real_project):
+    def test_every_exposed_argument_still_reaches_the_impl(self, real_project):
         for spec, text in self.wrappers(real_project):
-            call = text[text.index(f"call {spec.kernel.name}(") :]
+            call = text[text.index(f"call {spec.impl.name}(") :]
             for argument in self.exposed(spec):
                 assert f"{argument.name} = " in call, (
-                    f"{spec.allocating.name}: '{argument.name}' is not passed to the kernel"
+                    f"{spec.allocating.name}: '{argument.name}' is not passed to the implementation"
                 )
 
     def test_every_allocating_dummy_is_accounted_for(self, real_project):
-        # the other direction: nothing reaches that signature except the kernel's arguments,
+        # the other direction: nothing reaches that signature except the implementation's arguments,
         # the prologue's own, and ierr. Asserting only over the *exposed* set would miss a
         # prologue argument entirely, since it is on the allocating wrapper alone.
         from codegen.config import CONVENTIONS
         from codegen.synthesize import prologue_only_arguments
 
         for spec, _ in self.wrappers(real_project):
-            allowed = {a.name.lower() for a in spec.kernel.arguments}
+            allowed = {a.name.lower() for a in spec.impl.arguments}
             allowed |= {
                 a.name.lower()
                 for a in prologue_only_arguments(
-                    spec.prologue, spec.kernel.arguments, CONVENTIONS
+                    spec.prologue, spec.impl.arguments, CONVENTIONS
                 )
             }
             allowed.add(CONVENTIONS.error_arg.lower())
             for argument in spec.allocating.arguments:
                 assert argument.name.lower() in allowed, (
-                    f"{spec.allocating.name}: '{argument.name}' is neither the kernel's, "
+                    f"{spec.allocating.name}: '{argument.name}' is neither the implementation's, "
                     f"the prologue's, nor ierr"
                 )
 

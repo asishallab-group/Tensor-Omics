@@ -1,14 +1,14 @@
 """Resolving a Ford cross-reference for the language that will read it.
 
-An author writes `[[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]]`
+An author writes `[[tox_get_outliers_impl(module):compute_family_scaling_impl(subroutine)]]`
 and Ford turns it into a link. Carried into a Python docstring or an R help page it is markup
-nothing renders, pointing at a symbol -- a kernel, a private helper -- that no caller of those
-languages can reach.
+nothing renders, pointing at a symbol -- an implementation, a private helper -- that no caller
+of those languages can reach.
 
 So resolve rather than strip. What the reader wants is the thing they *can* call: the binding
-generated from that kernel. Where there is no such thing, the name is rendered as plain code
-and no link is claimed -- an `\\link` to a topic that does not exist is an R CMD check failure,
-so the fallback carries weight.
+generated from that implementation. Where there is no such thing, the name is rendered as plain
+code and no link is claimed -- an `\\link` to a topic that does not exist is an R CMD check
+failure, so the fallback carries weight.
 
 Only the parsed link is touched. Ford links reach here as `FordLink` objects, never as text,
 which is what keeps a text pass from mangling R's own `x[[i]]` indexing in generated code.
@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 
 from ..ir.doc import FordLink
 
-#: The binding-layer suffix for the variant that takes the work arrays. Where a kernel has
+#: The binding-layer suffix for the variant that takes the work arrays. Where an implementation has
 #: both, the plain name is the one to send a reader to.
 _EXPERT_SUFFIX = "_expert"
 
@@ -31,8 +31,8 @@ class LinkResolver:
 
     #: Fortran procedure name (lower case) -> the binding's name in this language
     bindings: dict[str, str] = field(default_factory=dict)
-    #: kernel procedure name (lower case) -> the bindings generated from it, non-expert first
-    kernels: dict[str, list[str]] = field(default_factory=dict)
+    #: impl procedure name (lower case) -> the bindings generated from it, non-expert first
+    implementations: dict[str, list[str]] = field(default_factory=dict)
     #: mode parameter (lower case) -> the string a caller passes instead
     modes: dict[str, str] = field(default_factory=dict)
 
@@ -43,8 +43,8 @@ class LinkResolver:
             return []
         if item in self.bindings:
             return [self.bindings[item]]
-        if item in self.kernels:
-            return list(self.kernels[item])
+        if item in self.implementations:
+            return list(self.implementations[item])
         if item in self.modes:
             named = self.modes[item]
             # a per-mode procedure resolves on through to its own binding; a mode string is
@@ -62,8 +62,8 @@ class LinkResolver:
 def build(binding, specs) -> tuple[dict[str, str], dict[str, list[str]], dict[str, str]]:
     """The three lookups, from the C binding set and the synthesis specs.
 
-    `specs` carries kernel -> wrapper, which no name convention can recover for a mode-split
-    family: `detect_patterns_kernel` becomes `detect_dosage_effect` and
+    `specs` carries impl -> wrapper, which no name convention can recover for a mode-split
+    family: `detect_patterns_impl` becomes `detect_dosage_effect` and
     `detect_subfunctionalization`, names that come from the mode table.
     """
     bindings: dict[str, str] = {}
@@ -84,16 +84,16 @@ def build(binding, specs) -> tuple[dict[str, str], dict[str, list[str]], dict[st
                     else:
                         modes.setdefault(value.parameter.lower(), f"'{value.string}'")
 
-    kernels: dict[str, list[str]] = {}
+    implementations: dict[str, list[str]] = {}
     for spec in specs or ():
         made = [w.name for w in (spec.validating, spec.allocating) if w is not None]
         named = [bindings[n.lower()] for n in made if n.lower() in bindings]
         if named:
-            kernels.setdefault(spec.kernel.name.lower(), []).extend(named)
-    for name, found in kernels.items():
+            implementations.setdefault(spec.impl.name.lower(), []).extend(named)
+    for name, found in implementations.items():
         # a reader wants the entry point, not the variant that takes the work arrays
-        kernels[name] = LinkResolver.prefer_plain(sorted(set(found)))
-    return bindings, kernels, modes
+        implementations[name] = LinkResolver.prefer_plain(sorted(set(found)))
+    return bindings, implementations, modes
 
 
 def _one(name: str, language: str, linkable: bool) -> str:

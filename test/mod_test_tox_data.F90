@@ -131,7 +131,7 @@ contains
 
         ! write(*,*) 'Size of family_centroids: ', size(family_centroids, 1), size(family_centroids, 2)
 
-        call group_centroid_all(kallisto_expr, total_samples, n_genes, gene_to_fam, &
+        call group_centroid_all_expert(kallisto_expr, total_samples, n_genes, gene_to_fam, &
                                 n_families, family_centroids, selected_indices, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Computing centroids should succeed")
 

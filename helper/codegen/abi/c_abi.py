@@ -98,22 +98,30 @@ def build_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
 
 
 def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
-    """The exported symbol for `procedure`.
-
-    `<p>_alloc` is the one callers want, so it takes the plain name `<p>_c`. Its
-    non-allocating twin `<p>` is the expert entry point and becomes `<p>_expert_c` -- but
-    only where such a twin exists, otherwise a lone `<p>` would be needlessly renamed.
-    """
+    """The exported symbol for `procedure`: what the bindings call it, plus `_c`."""
     return f"{stripped_name(procedure, conventions)}{conventions.c_suffix}"
 
 
 def stripped_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
-    """The wrapper name without the `_c` suffix, as the binding languages call it."""
+    """The wrapper name without the `_c` suffix, as the binding languages call it.
+
+    A generated wrapper is published under its own Fortran name: synthesis names the tiers
+    `foo` and `foo_expert` outright, so there is nothing left to translate.
+
+    A **hand-written** pair is the one that still needs translating. f42 writes its two tiers
+    as `foo` and `foo_alloc` -- the shape the whole framework used before the wrappers were
+    generated -- and the allocating one is the one callers want, so it takes the plain name
+    and its twin becomes `foo_expert`. Only where such a twin exists: a lone `foo_alloc`
+    keeps its name rather than being needlessly renamed.
+
+    This branch is what keeps f42's published API unchanged while its implementations are
+    still hand-written, and it retires itself the moment they are converted to `_impl`.
+    """
     name = procedure.name
     if procedure.is_alloc_variant:
         return name[: -len(conventions.alloc_suffix)]
     if procedure.has_alloc_sibling:
-        return f"{name}{conventions.expert_infix}"
+        return f"{name}{conventions.expert_suffix}"
     return name
 
 

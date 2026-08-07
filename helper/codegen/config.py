@@ -37,21 +37,23 @@ class Conventions:
     #: read from it, so this is the name the diagnostics quote back.
     export_marker: str = "M_EXPORT_C"
 
-    #: Suffix of the allocating variant of a procedure pair
+    #: Suffix of the allocating half of a *hand-written* procedure pair. The generator never
+    #: emits it: a generated allocating wrapper takes the plain name. It is still recognised
+    #: because f42 writes its pairs by hand (`compute_edf` / `compute_edf_alloc`), and that is
+    #: the shape `stripped_name` translates into the published `foo` / `foo_expert`.
     alloc_suffix: str = "_alloc"
-    #: Infix for the non-allocating variant, used only when an `_alloc` sibling exists
-    expert_infix: str = "_expert"
+    #: Suffix of the non-allocating entry point, in Fortran and as the binding languages
+    #: publish it. A generated pair is named `foo` / `foo_expert` outright; a hand-written
+    #: `foo` / `foo_alloc` pair is published under those names by `abi.c_abi.stripped_name`.
+    expert_suffix: str = "_expert"
     #: Suffix of every generated C symbol and of the modules holding them
     c_suffix: str = "_c"
 
-    #: Suffix marking a hand-written kernel procedure (and its module). The generator
-    #: turns `loess_fit_kernel` in module `tox_loess_kernel` into the validating wrapper
-    #: `loess_fit` (and, when it needs work arrays, `loess_fit_alloc`) in module `tox_loess`.
-    kernel_suffix: str = "_kernel"
-    #: Suffix of the third variant, the plain validating wrapper. Empty -- it takes the
-    #: bare name -- but named so the three variants (kernel, validating, alloc) are
-    #: symmetric and the naming lives in one place.
-    validating_suffix: str = ""
+    #: Suffix marking a hand-written implementation procedure (and its module). The generator
+    #: turns `loess_fit_impl` in module `tox_loess_impl` into the entry point `loess_fit` in
+    #: module `tox_loess` -- and, where it has work arrays to take over, into the pair
+    #: `loess_fit` (which allocates) and `loess_fit_expert` (which does not).
+    impl_suffix: str = "_impl"
     #: Suffix marking a permutation vector. In the allocating wrapper a `<base>_perm`
     #: argument is seeded with `init_perm` and heapsorted against `<base>`.
     perm_suffix: str = "_perm"
@@ -72,7 +74,7 @@ class Conventions:
     #: an alias verbatim (`mode`) or carries one as a suffix (`link_method`).
     mode_aliases: tuple[str, ...] = ("mode", "method")
 
-    #: The flag a prologue sets to say it handled the call, so the kernel is skipped
+    #: The flag a prologue sets to say it handled the call, so the implementation is skipped
     prologue_handled_arg: str = "handled"
 
     #: Header of the optional third mode-table column. Its presence opts a mode argument
@@ -134,12 +136,12 @@ class Paths:
     macros_header: Path = Path("src/macros.h")
     #: Everything this generator writes lives under `src/generated`, and nothing hand-written
     #: does. That is the whole rule a reader (or a review, or an editor's ignore list) needs.
+    #: The wrapper modules mirror the tree they came from into it: an implementation at
+    #: `src/<rest>/<module>_impl.F90` generates `src/generated/<rest>/<module>.F90`, so the
+    #: layer a procedure belongs to survives generation and no directory is special-cased.
+    generated_dir: Path = Path("src/generated")
     c_binding_dir: Path = Path("src/generated/bindings/c")
     r_binding_dir: Path = Path("src/generated/bindings/r")
-    #: Hand-written kernels; the generated wrappers derived from them land in `tox_out_dir`
-    kernel_src_dir: Path = Path("src/kernel")
-    #: Where the generated `foo` / `foo_alloc` wrapper modules are written
-    tox_out_dir: Path = Path("src/generated/tox")
     python_out_dir: Path = Path("python/tensor_omics")
     r_out_dir: Path = Path("r/tensor_omics")
     snippets_dir: Path = Path("snippets")

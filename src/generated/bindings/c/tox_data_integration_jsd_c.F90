@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_data_integration_jsd(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_data_integration_jsd_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -10,10 +10,10 @@ module tox_data_integration_jsd_c
     M_IMPLICIT_NONE
     private
 
-    public :: determine_shared_residual_range_expert_c
     public :: determine_shared_residual_range_c
-    public :: determine_study_shared_residual_range_expert_c
+    public :: determine_shared_residual_range_expert_c
     public :: determine_study_shared_residual_range_c
+    public :: determine_study_shared_residual_range_expert_c
     public :: build_residual_histograms_c
     public :: compute_divergence_per_reference_point_c
     public :: compute_weighted_global_divergence_c
@@ -21,6 +21,49 @@ module tox_data_integration_jsd_c
 contains
 
     !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_shared_residual_range(subroutine)]]
+    !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
+    !| the neighborhood residuals of two studies first, if that is what is at hand.
+    subroutine determine_shared_residual_range_c(&
+            abs_residual_pool,&
+            pool_size,&
+            shared_residual_range,&
+            residual_range_quantile,&
+            ierr&
+        ) bind(C, name="determine_shared_residual_range_c")
+        use tox_data_integration_jsd, only: determine_shared_residual_range
+
+        integer(c_int), intent(in), target :: pool_size
+            !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
+        real(c_double), dimension(pool_size), intent(in), target :: abs_residual_pool
+            !! The absolute residual values of the concatenated S1,S2 residuals
+            !! NaN is permitted for this value.
+        real(c_double), intent(out), target :: shared_residual_range
+            !! Computed residual range (R)
+        real(c_double), intent(in), target :: residual_range_quantile
+            !! Quantile for determining the residual range
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `95.0`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(pool_size)
+        M_CHECK_NON_NULL(shared_residual_range)
+        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_ARRAY_NON_NULL(abs_residual_pool, pool_size)
+
+        call determine_shared_residual_range(&
+            abs_residual_pool = abs_residual_pool,&
+            pool_size = pool_size,&
+            shared_residual_range = shared_residual_range,&
+            residual_range_quantile = residual_range_quantile,&
+            ierr = ierr&
+        )
+    end subroutine determine_shared_residual_range_c
+
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_shared_residual_range_expert(subroutine)]]
     !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
     !| the neighborhood residuals of two studies first, if that is what is at hand.
     subroutine determine_shared_residual_range_expert_c(&
@@ -31,7 +74,7 @@ contains
             residual_range_quantile,&
             ierr&
         ) bind(C, name="determine_shared_residual_range_expert_c")
-        use tox_data_integration_jsd, only: determine_shared_residual_range
+        use tox_data_integration_jsd, only: determine_shared_residual_range_expert
 
         integer(c_int), intent(in), target :: pool_size
             !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
@@ -60,7 +103,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(abs_residual_pool, pool_size)
         M_CHECK_ARRAY_NON_NULL(abs_residual_pool_perm, pool_size)
 
-        call determine_shared_residual_range(&
+        call determine_shared_residual_range_expert(&
             abs_residual_pool = abs_residual_pool,&
             abs_residual_pool_perm = abs_residual_pool_perm,&
             pool_size = pool_size,&
@@ -70,22 +113,35 @@ contains
         )
     end subroutine determine_shared_residual_range_expert_c
 
-    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_shared_residual_range_alloc(subroutine)]]
-    !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
-    !| the neighborhood residuals of two studies first, if that is what is at hand.
-    subroutine determine_shared_residual_range_c(&
-            abs_residual_pool,&
-            pool_size,&
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_study_shared_residual_range(subroutine)]]
+    !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
+    !| as `determine_shared_residual_range` does.
+    subroutine determine_study_shared_residual_range_c(&
+            neighborhood_residuals_S1,&
+            neighborhood_residuals_S2,&
+            n_reps_S1,&
+            n_reps_S2,&
+            n_neighbors,&
+            n_points,&
             shared_residual_range,&
             residual_range_quantile,&
             ierr&
-        ) bind(C, name="determine_shared_residual_range_c")
-        use tox_data_integration_jsd, only: determine_shared_residual_range_alloc
+        ) bind(C, name="determine_study_shared_residual_range_c")
+        use tox_data_integration_jsd, only: determine_study_shared_residual_range
 
-        integer(c_int), intent(in), target :: pool_size
-            !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
-        real(c_double), dimension(pool_size), intent(in), target :: abs_residual_pool
-            !! The absolute residual values of the concatenated S1,S2 residuals
+        integer(c_int), intent(in), target :: n_reps_S1
+            !! Number of replicates in study 1
+        integer(c_int), intent(in), target :: n_reps_S2
+            !! Number of replicates in study 2
+        integer(c_int), intent(in), target :: n_neighbors
+            !! Number of neighbors in the studies
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points in the studies
+        real(c_double), dimension(n_reps_S1, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S1
+            !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(c_double), dimension(n_reps_S2, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S2
+            !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
             !! NaN is permitted for this value.
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
@@ -99,21 +155,29 @@ contains
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
-        M_CHECK_NON_NULL(pool_size)
+        M_CHECK_NON_NULL(n_reps_S1)
+        M_CHECK_NON_NULL(n_reps_S2)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(residual_range_quantile)
-        M_CHECK_ARRAY_NON_NULL(abs_residual_pool, pool_size)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points)
 
-        call determine_shared_residual_range_alloc(&
-            abs_residual_pool = abs_residual_pool,&
-            pool_size = pool_size,&
+        call determine_study_shared_residual_range(&
+            neighborhood_residuals_S1 = neighborhood_residuals_S1,&
+            neighborhood_residuals_S2 = neighborhood_residuals_S2,&
+            n_reps_S1 = n_reps_S1,&
+            n_reps_S2 = n_reps_S2,&
+            n_neighbors = n_neighbors,&
+            n_points = n_points,&
             shared_residual_range = shared_residual_range,&
             residual_range_quantile = residual_range_quantile,&
             ierr = ierr&
         )
-    end subroutine determine_shared_residual_range_c
+    end subroutine determine_study_shared_residual_range_c
 
-    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_study_shared_residual_range(subroutine)]]
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_study_shared_residual_range_expert(subroutine)]]
     !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
     !| as `determine_shared_residual_range` does.
     subroutine determine_study_shared_residual_range_expert_c(&
@@ -129,7 +193,7 @@ contains
             residual_range_quantile,&
             ierr&
         ) bind(C, name="determine_study_shared_residual_range_expert_c")
-        use tox_data_integration_jsd, only: determine_study_shared_residual_range
+        use tox_data_integration_jsd, only: determine_study_shared_residual_range_expert
 
         integer(c_int), intent(in), target :: n_reps_S1
             !! Number of replicates in study 1
@@ -172,7 +236,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_abs_residual_pool, ((n_reps_S1 + n_reps_S2)*n_neighbors*n_points))
         M_CHECK_ARRAY_NON_NULL(tmp_abs_residual_pool_perm, ((n_reps_S1 + n_reps_S2)*n_neighbors*n_points))
 
-        call determine_study_shared_residual_range(&
+        call determine_study_shared_residual_range_expert(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
             neighborhood_residuals_S2 = neighborhood_residuals_S2,&
             n_reps_S1 = n_reps_S1,&
@@ -186,70 +250,6 @@ contains
             ierr = ierr&
         )
     end subroutine determine_study_shared_residual_range_expert_c
-
-    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_study_shared_residual_range_alloc(subroutine)]]
-    !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
-    !| as `determine_shared_residual_range` does.
-    subroutine determine_study_shared_residual_range_c(&
-            neighborhood_residuals_S1,&
-            neighborhood_residuals_S2,&
-            n_reps_S1,&
-            n_reps_S2,&
-            n_neighbors,&
-            n_points,&
-            shared_residual_range,&
-            residual_range_quantile,&
-            ierr&
-        ) bind(C, name="determine_study_shared_residual_range_c")
-        use tox_data_integration_jsd, only: determine_study_shared_residual_range_alloc
-
-        integer(c_int), intent(in), target :: n_reps_S1
-            !! Number of replicates in study 1
-        integer(c_int), intent(in), target :: n_reps_S2
-            !! Number of replicates in study 2
-        integer(c_int), intent(in), target :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(c_int), intent(in), target :: n_points
-            !! Number of reference points in the studies
-        real(c_double), dimension(n_reps_S1, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S1
-            !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-            !! NaN is permitted for this value.
-        real(c_double), dimension(n_reps_S2, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S2
-            !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-            !! NaN is permitted for this value.
-        real(c_double), intent(out), target :: shared_residual_range
-            !! Computed residual range (R)
-        real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile for determining the residual range
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_reps_S1)
-        M_CHECK_NON_NULL(n_reps_S2)
-        M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(n_points)
-        M_CHECK_NON_NULL(shared_residual_range)
-        M_CHECK_NON_NULL(residual_range_quantile)
-        M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points)
-        M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points)
-
-        call determine_study_shared_residual_range_alloc(&
-            neighborhood_residuals_S1 = neighborhood_residuals_S1,&
-            neighborhood_residuals_S2 = neighborhood_residuals_S2,&
-            n_reps_S1 = n_reps_S1,&
-            n_reps_S2 = n_reps_S2,&
-            n_neighbors = n_neighbors,&
-            n_points = n_points,&
-            shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile,&
-            ierr = ierr&
-        )
-    end subroutine determine_study_shared_residual_range_c
 
     !> summary: C-wrapper for [[tox_data_integration_jsd(module):build_residual_histograms(subroutine)]]
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.

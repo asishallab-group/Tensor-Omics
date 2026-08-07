@@ -41,7 +41,7 @@ contains
     span = 0.75d0
     degree = 2
 
-    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_basic: normalization_pipeline returned error")
     call assert_no_nan_real(log_transformed_expr, n_genes * n_groups, "test_pipeline_basic: NaN in output")
     call assert_equal_int(size(log_transformed_expr), n_genes * n_groups, "test_pipeline_basic: output size incorrect")
@@ -62,7 +62,7 @@ contains
     span = 0.75d0
     degree = 2
 
-    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_edge_cases: expected error for zero-variance input")
   end subroutine test_pipeline_edge_cases
 
@@ -88,10 +88,10 @@ contains
     span = 0.75d0
     degree = 2
 
-    call normalize_by_std_dev_alloc(n_genes, n_tissues, expr, stddev, span, degree, ierr)
+    call normalize_by_std_dev(n_genes, n_tissues, expr, stddev, span, degree, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: normalize_by_std_dev returned error")
 
-    call quantile_normalization(n_genes, n_tissues, stddev, quantile, rank_means, tmp_col, tmp_perm, ierr)
+    call quantile_normalization_expert(n_genes, n_tissues, stddev, quantile, rank_means, tmp_col, tmp_perm, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: quantile_normalization returned error")
     call calc_tiss_avg(n_genes, n_groups, group_sizes, quantile, tiss_avg, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: calc_tiss_avg returned error")
@@ -105,11 +105,11 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: log2_transformation (no quantile) returned error")
 
     ! Pipeline normalization
-    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: normalization_pipeline returned error")
     call assert_equal_array_real(log_transformed_expr, log2trans, size(log_transformed_expr, kind=int32), 1d-12, "test_pipeline_vs_manual: test_pipeline_vs_manual: pipeline and manual outputs differ")
 
-    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr_no_quant, group_sizes, n_groups, span, degree, ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr_no_quant, group_sizes, n_groups, span, degree, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: normalization_pipeline (no quantile) returned error")
     call assert_equal_array_real(log_transformed_expr_no_quant, log2trans_no_quant, size(log_transformed_expr_no_quant, kind=int32), 1d-12, "test_pipeline_vs_manual: pipeline and manual outputs differ (no quantile)")
   end subroutine test_pipeline_vs_manual
@@ -123,7 +123,7 @@ contains
     n_genes = 0; n_tissues = 0; n_groups = 0
     span = 0.75d0
     degree = 2
-    call normalization_pipeline_alloc(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "normalization_pipeline should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_pipeline_empty_matrix

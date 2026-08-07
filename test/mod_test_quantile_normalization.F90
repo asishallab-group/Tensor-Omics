@@ -58,10 +58,10 @@ contains
 
         expr = 1.0_real64
 
-        call quantile_normalization(0, 1, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(0, 1, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "n_genes=0 must trigger ERR_EMPTY_INPUT")
 
-        call quantile_normalization(1, 0, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(1, 0, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "n_tissues=0 must trigger ERR_EMPTY_INPUT")
     end subroutine
 
@@ -75,10 +75,10 @@ contains
 
         expr = 1.0_real64
 
-        call quantile_normalization(-3, 1, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(-3, 1, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "negative n_genes must trigger ERR_INVALID_INPUT")
 
-        call quantile_normalization(1, -5, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(1, -5, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "negative n_tissues must trigger ERR_INVALID_INPUT")
     end subroutine
 
@@ -92,7 +92,7 @@ contains
 
         expr(1,1) = 42.0_real64
 
-        call quantile_normalization(1, 1, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(1, 1, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "1x1: ierr must be OK")
         call assert_equal_real(norm(1,1), 42.0_real64, TOL, "1x1: value must remain unchanged")
         call assert_equal_real(means(1), 42.0_real64, TOL, "1x1: rank_means must equal value")
@@ -112,7 +112,7 @@ contains
 
         expr = reshape([3.0, 1.0, 4.0, 2.0], [1,n_genes])
 
-        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "1×N: ierr must be OK")
 
         sorted = expr(1,[2,4,1,3])
@@ -134,7 +134,7 @@ contains
 
         expr(:,1) = [10.0_real64, 20.0_real64, 30.0_real64, 40.0_real64]
 
-        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "N×1: ierr must be OK")
 
         ! All tissues get the same single rank mean
@@ -157,7 +157,7 @@ contains
         expr(1, :) = [3.0_real64,1.0_real64,2.0_real64]
         expr(2, :) = [6.0_real64,4.0_real64,5.0_real64]
 
-        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "2×3: ierr must be OK")
 
         expected_means = [2.5_real64, 3.5_real64, 4.5_real64]
@@ -186,7 +186,7 @@ contains
 
         expr = reshape([1.0,2.0,2.0,3.0,  5.0,7.0,7.0,9.0], [n_tissues,n_genes])
 
-        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ties: ierr must be OK")
 
         s1 = norm(1,:)
@@ -214,7 +214,7 @@ contains
         expr(2,:) = sorted
         expr(3,:) = sorted
 
-        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "already normalized: ierr must be OK")
 
         call assert_equal_array_real(means, sorted, n_genes, TOL, "already normalized: rank_means unchanged")
@@ -240,7 +240,7 @@ contains
             expr(t,:) = [( real(t*i,real64), i=1,n_genes )]
         end do
 
-        call quantile_normalization(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
+        call quantile_normalization_expert(n_genes, n_tissues, expr, norm, means, tmp, perm, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "random: ierr must be OK")
 
         call assert_sorted_real(means, n_genes, "random: rank_means must be sorted")

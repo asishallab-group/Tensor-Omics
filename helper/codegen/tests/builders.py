@@ -10,6 +10,9 @@ These exist only because the IR is constructible without Ford. That is the point
 entity layer, and this module is the smallest demonstration of it.
 """
 
+from pathlib import Path
+
+from codegen.diagnostics import SourceLocation
 from codegen.ir.directives import Directives
 from codegen.ir.doc import Doc
 from codegen.ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
@@ -72,7 +75,14 @@ def procedure(name, *arguments, result=None, meta=C_BINDING, doc="", directives=
     )
 
 
-def module(name, *procedures, parameters=(), doc="", **kwargs):
+def module(name, *procedures, parameters=(), doc="", path=None, **kwargs):
+    """A module. `path` gives it a source file, as a parsed one always has.
+
+    Only the tests that go through `generate` need it -- the generated wrappers are written
+    beside the implementation they came from, so that target has to know where it was.
+    """
+    if path is not None:
+        kwargs["location"] = SourceLocation(file=Path(path))
     return Module(
         name=name,
         procedures=procedures,

@@ -377,7 +377,7 @@ class TestEverythingTogether:
         procedure = b.procedure(
             "p",
             b.character("s", Intent.IN, length=":", doc="a string"),
-            b.real("tmp_work", Intent.IN, "(n)", doc="work"),
+            b.real("tmp_work", Intent.IN, "(n)", doc="work_expert"),
             b.integer("n", Intent.IN, optional=True, doc="extent"),
         )
 
@@ -434,17 +434,39 @@ class TestOptionalOutputs:
         assert bag.errors == ()
 
 
-class TestKernelModules:
-    """The rules that hold for a kernel, which is read rather than wrapped and so is not
+class TestImplModules:
+    """The rules that hold for an implementation, which is read rather than wrapped and so is not
     reached by the exported-procedure rules above."""
 
-    def kernel_module(self, *procedures):
-        return b.module("tox_thing_kernel", *procedures, doc="a kernel module")
+    def impl_module(self, *procedures):
+        return b.module("tox_thing_impl", *procedures, doc="an implementation module")
 
-    def test_a_kernel_that_allocates_is_rejected(self, bag):
-        module = self.kernel_module(
+    def test_a_file_named_for_something_else_is_rejected(self, bag):
+        # synthesis triggers on the module name and the cleaner scans file names, so the two
+        # disagreeing leaves a generated wrapper nothing owns
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", path="src/tox/helpers_impl.F90"
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation module 'tox_thing_impl' is in 'helpers_impl.F90'" == error.message
+        assert "tox_thing_impl.F90" in error.note
+
+    def test_a_file_named_for_the_module_is_accepted(self, bag):
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", path="src/tox/tox_thing_impl.F90"
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_a_impl_that_allocates_is_rejected(self, bag):
+        module = self.impl_module(
             b.procedure(
-                "thing_kernel",
+                "thing_impl",
                 b.real("x", Intent.IN, "(n)"),
                 b.integer("n"),
                 meta=Meta(summary="s", author="a"),
@@ -455,12 +477,12 @@ class TestKernelModules:
         validate_module(module, bag)
 
         error = only_error(bag)
-        assert "'thing_kernel' allocates: 'workspace'" == error.message
+        assert "'thing_impl' allocates: 'workspace'" == error.message
         assert "tmp_" in error.note
 
     def test_a_helper_that_allocates_is_rejected_too(self, bag):
-        # a kernel that allocates nothing but calls a helper that does is no better off
-        module = self.kernel_module(
+        # an implementation that allocates nothing but calls a helper that does is no better off
+        module = self.impl_module(
             b.procedure(
                 "thing_helper",
                 b.real("x", Intent.IN, "(n)"),
@@ -476,9 +498,9 @@ class TestKernelModules:
 
     def test_a_pointer_local_is_accepted(self, bag):
         # aliasing a buffer the caller handed in allocates nothing
-        module = self.kernel_module(
+        module = self.impl_module(
             b.procedure(
-                "thing_kernel",
+                "thing_impl",
                 b.real("x", Intent.IN, "(n)"),
                 b.integer("n"),
                 meta=Meta(summary="s", author="a"),
@@ -489,29 +511,29 @@ class TestKernelModules:
 
         assert bag.errors == ()
 
-    def test_an_exported_kernel_is_rejected(self, bag):
-        module = self.kernel_module(
-            b.procedure("thing_kernel", b.integer("n"))  # b.procedure exports by default
+    def test_an_exported_impl_is_rejected(self, bag):
+        module = self.impl_module(
+            b.procedure("thing_impl", b.integer("n"))  # b.procedure exports by default
         )
 
         validate_module(module, bag)
 
         errors = messages(bag)
-        assert "kernel 'thing_kernel' is exported" in errors
+        assert "implementation 'thing_impl' is exported" in errors
         assert "M_EXPORT_C" in bag.errors[0].note
 
     def test_an_exported_support_routine_is_accepted(self, bag):
         # a recommend routine has no wrapper, so DM_OUTPUT_FROM needs it exported
-        module = self.kernel_module(b.procedure("thing_required_workspace", b.integer("n")))
+        module = self.impl_module(b.procedure("thing_required_workspace", b.integer("n")))
 
         validate_module(module, bag)
 
         assert bag.errors == ()
 
-    def test_a_kernel_named_for_the_alloc_wrapper_is_rejected(self, bag):
-        module = self.kernel_module(
+    def test_an_impl_named_for_the_allocating_wrapper_is_rejected(self, bag):
+        module = self.impl_module(
             b.procedure(
-                "thing_alloc_kernel",
+                "thing_alloc_impl",
                 b.integer("n"),
                 meta=Meta(summary="s", author="a"),
             )
@@ -520,8 +542,27 @@ class TestKernelModules:
         validate_module(module, bag)
 
         error = only_error(bag)
-        assert "kernel 'thing_alloc_kernel' is named for the allocating wrapper" == error.message
+        assert "implementation 'thing_alloc_impl' is named for a wrapper" == error.message
+        assert "'_alloc'" in error.note
         assert "tmp_" in error.note
+
+    def test_an_impl_named_for_the_expert_wrapper_is_rejected(self, bag):
+        # `thing_expert_impl` beside a `thing_impl` would generate two `thing_expert`s, and
+        # the emitter would strip the suffix and call `thing_impl` from the wrong one --
+        # wrong code that compiles, because `thing_impl` really exists
+        module = self.impl_module(
+            b.procedure(
+                "thing_expert_impl",
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation 'thing_expert_impl' is named for a wrapper" == error.message
+        assert "'_expert'" in error.note
 
     def test_an_ordinary_module_is_not_held_to_these_rules(self, bag):
         module = b.module(
@@ -546,13 +587,13 @@ class TestPrologue:
     and an emitter has no author's line to point at.
     """
 
-    def checked(self, guard_arguments=None, kernel_arguments=None, bag=None):
-        from test_synthesize import prologue_kernel_module
+    def checked(self, guard_arguments=None, impl_arguments=None, bag=None):
+        from test_synthesize import prologue_impl_module
 
-        module = prologue_kernel_module(guard_arguments)
-        if kernel_arguments is not None:
-            crunch = module.procedure("crunch_kernel")
-            crunch.arguments = tuple(kernel_arguments)
+        module = prologue_impl_module(guard_arguments)
+        if impl_arguments is not None:
+            crunch = module.procedure("crunch_impl")
+            crunch.arguments = tuple(impl_arguments)
         project = b.project(module)
         validate_project(project, bag if bag is not None else self.bag)
         return self.bag
@@ -571,17 +612,17 @@ class TestPrologue:
 
     def test_a_prologue_that_does_not_exist_is_rejected(self):
         from codegen.ir.directives import Prologue
-        from test_synthesize import prologue_kernel_module
+        from test_synthesize import prologue_impl_module
 
-        module = prologue_kernel_module()
-        module.procedure("crunch_kernel").directives = replace(
-            module.procedure("crunch_kernel").directives,
-            prologue=Prologue("guardd", "tox_demo_kernel"),
+        module = prologue_impl_module()
+        module.procedure("crunch_impl").directives = replace(
+            module.procedure("crunch_impl").directives,
+            prologue=Prologue("guardd", "tox_demo_impl"),
         )
         validate_project(b.project(module), self.bag)
 
         error = only_error(self.bag)
-        assert "prologue 'tox_demo_kernel:guardd' does not exist" == error.message
+        assert "prologue 'tox_demo_impl:guardd' does not exist" == error.message
         assert "without a prologue at all" in error.note
 
     def test_a_prologue_without_handled_is_rejected(self):
@@ -616,9 +657,9 @@ class TestPrologue:
 
         assert "'handled' is not intent(out)" in only_error(self.bag).message
 
-    def test_a_dummy_the_kernel_does_not_have_becomes_the_wrappers_own(self):
+    def test_a_dummy_the_impl_does_not_have_becomes_the_wrappers_own(self):
         # what the prologue derives *from* is the allocating tier's vocabulary, not the
-        # kernel's: a threshold comes from a percentile, and the kernel takes the threshold
+        # impl's: a threshold comes from a percentile, and the implementation takes the threshold
         self.checked(guard_arguments=self.guard(
             b.integer("n", Intent.IN, doc="length"),
             b.real("percentile", Intent.IN, doc="where to put the threshold"),
@@ -629,8 +670,8 @@ class TestPrologue:
 
         assert self.bag.errors == ()
 
-    def test_a_near_miss_of_a_kernel_argument_is_refused_as_a_typo(self):
-        # otherwise a misspelling reads as a new argument, and the prologue and the kernel
+    def test_a_near_miss_of_a_impl_argument_is_refused_as_a_typo(self):
+        # otherwise a misspelling reads as a new argument, and the prologue and the implementation
         # would work from different numbers with nothing to say so
         self.checked(guard_arguments=self.guard(
             b.integer("n", Intent.IN, doc="length"),
@@ -644,8 +685,8 @@ class TestPrologue:
         assert "'valuess' looks like a misspelling of 'values'" in error.message
         assert "different values" in error.note
 
-    def test_a_work_array_is_not_a_dummy_the_kernel_does_not_have(self):
-        # tmp_scratch is a kernel argument the allocating wrapper prepares, and a prologue
+    def test_a_work_array_is_not_a_dummy_the_impl_does_not_have(self):
+        # tmp_scratch is an implementation argument the allocating wrapper prepares, and a prologue
         # may take it -- that is the whole point of running below the allocations
         self.checked(guard_arguments=self.guard(
             b.integer("n", Intent.IN, doc="length"),
@@ -656,7 +697,7 @@ class TestPrologue:
 
         assert self.bag.errors == ()
 
-    def test_what_the_prologue_writes_and_the_kernel_reads_becomes_a_local(self):
+    def test_what_the_prologue_writes_and_the_impl_reads_becomes_a_local(self):
         # nobody outside the wrapper is involved, so the caller neither supplies nor
         # receives it -- and both intents already say so
         self.checked(
@@ -666,7 +707,7 @@ class TestPrologue:
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
-            kernel_arguments=[
+            impl_arguments=[
                 b.integer("n", Intent.IN, doc="length"),
                 b.integer("room", Intent.IN, doc="only read here"),
                 b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
@@ -686,7 +727,7 @@ class TestPrologue:
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
-            kernel_arguments=[
+            impl_arguments=[
                 b.integer("n", Intent.IN, doc="length"),
                 b.integer("room", Intent.IN, doc="read here, and sizes result"),
                 b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
@@ -699,7 +740,7 @@ class TestPrologue:
         assert "sizes something the caller still" in error.note
 
     def test_two_alternative_producers_of_one_output_are_accepted(self):
-        # kernel intent(out) means the prologue and the kernel each may produce it: the
+        # impl intent(out) means the prologue and the implementation each may produce it: the
         # prologue's value is what the caller gets on the handled path
         self.checked(
             guard_arguments=self.guard(
@@ -723,7 +764,7 @@ class TestPrologue:
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
-            kernel_arguments=[
+            impl_arguments=[
                 b.real("values", Intent.IN, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
                 b.integer("room", Intent.INOUT, doc="how much scratch is needed"),
@@ -740,7 +781,7 @@ class TestPrologue:
     def test_a_prologue_may_not_rewrite_what_a_permutation_was_sorted_against(self):
         # the wrapper heapsorts values_perm against values above the prologue, so a prologue
         # that then rewrites values leaves an order describing data that no longer exists.
-        # Nothing crashes -- the kernel is simply handed a wrong answer.
+        # Nothing crashes -- the implementation is simply handed a wrong answer.
         self.checked(
             guard_arguments=self.guard(
                 b.real("values", Intent.INOUT, "(n)", doc="rewritten here"),
@@ -749,7 +790,7 @@ class TestPrologue:
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
-            kernel_arguments=[
+            impl_arguments=[
                 b.real("values", Intent.INOUT, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
                 b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
@@ -776,7 +817,7 @@ class TestPrologue:
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
-            kernel_arguments=[
+            impl_arguments=[
                 b.real("values", Intent.INOUT, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
                 b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
@@ -788,20 +829,20 @@ class TestPrologue:
         assert self.bag.errors == ()
 
     def test_a_produced_value_nothing_above_reads_is_accepted(self):
-        # `room` is the kernel's business alone -- no allocation, sort or recommend call
+        # `room` is the implementation's business alone -- no allocation, sort or recommend call
         # above the prologue names it, so filling it there is in time
         self.checked(
             guard_arguments=self.guard(
                 b.integer("n", Intent.IN, doc="length"),
-                b.integer("room", Intent.OUT, doc="something only the kernel reads"),
+                b.integer("room", Intent.OUT, doc="something only the implementation reads"),
                 b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
                 b.logical("handled", Intent.OUT, doc="dealt with"),
                 b.ierr(),
             ),
-            kernel_arguments=[
+            impl_arguments=[
                 b.real("values", Intent.IN, "(n)", doc="the data"),
                 b.integer("n", Intent.IN, doc="length"),
-                b.integer("room", Intent.INOUT, doc="something only the kernel reads"),
+                b.integer("room", Intent.INOUT, doc="something only the implementation reads"),
                 b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
                 b.real("result", Intent.OUT, "(n)", doc="the answer"),
             ],
@@ -833,21 +874,21 @@ class TestAPrologueFeedingARecommendRoutine:
 
 class TestPrologueAndTheModeSplit:
     """A prologue is declared once and runs in every wrapper, so it may only name what
-    every wrapper has -- which is all of the kernel's arguments unless it splits per mode."""
+    every wrapper has -- which is all of the implementation's arguments unless it splits per mode."""
 
     def checked(self, dummy, bag, split=True):
         from codegen.ir.directives import Prologue
         from codegen.ir.roles import analyse_project
-        from test_synthesize import mode_split_kernel_module
+        from test_synthesize import mode_split_impl_module
 
-        source = mode_split_kernel_module()
+        source = mode_split_impl_module()
         if not split:
-            # same kernel, but the table names no procedure per mode, so nothing splits
-            table = source.procedure("detect_patterns_kernel").argument("pattern_mode").doc
+            # same impl, but the table names no procedure per mode, so nothing splits
+            table = source.procedure("detect_patterns_impl").argument("pattern_mode").doc
             source = _without_the_procedure_column(source, table)
-        kernel = source.procedure("detect_patterns_kernel")
-        kernel.directives = replace(
-            kernel.directives, prologue=Prologue("guard", "tox_demo_kernel")
+        impl = source.procedure("detect_patterns_impl")
+        impl.directives = replace(
+            impl.directives, prologue=Prologue("guard", "tox_demo_impl")
         )
         source.procedures += (
             b.procedure(
@@ -859,7 +900,7 @@ class TestPrologueAndTheModeSplit:
             ),
         )
         source._adopt(source.procedures)
-        # the real stage order: synthesis analyses each kernel (which is where a mode table
+        # the real stage order: synthesis analyses each impl (which is where a mode table
         # becomes roles.mode), then the project-wide pass, then validation
         from codegen.synthesize import synthesize_wrappers
 
@@ -869,7 +910,7 @@ class TestPrologueAndTheModeSplit:
         return bag
 
     def test_the_mode_argument_itself_is_rejected(self):
-        # every wrapper fixes the mode in the kernel call and drops it from its signature,
+        # every wrapper fixes the mode in the implementation call and drops it from its signature,
         # so the prologue call would silently lose it
         bag = self.checked(
             b.integer("pattern_mode", Intent.IN, doc="which pattern"), DiagnosticBag()
@@ -897,38 +938,38 @@ class TestPrologueAndTheModeSplit:
 
 
 def _without_the_procedure_column(source, doc):
-    """The same kernel module with the mode table's Procedure column removed."""
+    """The same impl module with the mode table's Procedure column removed."""
     from codegen.ir.doc import Doc
 
     lines = [
         "Which pattern to detect.",
         "| Mode | Value |",
         "|------|-------|",
-        "| dosage effect | [[tox_demo_kernel(module):MODE_DOSAGE(variable)]] |",
-        "| subfunctionalisation | [[tox_demo_kernel(module):MODE_SUBFUNC(variable)]] |",
+        "| dosage effect | [[tox_demo_impl(module):MODE_DOSAGE(variable)]] |",
+        "| subfunctionalisation | [[tox_demo_impl(module):MODE_SUBFUNC(variable)]] |",
     ]
-    source.procedure("detect_patterns_kernel").argument("pattern_mode").doc = Doc.parse(lines)
+    source.procedure("detect_patterns_impl").argument("pattern_mode").doc = Doc.parse(lines)
     return source
 
 
 class TestPrologueThatCouldNeverRun:
-    def test_a_prologue_on_a_kernel_with_no_work_arrays_is_rejected(self, bag):
-        from test_synthesize import prologue_kernel_module
+    def test_a_prologue_on_a_impl_with_no_work_arrays_is_rejected(self, bag):
+        from test_synthesize import prologue_impl_module
 
-        source = prologue_kernel_module()
-        crunch = source.procedure("crunch_kernel")
+        source = prologue_impl_module()
+        crunch = source.procedure("crunch_impl")
         # drop the work array, so no allocating wrapper is generated at all
         crunch.arguments = tuple(a for a in crunch.arguments if a.name != "tmp_scratch")
         validate_project(b.project(source), bag)
 
         error = only_error(bag)
-        assert "on a kernel that generates no allocating wrapper" in error.message
+        assert "on an implementation that generates no allocating wrapper" in error.message
         assert "would never be called" in error.note
 
-    def test_it_is_accepted_when_the_kernel_does_generate_one(self, bag):
-        from test_synthesize import prologue_kernel_module
+    def test_it_is_accepted_when_the_impl_does_generate_one(self, bag):
+        from test_synthesize import prologue_impl_module
 
-        validate_project(b.project(prologue_kernel_module()), bag)
+        validate_project(b.project(prologue_impl_module()), bag)
 
         assert bag.errors == ()
 
@@ -937,24 +978,24 @@ class TestTheMisspellingHeuristic:
     """The last thing between a typo and a silently invented argument, so it has to be exact
     in both directions: catching a near miss, and letting a real new name through."""
 
-    @pytest.mark.parametrize("dummy, kernel_name", [
+    @pytest.mark.parametrize("dummy, impl_name", [
         ("n_gene", "n_genes"),      # a dropped letter
         ("valuess", "values"),      # a doubled one
         ("n_gnes", "n_genes"),      # a transposition that reads as one insertion
         ("values", "values"),       # itself
         ("n_genez", "n_genes"),     # a substitution
     ])
-    def test_one_edit_apart(self, dummy, kernel_name):
-        assert _within_one_edit(dummy, kernel_name)
+    def test_one_edit_apart(self, dummy, impl_name):
+        assert _within_one_edit(dummy, impl_name)
 
-    @pytest.mark.parametrize("dummy, kernel_name", [
+    @pytest.mark.parametrize("dummy, impl_name", [
         ("percentile", "values"),   # a genuinely new argument
         ("n_geens", "n_genes"),     # two substitutions: two names, not a typo
         ("x", "values"),            # nothing alike
         ("threshold", "thresh"),    # three characters apart
     ])
-    def test_further_than_one_edit(self, dummy, kernel_name):
-        assert not _within_one_edit(dummy, kernel_name)
+    def test_further_than_one_edit(self, dummy, impl_name):
+        assert not _within_one_edit(dummy, impl_name)
 
     def test_it_names_the_argument_it_thinks_you_meant(self):
         from codegen.ir.validate import _nearly

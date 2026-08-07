@@ -1,6 +1,6 @@
 """tox_shift_vectors
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_shift_vectors. Do not edit.
 """

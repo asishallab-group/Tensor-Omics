@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_relative_axis_plane_tools(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_relative_axis_plane_tools_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -195,7 +195,7 @@ contains
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angles_for_shift_vectors(subroutine)]]
     !| Each selected field is angled by the rule of
-    !| [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angle_between_vectors_kernel(subroutine)]],
+    !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
     !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
     !| the reference fails to orient fails the call.
     subroutine clock_hand_angles_for_shift_vectors_c(&

@@ -42,7 +42,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 
 #' Identifies subsets of paralogs matching this pattern
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
@@ -96,7 +96,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 
 #' Identifies subsets of paralogs matching this pattern
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog

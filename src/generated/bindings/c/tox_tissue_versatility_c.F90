@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_tissue_versatility(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_tissue_versatility_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

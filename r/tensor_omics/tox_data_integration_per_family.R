@@ -5,7 +5,7 @@
 #' Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
 #' the residual samples to the genes belonging to the family `family_idx`.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_jsd_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_jsd}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param family_idx a integer scalar. Index of the family that should be analyzed
@@ -80,7 +80,7 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
 #' those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
 #' the masks for from a family index.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_masked_jsd_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_data_integration_per_family::fjct_compute_masked_jsd}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param neighborhood_residuals_S1 a numeric array of rank 3. Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values

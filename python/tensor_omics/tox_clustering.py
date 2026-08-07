@@ -1,6 +1,6 @@
 """tox_clustering
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_clustering. Do not edit.
 """

@@ -2,7 +2,7 @@
 
 Text-level checks: that the wrapper sets ierr, validates each input the right way (an
 extent by its size, a bounded real by its range, an unbounded real by finiteness alone),
-bails on error, and calls the kernel. Compilation is exercised end to end elsewhere.
+bails on error, and calls the implementation. Compilation is exercised end to end elsewhere.
 """
 
 from codegen.config import CONVENTIONS
@@ -11,7 +11,7 @@ from codegen.emit.fortran_wrapper import FortranWrapperEmitter
 from codegen.ir.roles import analyse_project
 from codegen.synthesize import synthesize_wrappers
 
-from test_synthesize import alloc_kernel_module, ierr_kernel_module, kernel_module
+from test_synthesize import alloc_impl_module, ierr_impl_module, impl_module
 
 
 def emitted(module_source):
@@ -31,7 +31,7 @@ def emitted_with_info(module_source):
     for spec in synthesis.specs:
         for wrapper in (spec.validating, spec.allocating):
             if wrapper is not None:
-                info[wrapper.name.lower()] = WrapperInfo(spec.kernel.name, spec.mode_fix)
+                info[wrapper.name.lower()] = WrapperInfo(spec.impl.name, spec.mode_fix)
     return FortranWrapperEmitter(project=synthesis.project).module(
         synthesis.project.module("tox_demo"), info
     )
@@ -40,20 +40,20 @@ def emitted_with_info(module_source):
 def demo():
     from builders import project
 
-    return emitted(project(kernel_module()))
+    return emitted(project(impl_module()))
 
 
-def demo_alloc():
+def paired_demo():
     from builders import project
 
-    return emitted(project(alloc_kernel_module()))
+    return emitted(project(alloc_impl_module()))
 
 
 def alloc_body():
-    """Just the crunch_alloc subroutine text."""
-    text = demo_alloc()
-    start = text.index("subroutine crunch_alloc(")
-    return text[start : text.index("end subroutine crunch_alloc")]
+    """Just the crunch subroutine text."""
+    text = paired_demo()
+    start = text.index("subroutine crunch(")
+    return text[start : text.index("end subroutine crunch")]
 
 
 class TestModuleShell:
@@ -64,17 +64,17 @@ class TestModuleShell:
         assert "#include <src/macros.h>" in text
         assert "M_IMPLICIT_NONE" in text
 
-    def test_uses_the_kernel_and_errors(self):
+    def test_uses_the_impl_and_errors(self):
         text = demo()
-        assert "use tox_demo_kernel, only: scale_vector_kernel" in text
+        assert "use tox_demo_impl, only: scale_vector_impl" in text
         assert "use tox_errors, only:" in text
         assert "use, intrinsic :: iso_fortran_env, only:" in text
 
     def test_the_wrapper_is_public(self):
         assert "public :: scale_vector" in demo()
 
-    def test_no_position_is_cleared_when_the_kernel_reports_nothing(self):
-        # a kernel with no ierr cannot have packed a position, so neither the call nor the
+    def test_no_position_is_cleared_when_the_impl_reports_nothing(self):
+        # an implementation with no ierr cannot have packed a position, so neither the call nor the
         # import belongs here
         assert "clear_err_arg_pos" not in demo()
 
@@ -112,9 +112,9 @@ class TestValidation:
         # n_selected is the extent of indices, but its DM_MIN(0)/DM_MAX permits an empty
         # selection, which validate_dimension_size would reject
         from builders import project
-        from test_synthesize import count_extent_kernel_module
+        from test_synthesize import count_extent_impl_module
 
-        text = emitted(project(count_extent_kernel_module()))
+        text = emitted(project(count_extent_impl_module()))
         assert (
             "call validate_in_range_int(n_selected, ierr, arg_pos=3_int32, min=0_int32, max=n_values)"
             in text
@@ -123,33 +123,33 @@ class TestValidation:
         # a plain extent still uses the dimension check
         assert "call validate_dimension_size(n_values, ierr, arg_pos=2_int32)" in text
 
-    def test_bails_before_calling_the_kernel(self):
+    def test_bails_before_calling_the_impl(self):
         text = demo()
         assert "if (is_err(ierr)) return" in text
-        assert text.index("if (is_err(ierr)) return") < text.index("call scale_vector_kernel(")
+        assert text.index("if (is_err(ierr)) return") < text.index("call scale_vector_impl(")
 
 
-class TestKernelCall:
-    def test_calls_the_kernel_with_the_arguments_unchanged(self):
+class TestImplCall:
+    def test_calls_the_impl_with_the_arguments_unchanged(self):
         text = demo()
-        assert "call scale_vector_kernel(&" in text
+        assert "call scale_vector_impl(&" in text
         assert "vector = vector" in text
         assert "factor = factor" in text
 
-    def test_does_not_pass_ierr_to_the_kernel(self):
-        # the kernel has no ierr; the call must not invent one
-        call = demo().split("call scale_vector_kernel(&", 1)[1]
+    def test_does_not_pass_ierr_to_the_impl(self):
+        # the implementation has no ierr; the call must not invent one
+        call = demo().split("call scale_vector_impl(&", 1)[1]
         assert "ierr = ierr" not in call
 
 
 class TestTmpPermutation:
     def bodies(self):
         from builders import project
-        from test_synthesize import tmp_perm_kernel_module
+        from test_synthesize import tmp_perm_impl_module
 
-        text = emitted(project(tmp_perm_kernel_module()))
-        start = text.index("subroutine rank_alloc(")
-        return text[start : text.index("end subroutine rank_alloc")], text
+        text = emitted(project(tmp_perm_impl_module()))
+        start = text.index("subroutine rank(")
+        return text[start : text.index("end subroutine rank")], text
 
     def test_the_tmp_permutation_is_allocated(self):
         body, _ = self.bodies()
@@ -157,7 +157,7 @@ class TestTmpPermutation:
         assert "M_ALLOCATE(tmp_column(n))" in body
 
     def test_it_is_not_seeded_or_sorted_by_the_wrapper(self):
-        # a tmp_ permutation is the kernel's own scratch: the kernel seeds and sorts it, so
+        # a tmp_ permutation is the implementation's own scratch: the implementation seeds and sorts it, so
         # the allocating wrapper must only allocate it -- no init_perm, no sort, no f42_sort
         body, text = self.bodies()
         assert "init_perm" not in body
@@ -168,11 +168,11 @@ class TestTmpPermutation:
 class TestSuffixCollisions:
     def bodies(self):
         from builders import project
-        from test_synthesize import tmp_suffix_collision_kernel_module
+        from test_synthesize import tmp_suffix_collision_impl_module
 
-        text = emitted(project(tmp_suffix_collision_kernel_module()))
-        start = text.index("subroutine work_alloc(")
-        return text[start : text.index("end subroutine work_alloc")], text
+        text = emitted(project(tmp_suffix_collision_impl_module()))
+        start = text.index("subroutine work(")
+        return text[start : text.index("end subroutine work")], text
 
     def test_a_tmp_shape_is_allocated_not_derived(self):
         body, _ = self.bodies()
@@ -191,15 +191,15 @@ class TestSuffixCollisions:
         assert "use f42_sort" not in text
 
 
-class TestKernelThatDeclaresIerr:
+class TestImplThatDeclaresIerr:
     def demo_ierr(self):
         from builders import project
 
-        return emitted(project(ierr_kernel_module()))
+        return emitted(project(ierr_impl_module()))
 
-    def test_the_wrapper_passes_ierr_to_a_kernel_that_declares_one(self):
-        # a kernel that propagates a sub-helper's error takes ierr; the wrapper must pass it
-        call = self.demo_ierr().split("call risky_kernel(&", 1)[1]
+    def test_the_wrapper_passes_ierr_to_a_impl_that_declares_one(self):
+        # an implementation that propagates a sub-helper's error takes ierr; the wrapper must pass it
+        call = self.demo_ierr().split("call risky_impl(&", 1)[1]
         assert "ierr = ierr" in call
 
     def test_the_wrapper_still_validates_and_bails(self):
@@ -207,11 +207,11 @@ class TestKernelThatDeclaresIerr:
         assert "call set_ok(ierr)" in text
         assert "if (is_err(ierr)) return" in text
 
-    def test_the_argument_position_the_kernel_packed_is_cleared(self):
-        # whatever position came back numbers the kernel's dummy list -- or a private
+    def test_the_argument_position_the_impl_packed_is_cleared(self):
+        # whatever position came back numbers the implementation's dummy list -- or a private
         # helper's, further down -- so it names nothing the wrapper's caller passed
         text = self.demo_ierr()
-        after_call = text.split("call risky_kernel(&", 1)[1]
+        after_call = text.split("call risky_impl(&", 1)[1]
         assert "call clear_err_arg_pos(ierr)" in after_call
 
     def test_and_the_clear_is_imported(self):
@@ -221,9 +221,9 @@ class TestKernelThatDeclaresIerr:
 class TestModeSplitEmit:
     def emitted(self):
         from builders import project
-        from test_synthesize import mode_split_kernel_module
+        from test_synthesize import mode_split_impl_module
 
-        return emitted_with_info(project(mode_split_kernel_module()))
+        return emitted_with_info(project(mode_split_impl_module()))
 
     def dosage(self):
         text = self.emitted()
@@ -242,9 +242,9 @@ class TestModeSplitEmit:
         # no single runtime-mode procedure
         assert "subroutine detect_patterns(" not in text
 
-    def test_the_kernel_call_fixes_the_mode(self):
+    def test_the_impl_call_fixes_the_mode(self):
         dosage = self.dosage()
-        assert "call detect_patterns_kernel(&" in dosage
+        assert "call detect_patterns_impl(&" in dosage
         assert "pattern_mode = MODE_DOSAGE" in dosage
 
     def test_the_required_argument_is_passed_in_its_mode(self):
@@ -266,12 +266,12 @@ class TestModeSplitEmit:
 class TestMaskCountConvention:
     def emitted(self):
         from builders import project
-        from test_synthesize import mask_count_kernel_module
+        from test_synthesize import mask_count_impl_module
 
-        return emitted(project(mask_count_kernel_module()))
+        return emitted(project(mask_count_impl_module()))
 
     def test_the_count_is_checked_against_the_mask(self):
-        # the wrapper, not the kernel, guards count(mask) == n_selected -- so the kernel stays
+        # the wrapper, not the implementation, guards count(mask) == n_selected -- so the implementation stays
         # pure and needs no ierr for it
         text = self.emitted()
         assert (
@@ -288,9 +288,9 @@ class TestMaskCountConvention:
 class TestDistanceMatrixConvention:
     def emitted(self):
         from builders import project
-        from test_synthesize import distance_matrix_kernel_module
+        from test_synthesize import distance_matrix_impl_module
 
-        return emitted(project(distance_matrix_kernel_module()))
+        return emitted(project(distance_matrix_impl_module()))
 
     def test_the_matrix_is_structurally_validated(self):
         assert (
@@ -306,9 +306,9 @@ class TestDistanceMatrixConvention:
 
 class TestAllocatingWrapper:
     def test_the_module_imports_what_the_alloc_needs(self):
-        text = demo_alloc()
+        text = paired_demo()
         assert "use f42_sort, only: init_perm, sort_array_heapsort" in text
-        # the recommend routine lives in the kernel module, imported with the kernel
+        # the recommend routine lives in the implementation module, imported with the implementation
         assert "work_size" in text.split("contains")[0]
         assert "ERR_ALLOC_FAIL" in text
 
@@ -336,9 +336,9 @@ class TestAllocatingWrapper:
         assert "call init_perm(values_perm)" in body
         assert "call sort_array_heapsort(values, values_perm)" in body
 
-    def test_it_calls_the_kernel_with_every_argument(self):
+    def test_it_calls_the_impl_with_every_argument(self):
         body = alloc_body()
-        call = body.split("call crunch_kernel(&", 1)[1]
+        call = body.split("call crunch_impl(&", 1)[1]
         for name in ("values", "n", "values_perm", "tmp_scratch", "tmp_work", "wsize"):
             assert f"{name} = {name}" in call
         assert "ierr = ierr" not in call
@@ -352,17 +352,17 @@ class TestAllocatingWrapper:
 
 
 class TestPrologue:
-    """A routine the wrapper runs before the kernel, which may handle the call itself."""
+    """A routine the wrapper runs before the implementation, which may handle the call itself."""
 
     def emitted_with(self, scratch=False):
         from builders import project
-        from test_synthesize import prologue_kernel_module
+        from test_synthesize import prologue_impl_module
 
-        return emitted(project(prologue_kernel_module(self._guard(scratch))))
+        return emitted(project(prologue_impl_module(self._guard(scratch))))
 
     @staticmethod
     def _guard(scratch):
-        """The prologue's dummies; with `scratch` it also takes the kernel's work array."""
+        """The prologue's dummies; with `scratch` it also takes the implementation's work array."""
         if not scratch:
             return None
         from codegen.ir.types import Intent
@@ -387,29 +387,29 @@ class TestPrologue:
         # lets a caller do the same preparation themselves, so it must not run there
         text = self.emitted_with()
 
-        assert "call guard(&" in self.body(text, "crunch_alloc")
-        assert "call guard(&" not in self.body(text, "crunch")
-        assert "logical :: handled" not in self.body(text, "crunch")
+        assert "call guard(&" in self.body(text, "crunch")
+        assert "call guard(&" not in self.body(text, "crunch_expert")
+        assert "logical :: handled" not in self.body(text, "crunch_expert")
 
     def test_it_returns_early_when_the_prologue_handled_the_call(self):
-        body = self.body(self.emitted_with(), "crunch_alloc")
+        body = self.body(self.emitted_with(), "crunch")
 
         assert "logical :: handled" in body
         assert "if (handled) return" in body
-        # and the kernel is only reached afterwards
-        assert body.index("if (handled) return") < body.index("call crunch_kernel(")
+        # and the implementation is only reached afterwards
+        assert body.index("if (handled) return") < body.index("call crunch_impl(")
 
     def test_it_runs_below_the_work_arrays_it_prepares(self):
         # preparing them is what it is for, so there is nothing to hand it any earlier
-        body = self.body(self.emitted_with(scratch=True), "crunch_alloc")
+        body = self.body(self.emitted_with(scratch=True), "crunch")
 
         assert body.index("M_ALLOCATE(tmp_scratch(n))") < body.index("call guard(&")
-        assert body.index("call guard(&") < body.index("call crunch_kernel(")
+        assert body.index("call guard(&") < body.index("call crunch_impl(")
 
     def test_it_runs_below_them_even_when_it_takes_none(self):
         # the placement does not depend on what this prologue happens to take: it is where
         # the tier's preparation belongs, so it is the same for every prologue
-        body = self.body(self.emitted_with(), "crunch_alloc")
+        body = self.body(self.emitted_with(), "crunch")
 
         assert body.index("M_ALLOCATE(tmp_scratch(n))") < body.index("call guard(&")
 
@@ -417,14 +417,14 @@ class TestPrologue:
         """Just the `call <name>(...)` statement -- the whole body proves nothing.
 
         Every actual is spelled `x = x`, so an assertion over the whole body is satisfied by
-        the *kernel* call two lines below and holds even when the prologue call is empty.
+        the *impl* call two lines below and holds even when the prologue call is empty.
         """
         start = body.index(f"call {name}(")
         return body[start : body.index(")", body.index("&\n", start))]
 
     def test_it_is_handed_the_work_array_it_asked_for(self):
 
-        body = self.body(self.emitted_with(scratch=True), "crunch_alloc")
+        body = self.body(self.emitted_with(scratch=True), "crunch")
 
         assert "tmp_scratch = tmp_scratch" in self.call_to(body, "guard")
 
@@ -432,7 +432,7 @@ class TestPrologue:
         # the negative control for the assertion above: the plain prologue takes no work
         # array, so its call must not mention one even though the body around it does
 
-        body = self.body(self.emitted_with(), "crunch_alloc")
+        body = self.body(self.emitted_with(), "crunch")
 
         assert "tmp_scratch" not in self.call_to(body, "guard")
         assert "tmp_scratch" in body
@@ -490,9 +490,9 @@ class TestMaterialisedProducerInput:
     def text(self):
         from builders import project
 
-        from test_synthesize import optional_producer_input_kernel_module
+        from test_synthesize import optional_producer_input_impl_module
 
-        return emitted(project(optional_producer_input_kernel_module()))
+        return emitted(project(optional_producer_input_impl_module()))
 
     def test_the_default_is_resolved_into_a_local(self):
         text = self.text()
@@ -502,8 +502,8 @@ class TestMaterialisedProducerInput:
     def test_the_recommend_call_takes_the_local(self):
         assert "exact = exact_value" in self.text()
 
-    def test_the_kernel_still_takes_the_argument_itself(self):
-        # the kernel declares it optional, so it is forwarded as it came
+    def test_the_impl_still_takes_the_argument_itself(self):
+        # the implementation declares it optional, so it is forwarded as it came
         assert "exact = exact,&" in self.text()
 
 
@@ -516,25 +516,25 @@ class TestModeMembership:
         return emitted(project(module_source))
 
     def test_the_wrapper_rejects_a_value_the_table_does_not_name(self):
-        from test_synthesize import mode_kernel_module
+        from test_synthesize import mode_impl_module
 
-        text = self.text(mode_kernel_module())
+        text = self.text(mode_impl_module())
         assert ("if (mode /= MODE_FAST .and. mode /= MODE_EXACT) "
                 "call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=2_int32)") in text
 
     def test_the_parameters_it_compares_against_are_imported(self):
-        from test_synthesize import mode_kernel_module
+        from test_synthesize import mode_impl_module
 
-        text = self.text(mode_kernel_module()).split("contains", 1)[0]
+        text = self.text(mode_impl_module()).split("contains", 1)[0]
         assert "MODE_FAST" in text and "MODE_EXACT" in text
 
     def test_a_mode_split_wrapper_has_no_mode_to_check(self):
         from builders import project
 
-        from test_synthesize import mode_split_kernel_module
+        from test_synthesize import mode_split_impl_module
 
         # it *is* its mode; there is no argument left to compare
-        assert "/= MODE_" not in emitted_with_info(project(mode_split_kernel_module()))
+        assert "/= MODE_" not in emitted_with_info(project(mode_split_impl_module()))
 
 
 class TestAPrologueThatBuildsThePermutation:
@@ -546,7 +546,7 @@ class TestAPrologueThatBuildsThePermutation:
         from codegen.ir.types import Intent
 
         from builders import ierr, integer, logical, project, real
-        from test_synthesize import prologue_kernel_module
+        from test_synthesize import prologue_impl_module
 
         guard = (
             real("values", Intent.IN, "(n)", doc="the data"),
@@ -558,17 +558,17 @@ class TestAPrologueThatBuildsThePermutation:
             guard = guard[:2] + (
                 integer("values_perm", perm_intent, "(n)", doc="ordered how this family wants"),
             ) + guard[2:]
-        kernel = (
+        impl = (
             real("values", Intent.IN, "(n)", doc="the data"),
             integer("n", Intent.IN, doc="length"),
             integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
             real("result", Intent.OUT, "(n)", doc="the answer"),
         )
-        return emitted(project(prologue_kernel_module(guard, kernel)))
+        return emitted(project(prologue_impl_module(guard, impl)))
 
     def body(self, text):
-        start = text.index("subroutine crunch_alloc(")
-        return text[start : text.index("end subroutine crunch_alloc")]
+        start = text.index("subroutine crunch(")
+        return text[start : text.index("end subroutine crunch")]
 
     def test_by_default_the_wrapper_seeds_and_sorts_it(self):
         text = self.emitted_with(perm_intent=None)
@@ -604,15 +604,15 @@ class TestAPrologueThatBuildsThePermutation:
         assert body.index("call sort_array_heapsort(values, values_perm)") < body.index("call guard(&")
 
 
-class TestAPrologueThatProducesAKernelInput:
-    """Prologue `intent(out)` over kernel `intent(in)`: the value never leaves the wrapper,
+class TestAPrologueThatProducesAImplInput:
+    """Prologue `intent(out)` over impl `intent(in)`: the value never leaves the wrapper,
     so the allocating wrapper drops it from its signature and declares it as a local."""
 
-    def emitted_with(self, extra_kernel, extra_guard):
+    def emitted_with(self, extra_impl, extra_guard):
         from codegen.ir.types import Intent
 
         from builders import ierr, integer, logical, project, real
-        from test_synthesize import prologue_kernel_module
+        from test_synthesize import prologue_impl_module
 
         guard = (
             integer("n", Intent.IN, doc="length"),
@@ -621,17 +621,17 @@ class TestAPrologueThatProducesAKernelInput:
             logical("handled", Intent.OUT, doc="dealt with"),
             ierr(),
         )
-        kernel = (
+        impl = (
             integer("n", Intent.IN, doc="length"),
-            extra_kernel,
+            extra_impl,
             real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
             real("result", Intent.OUT, "(n)", doc="the answer"),
         )
-        return emitted(project(prologue_kernel_module(guard, kernel)))
+        return emitted(project(prologue_impl_module(guard, impl)))
 
     def bodies(self, text):
-        alloc = text[text.index("subroutine crunch_alloc(") : text.index("end subroutine crunch_alloc")]
-        foo = text[text.index("subroutine crunch(") : text.index("end subroutine crunch")]
+        alloc = text[text.index("subroutine crunch(") : text.index("end subroutine crunch")]
+        foo = text[text.index("subroutine crunch_expert(") : text.index("end subroutine crunch_expert")]
         return alloc, foo
 
     def test_a_scalar_becomes_a_plain_local(self):
@@ -640,7 +640,7 @@ class TestAPrologueThatProducesAKernelInput:
         from builders import integer
 
         alloc, foo = self.bodies(self.emitted_with(
-            integer("room", Intent.IN, doc="read by the kernel"),
+            integer("room", Intent.IN, doc="read by the implementation"),
             integer("room", Intent.OUT, doc="written by the prologue"),
         ))
 
@@ -656,7 +656,7 @@ class TestAPrologueThatProducesAKernelInput:
         from builders import integer
 
         alloc, foo = self.bodies(self.emitted_with(
-            integer("ranking", Intent.IN, "(n)", doc="read by the kernel"),
+            integer("ranking", Intent.IN, "(n)", doc="read by the implementation"),
             integer("ranking", Intent.OUT, "(n)", doc="built by the prologue"),
         ))
 
@@ -671,12 +671,12 @@ class TestAPrologueThatProducesAKernelInput:
         from builders import integer
 
         alloc, _ = self.bodies(self.emitted_with(
-            integer("ranking", Intent.IN, "(n)", doc="read by the kernel"),
+            integer("ranking", Intent.IN, "(n)", doc="read by the implementation"),
             integer("ranking", Intent.OUT, "(n)", doc="built by the prologue"),
         ))
 
         assert alloc.index("M_ALLOCATE(ranking(n))") < alloc.index("call guard(&")
-        assert alloc.index("call guard(&") < alloc.index("call crunch_kernel(")
+        assert alloc.index("call guard(&") < alloc.index("call crunch_impl(")
 
 
 class TestValidationCanBeCompiledOut:
@@ -697,20 +697,20 @@ class TestValidationCanBeCompiledOut:
 
     def test_set_ok_stays_outside_it(self):
         # not a check: it is what leaves ierr defined when nothing goes wrong, and a build
-        # without validation still reports the runtime errors a kernel raises
+        # without validation still reports the runtime errors an implementation raises
         body = self.body()
 
         assert body.index("call set_ok(ierr)") < body.index("#ifndef NO_INPUT_VALIDATION")
 
-    def test_the_kernel_call_stays_outside_it(self):
+    def test_the_impl_call_stays_outside_it(self):
         body = self.body()
 
-        assert body.index("#endif") < body.index("call crunch_kernel(")
+        assert body.index("#endif") < body.index("call crunch_impl(")
 
     def test_the_directives_are_at_column_zero(self):
         # gfortran's preprocessor rejects an indented directive outright, and a body is
         # rendered on its own writer before being nested into its module's
-        text = demo_alloc()
+        text = paired_demo()
 
         for line in text.splitlines():
             if line.lstrip().startswith("#"):
@@ -718,23 +718,23 @@ class TestValidationCanBeCompiledOut:
 
     def test_a_wrapper_with_nothing_to_check_emits_no_guard(self):
         from builders import project
-        from test_synthesize import kernel_module
+        from test_synthesize import impl_module
 
         # an empty #ifndef/#endif pair would be noise, and there is no is_err to test either
-        text = emitted(project(kernel_module()))
+        text = emitted(project(impl_module()))
         for procedure in ("scale_vector",):
             assert "call set_ok(ierr)" in text
 
 
 class TestAPrologueWithArgumentsOfItsOwn:
     """What a prologue derives *from* is the allocating tier's vocabulary: a threshold comes
-    from a percentile, and the kernel takes the threshold."""
+    from a percentile, and the implementation takes the threshold."""
 
     def built(self):
         from codegen.ir.types import Intent
 
         from builders import ierr, integer, logical, project, real
-        from test_synthesize import prologue_kernel_module
+        from test_synthesize import prologue_impl_module
 
         guard = (
             real("values", Intent.IN, "(n)", doc="the data"),
@@ -745,40 +745,40 @@ class TestAPrologueWithArgumentsOfItsOwn:
             logical("handled", Intent.OUT, doc="dealt with"),
             ierr(),
         )
-        kernel = (
+        impl = (
             real("values", Intent.IN, "(n)", doc="the data"),
             integer("n", Intent.IN, doc="length"),
             real("threshold", Intent.IN, doc="what counts as an outlier"),
             real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
             real("result", Intent.OUT, "(n)", doc="the answer"),
         )
-        return emitted(project(prologue_kernel_module(guard, kernel)))
+        return emitted(project(prologue_impl_module(guard, impl)))
 
     def body(self, text, name):
         return text[text.index(f"subroutine {name}(") : text.index(f"end subroutine {name}")]
 
     def test_the_allocating_wrapper_takes_it(self):
-        alloc = self.body(self.built(), "crunch_alloc")
+        alloc = self.body(self.built(), "crunch")
 
         assert "real(real64), intent(in) :: percentile" in alloc
         assert "percentile = percentile" in alloc
 
     def test_the_expert_wrapper_does_not(self):
         # it takes the derived value directly, so what it was derived from means nothing here
-        expert = self.body(self.built(), "crunch")
+        expert = self.body(self.built(), "crunch_expert")
 
         assert "percentile" not in expert
         assert "intent(in) :: threshold" in expert
 
     def test_the_derived_value_is_a_local_of_the_allocating_wrapper(self):
-        alloc = self.body(self.built(), "crunch_alloc")
+        alloc = self.body(self.built(), "crunch")
 
         assert "real(real64) :: threshold" in alloc      # a local, not a dummy
         assert "threshold" not in alloc[: alloc.index(")")]
-        assert alloc.index("call guard(&") < alloc.index("call crunch_kernel(")
+        assert alloc.index("call guard(&") < alloc.index("call crunch_impl(")
 
-    def test_the_prologue_argument_comes_after_the_kernels_and_before_ierr(self):
-        alloc = self.body(self.built(), "crunch_alloc")
+    def test_the_prologue_argument_comes_after_the_implementations_and_before_ierr(self):
+        alloc = self.body(self.built(), "crunch")
         signature = alloc[: alloc.index(")")]
 
         assert signature.index("result") < signature.index("percentile")
@@ -786,6 +786,6 @@ class TestAPrologueWithArgumentsOfItsOwn:
 
     def test_a_prologue_argument_is_validated_like_any_other(self):
         # it reaches the wrapper's own dummy list, so the range checks apply to it too
-        alloc = self.body(self.built(), "crunch_alloc")
+        alloc = self.body(self.built(), "crunch")
 
         assert "call validate_in_range_real(percentile, ierr" in alloc

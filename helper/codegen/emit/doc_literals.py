@@ -1,6 +1,6 @@
 """Rendering a Fortran doc for the language that will read it.
 
-The author writes documentation on a Fortran kernel, and the `DM_` range macros quote the
+The author writes documentation on a Fortran impl, and the `DM_` range macros quote the
 author's own Fortran back verbatim -- so a bound arrives as `0_int32` and a default as
 `.false.`. Carried into a Python docstring or an R help page unchanged, those are not merely
 ugly: `.false.` sits two lines under a signature that says `compute_influence=False`, and

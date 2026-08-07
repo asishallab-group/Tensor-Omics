@@ -1,10 +1,10 @@
-"""The kernel layer, end to end: generate a wrapper, compile it, and run it.
+"""The implementation layer, end to end: generate a wrapper, compile it, and run it.
 
 The Fortran sibling of `test_end_to_end.py` (Python) and `test_end_to_end_r.py` (R). Every
 other generator test stops at the emitted text. This one compiles the emitted `foo` and
-`foo_alloc` against the real `tox_errors` and `f42_sort` and runs them -- the only thing
+`foo_expert` against the real `tox_errors` and `f42_sort` and runs them -- the only thing
 that can show that validation rejects what it should, with the argument position the caller
-actually sees, and that `foo_alloc` allocates, sorts and computes what the kernel computes.
+actually sees, and that `foo` allocates, sorts and computes what the implementation computes.
 
 Skipped without gfortran.
 """
@@ -22,7 +22,7 @@ from codegen.generate import generate
 from conftest import REPO_ROOT
 
 GFORTRAN = shutil.which("gfortran")
-FIXTURE_KERNEL = Path("helper/codegen/tests/fixtures/kernel")
+FIXTURE_IMPL = Path("helper/codegen/tests/fixtures/impl")
 
 pytestmark = pytest.mark.skipif(GFORTRAN is None, reason="gfortran is not installed")
 
@@ -59,13 +59,12 @@ def _compile(source, out: Path, flags) -> Path:
 
 @pytest.fixture(scope="session")
 def built(tmp_path_factory):
-    """Generate the wrappers for the kernel fixture and compile everything they need."""
+    """Generate the wrappers for the implementation fixture and compile everything they need."""
     out = tmp_path_factory.mktemp("e2e_fortran")
-    kernel_dir = REPO_ROOT / FIXTURE_KERNEL
+    impl_dir = REPO_ROOT / FIXTURE_IMPL
 
     result = generate(
-        paths=Paths(root=REPO_ROOT, src_dir=kernel_dir, kernel_src_dir=kernel_dir,
-                    tox_out_dir=out),
+        paths=Paths(root=REPO_ROOT, src_dir=impl_dir, generated_dir=out),
         targets=("fortran",),
     )
     # the fixtures are the specification, so they must generate cleanly
@@ -75,7 +74,7 @@ def built(tmp_path_factory):
 
     for dependency in DEPENDENCIES:
         _compile(REPO_ROOT / dependency, out, DEPENDENCY_FLAGS)
-    _compile(kernel_dir / "fx_ranks_kernel.F90", out, WRAPPER_FLAGS)
+    _compile(impl_dir / "fx_ranks_impl.F90", out, WRAPPER_FLAGS)
     for file in result.files:
         _compile(file.path, out, WRAPPER_FLAGS)
     return out
@@ -86,13 +85,13 @@ _PROBE = """\
 program probe
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use fx_ranks, only: rank_scores, rank_scores_alloc
-    use fx_ranks_kernel, only: rank_scores_kernel
+    use fx_ranks, only: rank_scores, rank_scores_expert
+    use fx_ranks_impl, only: rank_scores_impl
     implicit none
     integer(int32), parameter :: N = 4
     real(real64) :: scores(N) = [3.0_real64, 1.0_real64, 4.0_real64, 2.0_real64]
     real(real64) :: ranked(N), shifted(N), by_hand(N)
-    ! the permutation that sorts `scores` ascending, for calling the kernel by hand
+    ! the permutation that sorts `scores` ascending, for calling the implementation by hand
     integer(int32) :: perm(N) = [2, 4, 1, 3]
     integer(int32) :: ierr
 
@@ -127,17 +126,17 @@ class TestTheAllocatingWrapper:
     def test_it_allocates_sorts_and_computes(self, built, tmp_path):
         # scores arrive unsorted; without init_perm + heapsort this would be 2.00 0.00 3.00 1.00
         out = run_fortran(built, tmp_path, """
-            call rank_scores_alloc(N, scores, 1.0_real64, ranked, ierr)
+            call rank_scores(N, scores, 1.0_real64, ranked, ierr)
             print '(i0, 4(1x, f6.2))', ierr, ranked
         """)
 
         assert out == ["0", "0.00", "1.00", "2.00", "3.00"]
 
-    def test_it_matches_the_kernel_called_by_hand(self, built, tmp_path):
+    def test_it_matches_the_impl_called_by_hand(self, built, tmp_path):
         # the same computation with the permutation and work array supplied by the caller
         out = run_fortran(built, tmp_path, """
-            call rank_scores_alloc(N, scores, 1.0_real64, ranked, ierr)
-            call rank_scores_kernel(N, scores, perm, shifted, 1.0_real64, by_hand)
+            call rank_scores(N, scores, 1.0_real64, ranked, ierr)
+            call rank_scores_impl(N, scores, perm, shifted, 1.0_real64, by_hand)
             print '(l1)', all(ranked == by_hand)
         """)
 
@@ -145,9 +144,9 @@ class TestTheAllocatingWrapper:
 
 
 class TestTheValidatingWrapper:
-    def test_it_passes_a_valid_call_through_to_the_kernel(self, built, tmp_path):
+    def test_it_passes_a_valid_call_through_to_the_impl(self, built, tmp_path):
         out = run_fortran(built, tmp_path, """
-            call rank_scores(N, scores, perm, shifted, 1.0_real64, ranked, ierr)
+            call rank_scores_expert(N, scores, perm, shifted, 1.0_real64, ranked, ierr)
             print '(i0, 4(1x, f6.2))', ierr, ranked
         """)
 
@@ -156,22 +155,22 @@ class TestTheValidatingWrapper:
 
 class TestValidationRejects:
     def test_a_value_below_the_documented_minimum(self, built, tmp_path):
-        # ERR_INVALID_INPUT (201) packed with arg_pos 3: min_score is rank_scores_alloc's
+        # ERR_INVALID_INPUT (201) packed with arg_pos 3: min_score is rank_scores's
         # third dummy, and 3*M_ERR_ARG_POS_FACTOR + 201 == 30201
         out = run_fortran(built, tmp_path, """
-            call rank_scores_alloc(N, scores, -1.0_real64, ranked, ierr)
+            call rank_scores(N, scores, -1.0_real64, ranked, ierr)
             print '(i0)', ierr
         """)
 
         assert out == ["30201"]
 
     def test_and_the_two_wrappers_number_their_arguments_independently(self, built, tmp_path):
-        # the same min_score is the fifth dummy of rank_scores and the third of _alloc,
+        # the same min_score is the fifth dummy of rank_scores_expert and the third of rank_scores,
         # which drops the work array and the permutation ahead of it
         out = run_fortran(built, tmp_path, """
-            call rank_scores(N, scores, perm, shifted, -1.0_real64, ranked, ierr)
+            call rank_scores_expert(N, scores, perm, shifted, -1.0_real64, ranked, ierr)
             print '(i0)', ierr
-            call rank_scores_alloc(N, scores, -1.0_real64, ranked, ierr)
+            call rank_scores(N, scores, -1.0_real64, ranked, ierr)
             print '(i0)', ierr
         """)
 
@@ -182,7 +181,7 @@ class TestValidationRejects:
         # at arg_pos 2, the scores array
         out = run_fortran(built, tmp_path, """
             scores(3) = ieee_value(0.0_real64, ieee_quiet_nan)
-            call rank_scores_alloc(N, scores, 1.0_real64, ranked, ierr)
+            call rank_scores(N, scores, 1.0_real64, ranked, ierr)
             print '(i0)', ierr
         """)
 
@@ -191,7 +190,7 @@ class TestValidationRejects:
     def test_an_empty_extent(self, built, tmp_path):
         # ERR_EMPTY_INPUT (202) at arg_pos 1, from the automatic validate_dimension_size
         out = run_fortran(built, tmp_path, """
-            call rank_scores_alloc(0_int32, scores(1:0), 1.0_real64, ranked(1:0), ierr)
+            call rank_scores(0_int32, scores(1:0), 1.0_real64, ranked(1:0), ierr)
             print '(i0)', ierr
         """)
 

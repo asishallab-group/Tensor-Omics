@@ -24,7 +24,6 @@ from ..diagnostics import DiagnosticBag, SourceLocation
 from ..ir.directives import DirectiveError, DirectiveParser, Directives
 from ..ir.doc import Doc, DocParseError
 from ..ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
-from ..synthesize import generated_wrapper_paths
 from ..ir.types import (
     BaseType,
     CharacterLength,
@@ -132,20 +131,24 @@ class FordFrontend:
 
         # Absolute, so they do not depend on the working directory below
         settings.src_dir = [self.paths.resolve(self.paths.src_dir).resolve()]
+        # The whole generated tree, by directory. Ford must not re-read the generator's own
+        # output and define `tox_<name>` twice (once parsed, once synthesised), and the one
+        # rule "everything generated lives under `generated_dir`" covers every target at
+        # once -- including a stale wrapper left behind by a deleted implementation, which
+        # a list derived from the implementations that still exist would not name.
+        #
+        # By directory rather than by file name, which is what this used to be: Ford matches
+        # a bare exclude as `**/<name>`, so once an implementation under `src/f42` generates
+        # `f42_stats.F90`, excluding that name would also drop the hand-written
+        # `src/f42/utils/f42_stats.F90` from the parse -- and every binding generated from
+        # it would vanish with no error at all.
         settings.exclude_dir = list(settings.exclude_dir) + [
-            str(self.paths.resolve(self.paths.c_binding_dir).resolve())
-        ]
-        # Excluding the generated wrappers by name keeps Ford from re-reading the
-        # generator's own output and defining `tox_<name>` twice (once parsed, once
-        # synthesised). By name rather than by directory because the same list is what
-        # `clean` deletes, so the two cannot drift apart. Ford matches `**/<name>`.
-        settings.exclude = list(getattr(settings, "exclude", None) or []) + [
-            path.name for path in generated_wrapper_paths(self.paths, self.conventions)
+            str(self.paths.resolve(self.paths.generated_dir).resolve())
         ]
 
         # Ford's default drops a procedure's own variables, which is right for published
         # documentation and wrong here: a local declared `allocatable` is how the generator
-        # sees that a procedure allocates (`validate._check_kernel_allocates`), and it never
+        # sees that a procedure allocates (`validate._check_impl_allocates`), and it never
         # reads a body. Nothing is published from this parse, so keeping them costs a list.
         settings.proc_internals = True
 
@@ -261,7 +264,7 @@ class FordFrontend:
 
         Ford splits a procedure's declarations into `args` and `variables` once the project
         is correlated, so what is left here is local. Only the `allocatable` attribute is
-        collected: `pointer` locals are how a kernel aliases a buffer it was handed, which
+        collected: `pointer` locals are how an implementation aliases a buffer it was handed, which
         allocates nothing and stays allowed.
         """
         return tuple(

@@ -1,6 +1,6 @@
 """tox_trajectory_normalization
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_trajectory_normalization. Do not edit.
 """
@@ -223,7 +223,7 @@ def normalize_all_trajectories(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

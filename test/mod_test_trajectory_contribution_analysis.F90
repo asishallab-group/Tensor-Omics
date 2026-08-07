@@ -7,7 +7,7 @@ module mod_test_trajectory_contribution_analysis
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_trajectory_contribution_analysis
     ! the baseline-mode parameters stayed in the kernel module
-    use tox_trajectory_contribution_analysis_kernel, only: BASELINE_RAW, BASELINE_MIN, BASELINE_MEAN, select_random_sample
+    use tox_trajectory_contribution_analysis_impl, only: BASELINE_RAW, BASELINE_MIN, BASELINE_MEAN, select_random_sample
     use tox_errors
     use f42_utils, only: init_random, rand_range
     use tox_trajectory_normalization
@@ -175,7 +175,7 @@ contains
 
         mode = BASELINE_RAW
 
-        call compute_velocity_acceleration_contributions(trajectories, 2, 1, 4, mode, &
+        call compute_velocity_acceleration_contributions_expert(trajectories, 2, 1, 4, mode, &
                                                          factor_velocity, dependent_velocity, raw_velocity_contrib, &
                                                          C_vel, series_vel, C_acc, series_acc, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions: expected OK status")
@@ -242,12 +242,12 @@ contains
 
         mode = BASELINE_RAW
 
-        call compute_velocity_acceleration_contributions(trajectories, 2, 1, 4, mode, &
+        call compute_velocity_acceleration_contributions_expert(trajectories, 2, 1, 4, mode, &
                                                          factor_velocity, dependent_velocity, velocity_contrib, &
                                                          C_vel_ref, series_vel_ref, C_acc_ref, series_acc_ref, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions_alloc: reference call")
 
-        call compute_velocity_acceleration_contributions_alloc(trajectories, 2, 1, 4, mode, &
+        call compute_velocity_acceleration_contributions(trajectories, 2, 1, 4, mode, &
                                                                C_vel_alloc, series_vel_alloc, C_acc_alloc, series_acc_alloc, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions_alloc: expected OK status")
 
@@ -374,7 +374,7 @@ contains
         trajectories(2, 2:, 2) = 3.0_real64
         trajectories(2, 2:, 3) = 5.0_real64
 
-        call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
+        call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       local_contributions, total_contributions, temp_factor, temp_dependent, ierr=ierr)
 
@@ -393,12 +393,12 @@ contains
 
         ! Case 2: test randomness reproducibility: without seed -> not reproducible
         call random_number(trajectories)
-        call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
+        call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       expected_local, expected_total, temp_factor, temp_dependent, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_perform_permutation_test: Case 2 Permutation test ierr expected contribs")
 
-        call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
+        call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       local_contributions, total_contributions, temp_factor, temp_dependent, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_perform_permutation_test: Case 2 Permutation test ierr")
@@ -407,12 +407,12 @@ contains
 
         ! Case 3: test randomness reproducibility: with seed -> reproducible
         call random_number(trajectories)
-        call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
+        call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       expected_local, expected_total, temp_factor, temp_dependent, random_seed=42_int32, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_perform_permutation_test: Case 3 Permutation test ierr expected contribs")
 
-        call perform_permutation_test(trajectories, n_factors, n_samples, n_timepoints, &
+        call perform_permutation_test_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                       factor_idx, dependent_idx, sample_idx, mode, n_permutations, &
                                       local_contributions, total_contributions, temp_factor, temp_dependent, random_seed=42_int32, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_perform_permutation_test: Case 3 Permutation test ierr")
@@ -487,27 +487,27 @@ contains
         factor_indices = [1, 2]
         dependent_indices = [2, 1]
 
-        call compute_all_contributions(trajectories, 0_int32, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, 0_int32, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_factors=0")
 
-        call compute_all_contributions(trajectories, n_factors, 0_int32, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, 0_int32, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_samples=0")
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, 0_int32, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, 0_int32, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_timepoints=0")
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), 0_int32, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_selected_factors=0")
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), 0_int32, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_selected_dependents=0")
@@ -516,7 +516,7 @@ contains
         ! Case 2: MEAN baseline
         ! -------------------------------
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MEAN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
@@ -539,7 +539,7 @@ contains
         trajectories(1, 1, :) = [2.0_real64, 4.0_real64, 6.0_real64]
         trajectories(2, 1, :) = [1.0_real64, 3.0_real64, 5.0_real64]
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
@@ -559,7 +559,7 @@ contains
         ! -------------------------------
         trajectories(1, 1, :) = 1.0_real64
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
@@ -574,7 +574,7 @@ contains
         trajectories(1, 1, :) = [1.0_real64, 2.0_real64, 3.0_real64]
         trajectories(2, 1, :) = 1.0_real64
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
@@ -594,7 +594,7 @@ contains
         factor_indices = [1, 2]
         dependent_indices = [2, 2]
 
-        call compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, &
+        call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
                                        factor_indices, n_factors, dependent_indices, n_factors, BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
@@ -828,7 +828,7 @@ contains
             end do
         end do
 
-        call normalize_all_trajectories_alloc(trajectories, trajectories_norm, &
+        call normalize_all_trajectories(trajectories, trajectories_norm, &
                                               n_factors, n_samples, n_timepoints, status, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_all_trajectories: should succeed")
 

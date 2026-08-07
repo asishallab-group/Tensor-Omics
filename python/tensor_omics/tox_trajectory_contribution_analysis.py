@@ -1,6 +1,6 @@
 """tox_trajectory_contribution_analysis
 
-Generated from the kernel; do not edit -- regenerate instead.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from tox_trajectory_contribution_analysis. Do not edit.
 """
@@ -233,7 +233,7 @@ def perform_permutation_test(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::perform_permutation_test`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -297,9 +297,9 @@ def compute_p_values(
     total_contribution_observed : float
         Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
     local_contributions_perm_test : np.ndarray[np.float64] of shape (n_timepoints, n_permutations,), column-major (order='F')
-        Per-timepoint contributions for the factor-dependent-random_sample combinations from ``perform_permutation_test``
+        Per-timepoint contributions for the factor-dependent-random_sample combinations from :func:`tensor_omics.perform_permutation_test`
     total_contributions_perm_test : np.ndarray[np.float64] of shape (n_permutations,)
-        Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from ``perform_permutation_test``
+        Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from :func:`tensor_omics.perform_permutation_test`
 
     Returns
     -------
@@ -509,7 +509,7 @@ def compute_all_contributions(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_all_contributions`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -919,7 +919,7 @@ def compute_velocity_acceleration_contributions(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

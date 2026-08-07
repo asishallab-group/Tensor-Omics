@@ -512,29 +512,29 @@ def _module_with(tmp_path, doc_line):
 class TestAllocatableLocals:
     """The generator never reads a body, so an allocation is seen through its declaration."""
 
-    def parse_kernel(self, tmp_path, declarations):
+    def parse_impl(self, tmp_path, declarations):
         src = tmp_path / "src"
         src.mkdir()
-        (src / "fx_alloc_kernel.F90").write_text(
-            "!> summary: a kernel module\n"
-            "module fx_alloc_kernel\n"
+        (src / "fx_alloc_impl.F90").write_text(
+            "!> summary: an implementation module\n"
+            "module fx_alloc_impl\n"
             "    use, intrinsic :: iso_fortran_env, only: real64, int32\n"
             "    implicit none\n"
             "contains\n"
             "    !> summary: p\n"
             "    !| author: A\n"
-            "    subroutine fx_p_kernel(n)\n"
+            "    subroutine fx_p_impl(n)\n"
             "        integer(int32), intent(in) :: n\n"
             "            !! a count\n"
             f"{declarations}"
-            "    end subroutine fx_p_kernel\n"
-            "end module fx_alloc_kernel\n"
+            "    end subroutine fx_p_impl\n"
+            "end module fx_alloc_impl\n"
         )
         parsed, bag = parse(src_dir=src)
-        return parsed.project.procedure("fx_alloc_kernel", "fx_p_kernel"), bag
+        return parsed.project.procedure("fx_alloc_impl", "fx_p_impl"), bag
 
     def test_an_allocatable_local_is_recorded(self, tmp_path):
-        procedure, _ = self.parse_kernel(
+        procedure, _ = self.parse_impl(
             tmp_path,
             "        real(real64), dimension(:), allocatable :: workspace, scratch\n",
         )
@@ -542,7 +542,7 @@ class TestAllocatableLocals:
         assert procedure.allocatable_locals == ("workspace", "scratch")
 
     def test_the_rule_fires_on_it(self, tmp_path):
-        procedure, bag = self.parse_kernel(
+        procedure, bag = self.parse_impl(
             tmp_path,
             "        real(real64), dimension(:), allocatable :: workspace\n",
         )
@@ -551,14 +551,14 @@ class TestAllocatableLocals:
         assert any("allocates: 'workspace'" in e.message for e in bag.errors), bag.render()
 
     def test_a_pointer_local_is_not_an_allocation(self, tmp_path):
-        procedure, _ = self.parse_kernel(
+        procedure, _ = self.parse_impl(
             tmp_path, "        real(real64), dimension(:), pointer :: view\n"
         )
 
         assert procedure.allocatable_locals == ()
 
     def test_a_plain_local_is_not_an_allocation(self, tmp_path):
-        procedure, _ = self.parse_kernel(
+        procedure, _ = self.parse_impl(
             tmp_path, "        integer(int32) :: i\n"
         )
 
@@ -566,6 +566,6 @@ class TestAllocatableLocals:
 
     def test_an_argument_is_never_a_local(self, tmp_path):
         # `n` is a dummy; only what is left after Ford splits them off counts
-        procedure, _ = self.parse_kernel(tmp_path, "")
+        procedure, _ = self.parse_impl(tmp_path, "")
 
         assert procedure.allocatable_locals == ()

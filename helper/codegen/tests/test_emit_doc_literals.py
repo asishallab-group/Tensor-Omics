@@ -1,6 +1,6 @@
 """Rendering the Fortran literals in a doc for the language that will read it.
 
-The author writes on a Fortran kernel and the `DM_` range macros quote that Fortran back
+The author writes on a Fortran impl and the `DM_` range macros quote that Fortran back
 verbatim, so a bound arrives as `0_int32` and a default as `.false.`. Carried into a Python
 docstring unchanged, the second one contradicts the signature three lines above it.
 """

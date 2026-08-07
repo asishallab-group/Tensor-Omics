@@ -1,9 +1,9 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_gene_centroids_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> summary: Wrappers for [[tox_gene_centroids_impl(module)]]
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_gene_centroids
-    use tox_gene_centroids_kernel, only: MODE_GROUP_ALL, MODE_GROUP_ORTHOLOGS, group_centroid_kernel, mean_vector_kernel
+    use tox_gene_centroids_impl, only: MODE_GROUP_ALL, MODE_GROUP_ORTHOLOGS, group_centroid_impl, mean_vector_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -12,13 +12,13 @@ module tox_gene_centroids
 
     public :: mean_vector
     public :: group_centroid_orthologs
-    public :: group_centroid_orthologs_alloc
+    public :: group_centroid_orthologs_expert
     public :: group_centroid_all
-    public :: group_centroid_all_alloc
+    public :: group_centroid_all_expert
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_gene_centroids_kernel(module):mean_vector_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):mean_vector_impl]].
     subroutine mean_vector(&
             expression_vectors,&
             n_axes,&
@@ -57,7 +57,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call mean_vector_kernel(&
+        call mean_vector_impl(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
@@ -67,7 +67,7 @@ contains
         )
     end subroutine mean_vector
 
-    !> summary: Validates its inputs, then calls [[tox_gene_centroids_kernel(module):group_centroid_kernel]].
+    !> summary: Validates its inputs, prepares what [[tox_gene_centroids_impl(module):group_centroid_impl]] needs, then calls it. The entry point to reach for first; see [[tox_gene_centroids(module):group_centroid_orthologs_expert]] to prepare it yourself.
     subroutine group_centroid_orthologs(&
             expression_vectors,&
             n_axes,&
@@ -75,7 +75,6 @@ contains
             gene_to_family,&
             n_families,&
             centroid_matrix,&
-            tmp_group_indices,&
             ortholog_set,&
             ierr&
         )
@@ -94,12 +93,11 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        integer(int32), dimension(n_genes), intent(out) :: tmp_group_indices
-            !! Work array for storing the indices of one family's genes.
         logical, dimension(n_genes), intent(in) :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
+        integer(int32), dimension(:), allocatable :: tmp_group_indices
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -111,7 +109,9 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call group_centroid_kernel(&
+        M_ALLOCATE(tmp_group_indices(n_genes))
+
+        call group_centroid_impl(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
@@ -124,14 +124,15 @@ contains
         )
     end subroutine group_centroid_orthologs
 
-    !> summary: Allocates its work arrays, then calls [[tox_gene_centroids_kernel(module):group_centroid_kernel]].
-    subroutine group_centroid_orthologs_alloc(&
+    !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):group_centroid_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_gene_centroids(module):group_centroid_orthologs]] does both.
+    subroutine group_centroid_orthologs_expert(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            tmp_group_indices,&
             ortholog_set,&
             ierr&
         )
@@ -150,8 +151,61 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(int32), dimension(n_genes), intent(out) :: tmp_group_indices
+            !! Work array for storing the indices of one family's genes.
         logical, dimension(n_genes), intent(in) :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
+        call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call group_centroid_impl(&
+            expression_vectors = expression_vectors,&
+            n_axes = n_axes,&
+            n_genes = n_genes,&
+            gene_to_family = gene_to_family,&
+            n_families = n_families,&
+            centroid_matrix = centroid_matrix,&
+            mode = MODE_GROUP_ORTHOLOGS,&
+            tmp_group_indices = tmp_group_indices,&
+            ortholog_set = ortholog_set&
+        )
+    end subroutine group_centroid_orthologs_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_gene_centroids_impl(module):group_centroid_impl]] needs, then calls it. The entry point to reach for first; see [[tox_gene_centroids(module):group_centroid_all_expert]] to prepare it yourself.
+    subroutine group_centroid_all(&
+            expression_vectors,&
+            n_axes,&
+            n_genes,&
+            gene_to_family,&
+            n_families,&
+            centroid_matrix,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_axes
+            !! Number of axes (tissues/dimensions).
+        integer(int32), intent(in) :: n_genes
+            !! Total number of genes in the 'expression_vectors' matrix.
+        integer(int32), intent(in) :: n_families
+            !! Total number of gene families to compute centroids for.
+        real(real64), dimension(n_axes, n_genes), intent(in) :: expression_vectors
+            !! The input matrix of all gene expression vectors (n_axes x n_genes).
+        integer(int32), dimension(n_genes), intent(in) :: gene_to_family
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_families`.
+            !! The value `0_int32` is additionally accepted.
+        real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
+            !! The output matrix (n_axes x n_families) to store the computed centroids.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: tmp_group_indices
@@ -168,21 +222,20 @@ contains
 
         M_ALLOCATE(tmp_group_indices(n_genes))
 
-        call group_centroid_kernel(&
+        call group_centroid_impl(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
-            mode = MODE_GROUP_ORTHOLOGS,&
-            tmp_group_indices = tmp_group_indices,&
-            ortholog_set = ortholog_set&
+            mode = MODE_GROUP_ALL,&
+            tmp_group_indices = tmp_group_indices&
         )
-    end subroutine group_centroid_orthologs_alloc
+    end subroutine group_centroid_all
 
-    !> summary: Validates its inputs, then calls [[tox_gene_centroids_kernel(module):group_centroid_kernel]].
-    subroutine group_centroid_all(&
+    !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):group_centroid_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_gene_centroids(module):group_centroid_all]] does both.
+    subroutine group_centroid_all_expert(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -222,7 +275,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call group_centroid_kernel(&
+        call group_centroid_impl(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
@@ -232,59 +285,6 @@ contains
             mode = MODE_GROUP_ALL,&
             tmp_group_indices = tmp_group_indices&
         )
-    end subroutine group_centroid_all
-
-    !> summary: Allocates its work arrays, then calls [[tox_gene_centroids_kernel(module):group_centroid_kernel]].
-    subroutine group_centroid_all_alloc(&
-            expression_vectors,&
-            n_axes,&
-            n_genes,&
-            gene_to_family,&
-            n_families,&
-            centroid_matrix,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n_axes
-            !! Number of axes (tissues/dimensions).
-        integer(int32), intent(in) :: n_genes
-            !! Total number of genes in the 'expression_vectors' matrix.
-        integer(int32), intent(in) :: n_families
-            !! Total number of gene families to compute centroids for.
-        real(real64), dimension(n_axes, n_genes), intent(in) :: expression_vectors
-            !! The input matrix of all gene expression vectors (n_axes x n_genes).
-        integer(int32), dimension(n_genes), intent(in) :: gene_to_family
-            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `expression_vectors`, using `0_int32` for unassigned genes
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_families`.
-            !! The value `0_int32` is additionally accepted.
-        real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
-            !! The output matrix (n_axes x n_families) to store the computed centroids.
-        integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
-        integer(int32), dimension(:), allocatable :: tmp_group_indices
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_dimension_size(n_axes, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_genes, ierr, arg_pos=3_int32)
-        call validate_dimension_size(n_families, ierr, arg_pos=5_int32)
-        call validate_all_in_range_real(expression_vectors, n_axes * n_genes, ierr, arg_pos=1_int32)
-        call validate_all_in_range_int(gene_to_family, n_genes, ierr, arg_pos=4_int32, min=1_int32, max=n_families, sentinel=0_int32)
-        if (is_err(ierr)) return
-#endif
-
-        M_ALLOCATE(tmp_group_indices(n_genes))
-
-        call group_centroid_kernel(&
-            expression_vectors = expression_vectors,&
-            n_axes = n_axes,&
-            n_genes = n_genes,&
-            gene_to_family = gene_to_family,&
-            n_families = n_families,&
-            centroid_matrix = centroid_matrix,&
-            mode = MODE_GROUP_ALL,&
-            tmp_group_indices = tmp_group_indices&
-        )
-    end subroutine group_centroid_all_alloc
+    end subroutine group_centroid_all_expert
 
 end module tox_gene_centroids

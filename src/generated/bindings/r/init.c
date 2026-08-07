@@ -68,8 +68,8 @@ SEXP create_zip_archive_call(SEXP, SEXP, SEXP);
 SEXP save_tox_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP get_tox_data_dims_call(SEXP);
 SEXP read_tox_data_into_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
+SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_study_shared_residual_range_call(SEXP, SEXP, SEXP);
 SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_divergence_per_reference_point_call(SEXP, SEXP);
@@ -79,8 +79,8 @@ SEXP fjct_compute_masked_jsd_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_contribution_scores_call(SEXP, SEXP);
 SEXP compute_gene_means_call(SEXP);
 SEXP compute_residuals_call(SEXP, SEXP);
-SEXP pool_means_expert_call(SEXP, SEXP, SEXP);
 SEXP pool_means_call(SEXP, SEXP);
+SEXP pool_means_expert_call(SEXP, SEXP, SEXP);
 SEXP pool_study_means_call(SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP);
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
@@ -174,8 +174,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"save_tox_data_call", (DL_FUNC) &save_tox_data_call, 13},
     {"get_tox_data_dims_call", (DL_FUNC) &get_tox_data_dims_call, 1},
     {"read_tox_data_into_call", (DL_FUNC) &read_tox_data_into_call, 12},
-    {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},
+    {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_study_shared_residual_range_call", (DL_FUNC) &determine_study_shared_residual_range_call, 3},
     {"build_residual_histograms_call", (DL_FUNC) &build_residual_histograms_call, 4},
     {"compute_divergence_per_reference_point_call", (DL_FUNC) &compute_divergence_per_reference_point_call, 2},
@@ -185,8 +185,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"fjct_compute_contribution_scores_call", (DL_FUNC) &fjct_compute_contribution_scores_call, 2},
     {"compute_gene_means_call", (DL_FUNC) &compute_gene_means_call, 1},
     {"compute_residuals_call", (DL_FUNC) &compute_residuals_call, 2},
-    {"pool_means_expert_call", (DL_FUNC) &pool_means_expert_call, 3},
     {"pool_means_call", (DL_FUNC) &pool_means_call, 2},
+    {"pool_means_expert_call", (DL_FUNC) &pool_means_expert_call, 3},
     {"pool_study_means_call", (DL_FUNC) &pool_study_means_call, 3},
     {"construct_neighborhoods_call", (DL_FUNC) &construct_neighborhoods_call, 4},
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},

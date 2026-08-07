@@ -24,7 +24,7 @@ mean_vector <- function(expression_vectors, gene_indices) {
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
-#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_orthologs_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_orthologs}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).
@@ -56,7 +56,7 @@ group_centroid_orthologs <- function(expression_vectors, gene_to_family, n_famil
 
 #' Iterates over families, filters gene indices, and computes centroids.
 #'
-#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_all_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_gene_centroids::group_centroid_all}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param expression_vectors a numeric matrix. The input matrix of all gene expression vectors (n_axes x n_genes).

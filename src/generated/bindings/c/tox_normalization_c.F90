@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_normalization(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -11,13 +11,13 @@ module tox_normalization_c
     private
 
     public :: normalize_unit_length_c
-    public :: normalization_pipeline_expert_c
     public :: normalization_pipeline_c
-    public :: normalize_by_std_dev_expert_c
+    public :: normalization_pipeline_expert_c
     public :: normalize_by_std_dev_c
+    public :: normalize_by_std_dev_expert_c
     public :: root_mean_sq_normalization_c
-    public :: quantile_normalization_expert_c
     public :: quantile_normalization_c
+    public :: quantile_normalization_expert_c
     public :: log2_transformation_c
     public :: calc_tiss_avg_c
     public :: calc_fchange_c
@@ -55,6 +55,78 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):normalization_pipeline(subroutine)]]
     !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
+    subroutine normalization_pipeline_c(&
+            n_genes,&
+            n_replicates,&
+            expr,&
+            log_transformed_expr,&
+            reps_per_tissue,&
+            n_tissues,&
+            span,&
+            degree,&
+            use_quantile,&
+            ierr&
+        ) bind(C, name="normalization_pipeline_c")
+        use tox_normalization, only: normalization_pipeline
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene
+        integer(c_int), intent(in), target :: n_tissues
+            !! Number of tissues
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+            !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
+            !! Log-transformed grouped `expr`
+        integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
+            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
+            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+        real(c_double), intent(in), target :: span
+            !! LOESS span parameter.
+            !! The default value is `0.7_real64`.
+        integer(c_int), intent(in), target :: degree
+            !! LOESS degree parameter.
+            !! The default value is `2_int32`.
+        logical(c_bool), intent(in), target :: use_quantile
+            !! Use quantile normalization.
+            !! The default value is `.false.`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+        logical :: use_quantile_f
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
+        M_CHECK_NON_NULL(n_tissues)
+        M_CHECK_NON_NULL(span)
+        M_CHECK_NON_NULL(degree)
+        M_CHECK_NON_NULL(use_quantile)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(log_transformed_expr, n_tissues * n_genes)
+        M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
+
+        use_quantile_f = use_quantile
+
+        call normalization_pipeline(&
+            n_genes = n_genes,&
+            n_replicates = n_replicates,&
+            expr = expr,&
+            log_transformed_expr = log_transformed_expr,&
+            reps_per_tissue = reps_per_tissue,&
+            n_tissues = n_tissues,&
+            span = span,&
+            degree = degree,&
+            use_quantile = use_quantile_f,&
+            ierr = ierr&
+        )
+    end subroutine normalization_pipeline_c
+
+    !> summary: C-wrapper for [[tox_normalization(module):normalization_pipeline_expert(subroutine)]]
+    !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
     subroutine normalization_pipeline_expert_c(&
             n_genes,&
             n_replicates,&
@@ -82,7 +154,7 @@ contains
             use_quantile,&
             ierr&
         ) bind(C, name="normalization_pipeline_expert_c")
-        use tox_normalization, only: normalization_pipeline
+        use tox_normalization, only: normalization_pipeline_expert
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
@@ -92,7 +164,7 @@ contains
             !! Number of tissues
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -101,7 +173,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -185,7 +257,7 @@ contains
 
         use_quantile_f = use_quantile
 
-        call normalization_pipeline(&
+        call normalization_pipeline_expert(&
             n_genes = n_genes,&
             n_replicates = n_replicates,&
             expr = expr,&
@@ -214,79 +286,60 @@ contains
         )
     end subroutine normalization_pipeline_expert_c
 
-    !> summary: C-wrapper for [[tox_normalization(module):normalization_pipeline_alloc(subroutine)]]
-    !| Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
-    subroutine normalization_pipeline_c(&
+    !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev(subroutine)]]
+    !| This procedure applies a global stabilization based on the relationship between
+    !| gene-wise mean expression and empirical standard deviation.
+    subroutine normalize_by_std_dev_c(&
             n_genes,&
             n_replicates,&
             expr,&
-            log_transformed_expr,&
-            reps_per_tissue,&
-            n_tissues,&
+            normalized_expr,&
             span,&
             degree,&
-            use_quantile,&
             ierr&
-        ) bind(C, name="normalization_pipeline_c")
-        use tox_normalization, only: normalization_pipeline_alloc
+        ) bind(C, name="normalize_by_std_dev_c")
+        use tox_normalization, only: normalize_by_std_dev
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
             !! Number of replicates per gene
-        integer(c_int), intent(in), target :: n_tissues
-            !! Number of tissues
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
-        real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
-            !! Log-transformed grouped `expr`
-        integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
-            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+            !! Normalized `expr`
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
-        logical(c_bool), intent(in), target :: use_quantile
-            !! Use quantile normalization.
-            !! The default value is `.false.`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: use_quantile_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
         M_CHECK_NON_NULL(n_replicates)
-        M_CHECK_NON_NULL(n_tissues)
         M_CHECK_NON_NULL(span)
         M_CHECK_NON_NULL(degree)
-        M_CHECK_NON_NULL(use_quantile)
         M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
-        M_CHECK_ARRAY_NON_NULL(log_transformed_expr, n_tissues * n_genes)
-        M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
+        M_CHECK_ARRAY_NON_NULL(normalized_expr, n_replicates * n_genes)
 
-        use_quantile_f = use_quantile
-
-        call normalization_pipeline_alloc(&
+        call normalize_by_std_dev(&
             n_genes = n_genes,&
             n_replicates = n_replicates,&
             expr = expr,&
-            log_transformed_expr = log_transformed_expr,&
-            reps_per_tissue = reps_per_tissue,&
-            n_tissues = n_tissues,&
+            normalized_expr = normalized_expr,&
             span = span,&
             degree = degree,&
-            use_quantile = use_quantile_f,&
             ierr = ierr&
         )
-    end subroutine normalization_pipeline_c
+    end subroutine normalize_by_std_dev_c
 
-    !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev(subroutine)]]
+    !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev_expert(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
     subroutine normalize_by_std_dev_expert_c(&
@@ -313,7 +366,7 @@ contains
             degree,&
             ierr&
         ) bind(C, name="normalize_by_std_dev_expert_c")
-        use tox_normalization, only: normalize_by_std_dev
+        use tox_normalization, only: normalize_by_std_dev_expert
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
@@ -321,7 +374,7 @@ contains
             !! Number of replicates per gene
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -330,7 +383,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -402,7 +455,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_residuals, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n_genes)
 
-        call normalize_by_std_dev(&
+        call normalize_by_std_dev_expert(&
             n_genes = n_genes,&
             n_replicates = n_replicates,&
             expr = expr,&
@@ -427,59 +480,6 @@ contains
             ierr = ierr&
         )
     end subroutine normalize_by_std_dev_expert_c
-
-    !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev_alloc(subroutine)]]
-    !| This procedure applies a global stabilization based on the relationship between
-    !| gene-wise mean expression and empirical standard deviation.
-    subroutine normalize_by_std_dev_c(&
-            n_genes,&
-            n_replicates,&
-            expr,&
-            normalized_expr,&
-            span,&
-            degree,&
-            ierr&
-        ) bind(C, name="normalize_by_std_dev_c")
-        use tox_normalization, only: normalize_by_std_dev_alloc
-
-        integer(c_int), intent(in), target :: n_genes
-            !! Number of genes (rows)
-        integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
-        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
-            !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
-        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
-            !! Normalized `expr`
-        real(c_double), intent(in), target :: span
-            !! LOESS span parameter.
-            !! The default value is `0.7_real64`.
-        integer(c_int), intent(in), target :: degree
-            !! LOESS degree parameter.
-            !! The default value is `2_int32`.
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_replicates)
-        M_CHECK_NON_NULL(span)
-        M_CHECK_NON_NULL(degree)
-        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
-        M_CHECK_ARRAY_NON_NULL(normalized_expr, n_replicates * n_genes)
-
-        call normalize_by_std_dev_alloc(&
-            n_genes = n_genes,&
-            n_replicates = n_replicates,&
-            expr = expr,&
-            normalized_expr = normalized_expr,&
-            span = span,&
-            degree = degree,&
-            ierr = ierr&
-        )
-    end subroutine normalize_by_std_dev_c
 
     !> summary: C-wrapper for [[tox_normalization(module):root_mean_sq_normalization(subroutine)]]
     !| across tissues (not classical standard deviation).
@@ -523,6 +523,51 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization(subroutine)]]
     !| Computes average expression per rank across tissues.
+    subroutine quantile_normalization_c(&
+            n_genes,&
+            n_replicates,&
+            expr,&
+            normalized_expr,&
+            rank_means,&
+            ierr&
+        ) bind(C, name="quantile_normalization_c")
+        use tox_normalization, only: quantile_normalization
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
+            !! Gene Expression matrix
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
+            !! Normalized `expr`
+        real(c_double), dimension(n_genes), intent(out), target :: rank_means
+            !! The mean of each rank across tissues, one per gene
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(normalized_expr, n_replicates * n_genes)
+        M_CHECK_ARRAY_NON_NULL(rank_means, n_genes)
+
+        call quantile_normalization(&
+            n_genes = n_genes,&
+            n_replicates = n_replicates,&
+            expr = expr,&
+            normalized_expr = normalized_expr,&
+            rank_means = rank_means,&
+            ierr = ierr&
+        )
+    end subroutine quantile_normalization_c
+
+    !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization_expert(subroutine)]]
+    !| Computes average expression per rank across tissues.
     subroutine quantile_normalization_expert_c(&
             n_genes,&
             n_replicates,&
@@ -533,7 +578,7 @@ contains
             tmp_perm,&
             ierr&
         ) bind(C, name="quantile_normalization_expert_c")
-        use tox_normalization, only: quantile_normalization
+        use tox_normalization, only: quantile_normalization_expert
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
@@ -564,7 +609,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_genes_row, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_perm, n_genes)
 
-        call quantile_normalization(&
+        call quantile_normalization_expert(&
             n_genes = n_genes,&
             n_replicates = n_replicates,&
             expr = expr,&
@@ -575,51 +620,6 @@ contains
             ierr = ierr&
         )
     end subroutine quantile_normalization_expert_c
-
-    !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization_alloc(subroutine)]]
-    !| Computes average expression per rank across tissues.
-    subroutine quantile_normalization_c(&
-            n_genes,&
-            n_replicates,&
-            expr,&
-            normalized_expr,&
-            rank_means,&
-            ierr&
-        ) bind(C, name="quantile_normalization_c")
-        use tox_normalization, only: quantile_normalization_alloc
-
-        integer(c_int), intent(in), target :: n_genes
-            !! Number of genes (rows)
-        integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
-        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
-            !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
-        real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
-            !! Normalized `expr`
-        real(c_double), dimension(n_genes), intent(out), target :: rank_means
-            !! The mean of each rank across tissues, one per gene
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_replicates)
-        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
-        M_CHECK_ARRAY_NON_NULL(normalized_expr, n_replicates * n_genes)
-        M_CHECK_ARRAY_NON_NULL(rank_means, n_genes)
-
-        call quantile_normalization_alloc(&
-            n_genes = n_genes,&
-            n_replicates = n_replicates,&
-            expr = expr,&
-            normalized_expr = normalized_expr,&
-            rank_means = rank_means,&
-            ierr = ierr&
-        )
-    end subroutine quantile_normalization_c
 
     !> summary: C-wrapper for [[tox_normalization(module):log2_transformation(subroutine)]]
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a

@@ -2,7 +2,7 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_get_outliers(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Generated from the implementation; do not edit -- regenerate instead.
 module tox_get_outliers_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
@@ -11,17 +11,136 @@ module tox_get_outliers_c
     M_IMPLICIT_NONE
     private
 
-    public :: compute_family_scaling_expert_c
     public :: compute_family_scaling_c
-    public :: compute_rdi_expert_c
+    public :: compute_family_scaling_expert_c
     public :: compute_rdi_c
+    public :: compute_rdi_expert_c
     public :: identify_outliers_c
-    public :: detect_outliers_expert_c
     public :: detect_outliers_c
+    public :: detect_outliers_expert_c
 
 contains
 
     !> summary: C-wrapper for [[tox_get_outliers(module):compute_family_scaling(subroutine)]]
+    !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
+    subroutine compute_family_scaling_c(&
+            n_genes,&
+            n_families,&
+            distances,&
+            gene_to_fam,&
+            dscale,&
+            loess_x,&
+            loess_y,&
+            indices_used,&
+            span,&
+            degree,&
+            mode,&
+            n_iters,&
+            low_sd_cutoff,&
+            excluded_low_sd,&
+            ierr&
+        ) bind(C, name="compute_family_scaling_c")
+        use tox_get_outliers, only: compute_family_scaling
+        use tox_loess_impl, only: MODE_PLAIN, MODE_ROBUST
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Total number of genes
+        integer(c_int), intent(in), target :: n_families
+            !! Total number of gene families
+        real(c_double), dimension(n_genes), intent(in), target :: distances
+            !! Array of Euclidean distances for each gene
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
+            !! Mapping of each gene to its family (1-based)
+        real(c_double), dimension(n_families), intent(out), target :: dscale
+            !! Array of scaling factors per family (output)
+        real(c_double), dimension(n_families), intent(out), target :: loess_x
+            !! Reference x-coordinates for LOESS smoothing
+        real(c_double), dimension(n_families), intent(out), target :: loess_y
+            !! Reference y-coordinates for LOESS smoothing
+        integer(c_int), dimension(n_families), intent(out), target :: indices_used
+            !! Indices of reference points used for smoothing
+        real(c_double), intent(in), target :: span
+            !! Span parameter for LOESS smoothing
+            !! The default value is `0.7_real64`.
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        integer(c_int), intent(in), target :: degree
+            !! Degree of the LOESS polynomial
+            !! The default value is `2_int32`.
+        character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
+            !! Mode for LOESS fitting
+            !! The default value is `1_int32`.
+            !!
+            !! | Mode                 | Value                                            |
+            !! |----------------------|--------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+        integer(c_int), intent(in), target :: n_iters
+            !! Number of iterations for robust LOESS fitting
+            !! The default value is `3_int32`.
+        real(c_double), intent(out), target :: low_sd_cutoff
+            !! cutoff used to filter families with low std
+        integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
+            !! Mask to save those families that have low sd
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+        integer(int32) :: mode_mode_f
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_families)
+        M_CHECK_NON_NULL(span)
+        M_CHECK_NON_NULL(degree)
+        M_CHECK_NON_NULL(n_iters)
+        M_CHECK_NON_NULL(low_sd_cutoff)
+        M_CHECK_ARRAY_NON_NULL(distances, n_genes)
+        M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
+        M_CHECK_ARRAY_NON_NULL(dscale, n_families)
+        M_CHECK_ARRAY_NON_NULL(loess_x, n_families)
+        M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
+        M_CHECK_ARRAY_NON_NULL(indices_used, n_families)
+        M_CHECK_ARRAY_NON_NULL(mode, 6)
+        M_CHECK_ARRAY_NON_NULL(excluded_low_sd, n_families)
+
+        block
+            character(len=:), allocatable :: mode_f
+            call c_char_1d_as_string(mode, mode_f, ierr)
+            if (is_err(ierr)) return
+
+            select case (mode_f)
+                case ("plain")
+                    mode_mode_f = MODE_PLAIN
+                case ("robust")
+                    mode_mode_f = MODE_ROBUST
+                case default
+                    call set_err(ierr, ERR_INVALID_INPUT)
+                    return
+            end select
+        end block
+
+        call compute_family_scaling(&
+            n_genes = n_genes,&
+            n_families = n_families,&
+            distances = distances,&
+            gene_to_fam = gene_to_fam,&
+            dscale = dscale,&
+            loess_x = loess_x,&
+            loess_y = loess_y,&
+            indices_used = indices_used,&
+            span = span,&
+            degree = degree,&
+            mode = mode_mode_f,&
+            n_iters = n_iters,&
+            low_sd_cutoff = low_sd_cutoff,&
+            excluded_low_sd = excluded_low_sd,&
+            ierr = ierr&
+        )
+    end subroutine compute_family_scaling_c
+
+    !> summary: C-wrapper for [[tox_get_outliers(module):compute_family_scaling_expert(subroutine)]]
     !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
     subroutine compute_family_scaling_expert_c(&
             n_genes,&
@@ -56,8 +175,8 @@ contains
             tmp_means_aux,&
             ierr&
         ) bind(C, name="compute_family_scaling_expert_c")
-        use tox_get_outliers, only: compute_family_scaling
-        use tox_loess_kernel, only: MODE_PLAIN, MODE_ROBUST
+        use tox_get_outliers, only: compute_family_scaling_expert
+        use tox_loess_impl, only: MODE_PLAIN, MODE_ROBUST
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
@@ -65,7 +184,7 @@ contains
             !! Total number of gene families
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -74,7 +193,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -133,10 +252,10 @@ contains
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
             !!
-            !! | Mode                 | Value                                              |
-            !! |----------------------|----------------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess_kernel(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess_kernel(module):MODE_ROBUST(variable)]] |
+            !! | Mode                 | Value                                            |
+            !! |----------------------|--------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
         integer(c_int), intent(in), target :: n_iters
             !! Number of iterations for robust LOESS fitting
             !! The default value is `3_int32`.
@@ -199,7 +318,7 @@ contains
             end select
         end block
 
-        call compute_family_scaling(&
+        call compute_family_scaling_expert(&
             n_genes = n_genes,&
             n_families = n_families,&
             distances = distances,&
@@ -234,126 +353,68 @@ contains
         )
     end subroutine compute_family_scaling_expert_c
 
-    !> summary: C-wrapper for [[tox_get_outliers(module):compute_family_scaling_alloc(subroutine)]]
-    !| Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
-    subroutine compute_family_scaling_c(&
+    !> summary: C-wrapper for [[tox_get_outliers(module):compute_rdi(subroutine)]]
+    !| RDI = Euclidean distance / family scaling factor
+    subroutine compute_rdi_c(&
             n_genes,&
-            n_families,&
             distances,&
             gene_to_fam,&
             dscale,&
-            loess_x,&
-            loess_y,&
-            indices_used,&
-            span,&
-            degree,&
-            mode,&
-            n_iters,&
-            low_sd_cutoff,&
-            excluded_low_sd,&
+            n_dscale_elements,&
+            rdi,&
+            sorted_rdi,&
+            perm,&
             ierr&
-        ) bind(C, name="compute_family_scaling_c")
-        use tox_get_outliers, only: compute_family_scaling_alloc
-        use tox_loess_kernel, only: MODE_PLAIN, MODE_ROBUST
+        ) bind(C, name="compute_rdi_c")
+        use tox_get_outliers, only: compute_rdi
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
-        integer(c_int), intent(in), target :: n_families
-            !! Total number of gene families
+        integer(c_int), intent(in), target :: n_dscale_elements
+            !! number of elements in `dscale`
         real(c_double), dimension(n_genes), intent(in), target :: distances
-            !! Array of Euclidean distances for each gene
+            !! Array of Euclidean distances for each gene to its centroid
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Mapping of each gene to its family (1-based)
-        real(c_double), dimension(n_families), intent(out), target :: dscale
-            !! Array of scaling factors per family (output)
-        real(c_double), dimension(n_families), intent(out), target :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
-        real(c_double), dimension(n_families), intent(out), target :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
-        integer(c_int), dimension(n_families), intent(out), target :: indices_used
-            !! Indices of reference points used for smoothing
-        real(c_double), intent(in), target :: span
-            !! Span parameter for LOESS smoothing
-            !! The default value is `0.7_real64`.
+            !! Gene-to-family mapping (1-based indexing)
+        real(c_double), dimension(n_dscale_elements), intent(in), target :: dscale
+            !! Array of scaling factors for each family
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
-        integer(c_int), intent(in), target :: degree
-            !! Degree of the LOESS polynomial
-            !! The default value is `2_int32`.
-        character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
-            !! Mode for LOESS fitting
-            !! The default value is `1_int32`.
-            !!
-            !! | Mode                 | Value                                              |
-            !! |----------------------|----------------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess_kernel(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess_kernel(module):MODE_ROBUST(variable)]] |
-        integer(c_int), intent(in), target :: n_iters
-            !! Number of iterations for robust LOESS fitting
-            !! The default value is `3_int32`.
-        real(c_double), intent(out), target :: low_sd_cutoff
-            !! cutoff used to filter families with low std
-        integer(c_int), dimension(n_families), intent(out), target :: excluded_low_sd
-            !! Mask to save those families that have low sd
+        real(c_double), dimension(n_genes), intent(out), target :: rdi
+            !! Output array of RDI values for each gene
+        real(c_double), dimension(n_genes), intent(out), target :: sorted_rdi
+            !! Work array for sorting (dimension n_genes)
+        integer(c_int), dimension(n_genes), intent(out), target :: perm
+            !! Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
         integer(c_int), intent(out), target :: ierr
-            !! Error code
-        integer(int32) :: mode_mode_f
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_families)
-        M_CHECK_NON_NULL(span)
-        M_CHECK_NON_NULL(degree)
-        M_CHECK_NON_NULL(n_iters)
-        M_CHECK_NON_NULL(low_sd_cutoff)
+        M_CHECK_NON_NULL(n_dscale_elements)
         M_CHECK_ARRAY_NON_NULL(distances, n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
-        M_CHECK_ARRAY_NON_NULL(dscale, n_families)
-        M_CHECK_ARRAY_NON_NULL(loess_x, n_families)
-        M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
-        M_CHECK_ARRAY_NON_NULL(indices_used, n_families)
-        M_CHECK_ARRAY_NON_NULL(mode, 6)
-        M_CHECK_ARRAY_NON_NULL(excluded_low_sd, n_families)
+        M_CHECK_ARRAY_NON_NULL(dscale, n_dscale_elements)
+        M_CHECK_ARRAY_NON_NULL(rdi, n_genes)
+        M_CHECK_ARRAY_NON_NULL(sorted_rdi, n_genes)
+        M_CHECK_ARRAY_NON_NULL(perm, n_genes)
 
-        block
-            character(len=:), allocatable :: mode_f
-            call c_char_1d_as_string(mode, mode_f, ierr)
-            if (is_err(ierr)) return
-
-            select case (mode_f)
-                case ("plain")
-                    mode_mode_f = MODE_PLAIN
-                case ("robust")
-                    mode_mode_f = MODE_ROBUST
-                case default
-                    call set_err(ierr, ERR_INVALID_INPUT)
-                    return
-            end select
-        end block
-
-        call compute_family_scaling_alloc(&
+        call compute_rdi(&
             n_genes = n_genes,&
-            n_families = n_families,&
             distances = distances,&
             gene_to_fam = gene_to_fam,&
             dscale = dscale,&
-            loess_x = loess_x,&
-            loess_y = loess_y,&
-            indices_used = indices_used,&
-            span = span,&
-            degree = degree,&
-            mode = mode_mode_f,&
-            n_iters = n_iters,&
-            low_sd_cutoff = low_sd_cutoff,&
-            excluded_low_sd = excluded_low_sd,&
+            rdi = rdi,&
+            sorted_rdi = sorted_rdi,&
+            perm = perm,&
             ierr = ierr&
         )
-    end subroutine compute_family_scaling_c
+    end subroutine compute_rdi_c
 
-    !> summary: C-wrapper for [[tox_get_outliers(module):compute_rdi(subroutine)]]
+    !> summary: C-wrapper for [[tox_get_outliers(module):compute_rdi_expert(subroutine)]]
     !| RDI = Euclidean distance / family scaling factor
     subroutine compute_rdi_expert_c(&
             n_genes,&
@@ -368,7 +429,7 @@ contains
             tmp_stack_right,&
             ierr&
         ) bind(C, name="compute_rdi_expert_c")
-        use tox_get_outliers, only: compute_rdi
+        use tox_get_outliers, only: compute_rdi_expert
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
@@ -410,7 +471,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_stack_left, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_stack_right, n_genes)
 
-        call compute_rdi(&
+        call compute_rdi_expert(&
             n_genes = n_genes,&
             distances = distances,&
             gene_to_fam = gene_to_fam,&
@@ -423,67 +484,6 @@ contains
             ierr = ierr&
         )
     end subroutine compute_rdi_expert_c
-
-    !> summary: C-wrapper for [[tox_get_outliers(module):compute_rdi_alloc(subroutine)]]
-    !| RDI = Euclidean distance / family scaling factor
-    subroutine compute_rdi_c(&
-            n_genes,&
-            distances,&
-            gene_to_fam,&
-            dscale,&
-            n_dscale_elements,&
-            rdi,&
-            sorted_rdi,&
-            perm,&
-            ierr&
-        ) bind(C, name="compute_rdi_c")
-        use tox_get_outliers, only: compute_rdi_alloc
-
-        integer(c_int), intent(in), target :: n_genes
-            !! Total number of genes
-        integer(c_int), intent(in), target :: n_dscale_elements
-            !! number of elements in `dscale`
-        real(c_double), dimension(n_genes), intent(in), target :: distances
-            !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
-        integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
-        real(c_double), dimension(n_dscale_elements), intent(in), target :: dscale
-            !! Array of scaling factors for each family
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
-        real(c_double), dimension(n_genes), intent(out), target :: rdi
-            !! Output array of RDI values for each gene
-        real(c_double), dimension(n_genes), intent(out), target :: sorted_rdi
-            !! Work array for sorting (dimension n_genes)
-        integer(c_int), dimension(n_genes), intent(out), target :: perm
-            !! Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_dscale_elements)
-        M_CHECK_ARRAY_NON_NULL(distances, n_genes)
-        M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
-        M_CHECK_ARRAY_NON_NULL(dscale, n_dscale_elements)
-        M_CHECK_ARRAY_NON_NULL(rdi, n_genes)
-        M_CHECK_ARRAY_NON_NULL(sorted_rdi, n_genes)
-        M_CHECK_ARRAY_NON_NULL(perm, n_genes)
-
-        call compute_rdi_alloc(&
-            n_genes = n_genes,&
-            distances = distances,&
-            gene_to_fam = gene_to_fam,&
-            dscale = dscale,&
-            rdi = rdi,&
-            sorted_rdi = sorted_rdi,&
-            perm = perm,&
-            ierr = ierr&
-        )
-    end subroutine compute_rdi_c
 
     !> summary: C-wrapper for [[tox_get_outliers(module):identify_outliers(subroutine)]]
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
@@ -557,9 +557,89 @@ contains
 
     !> summary: C-wrapper for [[tox_get_outliers(module):detect_outliers(subroutine)]]
     !| Orchestrates the full pipeline: per-family scaling via
-    !| [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
-    !| [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-    !| [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
+    !| [[tox_get_outliers_impl(module):compute_family_scaling_impl(subroutine)]], the RDI per gene via
+    !| [[tox_get_outliers_impl(module):compute_rdi_impl(subroutine)]], then flags outliers via
+    !| [[tox_get_outliers_impl(module):identify_outliers_impl(subroutine)]].
+    subroutine detect_outliers_c(&
+            n_genes,&
+            n_families,&
+            distances,&
+            gene_to_fam,&
+            is_outlier,&
+            loess_x,&
+            loess_y,&
+            loess_n,&
+            quantile,&
+            ierr,&
+            percentile&
+        ) bind(C, name="detect_outliers_c")
+        use tox_get_outliers, only: detect_outliers
+
+        integer(c_int), intent(in), target :: n_genes
+            !! Total number of genes
+        integer(c_int), intent(in), target :: n_families
+            !! Total number of gene families
+        real(c_double), dimension(n_genes), intent(in), target :: distances
+            !! Array of Euclidean distances for each gene to its centroid
+            !! NaN is permitted for this value.
+            !! Infinite values are permitted for this value.
+        integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
+            !! Gene-to-family mapping (1-based indexing)
+        logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
+            !! Output boolean array indicating outliers
+        real(c_double), dimension(n_families), intent(out), target :: loess_x
+            !! Reference x-coordinates.
+        real(c_double), dimension(n_families), intent(out), target :: loess_y
+            !! Reference y-coordinates (length n_total).
+        integer(c_int), dimension(n_families), intent(out), target :: loess_n
+            !! Indices of reference points used for smoothing.
+        real(c_double), dimension(n_genes), intent(out), target :: quantile
+            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+            !! upper-tail quantile is used.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+        real(c_double), intent(in), target :: percentile
+            !! Percentile threshold for outlier detection.
+            !! The default value is `95.0_real64`.
+        logical, dimension(n_genes) :: is_outlier_f
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_families)
+        M_CHECK_NON_NULL(percentile)
+        M_CHECK_ARRAY_NON_NULL(distances, n_genes)
+        M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
+        M_CHECK_ARRAY_NON_NULL(is_outlier, n_genes)
+        M_CHECK_ARRAY_NON_NULL(loess_x, n_families)
+        M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
+        M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
+        M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
+
+        call detect_outliers(&
+            n_genes = n_genes,&
+            n_families = n_families,&
+            distances = distances,&
+            gene_to_fam = gene_to_fam,&
+            is_outlier = is_outlier_f,&
+            loess_x = loess_x,&
+            loess_y = loess_y,&
+            loess_n = loess_n,&
+            quantile = quantile,&
+            ierr = ierr,&
+            percentile = percentile&
+        )
+
+        is_outlier = is_outlier_f
+    end subroutine detect_outliers_c
+
+    !> summary: C-wrapper for [[tox_get_outliers(module):detect_outliers_expert(subroutine)]]
+    !| Orchestrates the full pipeline: per-family scaling via
+    !| [[tox_get_outliers_impl(module):compute_family_scaling_impl(subroutine)]], the RDI per gene via
+    !| [[tox_get_outliers_impl(module):compute_rdi_impl(subroutine)]], then flags outliers via
+    !| [[tox_get_outliers_impl(module):identify_outliers_impl(subroutine)]].
     subroutine detect_outliers_expert_c(&
             n_genes,&
             n_families,&
@@ -595,7 +675,7 @@ contains
             ierr,&
             percentile&
         ) bind(C, name="detect_outliers_expert_c")
-        use tox_get_outliers, only: detect_outliers
+        use tox_get_outliers, only: detect_outliers_expert
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
@@ -603,7 +683,7 @@ contains
             !! Total number of gene families
         integer(c_int), intent(in), target :: int_workspace_size
             !! Length of integer workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -612,7 +692,7 @@ contains
             !! | save_factorization    | .false.     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Length of real workspace.
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !!
             !! | Producer input        | Supplied by |
             !! |-----------------------|-------------|
@@ -720,7 +800,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
-        call detect_outliers(&
+        call detect_outliers_expert(&
             n_genes = n_genes,&
             n_families = n_families,&
             distances = distances,&
@@ -758,86 +838,6 @@ contains
 
         is_outlier = is_outlier_f
     end subroutine detect_outliers_expert_c
-
-    !> summary: C-wrapper for [[tox_get_outliers(module):detect_outliers_alloc(subroutine)]]
-    !| Orchestrates the full pipeline: per-family scaling via
-    !| [[tox_get_outliers_kernel(module):compute_family_scaling_kernel(subroutine)]], the RDI per gene via
-    !| [[tox_get_outliers_kernel(module):compute_rdi_kernel(subroutine)]], then flags outliers via
-    !| [[tox_get_outliers_kernel(module):identify_outliers_kernel(subroutine)]].
-    subroutine detect_outliers_c(&
-            n_genes,&
-            n_families,&
-            distances,&
-            gene_to_fam,&
-            is_outlier,&
-            loess_x,&
-            loess_y,&
-            loess_n,&
-            quantile,&
-            ierr,&
-            percentile&
-        ) bind(C, name="detect_outliers_c")
-        use tox_get_outliers, only: detect_outliers_alloc
-
-        integer(c_int), intent(in), target :: n_genes
-            !! Total number of genes
-        integer(c_int), intent(in), target :: n_families
-            !! Total number of gene families
-        real(c_double), dimension(n_genes), intent(in), target :: distances
-            !! Array of Euclidean distances for each gene to its centroid
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
-        integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
-        logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
-            !! Output boolean array indicating outliers
-        real(c_double), dimension(n_families), intent(out), target :: loess_x
-            !! Reference x-coordinates.
-        real(c_double), dimension(n_families), intent(out), target :: loess_y
-            !! Reference y-coordinates (length n_total).
-        integer(c_int), dimension(n_families), intent(out), target :: loess_n
-            !! Indices of reference points used for smoothing.
-        real(c_double), dimension(n_genes), intent(out), target :: quantile
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
-            !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
-            !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
-        real(c_double), intent(in), target :: percentile
-            !! Percentile threshold for outlier detection.
-            !! The default value is `95.0_real64`.
-        logical, dimension(n_genes) :: is_outlier_f
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_genes)
-        M_CHECK_NON_NULL(n_families)
-        M_CHECK_NON_NULL(percentile)
-        M_CHECK_ARRAY_NON_NULL(distances, n_genes)
-        M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
-        M_CHECK_ARRAY_NON_NULL(is_outlier, n_genes)
-        M_CHECK_ARRAY_NON_NULL(loess_x, n_families)
-        M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
-        M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
-        M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
-
-        call detect_outliers_alloc(&
-            n_genes = n_genes,&
-            n_families = n_families,&
-            distances = distances,&
-            gene_to_fam = gene_to_fam,&
-            is_outlier = is_outlier_f,&
-            loess_x = loess_x,&
-            loess_y = loess_y,&
-            loess_n = loess_n,&
-            quantile = quantile,&
-            ierr = ierr,&
-            percentile = percentile&
-        )
-
-        is_outlier = is_outlier_f
-    end subroutine detect_outliers_c
 
 end module tox_get_outliers_c
 #endif
