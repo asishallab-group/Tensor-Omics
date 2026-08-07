@@ -12,10 +12,12 @@
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
-#' @param span a numeric scalar. Span parameter for LOESS smoothing
+#' @param span a numeric scalar. Span parameter for LOESS smoothing, passed straight to
+#'   \code{\link{loess_fit_plain}}, so it is held to that
+#'   procedure's own range rather than to the NaN tolerance the distance data carries.
 #'   The default value is `0.7`.
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
 #'   The default value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting

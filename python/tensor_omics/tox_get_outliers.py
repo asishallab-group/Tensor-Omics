@@ -117,10 +117,12 @@ def compute_family_scaling(
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Mapping of each gene to its family (1-based)
     span : float, optional, default 0.7
-        Span parameter for LOESS smoothing
+        Span parameter for LOESS smoothing, passed straight to
+        :func:`tensor_omics.loess_fit_plain`, so it is held to that
+        procedure's own range rather than to the NaN tolerance the distance data carries.
         The default value is `0.7`.
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
+        The minimum valid value is `EPS_LOESS`.
+        The maximum valid value is `1.0`.
     degree : int, optional, default 2
         Degree of the LOESS polynomial
         The default value is `2`.

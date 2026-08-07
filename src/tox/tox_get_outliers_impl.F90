@@ -108,10 +108,12 @@ contains
             !! Output array for LOESS predictions
 
         real(real64), intent(in), optional     :: span
-            !! Span parameter for LOESS smoothing
+            !! Span parameter for LOESS smoothing, passed straight to
+            !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
+            !! procedure's own range rather than to the NaN tolerance the distance data carries.
             !! DM_DEFAULT(CM_FAMILY_SPAN_DEFAULT)
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
+            !! DM_MIN(EPS_LOESS)
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in), optional   :: degree
             !! Degree of the LOESS polynomial
             !! DM_DEFAULT(CM_FAMILY_DEGREE_DEFAULT)

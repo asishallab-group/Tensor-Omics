@@ -62,10 +62,12 @@ contains
         integer(c_int), dimension(n_families), intent(out), target :: indices_used
             !! Indices of reference points used for smoothing
         real(c_double), intent(in), target :: span
-            !! Span parameter for LOESS smoothing
+            !! Span parameter for LOESS smoothing, passed straight to
+            !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
+            !! procedure's own range rather than to the NaN tolerance the distance data carries.
             !! The default value is `0.7_real64`.
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
@@ -241,10 +243,12 @@ contains
         real(c_double), dimension(n_families), intent(out), target :: tmp_fitted_values
             !! Output array for LOESS predictions
         real(c_double), intent(in), target :: span
-            !! Span parameter for LOESS smoothing
+            !! Span parameter for LOESS smoothing, passed straight to
+            !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
+            !! procedure's own range rather than to the NaN tolerance the distance data carries.
             !! The default value is `0.7_real64`.
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
