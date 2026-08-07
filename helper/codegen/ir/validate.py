@@ -57,6 +57,7 @@ def validate_impl_module(module: Module, diagnostics: DiagnosticBag,
     reserved suffix for the entire source tree.
     """
     _check_module_is_named_for_its_file(module, diagnostics)
+    _check_impl_imports(module, diagnostics, conventions)
     for procedure in module.procedures:
         _check_impl_allocates(procedure, diagnostics)
         if not procedure.name.lower().endswith(conventions.impl_suffix):
@@ -97,16 +98,24 @@ def _check_impl_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> N
     meant to be able to avoid it -- the expert tier exists precisely so a caller can hand in
     reused buffers -- and it hides `ERR_ALLOC_FAIL` behind a name that promises no
     allocation. The rule covers every procedure in the module, not only the implementations:
-    one that allocates nothing itself but calls a helper that does is no better off.
+    one that allocates nothing itself but calls a helper that does is no better off. It holds
+    across modules too, which is `_check_impl_imports`' doing: nothing else could see it.
+
+    A local and an `allocatable` dummy count alike. The dummy is the subtler of the two --
+    it looks like the caller's memory, and the caller does receive it, but whoever fills it
+    is the one who allocated it, and a `tmp_` argument already expresses that without an
+    allocatable in the signature (which the C layer could not carry anyway).
 
     What to do instead: declare the buffer as a `tmp_` dummy. It disappears from the
     allocating wrapper's signature and is allocated there, which is the whole convention.
     Where its size is not an expression over the other arguments, `DM_OUTPUT_FROM(..., AUTO)`
     names the routine that computes it.
     """
-    if not procedure.allocatable_locals:
+    dummies = [a.name for a in procedure.arguments if "allocatable" in a.attributes]
+    offenders = list(procedure.allocatable_locals) + dummies
+    if not offenders:
         return
-    names = ", ".join(f"'{name}'" for name in procedure.allocatable_locals)
+    names = ", ".join(f"'{name}'" for name in offenders)
     diagnostics.error(
         f"'{procedure.name}' allocates: {names}",
         entity=procedure,
@@ -116,6 +125,46 @@ def _check_impl_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> N
             "'DM_OUTPUT_FROM(..., AUTO)' where no expression over the arguments will do"
         ),
     )
+
+
+def _check_impl_imports(module: Module, diagnostics: DiagnosticBag,
+                        conventions: Conventions) -> None:
+    """An implementation reaches only other implementations and the listed infrastructure.
+
+    This is what makes `_check_impl_allocates` mean anything beyond one file. That check
+    reads declarations, so it sees a procedure allocating for itself and nothing else; an
+    implementation calling a helper in some other module that allocates would pass it. Bound
+    the imports and the property becomes checkable: another `_impl` module is held to the
+    same rule, and `Conventions.impl_import_whitelist` is the curated rest.
+
+    It fixes the direction too. Nothing else stops an implementation from `use`ing a
+    *generated* wrapper -- a layering inversion, and within one family a module cycle that
+    surfaces as a build error with no hint of what caused it.
+
+    Procedure-level imports count. Fortran lets a `use` sit inside a procedure, and a rule
+    about what a module may reach that only reads the module header is one indentation level
+    away from being bypassed.
+    """
+    allowed = {name.lower() for name in conventions.impl_import_whitelist}
+    suffix = conventions.impl_suffix
+    for entity, used_by in [(module, module.uses)] + [
+        (procedure, procedure.uses) for procedure in module.procedures
+    ]:
+        for used in used_by:
+            lowered = used.lower()
+            if lowered in allowed or lowered.endswith(suffix):
+                continue
+            diagnostics.error(
+                f"implementation module uses '{used}'",
+                entity=entity,
+                note=(
+                    "an implementation may use another implementation module or one of "
+                    f"{', '.join(repr(n) for n in conventions.impl_import_whitelist)} -- "
+                    "that bound is what keeps it allocation-free and keeps it from reaching "
+                    "a generated wrapper. Add it to 'impl_import_whitelist' if it really is "
+                    "infrastructure, or take what you need as an argument"
+                ),
+            )
 
 
 def _check_impl_is_not_exported(procedure: Procedure, diagnostics: DiagnosticBag,

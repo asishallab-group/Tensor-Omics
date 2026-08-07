@@ -463,6 +463,79 @@ class TestImplModules:
 
         assert bag.errors == ()
 
+    def test_an_impl_that_allocates_a_dummy_is_rejected(self, bag):
+        # an allocatable dummy looks like the caller's memory, but whoever fills it is the
+        # one who allocated it -- and a `tmp_` argument says so without an allocatable
+        module = self.impl_module(
+            b.procedure(
+                "thing_impl",
+                b.real("out", Intent.OUT, "(:)", attributes=("allocatable",)),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert "'thing_impl' allocates: 'out'" in messages(bag)
+
+    def test_an_impl_may_use_another_impl_module(self, bag):
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", uses=("tox_other_impl",)
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_impl_may_use_a_whitelisted_module(self, bag):
+        module = b.module(
+            "tox_thing_impl",
+            doc="an implementation module",
+            uses=("iso_fortran_env", "tox_errors", "f42_utils"),
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_impl_using_anything_else_is_rejected(self, bag):
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", uses=("tox_data_archive",)
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation module uses 'tox_data_archive'" == error.message
+        assert "impl_import_whitelist" in error.note
+
+    def test_a_generated_wrapper_is_not_reachable_either(self, bag):
+        # `tox_other` uses `tox_other_impl`, so an implementation reaching back for it
+        # inverts the layering -- and within one family it is a module cycle
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", uses=("tox_other",)
+        )
+
+        validate_module(module, bag)
+
+        assert "implementation module uses 'tox_other'" in messages(bag)
+
+    def test_a_procedure_level_use_is_held_to_the_same_rule(self, bag):
+        # Fortran lets a `use` sit inside a procedure; reading only the module header would
+        # put the whole rule one indentation level away from being bypassed
+        module = self.impl_module(
+            b.procedure(
+                "thing_impl",
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+                uses=("tox_data_archive",),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert "implementation module uses 'tox_data_archive'" in messages(bag)
+
     def test_a_impl_that_allocates_is_rejected(self, bag):
         module = self.impl_module(
             b.procedure(

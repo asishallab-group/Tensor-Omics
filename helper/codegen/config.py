@@ -54,6 +54,32 @@ class Conventions:
     #: module `tox_loess` -- and, where it has work arrays to take over, into the pair
     #: `loess_fit` (which allocates) and `loess_fit_expert` (which does not).
     impl_suffix: str = "_impl"
+    #: What an implementation module may `use` besides other `_impl` modules. Everything else
+    #: is refused, and that is what makes the allocation rule hold *across* modules rather
+    #: than only within one: an implementation that allocates nothing itself but calls a
+    #: helper elsewhere that does is no better off, and only the import list can see it. It
+    #: also fixes the direction of the dependency -- an implementation can no longer reach a
+    #: generated wrapper, which would invert the layering and, within one family, be a cycle.
+    #:
+    #: A curated boundary rather than a proof: `f42_utils` re-exports `f42_stats`, whose
+    #: hand-written `_alloc` halves still allocate. That is the one member which is not
+    #: allocation-free, and it stops being an exception when f42 is converted to `_impl`.
+    #:
+    #: The intrinsic modules sit here too rather than in a category of their own, so a future
+    #: module re-exporting them is one more entry instead of a second rule.
+    impl_import_whitelist: tuple[str, ...] = (
+        "iso_fortran_env",
+        "iso_c_binding",
+        "ieee_arithmetic",
+        "ieee_exceptions",
+        "ieee_features",
+        "omp_lib",
+        "tox_errors",
+        "tox_conversions",
+        "f42_config",
+        "f42_safeguard",
+        "f42_utils",
+    )
     #: Suffix marking a permutation vector. In the allocating wrapper a `<base>_perm`
     #: argument is seeded with `init_perm` and heapsorted against `<base>`.
     perm_suffix: str = "_perm"

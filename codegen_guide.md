@@ -336,7 +336,8 @@ with your `summary:` as the docstring, your argument docs as the parameter docs,
 | **No `ierr` for validation** | validation is the wrapper's job; see §5.14 for the one case where an implementation keeps an `ierr` |
 | **No `M_EXPORT_C` on the implementation** | the generated wrapper is what the bindings call; exporting the implementation beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of §5.9 — *are* exported: they have no wrapper |
 | **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which the export path republishes as `foo` (§6.5) and collides with the real `foo` beside it. Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (§5.7) |
-| **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
+| **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local *or a dummy* declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
+| **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`, `f42_utils`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header |
 
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
@@ -914,8 +915,9 @@ export it directly" is how an unvalidated API gets shipped.
 
 One name is not yours on this path either: **`_impl` is reserved across the whole of `src/`.** A
 module named for it acquires generated wrappers wherever it sits, and every procedure in it is
-held to §4 — it may allocate nothing, its `_impl` procedures may not be exported, and it must live
-in a file named after it. Nothing hand-written and exported may carry the suffix.
+held to §4 — it may allocate nothing, it may `use` only implementations and the whitelisted
+infrastructure, its `_impl` procedures may not be exported, and it must live in a file named
+after it. Nothing hand-written and exported may carry the suffix.
 
 ### 6.2 What you write: `M_EXPORT_C`
 
@@ -1129,7 +1131,8 @@ source and carries a note saying what to write instead.
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (§4) |
 | an implementation module in a file not named after it | generation reads the module name while the cleaner and the Ford exclusion read file names — the two would name different files, and the generator would parse its own output next run (§4) |
 | an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` the export path republishes as `foo` (§6.5), the second a second procedure called `foo_expert` (§4) |
-| an `allocatable` local anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (§4, §5.7) |
+| an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (§4, §5.7) |
+| a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (§4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
 | a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
 | a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (§5.13) |

@@ -160,6 +160,7 @@ class Procedure(Entity):
         location: SourceLocation = SourceLocation(),
         conventions: Conventions = CONVENTIONS,
         allocatable_locals: Sequence[str] = (),
+        uses: Sequence[str] = (),
     ):
         self.name = name
         self.arguments = tuple(arguments)
@@ -169,6 +170,11 @@ class Procedure(Entity):
         self.meta = meta
         self.location = location
         self.conventions = conventions
+        #: the modules this procedure `use`s in its own body, which Fortran allows beside the
+        #: module's own imports. Kept separately because a rule about what a module may reach
+        #: is otherwise trivially sidestepped by moving the `use` one scope down
+        #: (`validate._check_impl_imports`).
+        self.uses = tuple(uses)
         #: names of the local variables declared `allocatable`. The body itself is never
         #: read, so this is how the generator sees that a procedure allocates: `M_ALLOCATE`
         #: needs an allocatable to allocate into, and an implementation may not have one

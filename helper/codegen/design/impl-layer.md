@@ -149,6 +149,53 @@ Two consequences follow, and both are enforced:
 says. The suffix cannot be forgotten, because it is part of every call to the thing; a marker
 can.
 
+---
+
+## What an implementation may reach
+
+An implementation may `use` another `_impl` module, or one of a whitelist held in
+`Conventions.impl_import_whitelist`: the intrinsic modules, `tox_errors`, `tox_conversions`,
+`f42_config`, `f42_safeguard`, `f42_utils`. Anything else is refused
+(`validate._check_impl_imports`).
+
+The rule exists because **it is what makes the allocation rule mean anything beyond one
+file.** `_check_impl_allocates` reads declarations — it sees a procedure that allocates for
+itself, and nothing else. An implementation that allocates nothing but calls a helper in some
+other module that does would pass it, and the guarantee an expert caller relies on (that
+handing in buffers really avoids the allocation) would quietly not hold. Bounding the imports
+is the only place that can be seen: another `_impl` module is held to the same rule, and the
+whitelist is a curated rest.
+
+It also fixes the **direction** of the dependency, which nothing else did. An implementation
+could `use` a *generated* wrapper — a layering inversion, since the wrapper is generated from
+implementations, and within one family a module cycle that surfaces as a build error naming
+neither the cause nor the rule it broke.
+
+**A procedure-level `use` counts.** Fortran allows one inside a procedure as well as in the
+module header, and a rule that reads only the header would be one indentation level away from
+being bypassed. `Procedure.uses` exists for this; the frontend fills it from the same Ford
+attribute it already read for modules.
+
+**It is a curated boundary, not a proof.** `f42_utils` re-exports `f42_stats`, whose
+hand-written `_alloc` halves allocate; the other four children (`f42_sort`, `f42_math`,
+`f42_random`, `f42_vector`) allocate nothing at all. Whitelisting only those four was
+considered and rejected: implementations really do call `calc_percentile`,
+`calc_percentile_helper` and `compute_scaled_distance_quantile`, all of which live in
+`f42_stats`. So the entry stands, and it stops being an exception when f42 is converted to
+`_impl` — at which point its allocating halves are generated rather than written.
+
+**Rejected — having the generator verify each whitelisted module is allocation-free.** It
+would turn the list from an assertion into a claim the build tests, which is the better shape.
+It would also fail on `f42_stats` from the first run, so it would ship as a standing warning
+about work that is already scheduled. Worth revisiting after the f42 conversion, when it would
+pass and would then keep the list honest.
+
+**An `allocatable` dummy is an allocation too**, and is refused with the locals. It looks like
+the caller's memory — and the caller does receive it — but whoever fills it is the one who
+allocated it, and the expert tier's promise is broken just the same. A `tmp_` argument
+expresses the same intent without an allocatable in the signature, which the C layer could not
+carry across the ABI in any case.
+
 **Rejected — a "layer" in the output path** (`src/<layer>/**` → `src/generated/<layer>/`,
 naming `tox` and `f42` as the layers). It is the same mirror for every file that exists today
 and reads as more intentional. But mirroring the *whole* relative path is total: it has an

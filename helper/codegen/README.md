@@ -357,9 +357,22 @@ dropping the fixed directory they used to be scoped to:
   from the wrong one: wrong code that compiles, because `foo_impl` exists. `foo_alloc_impl`
   yields `foo_alloc`, which `stripped_name` then publishes to Python and R as `foo`, colliding
   with a real `foo` in the same family
-- an **`allocatable` local** in any procedure of the module, implementations and helpers alike
-  — the generated wrapper owns the memory. Seen through the declaration, since no body is ever
-  read; a `pointer` local aliases and is fine
+- an **`allocatable` local or dummy** in any procedure of the module, implementations and
+  helpers alike — the generated wrapper owns the memory. Seen through the declaration, since no
+  body is ever read; a `pointer` local aliases and is fine. The dummy is the subtler half: it
+  looks like the caller's memory, but whoever fills it allocated it
+- a **`use` naming anything but another `_impl` module or a member of
+  `Conventions.impl_import_whitelist`**. This is what gives the rule above any reach beyond one
+  file: the allocation check reads declarations, so an implementation calling a helper
+  *elsewhere* that allocates would pass it, and only the import list can see that. It also
+  keeps an implementation from reaching a generated wrapper — a layering inversion, and a
+  module cycle within one family. A `use` inside a procedure counts the same as one in the
+  module header (`Procedure.uses`), or the rule would sit one indentation level from being
+  bypassed.
+
+  The list is a curated boundary rather than a proof: `f42_utils` re-exports `f42_stats`, whose
+  hand-written `_alloc` halves still allocate. It is the one member that is not itself
+  allocation-free, and it stops being an exception when f42 converts to `_impl`
 
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 

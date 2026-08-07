@@ -193,20 +193,23 @@ class FordFrontend:
             doc=doc,
             meta=self._meta(ford_module),
             location=location,
-            uses=self._module_uses(ford_module),
+            uses=self._uses_of(ford_module),
         )
 
     @staticmethod
-    def _module_uses(ford_module) -> list[str]:
-        """The names of the modules a module `use`s.
+    def _uses_of(entity) -> list[str]:
+        """The names of the modules `entity` -- a module or a procedure -- `use`s.
 
         Ford turns `uses` into a set once it has correlated the project, holding the module
         object where it resolved one and the bare name where it did not (the intrinsic
         modules, anything outside the source tree). Sorted, so a re-export module generated
         from these comes out the same on every run.
+
+        A procedure carries its own list: Fortran lets a `use` sit inside a procedure as well
+        as at module level, and a rule about what a module may reach has to see both.
         """
         return sorted(
-            getattr(used, "name", used) for used in getattr(ford_module, "uses", ()) or ()
+            getattr(used, "name", used) for used in getattr(entity, "uses", ()) or ()
         )
 
     @staticmethod
@@ -256,6 +259,7 @@ class FordFrontend:
             location=location,
             conventions=self.conventions,
             allocatable_locals=self._allocatable_locals(ford_procedure),
+            uses=self._uses_of(ford_procedure),
         )
 
     @staticmethod
