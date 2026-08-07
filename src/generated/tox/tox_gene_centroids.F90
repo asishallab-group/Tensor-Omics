@@ -19,7 +19,7 @@ module tox_gene_centroids
 contains
 
     !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):mean_vector_impl]].
-    subroutine mean_vector(&
+    pure subroutine mean_vector(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -68,7 +68,7 @@ contains
     end subroutine mean_vector
 
     !> summary: Validates its inputs, prepares what [[tox_gene_centroids_impl(module):group_centroid_impl]] needs, then calls it. The entry point to reach for first; see [[tox_gene_centroids(module):group_centroid_orthologs_expert]] to prepare it yourself.
-    subroutine group_centroid_orthologs(&
+    pure subroutine group_centroid_orthologs(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -125,7 +125,7 @@ contains
     end subroutine group_centroid_orthologs
 
     !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):group_centroid_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_gene_centroids(module):group_centroid_orthologs]] does both.
-    subroutine group_centroid_orthologs_expert(&
+    pure subroutine group_centroid_orthologs_expert(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -182,7 +182,7 @@ contains
     end subroutine group_centroid_orthologs_expert
 
     !> summary: Validates its inputs, prepares what [[tox_gene_centroids_impl(module):group_centroid_impl]] needs, then calls it. The entry point to reach for first; see [[tox_gene_centroids(module):group_centroid_all_expert]] to prepare it yourself.
-    subroutine group_centroid_all(&
+    pure subroutine group_centroid_all(&
             expression_vectors,&
             n_axes,&
             n_genes,&
@@ -235,7 +235,7 @@ contains
     end subroutine group_centroid_all
 
     !> summary: Validates its inputs, then calls [[tox_gene_centroids_impl(module):group_centroid_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_gene_centroids(module):group_centroid_all]] does both.
-    subroutine group_centroid_all_expert(&
+    pure subroutine group_centroid_all_expert(&
             expression_vectors,&
             n_axes,&
             n_genes,&

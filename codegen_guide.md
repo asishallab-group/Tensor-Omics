@@ -171,6 +171,13 @@ each is addressed at a different caller.
 | `foo` | almost everyone | validates, calls the recommend routines, allocates the work arrays, seeds and heapsorts the permutations, runs the prologue, then calls `foo_impl` |
 | `foo_expert` | a caller who wants control over what reaches the implementation | validates and calls `foo_impl` with what you supply. Allocates nothing, prepares nothing |
 
+A wrapper is **`pure` exactly when everything it calls is** — the implementation, the
+`DM_OUTPUT_FROM` producers and the prologue. `tox_errors`' validators and `f42_sort`'s
+`init_perm` / `sort_array_heapsort` already are, and `allocate(..., stat=)` is permitted in a
+pure procedure, so the allocating tier is no less eligible than the expert one. You declare
+nothing: write `pure` on the implementation and the wrapper follows. That is what lets a
+caller reach a validated entry point from `do concurrent` instead of reaching past it.
+
 **The plain name always goes to the entry point a caller should reach for first**, and it is the
 same name in Fortran, C, Python and R: nothing is renamed on the way out, and the Fortran source
 and the published API can be grepped for with one string.

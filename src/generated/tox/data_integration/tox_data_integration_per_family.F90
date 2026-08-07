@@ -22,7 +22,7 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_data_integration_per_family_impl(module):fjct_compute_jsd_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_per_family(module):fjct_compute_jsd_expert]] to prepare it yourself.
     !| Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
     !| the residual samples to the genes belonging to the family `family_idx`.
-    subroutine fjct_compute_jsd(&
+    pure subroutine fjct_compute_jsd(&
             family_idx,&
             gene_to_family_S1,&
             gene_to_family_S2,&
@@ -164,7 +164,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_data_integration_per_family_impl(module):fjct_compute_jsd_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_per_family(module):fjct_compute_jsd]] does both.
     !| Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
     !| the residual samples to the genes belonging to the family `family_idx`.
-    subroutine fjct_compute_jsd_expert(&
+    pure subroutine fjct_compute_jsd_expert(&
             family_idx,&
             gene_to_family_S1,&
             gene_to_family_S2,&
@@ -313,7 +313,7 @@ contains
     !| residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2`. Typically
     !| those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
     !| the masks for from a family index.
-    subroutine fjct_compute_masked_jsd(&
+    pure subroutine fjct_compute_masked_jsd(&
             neighborhood_residuals_S1,&
             neighborhood_residuals_S2,&
             n_reps_S1,&
@@ -420,7 +420,7 @@ contains
     !| residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2`. Typically
     !| those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
     !| the masks for from a family index.
-    subroutine fjct_compute_masked_jsd_expert(&
+    pure subroutine fjct_compute_masked_jsd_expert(&
             neighborhood_residuals_S1,&
             neighborhood_residuals_S2,&
             n_reps_S1,&
@@ -529,7 +529,7 @@ contains
     !| 2. how much residual support the family has overall (`total_included_n_reps_per_f`),
     !|
     !| using the outputs of `fjct_compute_jsd`, collected for the analyzed sub-neighborhoods.
-    subroutine fjct_compute_contribution_scores(&
+    pure subroutine fjct_compute_contribution_scores(&
             global_js_divergences,&
             total_included_n_reps_per_f,&
             k_families,&

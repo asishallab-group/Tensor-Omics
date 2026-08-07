@@ -348,7 +348,7 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_get_outliers_impl(module):compute_rdi_impl]] needs, then calls it. The entry point to reach for first; see [[tox_get_outliers(module):compute_rdi_expert]] to prepare it yourself.
     !| RDI = Euclidean distance / family scaling factor
-    subroutine compute_rdi(&
+    pure subroutine compute_rdi(&
             n_genes,&
             distances,&
             gene_to_fam,&
@@ -405,7 +405,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_get_outliers_impl(module):compute_rdi_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_get_outliers(module):compute_rdi]] does both.
     !| RDI = Euclidean distance / family scaling factor
-    subroutine compute_rdi_expert(&
+    pure subroutine compute_rdi_expert(&
             n_genes,&
             distances,&
             gene_to_fam,&
@@ -464,7 +464,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_get_outliers_impl(module):identify_outliers_impl]].
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
-    subroutine identify_outliers(&
+    pure subroutine identify_outliers(&
             n_genes,&
             rdi,&
             sorted_rdi,&

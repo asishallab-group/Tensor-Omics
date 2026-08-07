@@ -218,7 +218,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_p_values_impl]].
     !| Given the permutation tests ([[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(subroutine)]]),
     !| this counts how many of the permutation contributions were at least as high as the real ones.
-    subroutine compute_p_values(&
+    pure subroutine compute_p_values(&
             local_contributions_observed,&
             total_contribution_observed,&
             local_contributions_perm_test,&
@@ -272,7 +272,7 @@ contains
     end subroutine compute_p_values
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_contributions_impl]].
-    subroutine compute_contributions(&
+    pure subroutine compute_contributions(&
             factor,&
             dependent,&
             n_dims,&
@@ -322,7 +322,7 @@ contains
     end subroutine compute_contributions
 
     !> summary: Validates its inputs, prepares what [[tox_trajectory_contribution_analysis_impl(module):compute_all_contributions_impl]] needs, then calls it. The entry point to reach for first; see [[tox_trajectory_contribution_analysis(module):compute_all_contributions_expert]] to prepare it yourself.
-    subroutine compute_all_contributions(&
+    pure subroutine compute_all_contributions(&
             trajectories,&
             n_factors,&
             n_samples,&
@@ -408,7 +408,7 @@ contains
     end subroutine compute_all_contributions
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_all_contributions_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_trajectory_contribution_analysis(module):compute_all_contributions]] does both.
-    subroutine compute_all_contributions_expert(&
+    pure subroutine compute_all_contributions_expert(&
             trajectories,&
             n_factors,&
             n_samples,&
@@ -495,7 +495,7 @@ contains
     end subroutine compute_all_contributions_expert
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_baselines_factor_dependent_impl]].
-    subroutine compute_baselines_factor_dependent(&
+    pure subroutine compute_baselines_factor_dependent(&
             n_timepoints,&
             factor,&
             dependent,&
@@ -545,7 +545,7 @@ contains
     end subroutine compute_baselines_factor_dependent
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_velocity_trajectory_impl]].
-    subroutine compute_velocity_trajectory(&
+    pure subroutine compute_velocity_trajectory(&
             trajectory,&
             velocity,&
             n_timepoints,&
@@ -575,7 +575,7 @@ contains
     end subroutine compute_velocity_trajectory
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_acceleration_from_velocity_trajectory_impl]].
-    subroutine compute_acceleration_from_velocity_trajectory(&
+    pure subroutine compute_acceleration_from_velocity_trajectory(&
             velocity,&
             acceleration,&
             n_timepoints,&
@@ -604,7 +604,7 @@ contains
     end subroutine compute_acceleration_from_velocity_trajectory
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_velocity_trajectories_impl]].
-    subroutine compute_velocity_trajectories(&
+    pure subroutine compute_velocity_trajectories(&
             trajectories,&
             velocity,&
             n_factors,&
@@ -644,7 +644,7 @@ contains
     end subroutine compute_velocity_trajectories
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_contribution_analysis_impl(module):compute_acceleration_from_velocity_impl]].
-    subroutine compute_acceleration_from_velocity(&
+    pure subroutine compute_acceleration_from_velocity(&
             velocity,&
             acceleration,&
             n_factors,&
@@ -695,7 +695,7 @@ contains
     !| This keeps slices like `velocity(:, factor, sample)` contiguous,
     !| avoids expensive tmporaries, and improves cache efficiency.
     !| @endnote
-    subroutine compute_velocity_acceleration_contributions(&
+    pure subroutine compute_velocity_acceleration_contributions(&
             trajectories,&
             n_factors,&
             n_samples,&
@@ -780,7 +780,7 @@ contains
     !| This keeps slices like `velocity(:, factor, sample)` contiguous,
     !| avoids expensive tmporaries, and improves cache efficiency.
     !| @endnote
-    subroutine compute_velocity_acceleration_contributions_expert(&
+    pure subroutine compute_velocity_acceleration_contributions_expert(&
             trajectories,&
             n_factors,&
             n_samples,&

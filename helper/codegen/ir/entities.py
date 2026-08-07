@@ -161,6 +161,7 @@ class Procedure(Entity):
         conventions: Conventions = CONVENTIONS,
         allocatable_locals: Sequence[str] = (),
         uses: Sequence[str] = (),
+        is_pure: bool = False,
     ):
         self.name = name
         self.arguments = tuple(arguments)
@@ -175,6 +176,12 @@ class Procedure(Entity):
         #: is otherwise trivially sidestepped by moving the `use` one scope down
         #: (`validate._check_impl_imports`).
         self.uses = tuple(uses)
+        #: whether the procedure is `pure` (or `elemental`, which implies it). Read so a
+        #: generated wrapper can be pure exactly when everything it calls is -- a caller
+        #: who wants one inside `do concurrent` should not have to reach past the wrapper
+        #: to get it. Defaults to False: assuming purity that is not there would be a
+        #: compile error in generated code, while missing it only costs the caller.
+        self.is_pure = is_pure
         #: names of the local variables declared `allocatable`. The body itself is never
         #: read, so this is how the generator sees that a procedure allocates: `M_ALLOCATE`
         #: needs an allocatable to allocate into, and an implementation may not have one

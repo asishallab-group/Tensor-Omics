@@ -25,7 +25,7 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_data_integration_jsd_impl(module):determine_shared_residual_range_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_jsd(module):determine_shared_residual_range_expert]] to prepare it yourself.
     !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
     !| the neighborhood residuals of two studies first, if that is what is at hand.
-    subroutine determine_shared_residual_range(&
+    pure subroutine determine_shared_residual_range(&
             abs_residual_pool,&
             pool_size,&
             shared_residual_range,&
@@ -72,7 +72,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):determine_shared_residual_range_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_jsd(module):determine_shared_residual_range]] does both.
     !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
     !| the neighborhood residuals of two studies first, if that is what is at hand.
-    subroutine determine_shared_residual_range_expert(&
+    pure subroutine determine_shared_residual_range_expert(&
             abs_residual_pool,&
             abs_residual_pool_perm,&
             pool_size,&
@@ -120,7 +120,7 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_data_integration_jsd_impl(module):determine_study_shared_residual_range_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_jsd(module):determine_study_shared_residual_range_expert]] to prepare it yourself.
     !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
     !| as `determine_shared_residual_range` does.
-    subroutine determine_study_shared_residual_range(&
+    pure subroutine determine_study_shared_residual_range(&
             neighborhood_residuals_S1,&
             neighborhood_residuals_S2,&
             n_reps_S1,&
@@ -189,7 +189,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):determine_study_shared_residual_range_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_jsd(module):determine_study_shared_residual_range]] does both.
     !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
     !| as `determine_shared_residual_range` does.
-    subroutine determine_study_shared_residual_range_expert(&
+    pure subroutine determine_study_shared_residual_range_expert(&
             neighborhood_residuals_S1,&
             neighborhood_residuals_S2,&
             n_reps_S1,&
@@ -258,7 +258,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl]].
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.
-    subroutine build_residual_histograms(&
+    pure subroutine build_residual_histograms(&
             neighborhood_residuals,&
             n_reps,&
             n_neighbors,&
@@ -323,7 +323,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl]].
     !| Takes the probabilities `pmf` produced by `build_residual_histograms`.
-    subroutine compute_divergence_per_reference_point(&
+    pure subroutine compute_divergence_per_reference_point(&
             pmf_S1,&
             pmf_S2,&
             n_points,&
@@ -368,7 +368,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl]].
     !| Takes the divergences produced by `compute_divergence_per_reference_point`.
-    subroutine compute_weighted_global_divergence(&
+    pure subroutine compute_weighted_global_divergence(&
             js_divergences,&
             n_points,&
             included_n_reps_S1,&

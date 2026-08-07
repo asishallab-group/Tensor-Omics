@@ -9,7 +9,11 @@ from codegen.config import CONVENTIONS
 from codegen.diagnostics import DiagnosticBag
 from codegen.emit.fortran_wrapper import FortranWrapperEmitter
 from codegen.ir.roles import analyse_project
+from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+from codegen.ir.types import Intent
 from codegen.synthesize import synthesize_wrappers
+
+from builders import C_BINDING
 
 from test_synthesize import alloc_impl_module, ierr_impl_module, impl_module
 
@@ -54,6 +58,81 @@ def alloc_body():
     text = paired_demo()
     start = text.index("subroutine crunch(")
     return text[start : text.index("end subroutine crunch")]
+
+
+class TestPurity:
+    """A wrapper is `pure` exactly when everything it calls is.
+
+    So a caller who wants one inside `do concurrent` does not have to reach past the
+    wrapper to the implementation, giving up validation to get it.
+    """
+
+    def module_of(self, impl, **kwargs):
+        from builders import Meta, integer, module, procedure, project, real
+
+        return project(
+            module(
+                "tox_demo_impl",
+                procedure(
+                    impl,
+                    real("values", Intent.INOUT, "(n)", doc="the data"),
+                    integer("n", Intent.IN, doc="length"),
+                    meta=Meta(summary="Scale", author="AUTHOR"),
+                    **kwargs,
+                ),
+            )
+        )
+
+    def test_a_pure_implementation_gives_a_pure_wrapper(self):
+        text = emitted(self.module_of("scale_impl", is_pure=True))
+
+        assert "pure subroutine scale(" in text
+
+    def test_an_impure_one_does_not(self):
+        text = emitted(self.module_of("scale_impl"))
+
+        assert "pure subroutine scale(" not in text
+        assert "subroutine scale(" in text
+
+    def test_an_impure_producer_makes_the_wrapper_impure(self):
+        # the wrapper calls the recommend routine itself, so its purity counts too --
+        # the implementation being pure is necessary and not sufficient
+        from builders import Meta, integer, module, procedure, project, real
+
+        source = project(
+            module(
+                "tox_demo_impl",
+                procedure(
+                    "work_size",
+                    integer("n", Intent.IN, doc="length"),
+                    integer("wsize", Intent.OUT, doc="recommended size"),
+                    meta=C_BINDING,
+                ),
+                procedure(
+                    "crunch_impl",
+                    real("values", Intent.IN, "(n)", doc="the data"),
+                    integer("n", Intent.IN, doc="length"),
+                    real("tmp_work", Intent.OUT, "(wsize)", doc="work buffer"),
+                    integer(
+                        "wsize",
+                        Intent.IN,
+                        directives=Directives(
+                            output_from=OutputFrom(
+                                "wsize", "work_size", "tox_demo_impl", OutputFromMode.AUTO
+                            )
+                        ),
+                        doc="work size",
+                    ),
+                    meta=Meta(summary="Crunch", author="AUTHOR"),
+                    is_pure=True,
+                ),
+            )
+        )
+
+        text = emitted(source)
+
+        assert "subroutine crunch(" in text
+        assert "pure subroutine crunch(" not in text
 
 
 class TestModuleShell:

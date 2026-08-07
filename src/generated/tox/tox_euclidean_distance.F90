@@ -17,7 +17,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_euclidean_distance_impl(module):euclidean_distance_impl]].
     !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
-    subroutine euclidean_distance(&
+    pure subroutine euclidean_distance(&
             vec1,&
             vec2,&
             n_elements,&
@@ -53,7 +53,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_euclidean_distance_impl(module):distance_to_centroid_impl]].
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
-    subroutine distance_to_centroid(&
+    pure subroutine distance_to_centroid(&
             n_genes,&
             n_families,&
             genes,&

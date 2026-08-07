@@ -27,7 +27,7 @@ module tox_normalization
 contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_unit_length_impl]].
-    subroutine normalize_unit_length(&
+    pure subroutine normalize_unit_length(&
             vector,&
             n_dims,&
             ierr&
@@ -543,7 +543,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):root_mean_sq_normalization_impl]].
     !| across tissues (not classical standard deviation).
-    subroutine root_mean_sq_normalization(&
+    pure subroutine root_mean_sq_normalization(&
             n_genes,&
             n_replicates,&
             expr,&
@@ -580,7 +580,7 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):quantile_normalization_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):quantile_normalization_expert]] to prepare it yourself.
     !| Computes average expression per rank across tissues.
-    subroutine quantile_normalization(&
+    pure subroutine quantile_normalization(&
             n_genes,&
             n_replicates,&
             expr,&
@@ -628,7 +628,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):quantile_normalization_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):quantile_normalization]] does both.
     !| Computes average expression per rank across tissues.
-    subroutine quantile_normalization_expert(&
+    pure subroutine quantile_normalization_expert(&
             n_genes,&
             n_replicates,&
             expr,&
@@ -680,7 +680,7 @@ contains
     !| matrix flattened in column-major order. The `log2` is computed via:
     !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
     !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
-    subroutine log2_transformation(&
+    pure subroutine log2_transformation(&
             n_genes,&
             n_tissues,&
             expr,&
@@ -720,7 +720,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):calc_tiss_avg_impl]].
     !| For each tissue of tissue replicates, this subroutine computes the average
     !| expression per gene.
-    subroutine calc_tiss_avg(&
+    pure subroutine calc_tiss_avg(&
             n_genes,&
             n_tissues,&
             reps_per_tissue,&
@@ -766,7 +766,7 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
-    subroutine calc_fchange(&
+    pure subroutine calc_fchange(&
             n_genes,&
             n_tissues,&
             n_pairs,&

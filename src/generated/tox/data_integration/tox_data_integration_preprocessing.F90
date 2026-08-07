@@ -25,7 +25,7 @@ module tox_data_integration_preprocessing
 contains
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_preprocessing_impl(module):compute_gene_means_impl]].
-    subroutine compute_gene_means(&
+    pure subroutine compute_gene_means(&
             n_genes,&
             n_reps,&
             expr,&
@@ -61,7 +61,7 @@ contains
     end subroutine compute_gene_means
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_preprocessing_impl(module):compute_residuals_impl]].
-    subroutine compute_residuals(&
+    pure subroutine compute_residuals(&
             n_genes,&
             n_reps,&
             expr,&
@@ -105,7 +105,7 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_data_integration_preprocessing_impl(module):pool_means_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_preprocessing(module):pool_means_expert]] to prepare it yourself.
     !| This takes the pool already built; `pool_study_means` pools the means of two studies
     !| first, if that is what is at hand.
-    subroutine pool_means(&
+    pure subroutine pool_means(&
             pooled_means,&
             pool_size,&
             n_points,&
@@ -153,7 +153,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_data_integration_preprocessing_impl(module):pool_means_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_preprocessing(module):pool_means]] does both.
     !| This takes the pool already built; `pool_study_means` pools the means of two studies
     !| first, if that is what is at hand.
-    subroutine pool_means_expert(&
+    pure subroutine pool_means_expert(&
             pooled_means,&
             pooled_means_perm,&
             pool_size,&
@@ -199,7 +199,7 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_data_integration_preprocessing_impl(module):pool_study_means_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_preprocessing(module):pool_study_means_expert]] to prepare it yourself.
     !| Concatenates the two studies' means, sorts the pool, and turns it into reference
     !| points exactly as `pool_means` does.
-    subroutine pool_study_means(&
+    pure subroutine pool_study_means(&
             n_genes_S1,&
             mean_S1,&
             n_genes_S2,&
@@ -259,7 +259,7 @@ contains
     !> summary: Validates its inputs, then calls [[tox_data_integration_preprocessing_impl(module):pool_study_means_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_preprocessing(module):pool_study_means]] does both.
     !| Concatenates the two studies' means, sorts the pool, and turns it into reference
     !| points exactly as `pool_means` does.
-    subroutine pool_study_means_expert(&
+    pure subroutine pool_study_means_expert(&
             n_genes_S1,&
             mean_S1,&
             n_genes_S2,&
@@ -318,7 +318,7 @@ contains
     end subroutine pool_study_means_expert
 
     !> summary: Validates its inputs, prepares what [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_preprocessing(module):construct_neighborhoods_expert]] to prepare it yourself.
-    subroutine construct_neighborhoods(&
+    pure subroutine construct_neighborhoods(&
             n_points,&
             x_star,&
             n_genes_S,&
@@ -392,7 +392,7 @@ contains
     end subroutine construct_neighborhoods
 
     !> summary: Validates its inputs, then calls [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_preprocessing(module):construct_neighborhoods]] does both.
-    subroutine construct_neighborhoods_expert(&
+    pure subroutine construct_neighborhoods_expert(&
             n_points,&
             x_star,&
             n_genes_S,&

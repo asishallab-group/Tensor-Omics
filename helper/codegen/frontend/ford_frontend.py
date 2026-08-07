@@ -260,7 +260,17 @@ class FordFrontend:
             conventions=self.conventions,
             allocatable_locals=self._allocatable_locals(ford_procedure),
             uses=self._uses_of(ford_procedure),
+            is_pure=self._is_pure(ford_procedure),
         )
+
+    @staticmethod
+    def _is_pure(ford_procedure) -> bool:
+        """Whether the procedure is `pure`. `elemental` implies it, and Ford lists both."""
+        attributes = {
+            attribute.strip().lower()
+            for attribute in (getattr(ford_procedure, "attribs", ()) or ())
+        }
+        return bool(attributes & {"pure", "elemental"})
 
     @staticmethod
     def _allocatable_locals(ford_procedure) -> tuple[str, ...]:

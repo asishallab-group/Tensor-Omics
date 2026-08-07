@@ -16,7 +16,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl]].
     !| Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
-    subroutine compute_shift_vector_field(&
+    pure subroutine compute_shift_vector_field(&
             n_tissues,&
             n_genes,&
             n_families,&

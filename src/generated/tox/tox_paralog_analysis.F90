@@ -24,7 +24,7 @@ module tox_paralog_analysis
 contains
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_neofunctionalization_impl]].
-    subroutine detect_neofunctionalization(&
+    pure subroutine detect_neofunctionalization(&
             ancestors,&
             n_families,&
             genes,&
@@ -88,7 +88,7 @@ contains
     end subroutine detect_neofunctionalization
 
     !> summary: Validates its inputs, prepares what [[tox_paralog_analysis_impl(module):detect_patterns_impl]] needs, then calls it. The entry point to reach for first; see [[tox_paralog_analysis(module):detect_dosage_effect_expert]] to prepare it yourself.
-    subroutine detect_dosage_effect(&
+    pure subroutine detect_dosage_effect(&
             ancestor,&
             genes,&
             n_genes,&
@@ -189,7 +189,7 @@ contains
     end subroutine detect_dosage_effect
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_patterns_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_paralog_analysis(module):detect_dosage_effect]] does both.
-    subroutine detect_dosage_effect_expert(&
+    pure subroutine detect_dosage_effect_expert(&
             ancestor,&
             genes,&
             n_genes,&
@@ -291,7 +291,7 @@ contains
     end subroutine detect_dosage_effect_expert
 
     !> summary: Validates its inputs, prepares what [[tox_paralog_analysis_impl(module):detect_patterns_impl]] needs, then calls it. The entry point to reach for first; see [[tox_paralog_analysis(module):detect_subfunctionalization_expert]] to prepare it yourself.
-    subroutine detect_subfunctionalization(&
+    pure subroutine detect_subfunctionalization(&
             ancestor,&
             genes,&
             n_genes,&
@@ -399,7 +399,7 @@ contains
     end subroutine detect_subfunctionalization
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):detect_patterns_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_paralog_analysis(module):detect_subfunctionalization]] does both.
-    subroutine detect_subfunctionalization_expert(&
+    pure subroutine detect_subfunctionalization_expert(&
             ancestor,&
             genes,&
             n_genes,&
@@ -510,7 +510,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):filter_paralogs_by_pattern_impl]].
     !| This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
-    subroutine filter_paralogs_by_pattern_dosage_effect(&
+    pure subroutine filter_paralogs_by_pattern_dosage_effect(&
             gene_angles,&
             threshold,&
             n_genes,&
@@ -571,7 +571,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_paralog_analysis_impl(module):filter_paralogs_by_pattern_impl]].
     !| This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
-    subroutine filter_paralogs_by_pattern_subfunctionalization(&
+    pure subroutine filter_paralogs_by_pattern_subfunctionalization(&
             gene_angles,&
             threshold,&
             n_genes,&

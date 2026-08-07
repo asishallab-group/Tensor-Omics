@@ -22,7 +22,7 @@ module tox_relative_axis_plane_tools
 contains
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):omics_vector_RAP_projection_impl]].
-    subroutine omics_vector_RAP_projection(&
+    pure subroutine omics_vector_RAP_projection(&
             vecs,&
             n_axes,&
             n_vecs,&
@@ -77,7 +77,7 @@ contains
     end subroutine omics_vector_RAP_projection
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):omics_field_RAP_projection_impl]].
-    subroutine omics_field_RAP_projection(&
+    pure subroutine omics_field_RAP_projection(&
             fields,&
             n_axes,&
             n_fields,&
@@ -135,7 +135,7 @@ contains
     !| The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
     !| which way round the plane the two vectors span counts as positive. Reports
     !| `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
-    subroutine clock_hand_angle_between_vectors(&
+    pure subroutine clock_hand_angle_between_vectors(&
             v1,&
             v2,&
             n_dims,&
@@ -185,7 +185,7 @@ contains
     !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
     !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
     !| the reference fails to orient fails the call.
-    subroutine clock_hand_angles_for_shift_vectors(&
+    pure subroutine clock_hand_angles_for_shift_vectors(&
             fields,&
             n_dims,&
             n_fields,&
@@ -242,7 +242,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):compute_relative_axis_contributions_impl]].
     !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
-    subroutine compute_relative_axis_contributions(&
+    pure subroutine compute_relative_axis_contributions(&
             vec,&
             n_axes,&
             contributions,&
@@ -275,7 +275,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):relative_axes_changes_from_shift_vector_impl]].
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
-    subroutine relative_axes_changes_from_shift_vector(&
+    pure subroutine relative_axes_changes_from_shift_vector(&
             vec,&
             n_axes,&
             contributions,&
@@ -308,7 +308,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):relative_axes_expression_from_expression_vector_impl]].
     !| Wrapper for single RAP-projected expression vectors
-    subroutine relative_axes_expression_from_expression_vector(&
+    pure subroutine relative_axes_expression_from_expression_vector(&
             vec,&
             n_axes,&
             contributions,&

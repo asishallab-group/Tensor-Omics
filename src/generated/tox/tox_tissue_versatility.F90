@@ -20,7 +20,7 @@ contains
     !|
     !| The masks follow the `n_selected_` convention, so the generated wrapper validates that each
     !| selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
-    subroutine compute_tissue_versatility(&
+    pure subroutine compute_tissue_versatility(&
             n_axes,&
             n_vectors,&
             expression_vectors,&

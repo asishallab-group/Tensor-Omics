@@ -18,7 +18,7 @@ module tox_clustering
 contains
 
     !> summary: Validates its inputs, then calls [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl]].
-    subroutine cluster_factor_trajectories_k_means(&
+    pure subroutine cluster_factor_trajectories_k_means(&
             n_clusters,&
             trajectories,&
             n_factors,&
@@ -86,7 +86,7 @@ contains
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
-    subroutine k_means_clustering(&
+    pure subroutine k_means_clustering(&
             n_clusters,&
             data_points,&
             n_points,&
@@ -152,7 +152,7 @@ contains
     !| returning, on success or on error, so the matrix comes back unchanged. There is no
     !| need to copy it before calling.
     !| @endnote
-    subroutine linkage_clustering(&
+    pure subroutine linkage_clustering(&
             distances,&
             n_points,&
             merge_i,&

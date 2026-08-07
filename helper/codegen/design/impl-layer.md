@@ -151,6 +151,28 @@ can.
 
 ---
 
+## Purity is derived, never declared
+
+A generated wrapper is emitted `pure` exactly when the implementation it calls is pure, and
+so is everything the wrapper adds around it: the `DM_OUTPUT_FROM` producers and the prologue.
+Nothing else needs checking — every validator in `tox_errors`, `set_ok`, `is_err`,
+`clear_err_arg_pos`, `set_err`, `set_err_once`, `init_perm` and all four
+`sort_array_heapsort` specifics are `pure` or `elemental` already, and `allocate(..., stat=)`
+is permitted in a pure procedure, so the allocating tier is as eligible as the expert one.
+
+The point is that a caller wanting a pure procedure — to use it in `do concurrent`, or from
+their own pure code — would otherwise have to reach past the wrapper to the implementation,
+giving up validation to get it. 71 of the 87 wrappers the tox tree generates are pure; the
+16 that are not trace to four impure implementations (LOESS, which calls netlib externals,
+and the two permutation tests, which draw random numbers) and to one impure recommend routine.
+
+It is derived rather than declared because the author has already said it: `pure` on the
+implementation is the single statement of the fact, and a `DM_PURE` would be a second one to
+keep in step. The default is impure, deliberately — claiming purity that is not there is a
+compile error in generated code, while missing it only costs the caller.
+
+---
+
 ## What an implementation may reach
 
 An implementation may `use` another `_impl` module, or one of a whitelist held in

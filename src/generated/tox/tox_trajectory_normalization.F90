@@ -18,7 +18,7 @@ module tox_trajectory_normalization
 contains
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_normalization_impl(module):normalize_variable_timeseries_impl]].
-    subroutine normalize_variable_timeseries(&
+    pure subroutine normalize_variable_timeseries(&
             v,&
             v_norm,&
             n_points,&
@@ -52,7 +52,7 @@ contains
     end subroutine normalize_variable_timeseries
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_normalization_impl(module):normalize_single_trajectory_impl]].
-    subroutine normalize_single_trajectory(&
+    pure subroutine normalize_single_trajectory(&
             trajectory,&
             trajectory_norm,&
             n_factors,&
@@ -92,7 +92,7 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_trajectory_normalization_impl(module):normalize_all_trajectories_impl]] needs, then calls it. The entry point to reach for first; see [[tox_trajectory_normalization(module):normalize_all_trajectories_expert]] to prepare it yourself.
     !| independently across time for each sample.
-    subroutine normalize_all_trajectories(&
+    pure subroutine normalize_all_trajectories(&
             trajectories,&
             trajectories_norm,&
             n_factors,&
@@ -144,7 +144,7 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_trajectory_normalization_impl(module):normalize_all_trajectories_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_trajectory_normalization(module):normalize_all_trajectories]] does both.
     !| independently across time for each sample.
-    subroutine normalize_all_trajectories_expert(&
+    pure subroutine normalize_all_trajectories_expert(&
             trajectories,&
             trajectories_norm,&
             n_factors,&

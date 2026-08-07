@@ -337,7 +337,7 @@ class FortranWrapperEmitter:
         else:
             summary = f"Validates its inputs, then calls {link}."
         writer.block(render_doc(procedure.doc, kind="procedure", summary=summary))
-        self._signature(writer, procedure)
+        self._signature(writer, procedure, module)
         with writer.indent():
             if self._is_allocating(procedure, module):
                 self._allocating_body(writer, procedure, module)
@@ -435,6 +435,39 @@ class FortranWrapperEmitter:
         writer.line(f"if ({handled}) return")
         writer.blank()
 
+    def _is_pure(self, procedure: Procedure, module: Module) -> bool:
+        """Whether this wrapper can be `pure`: everything it calls has to be.
+
+        A caller who wants a `pure` procedure -- to call it from `do concurrent`, or from
+        their own pure code -- should not have to reach past the wrapper to the
+        implementation to get one. The wrapper is pure exactly when the implementation is
+        and so is everything the wrapper adds, so the property is derived rather than
+        declared: `tox_errors`' validators and `set_ok`/`is_err` are pure, and so are
+        `init_perm` and every `sort_array_heapsort` specific, which leaves the
+        implementation itself, the `DM_OUTPUT_FROM` producers and the prologue.
+
+        (`allocate(..., stat=)` is permitted in a pure procedure, so the allocating tier is
+        no less eligible than the expert one.)
+
+        False without a project to resolve them -- a unit test. Guessing `pure` wrongly is a
+        compile error in generated code; guessing it away only costs the caller.
+        """
+        if self.project is None:
+            return False
+        called = [
+            self.project.procedure(self._impl_module(module), self._impl_name(procedure, module))
+        ]
+        foo = self._sibling(module, procedure) or procedure
+        called.append(self._prologue_for(foo, module))
+        for argument in foo.arguments:
+            roles = argument.roles
+            plan = roles.computed_from if roles is not None else None
+            if plan is not None:
+                called.append(plan.producer)
+        return all(p is not None and p.is_pure for p in called if p is not None) and (
+            called[0] is not None
+        )
+
     # -- names ------------------------------------------------------------------
 
     def _base(self, procedure: Procedure) -> str:
@@ -522,8 +555,9 @@ class FortranWrapperEmitter:
 
     # -- declarations -----------------------------------------------------------
 
-    def _signature(self, writer: Writer, procedure: Procedure) -> None:
-        writer.line(f"subroutine {procedure.name}(&")
+    def _signature(self, writer: Writer, procedure: Procedure, module: Module) -> None:
+        prefix = "pure " if self._is_pure(procedure, module) else ""
+        writer.line(f"{prefix}subroutine {procedure.name}(&")
         names = [a.name for a in procedure.arguments]
         with writer.indent(2):
             for name in names[:-1]:
