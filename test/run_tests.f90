@@ -25,6 +25,7 @@ program main
   use mod_test_root_mean_sq_normalization
   use mod_test_normalization_unit_length
   use mod_test_smoothing_metrics
+  use mod_test_shape_truthful_clustering
 
   implicit none
 
@@ -110,6 +111,7 @@ contains
     call add_suite("knn_smoothing", run_all_tests_knn_smoothing, run_named_tests_knn_smoothing)
     ! call add_suite("manle_smoothing", run_all_tests_manle, run_named_tests_manle)
     call add_suite("smoothing_metrics", run_all_tests_smoothing_metrics, run_named_tests_smoothing_metrics)
+    call add_suite("shape_truthful_clustering", run_all_tests_shape_truthful_clustering, run_named_tests_shape_truthful_clustering)
 
   end subroutine initialize_suites
   

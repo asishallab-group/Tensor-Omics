@@ -539,6 +539,18 @@ $O(n)$ extra for iteration-1 snapshot
 
 Each phase above is expanded with its full reasoning, functions, and lab notes in the phase sections below.
 
+##  Numerical linear algebra: SVD vs eigendecomposition
+
+**Status: recommended, not yet implemented.** Every current use of `dsyev` referenced in the phase sections below (Phase II/III's per-point covariance, Phase VI's per-anchor covariance, and the principal-angle Gram-matrix trick in Tangent stability) is real, working, and already validated -- nothing below changes what `src/lomanle.F90` does today. This records a considered alternative for when that code is next touched.
+
+The root issue: forming a covariance or Gram matrix explicitly (`$C=YY^\top$` or `$M^\top M$`) squares the condition number of the underlying data relative to computing singular values of `$Y$`/`$M$` directly, which disproportionately degrades precision in the *small* eigenvalues -- exactly the normal-space ones that `normal_error` and any future anisotropic noise covariance `$\Sigma_\perp$` (§13/14, still open) depend on. This is not about which eigensolver variant to pick -- even `dsyevr`, LAPACK's most robust symmetric eigensolver, cannot recover precision already lost when the matrix was squared to form it. The fix is not forming it at all.
+
+Two distinct problem shapes occur in this codebase, with two different recommended routines:
+
+* **Full spectrum** (Phase II/III's per-point covariance, Phase VI's per-anchor covariance -- all `$D$` eigenpairs of a `$D\times k$` centered neighborhood): `dgesdd`, economy mode (`JOBZ='S'`), computing the SVD of the centered coordinate matrix directly rather than forming `$C$`. The fastest LAPACK SVD routine for full singular vectors, and standard/portable across any LAPACK/OpenBLAS build. Needs a genuine workspace *query* (`LWORK=-1` first call) rather than a closed-form size like `dsyev`'s `3n-1`, plus an integer workspace array (`IWORK`, size `$8\cdot\min(D,k)$`) -- real but modest additional `_alloc`-layer bookkeeping. LAPACK SVD routines return singular values already in descending order, matching this document's `$\lambda_1\geq\cdots\geq\lambda_D$` convention directly (unlike `dsyev`'s ascending eigenvalues, which currently requires the reversed indexing documented in Phase II/III and Phase VI below).
+* **Small `$d\times d$` matrix** (the principal-angle comparison in Tangent stability, `$M=U_d^{(t)\top}U_d^{(t+1)}$`): `dgesvd`, not `dgesdd` -- at `manifold_dim`'s typical size (1-5), divide-and-conquer's speed edge does not materialize, and `dgesvd`'s simpler single-workspace-array bookkeeping wins. Its singular values are `$\cos\theta_j$` directly, no squaring, no `sqrt` needed back out.
+
+The same recommendation is adopted for STC's own implementation (`misc/mod_STC.md`, `misc/STC_for_LoManLe.md`), for consistency once STC replaces Phases II-V.
 
 ##  Phase I — Spatial index
 
@@ -699,7 +711,7 @@ The criterion should operate on the **subspace**, not individual eigenvectors, b
 **How this is actually computed -- yes, we do compute it.** Rather than extracting the $d$ individual angles $\theta_1,\ldots,\theta_d$ and thresholding $\theta_{\max}$ directly, the code computes a single number, `stability_i`, equal to $\cos\theta_{\max}$ -- so *larger* `stability_i` means *more* stable, and `stability_threshold` in the code plays the role of $\cos\tau_\theta$:
 
 - **$d=1$** (`manifold_dim==1`): there is only one principal angle, and $U_d^{(t)}$, $U_d^{(t+1)}$ are each single unit vectors $\mathbf u^{(t)},\mathbf u^{(t+1)}$ (`dsyev`'s eigenvectors are already orthonormal), so $\cos\theta_1=|\mathbf u^{(t)}\cdot\mathbf u^{(t+1)}|$ is just a plain dot product: `stability_i = abs(dot_product(previous_tangent(:,1), cov(:,dim)))`.
-- **$d>1$**: form $M=\left(U_d^{(t)}\right)^\top U_d^{(t+1)}$ (a $d\times d$ matrix; `previous_tangent` holds $U_d^{(t)}$, the top-$d$ eigenvector columns of `cov` hold $U_d^{(t+1)}$). By the standard SVD/principal-angle identity, the singular values of $M$ are $\cos\theta_1,\ldots,\cos\theta_d$, and the *smallest* singular value is $\cos\theta_{\max}$ -- exactly the quantity the boxed criterion above needs. The code obtains it via $M^\top M$'s smallest eigenvalue (`dsyev` on `gram_small = matmul(transpose(cov_small), cov_small)`, reusing the same LAPACK routine already needed elsewhere rather than a dedicated SVD call): `stability_i = sqrt(max(0, w_eig_small(1)))`, since the smallest eigenvalue of $M^\top M$ is the square of $M$'s smallest singular value.
+- **$d>1$**: form $M=\left(U_d^{(t)}\right)^\top U_d^{(t+1)}$ (a $d\times d$ matrix; `previous_tangent` holds $U_d^{(t)}$, the top-$d$ eigenvector columns of `cov` hold $U_d^{(t+1)}$). By the standard SVD/principal-angle identity, the singular values of $M$ are $\cos\theta_1,\ldots,\cos\theta_d$, and the *smallest* singular value is $\cos\theta_{\max}$ -- exactly the quantity the boxed criterion above needs. The code obtains it via $M^\top M$'s smallest eigenvalue (`dsyev` on `gram_small = matmul(transpose(cov_small), cov_small)`, reusing the same LAPACK routine already needed elsewhere rather than a dedicated SVD call): `stability_i = sqrt(max(0, w_eig_small(1)))`, since the smallest eigenvalue of $M^\top M$ is the square of $M$'s smallest singular value. (Recommended migration: `dgesvd` on $M$ directly, giving $\cos\theta_j$ without the $M^\top M$ squaring -- see "Numerical linear algebra: SVD vs eigendecomposition" above.)
 
 This is the same principal-angle mathematics as the $\cos\theta_j=s_j(U_a^\top U_b)$ formula used later in Tangent compatibility -- applied here between a *single point's own* tangent basis at two consecutive growth steps, not between two *different* anchors' charts. That separate, between-anchor use is the one flagged there as not implemented.
 
@@ -734,7 +746,7 @@ If no acceptable neighborhood is found before $k_{\max}$, flag that location as 
 
 Phases II and III are implemented as a single unit — the code does not compute one fixed-$k$ neighborhood and then separately grow it; each candidate size is scored and the best-so-far is kept as growth proceeds.
 
-**Functions:** `grow_adaptive_neighborhoods` (`src/lomanle.F90`) is the `!$omp parallel do` driver, one call to `grow_one_point_neighborhood` per point. Uses `kd_knn_query` (kd_tree mod), `sort_array` (f42_utils mod), and `dsyev` (LAPACK, declared `pure` purely as thread-safety documentation).
+**Functions:** `grow_adaptive_neighborhoods` (`src/lomanle.F90`) is the `!$omp parallel do` driver, one call to `grow_one_point_neighborhood` per point. Uses `kd_knn_query` (kd_tree mod), `sort_array` (f42_utils mod), and `dsyev` (LAPACK, declared `pure` purely as thread-safety documentation; recommended migration to `dgesdd`, see "Numerical linear algebra: SVD vs eigendecomposition" above).
 
 **Complexity:** time $O(n\log n + n\bar k)$, where $\bar k$ is a point's own converged neighborhood size (on the order of $k_{\min}$ unless growth needed several steps). Memory: $O(n)$ for the output arrays, plus **$O(n)$ of private automatic-array scratch per active OpenMP thread** inside the parallel region (`n_loc_i`, `d_loc_i`, `workspace_i`, `val_buf_i`, `perm_i`, `l_stack_i`, `r_stack_i` are each sized `n_points`, not $\bar k$) — i.e. $O(nT)$ total scratch for $T$ threads. This per-thread sizing is a genuine, currently-unaddressed memory cost that scales with thread count; it has not been flagged in the lab book before now.
 
@@ -930,7 +942,7 @@ restricted to the local region represented by the chart.
 
 #### Implementation
 
-**Functions:** `compute_anchor_svd` (`src/lomanle.F90`), an `!$omp parallel do` over anchors. Uses `kd_range_query_list` and `dsyev`.
+**Functions:** `compute_anchor_svd` (`src/lomanle.F90`), an `!$omp parallel do` over anchors. Uses `kd_range_query_list` and `dsyev` (recommended migration to `dgesdd`, see "Numerical linear algebra: SVD vs eigendecomposition" above).
 
 **Complexity:** time $O(n_a\log n)$ (dominated by the per-anchor k-d-tree range query; the covariance accumulation is $O(\bar k_a\cdot \dim^2)$ and `dsyev` is $O(\dim^3)$ per anchor, both small relative to the query for realistic $\dim$). Memory: $O(n)$ output arrays plus $O(n)$ of per-thread private `tmp_n_loc(n_points)` scratch, i.e. $O(nT)$.
 

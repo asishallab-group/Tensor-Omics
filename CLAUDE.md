@@ -25,3 +25,24 @@ writing or reviewing any Fortran. Highlights:
   Alignment via `precompiler_constants.F90` / `DEFAULT_ALIGNMENT` macro, never hardcoded.
 - Mandatory workflow for new functionality: core Fortran -> C wrapper -> Python wrapper -> R
   wrapper -> docs -> tests (Fortran tests the algorithm; Python/R tests only call-ability).
+- Structure-of-Arrays (SoA), never Array-of-Structures, for every data representation.
+- Every function does one thing well, with a signature designed to be rigorously unit
+  testable in isolation (single responsibility, no hidden coupling to caller state).
+
+## Shape Truthful Clustering (STC) integration plan
+
+STC (Shape Truthful Clustering) is a renormalization-group-inspired ensemble-growth
+clustering method. It is planned to replace LoManLe's Steps 1-5b (adaptive neighborhood
+growth + greedy anchor selection). Full design docs: `misc/STC_for_LoManLe.md` (converged
+decisions and rationale for the LoManLe integration) and
+`misc/STC_current_algorithm_draft.md` (the general algorithm, abstract API, and the
+density-based and tangent-space instantiations).
+
+Modules:
+
+- `src/shape_truthful_clustering.F90`: new module. Implement STC here first, standalone,
+  strictly to the F42 guidelines above (SoA, pure SK kernels, `_alloc` wrappers doing all
+  allocation outside the pure kernels, `src/macros.h` validation macros, single-responsibility
+  testable functions).
+- `src/lomanle.F90`: existing module. Only integrate STC into LoManLe's pipeline after STC
+  itself is implemented and tested in isolation -- do not interleave the two.
