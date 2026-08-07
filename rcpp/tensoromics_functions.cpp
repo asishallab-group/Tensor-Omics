@@ -1236,37 +1236,6 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* ierr
 );
 
-// LFCseq variant: identical ABI, dispatches to the noise_model_lfcseq module
-// (within-neighbourhood unioned mean comparisons, no stratification). See
-// tox_noise_model_lfcseq.F90. The chosen_n_bins_own_* outputs are placeholders here
-// (1 when computed, no stratification is performed).
-void compute_noise_pvalues_pipeline_lfcseq_c(
-  const double* means_case,
-  const double* replicates_case,
-  const int* n_genes_case,
-  const int* n_replicates_case,
-  const double* means_control,
-  const double* replicates_control,
-  const int* n_genes_control,
-  const int* n_replicates_control,
-  const double* observed_statistic_own,
-  const int* compute_pvalue_own,
-  const int* n_genes,
-  const int* norm_method,
-  const int* k_start,
-  const int* k_step,
-  const int* k_max,
-  const double* tau,
-  double* pvalues_own,
-  int* n_genes_with_pvalue,
-  const int* max_pool_size,
-  int* neighborhood_size_own_case,
-  int* neighborhood_size_own_control,
-  int* neighborhood_size_case,
-  int* chosen_n_bins_own_case,
-  int* chosen_n_bins_own_control,
-  int* ierr
-);
 }
 //' Calculate k-means clustering of factor trajectories
 //'
@@ -4904,18 +4873,6 @@ static Rcpp::List run_noise_pvalues_pipeline(
             neighborhood_size_case.begin(),
             chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
-    } else if (model_variant == 2) {
-        compute_noise_pvalues_pipeline_lfcseq_c(
-            case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
-            control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
-            obs_own.begin(), valid_genes_own.begin(),
-            &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau,
-            pvalues_own.begin(), &n_success, &max_pool_size,
-            neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
-            neighborhood_size_case.begin(),
-            chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
-            &ierr);
     } else {
         compute_noise_pvalues_pipeline_c(
             case_means.begin(), case_replicates.begin(), &case_n_genes, &case_n_samples,
@@ -5018,37 +4975,3 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
         norm_method, k_start, k_step, k_max, tau, max_pool_size);
 }
 
-//' Compute noise-model p-values (LFCseq variant, gene-vs-own comparison)
-//'
-//' LFCseq model: the `own` null is built from WITHIN-neighbourhood mean comparisons
-//' (no variance stratification). For each draw, two group means (sizes n_rep_case and
-//' n_rep_control) are drawn from the same pool and differenced — once within the case
-//' pool and once within the control pool — and the two sides are unioned into one null.
-//' Same arguments and return shape as \code{tox_compute_noise_pvalues_pipeline_rcpp};
-//' dispatches to the \code{noise_model_lfcseq} Fortran module. The chosen_n_bins_own_*
-//' outputs are 1 when the own p-value is computed (no stratification), -1 otherwise.
-//'
-//' @inheritParams tox_compute_noise_pvalues_pipeline_rcpp
-//' @return List with pvalues_own, success count, three neighborhood sizes
-//'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and error code.
-// [[Rcpp::export]]
-Rcpp::List tox_compute_noise_pvalues_pipeline_lfcseq_rcpp(
-    Rcpp::NumericVector case_means,
-    Rcpp::NumericMatrix case_replicates,
-    Rcpp::NumericVector control_means,
-    Rcpp::NumericMatrix control_replicates,
-    Rcpp::NumericVector obs_own,
-    Rcpp::IntegerVector valid_genes_own,
-    int norm_method,
-    int k_start,
-    int k_step,
-    int k_max,
-    double tau,
-    int max_pool_size) {
-
-    return run_noise_pvalues_pipeline(
-        2,  // LFCseq (within-neighbourhood unioned mean comparisons)
-        case_means, case_replicates, control_means, control_replicates,
-        obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, max_pool_size);
-}
