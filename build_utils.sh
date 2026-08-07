@@ -35,7 +35,10 @@ function get_flags() {
   elif [[ "$FC" == "nvfortran" ]]; then
     echo "-O2 -Mconcur -fPIC -fopenmp -stdpar=multicore"
   else
-    echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
+    # DEBUG (temporary): bounds + backtrace to locate the segfault. Revert to the
+    # line below once done.
+    echo "-O0 -g -fcheck=all -fbacktrace -fopenmp -fPIC"
+    # echo "-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"
   fi
 }
 
