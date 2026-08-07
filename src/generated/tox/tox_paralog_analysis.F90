@@ -6,7 +6,7 @@ module tox_paralog_analysis
     use tox_paralog_analysis_impl, only: MODE_DOSAGE_PATTERN, MODE_SUBFUNC_PATTERN, detect_neofunctionalization_impl, detect_patterns_impl
     use tox_paralog_analysis_impl, only: filter_paralogs_by_pattern_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_math, only: PI, above
+    use f42_math_impl, only: PI, above
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
     use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
     use tox_errors, only: validate_in_range_int, validate_in_range_real

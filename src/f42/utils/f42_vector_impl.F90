@@ -3,10 +3,10 @@
 !> Vector geometry in n dimensions: lengths, angles, and element-wise arithmetic.
 !|
 !| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
-module f42_vector
+module f42_vector_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err
-    use f42_math, only: clamp, is_close
+    use f42_math_impl, only: clamp, is_close
     M_IMPLICIT_NONE
 
 contains
@@ -95,4 +95,4 @@ contains
             vector(i_dim) = vector(i_dim) - to_be_subtracted(i_dim)
         end do
     end subroutine subtract_vector
-end module f42_vector
+end module f42_vector_impl

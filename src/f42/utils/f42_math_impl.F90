@@ -3,7 +3,7 @@
 !> Elementary mathematics: the constants, approximate equality, clamping, angles and logarithms.
 !|
 !| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
-module f42_math
+module f42_math_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err, validate_in_range_real
     use tox_errors, only: is_err
@@ -237,4 +237,4 @@ contains
 
         power = 2**(bit_size(n) - leadz(n - 1))
     end function next_power_of_two
-end module f42_math
+end module f42_math_impl

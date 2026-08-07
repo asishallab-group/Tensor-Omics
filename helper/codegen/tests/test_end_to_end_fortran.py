@@ -42,8 +42,8 @@ DEPENDENCY_FLAGS = [flag for flag in WRAPPER_FLAGS if flag != "-std=f2018"]
 #: permutation the wrapper hands it. Three files, 0.35s.
 DEPENDENCIES = (
     "src/f42/tox_errors.F90",
-    "src/f42/utils/f42_math.F90",   # f42_sort uses clamp
-    "src/f42/utils/f42_sort.F90",   # init_perm, sort_array_heapsort
+    "src/f42/utils/f42_math_impl.F90",   # f42_sort uses clamp
+    "src/f42/utils/f42_sort_impl.F90",   # init_perm, sort_array_heapsort
 )
 
 

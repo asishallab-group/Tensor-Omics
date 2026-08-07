@@ -40,12 +40,15 @@ from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
 
 #: The exclusive-bound helpers a range expression may wrap a bound in, and where they live.
-#: Named by their own module rather than by the `f42_utils` parent that re-exports them, so
+#: Named by their own implementation module rather than by any parent re-exporting them, so
 #: the import says where the thing is defined -- as a resolved module constant already does.
-_BOUND_HELPERS = {"above": "f42_math", "below": "f42_math"}
+_BOUND_HELPERS = {"above": "f42_math_impl", "below": "f42_math_impl"}
 
 #: What seeding and sorting a permutation needs, and where those live
-_PERMUTATION_HELPERS = {"init_perm": "f42_sort", "sort_array_heapsort": "f42_sort"}
+_PERMUTATION_HELPERS = {
+    "init_perm": "f42_sort_impl",
+    "sort_array_heapsort": "f42_sort_impl",
+}
 
 #: The intrinsic-module functions a range expression may call, and where they come from.
 #: A bound is often "how many of these values are usable", which is a NaN test away.
@@ -148,7 +151,7 @@ class FortranWrapperEmitter:
         impl_module = self._impl_module(module)
 
         # everything imported besides the intrinsic kinds and tox_errors, keyed by module:
-        # the recommend routines, the f42_utils permutation/bound helpers, and any module
+        # the recommend routines, the permutation/bound helpers, and any module
         # constant a range expression names
         extra: dict[str, set[str]] = {}
         for producer_module, names in self._producers(module).items():
@@ -194,7 +197,7 @@ class FortranWrapperEmitter:
     def _bound_imports(self, module: Module) -> dict[str, set[str]]:
         """Modules and names a range expression refers to and so must import.
 
-        A bound may be `above(0.0_real64)` (helpers from f42_utils), call an IEEE inquiry
+        A bound may be `above(0.0_real64)` (helpers from `f42_math_impl`), call an IEEE inquiry
         (`count(.not. ieee_is_nan(x))`, for a bound that is "how many of these are usable"),
         or name a module constant like `PI`. Identifiers that are the wrapper's own
         arguments, Fortran intrinsics, or literals need nothing.
@@ -286,7 +289,7 @@ class FortranWrapperEmitter:
         return producers
 
     def _has_permutations(self, module: Module) -> bool:
-        """Whether anything here is seeded and sorted, so `f42_sort` is worth importing.
+        """Whether anything here is seeded and sorted, so `f42_sort_impl` is worth importing.
 
         Asks the same question the emission does, prologue included -- a family whose only
         permutation the prologue builds needs neither helper.

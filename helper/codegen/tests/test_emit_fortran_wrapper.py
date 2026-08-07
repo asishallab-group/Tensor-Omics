@@ -241,7 +241,7 @@ class TestTmpPermutation:
         body, text = self.bodies()
         assert "init_perm" not in body
         assert "sort_array_heapsort" not in body
-        assert "use f42_sort" not in text
+        assert "use f42_sort_impl" not in text
 
 
 class TestSuffixCollisions:
@@ -267,7 +267,7 @@ class TestSuffixCollisions:
     def test_no_seeding_or_perm_helpers(self):
         body, text = self.bodies()
         assert "init_perm" not in body
-        assert "use f42_sort" not in text
+        assert "use f42_sort_impl" not in text
 
 
 class TestImplThatDeclaresIerr:
@@ -386,7 +386,7 @@ class TestDistanceMatrixConvention:
 class TestAllocatingWrapper:
     def test_the_module_imports_what_the_alloc_needs(self):
         text = paired_demo()
-        assert "use f42_sort, only: init_perm, sort_array_heapsort" in text
+        assert "use f42_sort_impl, only: init_perm, sort_array_heapsort" in text
         # the recommend routine lives in the implementation module, imported with the implementation
         assert "work_size" in text.split("contains")[0]
         assert "ERR_ALLOC_FAIL" in text
@@ -656,7 +656,7 @@ class TestAPrologueThatBuildsThePermutation:
         assert "M_ALLOCATE(values_perm(n))" in body
         assert "call init_perm(values_perm)" in body
         assert "call sort_array_heapsort(values, values_perm)" in body
-        assert "use f42_sort" in text
+        assert "use f42_sort_impl" in text
 
     def test_a_prologue_that_declares_it_intent_out_takes_it_over(self):
         from codegen.ir.types import Intent
@@ -670,7 +670,7 @@ class TestAPrologueThatBuildsThePermutation:
         assert "sort_array_heapsort" not in body
         assert "values_perm = values_perm" in body
         # ... so the helpers are not imported either
-        assert "use f42_sort" not in text
+        assert "use f42_sort_impl" not in text
 
     def test_intent_inout_refines_the_default_instead_of_replacing_it(self):
         # an in-out prologue dummy reads what it is given, so the wrapper still builds it

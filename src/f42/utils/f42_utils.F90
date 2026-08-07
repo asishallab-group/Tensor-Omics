@@ -7,9 +7,9 @@
 !| `use f42_utils` therefore still reaches every utility, and which module a given one is
 !| defined in stays an implementation detail.
 module f42_utils
-    use f42_sort
-    use f42_math
-    use f42_random
-    use f42_vector
+    use f42_sort_impl
+    use f42_math_impl
+    use f42_random_impl
+    use f42_vector_impl
     use f42_stats
 end module f42_utils

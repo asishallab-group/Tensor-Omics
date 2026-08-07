@@ -8,7 +8,7 @@ module f42_stats
     use tox_errors, only: validate_all_in_range_int, set_ok, set_err, validate_in_range_real
     use tox_errors, only: is_err, validate_in_range_int, validate_dimension_size, validate_all_in_range_real
     use tox_errors, only: validate_all_in_range_int, ERR_ALLOC_FAIL
-    use f42_sort, only: binary_search_insertion, init_perm, sort_array_heapsort, sort_real_heapsort
+    use f42_sort_impl, only: binary_search_insertion, init_perm, sort_array_heapsort, sort_real_heapsort
     M_IMPLICIT_NONE
 
 contains
