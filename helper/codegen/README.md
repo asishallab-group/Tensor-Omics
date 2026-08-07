@@ -43,11 +43,16 @@ From one exported Fortran procedure, three things:
 Plus, once per project: an error module for each language, generated from `tox_errors`, and
 the loader/marshalling scaffolding.
 
+Most of the exported procedures are themselves generated. A hand-written implementation
+module produces the Fortran wrappers that then feed the table above — `src/generated/tox/`
+is that output, and everything downstream of the synthesis treats those wrappers as ordinary
+sources. See [How it is built](#how-it-is-built).
+
 The `snippets` target (`emit/vscode_snippets.py`) emits VS Code snippets split into six
 files -- `{Fortran,Python,R}_{f42,tox}_snippets.json` under `snippets/` -- the language in
 the file name (so no per-snippet `scope`) and the root keeping the two namespaces apart.
-These are **regenerated artifacts, git-ignored** (like the Python/R packages); the
-hand-written `snippets/toxdev_snippets.json` sits alongside and is tracked. Per exported procedure: a native Fortran `call` (plus a variant that guards
+These are **regenerated artifacts** -- never edited by hand, and committed to the tree like
+the Python/R packages; the hand-written `snippets/toxdev_snippets.json` sits alongside them. Per exported procedure: a native Fortran `call` (plus a variant that guards
 `ierr`) and a wrapper call for Python and R, arguments rendered as keyword tabstops -- a
 `mode`/`method` argument becomes a *choice* of its accepted values. Per module: a Fortran
 `use ..., only:` and a Python import (both a choice of that module's procedures). Plus
@@ -63,7 +68,7 @@ what a procedure looks like from C (the `abi` layer), so they cannot drift.
 ## Running it
 
 ```sh
-python helper/generate_code.py            # generate everything into the tree
+python helper/generate_code.py            # the wrappers and the bindings, into the tree
 python helper/generate_code.py --check    # report problems, write nothing, non-zero if stale
 python helper/generate_code.py --target python   # one target only
 python helper/generate_code.py --help
@@ -91,7 +96,8 @@ an inner loop over data it produced itself. It gives up every diagnostic the fra
 so it is a whole-build decision rather than one to take per call site. What survives it:
 
 - **`call set_ok(ierr)`**, which is not a check. It is what leaves `ierr` defined on the path
-  where nothing goes wrong, and a kernel's own runtime errors are still reported through it.
+  where nothing goes wrong, and an implementation's own runtime errors are still reported
+  through it.
 - **the C layer's null checks**, which guard against a segfault rather than a bad value.
 - **Python's and R's own validation**, which is a runtime layer and cannot be preprocessed out.
   A caller who wants the checks gone calls through C or Fortran.
@@ -103,12 +109,14 @@ rendered on its own writer before being nested into its module's, so `render/wri
 them there through that nesting.
 
 Diagnostics point at the offending line of the *original* source, with the entity chain and
-a note on what to do:
+a note on what to do. A generated wrapper inherits the implementation's location, so a rule
+broken in code the author never wrote still names the line they did — the chain then reads
+the generated module while the file is the implementation's:
 
 ```
 error: shape argument 'data_shape' is optional
-  --> src/tox_x.F90:90
-  argument 'data_shape' in procedure 'x_alloc' in module 'tox_x'
+  --> src/tox/tox_x_impl.F90:90
+  argument 'data_shape' in procedure 'x_expert' in module 'tox_x'
   note: the C wrapper reads it before it may take c_loc of the arrays it describes, so it
         has to be there; see the null validation order in the generator README
 ```
@@ -126,15 +134,17 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 |---|---|---|
 | `src_dir` | `src` | the sources to read (`--src`) |
 | `macros_header` | `src/macros.h` | the macro definitions, incl. the `DM_` doc macros |
+| `generated_dir` | `src/generated` | **output**: everything written back into the source tree, the wrapper modules included |
 | `c_binding_dir` | `src/generated/bindings/c` | **output**: the Fortran C wrappers |
 | `r_binding_dir` | `src/generated/bindings/r` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
 | `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
 | `r_out_dir` | `r/tensor_omics` | **output**: the R wrappers + loader |
-| `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, git-ignored) |
+| `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, only on `--target snippets`) |
 
 So a default run writes:
 
 ```
+src/generated/<rest>/<module>.F90              # the wrapper modules, mirroring src/<rest>/
 src/generated/bindings/c/<module>_c.F90        # Fortran C wrappers, one per module
 src/generated/bindings/r/                      # R C .Call shims -- fpm compiles them into the .so
     tox_marshal.h  init.c  <module>.c
@@ -145,12 +155,26 @@ r/tensor_omics/
     tox_validate.R   error_handling.R   <module>.R
 ```
 
-Two things worth knowing:
+Three things worth knowing:
 
+- **There is no setting for where a wrapper module goes**, because it is a mirror rather than
+  a destination: an implementation at `src/<rest>/<module>_impl.F90` generates
+  `src/generated/<rest>/<module>.F90`, sub-directories and all. Nothing in the rule knows
+  about `tox` or `f42`, which is what lets any layer acquire implementations without the
+  generator learning a second case — and what makes `_impl` a suffix reserved across the whole
+  of `src/`, since a module so named acquires wrappers wherever it sits.
+  `synthesize.generated_path_for` is the single place that decides it: the emitter and the
+  cleaner both go through it, and the Ford frontend excludes the whole `generated_dir` they
+  write into — rather than three literals kept in step by hand, which is how one of them comes
+  to write, delete and exclude three different paths.
 - **Each target directory is cleaned before writing** (unless `--no-clean`), so a procedure
-  that stops being exported leaves no stale wrapper. For R only the generated `src/` and
-  `R/` subdirectories are cleaned — a hand-written `DESCRIPTION` or `NAMESPACE` next to them
-  is left alone.
+  that stops being exported leaves no stale wrapper. In the R *package* directory only the
+  generated `*.R` are removed — a hand-written `DESCRIPTION` or `NAMESPACE` next to them is
+  left alone. The wrapper modules are the one target cleaned file by file rather than by
+  directory, because they share `src/generated` with the binding trees; the list comes from
+  the sources (`synthesize.generated_wrapper_paths`), so a wrapper whose implementation has
+  been *deleted* is not named by it and survives on disk. Harmlessly: Ford excludes
+  `generated_dir` as a directory, so nothing stale is ever parsed back in.
 - **`--library`** (default `build/libtensor-omics.so`) is not an output path; it is where the
   *generated Python loader* will look for the compiled shared library at runtime. Override it
   for an installed or relocated build, or set `TENSOR_OMICS_LIBRARY` at run time.
@@ -182,9 +206,24 @@ The keystone is that the **IR is constructible without Ford**. A test builds a `
 directly, so every rule is unit-tested without parsing anything — which is why the suite is
 large and fast. The Ford frontend is just one producer of IR; the test fixtures are another.
 
+`synthesize.py` is a third, and sits between the frontend and the semantic pass: it reads every
+`_impl` module, builds the wrappers each implementation implies, and injects them into the
+project before roles are analysed. **The module name is the whole trigger** — a module called
+`<x>_impl`, wherever under `src/` it lives — so everything downstream, validation and all three
+emitters included, sees the wrappers as ordinary procedures read from source and needs to know
+nothing about implementations. Where the file sits decides only where they are written.
+
+The frontend excludes that output from the next parse *by directory* rather than by file name,
+which is what it used to be. Ford matches a bare exclusion as `**/<name>`, so once a layer
+generates an `f42_stats.F90`, excluding that name would also drop the hand-written
+`src/f42/utils/f42_stats.F90` and every binding built from it, with no error at all. One
+directory also covers every target at once, a wrapper left behind by a deleted implementation
+included — which a list derived from the implementations that still exist would not name.
+
 `generate.py` wires the stages; `cli.py` is the command-line shell over it.
 
-See [`design/c-layer.md`](design/c-layer.md) and
+See [`design/impl-layer.md`](design/impl-layer.md) for why the wrappers are synthesised at all,
+and [`design/c-layer.md`](design/c-layer.md) and
 [`design/language-layers.md`](design/language-layers.md) for why each layer decides what it
 does.
 
@@ -194,9 +233,10 @@ does.
 
 **[`codegen_guide.md`](../../codegen_guide.md), at the repository root, is the contract of
 record** — what to write so a procedure is wrapped correctly, case by case, with a worked
-example for each and a real snippet from the current tree. It covers both ways in: the kernel
-path, where you write one annotated kernel and the generator writes the wrappers, and the export
-path, where you write the whole procedure and mark it `M_EXPORT_C`.
+example for each and a real snippet from the current tree. It covers both ways in: the
+implementation path, where you write one annotated `_impl` procedure and the generator writes
+the wrappers, and the export path, where you write the whole procedure and mark it
+`M_EXPORT_C`.
 
 | If you want | Go to |
 |---|---|
@@ -221,9 +261,25 @@ The parts a source author does not need, and a generator maintainer does:
   marker and what the generator looks for therefore cannot disagree — change the macro and both
   the sources and the generator follow. Only tagged procedures are wrapped; everything else is
   held to none of the rules.
-- **`<p>_alloc` takes the plain C symbol `<p>_c`**, because it is the one callers want, and its
-  non-allocating twin `<p>` becomes `<p>_expert_c` — but only where such a twin exists, so a lone
-  `<p>` is never needlessly renamed (`abi/c_abi.stripped_name`).
+- **The plain name goes to the entry point a caller should reach for first**, which is why the
+  suffix is never the author's to choose (`synthesize._wrappers_for`). Where the implementation
+  has something to take over — a `tmp_` work array, a `<base>_perm` permutation, a
+  `DM_OUTPUT_FROM(..., AUTO)` value — or where its prologue asks for an argument of its own,
+  two wrappers are generated: `foo`, which prepares all of that and calls the implementation,
+  and `foo_expert`, which validates and calls it with exactly what you supply, preparing
+  nothing. Where there is nothing to take over there is **one** wrapper and it is called `foo`,
+  there being no second tier for an `_expert` name to distinguish it from — nearly half the
+  wrappers in the tree today. Naming the lone one `foo_expert` unconditionally would generate,
+  compile and bind perfectly well, and quietly rename every entry point that has no work arrays.
+- **A generated name is published as it stands; a hand-written pair is translated.** Synthesis
+  names the tiers `foo` and `foo_expert` outright, so they cross as `foo_c` and `foo_expert_c`
+  with nothing left to decide. The case that still needs deciding is the hand-written pair: f42
+  writes its two tiers as `foo` / `foo_alloc`, the shape the whole framework used before any
+  wrapper was generated, and the allocating one is the one callers want — so
+  `abi/c_abi.stripped_name` gives `<p>_alloc` the plain symbol `<p>_c` and renames its
+  non-allocating twin to `<p>_expert_c`, but only where such a twin exists, so a lone
+  `<p>_alloc` is never needlessly renamed. That branch keeps f42's published API unchanged
+  while its implementations are hand-written, and retires itself when they are converted.
 - **A mode crosses as a string.** The binding languages pass the parameter name without its
   prefix, lower-cased (`METHOD_WARD` → `"ward"`), and the C wrapper maps it back to the integer,
   rejecting an unknown one before Fortran is entered. The Fortran wrapper separately checks
@@ -233,12 +289,13 @@ The parts a source author does not need, and a generator maintainer does:
   rather than at the top of the file, because two modules may size each other's outputs and a
   module-level import would then be circular. R needs no import: every wrapper is sourced into
   one environment.
-- **The drop set of `<p>_alloc`** -- what it prepares rather than asks for -- is
+- **The drop set of `foo`** -- what it prepares rather than asks for -- is
   `synthesize.taken_over_arguments`: `tmp_` work arrays, `<base>_perm` permutations,
-  `DM_OUTPUT_FROM` values, and anything the prologue writes that the kernel only reads. The
-  signature is shaped from it in `synthesize` and the body written from it in the emitter, so both
-  call it with the same prologue; an argument that also sizes something the caller still sees is
-  held back, or nothing could size what comes back.
+  `DM_OUTPUT_FROM` values, and anything the prologue writes that the implementation only
+  reads. The signature is shaped from it in `synthesize` and the body written from it in the
+  emitter, so both call it with the same prologue; an argument that also sizes something the
+  caller still sees is held back, or nothing could size what comes back. `foo_expert` keeps
+  every one of them: that difference in signature is the whole reason for two entry points.
 - **Every `use ..., only:` names what the body uses, and nothing more.** An unused `only:`
   name is not a compile error in any Fortran and no compiler warns about one, so a fixed
   import list goes stale in silence -- which is what happened to the C bindings' `tox_errors`
@@ -250,7 +307,12 @@ The parts a source author does not need, and a generator maintainer does:
   `foo_expert` reach a language, each docstring says what the other does -- which permutation
   the allocating half seeds and sorts, which prologue it runs -- because the two are otherwise
   indistinguishable to a reader. The parts are stored with identifiers in backticks and
-  rendered per language: Python keeps them, R turns them into `\code{}`.
+  rendered per language: Python keeps them, R turns them into `\code{}`. Where `foo` only
+  validates and allocates, `foo_expert` does not reach a language at all
+  (`SynthesisResult.expert_only_in_fortran`, applied once in `generate`): the binding allocates
+  the work arrays and computes the `DM_OUTPUT_FROM` sizes for both tiers, so the two would be
+  the same call under a name promising control over it. Fortran and C keep both, because there
+  the expert tier really does hand the buffers over.
 - **A serialized array is made assumed-size and sliced** to `product(<arg>_shape)` in the wrapper,
   which is why the shape argument may not be optional — the wrapper reads it before it may take
   `c_loc` of what it sizes. Python then accepts an array of any rank and flattens it in Fortran
@@ -272,31 +334,46 @@ The generator refuses what it cannot wrap correctly (only for exported procedure
 - an **optional output** — no binding can honour it; use an optional input flag plus a `tmp_`
   work array
 
-A kernel module is checked separately, because its procedures are read rather than exported and
-so are reached by none of the above:
+An implementation module is checked separately, because its procedures are read rather than
+exported and so are reached by none of the above. These rules follow the `_impl` suffix
+wherever it is written — under `src/tox`, under `src/f42`, anywhere — which is the price of
+dropping the fixed directory they used to be scoped to:
 
-- an **`M_EXPORT_C` on a kernel** — its wrapper is the entry point, and the export publishes an
-  unvalidated twin beside it. Support routines in the same module (the `DM_OUTPUT_FROM` recommend
-  routines) have no wrapper and stay exported
-- a kernel named **`<x>_alloc_kernel`** — `_alloc` is the generator's suffix, and such a kernel
-  generates an allocating wrapper that allocates nothing
-- an **`allocatable` local** in any procedure of the module, kernels and helpers alike — the
-  generated `_alloc` owns the memory. Seen through the declaration, since no body is ever read;
-  a `pointer` local aliases and is fine
+- a module **not in a file named after it** — the *module* name is what synthesis triggers on
+  and what the generated module is called; the *file* name is what its path is mirrored from,
+  and what the cleaner reads without parsing anything. Let the two disagree and `module tox_x`
+  is written into some unrelated file — or into none, since a module named `<x>_impl` in a
+  file that is not an `_impl` file has no mirrored path at all and the emitter raises rather
+  than guessing a directory
+- an **`M_EXPORT_C` on an implementation** — its wrapper is the entry point, and the export
+  publishes an unvalidated twin beside it, under a name (`foo_impl`) a binding caller cannot
+  tell apart from the validated `foo`. Support routines in the same module (the
+  `DM_OUTPUT_FROM` recommend routines) have no wrapper and stay exported, which is why an
+  implementation module can itself show up in the bindings — `tox_loess_impl.py` is the
+  Python home of `tox_loess_required_workspace`, and holds no implementation at all
+- an implementation named **`<x>_expert_impl`** or **`<x>_alloc_impl`** — both name a wrapper,
+  and the suffix is the generator's to add. `foo_expert_impl` beside `foo_impl` yields two
+  procedures called `foo_expert`, and the emitter would strip the suffix and call `foo_impl`
+  from the wrong one: wrong code that compiles, because `foo_impl` exists. `foo_alloc_impl`
+  yields `foo_alloc`, which `stripped_name` then publishes to Python and R as `foo`, colliding
+  with a real `foo` in the same family
+- an **`allocatable` local** in any procedure of the module, implementations and helpers alike
+  — the generated wrapper owns the memory. Seen through the declaration, since no body is ever
+  read; a `pointer` local aliases and is fine
 
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 
 - the named procedure must exist
 - it must declare a scalar `logical, intent(out) :: handled` — the wrapper returns early on it
   regardless, so without it that branch reads an undefined value
-- a dummy naming a kernel argument is supplied from it; one naming nothing becomes an argument
-  of the allocating wrapper, which is what the prologue derives *from*. A name **one edit** from
-  a kernel argument is refused as a misspelling, since it would otherwise become a new argument
-  and leave the prologue and the kernel working from different values
+- a dummy naming an implementation argument is supplied from it; one naming nothing becomes an
+  argument of `foo`, which is what the prologue derives *from*. A name **one edit** from an
+  implementation argument is refused as a misspelling, since it would otherwise become a new
+  argument and leave the prologue and the implementation working from different values
 - a dummy that some mode's wrapper does not have — the mode argument, or one scoped to a mode —
   is refused: the prologue runs in all of them
-- the kernel must generate an allocating wrapper for it to run in (it does when anything is
-  taken over, or when the prologue asks for an argument of its own)
+- the implementation must generate an allocating wrapper for it to run in (it does when
+  anything is taken over, or when the prologue asks for an argument of its own)
 - it may not produce anything the allocations, permutation sorts or recommend calls above it read
 
 ---
@@ -342,9 +419,12 @@ Three layers, fastest first:
 3. **End-to-end tests** that generate from the fixtures, **compile** the output
    (`gfortran -std=f2018`), build a shared library, and **call it** — from generated Python,
    from generated R, and from Fortran itself. This is the only thing that proves the output
-   is not just plausible but correct: `fx_sum_matrix` really sums a matrix, and the kernel
-   layer's `rank_scores_alloc` really allocates, seeds and sorts a permutation and rejects a
-   value below its documented minimum with the argument position its own caller sees.
+   is not just plausible but correct: `fx_sum_matrix` really sums a matrix, and the wrappers
+   synthesised from `rank_scores_impl` really behave as two tiers — `rank_scores` allocates
+   the work array and seeds and heapsorts the permutation that `rank_scores_expert` takes from
+   the caller, both agree with a hand-driven call of the implementation itself, and each
+   rejects a value below its documented minimum with the argument position its *own* caller
+   sees rather than the implementation's.
 
    The Fortran one holds *generated* code to `-std=f2018` but compiles the f42 modules it
    links against without it, exactly as fpm does — `f42_math` uses the F2023 `reduce()`
@@ -385,6 +465,14 @@ code.
 
 ## Open items
 
+- **f42's hand-written pairs**: an `_impl` module is accepted anywhere under `src/`, so
+  `src/f42/utils/f42_stats_impl.F90` would generate `src/generated/f42/utils/f42_stats.F90`
+  with no special case in the generator — f42 simply has not been converted. Its four pairs
+  (`compute_edf`, `calc_percentile`, `build_kd_index`, `build_spherical_kd`) still write both
+  tiers by hand as `<p>` / `<p>_alloc`, and `stripped_name` still translates that shape into
+  the published names. Converting them is a separate job because a generated module is
+  whole-file while theirs are mixed — `f42_stats` also holds `loess_smooth_2d` and other
+  ordinary exports — so each has to be split first.
 - **ifx**: the F2018 features used (`OPTIONAL` in `bind(C)`, `implicit none (type,
   external)`) are verified with gfortran only. ifx is expected to agree; worth a check.
 - **Compile check in CI**: the end-to-end tests need a compiler. They are marked to skip

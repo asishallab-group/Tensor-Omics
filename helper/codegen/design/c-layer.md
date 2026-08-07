@@ -78,7 +78,7 @@ the Fortran wrappers' `#ifndef NO_C_BINDING`. So:
 
 A third switch, `NO_INPUT_VALIDATION`, drops the *generated wrappers'* input checks rather than
 any binding layer; it is the same kind of whole-build decision and is designed in
-[`kernel-layer.md`](kernel-layer.md). It deliberately leaves the null checks here alone: those
+[`impl-layer.md`](impl-layer.md). It deliberately leaves the null checks here alone: those
 prevent a segfault rather than reject a bad value.
 
 The R headers reach the C compiler through fpm's `--c-flag` (its `--flag` is Fortran only);
@@ -170,7 +170,7 @@ caller-visible source keeps its Fortran name alone.
 `map_err_arg_pos` in `tox_errors` stays for hand-written code where two dummy lists really are
 known to correspond. What a *generated* wrapper does with an inherited position is the opposite
 and is decided elsewhere: see "The argument position an `ierr` carries" in
-[`kernel-layer.md`](kernel-layer.md).
+[`impl-layer.md`](impl-layer.md).
 
 ## Decision: nullable optionals are `OPTIONAL`, not pointers
 

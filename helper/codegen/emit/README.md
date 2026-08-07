@@ -42,7 +42,7 @@ cannot disagree — **never re-derive any of it in an emitter**:
 
 | You are handed | Meaning |
 |---|---|
-| `CWrapper.name` / `.stripped_name` | the exported C symbol, and the name your binding should use (`_c` dropped, `_alloc`/`_expert` pairing already applied) |
+| `CWrapper.name` / `.stripped_name` | the exported C symbol, and the name your binding should use (`_c` dropped, and a hand-written `_alloc` pair already translated) |
 | `CArgument.type`, `.dimension`, `.intent` | the type *as C sees it*, already mapped from the Fortran kind |
 | `.origin` | `ARGUMENT`, `RESULT`, `EXTENT`, `STRLEN` or `ERROR` — the last three are invented for C and are yours to supply, not the caller's |
 | `.conversion` | `NONE`, `LOGICAL`, `CHARACTER` or `MODE` — the value needs work between your language and C |
@@ -216,7 +216,8 @@ else.
   (`doc_literals.py`). A Fortran kind suffix in a doc is noise everywhere else — and in an
   *extent expression* it is a syntax error, so the same stripping applies there.
 - Resolve Ford links to **what the reader can call in your language** (`doc_links.py`): a link to
-  a kernel becomes the binding that wraps it, a link to a mode parameter becomes the mode string.
+  an implementation becomes the binding that wraps it, a link to a mode parameter becomes
+  the mode string.
   Resolve parsed link spans, never by text substitution — a text pass over `[[...]]` mangles R's
   own `x[[i]]`.
 - Never rewrite author prose. If a sentence is wrong, it is wrong in the Fortran.
@@ -231,8 +232,9 @@ else.
 - **Validate in a shim.** The host knows the argument names; C does not.
 - **Ask for a derived argument.** It will be overwritten, and the caller will never know why.
 - **Skip the cross-checks.** They are the thing Fortran cannot do for itself.
-- **Invent a naming convention.** `stripped_name` is the name; `_alloc`/`_expert` pairing is
-  already applied.
+- **Invent a naming convention.** `stripped_name` is the name. A generated pair is already
+  called `foo` / `foo_expert` in Fortran; a hand-written `foo` / `foo_alloc` pair has been
+  translated into those same two names before it reaches you.
 - **Hardcode a constant that lives in `src/macros.h`** — the arg-pos factor above all.
 - **Mirror `NO_INPUT_VALIDATION`.** That directive drops the *Fortran* wrappers' checks at
   compile time, for a caller who has established their inputs are good. Your layer's own
@@ -282,8 +284,8 @@ Three levels, and the third is the one that matters:
 3. **End to end** — generate from the fixtures, **compile**, and **call** it, the way
    `test_end_to_end.py` (Python) and `test_end_to_end_r.py` (R) do. Assert real behaviour:
    the sum is right, an out-of-range value is rejected with the argument position its own caller
-   sees, an `_alloc` variant really allocates and sorts. Anything less proves the output is
-   plausible, not correct.
+   sees, and the allocating entry point really allocates and sorts. Anything less proves the
+   output is plausible, not correct.
 
 The fixtures in [`../tests/fixtures/`](../tests/fixtures/) are the specification: a deliberate,
 complete set of the constructs the generator supports, held to a no-diagnostics bar. If your host

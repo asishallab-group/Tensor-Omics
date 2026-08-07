@@ -53,7 +53,7 @@ This repository contains the source code, methods, snippets and tests for the **
 └── ...         #Code templates or reusable short logic blocks
 
 /src
-  └── kernel/   # the hand-written kernels -- the source of truth for the generated API
+  └── tox/      # the hand-written `_impl` modules -- the source of truth for the generated API
   └── generated/# NOTHING here is hand-written; the generator owns it
   └── ...       # Fortran backend
 
@@ -107,7 +107,7 @@ test_runner.sh   # Compile and generate unit test
   * All test modules must be named `mod_<subroutine_name>.f90` to ensure they are compiled before `run_tests.f90`. Otherwise, compilation errors may occur.
   * Check details in `test/readme.md`
 
-* [**`/helper`**](./helper) holds the code generator that writes the public API: the validating and allocating wrappers around each kernel, and the C, Python and R bindings. See [`codegen_guide.md`](./codegen_guide.md) for how to write Fortran it can wrap, `helper/codegen/README.md` for the generator itself, and `helper/readme.md` for the folder.
+* [**`/helper`**](./helper) holds the code generator that writes the public API: the entry point around each `_impl` procedure (and the `_expert` tier beside it where there is one), and the C, Python and R bindings. See [`codegen_guide.md`](./codegen_guide.md) for how to write Fortran it can wrap, `helper/codegen/README.md` for the generator itself, and `helper/readme.md` for the folder.
 
 ---
 
@@ -144,10 +144,11 @@ snippets`); see the [code generator README](helper/codegen/README.md) for detail
 
 ### Adding or changing a procedure
 
-The public API is **generated**. You write an annotated kernel under `src/kernel/`, and the
-validating wrapper, the allocating wrapper and the C, Python and R bindings are generated from
-it -- documentation, input validation and error handling included. Every build regenerates them
-(`./build.sh`, unless `--skip-code-generation`).
+The public API is **generated**. You write an annotated `<name>_impl` procedure in a
+`<module>_impl` module -- for TOX, under `src/tox/` -- and the entry point `<name>`, its
+`<name>_expert` tier where one is warranted, and the C, Python and R bindings are generated
+from it -- documentation, input validation and error handling included. Every build
+regenerates them (`./build.sh`, unless `--skip-code-generation`).
 
 **[`codegen_guide.md`](./codegen_guide.md) is the guide for that**: what to write, case by case,
 with an example for each. [`helper/codegen/README.md`](./helper/codegen/README.md) covers the
