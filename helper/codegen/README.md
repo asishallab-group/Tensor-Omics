@@ -370,9 +370,10 @@ dropping the fixed directory they used to be scoped to:
   module header (`Procedure.uses`), or the rule would sit one indentation level from being
   bypassed.
 
-  The list is a curated boundary rather than a proof: `f42_utils` re-exports `f42_stats`, whose
-  hand-written `_alloc` halves still allocate. It is the one member that is not itself
-  allocation-free, and it stops being an exception when f42 converts to `_impl`
+  Every member is allocation-free. `f42_utils` sat on the list while its `f42_stats` child
+  still had hand-written `_alloc` halves; converting that family removed the entry rather than
+  justifying it, which is the move to reach for — a module that has to be whitelisted may be a
+  module that should be an implementation
 
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 

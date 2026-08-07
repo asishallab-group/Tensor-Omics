@@ -177,7 +177,7 @@ compile error in generated code, while missing it only costs the caller.
 
 An implementation may `use` another `_impl` module, or one of a whitelist held in
 `Conventions.impl_import_whitelist`: the intrinsic modules, `tox_errors`, `tox_conversions`,
-`f42_config`, `f42_safeguard`, `f42_utils`. Anything else is refused
+`f42_config`, `f42_safeguard`. Anything else is refused
 (`validate._check_impl_imports`).
 
 The rule exists because **it is what makes the allocation rule mean anything beyond one
@@ -198,13 +198,12 @@ module header, and a rule that reads only the header would be one indentation le
 being bypassed. `Procedure.uses` exists for this; the frontend fills it from the same Ford
 attribute it already read for modules.
 
-**It is a curated boundary, not a proof.** `f42_utils` re-exports `f42_stats`, whose
-hand-written `_alloc` halves allocate; the other four children (`f42_sort`, `f42_math`,
-`f42_random`, `f42_vector`) allocate nothing at all. Whitelisting only those four was
-considered and rejected: implementations really do call `calc_percentile`,
-`calc_percentile_helper` and `compute_scaled_distance_quantile`, all of which live in
-`f42_stats`. So the entry stands, and it stops being an exception when f42 is converted to
-`_impl` — at which point its allocating halves are generated rather than written.
+**Every member is allocation-free — now.** It was not always: `f42_utils` sat on the list
+while its `f42_stats` child still had hand-written `_alloc` halves that allocated, so the list
+was a curated boundary rather than a proof. Converting the family removed the entry rather
+than justifying it, which is the better outcome and the one to reach for next time an entry is
+proposed: a module that has to be whitelisted may be a module that should be an
+implementation.
 
 **Rejected — having the generator verify each whitelisted module is allocation-free.** It
 would turn the list from an assertion into a claim the build tests, which is the better shape.
@@ -257,37 +256,55 @@ interface declaration is the only place the signature can be read from. Nothing 
 framework needs submodules; a re-exporting parent is the same encapsulation with one copy of
 each signature.
 
-### f42: the mechanism is available, the conversion is deferred
+### f42: converted, one family at a time
 
-Nothing scopes the generator to tox any more. `src/f42/utils/f42_stats_impl.F90` would
-generate `src/generated/f42/utils/f42_stats.F90` with no special case anywhere — that is the point
-of the mirror. f42 has nevertheless **not** been converted here. It still writes its two tiers
-by hand as `compute_edf` / `compute_edf_alloc`, and `stripped_name` still translates that
-hand-written shape into the published `compute_edf_expert` / `compute_edf`.
+Nothing scopes the generator to tox. `src/f42/utils/f42_stats_impl.F90` generates
+`src/generated/f42/utils/f42_stats.F90` with no special case anywhere — that is the point of
+the mirror, and f42 is where it first paid.
 
-So `_alloc` remains a live convention, for **hand-written pairs only**. The generator never
-emits it, and an implementation may not be named for a wrapper either:
-`_check_impl_is_not_named_for_a_wrapper` refuses `foo_alloc_impl` and `foo_expert_impl` alike.
-The first would generate a `foo_alloc` whose published Python name is `foo`, colliding with a
-real `foo` in the same family; the second would put two procedures called `foo_expert` in one
-module, and the emitter would strip the suffix and call `foo_impl` from the wrong one — wrong
-code that compiles, because `foo_impl` exists.
+The `f42_utils` family converted whole: `f42_math`, `f42_sort`, `f42_random`, `f42_vector`,
+`f42_stats` and the `f42_utils` parent are all `_impl` modules now. Four of the six generate
+nothing at all, holding no `*_impl` procedure — which is legal, and is what let them move
+first while the tree stayed green. `f42_stats` generates `compute_edf` / `compute_edf_expert`
+and `calc_percentile` / `calc_percentile_expert`, and `f42_utils_impl`, having no procedures
+of its own, generates a re-export parent over whichever children generate — today, just
+`f42_stats`.
 
-Converting f42's four hand-written pairs is deliberately a **later, separate job**, and the
-cost is what makes it one. Its pairs sit in *mixed* modules: `f42_stats` also holds
-`loess_smooth_2d`, `compute_scaled_distance_quantile` and other ordinary exports, and
-`f42_kd_tree` the same. A generated module is whole-file — everything in `f42_stats_impl`
-would generate into `src/generated/f42/utils/f42_stats.F90` — so each conversion is first a split of
-the module into the part that becomes an implementation and the part that stays a hand-written
-export. That is a change to f42's public structure and belongs in its own change, with its own
-review.
+**The order was the whole trick.** The four leaves are imported by name nowhere outside
+`src/f42/utils`, so they could be renamed with the hand-written `f42_utils` still re-exporting
+them and every consumer compiling unchanged. Only then were consumers repointed off the parent
+onto the child that defines each symbol, which left exactly five files reaching for `f42_stats`
+symbols — and only then did `f42_stats` and the parent convert, in one commit with the
+whitelist change. Removing `f42_utils` from `impl_import_whitelist` any earlier leaves three
+tox implementations with nowhere legal to import from; any later and they compile against the
+*generated* allocating wrappers, which is the layering inversion the rule exists to stop, with
+no diagnostic.
 
-**Rejected — deleting `alloc_suffix` with the rest of the old naming.** The generator no
-longer emits `_alloc`, so the field looks like dead vocabulary. It is not: it is how those
-four hand-written pairs are *recognised*, and with it gone `compute_edf_alloc` would publish
-as `compute_edf_alloc` and `compute_edf` as `compute_edf` — a silent rename of four published
-Python and R functions in a change whose whole claim is that it publishes nothing new. The
-field stays, documented as the hand-written convention it now is, and goes when f42 goes.
+**Rejected — a "split the mixed module" step.** The plan for a long time was that each f42
+conversion had to begin by splitting the module into the part that becomes an implementation
+and the part that stays a hand-written export, because a generated module is whole-file. That
+premise was wrong: an implementation module may hold ordinary exported procedures, exactly as
+the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distance_quantile`
+simply stayed in `f42_stats_impl` and are published from there. They move from
+`f42_stats.py` to `f42_stats_impl.py` in the Python package and keep their names, their
+signatures and their flat `from tensor_omics import ...` import.
+
+**`alloc_suffix` outlives the conversion, for now.** The generator never emits `_alloc`, and
+after `f42_kd_tree` converts no hand-written pair will be left for `stripped_name`'s
+translating branch to recognise. Retiring that branch is kept as a separate change so that a
+bug in the retirement and a bug in the conversion cannot land in the same lines. The reserved
+name stays regardless: `_check_impl_is_not_named_for_a_wrapper` refuses `foo_alloc_impl` and
+`foo_expert_impl` alike, the first because its published name would collide with a real `foo`
+in the same family, the second because it would put two procedures called `foo_expert` in one
+module and the emitter would call `foo_impl` from the wrong one — wrong code that compiles.
+
+**A bug the conversion surfaced.** `calc_percentile` validated `size(array) <= size(perm)`,
+the inverse of the contract it exists to serve: a percentile over a *slice* of a sorted
+permutation has a shorter permutation than array. Both callers that need that were therefore
+routing around the validated entry point and into the unvalidated helper. The converted
+signature takes the subset as an optional `n_considered` count rather than a second extent,
+which keeps `array_perm` sized like `array` so the `<base>_perm` convention applies unchanged,
+and puts the slice case inside the validated API for the first time.
 
 ---
 

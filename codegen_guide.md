@@ -344,7 +344,7 @@ with your `summary:` as the docstring, your argument docs as the parameter docs,
 | **No `M_EXPORT_C` on the implementation** | the generated wrapper is what the bindings call; exporting the implementation beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of §5.9 — *are* exported: they have no wrapper |
 | **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which the export path republishes as `foo` (§6.5) and collides with the real `foo` beside it. Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (§5.7) |
 | **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local *or a dummy* declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
-| **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`, `f42_utils`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header |
+| **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header |
 
 Extents are recognised on sight: `n_tissues` in `expression_vectors(n_tissues, n_genes)` is an
 extent, is validated as one, and is never asked of a Python or R caller — they pass the array,
@@ -998,7 +998,7 @@ wrapper, and here there is no wrapper for it to write into.
 
 ### 6.5 An `_alloc` pair by hand
 
-`_alloc` is the one naming convention that survives only on this path. **The generator never emits
+`_alloc` is the one naming convention that survives only on this path, and it is on its way out: the `f42_utils` family has converted, so only `f42_kd_tree` still writes a pair by hand. **The generator never emits
 it** — a generated pair is named `foo` / `foo_expert` outright (§2). It is still recognised on the
 export path, because it is the shape the framework used before the wrappers were generated and the
 shape f42 still writes: two procedures in one module, named `<p>_alloc` and `<p>`, of which the
