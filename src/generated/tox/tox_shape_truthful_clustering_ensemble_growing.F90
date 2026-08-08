@@ -19,10 +19,19 @@ module tox_shape_truthful_clustering_ensemble_growing
 contains
 
     !> summary: Validates its inputs, then calls [[tox_shape_truthful_clustering_ensemble_growing_kernel(module):calc_ensemble_growth_radius_kernel]].
-    !| Matches LoManLe's `local_scale_i` exactly -- a per-seed, locally adaptive radius rather
-    !| than a single dataset-wide one (see `misc/STC_for_LoManLe.md` section 2.2). Work arrays
-    !| are sized for the worst case (`k_min = n_vectors - 1`) and sliced internally, since
-    !| `k_min`'s resolved value is only known once its default (if any) has been applied.
+    !| Matches LoManLe's `local_scale_i` exactly at the default `radius_percentile=50.0` (the
+    !| median) -- a per-seed, locally adaptive radius rather than a single dataset-wide one
+    !| (see `misc/STC_for_LoManLe.md` section 2.2). Work arrays are sized for the worst case
+    !| (`k_min = n_vectors - 1`) and sliced internally, since `k_min`'s resolved value is only
+    !| known once its default (if any) has been applied.
+    !|
+    !| `radius_percentile` generalizes what used to be a hardcoded median: `seeds_kernel`
+    !| reuses this same SKG for its seed-exclusion radius (see `misc/mod_STC.md`, SKG
+    !| `seeds`), and a fixed dataset-wide-in-spirit median there was observed to suppress
+    !| entire uncovered regions (e.g. curvature extrema on a wavy manifold) whose own growth
+    !| never actually reaches that far -- exposing the percentile lets that specific call site
+    !| shrink its exclusion radius independently of this kernel's own default, without
+    !| touching the actual growth-radius computation any other caller relies on.
     subroutine calc_ensemble_growth_radius(&
             vectors,&
             n_dimensions,&
@@ -31,6 +40,7 @@ contains
             dimension_order,&
             seed_index,&
             k_min,&
+            radius_percentile,&
             tmp_neighbors,&
             tmp_distances,&
             tmp_range_stack,&
@@ -63,6 +73,13 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius -- 50.0 (the default) is the median, matching this SKG's original,
+            !! non-parameterized behavior
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         integer(int32), dimension(n_vectors), intent(out) :: tmp_neighbors
             !! Workspace: k-NN query result, indices (sized for the worst case, sliced internally)
         real(real64), dimension(n_vectors), intent(out) :: tmp_distances
@@ -72,7 +89,8 @@ contains
         integer(int32), dimension(n_vectors), intent(out) :: tmp_sort_perm
             !! Workspace: sort-permutation scratch (sized as `tmp_neighbors`)
         real(real64), intent(out) :: growth_radius
-            !! Median distance among the seed's own k_min nearest neighbors
+            !! radius_percentile-th percentile of the distances among the seed's own k_min
+            !! nearest neighbors
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -82,6 +100,7 @@ contains
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
         call validate_in_range_int(seed_index, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors)
         call validate_in_range_int(k_min, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_real(radius_percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -96,6 +115,7 @@ contains
             dimension_order = dimension_order,&
             seed_index = seed_index,&
             k_min = k_min,&
+            radius_percentile = radius_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
             tmp_range_stack = tmp_range_stack,&
@@ -105,10 +125,19 @@ contains
     end subroutine calc_ensemble_growth_radius
 
     !> summary: Allocates its work arrays, then calls [[tox_shape_truthful_clustering_ensemble_growing_kernel(module):calc_ensemble_growth_radius_kernel]].
-    !| Matches LoManLe's `local_scale_i` exactly -- a per-seed, locally adaptive radius rather
-    !| than a single dataset-wide one (see `misc/STC_for_LoManLe.md` section 2.2). Work arrays
-    !| are sized for the worst case (`k_min = n_vectors - 1`) and sliced internally, since
-    !| `k_min`'s resolved value is only known once its default (if any) has been applied.
+    !| Matches LoManLe's `local_scale_i` exactly at the default `radius_percentile=50.0` (the
+    !| median) -- a per-seed, locally adaptive radius rather than a single dataset-wide one
+    !| (see `misc/STC_for_LoManLe.md` section 2.2). Work arrays are sized for the worst case
+    !| (`k_min = n_vectors - 1`) and sliced internally, since `k_min`'s resolved value is only
+    !| known once its default (if any) has been applied.
+    !|
+    !| `radius_percentile` generalizes what used to be a hardcoded median: `seeds_kernel`
+    !| reuses this same SKG for its seed-exclusion radius (see `misc/mod_STC.md`, SKG
+    !| `seeds`), and a fixed dataset-wide-in-spirit median there was observed to suppress
+    !| entire uncovered regions (e.g. curvature extrema on a wavy manifold) whose own growth
+    !| never actually reaches that far -- exposing the percentile lets that specific call site
+    !| shrink its exclusion radius independently of this kernel's own default, without
+    !| touching the actual growth-radius computation any other caller relies on.
     subroutine calc_ensemble_growth_radius_alloc(&
             vectors,&
             n_dimensions,&
@@ -117,6 +146,7 @@ contains
             dimension_order,&
             seed_index,&
             k_min,&
+            radius_percentile,&
             growth_radius,&
             ierr&
         )
@@ -145,8 +175,16 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius -- 50.0 (the default) is the median, matching this SKG's original,
+            !! non-parameterized behavior
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         real(real64), intent(out) :: growth_radius
-            !! Median distance among the seed's own k_min nearest neighbors
+            !! radius_percentile-th percentile of the distances among the seed's own k_min
+            !! nearest neighbors
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: tmp_neighbors
@@ -160,6 +198,7 @@ contains
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
         call validate_in_range_int(seed_index, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors)
         call validate_in_range_int(k_min, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_real(radius_percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -179,6 +218,7 @@ contains
             dimension_order = dimension_order,&
             seed_index = seed_index,&
             k_min = k_min,&
+            radius_percentile = radius_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
             tmp_range_stack = tmp_range_stack,&

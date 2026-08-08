@@ -51,6 +51,12 @@ def parse_args():
                          "default value k_min has, not a live reference: seeds() and "
                          "ensemble_identification_merged() are separate top-level calls, so --k is the only "
                          "way to move both together from the command line)")
+    p.add_argument("--exclusion-radius-percentile", type=float, default=50.0,
+                    help="Seeding: percentile (0-100) of the k_density neighbor distances used as each seed's "
+                         "coverage/exclusion radius, see seeds (default 50.0, the median)")
+    p.add_argument("--bandwidth-percentile", type=float, default=68.27,
+                    help="Seeding: percentile (0-100) of the k_density neighbor distances used as the local "
+                         "Gaussian KDE bandwidth for density ranking, see density_labels (default 68.27)")
     p.add_argument("--alpha-max-deg", type=float, default=30.0,
                     help="Accept: maximum tolerated principal angle between tangent bases, in degrees (default 30)")
     p.add_argument("--d-max", type=int, default=1,
@@ -112,7 +118,9 @@ def main():
     dimension_order = np.arange(1, n_dimensions + 1, dtype=np.int32)
     kd_indices = build_kd_index(vectors, dimension_order)
 
-    seed_selection_mask = seeds(vectors, kd_indices, dimension_order, k_density=args.k_density)
+    seed_selection_mask = seeds(vectors, kd_indices, dimension_order, k_density=args.k_density,
+                                exclusion_radius_percentile=args.exclusion_radius_percentile,
+                                bandwidth_percentile=args.bandwidth_percentile)
     n_ensembles = int(np.count_nonzero(seed_selection_mask))
     print(f"[run_stc] {stem}: N={n_vectors}, D={n_dimensions}, seeds found={n_ensembles}")
 

@@ -5,10 +5,10 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void calc_ensemble_growth_radius_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, double*, int*);
+void calc_ensemble_growth_radius_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, double*, int*);
 void grow_ensemble_c(const double*, const int*, const int*, const int*, const int*, const unsigned char*, const double*, unsigned char*, int*);
 
-SEXP calc_ensemble_growth_radius_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_index, SEXP k_min) {
+SEXP calc_ensemble_growth_radius_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_index, SEXP k_min, SEXP radius_percentile) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
@@ -17,6 +17,7 @@ SEXP calc_ensemble_growth_radius_call(SEXP vectors, SEXP kd_indices, SEXP dimens
     // scalar inputs, pulled from their length-1 vectors
     int seed_index_v = Rf_asInteger(seed_index);
     int k_min_v = Rf_asInteger(k_min);
+    double radius_percentile_v = Rf_asReal(radius_percentile);
 
     // outputs and work space
     double growth_radius = 0;
@@ -30,6 +31,7 @@ SEXP calc_ensemble_growth_radius_call(SEXP vectors, SEXP kd_indices, SEXP dimens
         INTEGER(dimension_order),
         &seed_index_v,
         &k_min_v,
+        &radius_percentile_v,
         &growth_radius,
         &ierr
     );

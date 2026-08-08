@@ -24,10 +24,14 @@ fi
 
 # --- 3. Argument parsing ----------------------------------------------------------------
 if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <file.csv|all> [k_min_list] [alpha_max_deg_list] [d_max_list] [g_max_list] [reconciliation_mode_list] [min_jsi_list]"
+    echo "Usage: $0 <file.csv|all> [k_min_list] [alpha_max_deg_list] [d_max_list] [g_max_list] [reconciliation_mode_list] [min_jsi_list] [k_density_list] [exclusion_radius_percentile_list]"
     echo "Example: $0 data/2d/s_curve_2d_noise_low.csv 30 30 1 3.0 merge_jsi 0.1"
     echo "Example with lists: $0 data/2d/s_curve_2d_noise_low.csv 15,30 30,60 1,2 3.0,8.0 merge_jsi,merge_any 0.1"
     echo "Example, all datasets: $0 all"
+    echo "Example, k_density and exclusion_radius_percentile swept independently of k_min:"
+    echo "  $0 data/2d/s_curve_2d_noise_low.csv 30 30 1 3.0 merge_jsi 0.1 15,30 25,50"
+    echo "Note: k_density_list defaults to 30 (not k_min_list) if omitted -- these two are"
+    echo "independent SKG-level parameters, see run_stc.py's own --k-density help text."
     exit 1
 fi
 
@@ -38,6 +42,12 @@ d_max_list=(${4:-1}); d_max_list=(${d_max_list[@]//,/ })
 g_max_list=(${5:-3.0}); g_max_list=(${g_max_list[@]//,/ })
 mode_list=(${6:-merge_jsi}); mode_list=(${mode_list[@]//,/ })
 min_jsi_list=(${7:-0.1}); min_jsi_list=(${min_jsi_list[@]//,/ })
+# Bug fix: these two used to not be forwarded to run_stc.py at all, so every sweep silently
+# ran seeds() at its hardcoded default (k_density=30, exclusion_radius_percentile=50.0)
+# regardless of what k_min_list/the results filename's "k..." label said -- see
+# misc/STC-experiments/README.md.
+k_density_list=(${8:-30}); k_density_list=(${k_density_list[@]//,/ })
+exclusion_radius_percentile_list=(${9:-50.0}); exclusion_radius_percentile_list=(${exclusion_radius_percentile_list[@]//,/ })
 
 # --- 4. Processing function --------------------------------------------------------------
 process_file() {
@@ -50,19 +60,24 @@ process_file() {
                 for g in "${g_max_list[@]}"; do
                     for mode in "${mode_list[@]}"; do
                         for min_jsi in "${min_jsi_list[@]}"; do
-                            echo "------------------------------------------"
-                            echo "EXECUTING: $f"
-                            echo "Parameters: k_min=$k, alpha_max_deg=$alpha, d_max=$d, g_max=$g, reconciliation_mode=$mode, min_jsi=$min_jsi"
+                            for kd in "${k_density_list[@]}"; do
+                                for erp in "${exclusion_radius_percentile_list[@]}"; do
+                                    echo "------------------------------------------"
+                                    echo "EXECUTING: $f"
+                                    echo "Parameters: k_min=$k, k_density=$kd, alpha_max_deg=$alpha, d_max=$d, g_max=$g, reconciliation_mode=$mode, min_jsi=$min_jsi, exclusion_radius_percentile=$erp"
 
-                            prefix="$SCRIPT_DIR/results/data/${base_name}_k${k}_a${alpha}_d${d}_g${g}_${mode}_j${min_jsi}"
-                            python3 "$SCRIPT_DIR/run_stc.py" "$f" \
-                                --k-min "$k" --alpha-max-deg "$alpha" --d-max "$d" --g-max "$g" \
-                                --reconciliation-mode "$mode" --min-jsi "$min_jsi" \
-                                --out-prefix "$prefix"
+                                    prefix="$SCRIPT_DIR/results/data/${base_name}_k${k}_kd${kd}_a${alpha}_d${d}_g${g}_${mode}_j${min_jsi}_erp${erp}"
+                                    python3 "$SCRIPT_DIR/run_stc.py" "$f" \
+                                        --k-min "$k" --k-density "$kd" --alpha-max-deg "$alpha" --d-max "$d" --g-max "$g" \
+                                        --reconciliation-mode "$mode" --min-jsi "$min_jsi" \
+                                        --exclusion-radius-percentile "$erp" \
+                                        --out-prefix "$prefix"
 
-                            Rscript "$SCRIPT_DIR/plot_stc.R" "$prefix"
-                            mkdir -p "$SCRIPT_DIR/results/plots"
-                            mv "${prefix}.pdf" "$SCRIPT_DIR/results/plots/$(basename "$prefix").pdf"
+                                    Rscript "$SCRIPT_DIR/plot_stc.R" "$prefix"
+                                    mkdir -p "$SCRIPT_DIR/results/plots"
+                                    mv "${prefix}.pdf" "$SCRIPT_DIR/results/plots/$(basename "$prefix").pdf"
+                                done
+                            done
                         done
                     done
                 done

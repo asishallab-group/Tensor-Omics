@@ -29,6 +29,7 @@ module tox_shape_truthful_clustering_seeding_kernel
 
 #define CM_DENSITY_K_DEFAULT 30_int32
 #define CM_BANDWIDTH_PERCENTILE_DEFAULT 68.27_real64
+#define CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT 50.0_real64
 
     private
     public :: density_labels_kernel
@@ -180,8 +181,16 @@ contains
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
+    !|
+    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+    !| exclusion radius can be tuned independently of the actual growth-phase radius any
+    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+    !| `misc/STC-experiments/README.md`.
     pure subroutine seeds_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                 k_density, bandwidth_percentile, &
+                                 k_density, bandwidth_percentile, exclusion_radius_percentile, &
                                  tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                  tmp_labels, tmp_rank_perm, &
                                  tmp_visited_mask, tmp_newly_covered_mask, &
@@ -214,6 +223,12 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
             !! DM_DEFAULT(CM_BANDWIDTH_PERCENTILE_DEFAULT)
+        real(real64), intent(in), optional :: exclusion_radius_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! coverage/exclusion radius, see above
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(100.0_real64)
+            !! DM_DEFAULT(CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT)
         integer(int32), intent(out) :: tmp_neighbors(n_vectors)
             !! Workspace, see `density_labels`/`calc_ensemble_growth_radius` (reused across both)
         real(real64), intent(out) :: tmp_distances(n_vectors)
@@ -234,8 +249,10 @@ contains
         logical, intent(out) :: is_seed_mask(n_vectors)
             !! .true. for points selected as seeds
 
-        real(real64)   :: coverage_radius
+        real(real64)   :: coverage_radius, actual_exclusion_radius_percentile
         integer(int32) :: i, rank, candidate, swap_tmp
+
+        M_DEFAULT_VAL(exclusion_radius_percentile, actual_exclusion_radius_percentile, CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT)
 
         call density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                    k_density, bandwidth_percentile, &
@@ -261,8 +278,10 @@ contains
 
             call calc_ensemble_growth_radius_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                     candidate, k_density, &
-                                                    tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
-                                                    coverage_radius)
+                                                    radius_percentile=actual_exclusion_radius_percentile, &
+                                                    tmp_neighbors=tmp_neighbors, tmp_distances=tmp_distances, &
+                                                    tmp_range_stack=tmp_range_stack, tmp_sort_perm=tmp_sort_perm, &
+                                                    growth_radius=coverage_radius)
 
             call kd_range_query_mask_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                             vectors(:, candidate), coverage_radius, tmp_range_stack, &

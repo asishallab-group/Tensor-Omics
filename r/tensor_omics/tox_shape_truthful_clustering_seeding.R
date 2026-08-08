@@ -90,6 +90,14 @@ density_labels <- function(vectors, kd_indices, dimension_order, k_density = 30L
 #' ever actually grow into, leaving points "covered" by seed-exclusion but never reached
 #' by any grown ensemble, see `misc/STC-experiments/README.md`.
 #'
+#' `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+#' (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+#' exclusion radius can be tuned independently of the actual growth-phase radius any
+#' other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+#' fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+#' (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+#' `misc/STC-experiments/README.md`.
+#'
 #' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_seeding::seeds_alloc}, whose argument names
 #' are the ones an error message reports.
 #'
@@ -110,22 +118,28 @@ density_labels <- function(vectors, kd_indices, dimension_order, k_density = 30L
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
 #'   The default value is `68.27`.
+#' @param exclusion_radius_percentile a numeric scalar. Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+#'   coverage/exclusion radius, see above
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `50.0`.
 #' @return a logical vector. TRUE for points selected as seeds
 #' @export
-seeds <- function(vectors, kd_indices, dimension_order, k_density = 30L, bandwidth_percentile = 68.27) {
+seeds <- function(vectors, kd_indices, dimension_order, k_density = 30L, bandwidth_percentile = 68.27, exclusion_radius_percentile = 50.0) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
     k_density <- .tox_as_integer_scalar(k_density, "k_density")
     bandwidth_percentile <- .tox_as_double_scalar(bandwidth_percentile, "bandwidth_percentile")
+    exclusion_radius_percentile <- .tox_as_double_scalar(exclusion_radius_percentile, "exclusion_radius_percentile")
     if (length(dimension_order) != dim(vectors)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "vectors", dim(vectors)[1])
     if (length(kd_indices) != dim(vectors)[2])
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
-    .result <- .Call("seeds_call", vectors, kd_indices, dimension_order, k_density, bandwidth_percentile)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "is_seed_mask", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("seeds_call", vectors, kd_indices, dimension_order, k_density, bandwidth_percentile, exclusion_radius_percentile)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "exclusion_radius_percentile", "is_seed_mask", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$is_seed_mask

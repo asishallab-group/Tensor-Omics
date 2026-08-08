@@ -11,11 +11,12 @@
 !| with the seeding kernels, rather than building their own.
 module tox_shape_truthful_clustering_ensemble_growing_kernel
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: sort_real_heapsort
+    use f42_utils, only: sort_real_heapsort, calc_percentile_helper
     use f42_kd_tree, only: kd_knn_query_helper, kd_range_query_mask_helper
     M_IMPLICIT_NONE
 
 #define CM_GROWTH_RADIUS_K_MIN_DEFAULT 30_int32
+#define CM_GROWTH_RADIUS_PERCENTILE_DEFAULT 50.0_real64
 
     private
     public :: calc_ensemble_growth_radius_kernel
@@ -23,14 +24,24 @@ module tox_shape_truthful_clustering_ensemble_growing_kernel
 
 contains
 
-    !> summary: Locally adapted ensemble growth radius, the median distance among a seed's own k_min nearest neighbors
+    !> summary: Locally adapted ensemble growth radius, a percentile of the distances among a seed's own k_min nearest neighbors
     !| AUTHOR_ASIS_HALLAB
-    !| Matches LoManLe's `local_scale_i` exactly -- a per-seed, locally adaptive radius rather
-    !| than a single dataset-wide one (see `misc/STC_for_LoManLe.md` section 2.2). Work arrays
-    !| are sized for the worst case (`k_min = n_vectors - 1`) and sliced internally, since
-    !| `k_min`'s resolved value is only known once its default (if any) has been applied.
+    !| Matches LoManLe's `local_scale_i` exactly at the default `radius_percentile=50.0` (the
+    !| median) -- a per-seed, locally adaptive radius rather than a single dataset-wide one
+    !| (see `misc/STC_for_LoManLe.md` section 2.2). Work arrays are sized for the worst case
+    !| (`k_min = n_vectors - 1`) and sliced internally, since `k_min`'s resolved value is only
+    !| known once its default (if any) has been applied.
+    !|
+    !| `radius_percentile` generalizes what used to be a hardcoded median: `seeds_kernel`
+    !| reuses this same SKG for its seed-exclusion radius (see `misc/mod_STC.md`, SKG
+    !| `seeds`), and a fixed dataset-wide-in-spirit median there was observed to suppress
+    !| entire uncovered regions (e.g. curvature extrema on a wavy manifold) whose own growth
+    !| never actually reaches that far -- exposing the percentile lets that specific call site
+    !| shrink its exclusion radius independently of this kernel's own default, without
+    !| touching the actual growth-radius computation any other caller relies on.
     pure subroutine calc_ensemble_growth_radius_kernel(vectors, n_dimensions, n_vectors, &
                                                         kd_indices, dimension_order, seed_index, k_min, &
+                                                        radius_percentile, &
                                                         tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                                         growth_radius)
         integer(int32), intent(in) :: n_dimensions
@@ -58,6 +69,13 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_vectors - 1_int32)
             !! DM_DEFAULT(CM_GROWTH_RADIUS_K_MIN_DEFAULT)
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius -- 50.0 (the default) is the median, matching this SKG's original,
+            !! non-parameterized behavior
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(100.0_real64)
+            !! DM_DEFAULT(CM_GROWTH_RADIUS_PERCENTILE_DEFAULT)
         integer(int32), intent(out) :: tmp_neighbors(n_vectors)
             !! Workspace: k-NN query result, indices (sized for the worst case, sliced internally)
         real(real64), intent(out) :: tmp_distances(n_vectors)
@@ -67,9 +85,11 @@ contains
         integer(int32), intent(out) :: tmp_sort_perm(n_vectors)
             !! Workspace: sort-permutation scratch (sized as `tmp_neighbors`)
         real(real64), intent(out) :: growth_radius
-            !! Median distance among the seed's own k_min nearest neighbors
+            !! radius_percentile-th percentile of the distances among the seed's own k_min
+            !! nearest neighbors
 
         integer(int32) :: actual_k_min, k_query, self_pos, j
+        real(real64)   :: actual_radius_percentile
 
         M_DEFAULT_VAL(k_min, actual_k_min, CM_GROWTH_RADIUS_K_MIN_DEFAULT)
         ! An *explicit* k_min is already wrapper-validated against DM_MAX(n_vectors - 1), so
@@ -80,6 +100,8 @@ contains
         ! below asking for more neighbors than exist, past the end of tmp_neighbors/tmp_distances.
         actual_k_min = min(actual_k_min, n_vectors - 1)
         k_query = actual_k_min + 1
+
+        M_DEFAULT_VAL(radius_percentile, actual_radius_percentile, CM_GROWTH_RADIUS_PERCENTILE_DEFAULT)
 
         call kd_knn_query_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                  vectors(:, seed_index), k_query, tmp_range_stack, &
@@ -101,19 +123,14 @@ contains
             tmp_distances(self_pos) = tmp_distances(k_query)
         end if
 
-        ! Sort the remaining actual_k_min distances ascending so the median below is meaningful.
+        ! Sort the remaining actual_k_min distances ascending so the percentile below is meaningful.
         do j = 1, actual_k_min
             tmp_sort_perm(j) = j
         end do
         call sort_real_heapsort(tmp_distances(1:actual_k_min), tmp_sort_perm(1:actual_k_min))
 
-        if (mod(actual_k_min, 2) == 1) then
-            growth_radius = tmp_distances(tmp_sort_perm((actual_k_min + 1)/2))
-        else
-            growth_radius = 0.5_real64*( &
-                            tmp_distances(tmp_sort_perm(actual_k_min/2)) + &
-                            tmp_distances(tmp_sort_perm(actual_k_min/2 + 1)))
-        end if
+        call calc_percentile_helper(tmp_distances(1:actual_k_min), tmp_sort_perm(1:actual_k_min), &
+                                    actual_radius_percentile, growth_radius)
 
     end subroutine calc_ensemble_growth_radius_kernel
 

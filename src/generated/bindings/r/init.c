@@ -139,7 +139,7 @@ SEXP ensemble_identification_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP
 SEXP ensemble_identification_merged_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP accept_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP, SEXP);
-SEXP calc_ensemble_growth_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP calc_ensemble_growth_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP grow_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normal_error_call(SEXP, SEXP);
 SEXP tangent_scales_call(SEXP, SEXP);
@@ -147,7 +147,7 @@ SEXP observable_call(SEXP, SEXP);
 SEXP tox_stc_observable_svd_workspace_call(SEXP, SEXP);
 SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -262,7 +262,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"ensemble_identification_merged_call", (DL_FUNC) &ensemble_identification_merged_call, 11},
     {"accept_ensemble_call", (DL_FUNC) &accept_ensemble_call, 9},
     {"tox_stc_accept_ensemble_svd_workspace_call", (DL_FUNC) &tox_stc_accept_ensemble_svd_workspace_call, 2},
-    {"calc_ensemble_growth_radius_call", (DL_FUNC) &calc_ensemble_growth_radius_call, 5},
+    {"calc_ensemble_growth_radius_call", (DL_FUNC) &calc_ensemble_growth_radius_call, 6},
     {"grow_ensemble_call", (DL_FUNC) &grow_ensemble_call, 5},
     {"normal_error_call", (DL_FUNC) &normal_error_call, 2},
     {"tangent_scales_call", (DL_FUNC) &tangent_scales_call, 2},
@@ -270,7 +270,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"tox_stc_observable_svd_workspace_call", (DL_FUNC) &tox_stc_observable_svd_workspace_call, 2},
     {"ensemble_reconciliation_call", (DL_FUNC) &ensemble_reconciliation_call, 5},
     {"density_labels_call", (DL_FUNC) &density_labels_call, 5},
-    {"seeds_call", (DL_FUNC) &seeds_call, 5},
+    {"seeds_call", (DL_FUNC) &seeds_call, 6},
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},

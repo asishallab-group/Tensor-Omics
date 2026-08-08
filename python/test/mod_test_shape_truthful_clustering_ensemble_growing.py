@@ -65,6 +65,28 @@ def test_growth_radius_default_k_min_too_large_for_dataset():
                  "Expected error for the default k_min=30 on an 11-point dataset", ERR_INVALID_INPUT)
 
 
+# Same k_min=4 fixture, distances sorted [1,1,2,2]. radius_percentile=0.0 is the smallest
+# value in sorted order (the nearest-neighbor distance, 1.0); radius_percentile=100.0 is the
+# largest (the farthest of the k_min neighbors, 2.0) -- irrespective of k_min's parity.
+def test_growth_radius_percentile_min():
+    vectors, kd_indices, dimension_order = _line_fixture(11)
+    radius = calc_ensemble_growth_radius(vectors, kd_indices, dimension_order, 6, k_min=4, radius_percentile=0.0)
+    assert abs(radius - 1.0) < 1e-9, f"expected 1.0, got {radius}"
+
+
+def test_growth_radius_percentile_max():
+    vectors, kd_indices, dimension_order = _line_fixture(11)
+    radius = calc_ensemble_growth_radius(vectors, kd_indices, dimension_order, 6, k_min=4, radius_percentile=100.0)
+    assert abs(radius - 2.0) < 1e-9, f"expected 2.0, got {radius}"
+
+
+def test_growth_radius_invalid_percentile():
+    vectors, kd_indices, dimension_order = _line_fixture(11)
+    assert_error(lambda: calc_ensemble_growth_radius(vectors, kd_indices, dimension_order, 6,
+                                                      k_min=4, radius_percentile=101.0),
+                 "Expected error for radius_percentile > 100", ERR_INVALID_INPUT)
+
+
 # =====================
 # grow_ensemble
 # =====================

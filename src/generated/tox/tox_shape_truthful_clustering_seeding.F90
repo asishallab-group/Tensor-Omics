@@ -261,6 +261,14 @@ contains
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
+    !|
+    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+    !| exclusion radius can be tuned independently of the actual growth-phase radius any
+    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+    !| `misc/STC-experiments/README.md`.
     subroutine seeds(&
             vectors,&
             n_dimensions,&
@@ -269,6 +277,7 @@ contains
             dimension_order,&
             k_density,&
             bandwidth_percentile,&
+            exclusion_radius_percentile,&
             tmp_neighbors,&
             tmp_distances,&
             tmp_range_stack,&
@@ -308,6 +317,12 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
+        real(real64), intent(in), optional :: exclusion_radius_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! coverage/exclusion radius, see above
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         integer(int32), dimension(n_vectors), intent(out) :: tmp_neighbors
             !! Workspace, see `density_labels`/`calc_ensemble_growth_radius` (reused across both)
         real(real64), dimension(n_vectors), intent(out) :: tmp_distances
@@ -335,6 +350,7 @@ contains
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
         call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(exclusion_radius_percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -349,6 +365,7 @@ contains
             dimension_order = dimension_order,&
             k_density = k_density,&
             bandwidth_percentile = bandwidth_percentile,&
+            exclusion_radius_percentile = exclusion_radius_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
             tmp_range_stack = tmp_range_stack,&
@@ -373,6 +390,14 @@ contains
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
+    !|
+    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+    !| exclusion radius can be tuned independently of the actual growth-phase radius any
+    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+    !| `misc/STC-experiments/README.md`.
     subroutine seeds_alloc(&
             vectors,&
             n_dimensions,&
@@ -381,6 +406,7 @@ contains
             dimension_order,&
             k_density,&
             bandwidth_percentile,&
+            exclusion_radius_percentile,&
             is_seed_mask,&
             ierr&
         )
@@ -412,6 +438,12 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
+        real(real64), intent(in), optional :: exclusion_radius_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! coverage/exclusion radius, see above
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         logical, dimension(n_vectors), intent(out) :: is_seed_mask
             !! .true. for points selected as seeds
         integer(int32), intent(out) :: ierr
@@ -431,6 +463,7 @@ contains
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
         call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(exclusion_radius_percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -454,6 +487,7 @@ contains
             dimension_order = dimension_order,&
             k_density = k_density,&
             bandwidth_percentile = bandwidth_percentile,&
+            exclusion_radius_percentile = exclusion_radius_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
             tmp_range_stack = tmp_range_stack,&

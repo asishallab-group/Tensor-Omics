@@ -42,14 +42,15 @@ _lib.seeds_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_SEEDS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "is_seed_mask", "ierr",)
+_SEEDS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "exclusion_radius_percentile", "is_seed_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_SEEDS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None,)
+_SEEDS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None,)
 
 def density_labels(
         vectors,
@@ -164,6 +165,7 @@ def seeds(
         dimension_order,
         k_density=30,
         bandwidth_percentile=68.27,
+        exclusion_radius_percentile=50.0,
 ):
     r"""Select seed points via greedy, density-ranked, coverage-based selection
 
@@ -191,6 +193,12 @@ def seeds(
         The minimum valid value is `0.0`.
         The maximum valid value is `100.0`.
         The default value is `68.27`.
+    exclusion_radius_percentile : float, optional, default 50.0
+        Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+        coverage/exclusion radius, see above
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
+        The default value is `50.0`.
 
     Returns
     -------
@@ -254,6 +262,7 @@ def seeds(
         dimension_order,
         ctypes.byref(ctypes.c_int(k_density)),
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
+        ctypes.byref(ctypes.c_double(exclusion_radius_percentile)),
         is_seed_mask,
         ctypes.byref(ierr),
     )

@@ -255,6 +255,14 @@ contains
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
+    !|
+    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+    !| exclusion radius can be tuned independently of the actual growth-phase radius any
+    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+    !| `misc/STC-experiments/README.md`.
     subroutine seeds_expert_c(&
             vectors,&
             n_dimensions,&
@@ -263,6 +271,7 @@ contains
             dimension_order,&
             k_density,&
             bandwidth_percentile,&
+            exclusion_radius_percentile,&
             tmp_neighbors,&
             tmp_distances,&
             tmp_range_stack,&
@@ -304,6 +313,12 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
+        real(c_double), intent(in), target :: exclusion_radius_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! coverage/exclusion radius, see above
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         integer(c_int), dimension(n_vectors), intent(out), target :: tmp_neighbors
             !! Workspace, see `density_labels`/`calc_ensemble_growth_radius` (reused across both)
         real(c_double), dimension(n_vectors), intent(out), target :: tmp_distances
@@ -334,6 +349,7 @@ contains
         M_CHECK_NON_NULL(n_vectors)
         M_CHECK_NON_NULL(k_density)
         M_CHECK_NON_NULL(bandwidth_percentile)
+        M_CHECK_NON_NULL(exclusion_radius_percentile)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
         M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
         M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
@@ -355,6 +371,7 @@ contains
             dimension_order = dimension_order,&
             k_density = k_density,&
             bandwidth_percentile = bandwidth_percentile,&
+            exclusion_radius_percentile = exclusion_radius_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
             tmp_range_stack = tmp_range_stack,&
@@ -384,6 +401,14 @@ contains
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
+    !|
+    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+    !| exclusion radius can be tuned independently of the actual growth-phase radius any
+    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+    !| `misc/STC-experiments/README.md`.
     subroutine seeds_c(&
             vectors,&
             n_dimensions,&
@@ -392,6 +417,7 @@ contains
             dimension_order,&
             k_density,&
             bandwidth_percentile,&
+            exclusion_radius_percentile,&
             is_seed_mask,&
             ierr&
         ) bind(C, name="seeds_c")
@@ -425,6 +451,12 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
+        real(c_double), intent(in), target :: exclusion_radius_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! coverage/exclusion radius, see above
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         logical(c_bool), dimension(n_vectors), intent(out), target :: is_seed_mask
             !! .true. for points selected as seeds
         integer(c_int), intent(out), target :: ierr
@@ -437,6 +469,7 @@ contains
         M_CHECK_NON_NULL(n_vectors)
         M_CHECK_NON_NULL(k_density)
         M_CHECK_NON_NULL(bandwidth_percentile)
+        M_CHECK_NON_NULL(exclusion_radius_percentile)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
         M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
         M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
@@ -450,6 +483,7 @@ contains
             dimension_order = dimension_order,&
             k_density = k_density,&
             bandwidth_percentile = bandwidth_percentile,&
+            exclusion_radius_percentile = exclusion_radius_percentile,&
             is_seed_mask = is_seed_mask_f,&
             ierr = ierr&
         )

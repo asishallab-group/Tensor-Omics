@@ -147,6 +147,38 @@ def test_seeds_single_cluster_one_seed():
     assert int(np.sum(is_seed_mask)) == 1, f"expected 1 seed, got {int(np.sum(is_seed_mask))}"
 
 
+# The shared 11-point line fixture, k_density=4. A wider exclusion radius (100th percentile
+# of the k_density distances, i.e. the farthest neighbor -- 2.0, vs. the default
+# 50th-percentile median of 1.5) suppresses more of the line per seed, so fewer seeds are
+# needed to cover it.
+def test_seeds_exclusion_radius_percentile_widens_coverage():
+    vectors, kd_indices, dimension_order = _line_fixture(11)
+
+    mask_default = seeds(vectors, kd_indices, dimension_order, k_density=4)
+    mask_wide = seeds(vectors, kd_indices, dimension_order, k_density=4, exclusion_radius_percentile=100.0)
+
+    expected_default = np.zeros(11, dtype=np.bool_)
+    expected_default[[1, 3, 5, 7, 9]] = True
+    expected_wide = np.zeros(11, dtype=np.bool_)
+    expected_wide[[0, 3, 7, 10]] = True
+
+    assert np.array_equal(mask_default, expected_default), f"expected {expected_default}, got {mask_default}"
+    assert np.array_equal(mask_wide, expected_wide), f"expected {expected_wide}, got {mask_wide}"
+    assert int(np.sum(mask_wide)) < int(np.sum(mask_default)), \
+        "a wider exclusion radius should need fewer seeds to cover the same line"
+
+
+def test_seeds_invalid_exclusion_radius_percentile():
+    vectors = np.array([
+        [0.0, 0.1, 0.0, -0.1, 0.0],
+        [0.0, 0.0, 0.1, 0.0, -0.1],
+    ], order='F')
+    dimension_order = np.array([1, 2], dtype=np.int32)
+    kd_indices = build_kd_index(vectors, dimension_order)
+    assert_error(lambda: seeds(vectors, kd_indices, dimension_order, k_density=4, exclusion_radius_percentile=101.0),
+                 "Expected error for exclusion_radius_percentile > 100", ERR_INVALID_INPUT)
+
+
 def test_seeds_invalid_k_density():
     vectors = np.array([
         [0.0, 0.1, 0.0, -0.1, 0.0],

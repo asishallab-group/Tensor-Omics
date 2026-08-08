@@ -52,6 +52,30 @@ test_growth_radius_default_k_min_too_large_for_dataset <- function() {
                "Expected error for the default k_min=30 on an 11-point dataset", ERR_INVALID_INPUT)
 }
 
+# Same k_min=4 fixture, distances sorted [1,1,2,2]. radius_percentile=0.0 is the smallest
+# value in sorted order (the nearest-neighbor distance, 1.0); radius_percentile=100.0 is the
+# largest (the farthest of the k_min neighbors, 2.0) -- irrespective of k_min's parity.
+test_growth_radius_percentile_min <- function() {
+  fx <- line_fixture(11)
+  radius <- calc_ensemble_growth_radius(fx$vectors, fx$kd_indices, fx$dimension_order, 6,
+                                        k_min = 4, radius_percentile = 0.0)
+  assert_true(abs(radius - 1.0) < TOL)
+}
+
+test_growth_radius_percentile_max <- function() {
+  fx <- line_fixture(11)
+  radius <- calc_ensemble_growth_radius(fx$vectors, fx$kd_indices, fx$dimension_order, 6,
+                                        k_min = 4, radius_percentile = 100.0)
+  assert_true(abs(radius - 2.0) < TOL)
+}
+
+test_growth_radius_invalid_percentile <- function() {
+  fx <- line_fixture(11)
+  assert_error(calc_ensemble_growth_radius(fx$vectors, fx$kd_indices, fx$dimension_order, 6,
+                                           k_min = 4, radius_percentile = 101.0),
+               "Expected error for radius_percentile > 100", ERR_INVALID_INPUT)
+}
+
 # =====================
 # grow_ensemble
 # =====================

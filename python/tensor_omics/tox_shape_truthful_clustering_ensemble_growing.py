@@ -25,13 +25,14 @@ _lib.calc_ensemble_growth_radius_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_ENSEMBLE_GROWTH_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "growth_radius", "ierr",)
+_CALC_ENSEMBLE_GROWTH_RADIUS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "radius_percentile", "growth_radius", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_ENSEMBLE_GROWTH_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None,)
+_CALC_ENSEMBLE_GROWTH_RADIUS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None,)
 
 _lib.grow_ensemble_c.restype = None
 _lib.grow_ensemble_c.argtypes = (
@@ -57,8 +58,9 @@ def calc_ensemble_growth_radius(
         dimension_order,
         seed_index,
         k_min=30,
+        radius_percentile=50.0,
 ):
-    r"""Locally adapted ensemble growth radius, the median distance among a seed's own k_min nearest neighbors
+    r"""Locally adapted ensemble growth radius, a percentile of the distances among a seed's own k_min nearest neighbors
 
     Parameters
     ----------
@@ -81,11 +83,19 @@ def calc_ensemble_growth_radius(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
         The default value is `30`.
+    radius_percentile : float, optional, default 50.0
+        Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+        radius -- 50.0 (the default) is the median, matching this SKG's original,
+        non-parameterized behavior
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
+        The default value is `50.0`.
 
     Returns
     -------
     growth_radius : float
-        Median distance among the seed's own k_min nearest neighbors
+        radius_percentile-th percentile of the distances among the seed's own k_min
+        nearest neighbors
 
     Raises
     ------
@@ -143,6 +153,7 @@ def calc_ensemble_growth_radius(
         dimension_order,
         ctypes.byref(ctypes.c_int(seed_index)),
         ctypes.byref(ctypes.c_int(k_min)),
+        ctypes.byref(ctypes.c_double(radius_percentile)),
         ctypes.byref(growth_radius),
         ctypes.byref(ierr),
     )

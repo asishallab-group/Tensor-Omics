@@ -16,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_shape_truthful_clustering_seeding() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(13))
+        allocate (all_tests(15))
 
         all_tests(1) = test_case("test_density_labels_hand_computed", test_density_labels_hand_computed)
         all_tests(2) = test_case("test_density_labels_bandwidth_percentile_median", &
@@ -36,6 +36,10 @@ contains
         all_tests(11) = test_case("test_seeds_single_cluster_one_seed", test_seeds_single_cluster_one_seed)
         all_tests(12) = test_case("test_seeds_invalid_k_density", test_seeds_invalid_k_density)
         all_tests(13) = test_case("test_seeds_omitted_k_density_is_clamped", test_seeds_omitted_k_density_is_clamped)
+        all_tests(14) = test_case("test_seeds_exclusion_radius_percentile_widens_coverage", &
+                                  test_seeds_exclusion_radius_percentile_widens_coverage)
+        all_tests(15) = test_case("test_seeds_invalid_exclusion_radius_percentile", &
+                                  test_seeds_invalid_exclusion_radius_percentile)
     end function get_all_tests_shape_truthful_clustering_seeding
 
     ! --- density_labels ---------------------------------------------------------
@@ -337,6 +341,63 @@ contains
         end if
         call assert_equal_int(count(is_seed_mask, kind=int32), 1_int32, "seeds: a single tight cluster gives 1 seed")
     end subroutine test_seeds_single_cluster_one_seed
+
+    !> The shared 11-point line fixture, k_density=4. A wider exclusion radius (100th
+    !| percentile of the k_density distances, i.e. the farthest neighbor -- 2.0, vs. the
+    !| default 50th-percentile median of 1.5) suppresses more of the line per seed, so fewer
+    !| seeds are needed to cover it. Both outcomes cross-checked against the actual Python
+    !| binding's output on this exact fixture before being hardcoded here.
+    subroutine test_seeds_exclusion_radius_percentile_widens_coverage()
+        real(real64)   :: vectors(2, 11)
+        integer(int32) :: kd_indices(11), dim_order(2), ierr
+        logical        :: mask_default(11), mask_wide(11), expected_default(11), expected_wide(11)
+
+        call build_line_fixture(vectors, kd_indices, dim_order)
+
+        call seeds_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+                         is_seed_mask=mask_default, ierr=ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'seeds_alloc (default exclusion_radius_percentile) failed unexpectedly: ', ierr
+            error stop
+        end if
+
+        call seeds_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+                         exclusion_radius_percentile=100.0d0, is_seed_mask=mask_wide, ierr=ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'seeds_alloc (exclusion_radius_percentile=100) failed unexpectedly: ', ierr
+            error stop
+        end if
+
+        expected_default = .false.
+        expected_default([2, 4, 6, 8, 10]) = .true.
+        expected_wide = .false.
+        expected_wide([1, 4, 8, 11]) = .true.
+
+        call assert_equal_array_logical(mask_default, expected_default, 11_int32, &
+                                        "seeds: default exclusion_radius_percentile (median) gives 5 seeds")
+        call assert_equal_array_logical(mask_wide, expected_wide, 11_int32, &
+                                        "seeds: exclusion_radius_percentile=100 (max) gives 4 seeds")
+        call assert_true(count(mask_wide, kind=int32) < count(mask_default, kind=int32), &
+                         "seeds: a wider exclusion radius needs fewer seeds to cover the same line")
+    end subroutine test_seeds_exclusion_radius_percentile_widens_coverage
+
+    subroutine test_seeds_invalid_exclusion_radius_percentile()
+        real(real64)   :: vectors(2, 5) = reshape([ &
+                          0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
+        integer(int32) :: kd_indices(5), dim_order(2), ierr
+        logical        :: is_seed_mask(5)
+
+        dim_order = [1, 2]
+        call build_kd_index_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'test_seeds_invalid_exclusion_radius_percentile: build_kd_index_alloc failed: ', ierr
+            error stop
+        end if
+
+        call seeds_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+                         exclusion_radius_percentile=101.0d0, is_seed_mask=is_seed_mask, ierr=ierr)
+        call assert_true(is_err(ierr), "seeds should reject exclusion_radius_percentile > 100")
+    end subroutine test_seeds_invalid_exclusion_radius_percentile
 
     subroutine test_seeds_invalid_k_density()
         real(real64)   :: vectors(2, 5) = reshape([ &

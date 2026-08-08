@@ -171,12 +171,13 @@ First, assign each $x_i \in \text{data\_vectors}$ a density label via
 
 Sort the density labels descending. Start with the highest-density unvisited
 vector and mark it a seed. Its coverage radius is the *same computation*
-`calc_ensemble_growth_radius` uses for its own growth radius -- median
-distance to its own $k_{\text{density}}$ nearest neighbors -- called directly
-on the newly-selected seed with $k_{\text{density}}$ in place of $k_{\min}$,
-not a separate radius computed some other way. Mask every vector within that
-radius as visited. Continue with the next highest-density unvisited vector
-until none remain.
+`calc_ensemble_growth_radius` uses for its own growth radius -- a percentile
+(`exclusion_radius_percentile`, default 50.0, the median) of the distances to
+its own $k_{\text{density}}$ nearest neighbors -- called directly on the
+newly-selected seed with $k_{\text{density}}$ in place of $k_{\min}$, not a
+separate radius computed some other way. Mask every vector within that radius
+as visited. Continue with the next highest-density unvisited vector until
+none remain.
 
 Tying the coverage radius to the same local-scale notion growth itself uses,
 rather than a single dataset-wide radius as an earlier draft of this
@@ -348,16 +349,25 @@ the local ensemble specific radius.
 
 The SKG should be called `calc_ensemble_growth_radius` or similar.
 
-Use a fixed-count kNN pool and compute the median distance among a seed's own
-$k_{\min}$ nearest neighbors. Make $k_{\min}$ an optional argument with default
-value 30.
+Use a fixed-count kNN pool and compute a percentile of the distances among a
+seed's own $k_{\min}$ nearest neighbors, `radius_percentile` (0 to 100,
+default 50.0 -- the median, this SKG's original, non-parameterized behavior).
+Make $k_{\min}$ an optional argument with default value 30.
 
 For each seed we store the growth radius in a 1D real array called
 `ensemble_growth_radii`.
 
 `seeds` reuses this exact SKG for its own coverage radius (see "Seeding"
 above), called with $k_{\text{density}}$ in place of $k_{\min}$ -- not a
-second, separately-implemented median-of-k-NN-distances computation.
+second, separately-implemented percentile-of-k-NN-distances computation.
+`seeds` exposes its own call's `radius_percentile` as `exclusion_radius_percentile`,
+independently of whatever percentile any other caller of this SKG uses for the
+actual growth-phase radius: a fixed, dataset-wide-in-spirit median exclusion
+radius was observed empirically to suppress seed placement across curvature
+extrema (peaks, troughs, kinks on a wavy manifold) that a seed's own growth
+never actually reaches -- see `misc/STC-experiments/README.md`. Shrinking
+`exclusion_radius_percentile` below 50 trades more, smaller ensembles for less
+over-eager suppression; it does not change the growth-phase radius itself.
 
 ### Tangent Space Variant
 
@@ -572,3 +582,26 @@ is returned additionally. It has the same number of columns as
 represents the super-ensemble in `super_ensembles` directly. Within each
 column $l$, each cell index $c_i$ indicates the JSI between the ensemble
 number stored in `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`.
+
+## Estimate parameters from data
+
+The crucial parameters are `k_min`, `k_density`, `density_quantile`,
+`alpha_max`, `G_max`, `d_max`.
+
+Once we have the density labels, we can sample one point at each 20%ile of the
+sorted densities. We call those the estimator anchors (EAs). Now we iterate,
+adding one point at a time to each of the EAs in parallel. Points are only
+added if they are not yet covered. If more than one EA would add the same point
+the one with less distance to that point takes precedence. Stop growing if
+there are no points to add. Now we estimate the above parameters as the median
+of the following measures which we obtain for each EA:
+* k_min <- the number of neighbors in the EAs grown cloud
+* k_density <- use k_min
+* density_quantile <- median of distances to an EA's neighbors
+* execute SVD on each EA's neighbor set, then:
+  * alpha_max as the first quartile of all pairwise principal angles between
+    all EA's neigborhoods
+  * G_max the first quartile of all pairwise EA's G
+  * d_max the first quartile of all pairwise EA's d_max
+
+Importantly, this `first quartile` must be an optional parameter, too.

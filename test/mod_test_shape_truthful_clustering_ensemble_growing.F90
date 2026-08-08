@@ -16,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_shape_truthful_clustering_ensemble_growing() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(11))
+        allocate (all_tests(14))
 
         all_tests(1) = test_case("test_growth_radius_even_k", test_growth_radius_even_k)
         all_tests(2) = test_case("test_growth_radius_odd_k", test_growth_radius_odd_k)
@@ -24,11 +24,14 @@ contains
         all_tests(4) = test_case("test_growth_radius_k_min_too_large", test_growth_radius_k_min_too_large)
         all_tests(5) = test_case("test_growth_radius_omitted_k_min_is_clamped", test_growth_radius_omitted_k_min_is_clamped)
         all_tests(6) = test_case("test_growth_radius_zero_dimensions", test_growth_radius_zero_dimensions)
-        all_tests(7) = test_case("test_grow_ensemble_single_member", test_grow_ensemble_single_member)
-        all_tests(8) = test_case("test_grow_ensemble_multi_member_union", test_grow_ensemble_multi_member_union)
-        all_tests(9) = test_case("test_grow_ensemble_empty_ensemble_is_degenerate", test_grow_ensemble_empty_ensemble_is_degenerate)
-        all_tests(10) = test_case("test_grow_ensemble_negative_radius", test_grow_ensemble_negative_radius)
-        all_tests(11) = test_case("test_grow_ensemble_zero_dimensions", test_grow_ensemble_zero_dimensions)
+        all_tests(7) = test_case("test_growth_radius_percentile_min", test_growth_radius_percentile_min)
+        all_tests(8) = test_case("test_growth_radius_percentile_max", test_growth_radius_percentile_max)
+        all_tests(9) = test_case("test_growth_radius_invalid_percentile", test_growth_radius_invalid_percentile)
+        all_tests(10) = test_case("test_grow_ensemble_single_member", test_grow_ensemble_single_member)
+        all_tests(11) = test_case("test_grow_ensemble_multi_member_union", test_grow_ensemble_multi_member_union)
+        all_tests(12) = test_case("test_grow_ensemble_empty_ensemble_is_degenerate", test_grow_ensemble_empty_ensemble_is_degenerate)
+        all_tests(13) = test_case("test_grow_ensemble_negative_radius", test_grow_ensemble_negative_radius)
+        all_tests(14) = test_case("test_grow_ensemble_zero_dimensions", test_grow_ensemble_zero_dimensions)
     end function get_all_tests_shape_truthful_clustering_ensemble_growing
 
     ! --- calc_ensemble_growth_radius ---------------------------------------
@@ -125,6 +128,59 @@ contains
         call assert_equal_real(radius_omitted, radius_explicit, 1.0d-12, &
                                "calc_ensemble_growth_radius: an omitted k_min on N=11 clamps to exactly k_min=10")
     end subroutine test_growth_radius_omitted_k_min_is_clamped
+
+    !> Same k_min=4 fixture as test_growth_radius_even_k, distances sorted [1,1,2,2].
+    !| radius_percentile=0.0 is calc_percentile_helper's own "below the first index" edge
+    !| case, which returns the smallest value in sorted order -- the nearest-neighbor
+    !| distance, 1.0 -- irrespective of k_min's parity.
+    subroutine test_growth_radius_percentile_min()
+        real(real64)   :: vectors(2, 11)
+        integer(int32) :: kd_indices(11), dim_order(2), ierr
+        real(real64)   :: growth_radius
+
+        call build_line_fixture(vectors, kd_indices, dim_order)
+
+        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+                                               k_min=4_int32, radius_percentile=0.0d0, &
+                                               growth_radius=growth_radius, ierr=ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'calc_ensemble_growth_radius_alloc failed unexpectedly: ', ierr
+            error stop
+        end if
+        call assert_equal_real(growth_radius, 1.0d0, 1.0d-9, "calc_ensemble_growth_radius: radius_percentile=0.0 is the min")
+    end subroutine test_growth_radius_percentile_min
+
+    !> Same fixture, radius_percentile=100.0 -- the largest value in sorted order, the
+    !| farthest of the k_min neighbors, 2.0.
+    subroutine test_growth_radius_percentile_max()
+        real(real64)   :: vectors(2, 11)
+        integer(int32) :: kd_indices(11), dim_order(2), ierr
+        real(real64)   :: growth_radius
+
+        call build_line_fixture(vectors, kd_indices, dim_order)
+
+        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+                                               k_min=4_int32, radius_percentile=100.0d0, &
+                                               growth_radius=growth_radius, ierr=ierr)
+        if (.not. is_ok(ierr)) then
+            write (*, *) 'calc_ensemble_growth_radius_alloc failed unexpectedly: ', ierr
+            error stop
+        end if
+        call assert_equal_real(growth_radius, 2.0d0, 1.0d-9, "calc_ensemble_growth_radius: radius_percentile=100.0 is the max")
+    end subroutine test_growth_radius_percentile_max
+
+    subroutine test_growth_radius_invalid_percentile()
+        real(real64)   :: vectors(2, 11)
+        integer(int32) :: kd_indices(11), dim_order(2), ierr
+        real(real64)   :: growth_radius
+
+        call build_line_fixture(vectors, kd_indices, dim_order)
+
+        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+                                               k_min=4_int32, radius_percentile=101.0d0, &
+                                               growth_radius=growth_radius, ierr=ierr)
+        call assert_true(is_err(ierr), "calc_ensemble_growth_radius should reject radius_percentile > 100")
+    end subroutine test_growth_radius_invalid_percentile
 
     subroutine test_growth_radius_zero_dimensions()
         real(real64)   :: vectors(0, 11)

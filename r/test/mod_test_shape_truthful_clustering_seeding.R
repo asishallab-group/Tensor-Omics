@@ -136,6 +136,37 @@ test_seeds_single_cluster_one_seed <- function() {
   assert_true(sum(is_seed_mask) == 1)
 }
 
+# The shared 11-point line fixture, k_density=4. A wider exclusion radius (100th percentile
+# of the k_density distances, i.e. the farthest neighbor -- 2.0, vs. the default
+# 50th-percentile median of 1.5) suppresses more of the line per seed, so fewer seeds are
+# needed to cover it.
+test_seeds_exclusion_radius_percentile_widens_coverage <- function() {
+  fx <- line_fixture(11)
+
+  mask_default <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 4)
+  mask_wide <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 4, exclusion_radius_percentile = 100.0)
+
+  expected_default <- rep(FALSE, 11)
+  expected_default[c(2, 4, 6, 8, 10)] <- TRUE
+  expected_wide <- rep(FALSE, 11)
+  expected_wide[c(1, 4, 8, 11)] <- TRUE
+
+  assert_true(all(mask_default == expected_default))
+  assert_true(all(mask_wide == expected_wide))
+  assert_true(sum(mask_wide) < sum(mask_default))
+}
+
+test_seeds_invalid_exclusion_radius_percentile <- function() {
+  vectors <- rbind(
+    c(0.0, 0.1, 0.0, -0.1, 0.0),
+    c(0.0, 0.0, 0.1, 0.0, -0.1)
+  )
+  dimension_order <- c(1L, 2L)
+  kd_indices <- build_kd_index(vectors, dimension_order)
+  assert_error(seeds(vectors, kd_indices, dimension_order, k_density = 4, exclusion_radius_percentile = 101.0),
+               "Expected error for exclusion_radius_percentile > 100", ERR_INVALID_INPUT)
+}
+
 test_seeds_invalid_k_density <- function() {
   vectors <- rbind(
     c(0.0, 0.1, 0.0, -0.1, 0.0),

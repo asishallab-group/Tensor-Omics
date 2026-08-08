@@ -240,8 +240,9 @@ contains
 
         call calc_ensemble_growth_radius_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                 seed_index, k_min, &
-                                                growth_neighbors, growth_distances, range_stack, growth_sort_perm, &
-                                                growth_radius)
+                                                tmp_neighbors=growth_neighbors, tmp_distances=growth_distances, &
+                                                tmp_range_stack=range_stack, tmp_sort_perm=growth_sort_perm, &
+                                                growth_radius=growth_radius)
 
         mask_current = .false.
         mask_current(seed_index) = .true.

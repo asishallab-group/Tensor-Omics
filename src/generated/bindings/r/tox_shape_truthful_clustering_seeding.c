@@ -6,7 +6,7 @@
 
 // the Fortran C-ABI symbols this module calls
 void density_labels_c(const double*, const int*, const int*, const int*, const int*, const int*, const double*, double*, int*);
-void seeds_c(const double*, const int*, const int*, const int*, const int*, const int*, const double*, unsigned char*, int*);
+void seeds_c(const double*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, unsigned char*, int*);
 
 SEXP density_labels_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_density, SEXP bandwidth_percentile) {
     int nprot = 0;
@@ -45,7 +45,7 @@ SEXP density_labels_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SE
     return _out;
 }
 
-SEXP seeds_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_density, SEXP bandwidth_percentile) {
+SEXP seeds_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_density, SEXP bandwidth_percentile, SEXP exclusion_radius_percentile) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
@@ -54,6 +54,7 @@ SEXP seeds_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_dens
     // scalar inputs, pulled from their length-1 vectors
     int k_density_v = Rf_asInteger(k_density);
     double bandwidth_percentile_v = Rf_asReal(bandwidth_percentile);
+    double exclusion_radius_percentile_v = Rf_asReal(exclusion_radius_percentile);
 
     // outputs and work space
     unsigned char* is_seed_mask_c = tox_bool_alloc(n_vectors);
@@ -67,6 +68,7 @@ SEXP seeds_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_dens
         INTEGER(dimension_order),
         &k_density_v,
         &bandwidth_percentile_v,
+        &exclusion_radius_percentile_v,
         is_seed_mask_c,
         &ierr
     );

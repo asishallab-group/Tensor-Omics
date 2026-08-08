@@ -53,8 +53,25 @@ misc/STC-experiments/run_stc_experiments.sh misc/STC-experiments/data/2d/kinked_
 #   ^k_min ^alpha_max_deg ^d_max ^g_max ^reconciliation_mode ^min_jsi
 ```
 
-produces one PDF per combination (2×2×2×2×2×1 = 16 here). To run every generated dataset at
-once with one parameter combination:
+produces one PDF per combination (2×2×2×2×2×1 = 16 here). Two more optional, trailing lists
+sweep `seeds`' own parameters -- `k_density` (its neighborhood size, independent of `k_min`)
+and `exclusion_radius_percentile` (its coverage/exclusion radius, independent of the
+growth-phase radius, see "Known limitations" below):
+
+```bash
+misc/STC-experiments/run_stc_experiments.sh misc/STC-experiments/data/2d/kinked_curve_2d_noise_medium.csv \
+    30 30 1 3.0 merge_jsi 0.1 15,30 25,50
+#   ^k_min ^alpha ^d_max ^g_max ^mode ^min_jsi ^k_density ^exclusion_radius_percentile
+```
+
+Before this was wired up, `k_density` and `exclusion_radius_percentile` were not
+forwardable at all -- every run silently used `seeds`' hardcoded defaults (`k_density=30`,
+`exclusion_radius_percentile=50.0`, the median) regardless of what a results filename's
+leading `k...` label said (that label only ever moved `k_min`, the growth-phase parameter).
+Filenames produced from here on include both explicitly (`..._k30_kd30_..._erp50.0`) so this
+cannot silently happen again.
+
+To run every generated dataset at once with one parameter combination:
 
 ```bash
 misc/STC-experiments/run_stc_experiments.sh all
@@ -238,6 +255,17 @@ For reuse outside `plot_stc.R` (a different plotting tool, a notebook, ad-hoc an
   exploring STC's behavior, not a benchmark suite with checked-in reference output; running
   `all` yourself, with whatever parameters you are currently investigating, is the intended
   workflow.
+- **Seed-exclusion suppression is purely geometric and does not know about curvature.**
+  `seeds`' coverage/exclusion radius (tunable via `exclusion_radius_percentile`, see "Quick
+  start" above) can suppress seed placement across a region -- typically a curvature extremum
+  (a peak, trough, or kink on a wavy manifold) -- that the suppressing seed's own later growth
+  never actually reaches, because `accept_ensemble`'s curvature-based stop conditions
+  (`alpha_max_deg`/`g_max`/`d_max`) can halt growth well short of that same geometric radius.
+  The result is points with no seed of their own and no membership in any grown ensemble
+  either. Shrinking `exclusion_radius_percentile` reduces how much territory each seed
+  suppresses, but does not close the gap on its own -- it only shrinks it. Fixing this
+  properly needs seed selection to know about actual grown-ensemble membership, not just
+  geometric coverage; not attempted in this pass.
 
 ## Where the actual algorithm lives
 
