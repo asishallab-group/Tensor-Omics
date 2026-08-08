@@ -1,4 +1,4 @@
-#include "macros.h"
+#include <src/macros.h>
 
 !!! TO DO
 !!! 1. Implement error code to argument number mapping
@@ -1452,8 +1452,6 @@ end module noise_model
 ! =============================================================================
 ! C wrapper (outside the module, as per project convention)
 ! =============================================================================
-
-#include "macros.h"
 
 !> C-interoperable wrapper for `compute_noise_pvalue_pipeline` (bootstrap-null module).
 !|

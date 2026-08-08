@@ -3,7 +3,7 @@ FROM archlinux:latest
 # Always update keyring first to avoid verification failures
 RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
-    pacman -Sy --noconfirm gcc-fortran gcc make xxhash libzip python python-pip python-numpy && \
+    pacman -Sy --noconfirm gcc-fortran gcc make xxhash libzip python python-pip python-numpy python-pandas && \
     pacman -Sy --noconfirm r gcc-fortran git && \
     pacman -Scc --noconfirm
 

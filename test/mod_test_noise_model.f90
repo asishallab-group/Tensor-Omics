@@ -1,13 +1,18 @@
 !> Unit test suite for noise_model module.
 !|
-!| Focus: `own` comparison only; covers both raw (norm_method = 0) and log2
+!| Focus: `own` comparison only. Covers both raw (norm_method = 0) and log2
 !| (norm_method /= 0) residual scales, including all four normalization regimes
 !| used by the R `apply_normalization()` pipeline (raw/log/std_log/full).
-!| Family / ortholog p-value tests are deferred to a later phase.
+!|
+!| The family / ortholog comparison has been retired from the noise model, so
+!| there is no family cache, no family/ortholog p-values, and the pipeline takes
+!| only the `own` statistic. The exact/Monte-Carlo pairwise p-value has likewise
+!| been replaced by the bootstrap mean-difference null
+!| (`compute_pvalue_bootstrap_mean_helper`); variance stratification now uses a
+!| single 1-bin schedule (STRATA_BIN_COUNT_SCHEDULE = [1]).
 module mod_test_noise_model
     use asserts
-    use, intrinsic :: iso_fortran_env, only: real64, int32, int64
-    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
+    use, intrinsic :: iso_fortran_env, only: real64, int32
     use noise_model
     use tox_normalization, only: normalize_by_std_dev_alloc, quantile_normalization
     use tox_errors
@@ -16,9 +21,8 @@ module mod_test_noise_model
     public
 
     real(real64), parameter :: TOL = 1d-12
-    integer(int32), parameter :: N_SAMPLES  = 5
-    integer(int32), parameter :: N_GENES    = 20
-    integer(int32), parameter :: N_FAMILIES = 2
+    integer(int32), parameter :: N_SAMPLES = 5
+    integer(int32), parameter :: N_GENES   = 20
 
 contains
 
@@ -26,20 +30,16 @@ contains
     function get_all_tests_noise_model() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(13))
-        all_tests(1)  = test_case("test_prepare_sorted_data",             test_prepare_sorted_data)
-        all_tests(2)  = test_case("test_gather_residuals_helper",          test_gather_residuals_helper)
-        all_tests(3)  = test_case("test_stratify_residuals",               test_stratify_residuals)
-        all_tests(4)  = test_case("test_compute_pvalue_exact",             test_compute_pvalue_exact)
-        all_tests(5)  = test_case("test_compute_pvalue_exact_determinism", test_compute_pvalue_exact_determinism)
-        all_tests(6)  = test_case("test_compute_pvalue_monte_carlo",       test_compute_pvalue_monte_carlo)
-        all_tests(7)  = test_case("test_compute_pvalue_selection",         test_compute_pvalue_selection)
-        all_tests(8)  = test_case("test_compute_pvalue_threshold_boundary",test_compute_pvalue_threshold_boundary)
-        all_tests(9)  = test_case("test_full_pipeline",                    test_full_pipeline)
-        all_tests(10) = test_case("test_both_sides_stratified",            test_both_sides_stratified)
-        all_tests(11) = test_case("test_prepare_sorted_data_log_transform",  test_prepare_sorted_data_log_transform)
-        all_tests(12) = test_case("test_residuals_log_transform_centred",    test_residuals_log_transform_centred)
-        all_tests(13) = test_case("test_full_pipeline_all_normalizations",   test_full_pipeline_all_normalizations)
+        allocate(all_tests(9))
+        all_tests(1) = test_case("test_prepare_sorted_data",               test_prepare_sorted_data)
+        all_tests(2) = test_case("test_gather_residuals_helper",           test_gather_residuals_helper)
+        all_tests(3) = test_case("test_stratify_residuals",                test_stratify_residuals)
+        all_tests(4) = test_case("test_compute_pvalue_bootstrap_mean",     test_compute_pvalue_bootstrap_mean)
+        all_tests(5) = test_case("test_full_pipeline",                     test_full_pipeline)
+        all_tests(6) = test_case("test_both_sides_stratified",             test_both_sides_stratified)
+        all_tests(7) = test_case("test_prepare_sorted_data_log_transform", test_prepare_sorted_data_log_transform)
+        all_tests(8) = test_case("test_residuals_log_transform_centred",   test_residuals_log_transform_centred)
+        all_tests(9) = test_case("test_full_pipeline_all_normalizations",  test_full_pipeline_all_normalizations)
     end function get_all_tests_noise_model
 
     ! =========================================================================
@@ -58,7 +58,6 @@ contains
     ! =========================================================================
     !| Produces 20 genes spread over means 5..15 (control). Genes 1..5 are
     !| overexpressed in case by +2 units. Noise is small and deterministic.
-    !| Genes 1..10 → family 1; genes 11..20 → family 2.
     !|
     !| `control_noise_scale` multiplies the noise amplitude used for control
     !| replicates relative to case. Existing callers pass `0.8` for a mild,
@@ -70,14 +69,11 @@ contains
     !| scale mismatch between the groups — one unrelated to, and far larger than,
     !| the deliberate per-gene overexpression signal.
     subroutine generate_test_data(n_genes, n_samples, means_case, means_control, &
-                                  replicates_case, replicates_control, family_sizes, gene_to_family, &
-                                  control_noise_scale)
+                                  replicates_case, replicates_control, control_noise_scale)
         integer(int32), intent(in)  :: n_genes, n_samples
         real(real64),   intent(out) :: means_case(n_genes), means_control(n_genes)
         real(real64),   intent(out) :: replicates_case(n_samples, n_genes)
         real(real64),   intent(out) :: replicates_control(n_samples, n_genes)
-        integer(int32), intent(out) :: family_sizes(N_FAMILIES)
-        integer(int32), intent(out) :: gene_to_family(n_genes)
         real(real64),   intent(in)  :: control_noise_scale
 
         integer(int32) :: i_gene, i_sample
@@ -95,11 +91,6 @@ contains
                 replicates_control(i_sample, i_gene) = means_control(i_gene) + noise * control_noise_scale
             end do
         end do
-
-        do i_gene = 1, n_genes
-            gene_to_family(i_gene) = merge(1, 2, i_gene <= 10)
-        end do
-        family_sizes = [10, 10]
     end subroutine generate_test_data
 
     ! =========================================================================
@@ -196,289 +187,130 @@ contains
     ! =========================================================================
     ! test_stratify_residuals
     ! =========================================================================
+    !| Variance stratification bins each residual by its SOURCE GENE MEAN
+    !| (`means_sorted(gene_id_per_residual(i))`), not by the residual value, so
+    !| the routine is fed the sorted gene means and the per-residual gene slot.
+    !|
+    !| The schedule is now a single step (STRATA_BIN_COUNT_SCHEDULE = [1]), so the
+    !| chosen bin count is always 1 (the whole pool) and every residual lands in
+    !| bin 1. `criteria_met` reports whether that single bin satisfied the
+    !| acceptance criteria — decisive here is criterion 3: the bin must hold at
+    !| least STRATA_MIN_RESIDUALS_PER_BIN (50) residuals.
     subroutine test_stratify_residuals()
-        integer(int32), parameter :: n_genes = 5, n_pooled = 15
-        real(real64) :: pooled(n_pooled), bin_edges(STRATA_BIN_COUNT_SCHEDULE(1) + 1)
-        integer(int32) :: gene_id(n_pooled), bin_idx(n_pooled), chosen_bin_idx(n_pooled)
-        integer(int32) :: tmp_c_g(n_pooled), tmp_bin_counts(STRATA_BIN_COUNT_SCHEDULE(1))
+        integer(int32), parameter :: n_genes = 5, n_pool_big = 60, n_pool_small = 15
+        real(real64)   :: means_sorted(n_genes)
+        integer(int32) :: gene_id(n_pool_big), bin_idx(n_pool_big), chosen_bin_idx(n_pool_big)
+        integer(int32) :: tmp_c_g(n_pool_big), tmp_touched_gene_slots(n_pool_big)
+        integer(int32) :: tmp_bin_counts(STRATA_BIN_COUNT_SCHEDULE(1))
         integer(int32) :: tmp_gene_min_bin(n_genes), tmp_gene_max_bin(n_genes)
-        integer(int32) :: tmp_touched_gene_slots(n_pooled)
         logical        :: tmp_gene_seen(n_genes)
         real(real64)   :: tmp_bin_edges(STRATA_BIN_COUNT_SCHEDULE(1) + 1)
+        real(real64)   :: chosen_bin_edges(STRATA_BIN_COUNT_SCHEDULE(1) + 1)
         integer(int32) :: chosen_n_bins, i
         logical        :: criteria_met
 
-        ! `check_stratification_accepted_helper` requires an all-`.false.` "seen" array
-        ! on entry (and leaves it that way on return).
+        ! `check_stratification_accepted_helper` requires an all-`.false.` "seen"
+        ! array on entry (and leaves it that way on return).
         tmp_gene_seen = .false.
-
-        ! Residuals cycling through 5 distinct values; each gene owns 3 residuals
-        do i = 1, n_pooled
-            pooled(i)  = real(mod(i - 1, 5), real64)
-            gene_id(i) = mod(i - 1, 5) + 1
+        do i = 1, n_genes
+            means_sorted(i) = real(i, real64) * 10.0_real64   ! ascending gene means
+        end do
+        ! Cycle residuals through the 5 gene slots.
+        do i = 1, n_pool_big
+            gene_id(i) = mod(i - 1, n_genes) + 1
         end do
 
-        call stratify_residuals_helper(pooled, gene_id, n_pooled, n_genes, &
+        ! --- Large pool (>= 50 residuals): single accepted 1-bin stratum ---------
+        call stratify_residuals_helper(means_sorted, gene_id, n_pool_big, n_genes, &
                                        bin_idx, tmp_bin_edges, &
                                        tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, &
-                                       tmp_touched_gene_slots, &
-                                       tmp_c_g, tmp_bin_counts, &
-                                       chosen_n_bins, chosen_bin_idx, bin_edges, criteria_met)
+                                       tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
+                                       chosen_n_bins, chosen_bin_idx, chosen_bin_edges, criteria_met)
 
-        call assert_true(chosen_n_bins >= 2 .and. chosen_n_bins <= STRATA_BIN_COUNT_SCHEDULE(1), &
-                         "chosen_n_bins out of valid range [2, max_schedule]")
-
-        do i = 1, n_pooled
-            call assert_true(chosen_bin_idx(i) >= 1 .and. chosen_bin_idx(i) <= chosen_n_bins, &
-                             "bin index "//str(i)//" outside [1, chosen_n_bins]")
+        call assert_equal_int(chosen_n_bins, 1, &
+                              "single-step schedule must always choose 1 bin")
+        do i = 1, n_pool_big
+            call assert_equal_int(chosen_bin_idx(i), 1, &
+                                  "all residuals must land in bin 1 (chosen_bin_idx "//str(i)//")")
         end do
+        call assert_true(chosen_bin_edges(2) >= chosen_bin_edges(1), &
+                         "bin edges must be non-decreasing")
+        call assert_true(criteria_met, &
+                         "60 residuals in one bin should satisfy the >= 50-per-bin criterion")
 
-        do i = 1, chosen_n_bins
-            call assert_true(bin_edges(i + 1) >= bin_edges(i), &
-                             "bin_edges not non-decreasing at position "//str(i))
-        end do
-
-        ! All-equal residuals → all mass in one bin → every candidate fails the
-        ! min-residuals-per-bin criterion → falls back to the coarsest schedule (2 bins)
-        pooled = 1.0_real64
-        call stratify_residuals_helper(pooled, gene_id, n_pooled, n_genes, &
+        ! --- Small pool (< 50 residuals): 1 bin (hard floor), criteria NOT met ---
+        call stratify_residuals_helper(means_sorted, gene_id, n_pool_small, n_genes, &
                                        bin_idx, tmp_bin_edges, &
                                        tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, &
-                                       tmp_touched_gene_slots, &
-                                       tmp_c_g, tmp_bin_counts, &
-                                       chosen_n_bins, chosen_bin_idx, bin_edges, criteria_met)
-        call assert_equal_int(chosen_n_bins, 2, &
-                              "all-equal residuals should fall back to 2 bins")
+                                       tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
+                                       chosen_n_bins, chosen_bin_idx, chosen_bin_edges, criteria_met)
+
+        call assert_equal_int(chosen_n_bins, 1, &
+                              "hard-floor fallback must still be 1 bin")
+        call assert_true(.not. criteria_met, &
+                         "15 residuals cannot meet the >= 50-per-bin criterion (hard-floor fallback)")
     end subroutine test_stratify_residuals
 
     ! =========================================================================
-    ! test_compute_pvalue_exact
+    ! test_compute_pvalue_bootstrap_mean
     ! =========================================================================
-    !| Verifies the exact enumeration path with pools of 5 × 4 = 20 combinations,
-    !| well below MAX_EXACT_COMBINATIONS (10 000). Three boundary conditions:
-    !|   (a) Moderate observed statistic  → p-value in (0, 1]
-    !|   (b) Very large observed statistic → no null stat qualifies
-    !|       → p_value = (0+1)/(20+1) = 1/21  (continuity-correction only)
-    !|   (c) Observed statistic = 0 → every |r_case − r_ctrl| ≥ 0 qualifies
-    !|       → p_value = (20+1)/(20+1) = 1
-    subroutine test_compute_pvalue_exact()
-        real(real64) :: pool_case(5), pool_control(4)
-        real(real64) :: rand_array(MONTE_CARLO_SAMPLES)   ! ignored on exact path
+    !| The `own` null is now built by bootstrapping the mean difference:
+    !| `compute_pvalue_bootstrap_mean_helper` resamples `n_rep` residuals per side
+    !| (with replacement), averages, differences, and add-one-corrects the tail
+    !| fraction that meets or exceeds `observed_statistic_abs`. Two boundary cases
+    !| are deterministic regardless of the RNG draws and pin the arithmetic:
+    !|   (a) observed = 0   → every |mean diff| >= 0 qualifies → p = 1
+    !|   (b) observed huge  → no draw qualifies → p = 1 / (n_boot + 1)
+    !| A moderate statistic is checked only for being a valid p-value in (0, 1].
+    subroutine test_compute_pvalue_bootstrap_mean()
+        real(real64) :: pool_case(8), pool_control(8)
         real(real64) :: p_value
-        integer(int32) :: ierr
+        integer(int32), parameter :: n_boot = 2000, n_rep = 3
 
-        pool_case    = [ 0.0_real64,  0.1_real64, -0.1_real64,  0.2_real64, -0.2_real64]
-        pool_control = [ 0.5_real64,  0.6_real64,  0.4_real64,  0.7_real64]
-        rand_array   = 0.5_real64   ! arbitrary; the exact path must never read this
+        pool_case    = [ 0.10_real64, -0.10_real64,  0.20_real64, -0.20_real64, &
+                         0.05_real64, -0.05_real64,  0.15_real64, -0.15_real64]
+        pool_control = [ 0.08_real64, -0.08_real64,  0.18_real64, -0.18_real64, &
+                         0.04_real64, -0.04_real64,  0.12_real64, -0.12_real64]
 
-        ! (a) Moderate statistic
-        call compute_pvalue(pool_case, 5, pool_control, 4, 0.5_real64, &
-                            rand_array, p_value, ierr)
-        call assert_equal_int(ierr, ERR_OK, "exact (moderate): ierr should be OK")
-        call assert_true(p_value > 0.0_real64 .and. p_value <= 1.0_real64, &
-                         "exact (moderate): p_value out of (0, 1]")
-
-        ! (b) Impossible-to-exceed statistic → min p-value from continuity correction
-        !     n_pairs = 5*4 = 20 → p = 1/21
-        call compute_pvalue(pool_case, 5, pool_control, 4, 100.0_real64, &
-                            rand_array, p_value, ierr)
-        call assert_equal_int(ierr, ERR_OK, "exact (very large obs): ierr should be OK")
-        call assert_equal_real(p_value, 1.0_real64 / 21.0_real64, TOL, &
-                               "exact (very large obs): p_value must equal 1/(n_pairs+1) = 1/21")
-
-        ! (c) Zero observed statistic → all 20 pairs qualify → p = 1
-        call compute_pvalue(pool_case, 5, pool_control, 4, 0.0_real64, &
-                            rand_array, p_value, ierr)
-        call assert_equal_int(ierr, ERR_OK, "exact (obs=0): ierr should be OK")
+        ! (a) observed = 0 → every null statistic (|mean diff| >= 0) qualifies → p = 1
+        call compute_pvalue_bootstrap_mean_helper(pool_case, 8, pool_control, 8, &
+                                                  n_rep, n_rep, 0.0_real64, n_boot, p_value)
         call assert_equal_real(p_value, 1.0_real64, TOL, &
-                               "exact (obs=0): p_value must be 1 (every pair qualifies)")
-    end subroutine test_compute_pvalue_exact
+                               "bootstrap (obs=0): p_value must be 1 (every draw qualifies)")
 
-    ! =========================================================================
-    ! test_compute_pvalue_exact_determinism
-    ! =========================================================================
-    !| The exact enumeration path must produce the same result on every call with
-    !| the same inputs, regardless of what is stored in rand_array and regardless
-    !| of any global RNG state. This confirms rand_array is truly ignored.
-    subroutine test_compute_pvalue_exact_determinism()
-        real(real64) :: pool_case(5), pool_control(4)
-        real(real64) :: rand_array(MONTE_CARLO_SAMPLES)
-        real(real64) :: p1, p2
-        integer(int32) :: ierr
+        ! (b) impossible-to-exceed observed → no draw qualifies → p = 1/(n_boot+1)
+        call compute_pvalue_bootstrap_mean_helper(pool_case, 8, pool_control, 8, &
+                                                  n_rep, n_rep, 100.0_real64, n_boot, p_value)
+        call assert_equal_real(p_value, 1.0_real64 / real(n_boot + 1, real64), TOL, &
+                               "bootstrap (obs huge): p_value must equal 1/(n_boot+1)")
 
-        pool_case    = [ 0.0_real64,  0.1_real64, -0.1_real64,  0.2_real64, -0.2_real64]
-        pool_control = [ 0.5_real64,  0.6_real64,  0.4_real64,  0.7_real64]
-
-        ! First call: rand_array all zeros
-        rand_array = 0.0_real64
-        call compute_pvalue(pool_case, 5, pool_control, 4, 0.3_real64, &
-                            rand_array, p1, ierr)
-        call assert_equal_int(ierr, ERR_OK, "determinism call 1: ierr OK")
-
-        ! Second call: rand_array all 0.999 (different content, same inputs otherwise)
-        rand_array = 0.999_real64
-        call compute_pvalue(pool_case, 5, pool_control, 4, 0.3_real64, &
-                            rand_array, p2, ierr)
-        call assert_equal_int(ierr, ERR_OK, "determinism call 2: ierr OK")
-
-        call assert_equal_real(p1, p2, TOL, &
-                               "exact path must give identical results regardless of rand_array contents")
-    end subroutine test_compute_pvalue_exact_determinism
-
-    ! =========================================================================
-    ! test_compute_pvalue_monte_carlo
-    ! =========================================================================
-    !| Verifies the Monte Carlo path: 150 × 150 = 22 500 combinations exceed
-    !| MAX_EXACT_COMBINATIONS (10 000), so sampling is taken. We check that the
-    !| returned p-value is finite and within [0, 1].
-    subroutine test_compute_pvalue_monte_carlo()
-        integer(int32), parameter :: N_LARGE = 150
-        real(real64), allocatable :: large_case(:), large_control(:)
-        real(real64) :: rand_array(MONTE_CARLO_SAMPLES)
-        real(real64) :: p_value
-        integer(int32) :: ierr, i
-
-        allocate(large_case(N_LARGE), large_control(N_LARGE))
-        do i = 1, N_LARGE
-            large_case(i)    = sin(real(i, real64)) * 0.1_real64
-            large_control(i) = cos(real(i, real64)) * 0.1_real64
-        end do
-
-        ! Confirm the pool product actually exceeds the threshold
-        call assert_true(int(N_LARGE, int64) * N_LARGE > int(MAX_EXACT_COMBINATIONS, int64), &
-                         "MC test setup: pool product must exceed MAX_EXACT_COMBINATIONS")
-
-        ! Populate rand_array with genuine uniform draws, as the pipeline would
-        call random_number(rand_array)
-
-        call compute_pvalue(large_case, N_LARGE, large_control, N_LARGE, &
-                            0.2_real64, rand_array, p_value, ierr)
-        call assert_equal_int(ierr, ERR_OK, "MC: ierr should be OK")
-        call assert_true(p_value >= 0.0_real64 .and. p_value <= 1.0_real64, &
-                         "MC: p_value out of [0, 1]")
-        call assert_true(p_value == p_value, "MC: p_value must not be NaN")
-
-        deallocate(large_case, large_control)
-    end subroutine test_compute_pvalue_monte_carlo
-
-    ! =========================================================================
-    ! test_compute_pvalue_selection
-    ! =========================================================================
-    !| Verifies that compute_pvalue routes to the correct internal helper:
-    !|
-    !|   n_pool_case * n_pool_control <= MAX_EXACT_COMBINATIONS → exact enumeration
-    !|   n_pool_case * n_pool_control >  MAX_EXACT_COMBINATIONS → Monte Carlo
-    !|
-    !| Tests: (1) small pools (exact), (2) large pools (MC),
-    !|        (3) both pools valid: p-value in [0, 1].
-    subroutine test_compute_pvalue_selection()
-        integer(int32), parameter :: N_SMALL = 2    ! 2×2 = 4 → exact
-        integer(int32), parameter :: N_LARGE = 150  ! 150×150 = 22 500 → MC
-        real(real64)  :: pool_small(N_SMALL), pool_large(N_LARGE)
-        real(real64)  :: rand_array(MONTE_CARLO_SAMPLES)
-        real(real64)  :: p_value
-        integer(int32) :: ierr, i
-
-        pool_small = [0.1_real64, -0.1_real64]
-        do i = 1, N_LARGE
-            pool_large(i) = sin(real(i, real64)) * 0.1_real64
-        end do
-
-        ! --- Small pools: exact path -------------------------------------------
-        rand_array = 0.5_real64   ! arbitrary; exact path ignores this
-        call compute_pvalue(pool_small, N_SMALL, pool_small, N_SMALL, &
-                            0.5_real64, rand_array, p_value, ierr)
-        call assert_equal_int(ierr, ERR_OK, "selection/small: ierr OK")
-        call assert_true(p_value >= 0.0_real64 .and. p_value <= 1.0_real64, &
-                         "selection/small: p_value out of [0, 1]")
-
-        ! --- Large pools: Monte Carlo path -------------------------------------
-        call random_number(rand_array)
-        call compute_pvalue(pool_large, N_LARGE, pool_large, N_LARGE, &
-                            0.5_real64, rand_array, p_value, ierr)
-        call assert_equal_int(ierr, ERR_OK, "selection/large: ierr OK")
-        call assert_true(p_value >= 0.0_real64 .and. p_value <= 1.0_real64, &
-                         "selection/large: p_value out of [0, 1]")
-        call assert_true(p_value == p_value, "selection/large: p_value must not be NaN")
-    end subroutine test_compute_pvalue_selection
-
-    ! =========================================================================
-    ! test_compute_pvalue_threshold_boundary
-    ! =========================================================================
-    !| Explicitly probes the integer boundary:
-    !|
-    !|   100 × 100 = 10 000 = MAX_EXACT_COMBINATIONS → exact (≤ threshold)
-    !|   101 × 100 = 10 100 > MAX_EXACT_COMBINATIONS → Monte Carlo
-    !|
-    !| The exact path must be deterministic: calling it twice with identical pools
-    !| but different rand_array content must return the same p-value.
-    !| The MC path must return a finite p-value in [0, 1].
-    subroutine test_compute_pvalue_threshold_boundary()
-        integer(int32), parameter :: N_CTRL       = 100
-        integer(int32), parameter :: N_CASE_EXACT = 100   ! 100*100 = 10 000 → exact
-        integer(int32), parameter :: N_CASE_MC    = 101   ! 101*100 = 10 100 → MC
-        real(real64) :: pool_case_exact(N_CASE_EXACT)
-        real(real64) :: pool_case_mc(N_CASE_MC)
-        real(real64) :: pool_ctrl(N_CTRL)
-        real(real64) :: rand_a(MONTE_CARLO_SAMPLES), rand_b(MONTE_CARLO_SAMPLES)
-        real(real64) :: p_a, p_b, p_mc
-        integer(int32) :: ierr, i
-
-        do i = 1, N_CASE_EXACT
-            pool_case_exact(i) = sin(real(i, real64)) * 0.1_real64
-        end do
-        do i = 1, N_CASE_MC
-            pool_case_mc(i) = sin(real(i, real64)) * 0.1_real64
-        end do
-        do i = 1, N_CTRL
-            pool_ctrl(i) = cos(real(i, real64)) * 0.1_real64
-        end do
-
-        ! Exact path: different rand_array content must not affect result
-        rand_a = 0.1_real64
-        call compute_pvalue(pool_case_exact, N_CASE_EXACT, pool_ctrl, N_CTRL, &
-                            0.05_real64, rand_a, p_a, ierr)
-        call assert_equal_int(ierr, ERR_OK, "boundary/exact call 1: ierr OK")
-
-        rand_b = 0.9_real64
-        call compute_pvalue(pool_case_exact, N_CASE_EXACT, pool_ctrl, N_CTRL, &
-                            0.05_real64, rand_b, p_b, ierr)
-        call assert_equal_int(ierr, ERR_OK, "boundary/exact call 2: ierr OK")
-
-        call assert_equal_real(p_a, p_b, TOL, &
-                               "boundary/exact: result must be deterministic (rand_array is ignored)")
-
-        ! MC path (one pair above threshold): result must be a valid p-value
-        call random_number(rand_a)
-        call compute_pvalue(pool_case_mc, N_CASE_MC, pool_ctrl, N_CTRL, &
-                            0.05_real64, rand_a, p_mc, ierr)
-        call assert_equal_int(ierr, ERR_OK, "boundary/MC: ierr OK")
-        call assert_true(p_mc >= 0.0_real64 .and. p_mc <= 1.0_real64, &
-                         "boundary/MC: p_value out of [0, 1]")
-        call assert_true(p_mc == p_mc, "boundary/MC: p_value must not be NaN")
-    end subroutine test_compute_pvalue_threshold_boundary
+        ! (c) moderate observed → valid p-value in (0, 1]
+        call compute_pvalue_bootstrap_mean_helper(pool_case, 8, pool_control, 8, &
+                                                  n_rep, n_rep, 0.05_real64, n_boot, p_value)
+        call assert_true(p_value > 0.0_real64 .and. p_value <= 1.0_real64, &
+                         "bootstrap (moderate): p_value out of (0, 1]")
+        call assert_true(p_value == p_value, "bootstrap (moderate): p_value must not be NaN")
+    end subroutine test_compute_pvalue_bootstrap_mean
 
     ! =========================================================================
     ! test_full_pipeline
     ! =========================================================================
-    !| Integration test for compute_noise_pvalue_pipeline, `own` comparison only.
+    !| Integration test for compute_noise_pvalue_pipeline (`own` comparison, the
+    !| only comparison the model now supports).
     !|
-    !| Genes 1–5 are overexpressed in case by +2 units and should yield small
-    !| own p-values. Genes 6–20 should not be overwhelmingly significant (at most
-    !| 5 out of 15 at α = 0.05). Family and ortholog p-values must remain –1
-    !| throughout because compute_family = 0 and compute_ortholog = 0.
+    !| Genes 1–5 are overexpressed in case by +2 units and should yield small own
+    !| p-values. Genes 6–20 should not be overwhelmingly significant (at most 5 of
+    !| 15 at alpha = 0.05).
     subroutine test_full_pipeline()
         real(real64)   :: means_case(N_GENES), means_control(N_GENES)
         real(real64)   :: replicates_case(N_SAMPLES, N_GENES)
         real(real64)   :: replicates_control(N_SAMPLES, N_GENES)
-        integer(int32) :: family_sizes(N_FAMILIES), gene_to_family(N_GENES)
-        real(real64)   :: family_means(N_FAMILIES), ortholog_means(N_FAMILIES)
-        integer(int32) :: compute_own(N_GENES), compute_family(N_GENES), compute_ortholog(N_GENES)
-        real(real64)   :: observed_own(N_GENES), observed_family(N_GENES), observed_ortholog(N_GENES)
-        real(real64)   :: pvalues_own(N_GENES), pvalues_family(N_GENES), pvalues_ortholog(N_GENES)
+        integer(int32) :: compute_own(N_GENES)
+        real(real64)   :: observed_own(N_GENES)
+        real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
-        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES)
-        integer(int32) :: neigh_family(N_GENES), neigh_ortholog(N_GENES), neigh_case(N_GENES)
+        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
+        integer(int32) :: chosen_bins_case(N_GENES), chosen_bins_control(N_GENES)
         integer(int32) :: ierr, i, count_sig_own
 
         integer(int32), parameter :: k_start = 10, k_step = 5, k_max = 50
@@ -488,50 +320,28 @@ contains
         real(real64),   parameter :: alpha = 0.05_real64
 
         call generate_test_data(N_GENES, N_SAMPLES, means_case, means_control, &
-                                replicates_case, replicates_control, family_sizes, gene_to_family, &
+                                replicates_case, replicates_control, &
                                 control_noise_scale=0.8_real64)
 
-        family_means = 0.0_real64
         do i = 1, N_GENES
-            family_means(gene_to_family(i)) = family_means(gene_to_family(i)) + means_control(i)
+            observed_own(i) = means_case(i) - means_control(i)
         end do
-        family_means   = family_means / real(family_sizes, real64)
-        ortholog_means = family_means
-
-        do i = 1, N_GENES
-            observed_own(i)      = means_case(i) - means_control(i)
-            observed_family(i)   = means_case(i) - family_means(gene_to_family(i))
-            observed_ortholog(i) = means_case(i) - ortholog_means(gene_to_family(i))
-        end do
-
-        compute_own      = 1
-        compute_family   = 0   ! not under test
-        compute_ortholog = 0   ! not under test
+        compute_own = 1
 
         call compute_noise_pvalue_pipeline( &
             means_case, replicates_case, N_GENES, N_SAMPLES, &
             means_control, replicates_control, N_GENES, N_SAMPLES, &
-            observed_own, observed_family, observed_ortholog, &
-            family_means, ortholog_means, &
-            compute_own, compute_family, compute_ortholog, &
-            family_sizes, gene_to_family, &
-            N_GENES, N_FAMILIES, norm_method, k_start, k_step, k_max, tau, &
-            pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+            observed_own, compute_own, &
+            N_GENES, norm_method, k_start, k_step, k_max, tau, &
+            pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
-            neigh_own_case, neigh_own_control, neigh_family, neigh_ortholog, neigh_case, &
+            neigh_own_case, neigh_own_control, neigh_case, &
+            chosen_bins_case, chosen_bins_control, &
             ierr)
 
         call assert_equal_int(ierr, ERR_OK, "pipeline: ierr should be OK")
         call assert_true(n_genes_with_pvalue > 0, &
                          "pipeline: at least some genes should receive p-values")
-
-        ! Family and ortholog p-values must remain exactly –1 (never computed)
-        do i = 1, N_GENES
-            call assert_equal_real(pvalues_family(i), -1.0_real64, TOL, &
-                                   "pvalues_family("//str(i)//") should be -1 (compute_family=0)")
-            call assert_equal_real(pvalues_ortholog(i), -1.0_real64, TOL, &
-                                   "pvalues_ortholog("//str(i)//") should be -1 (compute_ortholog=0)")
-        end do
 
         ! Overexpressed genes 1–5 must be significant at alpha = 0.05
         do i = 1, 5
@@ -550,13 +360,16 @@ contains
         call assert_true(count_sig_own <= 5, &
                          "too many significant own p-values among non-overexpressed genes")
 
-        ! Neighborhood sizes: positive and ≥ k_start when a p-value was produced
+        ! Neighborhood sizes: positive and ≥ k_start when a p-value was produced;
+        ! the chosen bin count is the single 1-bin stratum.
         do i = 1, N_GENES
             if (pvalues_own(i) >= 0.0_real64) then
                 call assert_true(neigh_own_case(i) > 0, &
                                  "neigh_own_case("//str(i)//") should be > 0")
                 call assert_true(neigh_own_control(i) > 0, &
                                  "neigh_own_control("//str(i)//") should be > 0")
+                call assert_equal_int(abs(chosen_bins_case(i)), 1, &
+                                      "chosen_bins_case("//str(i)//") magnitude should be 1")
             end if
             if (neigh_case(i) > 0) then
                 call assert_true(neigh_case(i) >= k_start, &
@@ -569,28 +382,22 @@ contains
     ! test_both_sides_stratified
     ! =========================================================================
     !| Confirms that variance stratification is applied to BOTH the case and the
-    !| control kNN pools for the `own` comparison, not just the control pool.
-    !|
-    !| After the pipeline runs, `neigh_own_case` (stratified case stratum size)
-    !| must satisfy:
-    !|   0 < neigh_own_case(i) ≤ neigh_case(i)
-    !| for every gene that received a valid own p-value.
-    !|
-    !| The upper bound confirms the case pool was reduced to a single variance
-    !| stratum (or at most kept equal when everything falls in one bin).
-    !| `neigh_own_control` must also be positive, confirming control stratification.
+    !| control kNN pools for the `own` comparison. For every gene that received a
+    !| valid own p-value:
+    !|   0 < neigh_own_case(i) ≤ neigh_case(i)   and   neigh_own_control(i) > 0
+    !| The upper bound confirms the case pool was reduced to a variance stratum
+    !| (equal only when everything falls in one bin, which it does under the
+    !| single-step schedule).
     subroutine test_both_sides_stratified()
         real(real64)   :: means_case(N_GENES), means_control(N_GENES)
         real(real64)   :: replicates_case(N_SAMPLES, N_GENES)
         real(real64)   :: replicates_control(N_SAMPLES, N_GENES)
-        integer(int32) :: family_sizes(N_FAMILIES), gene_to_family(N_GENES)
-        real(real64)   :: family_means(N_FAMILIES), ortholog_means(N_FAMILIES)
-        integer(int32) :: compute_own(N_GENES), compute_family(N_GENES), compute_ortholog(N_GENES)
-        real(real64)   :: observed_own(N_GENES), observed_family(N_GENES), observed_ortholog(N_GENES)
-        real(real64)   :: pvalues_own(N_GENES), pvalues_family(N_GENES), pvalues_ortholog(N_GENES)
+        integer(int32) :: compute_own(N_GENES)
+        real(real64)   :: observed_own(N_GENES)
+        real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
-        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES)
-        integer(int32) :: neigh_family(N_GENES), neigh_ortholog(N_GENES), neigh_case(N_GENES)
+        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
+        integer(int32) :: chosen_bins_case(N_GENES), chosen_bins_control(N_GENES)
         integer(int32) :: ierr, i
 
         integer(int32), parameter :: k_start = 10, k_step = 5, k_max = 50
@@ -598,51 +405,34 @@ contains
         integer(int32), parameter :: max_pool_size = 100
 
         call generate_test_data(N_GENES, N_SAMPLES, means_case, means_control, &
-                                replicates_case, replicates_control, family_sizes, gene_to_family, &
+                                replicates_case, replicates_control, &
                                 control_noise_scale=0.8_real64)
 
-        family_means = 0.0_real64
         do i = 1, N_GENES
-            family_means(gene_to_family(i)) = family_means(gene_to_family(i)) + means_control(i)
+            observed_own(i) = means_case(i) - means_control(i)
         end do
-        family_means   = family_means / real(family_sizes, real64)
-        ortholog_means = family_means
-
-        do i = 1, N_GENES
-            observed_own(i)      = means_case(i) - means_control(i)
-            observed_family(i)   = 0.0_real64
-            observed_ortholog(i) = 0.0_real64
-        end do
-
-        compute_own      = 1
-        compute_family   = 0
-        compute_ortholog = 0
+        compute_own = 1
 
         call compute_noise_pvalue_pipeline( &
             means_case, replicates_case, N_GENES, N_SAMPLES, &
             means_control, replicates_control, N_GENES, N_SAMPLES, &
-            observed_own, observed_family, observed_ortholog, &
-            family_means, ortholog_means, &
-            compute_own, compute_family, compute_ortholog, &
-            family_sizes, gene_to_family, &
-            N_GENES, N_FAMILIES, 0, k_start, k_step, k_max, tau, &
-            pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+            observed_own, compute_own, &
+            N_GENES, 0, k_start, k_step, k_max, tau, &
+            pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
-            neigh_own_case, neigh_own_control, neigh_family, neigh_ortholog, neigh_case, &
+            neigh_own_case, neigh_own_control, neigh_case, &
+            chosen_bins_case, chosen_bins_control, &
             ierr)
 
         call assert_equal_int(ierr, ERR_OK, "both-sides-stratified: pipeline ierr OK")
 
         do i = 1, N_GENES
             if (pvalues_own(i) >= 0.0_real64) then
-                ! Case pool was stratified and retained a non-empty stratum
                 call assert_true(neigh_own_case(i) > 0, &
                                  "gene "//str(i)//": neigh_own_case should be > 0")
-                ! Stratum cannot exceed the raw kNN pool (stratification only removes residuals)
                 call assert_true(neigh_own_case(i) <= neigh_case(i), &
                                  "gene "//str(i)//": neigh_own_case ("//str(neigh_own_case(i))// &
-                                 ") should be <= neigh_case ("//str(neigh_case(i))//") — case stratification applied")
-                ! Control pool was also stratified and retained a non-empty stratum
+                                 ") should be <= neigh_case ("//str(neigh_case(i))//")")
                 call assert_true(neigh_own_control(i) > 0, &
                                  "gene "//str(i)//": neigh_own_control should be > 0")
             end if
@@ -755,14 +545,12 @@ contains
         real(real64)   :: normalize_tmp(N_SAMPLES, N_GENES)
         real(real64)   :: means_case(N_GENES), means_control(N_GENES)
         real(real64)   :: log2_mean_case(N_GENES), log2_mean_control(N_GENES)
-        integer(int32) :: family_sizes(N_FAMILIES), gene_to_family(N_GENES)
-        real(real64)   :: family_means(N_FAMILIES), ortholog_means(N_FAMILIES)
-        integer(int32) :: compute_own(N_GENES), compute_family(N_GENES), compute_ortholog(N_GENES)
-        real(real64)   :: observed_own(N_GENES), observed_family(N_GENES), observed_ortholog(N_GENES)
-        real(real64)   :: pvalues_own(N_GENES), pvalues_family(N_GENES), pvalues_ortholog(N_GENES)
+        integer(int32) :: compute_own(N_GENES)
+        real(real64)   :: observed_own(N_GENES)
+        real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
-        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES)
-        integer(int32) :: neigh_family(N_GENES), neigh_ortholog(N_GENES), neigh_case(N_GENES)
+        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
+        integer(int32) :: chosen_bins_case(N_GENES), chosen_bins_control(N_GENES)
         integer(int32) :: ierr, i, i_method, count_sig_own, count_sig_nonoverexpr
 
         real(real64)   :: rank_means(N_GENES), tmp_genes_row(N_GENES)
@@ -799,7 +587,7 @@ contains
         log2_factor = 1.0_real64 / log(2.0_real64)
 
         call generate_test_data(N_GENES, N_SAMPLES, means_case_raw, means_control_raw, &
-                                replicates_case_raw, replicates_control_raw, family_sizes, gene_to_family, &
+                                replicates_case_raw, replicates_control_raw, &
                                 control_noise_scale=1.0_real64)
 
         do i_method = 1, N_METHODS
@@ -842,13 +630,6 @@ contains
                 means_control(i) = sum(replicates_control(:, i)) / real(N_SAMPLES, real64)
             end do
 
-            family_means = 0.0_real64
-            do i = 1, N_GENES
-                family_means(gene_to_family(i)) = family_means(gene_to_family(i)) + means_control(i)
-            end do
-            family_means   = family_means / real(family_sizes, real64)
-            ortholog_means = family_means
-
             if (method_norm(i_method) == 0) then
                 do i = 1, N_GENES
                     observed_own(i) = means_case(i) - means_control(i)
@@ -865,24 +646,18 @@ contains
                     observed_own(i) = log2_mean_case(i) - log2_mean_control(i)
                 end do
             end if
-            observed_family   = 0.0_real64
-            observed_ortholog = 0.0_real64
 
-            compute_own      = 1
-            compute_family   = 0
-            compute_ortholog = 0
+            compute_own = 1
 
             call compute_noise_pvalue_pipeline( &
                 means_case, replicates_case, N_GENES, N_SAMPLES, &
                 means_control, replicates_control, N_GENES, N_SAMPLES, &
-                observed_own, observed_family, observed_ortholog, &
-                family_means, ortholog_means, &
-                compute_own, compute_family, compute_ortholog, &
-                family_sizes, gene_to_family, &
-                N_GENES, N_FAMILIES, method_norm(i_method), k_start, k_step, k_max, tau, &
-                pvalues_own, pvalues_family, pvalues_ortholog, n_genes_with_pvalue, &
+                observed_own, compute_own, &
+                N_GENES, method_norm(i_method), k_start, k_step, k_max, tau, &
+                pvalues_own, n_genes_with_pvalue, &
                 max_pool_size, &
-                neigh_own_case, neigh_own_control, neigh_family, neigh_ortholog, neigh_case, &
+                neigh_own_case, neigh_own_control, neigh_case, &
+                chosen_bins_case, chosen_bins_control, &
                 ierr)
 
             call assert_equal_int(ierr, ERR_OK, trim(method_names(i_method))//": pipeline ierr should be OK")

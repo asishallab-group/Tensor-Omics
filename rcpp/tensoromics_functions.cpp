@@ -1169,45 +1169,6 @@ void validate_all_data_c(
   int* ierr
 );
 
-// Calculates the length of the longest contained string in the Rcpp::CharacterVector
-int get_max_string_length(const Rcpp::CharacterVector& string_vec) {
-    int max_len = 0;
-    for (int j = 0; j < string_vec.size(); ++j)
-        max_len = std::max(max_len, (int)std::strlen(CHAR(string_vec[j])));
-    return std::max(max_len, 1);
-}
-
-// Pack R strings (Rcpp::CharacterVector) into a Fortran-compatible column-major char matrix (flattened)
-// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
-// Future versions might have built-in handling for this
-std::vector<char> r_to_c_CharacterVector(const CharacterVector& string_vec_R, int max_string_length) {
-    int n_strings = string_vec_R.size();
-    std::vector<char> string_vec_C(max_string_length * n_strings, '\0');  // null-pad
-
-    for (int i_string = 0; i_string < n_strings; ++i_string) {
-        // Get C string for current STRSXP
-        const char* str = Rcpp::String(string_vec_R[i_string]).get_cstring();
-        int len = std::min((int)std::strlen(str), max_string_length);
-        std::memcpy(string_vec_C.data() + i_string * max_string_length, str, len);
-    }
-    return string_vec_C;
-}
-
-// Unpack Fortran-compatible column-major char matrix (flattened) to a into a Rcpp::CharacterVector
-// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
-// Future versions might have built-in handling for this
-Rcpp::CharacterVector c_to_r_CharacterVector(const std::vector<char>& string_vec_C, int n_strings, int max_string_length) {
-    Rcpp::CharacterVector string_vec_R(n_strings);
-    for (int i_string = 0; i_string < n_strings; ++i_string) {
-        const char* str = string_vec_C.data() + i_string * max_string_length;
-
-        // find the first null char to determine length
-        int len = strnlen(str, max_string_length);
-        string_vec_R[i_string] = std::string(str, len);
-    }
-    return string_vec_R;
-}
-
 
 void compute_noise_pvalues_pipeline_c(
   const double* means_case,
@@ -1266,6 +1227,45 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* chosen_n_bins_own_control,
   int* ierr
 );
+
+// Calculates the length of the longest contained string in the Rcpp::CharacterVector
+int get_max_string_length(const Rcpp::CharacterVector& string_vec) {
+    int max_len = 0;
+    for (int j = 0; j < string_vec.size(); ++j)
+        max_len = std::max(max_len, (int)std::strlen(CHAR(string_vec[j])));
+    return std::max(max_len, 1);
+}
+
+// Pack R strings (Rcpp::CharacterVector) into a Fortran-compatible column-major char matrix (flattened)
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+std::vector<char> r_to_c_CharacterVector(const CharacterVector& string_vec_R, int max_string_length) {
+    int n_strings = string_vec_R.size();
+    std::vector<char> string_vec_C(max_string_length * n_strings, '\0');  // null-pad
+
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        // Get C string for current STRSXP
+        const char* str = Rcpp::String(string_vec_R[i_string]).get_cstring();
+        int len = std::min((int)std::strlen(str), max_string_length);
+        std::memcpy(string_vec_C.data() + i_string * max_string_length, str, len);
+    }
+    return string_vec_C;
+}
+
+// Unpack Fortran-compatible column-major char matrix (flattened) to a into a Rcpp::CharacterVector
+// In current Rcpp version 1.1.1 the CharacterVector is defined as `typedef Vector<STRSXP> CharacterVector`.
+// Future versions might have built-in handling for this
+Rcpp::CharacterVector c_to_r_CharacterVector(const std::vector<char>& string_vec_C, int n_strings, int max_string_length) {
+    Rcpp::CharacterVector string_vec_R(n_strings);
+    for (int i_string = 0; i_string < n_strings; ++i_string) {
+        const char* str = string_vec_C.data() + i_string * max_string_length;
+
+        // find the first null char to determine length
+        int len = strnlen(str, max_string_length);
+        string_vec_R[i_string] = std::string(str, len);
+    }
+    return string_vec_R;
+}
 
 }
 //' Calculate k-means clustering of factor trajectories
@@ -4724,7 +4724,7 @@ NumericVector tox_scaled_distance_quantile_rcpp(
         &ierr
     );
 
-    return p_values;
+    return quantile;
 }
 
 // Shared marshalling for the three noise-model pipeline bindings. The baseline
