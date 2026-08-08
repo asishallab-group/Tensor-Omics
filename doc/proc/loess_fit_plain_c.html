@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>loess_fit_plain_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine loess_fit_plain_c(n, x, y, w, eval_points, span, degree, nvmax, infl, setlf, int_workspace, int_workspace_size, real_workspace, real_workspace_size, diagl, fitted_values, ierr) bind(C, name="loess_fit_plain_c")  
+    <h2> subroutine loess_fit_plain_c(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr) bind(C, name="loess_fit_plain_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -184,7 +185,7 @@ Outputs the smoothed response variable array.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~8"></span>
+              <span class="anchor" id="variable-n~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -199,7 +200,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~6"></span>
+              <span class="anchor" id="variable-x~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -229,7 +230,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-w~4"></span>
+              <span class="anchor" id="variable-weights~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -237,7 +238,7 @@ Outputs the smoothed response variable array.</p>
               dimension(n), target
             </td>
             <td>::</td>
-            <td><strong>w</strong></td>
+            <td><strong>weights</strong></td>
             <td>
                 <p>Weight array for data points</p>
             </td>
@@ -259,7 +260,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~9"></span>
+              <span class="anchor" id="variable-span~14"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -274,7 +275,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~9"></span>
+              <span class="anchor" id="variable-degree~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -289,7 +290,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax~5"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -297,14 +298,14 @@ Outputs the smoothed response variable array.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
                 <p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-infl~4"></span>
+              <span class="anchor" id="variable-compute_influence~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -312,14 +313,14 @@ Outputs the smoothed response variable array.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>infl</strong></td>
+            <td><strong>compute_influence</strong></td>
             <td>
                 <p>Influence calculation flag (0 for false, non-zero for true)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~6"></span>
+              <span class="anchor" id="variable-save_factorization~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -327,7 +328,7 @@ Outputs the smoothed response variable array.</p>
               target
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
                 <p>Save matrix factorization flag (0 for false, non-zero for true)</p>
             </td>
@@ -394,7 +395,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-diagl~5"></span>
+              <span class="anchor" id="variable-hat_diag~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -402,7 +403,7 @@ Outputs the smoothed response variable array.</p>
               dimension(n), target
             </td>
             <td>::</td>
-            <td><strong>diagl</strong></td>
+            <td><strong>hat_diag</strong></td>
             <td>
                 <p>Diagonal elements of the hat matrix</p>
             </td>
@@ -424,7 +425,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~64"></span>
+              <span class="anchor" id="variable-ierr~343"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -464,14 +465,14 @@ Outputs the smoothed response variable array.</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

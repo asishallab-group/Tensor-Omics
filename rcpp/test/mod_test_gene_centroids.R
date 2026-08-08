@@ -1,6 +1,7 @@
 # Comprehensive R test suite for gene centroids interface functions
 
 source("rcpp/tensoromics_functions.R")
+source("rcpp/test_helpers.R")
 
 # 1. Basic functionality in 'all' mode
 test_basic_all_mode <- function() {
@@ -10,8 +11,7 @@ test_basic_all_mode <- function() {
   ortholog_set <- rep(FALSE, n_genes)
   expected <- matrix(c(3,3,15,15), nrow=n_axes, ncol=n_families)
   centroids <- tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='all')
-  stopifnot(all(abs(centroids - expected) < 1e-12))
-  cat("test_basic_all_mode passed\n")
+  assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
 # 2. Basic functionality in 'orthologs' mode
@@ -22,8 +22,7 @@ test_basic_ortho_mode <- function() {
   ortholog_set <- c(TRUE, FALSE, TRUE, TRUE, TRUE)
   expected <- matrix(c(3,3,15,15), nrow=n_axes, ncol=n_families)
   centroids <- tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='orthologs')
-  stopifnot(all(abs(centroids - expected) < 1e-12))
-  cat("test_basic_ortho_mode passed\n")
+  assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
 # 3. A family exists but has no genes assigned to it
@@ -35,8 +34,7 @@ test_empty_family <- function() {
   expected <- matrix(0.0, nrow=n_axes, ncol=n_families)
   expected[,1] <- 1.0
   centroids <- tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='all')
-  stopifnot(all(abs(centroids - expected) < 1e-12))
-  cat("test_empty_family passed\n")
+  assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
 # 4. 'orthologs' mode, but a family has no orthologs
@@ -47,8 +45,7 @@ test_no_matching_orthologs <- function() {
   ortholog_set <- rep(FALSE, n_genes)
   expected <- matrix(0.0, nrow=n_axes, ncol=n_families)
   centroids <- tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='orthologs')
-  stopifnot(all(abs(centroids - expected) < 1e-12))
-  cat("test_no_matching_orthologs passed\n")
+  assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
 # 5. A family contains only a single gene
@@ -58,8 +55,7 @@ test_single_gene_family <- function() {
   gene_to_family <- as.integer(1)
   ortholog_set <- TRUE
   centroids <- tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='all')
-  stopifnot(all(abs(centroids - vectors) < 1e-12))
-  cat("test_single_gene_family passed\n")
+  assert_true(all(abs(centroids - vectors) < 1e-12))
 }
 
 # 6. Input vectors with extreme values
@@ -74,8 +70,7 @@ test_extreme_values <- function() {
   ortholog_set <- rep(TRUE, n_genes)
   expected <- matrix(0.0, nrow=n_axes, ncol=n_families)
   centroids <- tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='all')
-  stopifnot(all(abs(centroids - expected) < 1e-12))
-  cat("test_extreme_values passed\n")
+  assert_true(all(abs(centroids - expected) < 1e-12))
 }
 
 # 7. Higher dimensional data
@@ -92,8 +87,7 @@ test_higher_dimensions <- function() {
   # Only check family 1 centroid
   idxs <- which(gene_to_family == 1)
   expected <- apply(vectors[,idxs,drop=FALSE], 1, mean)
-  stopifnot(all(abs(centroids[,1] - expected) < 1e-12))
-  cat("test_higher_dimensions passed\n")
+  assert_true(all(abs(centroids[,1] - expected) < 1e-12))
 }
 
 # 8. Ensure result is invariant to order of genes
@@ -107,8 +101,7 @@ test_gene_order_invariance <- function() {
   ortholog_set2 <- c(TRUE, TRUE, TRUE, FALSE, TRUE)
   centroids1 <- tox_group_centroid(vectors1, gene_to_family1, n_families, ortholog_set1, mode='orthologs')
   centroids2 <- tox_group_centroid(vectors2, gene_to_family2, n_families, ortholog_set2, mode='orthologs')
-  stopifnot(all(abs(centroids1 - centroids2) < 1e-12))
-  cat("test_gene_order_invariance passed\n")
+  assert_true(all(abs(centroids1 - centroids2) < 1e-12))
 }
 
 # 9. Test for invalid input arguments
@@ -118,24 +111,11 @@ test_invalid_input_arguments <- function() {
   gene_to_family <- as.integer(c(1,1,2,2,1))
   ortholog_set <- rep(FALSE, n_genes)
   # Invalid n_axes
-  error_caught <- FALSE
-  tryCatch({
-    tox_group_centroid(matrix(numeric(0), nrow=0, ncol=n_genes), gene_to_family, n_families, ortholog_set=ortholog_set, mode='all')
-  }, error=function(e) { error_caught <<- TRUE })
-  stopifnot(error_caught)
+  assert_error(tox_group_centroid(matrix(numeric(0), nrow=0, ncol=n_genes), gene_to_family, n_families, ortholog_set=ortholog_set, mode='all'), "Expected error for invalid n_axes")
   # Invalid n_genes
-  error_caught <- FALSE
-  tryCatch({
-    tox_group_centroid(matrix(numeric(0), nrow=n_axes, ncol=0), integer(0), n_families, logical(0), mode='all')
-  }, error=function(e) { error_caught <<- TRUE })
-  stopifnot(error_caught)
+  assert_error(tox_group_centroid(matrix(numeric(0), nrow=n_axes, ncol=0), integer(0), n_families, logical(0), mode='all'), "Expected error for invalid n_genes")
   # Invalid n_families
-  error_caught <- FALSE
-  tryCatch({
-    tox_group_centroid(vectors, gene_to_family, 0, ortholog_set=ortholog_set, mode='all')
-  }, error=function(e) { error_caught <<- TRUE })
-  stopifnot(error_caught)
-  cat("test_invalid_input_arguments passed\n")
+  assert_error(tox_group_centroid(vectors, gene_to_family, 0, ortholog_set=ortholog_set, mode='all'), "Expected error for invalid n_families")
 }
 
 # 10. Test for invalid family mapping
@@ -144,31 +124,7 @@ test_invalid_family_mapping <- function() {
   vectors <- matrix(c(1,1,3,3,10,10,20,20,5,5), nrow=n_axes, ncol=n_genes)
   gene_to_family <- as.integer(c(1,1,2,3,1)) # 3 is invalid
   ortholog_set <- rep(FALSE, n_genes)
-  error_caught <- FALSE
-  tryCatch({
-    tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='all')
-  }, error=function(e) { error_caught <<- TRUE })
-  stopifnot(error_caught)
-  cat("test_invalid_family_mapping passed\n")
+  assert_error(tox_group_centroid(vectors, gene_to_family, n_families, ortholog_set=ortholog_set, mode='all'), "Expected error for invalid families")
 }
 
-# Run all tests
-cat("=================================================\n")
-cat("    GENE CENTROIDS FULL R INTERFACE TESTS\n")
-cat("=================================================\n\n")
-
-test_basic_all_mode()
-test_basic_ortho_mode()
-test_empty_family()
-test_no_matching_orthologs()
-test_single_gene_family()
-test_extreme_values()
-test_higher_dimensions()
-test_gene_order_invariance()
-test_invalid_input_arguments()
-test_invalid_family_mapping()
-
-cat("=================================================\n")
-cat("             ALL TESTS COMPLETED\n")
-cat("=================================================\n")
-cat("If you see this message, all gene centroids R interface tests passed successfully!\n")
+run_all_tests()

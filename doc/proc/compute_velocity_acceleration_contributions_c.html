@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_velocity_acceleration_contributions_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_velocity_acceleration_contributions_c(trajectories, n_factors, n_samples, n_timepoints, mode, factor_workspace, dependent_workspace, contributions_workspace, Contrib_velocity, velocity_contribution_series, Contrib_acceleration, acceleration_contribution_series, ierr) bind(C, name="compute_velocity_acceleration_contributions_c")  
+    <h2>pure subroutine compute_velocity_acceleration_contributions_c(trajectories, n_factors, n_samples, n_timepoints, baseline_mode, tmp_factors, tmp_dependent, tmp_contributions, Contrib_velocity, velocity_contribution_series, Contrib_acceleration, acceleration_contribution_series, ierr) bind(C, name="compute_velocity_acceleration_contributions_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,9 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +184,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~15"></span>
+              <span class="anchor" id="variable-trajectories~14"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -198,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~20"></span>
+              <span class="anchor" id="variable-n_factors~19"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~27"></span>
+              <span class="anchor" id="variable-n_samples~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -243,7 +244,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~19"></span>
+              <span class="anchor" id="variable-baseline_mode~14"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -251,14 +252,14 @@
               dimension(*), target
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>baseline_mode</strong></td>
             <td>
                 <p>Baseline mode: "raw", "min", "mean"</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-factor_workspace~3"></span>
+              <span class="anchor" id="variable-tmp_factors~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -266,14 +267,14 @@
               dimension(n_timepoints - 1, n_factors), target
             </td>
             <td>::</td>
-            <td><strong>factor_workspace</strong></td>
+            <td><strong>tmp_factors</strong></td>
             <td>
                 <p>workspace for factor data (used for velocity and acceleration)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dependent_workspace~3"></span>
+              <span class="anchor" id="variable-tmp_dependent~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -281,14 +282,14 @@
               dimension(n_timepoints - 1), target
             </td>
             <td>::</td>
-            <td><strong>dependent_workspace</strong></td>
+            <td><strong>tmp_dependent</strong></td>
             <td>
                 <p>workspace for dependent data (used for velocity and acceleration)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-contributions_workspace~3"></span>
+              <span class="anchor" id="variable-tmp_contributions~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -296,7 +297,7 @@
               dimension(n_timepoints - 1), target
             </td>
             <td>::</td>
-            <td><strong>contributions_workspace</strong></td>
+            <td><strong>tmp_contributions</strong></td>
             <td>
                 <p>workspace for contribution calculations (used for velocity and acceleration)</p>
             </td>
@@ -363,7 +364,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~224"></span>
+              <span class="anchor" id="variable-ierr~120"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -403,14 +404,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

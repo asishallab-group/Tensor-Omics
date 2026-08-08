@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>cluster_factor_trajectories_k_means_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -156,9 +157,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/tox_clustering.html'>tox_clustering</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_clustering.html'>tox_clustering</a></li>
               </ul>
             </li>
         </ul>
@@ -182,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~6"></span>
+              <span class="anchor" id="variable-n_clusters~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -192,12 +193,12 @@
             <td>::</td>
             <td><strong>n_clusters</strong></td>
             <td>
-                
+                <p>number (<code>k</code>) of clusters</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~4"></span>
+              <span class="anchor" id="variable-trajectories~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -207,12 +208,12 @@
             <td>::</td>
             <td><strong>trajectories</strong></td>
             <td>
-                
+                <p>matrix with data points to cluster</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~6"></span>
+              <span class="anchor" id="variable-n_factors~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -222,12 +223,12 @@
             <td>::</td>
             <td><strong>n_factors</strong></td>
             <td>
-                
+                <p>number of factors</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~4"></span>
+              <span class="anchor" id="variable-n_samples~32"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -237,12 +238,12 @@
             <td>::</td>
             <td><strong>n_samples</strong></td>
             <td>
-                
+                <p>number of samples</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~6"></span>
+              <span class="anchor" id="variable-n_timepoints~32"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -252,12 +253,12 @@
             <td>::</td>
             <td><strong>n_timepoints</strong></td>
             <td>
-                
+                <p>number of timepoints</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~6"></span>
+              <span class="anchor" id="variable-centroids~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -267,27 +268,30 @@
             <td>::</td>
             <td><strong>centroids</strong></td>
             <td>
-                
+                <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
+The centroids should be unique. This is not checked in this routine.</p>
+<p>The final values will be the final centroids of the clusters</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-labels~5"></span>
+              <span class="anchor" id="variable-labels~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_samples * n_timepoints), target
+              dimension(n_samples*n_timepoints), target
             </td>
             <td>::</td>
             <td><strong>labels</strong></td>
             <td>
-                
+                <p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p>
+<p>each label is the index of its related cluster -&gt; <code>1&lt;=label&lt;=n_clusters=k</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-label_counts~5"></span>
+              <span class="anchor" id="variable-label_counts~6"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -297,12 +301,12 @@
             <td>::</td>
             <td><strong>label_counts</strong></td>
             <td>
-                
+                <p>holds the number of points having the respective label assigned</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~131"></span>
+              <span class="anchor" id="variable-ierr~130"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -312,12 +316,12 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                
+                <p>Error code</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_iterations~4"></span>
+              <span class="anchor" id="variable-max_iterations~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -327,7 +331,7 @@
             <td>::</td>
             <td><strong>max_iterations</strong></td>
             <td>
-                
+                <p>number of maximum iterations of the clustering</p>
             </td>
         </tr>
     </tbody>
@@ -357,14 +361,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

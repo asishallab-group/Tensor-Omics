@@ -7,9 +7,6 @@
 source("rcpp/tensoromics_functions.R")
 source("rcpp/test_helpers.R")
 
-cat("=== Testing outlier detection R wrapper functions ===\n")
-cat("Based on Fortran test suite with comprehensive test coverage\n")
-
 # =====================
 # Tests for compute_family_scaling
 # =====================
@@ -30,10 +27,10 @@ test_compute_family_scaling_basic <- function() {
   result <- tox_compute_family_scaling(distances, gene_to_fam, n_families)
 
   # Verify results
-  stopifnot(all(result$dscale > 0))  # All families have >1 gene
-  stopifnot(length(result$dscale) == n_families)
-  stopifnot(length(result$loess_x) == n_families)
-  stopifnot(length(result$loess_y) == n_families)
+  assert_true(all(result$dscale > 0))  # All families have >1 gene
+  assert_true(length(result$dscale) == n_families)
+  assert_true(length(result$loess_x) == n_families)
+  assert_true(length(result$loess_y) == n_families)
 
 }
 
@@ -49,9 +46,9 @@ test_compute_family_scaling_invalid <- function() {
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains expected text
-    stopifnot(grepl("Invalid input", e$message))
+    assert_true(grepl("Invalid input", e$message))
   })
-  stopifnot(error_caught)  # Make sure an error was actually thrown
+  assert_true(error_caught)  # Make sure an error was actually thrown
   
 }
 
@@ -64,7 +61,7 @@ test_compute_family_scaling_zero_distances <- function() {
   result <- tox_compute_family_scaling(distances, gene_to_fam, n_families)
   
   # Verify zero distance handling
-  stopifnot(all(result$dscale == 0))  # All distances zero
+  assert_true(all(result$dscale == 0))  # All distances zero
   
 }
 
@@ -84,8 +81,8 @@ test_compute_family_scaling_large_dataset <- function() {
   result <- tox_compute_family_scaling(distances, gene_to_fam, n_families)
 
   # Verify large dataset handling
-  stopifnot(length(result$dscale) == n_families)
-  stopifnot(all(result$dscale >= 0))  # All scaling factors non-negative
+  assert_true(length(result$dscale) == n_families)
+  assert_true(all(result$dscale >= 0))  # All scaling factors non-negative
 
 }
 
@@ -103,8 +100,8 @@ test_compute_rdi_normal <- function() {
   
   # Verify RDI calculation: rdi = abs(distances) / dscale
   expected_rdi <- abs(distances) / dscale[gene_to_fam]
-  stopifnot(all(abs(result$rdi - expected_rdi) < 1e-10))
-  stopifnot(length(result$sorted_rdi) == length(distances))
+  assert_true(all(abs(result$rdi - expected_rdi) < 1e-10))
+  assert_true(length(result$sorted_rdi) == length(distances))
   
 }
 
@@ -117,7 +114,7 @@ test_compute_rdi_zero_scaling <- function() {
   result <- tox_compute_rdi(distances, gene_to_fam, dscale)
   
   # Verify zero scaling results in zero RDI
-  stopifnot(all(result$rdi == 0))
+  assert_true(all(result$rdi == 0))
   
 }
 
@@ -131,7 +128,7 @@ test_compute_rdi_precision <- function() {
   
   # Expected RDI: [2.0/2.0, 4.0/2.0, 6.0/2.0] = [1.0, 2.0, 3.0]
   expected <- c(1.0, 2.0, 3.0)
-  stopifnot(all(abs(result$rdi - expected) < 1e-10))
+  assert_true(all(abs(result$rdi - expected) < 1e-10))
   
 }
 
@@ -145,7 +142,7 @@ test_compute_rdi_negative_distances <- function() {
   
   # Verify negative distances are handled (absolute value used)
   expected_rdi <- abs(distances) / dscale[gene_to_fam]
-  stopifnot(all(abs(result$rdi - expected_rdi) < 1e-10))
+  assert_true(all(abs(result$rdi - expected_rdi) < 1e-10))
   
 }
 
@@ -161,9 +158,9 @@ test_identify_outliers_simple <- function() {
   result <- tox_identify_outliers(rdi, percentile)
   
   # Verify outlier detection logic
-  stopifnot(length(result$is_outlier) == length(rdi))
-  stopifnot(is.numeric(result$threshold))
-  stopifnot(is.logical(result$is_outlier))
+  assert_true(length(result$is_outlier) == length(rdi))
+  assert_true(is.numeric(result$threshold))
+  assert_true(is.logical(result$is_outlier))
   
 }
 
@@ -175,8 +172,8 @@ test_identify_outliers_all_zeros <- function() {
   result <- tox_identify_outliers(rdi, percentile)
   
   # Verify no outliers detected when all RDI are zero
-  stopifnot(!any(result$is_outlier))
-  stopifnot(result$threshold == 0)
+  assert_true(!any(result$is_outlier))
+  assert_true(result$threshold == 0)
   
 }
 
@@ -188,7 +185,7 @@ test_identify_outliers_percentile_0 <- function() {
   result <- tox_identify_outliers(rdi, percentile)
 
   # Verify all are outliers at 0% percentile
-  stopifnot(all(result$is_outlier))
+  assert_true(all(result$is_outlier))
   
 }
 
@@ -200,7 +197,7 @@ test_identify_outliers_percentile_100 <- function() {
   result <- tox_identify_outliers(rdi, percentile)
   
   # Verify only highest RDI values are outliers
-  stopifnot(sum(result$is_outlier) >= 0)  # At least 0 outliers
+  assert_true(sum(result$is_outlier) >= 0)  # At least 0 outliers
   
 }
 
@@ -224,10 +221,10 @@ test_detect_outliers_typical <- function() {
   result <- tox_detect_outliers(distances, gene_to_fam, n_families, percentile)
 
   # Verify typical workflow
-  stopifnot(length(result$is_outlier) == length(distances))
-  stopifnot(length(result$loess_x) == n_families)
-  stopifnot(length(result$loess_y) == n_families)
-  stopifnot(is.logical(result$is_outlier))
+  assert_true(length(result$is_outlier) == length(distances))
+  assert_true(length(result$loess_x) == n_families)
+  assert_true(length(result$loess_y) == n_families)
+  assert_true(is.logical(result$is_outlier))
 
 }
 
@@ -244,9 +241,9 @@ test_detect_outliers_invalid_families <- function() {
   }, error = function(e) {
     error_caught <<- TRUE
     # Check that the error message contains expected text
-    stopifnot(grepl("Invalid input", e$message))
+    assert_true(grepl("Invalid input", e$message))
   })
-  stopifnot(error_caught)  # Make sure an error was actually thrown
+  assert_true(error_caught)  # Make sure an error was actually thrown
   
 }
 
@@ -260,8 +257,8 @@ test_detect_outliers_single_families <- function() {
   result <- tox_detect_outliers(distances, gene_to_fam, n_families, percentile)
   
   # Verify single gene families don't cause errors
-  stopifnot(length(result$is_outlier) == length(distances))
-  stopifnot(is.logical(result$is_outlier))
+  assert_true(length(result$is_outlier) == length(distances))
+  assert_true(is.logical(result$is_outlier))
   
 }
 
@@ -296,8 +293,8 @@ test_detect_outliers_mixed_sizes <- function() {
   result <- tox_detect_outliers(distances, gene_to_fam, n_families, percentile)
 
   # Verify mixed family sizes work
-  stopifnot(length(result$is_outlier) == length(distances))
-  stopifnot(length(result$loess_x) == n_families)
+  assert_true(length(result$is_outlier) == length(distances))
+  assert_true(length(result$loess_x) == n_families)
 
 }
 
@@ -327,8 +324,8 @@ test_detect_outliers_large_dataset <- function() {
 
   result <- tox_detect_outliers(distances, gene_to_fam, n_families, percentile)
   # Verify large dataset handling
-  stopifnot(length(result$is_outlier) == n_genes)
-  stopifnot(sum(result$is_outlier) >= 0)  # At least 0 outliers detected
+  assert_true(length(result$is_outlier) == n_genes)
+  assert_true(sum(result$is_outlier) >= 0)  # At least 0 outliers detected
 
 }
 
@@ -376,9 +373,9 @@ test_compute_family_scaling_expert_basic <- function() {
 
 
   # Verify basic properties
-  stopifnot(length(result$dscale) == n_families)  # Ten families
-  stopifnot(all(is.finite(result$dscale)))
-  stopifnot(all(result$dscale > 0))  # Scaling factors should be positive
+  assert_true(length(result$dscale) == n_families)  # Ten families
+  assert_true(all(is.finite(result$dscale)))
+  assert_true(all(result$dscale > 0))  # Scaling factors should be positive
 
 }
 
@@ -415,9 +412,9 @@ test_compute_family_scaling_expert_consistency <- function() {
   stack_right_tmp <- integer(n_genes)
 
   # Validar tamaños de las matrices de trabajo
-  stopifnot(length(perm_tmp) == n_genes)
-  stopifnot(length(stack_left_tmp) == n_genes)
-  stopifnot(length(stack_right_tmp) == n_genes)
+  assert_true(length(perm_tmp) == n_genes)
+  assert_true(length(stack_left_tmp) == n_genes)
+  assert_true(length(stack_right_tmp) == n_genes)
 
   result_expert <- tox_compute_family_scaling_expert(
     distances, gene_to_fam, n_families,
@@ -431,9 +428,9 @@ test_compute_family_scaling_expert_consistency <- function() {
   # Compare with regular version to ensure consistency
 
   # Results should be very similar (within numerical precision)
-  stopifnot(all(abs(result_expert$dscale - result_regular$dscale) < 1e-10))
-  stopifnot(all(abs(result_expert$loess_x[valid_idx] - result_regular$loess_x[valid_idx]) < 1e-10))
-  stopifnot(all(abs(result_expert$loess_y[valid_idx] - result_regular$loess_y[valid_idx]) < 1e-10))
+  assert_true(all(abs(result_expert$dscale - result_regular$dscale) < 1e-10))
+  assert_true(all(abs(result_expert$loess_x[valid_idx] - result_regular$loess_x[valid_idx]) < 1e-10))
+  assert_true(all(abs(result_expert$loess_y[valid_idx] - result_regular$loess_y[valid_idx]) < 1e-10))
 
 }
 

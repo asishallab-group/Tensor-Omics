@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>generate_subsets_helper &ndash; TensorOmics</title>
@@ -85,6 +85,8 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_mask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, temp_paralog_vector, work_arr_paralog_subsets, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array, ierr)  
+    <h2>public pure subroutine generate_subsets_helper(candidate_mask, filtered_paralogs_mask, n_mask_chunks, pattern, ancestor, genes, n_genes, n_dims, tmp_paralog_vector, work_arr_paralog_subsets, n_paralog_subsets, n_results, n_active_masks, n_new_active_masks, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -169,8 +171,8 @@
 Subsets with bad gene constellation will be pruned,
 others will be added to the work array, either as new active subset that will be extended in coming iterations or as result.</p>
 <p>Doesn't do any input validation.
-prepare sum vector, so the extending gene just needs to be included in one operation and excluded after calculation
-initialize work array with min values, so each index i holds the min value in subarray subfunc_paralog_norms(i:n_genes)
+prepare sum vector, so the extending gene just needs to be included in one operation and excluded after calculation</p>
+<p>initialize work array with min values, so each index i holds the min value in subarray subfunc_paralog_norms(i:n_genes)
 also, prepare residual, so the extending gene just needs to be included in one operation and excluded after calculation</p>
 
 
@@ -253,11 +255,11 @@ also, prepare residual, so the extending gene just needs to be included in one o
 <tbody>
 <tr>
 <td>Dosage Effect</td>
-<td>0</td>
+<td>0_int32</td>
 </tr>
 <tr>
 <td>Subfunctionalization</td>
-<td>1</td>
+<td>1_int32</td>
 </tr>
 </tbody>
 </table>
@@ -280,7 +282,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~8"></span>
+              <span class="anchor" id="variable-genes~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -295,7 +297,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~58"></span>
+              <span class="anchor" id="variable-n_genes~44"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -310,7 +312,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~19"></span>
+              <span class="anchor" id="variable-n_dims~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -325,7 +327,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector~4"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~4"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -333,7 +335,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
               dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
                 <p>vector used for pruning subsets</p>
             </td>
@@ -490,7 +492,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_temp_work_array~2"></span>
+              <span class="anchor" id="variable-tmp_subfunc_work_array~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -498,14 +500,14 @@ also, prepare residual, so the extending gene just needs to be included in one o
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>subfunc_temp_work_array</strong></td>
+            <td><strong>tmp_subfunc_work_array</strong></td>
             <td>
                 <p>in subfunctionalization mode needed for efficient check of minimum value after a certain index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~287"></span>
+              <span class="anchor" id="variable-ierr~275"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -515,7 +517,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>error code</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -545,14 +547,14 @@ also, prepare residual, so the extending gene just needs to be included in one o
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

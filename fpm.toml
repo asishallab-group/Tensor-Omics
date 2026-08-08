@@ -1,0 +1,36 @@
+name = "tensor-omics"
+version = "0.1.0"
+license = "MIT"
+
+[install]
+library = true
+
+[library]
+type = "shared"
+
+[features]
+unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
+gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
+ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
+
+optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
+optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
+optimization.gfortran.flags = "-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize"
+
+diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all"
+diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all"
+
+default.linux.flags = "-fPIC"
+
+[[test]]
+name = "run_tests"
+source-dir = "test"
+main = "run_tests.F90"
+
+[extra.ford]
+project = "TensorOmics"
+output_dir = "doc"
+license = "mit"
+print_creation_date = true
+creation_date = "%Y-%m-%d %H:%M %z"
+preprocessor = "pcpp -D__GFORTRAN__ -I."

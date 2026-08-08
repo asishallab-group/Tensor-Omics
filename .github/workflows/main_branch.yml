@@ -21,17 +21,18 @@ on:
       - test_runner.sh
       - build.sh
       - build_utils.sh
-      - ford.yml
-      - .fpm.toml
+      - fpm.toml
 jobs:
   run_tests:
     if: ${{ github.actor != vars.CI_BOT_NAME }}
     strategy:
       matrix:
         compiler: [ifx, gfortran]
+        max_performance_flag: [--max-performance, ""]
     uses: ./.github/workflows/run_tests.yml
     with:
       compiler: ${{ matrix.compiler }}
+      extra_build_args: ${{ matrix.max_performance_flag }}
 
       ref: main
 
@@ -56,7 +57,7 @@ jobs:
         run: python helper/generate_snippets.py
 
       - name: Generate docs
-        run: ford ford.yml
+        run: ford concise_project_info.md
 
       - name: Commit
         uses: ./.github/actions/git-push

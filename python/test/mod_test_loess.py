@@ -17,10 +17,11 @@ from tensoromics_functions import (
     loess_fit_robust,
     tox_loess
 )
+from test_helpers import run_all_tests
+
 
 def test_workspace_calculation():
     """Validates that the workspace recommendation function returns consistent values."""
-    print("Testing tox_loess_required_workspace...")
 
     # Typical parameters: d=1 (univariate), nvmax=100, setlf=True
     ws = tox_loess_required_workspace(d=1, nvmax=100, setlf=True)
@@ -28,12 +29,10 @@ def test_workspace_calculation():
     assert isinstance(ws, dict), "Should return a dictionary"
     assert ws["liv"] > 0, "LIV (Integer Workspace) should be positive"
     assert ws["lv"] > 0, "LV (Real Workspace) should be positive"
-    print(f" Workspace calculation passed (liv={ws['liv']}, lv={ws['lv']})")
 
 
 def test_loess_plain_functionality():
     """Tests the low-level loess_fit_plain subroutine."""
-    print("Testing loess_fit_plain...")
     n = 20
     x = np.linspace(1, 10, n)
     # Generate a linear trend with minor Gaussian noise
@@ -47,7 +46,6 @@ def test_loess_plain_functionality():
     wv = np.zeros(ws["lv"], dtype=np.float64)
     diagl = np.zeros(n, dtype=np.float64)
 
-    print(" Workspace sizes - liv:", ws["liv"], "lv:", ws["lv"])
 
     yhat = loess_fit_plain(
         n=n, x=x, y=y, w=w, z=z, 
@@ -59,12 +57,10 @@ def test_loess_plain_functionality():
 
     assert yhat.shape == (n,), "Output shape mismatch"
     assert not np.any(np.isnan(yhat)), "Output contains NaNs"
-    print(" loess_fit_plain passed.")
 
 
 def test_loess_robust_functionality():
     """Tests the low-level loess_fit_robust subroutine with outlier suppression."""
-    print("Testing loess_fit_robust...")
     n = 20
     x = np.linspace(1, 10, n)
     y = 3.0 * x
@@ -95,12 +91,10 @@ def test_loess_robust_functionality():
     # If robustness (bisquare reweighting) works, the outlier at index 5 
     # should be largely ignored, resulting in a value much lower than 100.
     assert yhat[5] < 50.0, f"Robust LOESS failed to suppress outlier: got {yhat[5]}"
-    print(" loess_fit_robust passed.")
 
 
 def test_tox_loess_wrapper():
     """Tests the high-level wrapper that selects between plain and robust modes."""
-    print("Testing tox_loess (High-level wrapper)...")
     n = 30
     x = np.arange(n, dtype=np.float64)
     y = np.sin(x / 5.0)
@@ -116,24 +110,6 @@ def test_tox_loess_wrapper():
     # Verify that results differ due to robust iterations
     assert not np.array_equal(yhat_plain, yhat_robust), "Plain and Robust results should not be identical"
 
-    print(" tox_loess wrapper passed.")
-
-
-def main():
-    print("=================================================")
-    print("      LOESS INTERFACE FUNCTIONAL TESTS")
-    print("=================================================")
-    print()
-
-    try:
-        test_workspace_calculation()
-        test_loess_plain_functionality()
-        test_loess_robust_functionality()
-        test_tox_loess_wrapper()
-        print("\n All LOESS integration tests passed successfully!")
-    except Exception as e:
-        print(f"\n Test failed with error: {str(e)}")
-        sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    run_all_tests(globals().values())

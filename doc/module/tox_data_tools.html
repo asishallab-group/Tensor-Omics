@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_data_tools &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 4.3% of total for modules and submodules.">378 statements</a>
+                 title=" 4.7% of total for modules and submodules.">400 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -164,16 +165,19 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+TSV/CSV files, OrthoFinder-style family files), plus small array-filtering helpers.</p>
+<p>These populate the raw <code>gene_ids</code> / <code>expression</code> / <code>gene_to_family</code> / <code>family_ids</code> arrays that
+<a href="../proc/save_tox_data.html">save_tox_data</a> later persists; unlike the archive/serde
+layers, everything here works from delimited text rather than the library's binary array format.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='config.html'>config</a></li>
-                  <li class="list-inline-item"><a href='f42_array_utils.html'>f42_array_utils</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
               </ul>
@@ -198,7 +202,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-read_expression_vectors_tsv"></span> <h3>public  subroutine <a href='../proc/read_expression_vectors_tsv.html'>read_expression_vectors_tsv</a>(file_list, gene_ids, expression_vectors, n_header_rows, gene_col, value_cols, start_row, ierr, delimiter)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Read expression vectors from csv/tsv files</p>
 
   <h4>Arguments</h4>
@@ -229,7 +237,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~10"></span>
+              <span class="anchor" id="variable-gene_ids"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -244,7 +252,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~16"></span>
+              <span class="anchor" id="variable-expression_vectors"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -319,7 +327,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~249"></span>
+              <span class="anchor" id="variable-ierr~51"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -358,7 +366,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-read_gene_ids_from_tsv_file"></span> <h3>public  subroutine <a href='../proc/read_gene_ids_from_tsv_file.html'>read_gene_ids_from_tsv_file</a>(filename, gene_ids, n_header_rows, gene_col, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Only read the gene ids from a tsv file</p>
 
   <h4>Arguments</h4>
@@ -374,7 +386,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~81"></span>
+              <span class="anchor" id="variable-filename~22"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -389,7 +401,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~11"></span>
+              <span class="anchor" id="variable-gene_ids~2"></span>
               character(len=*),
             </td>
 <td>intent(out)</td>
@@ -434,7 +446,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~250"></span>
+              <span class="anchor" id="variable-ierr~52"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -458,7 +470,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-read_orthofinder_file"></span> <h3>public  subroutine <a href='../proc/read_orthofinder_file.html'>read_orthofinder_file</a>(filename, gene_ids, family_ids, gene_to_fam, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Read a family file (Orthofinder)</p>
 
   <h4>Arguments</h4>
@@ -474,7 +490,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~82"></span>
+              <span class="anchor" id="variable-filename~23"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -489,7 +505,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~12"></span>
+              <span class="anchor" id="variable-gene_ids~3"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -504,7 +520,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~6"></span>
+              <span class="anchor" id="variable-family_ids"></span>
               character(len=*),
             </td>
 <td>intent(out)</td>
@@ -519,7 +535,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~22"></span>
+              <span class="anchor" id="variable-gene_to_fam"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -534,7 +550,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~251"></span>
+              <span class="anchor" id="variable-ierr~53"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -558,7 +574,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-split_string"></span> <h3>public  subroutine <a href='../proc/split_string.html'>split_string</a>(input, output, ierr, delimiter)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Helper subroutine to split strings</p>
 
   <h4>Arguments</h4>
@@ -604,7 +624,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~252"></span>
+              <span class="anchor" id="variable-ierr~54"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -643,7 +663,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-get_unassigned_mask"></span> <h3>public  subroutine <a href='../proc/get_unassigned_mask.html'>get_unassigned_mask</a>(gene_to_fam, mask, n_genes_kept)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Helper to create a mask of genes that are unassigned</p>
 
   <h4>Arguments</h4>
@@ -659,7 +683,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~23"></span>
+              <span class="anchor" id="variable-gene_to_fam~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -713,7 +737,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-apply_unassigned_mask"></span> <h3>public  subroutine <a href='../proc/apply_unassigned_mask.html'>apply_unassigned_mask</a>(gene_ids, expression_vectors, gene_to_fam, mask, n_genes_kept, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Applies a precomputed mask to filter out unassigned genes</p>
 
   <h4>Arguments</h4>
@@ -729,7 +757,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~13"></span>
+              <span class="anchor" id="variable-gene_ids~4"></span>
               character(len=*),
             </td>
 <td>intent(inout),</td>
@@ -744,7 +772,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~17"></span>
+              <span class="anchor" id="variable-expression_vectors~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -759,7 +787,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~24"></span>
+              <span class="anchor" id="variable-gene_to_fam~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout),</td>
@@ -804,7 +832,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~253"></span>
+              <span class="anchor" id="variable-ierr~55"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -840,14 +868,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-07-30 08:24 +0000             </p>
           </div>
         </div>
         <br>

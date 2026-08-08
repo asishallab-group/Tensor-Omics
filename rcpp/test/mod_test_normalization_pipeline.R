@@ -2,12 +2,6 @@
 source("rcpp/tensoromics_functions.R")
 source("rcpp/test_helpers.R")
 
-# # Helper: compare two numeric vectors/matrices with tolerance
-# assert_equal_numeric <- function(x, y, tol=1e-12, msg="") {
-#   stopifnot(all(abs(x - y) < tol))
-# }
-
-
 test_basic <- function() {
   n_genes <- 10; n_tissues <- 6; n_grps <- 2
   input_matrix <- matrix(0, ncol=n_genes, nrow=n_tissues)
@@ -23,9 +17,9 @@ test_basic <- function() {
   colnames(input_matrix) <- paste0("gene", 1:n_genes)
   group_s <- c(1L,4L); group_c <- c(3L,3L)
   result <- tox_normalization_pipeline(input_matrix, group_c, span = 0.75, degree = 2, use_quantile = 1)
-  stopifnot(all(!is.na(result)))
-  stopifnot(all(result >= 0))
-  stopifnot(dim(result)[2] == n_genes && dim(result)[1] == n_grps)
+  assert_true(all(!is.na(result)))
+  assert_true(all(result >= 0))
+  assert_true(dim(result)[2] == n_genes && dim(result)[1] == n_grps)
 }
 
 test_edge_case <- function() {
@@ -43,7 +37,7 @@ test_edge_case <- function() {
     NULL
   }, error = function(e) e)
 
-  stopifnot(!is.null(err))
+  assert_true(!is.null(err))
 }
 
 test_pipeline_vs_manual <- function() {
