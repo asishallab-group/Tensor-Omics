@@ -3,7 +3,8 @@ FROM archlinux:latest
 # Always update keyring first to avoid verification failures
 RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
-    pacman -Sy --noconfirm base-devel pkgconf gcc gcc-fortran make xxhash libzip python python-pip python-numpy python-pandas r git && \
+    pacman -Sy --noconfirm gcc-fortran gcc make xxhash libzip python python-pip python-numpy && \
+    pacman -Sy --noconfirm r gcc-fortran git && \
     pacman -Scc --noconfirm
 
 # Install fpm binary
@@ -12,7 +13,7 @@ RUN curl -L --output /usr/local/bin/fpm \
   chmod a+x /usr/local/bin/fpm
 
 # Install R Rcpp package
-RUN Rscript -e "install.packages('Rcpp', repos='https://cloud.r-project.org/')"
+RUN Rscript -e "install.packages(c('Rcpp', 'dplyr', 'tidyr', 'ggplot2', 'purr', 'patchwork', 'data.table', 'parallel'), repos='https://cloud.r-project.org/')"
 
 WORKDIR /opt
 
