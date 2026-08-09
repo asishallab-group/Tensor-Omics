@@ -80,6 +80,11 @@ def test_natural_fixed_point():
                               MEMBER_ADDED_AT_STEP_NON_MEMBER], dtype=np.int32)
     assert np.array_equal(result['member_added_at_step'], expected_step)
 
+    # Iteration 1's own bootstrap mask -- {seed=1, its one growth-radius neighbor=2}.
+    expected_low_confidence = np.zeros(7, dtype=np.bool_)
+    expected_low_confidence[0:2] = True
+    assert np.array_equal(result['low_confidence_mask'], expected_low_confidence)
+
 
 def test_history_window_shifts():
     vectors, kd_indices, dimension_order = _fixture_a()
@@ -101,6 +106,9 @@ def test_max_size_at_bootstrap():
     assert np.array_equal(result['k_history'], np.zeros(3, dtype=np.int32))
     assert not np.any(result['accepted_history'])
     assert np.all(result['member_added_at_step'] == MEMBER_ADDED_AT_STEP_NON_MEMBER)
+    # Stop Condition 1 fires before observable is ever called at all: no genuine SVD ever
+    # happened, so there is no real iteration-1 data to report.
+    assert not np.any(result['low_confidence_mask'])
 
 
 def test_max_size_poisons_prior_accepts():
@@ -112,6 +120,12 @@ def test_max_size_poisons_prior_accepts():
     assert not np.any(result['final_ensemble_mask'])
     assert np.array_equal(result['k_history'], np.zeros(3, dtype=np.int32))
     assert np.all(result['member_added_at_step'] == MEMBER_ADDED_AT_STEP_NON_MEMBER)
+    # The key behavior this output exists for: Stop Condition 1 wipes final_ensemble_mask and
+    # every history array, but iteration 1's own genuinely-SVD-backed bootstrap mask --
+    # {seed=1, its one growth-radius neighbor=2} -- survives that reset.
+    expected_low_confidence = np.zeros(7, dtype=np.bool_)
+    expected_low_confidence[0:2] = True
+    assert np.array_equal(result['low_confidence_mask'], expected_low_confidence)
 
 
 def test_rejected_immediately():

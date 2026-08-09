@@ -41,6 +41,8 @@ program main
     use mod_test_shape_truthful_clustering_seeding, only: get_all_tests_shape_truthful_clustering_seeding
     use mod_test_shape_truthful_clustering_ensemble_growing, only: get_all_tests_shape_truthful_clustering_ensemble_growing
     use mod_test_shape_truthful_clustering_accept, only: get_all_tests_shape_truthful_clustering_accept
+    use mod_test_shape_truthful_clustering_parameter_estimation, only: &
+        get_all_tests_shape_truthful_clustering_parameter_estimation
     implicit none
 
     integer :: nargs
@@ -87,6 +89,8 @@ program main
     call add_suite("shape_truthful_clustering_seeding", get_all_tests_shape_truthful_clustering_seeding)
     call add_suite("shape_truthful_clustering_ensemble_growing", get_all_tests_shape_truthful_clustering_ensemble_growing)
     call add_suite("shape_truthful_clustering_accept", get_all_tests_shape_truthful_clustering_accept)
+    call add_suite("shape_truthful_clustering_parameter_estimation", &
+                   get_all_tests_shape_truthful_clustering_parameter_estimation)
 
     nargs = command_argument_count()
 

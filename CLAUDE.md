@@ -106,9 +106,12 @@ references only -- implement against `mod_STC.md`.
 Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/`:
 
 - `tox_shape_truthful_clustering_kernel.F90` -- parent; holds `ensemble_identification`'s
-  own kernel(s) directly (the family's natural top-level entry point) *and* `use`s the five
+  own kernel(s) directly (the family's natural top-level entry point) *and* `use`s the six
   children below -- a deliberate deviation from `codegen_guide.md` section 5.15's own
   `tox_data_integration_kernel` example, where the parent holds no procedures of its own.
+  `ensemble_identification`/`_merged` also report `low_confidence_mask`/
+  `ensemble_low_confidence_masks`, one column per seed regardless of `stop_reason` -- see
+  `misc/mod_STC.md`, "Ensemble identification", "Output".
 - `tox_shape_truthful_clustering_seeding_kernel.F90` -- `density_labels`, `seeds`. Also
   `use`s its sibling `tox_shape_truthful_clustering_ensemble_growing_kernel` directly, to
   reuse `calc_ensemble_growth_radius_kernel` for `seeds`' own coverage radius rather than a
@@ -120,6 +123,13 @@ Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/
   `tangent_scales`.
 - `tox_shape_truthful_clustering_accept_kernel.F90` -- `accept_ensemble`.
 - `tox_shape_truthful_clustering_reconciliation_kernel.F90` -- `ensemble_reconciliation`.
+- `tox_shape_truthful_clustering_parameter_estimation_kernel.F90` -- `sample_estimator_anchors`,
+  `grow_estimator_anchor_clouds`, `estimate_stc_parameters`. A separate, optional pipeline
+  step (not run automatically by `seeds`/`ensemble_identification`) that proposes starting
+  values for `k_min`/`k_density`/`density_quantile`/`alpha_max`/`G_max`/`d_max` directly from
+  the data -- see `misc/mod_STC.md`, "Estimate parameters from data", for the full algorithm
+  and its deliberate simplicity trade-offs. Not yet wired into
+  `misc/STC-experiments/run_stc.py`.
 
 `src/lomanle.F90`: existing module. Only integrate STC into LoManLe's pipeline after STC
 itself is implemented and tested in isolation -- do not interleave the two.

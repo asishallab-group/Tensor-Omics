@@ -93,7 +93,8 @@ contains
                                                     seed_index, k_min, alpha_max, d_max, G_max, f_max, a, o, &
                                                     final_ensemble_mask, stop_reason, growth_radius, &
                                                     U_history, S_history, d_history, G_history, mu_history, &
-                                                    k_history, accepted_history, member_added_at_step, ierr)
+                                                    k_history, accepted_history, member_added_at_step, &
+                                                    low_confidence_mask, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
             !! DM_MIN(2_int32)
@@ -183,6 +184,14 @@ contains
             !! `MEMBER_ADDED_AT_STEP_NON_MEMBER` for non-members, `MEMBER_ADDED_AT_STEP_SEED`
             !! for the seed itself, the growth-iteration index at which each other member
             !! joined otherwise
+        logical, intent(out) :: low_confidence_mask(n_vectors)
+            !! Membership from this seed's iteration 1 (the unconditional bootstrap
+            !! grow_ensemble+observable call), reported regardless of stop_reason -- including
+            !! when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
+            !! all-.false. All-.false. here too whenever iteration 1 itself never produced a
+            !! genuine observable (an isolated seed, or a seed whose very first growth step
+            !! already exceeds f_max*N) -- see "Ensemble identification", "Output" in
+            !! misc/mod_STC.md
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
@@ -235,6 +244,7 @@ contains
         accepted_history        = .false.
         member_added_at_step    = MEMBER_ADDED_AT_STEP_NON_MEMBER
         member_added_at_step(seed_index) = MEMBER_ADDED_AT_STEP_SEED
+        low_confidence_mask   = .false.
         history_len   = 0
         accepted_count = 0
 
@@ -291,6 +301,12 @@ contains
             call set_err_once(ierr, ERR_INTERNAL)
             return
         end if
+
+        ! Iteration 1's own mask is real, genuinely-SVD-backed data -- captured here, once,
+        ! and never touched again for the rest of this subroutine (not even by Stop Condition
+        ! 1's later "poison the whole seed" reset inside growth_loop below): it stays valid
+        ! low-confidence fallback data regardless of what happens to this seed afterward.
+        low_confidence_mask = mask_candidate
 
         S_candidate = sqrt(eigenvalues_candidate*real(n_candidate - 1, real64))
 
@@ -438,7 +454,8 @@ contains
                                                            ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, &
                                                            ensemble_U_history, ensemble_S_history, ensemble_d_history, &
                                                            ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
-                                                           ensemble_accepted_history, ensemble_member_added_at_step, ierr)
+                                                           ensemble_accepted_history, ensemble_member_added_at_step, &
+                                                           ensemble_low_confidence_masks, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
             !! DM_MIN(2_int32)
@@ -512,6 +529,8 @@ contains
             !! Per-ensemble trailing accepted flags, see `accepted_history`
         integer(int32), intent(out) :: ensemble_member_added_at_step(n_vectors, n_selected_seed)
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
+        logical, intent(out) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
+            !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
@@ -541,6 +560,7 @@ contains
         ensemble_k_history           = 0
         ensemble_accepted_history    = .false.
         ensemble_member_added_at_step = MEMBER_ADDED_AT_STEP_NON_MEMBER
+        ensemble_low_confidence_masks = .false.
         ierr_per_seed                = 0
 
         do concurrent (i_e=1:n_selected_seed) shared(vectors, kd_indices, dimension_order, seed_indices, &
@@ -548,7 +568,7 @@ contains
                                                       ensemble_U_history, ensemble_S_history, ensemble_d_history, &
                                                       ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
                                                       ensemble_accepted_history, ensemble_member_added_at_step, &
-                                                      ierr_per_seed)
+                                                      ensemble_low_confidence_masks, ierr_per_seed)
             call ensemble_identification_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                 seed_indices(i_e), k_min, alpha_max, d_max, G_max, f_max, a, o, &
                                                 ensemble_masks(:, i_e), ensemble_stop_reason(i_e), &
@@ -556,7 +576,8 @@ contains
                                                 ensemble_S_history(:, :, i_e), ensemble_d_history(:, i_e), &
                                                 ensemble_G_history(:, i_e), ensemble_mu_history(:, :, i_e), &
                                                 ensemble_k_history(:, i_e), ensemble_accepted_history(:, i_e), &
-                                                ensemble_member_added_at_step(:, i_e), ierr_per_seed(i_e))
+                                                ensemble_member_added_at_step(:, i_e), &
+                                                ensemble_low_confidence_masks(:, i_e), ierr_per_seed(i_e))
         end do
 
         do i_e = 1, n_selected_seed

@@ -145,6 +145,10 @@ SEXP normal_error_call(SEXP, SEXP);
 SEXP tangent_scales_call(SEXP, SEXP);
 SEXP observable_call(SEXP, SEXP);
 SEXP tox_stc_observable_svd_workspace_call(SEXP, SEXP);
+SEXP sample_estimator_anchors_call(SEXP, SEXP);
+SEXP grow_estimator_anchor_clouds_call(SEXP, SEXP, SEXP);
+SEXP estimate_stc_parameters_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP tox_stc_estimate_parameters_svd_workspace_call(SEXP, SEXP);
 SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -268,6 +272,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"tangent_scales_call", (DL_FUNC) &tangent_scales_call, 2},
     {"observable_call", (DL_FUNC) &observable_call, 2},
     {"tox_stc_observable_svd_workspace_call", (DL_FUNC) &tox_stc_observable_svd_workspace_call, 2},
+    {"sample_estimator_anchors_call", (DL_FUNC) &sample_estimator_anchors_call, 2},
+    {"grow_estimator_anchor_clouds_call", (DL_FUNC) &grow_estimator_anchor_clouds_call, 3},
+    {"estimate_stc_parameters_call", (DL_FUNC) &estimate_stc_parameters_call, 8},
+    {"tox_stc_estimate_parameters_svd_workspace_call", (DL_FUNC) &tox_stc_estimate_parameters_svd_workspace_call, 2},
     {"ensemble_reconciliation_call", (DL_FUNC) &ensemble_reconciliation_call, 5},
     {"density_labels_call", (DL_FUNC) &density_labels_call, 5},
     {"seeds_call", (DL_FUNC) &seeds_call, 6},

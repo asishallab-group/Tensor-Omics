@@ -186,6 +186,14 @@ from .tox_shape_truthful_clustering_observable import (
 from .tox_shape_truthful_clustering_observable_kernel import (
     tox_stc_observable_svd_workspace,
 )
+from .tox_shape_truthful_clustering_parameter_estimation import (
+    sample_estimator_anchors,
+    grow_estimator_anchor_clouds,
+    estimate_stc_parameters,
+)
+from .tox_shape_truthful_clustering_parameter_estimation_kernel import (
+    tox_stc_estimate_parameters_svd_workspace,
+)
 from .tox_shape_truthful_clustering_reconciliation import (
     ensemble_reconciliation,
 )
@@ -274,6 +282,7 @@ __all__ = [
     "ensemble_identification",
     "ensemble_identification_merged",
     "ensemble_reconciliation",
+    "estimate_stc_parameters",
     "euclidean_distance",
     "filter_paralogs_by_pattern_dosage_effect",
     "filter_paralogs_by_pattern_subfunctionalization",
@@ -287,6 +296,7 @@ __all__ = [
     "group_centroid_all",
     "group_centroid_orthologs",
     "grow_ensemble",
+    "grow_estimator_anchor_clouds",
     "identify_outliers",
     "k_means_clustering",
     "kd_knn_query",
@@ -323,6 +333,7 @@ __all__ = [
     "relative_axes_changes_from_shift_vector",
     "relative_axes_expression_from_expression_vector",
     "root_mean_sq_normalization",
+    "sample_estimator_anchors",
     "save_tox_data",
     "seeds",
     "serialize_char_helper",
@@ -333,6 +344,7 @@ __all__ = [
     "tangent_scales",
     "tox_loess_required_workspace",
     "tox_stc_accept_ensemble_svd_workspace",
+    "tox_stc_estimate_parameters_svd_workspace",
     "tox_stc_observable_svd_workspace",
     "validate_all_data",
     "validate_data_structure",

@@ -88,6 +88,13 @@
 #'   \item{member_added_at_step}{a integer vector. `MEMBER_ADDED_AT_STEP_NON_MEMBER` for non-members, `MEMBER_ADDED_AT_STEP_SEED`
 #'     for the seed itself, the growth-iteration index at which each other member
 #'     joined otherwise}
+#'   \item{low_confidence_mask}{a logical vector. Membership from this seed's iteration 1 (the unconditional bootstrap
+#'     grow_ensemble+observable call), reported regardless of stop_reason -- including
+#'     when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
+#'     all-FALSE All-FALSE here too whenever iteration 1 itself never produced a
+#'     genuine observable (an isolated seed, or a seed whose very first growth step
+#'     already exceeds f_max*N) -- see "Ensemble identification", "Output" in
+#'     misc/mod_STC.md}
 #' @export
 ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_index, k_min = 30L, alpha_max, d_max, G_max, f_max = 0.95, a = 2L, o) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
@@ -107,8 +114,8 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
     .result <- .Call("ensemble_identification_call", vectors, kd_indices, dimension_order, seed_index, k_min, alpha_max, d_max, G_max, f_max, a, o)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -122,7 +129,8 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
         mu_history = .result$mu_history,
         k_history = .result$k_history,
         accepted_history = .result$accepted_history,
-        member_added_at_step = .result$member_added_at_step
+        member_added_at_step = .result$member_added_at_step,
+        low_confidence_mask = .result$low_confidence_mask
     )
 }
 
@@ -192,6 +200,7 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
 #'   \item{ensemble_k_history}{a integer matrix. Per-ensemble trailing sizes, see `k_history`}
 #'   \item{ensemble_accepted_history}{a logical matrix. Per-ensemble trailing accepted flags, see `accepted_history`}
 #'   \item{ensemble_member_added_at_step}{a integer matrix. Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`}
+#'   \item{ensemble_low_confidence_masks}{a logical matrix. Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`}
 #' @export
 ensemble_identification_merged <- function(vectors, kd_indices, dimension_order, seed_selection_mask, k_min = 30L, alpha_max, d_max, G_max, f_max = 0.95, a = 2L, o) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
@@ -213,8 +222,8 @@ ensemble_identification_merged <- function(vectors, kd_indices, dimension_order,
         .tox_shape_error("seed_selection_mask", length(seed_selection_mask), "vectors", dim(vectors)[2])
 
     .result <- .Call("ensemble_identification_merged_call", vectors, kd_indices, dimension_order, seed_selection_mask, k_min, alpha_max, d_max, G_max, f_max, a, o)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -228,6 +237,7 @@ ensemble_identification_merged <- function(vectors, kd_indices, dimension_order,
         ensemble_mu_history = .result$ensemble_mu_history,
         ensemble_k_history = .result$ensemble_k_history,
         ensemble_accepted_history = .result$ensemble_accepted_history,
-        ensemble_member_added_at_step = .result$ensemble_member_added_at_step
+        ensemble_member_added_at_step = .result$ensemble_member_added_at_step,
+        ensemble_low_confidence_masks = .result$ensemble_low_confidence_masks
     )
 }

@@ -51,6 +51,11 @@ def test_single_seed_matches_per_seed_kernel():
                               MEMBER_ADDED_AT_STEP_NON_MEMBER], dtype=np.int32)
     assert np.array_equal(result['ensemble_member_added_at_step'][:, 0], expected_step)
 
+    # Iteration 1's own bootstrap mask -- {seed=1, its one growth-radius neighbor=2}.
+    expected_low_confidence = np.zeros(7, dtype=np.bool_)
+    expected_low_confidence[0:2] = True
+    assert np.array_equal(result['ensemble_low_confidence_masks'][:, 0], expected_low_confidence)
+
 
 def test_two_independent_seeds():
     vectors = np.zeros((2, 14), dtype=np.float64, order='F')

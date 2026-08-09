@@ -60,6 +60,7 @@ contains
             k_history,&
             accepted_history,&
             member_added_at_step,&
+            low_confidence_mask,&
             ierr&
         ) bind(C, name="ensemble_identification_c")
         use tox_shape_truthful_clustering, only: ensemble_identification
@@ -153,12 +154,21 @@ contains
             !! `MEMBER_ADDED_AT_STEP_NON_MEMBER` for non-members, `MEMBER_ADDED_AT_STEP_SEED`
             !! for the seed itself, the growth-iteration index at which each other member
             !! joined otherwise
+        logical(c_bool), dimension(n_vectors), intent(out), target :: low_confidence_mask
+            !! Membership from this seed's iteration 1 (the unconditional bootstrap
+            !! grow_ensemble+observable call), reported regardless of stop_reason -- including
+            !! when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
+            !! all-.false. All-.false. here too whenever iteration 1 itself never produced a
+            !! genuine observable (an isolated seed, or a seed whose very first growth step
+            !! already exceeds f_max*N) -- see "Ensemble identification", "Output" in
+            !! misc/mod_STC.md
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
             !! non-error algorithmic outcome, see `misc/mod_STC.md`, "Stop Conditions".
         logical, dimension(n_vectors) :: final_ensemble_mask_f
         logical, dimension(o) :: accepted_history_f
+        logical, dimension(n_vectors) :: low_confidence_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -186,6 +196,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(k_history, o)
         M_CHECK_ARRAY_NON_NULL(accepted_history, o)
         M_CHECK_ARRAY_NON_NULL(member_added_at_step, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(low_confidence_mask, n_vectors)
 
         call ensemble_identification(&
             vectors = vectors,&
@@ -212,11 +223,13 @@ contains
             k_history = k_history,&
             accepted_history = accepted_history_f,&
             member_added_at_step = member_added_at_step,&
+            low_confidence_mask = low_confidence_mask_f,&
             ierr = ierr&
         )
 
         final_ensemble_mask = final_ensemble_mask_f
         accepted_history = accepted_history_f
+        low_confidence_mask = low_confidence_mask_f
     end subroutine ensemble_identification_c
 
     !> summary: C-wrapper for [[tox_shape_truthful_clustering(module):ensemble_identification_merged(subroutine)]]
@@ -264,6 +277,7 @@ contains
             ensemble_k_history,&
             ensemble_accepted_history,&
             ensemble_member_added_at_step,&
+            ensemble_low_confidence_masks,&
             ierr&
         ) bind(C, name="ensemble_identification_merged_c")
         use tox_shape_truthful_clustering, only: ensemble_identification_merged
@@ -341,12 +355,15 @@ contains
             !! Per-ensemble trailing accepted flags, see `accepted_history`
         integer(c_int), dimension(n_vectors, n_selected_seed), intent(out), target :: ensemble_member_added_at_step
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
+        logical(c_bool), dimension(n_vectors, n_selected_seed), intent(out), target :: ensemble_low_confidence_masks
+            !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
         logical, dimension(n_vectors) :: seed_selection_mask_f
         logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
         logical, dimension(o, n_selected_seed) :: ensemble_accepted_history_f
+        logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -375,6 +392,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_k_history, o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_accepted_history, o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_member_added_at_step, n_vectors * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_low_confidence_masks, n_vectors * n_selected_seed)
 
         seed_selection_mask_f = seed_selection_mask
 
@@ -404,11 +422,13 @@ contains
             ensemble_k_history = ensemble_k_history,&
             ensemble_accepted_history = ensemble_accepted_history_f,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
+            ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
             ierr = ierr&
         )
 
         ensemble_masks = ensemble_masks_f
         ensemble_accepted_history = ensemble_accepted_history_f
+        ensemble_low_confidence_masks = ensemble_low_confidence_masks_f
     end subroutine ensemble_identification_merged_c
 
 end module tox_shape_truthful_clustering_c

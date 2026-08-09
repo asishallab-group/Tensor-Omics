@@ -426,7 +426,7 @@ contains
                                  query_point, k_neighbors, tmp_range_stack, neighbors, distances)
     end subroutine kd_knn_query
 
-    !> AUTHOR_ASIS_HALLAB
+    !> 
     !| (no input validation) Find the k nearest neighbors of a query point, via a bounded
     !| max-heap kept directly in `neighbors`/`distances` and splitting-plane pruning. Requires
     !| `k_neighbors <= n_points` (checked by the validated tiers above): every point is then

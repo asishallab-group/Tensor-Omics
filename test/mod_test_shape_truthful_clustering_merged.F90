@@ -60,6 +60,7 @@ contains
         logical        :: ensemble_masks(7, 1), expected_mask(7)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(4, 1), ensemble_k_history(4, 1)
         integer(int32) :: ensemble_member_added_at_step(7, 1), expected_step(7)
+        logical        :: ensemble_low_confidence_masks(7, 1)
         logical        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(2, 4, 1)
         real(real64)   :: ensemble_S_history(2, 4, 1), ensemble_U_history(2, 2, 4, 1)
@@ -76,7 +77,8 @@ contains
                                             ensemble_d_history=ensemble_d_history, ensemble_G_history=ensemble_G_history, &
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
-                                            ensemble_member_added_at_step=ensemble_member_added_at_step, ierr=ierr)
+                                            ensemble_member_added_at_step=ensemble_member_added_at_step, &
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification_merged failed unexpectedly: ', ierr
             error stop
@@ -96,6 +98,12 @@ contains
                          MEMBER_ADDED_AT_STEP_NON_MEMBER]
         call assert_equal_array_int(ensemble_member_added_at_step(:, 1), expected_step, 7_int32, &
                                     "merged single seed: member_added_at_step")
+
+        ! Iteration 1's own bootstrap mask -- {seed=1, its one growth-radius neighbor=2}.
+        expected_mask = .false.
+        expected_mask(1:2) = .true.
+        call assert_equal_array_logical(ensemble_low_confidence_masks(:, 1), expected_mask, 7_int32, &
+                                        "merged single seed: low_confidence_mask is iteration 1's own mask")
     end subroutine test_merged_single_seed_matches_per_seed_kernel
 
     !> Two independent copies of fixture A, translated far apart (+100,+100 in the second),
@@ -109,6 +117,7 @@ contains
         logical        :: ensemble_masks(14, 2), expected_mask_1(14), expected_mask_2(14)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(4, 2), ensemble_k_history(4, 2)
         integer(int32) :: ensemble_member_added_at_step(14, 2), expected_step_1(14), expected_step_2(14)
+        logical        :: ensemble_low_confidence_masks(14, 2)
         logical        :: ensemble_accepted_history(4, 2)
         real(real64)   :: ensemble_growth_radii(2), ensemble_G_history(4, 2), ensemble_mu_history(2, 4, 2)
         real(real64)   :: ensemble_S_history(2, 4, 2), ensemble_U_history(2, 2, 4, 2)
@@ -142,7 +151,8 @@ contains
                                             ensemble_d_history=ensemble_d_history, ensemble_G_history=ensemble_G_history, &
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
-                                            ensemble_member_added_at_step=ensemble_member_added_at_step, ierr=ierr)
+                                            ensemble_member_added_at_step=ensemble_member_added_at_step, &
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification_merged failed unexpectedly: ', ierr
             error stop
@@ -182,6 +192,7 @@ contains
         logical        :: ensemble_masks(7, 0)
         integer(int32) :: ensemble_stop_reason(0), ensemble_d_history(4, 0), ensemble_k_history(4, 0)
         integer(int32) :: ensemble_member_added_at_step(7, 0)
+        logical        :: ensemble_low_confidence_masks(7, 0)
         logical        :: ensemble_accepted_history(4, 0)
         real(real64)   :: ensemble_growth_radii(0), ensemble_G_history(4, 0), ensemble_mu_history(2, 4, 0)
         real(real64)   :: ensemble_S_history(2, 4, 0), ensemble_U_history(2, 2, 4, 0)
@@ -197,7 +208,8 @@ contains
                                             ensemble_d_history=ensemble_d_history, ensemble_G_history=ensemble_G_history, &
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
-                                            ensemble_member_added_at_step=ensemble_member_added_at_step, ierr=ierr)
+                                            ensemble_member_added_at_step=ensemble_member_added_at_step, &
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
         call assert_true(is_ok(ierr), "merged zero seeds: not an error")
     end subroutine test_merged_zero_seeds
 
@@ -208,6 +220,7 @@ contains
         logical        :: ensemble_masks(7, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(4, 1), ensemble_k_history(4, 1)
         integer(int32) :: ensemble_member_added_at_step(7, 1)
+        logical        :: ensemble_low_confidence_masks(7, 1)
         logical        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(2, 4, 1)
         real(real64)   :: ensemble_S_history(2, 4, 1), ensemble_U_history(2, 2, 4, 1)
@@ -225,7 +238,8 @@ contains
                                             ensemble_d_history=ensemble_d_history, ensemble_G_history=ensemble_G_history, &
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
-                                            ensemble_member_added_at_step=ensemble_member_added_at_step, ierr=ierr)
+                                            ensemble_member_added_at_step=ensemble_member_added_at_step, &
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
         call assert_true(is_err(ierr), "merged: n_selected_seed must match count(seed_selection_mask)")
     end subroutine test_merged_seed_count_mismatch
 
@@ -236,6 +250,7 @@ contains
         logical        :: ensemble_masks(7, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(4, 1), ensemble_k_history(4, 1)
         integer(int32) :: ensemble_member_added_at_step(7, 1)
+        logical        :: ensemble_low_confidence_masks(7, 1)
         logical        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(1, 4, 1)
         real(real64)   :: ensemble_S_history(1, 4, 1), ensemble_U_history(1, 1, 4, 1)
@@ -261,7 +276,8 @@ contains
                                             ensemble_d_history=ensemble_d_history, ensemble_G_history=ensemble_G_history, &
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
-                                            ensemble_member_added_at_step=ensemble_member_added_at_step, ierr=ierr)
+                                            ensemble_member_added_at_step=ensemble_member_added_at_step, &
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
         call assert_true(is_err(ierr), "merged: should reject n_dimensions=1")
     end subroutine test_merged_n_dimensions_too_small
 

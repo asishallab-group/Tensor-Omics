@@ -5,8 +5,8 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void ensemble_identification_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, int*);
-void ensemble_identification_merged_c(const double*, const int*, const int*, const int*, const int*, const unsigned char*, const int*, const int*, const double*, const int*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, int*);
+void ensemble_identification_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, unsigned char*, int*);
+void ensemble_identification_merged_c(const double*, const int*, const int*, const int*, const int*, const unsigned char*, const int*, const int*, const double*, const int*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, unsigned char*, int*);
 
 SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_index, SEXP k_min, SEXP alpha_max, SEXP d_max, SEXP G_max, SEXP f_max, SEXP a, SEXP o) {
     int nprot = 0;
@@ -39,6 +39,7 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     SEXP k_history = PROTECT(Rf_allocVector(INTSXP, o_v)); nprot++;
     unsigned char* accepted_history_c = tox_bool_alloc(o_v);
     SEXP member_added_at_step = PROTECT(Rf_allocVector(INTSXP, n_vectors)); nprot++;
+    unsigned char* low_confidence_mask_c = tox_bool_alloc(n_vectors);
     int ierr = 0;
 
     ensemble_identification_c(
@@ -66,14 +67,16 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
         INTEGER(k_history),
         accepted_history_c,
         INTEGER(member_added_at_step),
+        low_confidence_mask_c,
         &ierr
     );
 
     // convert the outputs back
     SEXP final_ensemble_mask = PROTECT(tox_bool_out(final_ensemble_mask_c, n_vectors)); nprot++;
     SEXP accepted_history = PROTECT(tox_bool_out(accepted_history_c, o_v)); nprot++;
+    SEXP low_confidence_mask = PROTECT(tox_bool_out(low_confidence_mask_c, n_vectors)); nprot++;
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 12)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 13)); nprot++;
     SET_VECTOR_ELT(_out, 0, final_ensemble_mask);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(stop_reason));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(growth_radius));
@@ -85,8 +88,9 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     SET_VECTOR_ELT(_out, 8, k_history);
     SET_VECTOR_ELT(_out, 9, accepted_history);
     SET_VECTOR_ELT(_out, 10, member_added_at_step);
-    SET_VECTOR_ELT(_out, 11, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 12)); nprot++;
+    SET_VECTOR_ELT(_out, 11, low_confidence_mask);
+    SET_VECTOR_ELT(_out, 12, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 13)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("final_ensemble_mask"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("stop_reason"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("growth_radius"));
@@ -98,7 +102,8 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     SET_STRING_ELT(_nms, 8, Rf_mkChar("k_history"));
     SET_STRING_ELT(_nms, 9, Rf_mkChar("accepted_history"));
     SET_STRING_ELT(_nms, 10, Rf_mkChar("member_added_at_step"));
-    SET_STRING_ELT(_nms, 11, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 11, Rf_mkChar("low_confidence_mask"));
+    SET_STRING_ELT(_nms, 12, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
@@ -142,6 +147,7 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
     unsigned char* ensemble_accepted_history_c = tox_bool_alloc(o_v * n_selected_seed);
     SEXP ensemble_member_added_at_step = PROTECT(Rf_allocVector(INTSXP, n_vectors * n_selected_seed)); nprot++;
     { SEXP ensemble_member_added_at_step_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(ensemble_member_added_at_step_dim)[0] = n_vectors; INTEGER(ensemble_member_added_at_step_dim)[1] = n_selected_seed; Rf_setAttrib(ensemble_member_added_at_step, R_DimSymbol, ensemble_member_added_at_step_dim); UNPROTECT(1); }
+    unsigned char* ensemble_low_confidence_masks_c = tox_bool_alloc(n_vectors * n_selected_seed);
     int ierr = 0;
 
     ensemble_identification_merged_c(
@@ -170,6 +176,7 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
         INTEGER(ensemble_k_history),
         ensemble_accepted_history_c,
         INTEGER(ensemble_member_added_at_step),
+        ensemble_low_confidence_masks_c,
         &ierr
     );
 
@@ -178,8 +185,10 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
     { SEXP ensemble_masks_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(ensemble_masks_dim)[0] = n_vectors; INTEGER(ensemble_masks_dim)[1] = n_selected_seed; Rf_setAttrib(ensemble_masks, R_DimSymbol, ensemble_masks_dim); UNPROTECT(1); }
     SEXP ensemble_accepted_history = PROTECT(tox_bool_out(ensemble_accepted_history_c, o_v * n_selected_seed)); nprot++;
     { SEXP ensemble_accepted_history_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(ensemble_accepted_history_dim)[0] = o_v; INTEGER(ensemble_accepted_history_dim)[1] = n_selected_seed; Rf_setAttrib(ensemble_accepted_history, R_DimSymbol, ensemble_accepted_history_dim); UNPROTECT(1); }
+    SEXP ensemble_low_confidence_masks = PROTECT(tox_bool_out(ensemble_low_confidence_masks_c, n_vectors * n_selected_seed)); nprot++;
+    { SEXP ensemble_low_confidence_masks_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(ensemble_low_confidence_masks_dim)[0] = n_vectors; INTEGER(ensemble_low_confidence_masks_dim)[1] = n_selected_seed; Rf_setAttrib(ensemble_low_confidence_masks, R_DimSymbol, ensemble_low_confidence_masks_dim); UNPROTECT(1); }
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 12)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 13)); nprot++;
     SET_VECTOR_ELT(_out, 0, ensemble_masks);
     SET_VECTOR_ELT(_out, 1, ensemble_stop_reason);
     SET_VECTOR_ELT(_out, 2, ensemble_growth_radii);
@@ -191,8 +200,9 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
     SET_VECTOR_ELT(_out, 8, ensemble_k_history);
     SET_VECTOR_ELT(_out, 9, ensemble_accepted_history);
     SET_VECTOR_ELT(_out, 10, ensemble_member_added_at_step);
-    SET_VECTOR_ELT(_out, 11, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 12)); nprot++;
+    SET_VECTOR_ELT(_out, 11, ensemble_low_confidence_masks);
+    SET_VECTOR_ELT(_out, 12, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 13)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("ensemble_masks"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("ensemble_stop_reason"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("ensemble_growth_radii"));
@@ -204,7 +214,8 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
     SET_STRING_ELT(_nms, 8, Rf_mkChar("ensemble_k_history"));
     SET_STRING_ELT(_nms, 9, Rf_mkChar("ensemble_accepted_history"));
     SET_STRING_ELT(_nms, 10, Rf_mkChar("ensemble_member_added_at_step"));
-    SET_STRING_ELT(_nms, 11, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 11, Rf_mkChar("ensemble_low_confidence_masks"));
+    SET_STRING_ELT(_nms, 12, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

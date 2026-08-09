@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>STC interactive report</title>
+<style>
+  :root { --fg: #222; --bg: #fff; --grid: #e8e8e8; --muted: #999; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--fg);
+         background: var(--bg); margin: 0; padding: 16px 20px 40px; }
+  h1 { font-size: 1.3em; margin: 0 0 4px; }
+  h2 { font-size: 1.05em; margin: 28px 0 8px; border-top: 1px solid var(--grid); padding-top: 16px; }
+  #subtitle { color: var(--muted); font-size: 0.85em; margin-bottom: 16px; }
+  #layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  #controls { min-width: 220px; max-width: 260px; font-size: 0.85em; }
+  #controls fieldset { border: 1px solid var(--grid); border-radius: 6px; margin: 0 0 12px; padding: 8px 10px; }
+  #controls legend { font-weight: 600; padding: 0 4px; }
+  #controls label { display: block; margin: 4px 0; cursor: pointer; }
+  #controls select { width: 100%; margin-top: 2px; }
+  #main-panel { position: relative; }
+  svg { background: var(--bg); }
+  #scatter { border: 1px solid var(--grid); }
+  .axis text { font-size: 10px; fill: var(--muted); }
+  .axis path, .axis line { stroke: var(--grid); }
+  .point { cursor: pointer; }
+  .seed-marker { pointer-events: none; }
+  .tangent-line { pointer-events: none; }
+  .radius-circle { pointer-events: none; fill: steelblue; fill-opacity: 0.05; stroke: steelblue; stroke-width: 0.6; }
+  #tooltip { position: absolute; pointer-events: none; background: rgba(20,20,20,0.92); color: #fff;
+             padding: 6px 9px; border-radius: 4px; font-size: 0.78em; line-height: 1.4; max-width: 280px;
+             opacity: 0; transition: opacity 0.08s; z-index: 10; }
+  #heatmap-wrap { overflow: auto; max-width: 100%; }
+  table.params { border-collapse: collapse; font-size: 0.82em; }
+  table.params caption { text-align: left; font-weight: 600; margin-bottom: 4px; }
+  table.params td, table.params th { padding: 3px 10px 3px 0; text-align: left; border-bottom: 1px solid var(--grid); }
+  #params-tables { display: flex; gap: 40px; flex-wrap: wrap; }
+  .legend-item { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; font-size: 0.8em; }
+  .legend-swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<h1 id="title">STC interactive report</h1>
+<div id="subtitle"></div>
+
+<div id="layout">
+  <div id="controls">
+    <fieldset>
+      <legend>Color points by</legend>
+      <select id="color-mode">
+        <option value="none">Single color</option>
+        <option value="n_ensembles" selected>Intersection density (# ensembles)</option>
+        <option value="coverage">Low-confidence fallback coverage</option>
+        <option value="super_ensemble">Super-ensemble grouping</option>
+      </select>
+    </fieldset>
+    <fieldset>
+      <legend>Highlight one ensemble</legend>
+      <select id="highlight-ensemble">
+        <option value="">(none -- show all, colored by mode above)</option>
+      </select>
+      <label style="margin-top:6px;"><input type="checkbox" id="layer-seeds" checked> Seeds</label>
+      <label><input type="checkbox" id="layer-radii"> Growth radii</label>
+      <label><input type="checkbox" id="layer-tangent1"> Tangent PC1</label>
+      <label><input type="checkbox" id="layer-tangent2"> Tangent PC2</label>
+      <p style="color:var(--muted); margin: 8px 0 0;">With no ensemble selected, seeds show for
+      all ensembles; growth-radii/tangent layers are drawn for all non-empty ensembles when
+      none is selected, which can get busy -- pick one to declutter.</p>
+    </fieldset>
+    <div id="legend"></div>
+  </div>
+
+  <div id="main-panel">
+    <svg id="scatter"></svg>
+  </div>
+</div>
+
+<h2>Pairwise JSI heatmap</h2>
+<div id="heatmap-wrap"><svg id="heatmap"></svg></div>
+
+<h2>Parameters</h2>
+<div id="params-tables"></div>
+
+<div id="tooltip"></div>
+
+<script>
+/* ---- vendored D3 v7.9.0 (https://d3js.org, BSD-3-Clause), inlined for a self-contained,
+   offline-usable report -- no CDN dependency at view time. ---- */
+__STC_D3_JS__
+</script>
+<script>
+/* =====================================================================================
+   Data contract: a single JSON object (see misc/STC-experiments/export_json.py), injected
+   below by render_interactive.py. Re-run render_interactive.py <prefix> to regenerate this
+   file from a different prefix's data -- this whole block, and everything above it, is the
+   reusable template; only this DATA constant changes per report.
+   ===================================================================================== */
+const DATA = __STC_DATA__;
+
+(function () {
+  "use strict";
+
+  const dimX = DATA.dim_names[0], dimY = DATA.dim_names[1];
+  const pointById = new Map(DATA.points.map(p => [p.id, p]));
+  const ensembleById = new Map(DATA.ensembles.map(e => [e.id, e]));
+  const nonEmptyEnsembles = DATA.ensembles.filter(e => e.size > 0);
+
+  document.getElementById("title").textContent = "STC interactive report -- " + (DATA.params.input_csv || "");
+  document.getElementById("subtitle").textContent =
+    `${DATA.points.length} points, ${nonEmptyEnsembles.length} non-empty ensembles, ` +
+    `${DATA.super_ensembles.length} super-ensemble(s). Hover a point for full detail; ` +
+    "over-plotting is avoided by highlighting one ensemble at a time instead of stacking colors.";
+
+  const highlightSelect = document.getElementById("highlight-ensemble");
+  nonEmptyEnsembles.slice().sort((a, b) => b.size - a.size).forEach(e => {
+    const opt = document.createElement("option");
+    opt.value = e.id;
+    opt.textContent = `Ensemble ${e.id} (seed ${e.seed_point_id}, ${e.size} members, d=${e.d}, ${e.stop_reason})`;
+    highlightSelect.appendChild(opt);
+  });
+
+  // ---- Scatter plot ------------------------------------------------------------------
+  const margin = { top: 10, right: 20, bottom: 36, left: 46 };
+  const width = 640, height = 560;
+  const svg = d3.select("#scatter").attr("width", width).attr("height", height);
+  const plot = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+  const innerW = width - margin.left - margin.right, innerH = height - margin.top - margin.bottom;
+
+  const xExtent = d3.extent(DATA.points, p => p.coords[0]);
+  const yExtent = d3.extent(DATA.points, p => p.coords[1]);
+  const xSpan = xExtent[1] - xExtent[0] || 1, ySpan = yExtent[1] - yExtent[0] || 1;
+  // A single shared units-per-pixel scale for both axes (coord_fixed()'s equivalent) --
+  // circles and tangent segments would otherwise be visually distorted.
+  const unitsPerPixel = Math.max(xSpan / innerW, ySpan / innerH) * 1.08;
+  const xMid = (xExtent[0] + xExtent[1]) / 2, yMid = (yExtent[0] + yExtent[1]) / 2;
+  const x = d3.scaleLinear().domain([xMid - unitsPerPixel * innerW / 2, xMid + unitsPerPixel * innerW / 2]).range([0, innerW]);
+  const y = d3.scaleLinear().domain([yMid - unitsPerPixel * innerH / 2, yMid + unitsPerPixel * innerH / 2]).range([innerH, 0]);
+
+  plot.append("g").attr("class", "axis").attr("transform", `translate(0,${innerH})`).call(d3.axisBottom(x).ticks(6));
+  plot.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(6));
+  svg.append("text").attr("x", margin.left + innerW / 2).attr("y", height - 4).attr("text-anchor", "middle")
+    .attr("font-size", 11).attr("fill", "var(--muted)").text(dimX);
+  svg.append("text").attr("transform", "rotate(-90)").attr("x", -(margin.top + innerH / 2)).attr("y", 12)
+    .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "var(--muted)").text(dimY);
+
+  const pointsLayer = plot.append("g");
+  const overlayLayer = plot.append("g"); // radii circles, drawn under points but over background
+  plot.node().before ? null : null; // no-op, keeps layer creation order obvious below
+  pointsLayer.raise();
+  const seedLayer = plot.append("g");
+  const tangentLayer = plot.append("g");
+
+  const tooltip = d3.select("#tooltip");
+  const magma = d3.scaleSequential(d3.interpolateMagma);
+  const coverageColor = { "Retained ensemble": "#4682b4", "Low-confidence fallback only": "#e08214", "Uncovered": "#bbb" };
+  const superEnsembleColor = d3.scaleOrdinal(d3.schemeCategory10);
+
+  function coverageCategory(p) {
+    if (p.n_ensembles > 0) return "Retained ensemble";
+    if (p.n_low_confidence_ensembles > 0) return "Low-confidence fallback only";
+    return "Uncovered";
+  }
+
+  function pointColor(p, colorMode, highlightId) {
+    if (highlightId) {
+      return p.ensembles.includes(highlightId) ? "#2166ac" : "#d9d9d9";
+    }
+    switch (colorMode) {
+      case "n_ensembles": {
+        const maxN = d3.max(DATA.points, d => d.n_ensembles) || 1;
+        magma.domain([maxN + 1, 0]); // reversed: brighter = more overlap, avoids near-black-on-white
+        return p.n_ensembles === 0 ? "#ddd" : magma(p.n_ensembles);
+      }
+      case "coverage":
+        return coverageColor[coverageCategory(p)];
+      case "super_ensemble": {
+        const groupIds = p.ensembles.map(eid => ensembleById.get(eid) && ensembleById.get(eid).super_ensemble_id)
+          .filter(g => g !== null && g !== undefined);
+        return groupIds.length ? superEnsembleColor(Math.min(...groupIds)) : "#ddd";
+      }
+      default:
+        return "#4682b4";
+    }
+  }
+
+  function tooltipHtml(p) {
+    const rows = [
+      `<b>point ${p.id}</b>`,
+      `${dimX}=${p.coords[0].toFixed(4)}, ${dimY}=${p.coords[1].toFixed(4)}`,
+      `in ${p.n_ensembles} retained ensemble(s): ${p.ensembles.join(", ") || "none"}`,
+      `low-confidence fallback: ${p.low_confidence_ensembles.join(", ") || "none"}`,
+    ];
+    if (p.seed_of.length) rows.push(`seed of ensemble(s): ${p.seed_of.join(", ")}`);
+    const superIds = [...new Set(p.ensembles.map(eid => ensembleById.get(eid) && ensembleById.get(eid).super_ensemble_id)
+      .filter(g => g !== null && g !== undefined))];
+    if (superIds.length) rows.push(`super-ensemble(s): ${superIds.join(", ")}`);
+    return rows.join("<br>");
+  }
+
+  function render() {
+    const colorMode = document.getElementById("color-mode").value;
+    const highlightId = highlightSelect.value ? +highlightSelect.value : null;
+    const showSeeds = document.getElementById("layer-seeds").checked;
+    const showRadii = document.getElementById("layer-radii").checked;
+    const showT1 = document.getElementById("layer-tangent1").checked;
+    const showT2 = document.getElementById("layer-tangent2").checked;
+    const relevantEnsembles = highlightId ? nonEmptyEnsembles.filter(e => e.id === highlightId) : nonEmptyEnsembles;
+
+    pointsLayer.selectAll("circle.point").data(DATA.points, d => d.id).join("circle")
+      .attr("class", "point")
+      .attr("cx", d => x(d.coords[0])).attr("cy", d => y(d.coords[1]))
+      .attr("r", d => highlightId && d.ensembles.includes(highlightId) ? 3 : 2)
+      .attr("fill", d => pointColor(d, colorMode, highlightId))
+      .attr("fill-opacity", d => highlightId && !d.ensembles.includes(highlightId) ? 0.35 : 0.85)
+      .on("mouseenter", (event, d) => {
+        tooltip.style("opacity", 1).html(tooltipHtml(d));
+      })
+      .on("mousemove", (event) => {
+        tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+      })
+      .on("mouseleave", () => tooltip.style("opacity", 0));
+
+    seedLayer.selectAll("path.seed-marker").data(showSeeds ? relevantEnsembles : [], d => d.id).join("path")
+      .attr("class", "seed-marker")
+      .attr("d", d3.symbol(d3.symbolTriangle, 40))
+      .attr("transform", d => {
+        const p = pointById.get(d.seed_point_id);
+        return p ? `translate(${x(p.coords[0])},${y(p.coords[1])})` : null;
+      })
+      .attr("fill", "black");
+
+    overlayLayer.selectAll("circle.radius-circle").data(showRadii ? relevantEnsembles : [], d => d.id).join("circle")
+      .attr("class", "radius-circle")
+      .attr("cx", d => x(pointById.get(d.seed_point_id).coords[0]))
+      .attr("cy", d => y(pointById.get(d.seed_point_id).coords[1]))
+      .attr("r", d => Math.abs(x(d.growth_radius) - x(0)));
+
+    function tangentSegments(show, uKey, sKey) {
+      return (show ? relevantEnsembles : []).filter(d => d[uKey] && d[sKey] > 0);
+    }
+    tangentLayer.selectAll("line.t1").data(tangentSegments(showT1, "u1", "s1"), d => d.id).join("line")
+      .attr("class", "tangent-line t1")
+      .attr("x1", d => x(d.mu[0] - d.u1[0] * d.s1)).attr("y1", d => y(d.mu[1] - d.u1[1] * d.s1))
+      .attr("x2", d => x(d.mu[0] + d.u1[0] * d.s1)).attr("y2", d => y(d.mu[1] + d.u1[1] * d.s1))
+      .attr("stroke", "#b2182b").attr("stroke-width", 1.6);
+    tangentLayer.selectAll("line.t2").data(tangentSegments(showT2, "u2", "s2"), d => d.id).join("line")
+      .attr("class", "tangent-line t2")
+      .attr("x1", d => x(d.mu[0] - d.u2[0] * d.s2)).attr("y1", d => y(d.mu[1] - d.u2[1] * d.s2))
+      .attr("x2", d => x(d.mu[0] + d.u2[0] * d.s2)).attr("y2", d => y(d.mu[1] + d.u2[1] * d.s2))
+      .attr("stroke", "#2166ac").attr("stroke-width", 1.6);
+
+    renderLegend(colorMode, highlightId);
+  }
+
+  function renderLegend(colorMode, highlightId) {
+    const el = document.getElementById("legend");
+    el.innerHTML = "";
+    let items = [];
+    if (highlightId) {
+      items = [["#2166ac", "in ensemble " + highlightId], ["#d9d9d9", "not in it"]];
+    } else if (colorMode === "coverage") {
+      items = Object.entries(coverageColor).map(([k, v]) => [v, k]);
+    } else if (colorMode === "super_ensemble") {
+      items = [["#ddd", "no super-ensemble"]];
+    } else if (colorMode === "n_ensembles") {
+      items = [["#ddd", "0 ensembles"], [magma(1), "few"], [magma(d3.max(DATA.points, d => d.n_ensembles) || 1), "many"]];
+    }
+    items.forEach(([color, label]) => {
+      const span = document.createElement("span");
+      span.className = "legend-item";
+      span.innerHTML = `<span class="legend-swatch" style="background:${color}"></span>${label}`;
+      el.appendChild(span);
+    });
+  }
+
+  ["color-mode", "highlight-ensemble", "layer-seeds", "layer-radii", "layer-tangent1", "layer-tangent2"]
+    .forEach(id => document.getElementById(id).addEventListener("change", render));
+  render();
+
+  // ---- JSI heatmap ---------------------------------------------------------------------
+  const ensIds = nonEmptyEnsembles.map(e => e.id).sort((a, b) => a - b);
+  const cell = Math.max(3, Math.min(14, Math.floor(700 / Math.max(ensIds.length, 1))));
+  const hmMargin = { top: 10, right: 10, bottom: 10, left: 10 };
+  const hmSize = cell * ensIds.length;
+  const heatmapSvg = d3.select("#heatmap")
+    .attr("width", hmSize + hmMargin.left + hmMargin.right)
+    .attr("height", hmSize + hmMargin.top + hmMargin.bottom);
+  const heatmapG = heatmapSvg.append("g").attr("transform", `translate(${hmMargin.left},${hmMargin.top})`);
+  const idxOf = new Map(ensIds.map((id, i) => [id, i]));
+  const jsiLookup = new Map();
+  DATA.jsi_matrix.forEach(({ a, b, jsi }) => { jsiLookup.set(a + "_" + b, jsi); jsiLookup.set(b + "_" + a, jsi); });
+  const viridis = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]);
+
+  const hmData = [];
+  ensIds.forEach((ea, i) => ensIds.forEach((eb, j) => {
+    const jsi = ea === eb ? 1 : (jsiLookup.get(ea + "_" + eb) || 0);
+    hmData.push({ ea, eb, i, j, jsi });
+  }));
+
+  heatmapG.selectAll("rect").data(hmData).join("rect")
+    .attr("x", d => d.i * cell).attr("y", d => d.j * cell)
+    .attr("width", cell).attr("height", cell)
+    .attr("fill", d => viridis(d.jsi))
+    .on("mouseenter", (event, d) => {
+      tooltip.style("opacity", 1).html(`ensemble ${d.ea} &times; ${d.eb}<br>JSI = ${d.jsi.toFixed(3)}`);
+    })
+    .on("mousemove", (event) => {
+      tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");
+    })
+    .on("mouseleave", () => tooltip.style("opacity", 0))
+    .on("click", (event, d) => {
+      if (d.ea !== d.eb) { highlightSelect.value = d.ea; render(); }
+    });
+
+  // ---- Parameters tables ------------------------------------------------------------
+  function paramsTable(caption, entries) {
+    if (!entries.length) return null;
+    const wrap = document.createElement("table");
+    wrap.className = "params";
+    wrap.innerHTML = `<caption>${caption}</caption><tr><th>parameter</th><th>value</th></tr>` +
+      entries.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+    return wrap;
+  }
+  const allEntries = Object.entries(DATA.params);
+  const inputEntries = allEntries.filter(([k]) => !k.startsWith("estimated_"));
+  const estimatedEntries = allEntries.filter(([k]) => k.startsWith("estimated_")).map(([k, v]) => [k.replace(/^estimated_/, ""), v]);
+  const tablesEl = document.getElementById("params-tables");
+  [paramsTable("This run's own parameters", inputEntries),
+   paramsTable("estimate_stc_parameters (informational, never auto-applied)", estimatedEntries)]
+    .filter(Boolean).forEach(t => tablesEl.appendChild(t));
+})();
+</script>
+</body>
+</html>

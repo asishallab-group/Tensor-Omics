@@ -25,7 +25,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO_ROOT, "python"))
 
-from tensor_omics import build_kd_index, seeds, ensemble_identification_merged, ensemble_reconciliation  # noqa: E402
+from tensor_omics import (build_kd_index, seeds, ensemble_identification_merged,  # noqa: E402
+                          ensemble_reconciliation, estimate_stc_parameters)
+from tensor_omics.error_handling import ToxError  # noqa: E402
 
 STOP_REASON_NAMES = {
     0: "error",
@@ -75,6 +77,21 @@ def parse_args():
                     help="Reconciliation: minimum Jaccard Similarity Index for mode merge_jsi (default 0.1)")
     p.add_argument("--max-group-size", type=int, default=None,
                     help="Reconciliation: max ensembles per super-ensemble (default min(1024, n_ensembles))")
+    p.add_argument("--estimate-parameters", action="store_true",
+                    help="Also run estimate_stc_parameters and report its k_min/k_density/density_quantile/"
+                         "alpha_max/G_max/d_max estimates in params.json/.txt -- purely informational, does "
+                         "not change which parameters this run itself actually uses (see "
+                         "misc/mod_STC.md, 'Estimate parameters from data')")
+    p.add_argument("--n-anchors", type=int, default=5,
+                    help="Parameter estimation: number of estimator anchors, see estimate_stc_parameters "
+                         "(default 5, only used with --estimate-parameters)")
+    p.add_argument("--seed-max-set-size", type=float, default=5.0,
+                    help="Parameter estimation: percent of N at which estimator-anchor growth stops, see "
+                         "estimate_stc_parameters (default 5.0, only used with --estimate-parameters)")
+    p.add_argument("--first-quartile-percentile", type=float, default=25.0,
+                    help="Parameter estimation: percentile of the pairwise-EA-comparison distributions used "
+                         "for alpha_max/G_max/d_max, see estimate_stc_parameters (default 25.0, only used "
+                         "with --estimate-parameters)")
     args = p.parse_args()
     # --k-min/--k-density, in that order, always win over --k; --k only fills in whichever of
     # the two was not given explicitly; 30 is the hardcoded fallback if neither was.
@@ -118,6 +135,37 @@ def main():
     dimension_order = np.arange(1, n_dimensions + 1, dtype=np.int32)
     kd_indices = build_kd_index(vectors, dimension_order)
 
+    # --- optional: estimate_stc_parameters, purely informational (see --estimate-parameters
+    # help text above) -- reported in params.json/.txt, never substituted for this run's own
+    # k_min/k_density/etc.
+    estimated_params = {}
+    if args.estimate_parameters:
+        try:
+            est = estimate_stc_parameters(
+                vectors, kd_indices, dimension_order,
+                n_anchors=args.n_anchors, seed_max_set_size=args.seed_max_set_size,
+                first_quartile_percentile=args.first_quartile_percentile,
+            )
+            estimated_params = {
+                "estimated_k_min": round(float(est["estimated_k_min"])),
+                "estimated_k_density": round(float(est["estimated_k_density"])),
+                "estimated_density_quantile": float(est["estimated_density_quantile"]),
+                "estimated_alpha_max_deg": float(np.rad2deg(est["estimated_alpha_max"])),
+                "estimated_g_max": float(est["estimated_G_max"]),
+                "estimated_d_max": round(float(est["estimated_d_max"])),
+            }
+            print(f"[run_stc] {stem}: estimate_stc_parameters -> "
+                  f"k_min={estimated_params['estimated_k_min']}, "
+                  f"k_density={estimated_params['estimated_k_density']}, "
+                  f"density_quantile={estimated_params['estimated_density_quantile']:.4g}, "
+                  f"alpha_max_deg={estimated_params['estimated_alpha_max_deg']:.3g}, "
+                  f"g_max={estimated_params['estimated_g_max']:.4g}, "
+                  f"d_max={estimated_params['estimated_d_max']}")
+        except ToxError as error:
+            print(f"[run_stc] {stem}: estimate_stc_parameters failed ({error}); "
+                  f"continuing without an estimate (see misc/mod_STC.md's own note that this is a "
+                  f"heuristic that can genuinely fail on some inputs, e.g. too few usable anchors)")
+
     seed_selection_mask = seeds(vectors, kd_indices, dimension_order, k_density=args.k_density,
                                 exclusion_radius_percentile=args.exclusion_radius_percentile,
                                 bandwidth_percentile=args.bandwidth_percentile)
@@ -134,7 +182,21 @@ def main():
     points_df = pd.DataFrame(points, columns=dim_names)
     points_df.insert(0, "point_id", np.arange(1, n_vectors + 1))
     points_df["n_ensembles"] = result["ensemble_masks"].sum(axis=1)
+    points_df["n_low_confidence_ensembles"] = result["ensemble_low_confidence_masks"].sum(axis=1)
     points_df.to_csv(f"{out_prefix}_points.csv", index=False)
+
+    # --- low_confidence_membership.csv: long, one row per (point, ensemble) whose iteration-1
+    # bootstrap mask covers it -- reported for every seed regardless of stop_reason, see
+    # low_confidence_mask/ensemble_low_confidence_masks in misc/mod_STC.md, "Ensemble
+    # identification", "Output". A point with n_ensembles==0 but that appears here has a
+    # low-confidence fallback available; one that appears in neither has none at all.
+    low_confidence_rows = []
+    for e in range(n_ensembles):
+        member_points = np.nonzero(result["ensemble_low_confidence_masks"][:, e])[0] + 1
+        for pid in member_points:
+            low_confidence_rows.append((pid, e + 1))
+    low_confidence_df = pd.DataFrame(low_confidence_rows, columns=["point_id", "ensemble_id"])
+    low_confidence_df.to_csv(f"{out_prefix}_low_confidence_membership.csv", index=False)
 
     # --- membership.csv: long, one row per (point, ensemble) that actually contains it ---
     seed_indices = np.nonzero(seed_selection_mask)[0] + 1  # 1-indexed, matches ensemble_id below
@@ -214,6 +276,27 @@ def main():
     pd.DataFrame(jsi_rows, columns=["group_id", "ensemble_id_from", "ensemble_id_to", "jsi"]).to_csv(
         f"{out_prefix}_super_ensembles_jsi.csv", index=False)
 
+    # --- ensemble_jsi_matrix.csv: every pairwise JSI between non-empty ensembles, not just
+    # the consecutive-within-a-group pairs super_ensembles_jsi.csv reports -- for the "JSI
+    # between ensembles" heatmap, which needs the full matrix (including pairs that never
+    # qualified for reconciliation at all, JSI=0) rather than only super-ensemble members.
+    # Cheap: a single boolean matmul over the same ensemble_masks reconciliation already used.
+    nonempty = np.nonzero(result["ensemble_masks"].sum(axis=0) > 0)[0]
+    jsi_matrix_rows = []
+    if len(nonempty) >= 2:
+        masks_i = result["ensemble_masks"][:, nonempty].astype(np.int64)
+        sizes_i = masks_i.sum(axis=0)
+        intersection = masks_i.T @ masks_i
+        union = sizes_i[:, None] + sizes_i[None, :] - intersection
+        jsi_full = np.divide(intersection, union, out=np.zeros_like(intersection, dtype=np.float64), where=union > 0)
+        for a_idx, e_a in enumerate(nonempty):
+            for b_idx, e_b in enumerate(nonempty):
+                if e_b <= e_a:
+                    continue
+                jsi_matrix_rows.append((int(e_a) + 1, int(e_b) + 1, float(jsi_full[a_idx, b_idx])))
+    pd.DataFrame(jsi_matrix_rows, columns=["ensemble_id_1", "ensemble_id_2", "jsi"]).to_csv(
+        f"{out_prefix}_ensemble_jsi_matrix.csv", index=False)
+
     # --- params.json / params.txt: for the plot script's caption. Both are written: .json
     # for anything that wants to parse it programmatically, .txt (plain key=value lines) so
     # plot_stc.R does not need the jsonlite package, which is not installed in every R
@@ -223,6 +306,7 @@ def main():
     params["n_dimensions"] = n_dimensions
     params["n_ensembles"] = n_ensembles
     params["dim_names"] = dim_names
+    params.update(estimated_params)
     with open(f"{out_prefix}_params.json", "w") as fh:
         json.dump(params, fh, indent=2)
     with open(f"{out_prefix}_params.txt", "w") as fh:
@@ -231,7 +315,8 @@ def main():
                 value = ",".join(str(v) for v in value)
             fh.write(f"{key}={value}\n")
 
-    print(f"[run_stc] wrote {out_prefix}_{{points,membership,ensembles,super_ensembles,super_ensembles_jsi,params}}.{{csv,json,txt}}")
+    print(f"[run_stc] wrote {out_prefix}_{{points,membership,low_confidence_membership,ensembles,"
+          f"super_ensembles,super_ensembles_jsi,ensemble_jsi_matrix,params}}.{{csv,json,txt}}")
 
 
 if __name__ == "__main__":

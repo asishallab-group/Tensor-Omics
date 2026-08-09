@@ -35,6 +35,11 @@ test_single_seed_matches_per_seed_kernel <- function() {
   expected_step <- c(MEMBER_ADDED_AT_STEP_SEED, 1, 2, 3, 4, MEMBER_ADDED_AT_STEP_NON_MEMBER,
                      MEMBER_ADDED_AT_STEP_NON_MEMBER)
   assert_true(all(res$ensemble_member_added_at_step[, 1] == expected_step))
+
+  # Iteration 1's own bootstrap mask -- {seed=1, its one growth-radius neighbor=2}.
+  expected_low_confidence <- rep(FALSE, 7)
+  expected_low_confidence[1:2] <- TRUE
+  assert_true(all(res$ensemble_low_confidence_masks[, 1] == expected_low_confidence))
 }
 
 test_two_independent_seeds <- function() {

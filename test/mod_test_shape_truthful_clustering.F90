@@ -75,6 +75,7 @@ contains
         logical        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(4), k_history(4), expected_k(4)
         integer(int32) :: member_added_at_step(7), expected_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(4)
         real(real64)   :: growth_radius, G_history(4), mu_history(2, 4), S_history(2, 4), U_history(2, 2, 4)
 
@@ -86,7 +87,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -107,6 +109,13 @@ contains
         expected_step = [MEMBER_ADDED_AT_STEP_SEED, 1, 2, 3, 4, MEMBER_ADDED_AT_STEP_NON_MEMBER, &
                          MEMBER_ADDED_AT_STEP_NON_MEMBER]
         call assert_equal_array_int(member_added_at_step, expected_step, 7_int32, "natural fixed point: member_added_at_step")
+
+        ! Iteration 1's own bootstrap mask -- {seed=1, its one growth-radius neighbor=2} --
+        ! regardless of how much further growth went on to reach.
+        expected_mask = .false.
+        expected_mask(1:2) = .true.
+        call assert_equal_array_logical(low_confidence_mask, expected_mask, 7_int32, &
+                                        "natural fixed point: low_confidence_mask is iteration 1's own mask")
     end subroutine test_ensemble_identification_natural_fixed_point
 
     !> Same fixture and trajectory, but o=2: only the last 2 of the 4 accepted iterations
@@ -117,6 +126,7 @@ contains
         logical        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(2), k_history(2), expected_k(2)
         integer(int32) :: member_added_at_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(2)
         real(real64)   :: growth_radius, G_history(2), mu_history(2, 2), S_history(2, 2), U_history(2, 2, 2)
 
@@ -128,7 +138,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -148,6 +159,7 @@ contains
         logical        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3), expected_k(3)
         integer(int32) :: member_added_at_step(7), expected_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
 
@@ -159,7 +171,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -173,6 +186,12 @@ contains
         expected_step = MEMBER_ADDED_AT_STEP_NON_MEMBER
         call assert_equal_array_int(member_added_at_step, expected_step, 7_int32, &
                                     "max size at bootstrap: member_added_at_step is empty")
+
+        ! Stop Condition 1 fires before observable is ever called for this seed at all (see
+        ! the module comment above): no genuine SVD ever happened, so unlike the poisoned-
+        ! after-acceptance case below, there is no real iteration-1 data to report either.
+        call assert_true(.not. any(low_confidence_mask), &
+                         "max size at bootstrap: low_confidence_mask stays empty, no SVD ever ran")
     end subroutine test_ensemble_identification_max_size_at_bootstrap
 
     !> f_max=0.35 (threshold 2.45 of N=7): the bootstrap's 2-member candidate is under it and
@@ -181,9 +200,10 @@ contains
     subroutine test_ensemble_identification_max_size_poisons_prior_accepts()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7)
+        logical        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3), expected_k(3)
         integer(int32) :: member_added_at_step(7), expected_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
 
@@ -195,7 +215,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -209,6 +230,15 @@ contains
         expected_step = MEMBER_ADDED_AT_STEP_NON_MEMBER
         call assert_equal_array_int(member_added_at_step, expected_step, 7_int32, &
                                     "max size poisons: member_added_at_step is wiped")
+
+        ! The key behavior this output exists for: Stop Condition 1 wipes final_ensemble_mask
+        ! (asserted above) and every history array, but iteration 1's own bootstrap mask --
+        ! {seed=1, its one growth-radius neighbor=2} -- was genuinely SVD-backed and is
+        ! deliberately never touched by that reset, so it must still be there.
+        expected_mask = .false.
+        expected_mask(1:2) = .true.
+        call assert_equal_array_logical(low_confidence_mask, expected_mask, 7_int32, &
+                                        "max size poisons: low_confidence_mask survives the reset that wipes everything else")
     end subroutine test_ensemble_identification_max_size_poisons_prior_accepts
 
     ! --- Fixture B: D=3, N=7. A 5-point x-axis line (0,0,0)..(4,0,0), plus a 2-point branch
@@ -247,6 +277,7 @@ contains
         logical        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(2), k_history(2), expected_k(2)
         integer(int32) :: member_added_at_step(7), expected_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(2), expected_accepted(2)
         real(real64)   :: growth_radius, G_history(2), mu_history(3, 2), S_history(3, 2), U_history(3, 3, 2)
 
@@ -258,7 +289,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -318,6 +350,7 @@ contains
         logical        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3), expected_k(3)
         integer(int32) :: member_added_at_step(7), expected_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3), expected_accepted(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(3, 3), S_history(3, 3), U_history(3, 3, 3)
 
@@ -329,7 +362,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -364,6 +398,7 @@ contains
         logical        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3)
         integer(int32) :: member_added_at_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
 
@@ -375,7 +410,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         call assert_true(is_err(ierr), "ensemble_identification should reject seed_index > n_vectors")
     end subroutine test_ensemble_identification_seed_index_out_of_range
 
@@ -385,6 +421,7 @@ contains
         logical        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(0), k_history(0)
         integer(int32) :: member_added_at_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(0)
         real(real64)   :: growth_radius, G_history(0), mu_history(2, 0), S_history(2, 0), U_history(2, 2, 0)
 
@@ -396,7 +433,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         call assert_true(is_err(ierr), "ensemble_identification should reject o=0")
     end subroutine test_ensemble_identification_o_zero
 
@@ -406,6 +444,7 @@ contains
         logical        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3)
         integer(int32) :: member_added_at_step(7)
+        logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(1, 3), S_history(1, 3), U_history(1, 1, 3)
         integer(int32) :: i
@@ -426,7 +465,8 @@ contains
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
-                                     member_added_at_step=member_added_at_step, ierr=ierr)
+                                     member_added_at_step=member_added_at_step, &
+                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
         call assert_true(is_err(ierr), "ensemble_identification should reject n_dimensions=1")
     end subroutine test_ensemble_identification_n_dimensions_too_small
 

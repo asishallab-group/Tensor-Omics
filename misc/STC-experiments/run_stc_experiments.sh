@@ -70,12 +70,18 @@ process_file() {
                                     python3 "$SCRIPT_DIR/run_stc.py" "$f" \
                                         --k-min "$k" --k-density "$kd" --alpha-max-deg "$alpha" --d-max "$d" --g-max "$g" \
                                         --reconciliation-mode "$mode" --min-jsi "$min_jsi" \
-                                        --exclusion-radius-percentile "$erp" \
+                                        --exclusion-radius-percentile "$erp" --estimate-parameters \
                                         --out-prefix "$prefix"
 
                                     Rscript "$SCRIPT_DIR/plot_stc.R" "$prefix"
+                                    python3 "$SCRIPT_DIR/render_interactive.py" "$prefix"
                                     mkdir -p "$SCRIPT_DIR/results/plots"
                                     mv "${prefix}.pdf" "$SCRIPT_DIR/results/plots/$(basename "$prefix").pdf"
+                                    mv "${prefix}_interactive.html" "$SCRIPT_DIR/results/plots/$(basename "$prefix")_interactive.html"
+                                    # Only present for 3+ ambient dimensions, see plot_stc.R's own 3D report section.
+                                    if [ -f "${prefix}_3d.pdf" ]; then
+                                        mv "${prefix}_3d.pdf" "$SCRIPT_DIR/results/plots/$(basename "$prefix")_3d.pdf"
+                                    fi
                                 done
                             done
                         done

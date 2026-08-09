@@ -62,6 +62,7 @@ contains
             k_history,&
             accepted_history,&
             member_added_at_step,&
+            low_confidence_mask,&
             ierr&
         )
         integer(int32), intent(in) :: n_dimensions
@@ -153,6 +154,14 @@ contains
             !! `MEMBER_ADDED_AT_STEP_NON_MEMBER` for non-members, `MEMBER_ADDED_AT_STEP_SEED`
             !! for the seed itself, the growth-iteration index at which each other member
             !! joined otherwise
+        logical, dimension(n_vectors), intent(out) :: low_confidence_mask
+            !! Membership from this seed's iteration 1 (the unconditional bootstrap
+            !! grow_ensemble+observable call), reported regardless of stop_reason -- including
+            !! when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
+            !! all-.false. All-.false. here too whenever iteration 1 itself never produced a
+            !! genuine observable (an isolated seed, or a seed whose very first growth step
+            !! already exceeds f_max*N) -- see "Ensemble identification", "Output" in
+            !! misc/mod_STC.md
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
@@ -201,6 +210,7 @@ contains
             k_history = k_history,&
             accepted_history = accepted_history,&
             member_added_at_step = member_added_at_step,&
+            low_confidence_mask = low_confidence_mask,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -251,6 +261,7 @@ contains
             ensemble_k_history,&
             ensemble_accepted_history,&
             ensemble_member_added_at_step,&
+            ensemble_low_confidence_masks,&
             ierr&
         )
         integer(int32), intent(in) :: n_dimensions
@@ -326,6 +337,8 @@ contains
             !! Per-ensemble trailing accepted flags, see `accepted_history`
         integer(int32), dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_member_added_at_step
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
+        logical, dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_low_confidence_masks
+            !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
@@ -375,6 +388,7 @@ contains
             ensemble_k_history = ensemble_k_history,&
             ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
+            ensemble_low_confidence_masks = ensemble_low_confidence_masks,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

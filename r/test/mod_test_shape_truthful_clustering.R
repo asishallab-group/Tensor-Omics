@@ -58,6 +58,11 @@ test_natural_fixed_point <- function() {
   expected_step <- c(MEMBER_ADDED_AT_STEP_SEED, 1, 2, 3, 4, MEMBER_ADDED_AT_STEP_NON_MEMBER,
                      MEMBER_ADDED_AT_STEP_NON_MEMBER)
   assert_true(all(res$member_added_at_step == expected_step))
+
+  # Iteration 1's own bootstrap mask -- {seed=1, its one growth-radius neighbor=2}.
+  expected_low_confidence <- rep(FALSE, 7)
+  expected_low_confidence[1:2] <- TRUE
+  assert_true(all(res$low_confidence_mask == expected_low_confidence))
 }
 
 test_history_window_shifts <- function() {
@@ -80,6 +85,9 @@ test_max_size_at_bootstrap <- function() {
   assert_true(all(res$k_history == 0))
   assert_true(!any(res$accepted_history))
   assert_true(all(res$member_added_at_step == MEMBER_ADDED_AT_STEP_NON_MEMBER))
+  # Stop Condition 1 fires before observable is ever called at all: no genuine SVD ever
+  # happened, so there is no real iteration-1 data to report.
+  assert_true(!any(res$low_confidence_mask))
 }
 
 test_max_size_poisons_prior_accepts <- function() {
@@ -91,6 +99,12 @@ test_max_size_poisons_prior_accepts <- function() {
   assert_true(!any(res$final_ensemble_mask))
   assert_true(all(res$k_history == 0))
   assert_true(all(res$member_added_at_step == MEMBER_ADDED_AT_STEP_NON_MEMBER))
+  # The key behavior this output exists for: Stop Condition 1 wipes final_ensemble_mask and
+  # every history array, but iteration 1's own genuinely-SVD-backed bootstrap mask --
+  # {seed=1, its one growth-radius neighbor=2} -- survives that reset.
+  expected_low_confidence <- rep(FALSE, 7)
+  expected_low_confidence[1:2] <- TRUE
+  assert_true(all(res$low_confidence_mask == expected_low_confidence))
 }
 
 test_rejected_immediately <- function() {

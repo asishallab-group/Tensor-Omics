@@ -98,6 +98,7 @@ Each major step gets its own kernel module under
 | `tox_shape_truthful_clustering_observable_kernel.F90` | `observable`, `normal_error`, `tangent_scales` |
 | `tox_shape_truthful_clustering_accept_kernel.F90` | `accept_ensemble` |
 | `tox_shape_truthful_clustering_reconciliation_kernel.F90` | `ensemble_reconciliation` |
+| `tox_shape_truthful_clustering_parameter_estimation_kernel.F90` | `sample_estimator_anchors`, `grow_estimator_anchor_clouds`, `estimate_stc_parameters` |
 
 The parent module holds `ensemble_identification`'s own kernel(s) directly,
 in addition to `use`-ing the five children -- a deliberate deviation from
@@ -304,6 +305,25 @@ than $o$ iterations.
   seed itself, and the growth-iteration index at which each subsequent
   member joined otherwise. Answers "which members were added when" and "did
   this ensemble oscillate during growth" directly.
+* Always collected, the same reasoning as `member_added_at_step` above (a
+  byproduct of computation already happening unconditionally, not a
+  separate cost to gate behind its own flag): `low_confidence_mask(n_vectors)`,
+  logical -- the membership from this seed's iteration 1 (the unconditional
+  bootstrap `grow_ensemble` +
+  `observable` call, see "First growth step" above), reported *regardless*
+  of what `stop_reason` the seed's full growth eventually reaches, including
+  seeds discarded entirely under condition 1 (maximum ensemble size
+  reached), for which `final_ensemble_mask` above is all-`.false.`.
+  Iteration 1 already has a genuine, non-degenerate `observable`/SVD behind
+  it (unlike the single-point seed itself), so it is real ensemble data, not
+  a guess -- but it has never survived even one `accept_ensemble` comparison,
+  hence "low confidence": callers should treat it as a fallback, not a
+  result on par with `final_ensemble_mask`. This is deliberately reported
+  unconditionally per seed rather than the kernel itself deciding which
+  points are "orphaned": that decision belongs to whoever consumes
+  `ensemble_masks` (e.g. LoManLe), by diffing a point against the *retained*
+  ensembles -- keeping `ensemble_identification` itself free of any opinion
+  about what its caller does with an uncovered point.
 
 #### Merged output
 
@@ -335,11 +355,15 @@ memory footprint tractable.
 * `logical :: ensemble_accepted_history`
 * `integer :: ensemble_stop_reason` -- the result-code for whichever of the
   four "Stop Conditions" above applied to that ensemble, see "Output" above.
-* _optional_ (user flag decides whether this is collected and returned)
-  `integer :: ensemble_member_added_at_step` - The integer values indicate at
-  what iteration members were added. The row index in an ensemble's
+* Always collected (a byproduct of the per-seed growth loop, not a separate
+  cost worth gating -- see `member_added_at_step` above): `integer ::
+  ensemble_member_added_at_step` - The integer values indicate at what
+  iteration members were added. The row index in an ensemble's
   `member_added_at_step` column vector refer to the `.true.` row indices in the
   respective ensemble's `ensemble_masks` column vector.
+* Always collected, same reasoning: `logical :: ensemble_low_confidence_masks`
+  -- the merged form of `low_confidence_mask` above, one column per seed
+  regardless of `ensemble_stop_reason`.
 
 ### Local Radius Identification
 
@@ -586,22 +610,125 @@ number stored in `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`.
 ## Estimate parameters from data
 
 The crucial parameters are `k_min`, `k_density`, `density_quantile`,
-`alpha_max`, `G_max`, `d_max`.
+`alpha_max`, `G_max`, `d_max`. Grid-searching them, or the bootstrap-resampling
+scheme considered and rejected during this section's design (per-seed
+resampled SVDs to measure noise-only wobble in angle/gap), both cost far more
+than the rest of the pipeline combined. This SKG estimates all six from one
+cheap, coarse pass instead: grow a handful of anchors into rough local
+neighborhoods using the same primitives (`density_labels`, `observable`) the
+real pipeline already has, then read the parameters off simple summary
+statistics of that pass. It is a **separate, optional** step -- it neither
+runs automatically as part of `seeds` or `ensemble_identification`, nor
+requires that either has already run; a caller may run it, inspect the
+proposed values, adjust them, and only then invoke the real pipeline, or skip
+it entirely and supply `k_min`/`alpha_max`/etc. by hand as always.
 
-Once we have the density labels, we can sample one point at each 20%ile of the
-sorted densities. We call those the estimator anchors (EAs). Now we iterate,
-adding one point at a time to each of the EAs in parallel. Points are only
-added if they are not yet covered. If more than one EA would add the same point
-the one with less distance to that point takes precedence. Stop growing if
-there are no points to add. Now we estimate the above parameters as the median
-of the following measures which we obtain for each EA:
-* k_min <- the number of neighbors in the EAs grown cloud
-* k_density <- use k_min
-* density_quantile <- median of distances to an EA's neighbors
-* execute SVD on each EA's neighbor set, then:
-  * alpha_max as the first quartile of all pairwise principal angles between
-    all EA's neigborhoods
-  * G_max the first quartile of all pairwise EA's G
-  * d_max the first quartile of all pairwise EA's d_max
+### SKG `sample_estimator_anchors`
 
-Importantly, this `first quartile` must be an optional parameter, too.
+Receives `density_labels`' own output (see "Seeding" above -- this SKG does
+not recompute density itself) and an optional $n_{\text{anchors}}$ (default
+5). Sort the vectors by density label and pick $n_{\text{anchors}}$ of them,
+by nearest-rank (not interpolated -- these must be genuine point indices),
+at the percentiles $\frac{100}{n_{\text{anchors}}}, \frac{200}{n_{\text{anchors}}},
+\ldots, 100$ of that sorted order -- e.g. $n_{\text{anchors}}=5$ gives
+20/40/60/80/100%ile, generalizing the original "one point at each 20%ile"
+choice to a tunable anchor count. We call the resulting points the estimator
+anchors (EAs).
+
+### SKG `grow_estimator_anchor_clouds`
+
+Each EA starts as its own single-point cloud. Growth proceeds in rounds:
+every EA proposes the single closest not-yet-claimed point to *any* member of
+its own current cloud (not just to the anchor itself -- the cloud grows as a
+region, the same way `grow_ensemble` grows an ensemble); among all pending
+proposals, the closest one is claimed by its proposing EA, ties broken by
+which EA is nearer. This is a multi-source region-growing process --
+equivalent to a multi-source Prim's/Dijkstra expansion, one shared frontier
+across all EAs, distance-ordered claims -- not $n_{\text{anchors}}$
+independent kNN queries: a point equidistant-ish between two EAs must go to
+whichever is *currently* closer, which can only be answered by comparing
+proposals across EAs at claim time, not by asking each EA in isolation.
+
+Implemented as a brute-force rescan, not via the k-d tree: every round, for
+every EA, scan all not-yet-claimed points against all of that EA's current
+cloud members directly on `vectors`, no tree traversal. `f42_kd_tree`'s own
+primitives answer "nearest point(s) to one query point," not "nearest
+unclaimed point to any member of a growing region," so using it here would
+mean re-deriving that query shape from scratch -- more implementation
+complexity for a saving that does not matter at this SKG's intended scale.
+With $n_{\text{anchors}}$ small (default 5) and total growth capped small by
+`seed_max_set_size` (default 5% of $N$) precisely so that clouds stay local
+(see below), the whole rescan is $O(\text{rounds} \times n_{\text{anchors}}
+\times N \times \text{cloud size})$, all of them small factors by
+construction -- trivial in absolute terms for the datasets this SKG targets.
+This is a deliberate simplicity-over-asymptotic-elegance trade, consistent
+with this whole SKG's "minimal complexity" mandate; it is not the right
+choice if `seed_max_set_size` is ever pushed towards its unbounded (100%)
+extreme on a large $N$, where the original per-EA-partitions-everything
+draft's own cost concern (see "Growth stops..." below) returns.
+
+Growth stops when either no unclaimed point remains reachable, or the total
+number of claimed points across all EAs reaches an optional
+`seed_max_set_size` (0 to 100, default 5.0) percent of $N$. The default is
+deliberately small: growing until the *entire* dataset is partitioned among
+$n_{\text{anchors}}$ anchors (the original, unbounded draft of this
+algorithm) gives each EA a cloud averaging $N/n_{\text{anchors}}$ points --
+for $n_{\text{anchors}}=5$, a fifth of the whole dataset, easily spanning a
+kink or bend and no longer "local" in any sense `observable`'s SVD could
+meaningfully summarize. Bounding total growth to a small percentage of $N$
+keeps every EA's cloud a genuinely local neighborhood, at the cost of not
+necessarily reaching every point -- acceptable here, since covering the
+dataset is `seeds`' job, not this SKG's.
+
+### SKG `estimate_stc_parameters`
+
+The orchestrator. Runs `density_labels`, then `sample_estimator_anchors`,
+then `grow_estimator_anchor_clouds`, then `observable` once per EA on its
+final cloud (reused directly -- this SKG does not reimplement the SVD). From
+the $n_{\text{anchors}}$ per-EA results $(k_i, \bar{d}_i^{\text{median}},
+d_i, G_i)_{i=1}^{n_{\text{anchors}}}$, where $k_i$ is EA $i$'s final cloud
+size and $\bar{d}_i^{\text{median}}$ the median distance from EA $i$'s anchor
+to its own cloud members:
+
+* $k_{\min} \leftarrow \text{median}_i(k_i)$
+* $k_{\text{density}} \leftarrow k_{\min}$ -- reused, not separately
+  estimated, the same relationship `density_labels`' own default already has
+  to `calc_ensemble_growth_radius`'s $k_{\min}$ (see "Seeding" above).
+* $\text{density\_quantile} \leftarrow \text{median}_i(\bar{d}_i^{\text{median}})$
+  -- a literal radius (data units), used directly wherever a radius is
+  needed, not converted into a 0-100 percentile: `seeds`/
+  `calc_ensemble_growth_radius`'s own `exclusion_radius_percentile`/
+  `radius_percentile` already exist to *choose* a percentile of a kNN pool;
+  this SKG instead hands back an already-measured absolute scale, which a
+  caller may use directly as a growth or exclusion radius.
+* For every pair $i<j$ among the EAs, compute the principal angle between
+  $U_i$ and $U_j$ over their shared rank $d_{ij} = \min(d_i, d_j)$ -- the
+  same `dgesvd`-on-$U_i^\top U_j$ machinery `accept_ensemble` uses (see
+  "Numerical Linear Algebra" above), but *not* gated on $d_i=d_j$ the way
+  `accept_ensemble` gates it: `accept_ensemble` only ever consults its own
+  angle criterion when the two ensembles it compares already agree on $d$
+  (mismatched-$d$ pairs are vacuously accepted there, judged instead by the
+  $d_{\max}$ criterion), but here, with only $\binom{n_{\text{anchors}}}{2}$
+  pairs total (10 at the default $n_{\text{anchors}}=5$), skipping mismatched
+  pairs risks too few (or zero) samples to estimate a quartile from at all.
+  Comparing over the shared rank always produces a value, at the cost of
+  diverging slightly from `accept_ensemble`'s own convention -- a deliberate
+  trade for this SKG's specific purpose, not an oversight.
+* $\alpha_{\max} \leftarrow Q_{p}\big(\{\text{angle}(U_i, U_j)\}_{i<j}\big)$
+* $G_{\max} \leftarrow Q_{p}\big(\{|\log(G_i/G_j)|\}_{i<j}\big)$
+* $d_{\max} \leftarrow Q_{p}\big(\{|d_i - d_j|\}_{i<j}\big)$
+
+where $Q_p$ is the $p$-th percentile (linear interpolation, via
+`calc_percentile_helper`) and $p$, `first_quartile_percentile`, is itself an
+optional argument (default 25.0, the first quartile) -- not hardcoded,
+following the same "expose the heuristic, do not disguise it" precedent as
+`bandwidth_percentile`/`exclusion_radius_percentile` above.
+
+This whole procedure is a heuristic starting point, not a converged answer:
+$n_{\text{anchors}}=5$ (10 pairs) is a small sample, anchors are chosen by
+density quantile alone (no spatial-spread guarantee -- on a dataset with
+strong density heterogeneity, all anchors could land in similar regions), and
+`grow_estimator_anchor_clouds` has no curvature-awareness of its own, only
+the `seed_max_set_size` size cap. Treat its output the way any of this
+family's other tunable defaults are treated: a reasonable value to start
+from and refine, not a guarantee.

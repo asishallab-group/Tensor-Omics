@@ -41,13 +41,14 @@ _lib.ensemble_identification_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_IDENTIFICATION_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "ierr",)
+_ENSEMBLE_IDENTIFICATION_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ENSEMBLE_IDENTIFICATION_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, "U_history", None, None, None, None, None, None, None, None, None, None, None, None,)
+_ENSEMBLE_IDENTIFICATION_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, "U_history", None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.ensemble_identification_merged_c.restype = None
 _lib.ensemble_identification_merged_c.argtypes = (
@@ -76,13 +77,14 @@ _lib.ensemble_identification_merged_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ierr",)
+_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, "ensemble_masks", None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None,)
+_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, "ensemble_masks", None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def ensemble_identification(
         vectors,
@@ -200,6 +202,15 @@ def ensemble_identification(
             for the seed itself, the growth-iteration index at which each other member
             joined otherwise
             A result is a value; call `.copy()` to obtain a modifiable array.
+        low_confidence_mask : np.ndarray[np.bool_] of shape (n_vectors,), read-only
+            Membership from this seed's iteration 1 (the unconditional bootstrap
+            grow_ensemble+observable call), reported regardless of stop_reason -- including
+            when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
+            all-False All-False here too whenever iteration 1 itself never produced a
+            genuine observable (an isolated seed, or a seed whose very first growth step
+            already exceeds f_max*N) -- see "Ensemble identification", "Output" in
+            misc/mod_STC.md
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -257,6 +268,7 @@ def ensemble_identification(
     k_history = np.empty((o,), dtype=np.int32, order='C')
     accepted_history = np.empty((o,), dtype=np.bool_, order='C')
     member_added_at_step = np.empty((n_vectors,), dtype=np.int32, order='C')
+    low_confidence_mask = np.empty((n_vectors,), dtype=np.bool_, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.ensemble_identification_c(
@@ -284,6 +296,7 @@ def ensemble_identification(
         k_history,
         accepted_history,
         member_added_at_step,
+        low_confidence_mask,
         ctypes.byref(ierr),
     )
 
@@ -299,6 +312,7 @@ def ensemble_identification(
     k_history.flags.writeable = False
     accepted_history.flags.writeable = False
     member_added_at_step.flags.writeable = False
+    low_confidence_mask.flags.writeable = False
 
     return {
         "final_ensemble_mask": final_ensemble_mask,
@@ -312,6 +326,7 @@ def ensemble_identification(
         "k_history": k_history,
         "accepted_history": accepted_history,
         "member_added_at_step": member_added_at_step,
+        "low_confidence_mask": low_confidence_mask,
     }
 
 def ensemble_identification_merged(
@@ -411,6 +426,9 @@ def ensemble_identification_merged(
         ensemble_member_added_at_step : np.ndarray[np.int32] of shape (n_vectors, n_selected_seed,), column-major (order='F'), read-only
             Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
             A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_low_confidence_masks : np.ndarray[np.bool_] of shape (n_vectors, n_selected_seed,), column-major (order='F'), read-only
+            Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -479,6 +497,7 @@ def ensemble_identification_merged(
     ensemble_k_history = np.empty((o, n_selected_seed,), dtype=np.int32, order='F')
     ensemble_accepted_history = np.empty((o, n_selected_seed,), dtype=np.bool_, order='F')
     ensemble_member_added_at_step = np.empty((n_vectors, n_selected_seed,), dtype=np.int32, order='F')
+    ensemble_low_confidence_masks = np.empty((n_vectors, n_selected_seed,), dtype=np.bool_, order='F')
     ierr = ctypes.c_int(0)
 
     _lib.ensemble_identification_merged_c(
@@ -507,6 +526,7 @@ def ensemble_identification_merged(
         ensemble_k_history,
         ensemble_accepted_history,
         ensemble_member_added_at_step,
+        ensemble_low_confidence_masks,
         ctypes.byref(ierr),
     )
 
@@ -524,6 +544,7 @@ def ensemble_identification_merged(
     ensemble_k_history.flags.writeable = False
     ensemble_accepted_history.flags.writeable = False
     ensemble_member_added_at_step.flags.writeable = False
+    ensemble_low_confidence_masks.flags.writeable = False
 
     return {
         "ensemble_masks": ensemble_masks,
@@ -537,4 +558,5 @@ def ensemble_identification_merged(
         "ensemble_k_history": ensemble_k_history,
         "ensemble_accepted_history": ensemble_accepted_history,
         "ensemble_member_added_at_step": ensemble_member_added_at_step,
+        "ensemble_low_confidence_masks": ensemble_low_confidence_masks,
     }
