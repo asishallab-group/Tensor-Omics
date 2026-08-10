@@ -90,11 +90,12 @@ contains
     !| `accepted_history` could only ever read `.true.`, since only accepted iterations would
     !| ever reach the array at all.
     pure subroutine ensemble_identification_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                                    seed_index, k_min, alpha_max, d_max, G_max, f_max, a, o, &
+                                                    seed_index, k_min, chordal_dist_max_as_prcnt_of_range, &
+                                                    d_max, G_max, RMSE_change_max, f_max, a, o, &
                                                     final_ensemble_mask, stop_reason, growth_radius, &
                                                     U_history, S_history, d_history, G_history, mu_history, &
                                                     k_history, accepted_history, member_added_at_step, &
-                                                    low_confidence_mask, ierr)
+                                                    low_confidence_mask, U_first, d_first, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
             !! DM_MIN(2_int32)
@@ -119,15 +120,19 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_vectors - 1_int32)
             !! DM_DEFAULT(CM_STC_GROWTH_RADIUS_K_MIN_DEFAULT)
-        real(real64), intent(in) :: alpha_max
-            !! Maximum tolerated principal angle (radians), see `accept_ensemble`
+        real(real64), intent(in) :: chordal_dist_max_as_prcnt_of_range
+            !! Maximum tolerated chordal distance between tangent bases, as a fraction of its
+            !! own [0, sqrt(d)] range, see `accept_ensemble`
             !! DM_MIN(0.0_real64)
-            !! DM_MAX(2.0_real64 * atan(1.0_real64))
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! DM_MIN(0_int32)
         real(real64), intent(in) :: G_max
             !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! DM_MIN(0.0_real64)
+        real(real64), intent(in) :: RMSE_change_max
+            !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! DM_MIN(0.0_real64)
         real(real64), intent(in), optional :: f_max
             !! Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -192,6 +197,15 @@ contains
             !! genuine observable (an isolated seed, or a seed whose very first growth step
             !! already exceeds f_max*N) -- see "Ensemble identification", "Output" in
             !! misc/mod_STC.md
+        real(real64), intent(out) :: U_first(n_dimensions, n_dimensions)
+            !! Tangent+normal basis at the bootstrap iteration (iteration 1), retained for the
+            !! whole growth, never evicted by the trailing o-window above -- see
+            !! `accept_ensemble`'s tangent-space-drift criterion in misc/mod_STC.md. All-zero
+            !! whenever iteration 1 itself never produced a genuine observable, same condition
+            !! as `low_confidence_mask` above.
+        integer(int32), intent(out) :: d_first
+            !! Intrinsic dimension at the bootstrap iteration, see `U_first`. Zero under the
+            !! same all-zero condition as `U_first`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
@@ -217,12 +231,14 @@ contains
         real(real64)   :: G_candidate
         integer(int32) :: obs_ierr
 
-        real(real64)   :: prev_U(n_dimensions, n_dimensions)
-        integer(int32) :: prev_d
         real(real64)   :: prev_G
+        real(real64)   :: prev_normal_error
 
         logical         :: is_accepted
         integer(int32) :: accept_ierr
+        real(real64)   :: accept_tmp_m(n_dimensions, n_dimensions)
+        real(real64)   :: accept_tmp_s(n_dimensions)
+        real(real64)   :: accept_tmp_work(max(1_int32, 5_int32*n_dimensions))
 
         real(real64)   :: actual_f_max
         integer(int32) :: actual_a
@@ -245,6 +261,8 @@ contains
         member_added_at_step    = MEMBER_ADDED_AT_STEP_NON_MEMBER
         member_added_at_step(seed_index) = MEMBER_ADDED_AT_STEP_SEED
         low_confidence_mask   = .false.
+        U_first               = 0.0_real64
+        d_first               = 0
         history_len   = 0
         accepted_count = 0
 
@@ -308,6 +326,13 @@ contains
         ! low-confidence fallback data regardless of what happens to this seed afterward.
         low_confidence_mask = mask_candidate
 
+        ! Likewise U_first/d_first: captured once, here, and never touched again, including by
+        ! Stop Condition 1's later "poison the whole seed" reset -- see accept_ensemble's
+        ! tangent-space-drift criterion in misc/mod_STC.md, which needs this regardless of how
+        ! far growth ultimately gets.
+        U_first = U_candidate
+        d_first = d_candidate
+
         S_candidate = sqrt(eigenvalues_candidate*real(n_candidate - 1, real64))
 
         where (mask_candidate .and. .not. mask_current) member_added_at_step = 1
@@ -320,9 +345,8 @@ contains
                                        U_history, S_history, d_history, G_history, mu_history, k_history, &
                                        accepted_history)
 
-        prev_U = U_candidate
-        prev_d = d_candidate
-        prev_G = G_candidate
+        prev_G             = G_candidate
+        prev_normal_error  = normal_error_scratch
 
         growth_loop: do t = 2, n_vectors
 
@@ -376,17 +400,13 @@ contains
 
             S_candidate = sqrt(eigenvalues_candidate*real(n_candidate - 1, real64))
 
-            block
-                integer(int32) :: d_common
-                real(real64)   :: m_c(min(prev_d, d_candidate), min(prev_d, d_candidate))
-                real(real64)   :: s_ang_c(min(prev_d, d_candidate))
-                real(real64)   :: accept_work_c(max(1_int32, 5_int32*min(prev_d, d_candidate)))
-
-                d_common = min(prev_d, d_candidate)
-                call accept_ensemble_kernel(n_dimensions, prev_U, prev_d, prev_G, U_candidate, d_candidate, G_candidate, &
-                                            alpha_max, d_max, G_max, max(1_int32, 5_int32*d_common), &
-                                            m_c, s_ang_c, accept_work_c, is_accepted, accept_ierr)
-            end block
+            call accept_ensemble_kernel(n_dimensions, o, U_first, d_first, &
+                                        U_history, d_history, history_len, &
+                                        prev_G, prev_normal_error, &
+                                        U_candidate, d_candidate, G_candidate, normal_error_scratch, &
+                                        chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, &
+                                        max(1_int32, 5_int32*n_dimensions), &
+                                        accept_tmp_m, accept_tmp_s, accept_tmp_work, is_accepted, accept_ierr)
 
             if (accept_ierr /= 0) then
                 call set_err_once(ierr, ERR_INTERNAL)
@@ -404,9 +424,8 @@ contains
                                                U_history, S_history, d_history, G_history, mu_history, k_history, &
                                                accepted_history)
 
-                prev_U = U_candidate
-                prev_d = d_candidate
-                prev_G = G_candidate
+                prev_G             = G_candidate
+                prev_normal_error  = normal_error_scratch
             else
                 ! Rejected: push the rejected candidate for diagnosis (see the module-level
                 ! note above), then stop -- final_ensemble_mask is already the last accepted
@@ -450,12 +469,14 @@ contains
     !| itself -- there is no separate cost left to gate.
     pure subroutine ensemble_identification_merged_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                            seed_selection_mask, n_selected_seed, &
-                                                           k_min, alpha_max, d_max, G_max, f_max, a, o, &
+                                                           k_min, chordal_dist_max_as_prcnt_of_range, &
+                                                           d_max, G_max, RMSE_change_max, f_max, a, o, &
                                                            ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, &
                                                            ensemble_U_history, ensemble_S_history, ensemble_d_history, &
                                                            ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
                                                            ensemble_accepted_history, ensemble_member_added_at_step, &
-                                                           ensemble_low_confidence_masks, ierr)
+                                                           ensemble_low_confidence_masks, &
+                                                           ensemble_U_first, ensemble_d_first, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
             !! DM_MIN(2_int32)
@@ -483,15 +504,19 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_vectors - 1_int32)
             !! DM_DEFAULT(CM_STC_GROWTH_RADIUS_K_MIN_DEFAULT)
-        real(real64), intent(in) :: alpha_max
-            !! Maximum tolerated principal angle (radians), see `accept_ensemble`
+        real(real64), intent(in) :: chordal_dist_max_as_prcnt_of_range
+            !! Maximum tolerated chordal distance between tangent bases, as a fraction of its
+            !! own [0, sqrt(d)] range, see `accept_ensemble`
             !! DM_MIN(0.0_real64)
-            !! DM_MAX(2.0_real64 * atan(1.0_real64))
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! DM_MIN(0_int32)
         real(real64), intent(in) :: G_max
             !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! DM_MIN(0.0_real64)
+        real(real64), intent(in) :: RMSE_change_max
+            !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! DM_MIN(0.0_real64)
         real(real64), intent(in), optional :: f_max
             !! Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -531,6 +556,10 @@ contains
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
         logical, intent(out) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
             !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
+        real(real64), intent(out) :: ensemble_U_first(n_dimensions, n_dimensions, n_selected_seed)
+            !! Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`
+        integer(int32), intent(out) :: ensemble_d_first(n_selected_seed)
+            !! Per-ensemble bootstrap-iteration intrinsic dimension, see `d_first`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
@@ -561,6 +590,8 @@ contains
         ensemble_accepted_history    = .false.
         ensemble_member_added_at_step = MEMBER_ADDED_AT_STEP_NON_MEMBER
         ensemble_low_confidence_masks = .false.
+        ensemble_U_first              = 0.0_real64
+        ensemble_d_first              = 0
         ierr_per_seed                = 0
 
         do concurrent (i_e=1:n_selected_seed) shared(vectors, kd_indices, dimension_order, seed_indices, &
@@ -568,16 +599,19 @@ contains
                                                       ensemble_U_history, ensemble_S_history, ensemble_d_history, &
                                                       ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
                                                       ensemble_accepted_history, ensemble_member_added_at_step, &
-                                                      ensemble_low_confidence_masks, ierr_per_seed)
+                                                      ensemble_low_confidence_masks, &
+                                                      ensemble_U_first, ensemble_d_first, ierr_per_seed)
             call ensemble_identification_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                                seed_indices(i_e), k_min, alpha_max, d_max, G_max, f_max, a, o, &
+                                                seed_indices(i_e), k_min, chordal_dist_max_as_prcnt_of_range, &
+                                                d_max, G_max, RMSE_change_max, f_max, a, o, &
                                                 ensemble_masks(:, i_e), ensemble_stop_reason(i_e), &
                                                 ensemble_growth_radii(i_e), ensemble_U_history(:, :, :, i_e), &
                                                 ensemble_S_history(:, :, i_e), ensemble_d_history(:, i_e), &
                                                 ensemble_G_history(:, i_e), ensemble_mu_history(:, :, i_e), &
                                                 ensemble_k_history(:, i_e), ensemble_accepted_history(:, i_e), &
                                                 ensemble_member_added_at_step(:, i_e), &
-                                                ensemble_low_confidence_masks(:, i_e), ierr_per_seed(i_e))
+                                                ensemble_low_confidence_masks(:, i_e), &
+                                                ensemble_U_first(:, :, i_e), ensemble_d_first(i_e), ierr_per_seed(i_e))
         end do
 
         do i_e = 1, n_selected_seed

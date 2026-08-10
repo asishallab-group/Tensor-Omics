@@ -5,8 +5,9 @@
 !| # Shape Truthful Clustering (STC): Parameter Estimation
 !|
 !| A separate, optional pipeline step estimating near-optimal starting values for the crucial
-!| parameters (`k_min`, `k_density`, `density_quantile`, `alpha_max`, `G_max`, `d_max`)
-!| directly from the input data, at a fraction of the cost of a grid search or a
+!| parameters (`k_min`, `k_density`, `density_quantile`,
+!| `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
+!| fraction of the cost of a grid search or a
 !| resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local
 !| neighborhoods using the same primitives the real pipeline already has
 !| (`density_labels`, `observable`), then read the parameters off simple summary statistics of

@@ -43,9 +43,10 @@ contains
             dimension_order,&
             seed_index,&
             k_min,&
-            alpha_max,&
+            chordal_dist_max_as_prcnt_of_range,&
             d_max,&
             G_max,&
+            RMSE_change_max,&
             f_max,&
             a,&
             o,&
@@ -61,6 +62,8 @@ contains
             accepted_history,&
             member_added_at_step,&
             low_confidence_mask,&
+            U_first,&
+            d_first,&
             ierr&
         ) bind(C, name="ensemble_identification_c")
         use tox_shape_truthful_clustering, only: ensemble_identification
@@ -95,15 +98,19 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
-        real(c_double), intent(in), target :: alpha_max
-            !! Maximum tolerated principal angle (radians), see `accept_ensemble`
+        real(c_double), intent(in), target :: chordal_dist_max_as_prcnt_of_range
+            !! Maximum tolerated chordal distance between tangent bases, as a fraction of its
+            !! own [0, sqrt(d)] range, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `2.0_real64 * atan(1.0_real64)`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
         real(c_double), intent(in), target :: G_max
             !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! The minimum valid value is `0.0_real64`.
+        real(c_double), intent(in), target :: RMSE_change_max
+            !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
         real(c_double), intent(in), target :: f_max
             !! Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -162,6 +169,15 @@ contains
             !! genuine observable (an isolated seed, or a seed whose very first growth step
             !! already exceeds f_max*N) -- see "Ensemble identification", "Output" in
             !! misc/mod_STC.md
+        real(c_double), dimension(n_dimensions, n_dimensions), intent(out), target :: U_first
+            !! Tangent+normal basis at the bootstrap iteration (iteration 1), retained for the
+            !! whole growth, never evicted by the trailing o-window above -- see
+            !! `accept_ensemble`'s tangent-space-drift criterion in misc/mod_STC.md. All-zero
+            !! whenever iteration 1 itself never produced a genuine observable, same condition
+            !! as `low_confidence_mask` above.
+        integer(c_int), intent(out), target :: d_first
+            !! Intrinsic dimension at the bootstrap iteration, see `U_first`. Zero under the
+            !! same all-zero condition as `U_first`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
@@ -176,14 +192,16 @@ contains
         M_CHECK_NON_NULL(n_vectors)
         M_CHECK_NON_NULL(seed_index)
         M_CHECK_NON_NULL(k_min)
-        M_CHECK_NON_NULL(alpha_max)
+        M_CHECK_NON_NULL(chordal_dist_max_as_prcnt_of_range)
         M_CHECK_NON_NULL(d_max)
         M_CHECK_NON_NULL(G_max)
+        M_CHECK_NON_NULL(RMSE_change_max)
         M_CHECK_NON_NULL(f_max)
         M_CHECK_NON_NULL(a)
         M_CHECK_NON_NULL(o)
         M_CHECK_NON_NULL(stop_reason)
         M_CHECK_NON_NULL(growth_radius)
+        M_CHECK_NON_NULL(d_first)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
         M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
         M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
@@ -197,6 +215,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(accepted_history, o)
         M_CHECK_ARRAY_NON_NULL(member_added_at_step, n_vectors)
         M_CHECK_ARRAY_NON_NULL(low_confidence_mask, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(U_first, n_dimensions * n_dimensions)
 
         call ensemble_identification(&
             vectors = vectors,&
@@ -206,9 +225,10 @@ contains
             dimension_order = dimension_order,&
             seed_index = seed_index,&
             k_min = k_min,&
-            alpha_max = alpha_max,&
+            chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
             d_max = d_max,&
             G_max = G_max,&
+            RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
             a = a,&
             o = o,&
@@ -224,6 +244,8 @@ contains
             accepted_history = accepted_history_f,&
             member_added_at_step = member_added_at_step,&
             low_confidence_mask = low_confidence_mask_f,&
+            U_first = U_first,&
+            d_first = d_first,&
             ierr = ierr&
         )
 
@@ -260,9 +282,10 @@ contains
             seed_selection_mask,&
             n_selected_seed,&
             k_min,&
-            alpha_max,&
+            chordal_dist_max_as_prcnt_of_range,&
             d_max,&
             G_max,&
+            RMSE_change_max,&
             f_max,&
             a,&
             o,&
@@ -278,6 +301,8 @@ contains
             ensemble_accepted_history,&
             ensemble_member_added_at_step,&
             ensemble_low_confidence_masks,&
+            ensemble_U_first,&
+            ensemble_d_first,&
             ierr&
         ) bind(C, name="ensemble_identification_merged_c")
         use tox_shape_truthful_clustering, only: ensemble_identification_merged
@@ -313,15 +338,19 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
-        real(c_double), intent(in), target :: alpha_max
-            !! Maximum tolerated principal angle (radians), see `accept_ensemble`
+        real(c_double), intent(in), target :: chordal_dist_max_as_prcnt_of_range
+            !! Maximum tolerated chordal distance between tangent bases, as a fraction of its
+            !! own [0, sqrt(d)] range, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `2.0_real64 * atan(1.0_real64)`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
         real(c_double), intent(in), target :: G_max
             !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! The minimum valid value is `0.0_real64`.
+        real(c_double), intent(in), target :: RMSE_change_max
+            !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
         real(c_double), intent(in), target :: f_max
             !! Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -357,6 +386,10 @@ contains
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
         logical(c_bool), dimension(n_vectors, n_selected_seed), intent(out), target :: ensemble_low_confidence_masks
             !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
+        real(c_double), dimension(n_dimensions, n_dimensions, n_selected_seed), intent(out), target :: ensemble_U_first
+            !! Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`
+        integer(c_int), dimension(n_selected_seed), intent(out), target :: ensemble_d_first
+            !! Per-ensemble bootstrap-iteration intrinsic dimension, see `d_first`
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
@@ -371,9 +404,10 @@ contains
         M_CHECK_NON_NULL(n_vectors)
         M_CHECK_NON_NULL(n_selected_seed)
         M_CHECK_NON_NULL(k_min)
-        M_CHECK_NON_NULL(alpha_max)
+        M_CHECK_NON_NULL(chordal_dist_max_as_prcnt_of_range)
         M_CHECK_NON_NULL(d_max)
         M_CHECK_NON_NULL(G_max)
+        M_CHECK_NON_NULL(RMSE_change_max)
         M_CHECK_NON_NULL(f_max)
         M_CHECK_NON_NULL(a)
         M_CHECK_NON_NULL(o)
@@ -393,6 +427,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_accepted_history, o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_member_added_at_step, n_vectors * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_low_confidence_masks, n_vectors * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_U_first, n_dimensions * n_dimensions * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_d_first, n_selected_seed)
 
         seed_selection_mask_f = seed_selection_mask
 
@@ -405,9 +441,10 @@ contains
             seed_selection_mask = seed_selection_mask_f,&
             n_selected_seed = n_selected_seed,&
             k_min = k_min,&
-            alpha_max = alpha_max,&
+            chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
             d_max = d_max,&
             G_max = G_max,&
+            RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
             a = a,&
             o = o,&
@@ -423,6 +460,8 @@ contains
             ensemble_accepted_history = ensemble_accepted_history_f,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
             ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            ensemble_U_first = ensemble_U_first,&
+            ensemble_d_first = ensemble_d_first,&
             ierr = ierr&
         )
 

@@ -57,8 +57,8 @@ usage message, printed when you run it with no arguments, for the exact position
 
 ```bash
 misc/STC-experiments/run_stc_experiments.sh misc/STC-experiments/data/2d/kinked_curve_2d_noise_medium.csv \
-    15,30 30,60 1,2 3.0,8.0 merge_jsi,merge_any 0.1
-#   ^k_min ^alpha_max_deg ^d_max ^g_max ^reconciliation_mode ^min_jsi
+    15,30 0.5,0.7 1,2 3.0,8.0 merge_jsi,merge_any 0.1
+#   ^k_min ^chordal_dist_max_as_prcnt_of_range ^d_max ^g_max ^reconciliation_mode ^min_jsi
 ```
 
 produces one PDF per combination (2×2×2×2×2×1 = 16 here). Two more optional, trailing lists
@@ -68,8 +68,8 @@ growth-phase radius, see "Known limitations" below):
 
 ```bash
 misc/STC-experiments/run_stc_experiments.sh misc/STC-experiments/data/2d/kinked_curve_2d_noise_medium.csv \
-    30 30 1 3.0 merge_jsi 0.1 15,30 25,50
-#   ^k_min ^alpha ^d_max ^g_max ^mode ^min_jsi ^k_density ^exclusion_radius_percentile
+    30 0.5 1 3.0 merge_jsi 0.1 15,30 25,50
+#   ^k_min ^chordal ^d_max ^g_max ^mode ^min_jsi ^k_density ^exclusion_radius_percentile
 ```
 
 Before this was wired up, `k_density` and `exclusion_radius_percentile` were not
@@ -154,9 +154,10 @@ they mean algorithmically (see `misc/mod_STC.md` for the full definitions):
 | `--k` | shortcut: sets both `--k-min` and `--k-density` at once (either still overrides individually) | -- |
 | `--k-min` | growth radius: k-NN pool size for the median-distance radius | 30 |
 | `--k-density` | seeding: k-NN pool size for both `density_labels`' adaptive bandwidth and `seeds`' coverage radius | 30 |
-| `--alpha-max-deg` | `accept_ensemble`'s max principal angle, in degrees (radians internally) | 30 |
-| `--d-max` | `accept_ensemble`'s max tolerated change in intrinsic dimension | 1 |
+| `--chordal-dist-max-as-prcnt-of-range` | `accept_ensemble`'s max tangent-space-drift chordal distance, as a fraction (0-1) of its own `[0, sqrt(d)]` range -- checked against the ensemble's bootstrap state and its trailing `o`-window, not just the immediately preceding one, see `misc/mod_STC.md` | 0.5 |
+| `--d-max` | `accept_ensemble`'s max tolerated change in intrinsic dimension (checked two-fold, against both the bootstrap state and the immediately preceding one) | 1 |
 | `--g-max` | `accept_ensemble`'s max tolerated `\|log(G_tp1/G_t)\|` | 3.0 |
+| `--rmse-change-max` | `accept_ensemble`'s max tolerated `\|log(RMSE_tp1/RMSE_t)\|` in the residual | `\|log(1.5)\|` (~0.405) |
 | `--f-max` | Stop Condition 1's ensemble-size-fraction ceiling | 0.95 |
 | `--a` | Stop Condition 2's "stably accepted" threshold | 2 |
 | `--o` | trailing observable-history window depth | 10 |
@@ -214,7 +215,7 @@ was not passed):
 9. **Parameters table** -- only when the run used `--estimate-parameters`: two side-by-side
    `gridExtra::tableGrob` tables (not a plot), the input parameters this run actually used and
    `estimate_stc_parameters`' own proposal (`k_min`/`k_density`/`density_quantile`/
-   `alpha_max`/`G_max`/`d_max`), for a direct visual diff.
+   `chordal_dist_max_as_prcnt_of_range`/`G_max`/`d_max`), for a direct visual diff.
 
 ### No stitched manifolds
 
@@ -323,12 +324,12 @@ python3 run_stc_pair.py <input.csv> [run_stc.py options for the "original" run]
 
 Runs `run_stc.py` twice on the same input: once with the parameters you give it (the
 "original" run, with `--estimate-parameters` always added so its estimate is available),
-once with that estimate's `k_min`/`k_density`/`alpha_max_deg`/`g_max`/`d_max` actually
-applied as real run parameters (the "estimated" run) -- not just reported, unlike
-`--estimate-parameters` on its own, which never feeds back into the same run.
+once with that estimate's `k_min`/`k_density`/`chordal_dist_max_as_prcnt_of_range`/`g_max`/
+`d_max` actually applied as real run parameters (the "estimated" run) -- not just reported,
+unlike `--estimate-parameters` on its own, which never feeds back into the same run.
 `density_quantile` has no direct CLI flag (see the options table's "no equivalent" note) and
-is skipped; `reconciliation_mode`/`min_jsi`/`max_group_size` are held fixed across both runs,
-since the estimator does not propose values for them. Writes
+is skipped; `reconciliation_mode`/`min_jsi`/`max_group_size`/`rmse_change_max` are held fixed
+across both runs, since the estimator does not propose values for them. Writes
 `<out-prefix>_original_*`/`<out-prefix>_estimated_*` (PDF, 3D PDF where applicable, JSON,
 interactive HTML) side by side, so the two can be compared directly -- this is how "run two
 experiments per dataset case: original input parameters, and the estimator's own proposal
@@ -371,7 +372,8 @@ For reuse outside `plot_stc.R` (a different plotting tool, a notebook, ad-hoc an
 - **`<prefix>_params.json`** / **`<prefix>_params.txt`**: every parameter `run_stc.py` ran
   with, plus `n_vectors`/`n_dimensions`/`n_ensembles`, plus (only with
   `--estimate-parameters`) `estimated_k_min`/`estimated_k_density`/
-  `estimated_density_quantile`/`estimated_alpha_max_deg`/`estimated_g_max`/`estimated_d_max`.
+  `estimated_density_quantile`/`estimated_chordal_dist_max_as_prcnt_of_range`/
+  `estimated_g_max`/`estimated_d_max`.
   Two formats for the same content -- `.txt` (plain `key=value` lines) is what `plot_stc.R`
   reads, so it needs no JSON-parsing package; `.json` is there for anything that wants to
   parse it programmatically.
@@ -403,7 +405,8 @@ For reuse outside `plot_stc.R` (a different plotting tool, a notebook, ad-hoc an
   start" above) can suppress seed placement across a region -- typically a curvature extremum
   (a peak, trough, or kink on a wavy manifold) -- that the suppressing seed's own later growth
   never actually reaches, because `accept_ensemble`'s curvature-based stop conditions
-  (`alpha_max_deg`/`g_max`/`d_max`) can halt growth well short of that same geometric radius.
+  (`chordal_dist_max_as_prcnt_of_range`/`g_max`/`d_max`/`rmse_change_max`) can halt growth well
+  short of that same geometric radius.
   The result is points with no seed of their own and no membership in any grown ensemble
   either. Shrinking `exclusion_radius_percentile` reduces how much territory each seed
   suppresses, but does not close the gap on its own -- it only shrinks it. Fixing this

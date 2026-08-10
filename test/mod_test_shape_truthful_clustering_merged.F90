@@ -64,13 +64,15 @@ contains
         logical        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(2, 4, 1)
         real(real64)   :: ensemble_S_history(2, 4, 1), ensemble_U_history(2, 2, 4, 1)
+        real(real64)   :: ensemble_U_first(2, 2, 1)
+        integer(int32) :: ensemble_d_first(1)
 
         call build_fixture_a(vectors, kd_indices, dim_order)
         seed_selection_mask = .false.
         seed_selection_mask(1) = .true.
 
         call ensemble_identification_merged(vectors, 2_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 1_int32, &
-                                            k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -78,7 +80,7 @@ contains
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
                                             ensemble_member_added_at_step=ensemble_member_added_at_step, &
-                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ensemble_U_first=ensemble_U_first, ensemble_d_first=ensemble_d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification_merged failed unexpectedly: ', ierr
             error stop
@@ -121,6 +123,8 @@ contains
         logical        :: ensemble_accepted_history(4, 2)
         real(real64)   :: ensemble_growth_radii(2), ensemble_G_history(4, 2), ensemble_mu_history(2, 4, 2)
         real(real64)   :: ensemble_S_history(2, 4, 2), ensemble_U_history(2, 2, 4, 2)
+        real(real64)   :: ensemble_U_first(2, 2, 2)
+        integer(int32) :: ensemble_d_first(2)
 
         do i = 1, 5
             vectors(1, i) = real(i - 1, real64)
@@ -144,7 +148,7 @@ contains
         seed_selection_mask(8) = .true.
 
         call ensemble_identification_merged(vectors, 2_int32, 14_int32, kd_indices, dim_order, seed_selection_mask, 2_int32, &
-                                            k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -152,7 +156,7 @@ contains
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
                                             ensemble_member_added_at_step=ensemble_member_added_at_step, &
-                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ensemble_U_first=ensemble_U_first, ensemble_d_first=ensemble_d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification_merged failed unexpectedly: ', ierr
             error stop
@@ -183,6 +187,15 @@ contains
         expected_step_2(9:12) = [1, 2, 3, 4]
         call assert_equal_array_int(ensemble_member_added_at_step(:, 2), expected_step_2, 14_int32, &
                                     "two seeds: column 2 member_added_at_step")
+
+        ! ensemble_U_first/ensemble_d_first: each column is its own seed's bootstrap basis,
+        ! collinear along the x-axis in both copies -- must not leak across columns.
+        call assert_equal_int(ensemble_d_first(1), 1_int32, "two seeds: column 1 d_first")
+        call assert_equal_int(ensemble_d_first(2), 1_int32, "two seeds: column 2 d_first")
+        call assert_equal_real(abs(ensemble_U_first(1,1,1)), 1.0d0, 1.0d-9, "two seeds: column 1 U_first, x")
+        call assert_equal_real(abs(ensemble_U_first(2,1,1)), 0.0d0, 1.0d-9, "two seeds: column 1 U_first, y")
+        call assert_equal_real(abs(ensemble_U_first(1,1,2)), 1.0d0, 1.0d-9, "two seeds: column 2 U_first, x")
+        call assert_equal_real(abs(ensemble_U_first(2,1,2)), 0.0d0, 1.0d-9, "two seeds: column 2 U_first, y")
     end subroutine test_merged_two_independent_seeds
 
     subroutine test_merged_zero_seeds()
@@ -196,12 +209,14 @@ contains
         logical        :: ensemble_accepted_history(4, 0)
         real(real64)   :: ensemble_growth_radii(0), ensemble_G_history(4, 0), ensemble_mu_history(2, 4, 0)
         real(real64)   :: ensemble_S_history(2, 4, 0), ensemble_U_history(2, 2, 4, 0)
+        real(real64)   :: ensemble_U_first(2, 2, 0)
+        integer(int32) :: ensemble_d_first(0)
 
         call build_fixture_a(vectors, kd_indices, dim_order)
         seed_selection_mask = .false.
 
         call ensemble_identification_merged(vectors, 2_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 0_int32, &
-                                            k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -209,7 +224,7 @@ contains
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
                                             ensemble_member_added_at_step=ensemble_member_added_at_step, &
-                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ensemble_U_first=ensemble_U_first, ensemble_d_first=ensemble_d_first, ierr=ierr)
         call assert_true(is_ok(ierr), "merged zero seeds: not an error")
     end subroutine test_merged_zero_seeds
 
@@ -224,6 +239,8 @@ contains
         logical        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(2, 4, 1)
         real(real64)   :: ensemble_S_history(2, 4, 1), ensemble_U_history(2, 2, 4, 1)
+        real(real64)   :: ensemble_U_first(2, 2, 1)
+        integer(int32) :: ensemble_d_first(1)
 
         call build_fixture_a(vectors, kd_indices, dim_order)
         seed_selection_mask = .false.
@@ -231,7 +248,7 @@ contains
         seed_selection_mask(6) = .true.
 
         call ensemble_identification_merged(vectors, 2_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 1_int32, &
-                                            k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -239,7 +256,7 @@ contains
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
                                             ensemble_member_added_at_step=ensemble_member_added_at_step, &
-                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ensemble_U_first=ensemble_U_first, ensemble_d_first=ensemble_d_first, ierr=ierr)
         call assert_true(is_err(ierr), "merged: n_selected_seed must match count(seed_selection_mask)")
     end subroutine test_merged_seed_count_mismatch
 
@@ -254,6 +271,8 @@ contains
         logical        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(1, 4, 1)
         real(real64)   :: ensemble_S_history(1, 4, 1), ensemble_U_history(1, 1, 4, 1)
+        real(real64)   :: ensemble_U_first(1, 1, 1)
+        integer(int32) :: ensemble_d_first(1)
 
         do i = 1, 7
             vectors(1, i) = real(i - 1, real64)
@@ -269,7 +288,7 @@ contains
         seed_selection_mask(1) = .true.
 
         call ensemble_identification_merged(vectors, 1_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 1_int32, &
-                                            k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -277,7 +296,7 @@ contains
                                             ensemble_mu_history=ensemble_mu_history, ensemble_k_history=ensemble_k_history, &
                                             ensemble_accepted_history=ensemble_accepted_history, &
                                             ensemble_member_added_at_step=ensemble_member_added_at_step, &
-                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ierr=ierr)
+                                            ensemble_low_confidence_masks=ensemble_low_confidence_masks, ensemble_U_first=ensemble_U_first, ensemble_d_first=ensemble_d_first, ierr=ierr)
         call assert_true(is_err(ierr), "merged: should reject n_dimensions=1")
     end subroutine test_merged_n_dimensions_too_small
 

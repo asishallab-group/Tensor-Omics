@@ -43,13 +43,16 @@ recommended routines:
   closed-form minimum, plus an integer workspace array (`IWORK`, size
   $8\cdot\min(D,k)$) -- size both in the `_alloc` layer.
 * **Small $d\times d$ matrix** (comparing two tangent bases, e.g.
-  $M=U_{\mathcal{E}_t}^\top U_{\mathcal{E}_{t+1}}$, for principal angles in
+  $M=U_{\mathcal{E}_r}^\top U_{\mathcal{E}_{t+1}}$, for principal angles in
   `accept_ensemble`): use `dgesvd`, not `dgesdd`. At $d$'s typical size
   (the intrinsic dimension, usually 1-5), divide-and-conquer's speed
   advantage does not materialize and its extra `IWORK` bookkeeping is pure
   overhead for no benefit; `dgesvd`'s simpler single-workspace-array
   bookkeeping wins. Its singular values are $\cos\theta_j$ directly -- no
-  squaring, no `sqrt` needed back out.
+  squaring, no `sqrt` needed back out. `accept_ensemble` now performs up to
+  $o+1$ such comparisons per growth step, one per retained reference basis
+  (see "SKG `accept_ensemble`" below), not just one -- still all small
+  $d\times d$ problems, so the routine choice is unaffected, only the count.
 
 Do not use `dsyev`, `dsyevd`, or `dsyevr` anywhere in this module. They
 solve "eigendecompose a given symmetric matrix as accurately as possible,"
@@ -300,6 +303,21 @@ than $o$ iterations.
     step) is recorded as `.true.` by convention, even though
     `accept_ensemble` is never actually invoked for it (see "First growth
     step" above).
+* `U_first(D, D)`, real, and `d_first`, integer -- the tangent+normal basis
+  and intrinsic dimension of iteration 1 (the bootstrap step), retained for
+  the ensemble's entire growth and never evicted, independently of the
+  trailing $o$-window above. Distinct storage from `U_history`/`d_history`
+  rather than widening those to $o+1$ or pinning one of their existing
+  columns, so the trailing window keeps meaning exactly what it always has
+  ($o$ genuinely trailing iterations) and no existing caller's
+  interpretation of `U_history`/`d_history` changes. Set once, at iteration
+  1, alongside `low_confidence_mask` below (same call, no extra SVD). Used
+  by `accept_ensemble`'s tangent-space-drift criterion (see "SKG
+  `accept_ensemble`" below) to bound cumulative, not just step-to-step,
+  rotation -- see `misc/STC-experiments/README.md`'s "P5" discussion for the
+  failure mode this closes: an ensemble that "walks" arbitrarily far in
+  tangent-space orientation via many individually-small-enough steps, none
+  of which alone would trip a step-to-step-only check.
 * Optionally, `member_added_at_step(n_vectors)`, integer -- 0 (or a
   documented sentinel) for non-members, the seed's own designation for the
   seed itself, and the growth-iteration index at which each subsequent
@@ -353,6 +371,10 @@ memory footprint tractable.
 * `real :: ensemble_mu_history`
 * `integer :: ensemble_k_history`
 * `logical :: ensemble_accepted_history`
+* `real :: ensemble_U_first` -- the merged form of `U_first` above,
+  `ensemble_U_first(D, D, N_{\mathcal{E}})`.
+* `integer :: ensemble_d_first` -- the merged form of `d_first` above,
+  `ensemble_d_first(N_{\mathcal{E}})`.
 * `integer :: ensemble_stop_reason` -- the result-code for whichever of the
   four "Stop Conditions" above applied to that ensemble, see "Output" above.
 * Always collected (a byproduct of the per-seed growth loop, not a separate
@@ -509,6 +531,17 @@ $\mathcal{E}_{t+1}$ has a two dimensional real array of observables, one per
 column: $$ \Omega_{\mathcal{E}_{t+1}} = [ \mathcal{O}_{\mathcal{E}_{t-o+2}},
 \mathcal{O}_{\mathcal{E}_{t-o+3}}, \ldots, \mathcal{O}_{\mathcal{E}_{t+1}} ] $$
 
+In addition to this trailing window, $\mathcal{O}_{\mathcal{E}_1}$ (iteration
+1, the bootstrap observable) is *always* retained as `U_first`/`d_first`
+(see "Output" above), independently of $o$'s FIFO eviction. Together,
+$\Omega_{\mathcal{E}_{t+1}}$'s trailing window and $\mathcal{O}_{\mathcal{E}_1}$
+form the reference set `accept_ensemble`'s tangent-space-drift criterion
+compares the new candidate against -- see "SKG `accept_ensemble`" below. For
+$t+1 \leq o$, $\mathcal{O}_{\mathcal{E}_1}$ already sits in the trailing
+window too ($U_{\text{history}}(:,:,1)$); comparing the candidate against it
+twice (once via `U_first`, once via the window) is harmless -- it does not
+change a $\max$ -- and simpler than special-casing the overlap away.
+
 #### SKG `normal_error`
 
 Given intrinsic dimension $d_{\mathcal{E}}$ and the eigenvalues
@@ -537,22 +570,116 @@ $$
 This routine returns a Boolean indicating whether the grown ensemble
 $\mathcal{E}_{t+1}$ is accepted or not.
 
-A grown ensemble ($\mathcal{E}_{t+1}$) is assessed based on its recent
-trajectory of observables $\Omega_{\mathcal{E}_{t+1}}$. 
+A grown ensemble ($\mathcal{E}_{t+1}$) is assessed against a **reference
+set** $\mathcal{R}$ of previously accepted observables, not merely against
+$\mathcal{O}_{\mathcal{E}_t}$ alone:
+$$
+\mathcal{R} = \{\mathcal{O}_{\mathcal{E}_1}\} \cup
+\{\mathcal{O}_{\mathcal{E}_{t-o+2}}, \ldots, \mathcal{O}_{\mathcal{E}_t}\}
+$$
+i.e. the bootstrap observable (`U_first`/`d_first`, always retained, see
+"Output" above) plus the trailing $o$-window. Comparing against this whole
+set, not just $\mathcal{O}_{\mathcal{E}_t}$, is what closes the "no
+cumulative-rotation budget" gap: a step-to-step-only check cannot see an
+ensemble that walks arbitrarily far in tangent-space orientation via many
+individually-small steps, since each individual step still passes; anchoring
+every candidate against the ensemble's own original state (and its recent
+history) bounds the *cumulative* drift instead.
 
-Acceptance is calculated comparing $\mathcal{O}_{\mathcal{E}_{t+1}}$ with
-$\mathcal{O}_{\mathcal{E}_{t}}$, and $\mathcal{E}_{t+1}$ is accepted if:
+$\mathcal{E}_{t+1}$ is accepted if all four of the following hold:
 
-* principal angles $\alpha_i \leq \boldsymbol{\alpha_{\text{max}}}, i =
-  1,\ldots,\min(d_{\mathcal{E}_{t+1}}, d_{\mathcal{E}_t})$ between
-  $U_{\mathcal{E}_{t+1}}$ and $U_{\mathcal{E}_t}$ -- obtained via `dgesvd` on
-  $M=U_{\mathcal{E}_t}^\top U_{\mathcal{E}_{t+1}}$, whose singular values are
-  $\cos\alpha_i$ directly (see "Numerical Linear Algebra" above); check
-  $d_{\mathcal{E}_{t+1}}=d_{\mathcal{E}_t}$ first and short-circuit to reject
-  on mismatch, since that is cheaper than the SVD and the ensembles do not
-  share a common tangent dimension to compare angles over in that case, and
-* $| d_{t+1} - d_{t} | \leq \boldsymbol{d_{\text{max}}}$, and
-* $|log \frac{G_{\mathcal{E}_{t+1}}}{G_{\mathcal{E}_{t}}} | \leq \boldsymbol{G_{\text{max}}}$
+**(1) Tangent-space drift.** For every reference $\mathcal{O}_{\mathcal{E}_r}
+\in \mathcal{R}$ with $d_r = d_{\mathcal{E}_{t+1}}$ (references with a
+different $d_r$ are skipped for this criterion -- there is no shared tangent
+dimension to compare angles over, judged instead by criterion (2)), compute
+the principal angles $\theta_1, \ldots, \theta_{d_r}$ between $U_r$ and
+$U_{\mathcal{E}_{t+1}}$ via `dgesvd` on $M = U_r^\top U_{\mathcal{E}_{t+1}}$,
+whose singular values are $\cos\theta_k$ directly (see "Numerical Linear
+Algebra" above), then the **chordal distance**
+$$
+\mathcal{C}(U_r, U_{\mathcal{E}_{t+1}}) = \sqrt{\sum_{k=1}^{d_r} \sin^2\theta_k}
+$$
+(the standard Grassmannian chordal/projection-Frobenius distance -- Edelman,
+Arias & Smith 1998; related to the Davis-Kahan $\sin\Theta$ theorem). Accept
+requires
+$$
+\max_{r\,:\,d_r = d_{\mathcal{E}_{t+1}}} \mathcal{C}(U_r, U_{\mathcal{E}_{t+1}})
+\leq \boldsymbol{\text{chordal\_dist\_max\_as\_prcnt\_of\_range}} \cdot
+\sqrt{d_{\mathcal{E}_{t+1}}}
+$$
+(vacuously satisfied if no reference shares $d_{\mathcal{E}_{t+1}}$).
+`chordal_dist_max_as_prcnt_of_range` (optional argument, 0 to 1, default 0.5)
+replaces the earlier `alpha_max` (a raw angle in radians): $\mathcal{C}$'s
+range is $[0, \sqrt{d}]$, so this parameter states the tolerated fraction of
+that range directly, without an intermediate angle-to-sine conversion, and
+without needing a separate $\sqrt{d}$-dependent knob per intrinsic dimension
+-- the $\sqrt{d}$ scaling is handled internally. It reduces to a familiar
+special case at $d=1$: $\mathcal{C} = |\sin\theta|$, so
+`chordal_dist_max_as_prcnt_of_range` $= \sin(\alpha_{\max})$ recovers exactly
+the old single-angle boundary (default 0.5 $\approx \sin(30^\circ)$, a literal
+carry-over of the old default under this substitution -- provisional, like
+every other default in this family, pending empirical re-tuning once this
+criterion runs on real data).
+
+Only the candidate is compared against each reference -- **not** every pair
+within $\mathcal{R}$ itself ($\binom{|\mathcal{R}|}{2}$ pairs). This is
+sufficient, not a shortcut: every reference in $\mathcal{R}$ already passed
+this same criterion against every *other* reference present in $\mathcal{R}$
+at the growth step it was itself accepted (an inductive invariant -- FIFO
+eviction only ever removes references from $\mathcal{R}$, which cannot break
+a "already mutually within tolerance" property among the ones that remain).
+So checking the one new candidate against the (at most) $o+1$ existing
+references costs $O(o)$ small SVDs per growth step, not $O(o^2)$.
+
+**(2) Intrinsic-dimension drift.** Both
+$$
+d_{\text{to\_first}} = |d_{\mathcal{E}_{t+1}} - d_{\mathcal{E}_1}| \leq \boldsymbol{d_{\text{max}}}
+\quad\text{and}\quad
+d_{\text{to\_last}} = |d_{\mathcal{E}_{t+1}} - d_{\mathcal{E}_t}| \leq \boldsymbol{d_{\text{max}}}
+$$
+must hold -- i.e. $\max(d_{\text{to\_first}}, d_{\text{to\_last}}) \leq
+d_{\text{max}}$. Compared only against the first and the immediately
+preceding iteration (not the full $o$-window, unlike criterion (1)) --
+cheap, and closes the same first-vs-cumulative gap for $d$ that criterion (1)
+closes for orientation, without needing $d$ history beyond what
+`d_first`/the previous iteration's $d$ already provide.
+
+**(3) Spectral-gap drift.**
+$$
+\left|\log \frac{G_{\mathcal{E}_{t+1}}}{G_{\mathcal{E}_t}}\right| \leq \boldsymbol{G_{\text{max}}}
+$$
+Consecutive only ($t$ vs. $t+1$), unchanged from before. $G$ is a magnitude
+(the ratio of two adjacent eigenvalues), not an orientation -- the "walk
+arbitrarily far while every single step looks fine" failure mode criterion
+(1) fixes is specific to direction, not scale, so this criterion is left as
+is for now.
+
+**(4) Residual (RMSE) drift.** Let
+$\text{RMSE}_{\mathcal{E}} = \sqrt{\text{normal\_error}_{\mathcal{E}} + \epsilon}$ (the
+root of the `normal_error` SKG's output, itself already free -- see
+"SKG `normal_error`" above; no new SVD or storage, `normal_error` at any
+retained iteration is already derivable on demand from `S_history`/
+`k_history`), where $\epsilon$ is the same minimal-positive-real convention
+`observable`'s own spectral-gap formula already uses (`epsilon(1.0_real64)`
+in Fortran) -- unlike $G$, which is a *ratio* already protected by its own
+$+\epsilon$ denominator, `normal_error` is a raw sum of eigenvalues and can
+be genuinely, exactly zero (a perfectly flat/collinear ensemble, no noise at
+all in the normal directions); without this guard,
+$\log(\text{RMSE}_{t+1}/\text{RMSE}_t)$ is $\log(0/0)$, undefined, the first
+time growth is ever perfectly noise-free. Accept requires
+$$
+\left|\log \frac{\text{RMSE}_{\mathcal{E}_{t+1}}}{\text{RMSE}_{\mathcal{E}_t}}\right| \leq \boldsymbol{\text{RMSE\_change\_max}}
+$$
+(optional argument, default $|\log(1.5)| \approx 0.405$), consecutive only,
+same structural form as criterion (3). $G$ (a ratio between adjacent
+eigenvalues) and RMSE (the absolute magnitude of *all* residual eigenvalues
+combined) are genuinely different signals, not a restatement of the same
+information under a different name: an ensemble can hold $G$ essentially
+constant across growth (its dimensionality estimate stays well-supported)
+while the absolute off-tangent-subspace spread still creeps upward --
+criterion (3) alone cannot see that, since it only ever compares $\lambda_d$
+against its immediate neighbor $\lambda_{d+1}$, never the total normal-space
+spread. This criterion is what catches that.
 
 ## Ensemble Reconciliation
 
@@ -610,7 +737,9 @@ number stored in `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`.
 ## Estimate parameters from data
 
 The crucial parameters are `k_min`, `k_density`, `density_quantile`,
-`alpha_max`, `G_max`, `d_max`. Grid-searching them, or the bootstrap-resampling
+`chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max` (`RMSE_change_max`,
+`accept_ensemble`'s fourth criterion, is not estimated by this SKG -- see
+"SKG `estimate_stc_parameters`" below). Grid-searching them, or the bootstrap-resampling
 scheme considered and rejected during this section's design (per-seed
 resampled SVDs to measure noise-only wobble in angle/gap), both cost far more
 than the rest of the pipeline combined. This SKG estimates all six from one
@@ -621,7 +750,8 @@ statistics of that pass. It is a **separate, optional** step -- it neither
 runs automatically as part of `seeds` or `ensemble_identification`, nor
 requires that either has already run; a caller may run it, inspect the
 proposed values, adjust them, and only then invoke the real pipeline, or skip
-it entirely and supply `k_min`/`alpha_max`/etc. by hand as always.
+it entirely and supply `k_min`/`chordal_dist_max_as_prcnt_of_range`/etc. by
+hand as always.
 
 ### SKG `sample_estimator_anchors`
 
@@ -701,20 +831,31 @@ to its own cloud members:
   `radius_percentile` already exist to *choose* a percentile of a kNN pool;
   this SKG instead hands back an already-measured absolute scale, which a
   caller may use directly as a growth or exclusion radius.
-* For every pair $i<j$ among the EAs, compute the principal angle between
-  $U_i$ and $U_j$ over their shared rank $d_{ij} = \min(d_i, d_j)$ -- the
-  same `dgesvd`-on-$U_i^\top U_j$ machinery `accept_ensemble` uses (see
+* For every pair $i<j$ among the EAs with $d_{ij} = \min(d_i, d_j) > 0$,
+  compute the principal angles $\theta_1,\ldots,\theta_{d_{ij}}$ between
+  $U_i$ and $U_j$ over their shared rank $d_{ij}$ -- the same
+  `dgesvd`-on-$U_i^\top U_j$ machinery `accept_ensemble` uses (see
   "Numerical Linear Algebra" above), but *not* gated on $d_i=d_j$ the way
-  `accept_ensemble` gates it: `accept_ensemble` only ever consults its own
-  angle criterion when the two ensembles it compares already agree on $d$
-  (mismatched-$d$ pairs are vacuously accepted there, judged instead by the
-  $d_{\max}$ criterion), but here, with only $\binom{n_{\text{anchors}}}{2}$
-  pairs total (10 at the default $n_{\text{anchors}}=5$), skipping mismatched
-  pairs risks too few (or zero) samples to estimate a quartile from at all.
-  Comparing over the shared rank always produces a value, at the cost of
-  diverging slightly from `accept_ensemble`'s own convention -- a deliberate
-  trade for this SKG's specific purpose, not an oversight.
-* $\alpha_{\max} \leftarrow Q_{p}\big(\{\text{angle}(U_i, U_j)\}_{i<j}\big)$
+  `accept_ensemble` gates its own criterion (1) (there, mismatched-$d$
+  references are vacuously skipped, judged instead by criterion (2)); here,
+  with only $\binom{n_{\text{anchors}}}{2}$ pairs total (10 at the default
+  $n_{\text{anchors}}=5$), skipping mismatched pairs risks too few (or zero)
+  samples to estimate a quartile from at all. Comparing over the shared rank
+  always produces a value, at the cost of diverging slightly from
+  `accept_ensemble`'s own convention -- a deliberate trade for this SKG's
+  specific purpose, not an oversight. Pairs with $d_{ij}=0$ (at least one EA
+  has no meaningful tangent direction at all) are excluded from the sample
+  entirely, the same "nothing to compare" convention as `accept_ensemble`'s
+  own $d_r > 0$ guard.
+* Chordal distance per pair, normalized by its own $\sqrt{d_{ij}}$ so pairs of
+  differing rank are directly comparable -- exactly
+  `chordal_dist_max_as_prcnt_of_range`'s own definition (see "SKG
+  `accept_ensemble`" above), applied here to EA pairs instead of
+  candidate-vs-reference pairs:
+  $$
+  c_{ij} = \mathcal{C}(U_i, U_j) / \sqrt{d_{ij}} = \sqrt{\textstyle\sum_{k=1}^{d_{ij}} \sin^2\theta_k} \big/ \sqrt{d_{ij}}
+  $$
+* `chordal_dist_max_as_prcnt_of_range` $\leftarrow Q_{p}\big(\{c_{ij}\}_{i<j}\big)$
 * $G_{\max} \leftarrow Q_{p}\big(\{|\log(G_i/G_j)|\}_{i<j}\big)$
 * $d_{\max} \leftarrow Q_{p}\big(\{|d_i - d_j|\}_{i<j}\big)$
 

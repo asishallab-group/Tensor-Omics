@@ -69,7 +69,7 @@ _lib.estimate_stc_parameters_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ESTIMATE_STC_PARAMETERS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "first_quartile_percentile", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_alpha_max", "estimated_G_max", "estimated_d_max", "ierr",)
+_ESTIMATE_STC_PARAMETERS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "first_quartile_percentile", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _ESTIMATE_STC_PARAMETERS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
@@ -234,7 +234,7 @@ def estimate_stc_parameters(
         seed_max_set_size=5.0,
         first_quartile_percentile=25.0,
 ):
-    r"""Estimate k_min, k_density, density_quantile, alpha_max, G_max, d_max from the data
+    r"""Estimate k_min, k_density, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
 
     Parameters
     ----------
@@ -268,7 +268,7 @@ def estimate_stc_parameters(
         The default value is `5.0`.
     first_quartile_percentile : float, optional, default 25.0
         Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
-        alpha_max/G_max/d_max, see estimate_stc_parameters
+        chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
         The minimum valid value is `0.0`.
         The maximum valid value is `100.0`.
         The default value is `25.0`.
@@ -284,8 +284,8 @@ def estimate_stc_parameters(
             Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         estimated_density_quantile : float
             Estimated density_quantile -- a literal radius (data units), not a percentile
-        estimated_alpha_max : float
-            Estimated alpha_max (radians)
+        estimated_chordal_dist_max_as_prcnt_of_range : float
+            Estimated chordal_dist_max_as_prcnt_of_range (0 to 1)
         estimated_G_max : float
             Estimated G_max
         estimated_d_max : float
@@ -339,7 +339,7 @@ def estimate_stc_parameters(
     estimated_k_min = ctypes.c_double(0)
     estimated_k_density = ctypes.c_double(0)
     estimated_density_quantile = ctypes.c_double(0)
-    estimated_alpha_max = ctypes.c_double(0)
+    estimated_chordal_dist_max_as_prcnt_of_range = ctypes.c_double(0)
     estimated_G_max = ctypes.c_double(0)
     estimated_d_max = ctypes.c_double(0)
     ierr = ctypes.c_int(0)
@@ -358,7 +358,7 @@ def estimate_stc_parameters(
         ctypes.byref(estimated_k_min),
         ctypes.byref(estimated_k_density),
         ctypes.byref(estimated_density_quantile),
-        ctypes.byref(estimated_alpha_max),
+        ctypes.byref(estimated_chordal_dist_max_as_prcnt_of_range),
         ctypes.byref(estimated_G_max),
         ctypes.byref(estimated_d_max),
         ctypes.byref(ierr),
@@ -370,7 +370,7 @@ def estimate_stc_parameters(
         "estimated_k_min": estimated_k_min.value,
         "estimated_k_density": estimated_k_density.value,
         "estimated_density_quantile": estimated_density_quantile.value,
-        "estimated_alpha_max": estimated_alpha_max.value,
+        "estimated_chordal_dist_max_as_prcnt_of_range": estimated_chordal_dist_max_as_prcnt_of_range.value,
         "estimated_G_max": estimated_G_max.value,
         "estimated_d_max": estimated_d_max.value,
     }

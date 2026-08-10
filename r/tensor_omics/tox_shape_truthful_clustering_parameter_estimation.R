@@ -72,7 +72,7 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
     )
 }
 
-#' Estimate k_min, k_density, density_quantile, alpha_max, G_max, d_max from the data
+#' Estimate k_min, k_density, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
 #'
 #' Orchestrates density_labels -> sample_estimator_anchors -> grow_estimator_anchor_clouds
 #' -> observable (once per EA) -> pairwise EA comparisons -> aggregation. See
@@ -80,12 +80,14 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
 #' output and the reasoning behind each. EAs whose final cloud has fewer than 2 members
 #' (no meaningful SVD possible -- a documented, deliberately unguarded-against possibility
 #' of `grow_estimator_anchor_clouds`'s own stop condition, see there) are excluded from
-#' every statistic below; `ierr` is set if fewer than 2 EAs remain usable, since no
-#' pairwise comparison -- and therefore no alpha_max/G_max/d_max estimate -- is possible
-#' at all in that case. This is the one genuine, input-shape-dependent runtime failure this
-#' SKG can hit that no simple per-argument DM_* annotation could foresee (it depends on the
-#' data's own spatial distribution, not just n_vectors/n_anchors/seed_max_set_size in
-#' isolation) -- see `codegen_guide.md` section 5.14.
+#' every statistic below; `ierr` is set if fewer than 2 EAs remain usable (no pairwise
+#' comparison -- and therefore no G_max/d_max estimate -- is possible at all), or if every
+#' usable pair has a zero shared rank (no chordal-distance estimate possible either, even
+#' though G_max/d_max still are). Both are the one genuine, input-shape-dependent runtime
+#' failure this SKG can hit that no simple per-argument DM_* annotation could foresee (it
+#' depends on the data's own spatial distribution, not just
+#' n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
+#' 5.14.
 #'
 #' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation::estimate_stc_parameters_alloc}, whose argument names
 #' are the ones an error message reports.
@@ -112,7 +114,7 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
 #'   The maximum valid value is `100.0`.
 #'   The default value is `5.0`.
 #' @param first_quartile_percentile a numeric scalar. Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
-#'   alpha_max/G_max/d_max, see estimate_stc_parameters
+#'   chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
 #'   The default value is `25.0`.
@@ -120,7 +122,7 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
 #'   \item{estimated_k_min}{a numeric scalar. Estimated k_min (real-valued; round for direct use as an integer argument)}
 #'   \item{estimated_k_density}{a numeric scalar. Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)}
 #'   \item{estimated_density_quantile}{a numeric scalar. Estimated density_quantile -- a literal radius (data units), not a percentile}
-#'   \item{estimated_alpha_max}{a numeric scalar. Estimated alpha_max (radians)}
+#'   \item{estimated_chordal_dist_max_as_prcnt_of_range}{a numeric scalar. Estimated chordal_dist_max_as_prcnt_of_range (0 to 1)}
 #'   \item{estimated_G_max}{a numeric scalar. Estimated G_max}
 #'   \item{estimated_d_max}{a numeric scalar. Estimated d_max (real-valued; round for direct use as an integer argument)}
 #' @export
@@ -141,7 +143,7 @@ estimate_stc_parameters <- function(vectors, kd_indices, dimension_order, k_dens
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
     .result <- .Call("estimate_stc_parameters_call", vectors, kd_indices, dimension_order, k_density, bandwidth_percentile, n_anchors, seed_max_set_size, first_quartile_percentile)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "first_quartile_percentile", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_alpha_max", "estimated_G_max", "estimated_d_max", "ierr")
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "first_quartile_percentile", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
     .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -149,7 +151,7 @@ estimate_stc_parameters <- function(vectors, kd_indices, dimension_order, k_dens
         estimated_k_min = .result$estimated_k_min,
         estimated_k_density = .result$estimated_k_density,
         estimated_density_quantile = .result$estimated_density_quantile,
-        estimated_alpha_max = .result$estimated_alpha_max,
+        estimated_chordal_dist_max_as_prcnt_of_range = .result$estimated_chordal_dist_max_as_prcnt_of_range,
         estimated_G_max = .result$estimated_G_max,
         estimated_d_max = .result$estimated_d_max
     )

@@ -203,12 +203,14 @@ contains
     !| output and the reasoning behind each. EAs whose final cloud has fewer than 2 members
     !| (no meaningful SVD possible -- a documented, deliberately unguarded-against possibility
     !| of `grow_estimator_anchor_clouds`'s own stop condition, see there) are excluded from
-    !| every statistic below; `ierr` is set if fewer than 2 EAs remain usable, since no
-    !| pairwise comparison -- and therefore no alpha_max/G_max/d_max estimate -- is possible
-    !| at all in that case. This is the one genuine, input-shape-dependent runtime failure this
-    !| SKG can hit that no simple per-argument DM_* annotation could foresee (it depends on the
-    !| data's own spatial distribution, not just n_vectors/n_anchors/seed_max_set_size in
-    !| isolation) -- see `codegen_guide.md` section 5.14.
+    !| every statistic below; `ierr` is set if fewer than 2 EAs remain usable (no pairwise
+    !| comparison -- and therefore no G_max/d_max estimate -- is possible at all), or if every
+    !| usable pair has a zero shared rank (no chordal-distance estimate possible either, even
+    !| though G_max/d_max still are). Both are the one genuine, input-shape-dependent runtime
+    !| failure this SKG can hit that no simple per-argument DM_* annotation could foresee (it
+    !| depends on the data's own spatial distribution, not just
+    !| n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
+    !| 5.14.
     subroutine estimate_stc_parameters_expert_c(&
             vectors,&
             n_dimensions,&
@@ -243,7 +245,7 @@ contains
             estimated_k_min,&
             estimated_k_density,&
             estimated_density_quantile,&
-            estimated_alpha_max,&
+            estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max,&
             estimated_d_max,&
             ierr&
@@ -297,7 +299,7 @@ contains
             !! The default value is `5.0_real64`.
         real(c_double), intent(in), target :: first_quartile_percentile
             !! Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
-            !! alpha_max/G_max/d_max, see estimate_stc_parameters
+            !! chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `25.0_real64`.
@@ -341,8 +343,8 @@ contains
             !! Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         real(c_double), intent(out), target :: estimated_density_quantile
             !! Estimated density_quantile -- a literal radius (data units), not a percentile
-        real(c_double), intent(out), target :: estimated_alpha_max
-            !! Estimated alpha_max (radians)
+        real(c_double), intent(out), target :: estimated_chordal_dist_max_as_prcnt_of_range
+            !! Estimated chordal_dist_max_as_prcnt_of_range (0 to 1)
         real(c_double), intent(out), target :: estimated_G_max
             !! Estimated G_max
         real(c_double), intent(out), target :: estimated_d_max
@@ -364,7 +366,7 @@ contains
         M_CHECK_NON_NULL(estimated_k_min)
         M_CHECK_NON_NULL(estimated_k_density)
         M_CHECK_NON_NULL(estimated_density_quantile)
-        M_CHECK_NON_NULL(estimated_alpha_max)
+        M_CHECK_NON_NULL(estimated_chordal_dist_max_as_prcnt_of_range)
         M_CHECK_NON_NULL(estimated_G_max)
         M_CHECK_NON_NULL(estimated_d_max)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
@@ -422,7 +424,7 @@ contains
             estimated_k_min = estimated_k_min,&
             estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
-            estimated_alpha_max = estimated_alpha_max,&
+            estimated_chordal_dist_max_as_prcnt_of_range = estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max = estimated_G_max,&
             estimated_d_max = estimated_d_max,&
             ierr = ierr&
@@ -438,12 +440,14 @@ contains
     !| output and the reasoning behind each. EAs whose final cloud has fewer than 2 members
     !| (no meaningful SVD possible -- a documented, deliberately unguarded-against possibility
     !| of `grow_estimator_anchor_clouds`'s own stop condition, see there) are excluded from
-    !| every statistic below; `ierr` is set if fewer than 2 EAs remain usable, since no
-    !| pairwise comparison -- and therefore no alpha_max/G_max/d_max estimate -- is possible
-    !| at all in that case. This is the one genuine, input-shape-dependent runtime failure this
-    !| SKG can hit that no simple per-argument DM_* annotation could foresee (it depends on the
-    !| data's own spatial distribution, not just n_vectors/n_anchors/seed_max_set_size in
-    !| isolation) -- see `codegen_guide.md` section 5.14.
+    !| every statistic below; `ierr` is set if fewer than 2 EAs remain usable (no pairwise
+    !| comparison -- and therefore no G_max/d_max estimate -- is possible at all), or if every
+    !| usable pair has a zero shared rank (no chordal-distance estimate possible either, even
+    !| though G_max/d_max still are). Both are the one genuine, input-shape-dependent runtime
+    !| failure this SKG can hit that no simple per-argument DM_* annotation could foresee (it
+    !| depends on the data's own spatial distribution, not just
+    !| n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
+    !| 5.14.
     subroutine estimate_stc_parameters_c(&
             vectors,&
             n_dimensions,&
@@ -458,7 +462,7 @@ contains
             estimated_k_min,&
             estimated_k_density,&
             estimated_density_quantile,&
-            estimated_alpha_max,&
+            estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max,&
             estimated_d_max,&
             ierr&
@@ -503,7 +507,7 @@ contains
             !! The default value is `5.0_real64`.
         real(c_double), intent(in), target :: first_quartile_percentile
             !! Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
-            !! alpha_max/G_max/d_max, see estimate_stc_parameters
+            !! chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `25.0_real64`.
@@ -513,8 +517,8 @@ contains
             !! Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         real(c_double), intent(out), target :: estimated_density_quantile
             !! Estimated density_quantile -- a literal radius (data units), not a percentile
-        real(c_double), intent(out), target :: estimated_alpha_max
-            !! Estimated alpha_max (radians)
+        real(c_double), intent(out), target :: estimated_chordal_dist_max_as_prcnt_of_range
+            !! Estimated chordal_dist_max_as_prcnt_of_range (0 to 1)
         real(c_double), intent(out), target :: estimated_G_max
             !! Estimated G_max
         real(c_double), intent(out), target :: estimated_d_max
@@ -532,7 +536,7 @@ contains
         M_CHECK_NON_NULL(estimated_k_min)
         M_CHECK_NON_NULL(estimated_k_density)
         M_CHECK_NON_NULL(estimated_density_quantile)
-        M_CHECK_NON_NULL(estimated_alpha_max)
+        M_CHECK_NON_NULL(estimated_chordal_dist_max_as_prcnt_of_range)
         M_CHECK_NON_NULL(estimated_G_max)
         M_CHECK_NON_NULL(estimated_d_max)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
@@ -553,7 +557,7 @@ contains
             estimated_k_min = estimated_k_min,&
             estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
-            estimated_alpha_max = estimated_alpha_max,&
+            estimated_chordal_dist_max_as_prcnt_of_range = estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max = estimated_G_max,&
             estimated_d_max = estimated_d_max,&
             ierr = ierr&

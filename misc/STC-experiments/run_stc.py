@@ -59,12 +59,18 @@ def parse_args():
     p.add_argument("--bandwidth-percentile", type=float, default=68.27,
                     help="Seeding: percentile (0-100) of the k_density neighbor distances used as the local "
                          "Gaussian KDE bandwidth for density ranking, see density_labels (default 68.27)")
-    p.add_argument("--alpha-max-deg", type=float, default=30.0,
-                    help="Accept: maximum tolerated principal angle between tangent bases, in degrees (default 30)")
+    p.add_argument("--chordal-dist-max-as-prcnt-of-range", type=float, default=0.5,
+                    help="Accept: maximum tolerated chordal distance between tangent bases, as a fraction "
+                         "(0-1) of its own [0, sqrt(d)] range -- see accept_ensemble's tangent-space-drift "
+                         "criterion in misc/mod_STC.md (default 0.5, ~ sin(30deg), a literal carry-over of "
+                         "the old single-angle default under the d=1 special case)")
     p.add_argument("--d-max", type=int, default=1,
                     help="Accept: maximum tolerated change in intrinsic dimension between growth steps (default 1)")
     p.add_argument("--g-max", type=float, default=3.0,
                     help="Accept: maximum tolerated |log(G_tp1/G_t)| in the spectral gap (default 3.0)")
+    p.add_argument("--rmse-change-max", type=float, default=abs(np.log(1.5)),
+                    help="Accept: maximum tolerated |log(RMSE_tp1/RMSE_t)| in the residual, see "
+                         "accept_ensemble's residual-drift criterion (default |log(1.5)| ~ 0.405)")
     p.add_argument("--f-max", type=float, default=0.95,
                     help="Stop condition 1: ensemble size fraction of N above which growth is abandoned (default 0.95)")
     p.add_argument("--a", type=int, default=2,
@@ -79,9 +85,10 @@ def parse_args():
                     help="Reconciliation: max ensembles per super-ensemble (default min(1024, n_ensembles))")
     p.add_argument("--estimate-parameters", action="store_true",
                     help="Also run estimate_stc_parameters and report its k_min/k_density/density_quantile/"
-                         "alpha_max/G_max/d_max estimates in params.json/.txt -- purely informational, does "
-                         "not change which parameters this run itself actually uses (see "
-                         "misc/mod_STC.md, 'Estimate parameters from data')")
+                         "chordal_dist_max_as_prcnt_of_range/G_max/d_max estimates in params.json/.txt -- "
+                         "purely informational, does not change which parameters this run itself actually "
+                         "uses (see misc/mod_STC.md, 'Estimate parameters from data'). RMSE_change_max is "
+                         "not estimated by this SKG -- not part of the reported estimate.")
     p.add_argument("--n-anchors", type=int, default=5,
                     help="Parameter estimation: number of estimator anchors, see estimate_stc_parameters "
                          "(default 5, only used with --estimate-parameters)")
@@ -90,8 +97,8 @@ def parse_args():
                          "estimate_stc_parameters (default 5.0, only used with --estimate-parameters)")
     p.add_argument("--first-quartile-percentile", type=float, default=25.0,
                     help="Parameter estimation: percentile of the pairwise-EA-comparison distributions used "
-                         "for alpha_max/G_max/d_max, see estimate_stc_parameters (default 25.0, only used "
-                         "with --estimate-parameters)")
+                         "for chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters "
+                         "(default 25.0, only used with --estimate-parameters)")
     args = p.parse_args()
     # --k-min/--k-density, in that order, always win over --k; --k only fills in whichever of
     # the two was not given explicitly; 30 is the hardcoded fallback if neither was.
@@ -150,7 +157,8 @@ def main():
                 "estimated_k_min": round(float(est["estimated_k_min"])),
                 "estimated_k_density": round(float(est["estimated_k_density"])),
                 "estimated_density_quantile": float(est["estimated_density_quantile"]),
-                "estimated_alpha_max_deg": float(np.rad2deg(est["estimated_alpha_max"])),
+                "estimated_chordal_dist_max_as_prcnt_of_range":
+                    float(est["estimated_chordal_dist_max_as_prcnt_of_range"]),
                 "estimated_g_max": float(est["estimated_G_max"]),
                 "estimated_d_max": round(float(est["estimated_d_max"])),
             }
@@ -158,7 +166,8 @@ def main():
                   f"k_min={estimated_params['estimated_k_min']}, "
                   f"k_density={estimated_params['estimated_k_density']}, "
                   f"density_quantile={estimated_params['estimated_density_quantile']:.4g}, "
-                  f"alpha_max_deg={estimated_params['estimated_alpha_max_deg']:.3g}, "
+                  f"chordal_dist_max_as_prcnt_of_range="
+                  f"{estimated_params['estimated_chordal_dist_max_as_prcnt_of_range']:.3g}, "
                   f"g_max={estimated_params['estimated_g_max']:.4g}, "
                   f"d_max={estimated_params['estimated_d_max']}")
         except ToxError as error:
@@ -174,7 +183,7 @@ def main():
 
     result = ensemble_identification_merged(
         vectors, kd_indices, dimension_order, seed_selection_mask,
-        np.deg2rad(args.alpha_max_deg), args.d_max, args.g_max, args.o,
+        args.chordal_dist_max_as_prcnt_of_range, args.d_max, args.g_max, args.rmse_change_max, args.o,
         k_min=args.k_min, f_max=args.f_max, a=args.a,
     )
 

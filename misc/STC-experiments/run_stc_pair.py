@@ -2,11 +2,11 @@
 """
 Runs run_stc.py twice on the same input: once with the parameters you give it (the
 "original" run), once with estimate_stc_parameters' own proposal for k_min/k_density/
-alpha_max_deg/g_max/d_max actually applied as the real run parameters (the "estimated" run)
--- not just reported, unlike --estimate-parameters on its own. `density_quantile` has no
-direct CLI equivalent (see run_stc.py's own params-table "no equivalent" note) and is
-skipped; reconciliation_mode/min_jsi are held fixed across both runs, since the estimator
-does not touch them.
+chordal_dist_max_as_prcnt_of_range/g_max/d_max actually applied as the real run parameters
+(the "estimated" run) -- not just reported, unlike --estimate-parameters on its own.
+`density_quantile` has no direct CLI equivalent (see run_stc.py's own params-table "no
+equivalent" note) and is skipped; reconciliation_mode/min_jsi/rmse_change_max are held fixed
+across both runs, since the estimator does not touch them.
 
 Run: python3 run_stc_pair.py <input.csv> [run_stc.py options for the "original" run]
 Writes <out-prefix>_original_* and <out-prefix>_estimated_* (defaults to
@@ -27,7 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ESTIMATE_TO_CLI_FLAG = {
     "estimated_k_min": "--k-min",
     "estimated_k_density": "--k-density",
-    "estimated_alpha_max_deg": "--alpha-max-deg",
+    "estimated_chordal_dist_max_as_prcnt_of_range": "--chordal-dist-max-as-prcnt-of-range",
     "estimated_g_max": "--g-max",
     "estimated_d_max": "--d-max",
 }
@@ -59,9 +59,10 @@ def main():
     for key, flag in ESTIMATE_TO_CLI_FLAG.items():
         if key in original_params:
             estimated_flags.extend([flag, str(original_params[key])])
-    # Hold reconciliation behavior fixed across both runs -- the estimator does not propose
-    # values for these, so comparing them makes sense only if they match.
-    for flag in ("--reconciliation-mode", "--min-jsi", "--max-group-size"):
+    # Hold reconciliation behavior (and RMSE_change_max, which estimate_stc_parameters does
+    # not propose a value for, see misc/mod_STC.md) fixed across both runs -- the estimator
+    # does not touch these, so comparing the two runs makes sense only if they match.
+    for flag in ("--reconciliation-mode", "--min-jsi", "--max-group-size", "--rmse-change-max"):
         key = flag.lstrip("-").replace("-", "_")
         if original_params.get(key) not in (None, "None"):
             estimated_flags.extend([flag, str(original_params[key])])

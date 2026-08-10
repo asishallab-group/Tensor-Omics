@@ -35,7 +35,7 @@ def test_single_seed_matches_per_seed_kernel():
     seed_selection_mask[0] = True
 
     result = ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                            0.1, 0, 1.0e10, 4, k_min=1)
+                                            0.1, 0, 1.0e10, 1.0e10, 4, k_min=1)
 
     assert result['ensemble_stop_reason'][0] == STOP_REASON_FIXED_POINT
     assert abs(result['ensemble_growth_radii'][0] - 1.0) < 1e-9
@@ -73,7 +73,7 @@ def test_two_independent_seeds():
     seed_selection_mask[7] = True
 
     result = ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                            0.1, 0, 1.0e10, 4, k_min=1)
+                                            0.1, 0, 1.0e10, 1.0e10, 4, k_min=1)
 
     assert result['ensemble_stop_reason'][0] == STOP_REASON_FIXED_POINT
     assert result['ensemble_stop_reason'][1] == STOP_REASON_FIXED_POINT
@@ -99,13 +99,22 @@ def test_two_independent_seeds():
     expected_step_2[8:12] = [1, 2, 3, 4]
     assert np.array_equal(result['ensemble_member_added_at_step'][:, 1], expected_step_2)
 
+    # ensemble_U_first/ensemble_d_first: each column is its own seed's bootstrap basis,
+    # collinear along the x-axis in both copies -- must not leak across columns.
+    assert result['ensemble_d_first'][0] == 1
+    assert result['ensemble_d_first'][1] == 1
+    assert abs(abs(result['ensemble_U_first'][0, 0, 0]) - 1.0) < 1e-9
+    assert abs(abs(result['ensemble_U_first'][1, 0, 0]) - 0.0) < 1e-9
+    assert abs(abs(result['ensemble_U_first'][0, 0, 1]) - 1.0) < 1e-9
+    assert abs(abs(result['ensemble_U_first'][1, 0, 1]) - 0.0) < 1e-9
+
 
 def test_zero_seeds():
     vectors, kd_indices, dimension_order = _fixture_a()
     seed_selection_mask = np.zeros(7, dtype=np.bool_)
 
     result = ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                            0.1, 0, 1.0e10, 4, k_min=1)
+                                            0.1, 0, 1.0e10, 1.0e10, 4, k_min=1)
     assert result['ensemble_masks'].shape == (7, 0)
 
 
@@ -118,7 +127,7 @@ def test_n_dimensions_too_small():
     seed_selection_mask[0] = True
 
     assert_error(lambda: ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                                        0.1, 0, 1.0e10, 4, k_min=1),
+                                                        0.1, 0, 1.0e10, 1.0e10, 4, k_min=1),
                  "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 
 

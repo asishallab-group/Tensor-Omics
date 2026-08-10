@@ -28,6 +28,7 @@ _lib.ensemble_identification_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
@@ -42,13 +43,15 @@ _lib.ensemble_identification_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_IDENTIFICATION_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "ierr",)
+_ENSEMBLE_IDENTIFICATION_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "U_first", "d_first", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ENSEMBLE_IDENTIFICATION_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, "U_history", None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_ENSEMBLE_IDENTIFICATION_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, None, "U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.ensemble_identification_merged_c.restype = None
 _lib.ensemble_identification_merged_c.argtypes = (
@@ -62,6 +65,7 @@ _lib.ensemble_identification_merged_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
@@ -78,22 +82,25 @@ _lib.ensemble_identification_merged_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ierr",)
+_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, "ensemble_masks", None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, "ensemble_masks", None, None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def ensemble_identification(
         vectors,
         kd_indices,
         dimension_order,
         seed_index,
-        alpha_max,
+        chordal_dist_max_as_prcnt_of_range,
         d_max,
         G_max,
+        RMSE_change_max,
         o,
         k_min=30,
         f_max=0.95,
@@ -122,15 +129,19 @@ def ensemble_identification(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
         The default value is `30`.
-    alpha_max : float
-        Maximum tolerated principal angle (radians), see `accept_ensemble`
+    chordal_dist_max_as_prcnt_of_range : float
+        Maximum tolerated chordal distance between tangent bases, as a fraction of its
+        own [0, sqrt(d)] range, see `accept_ensemble`
         The minimum valid value is `0.0`.
-        The maximum valid value is `2.0 * atan(1.0)`.
+        The maximum valid value is `1.0`.
     d_max : int
         Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
         The minimum valid value is `0`.
     G_max : float
         Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+        The minimum valid value is `0.0`.
+    RMSE_change_max : float
+        Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
         The minimum valid value is `0.0`.
     f_max : float, optional, default 0.95
         Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -211,6 +222,16 @@ def ensemble_identification(
             already exceeds f_max*N) -- see "Ensemble identification", "Output" in
             misc/mod_STC.md
             A result is a value; call `.copy()` to obtain a modifiable array.
+        U_first : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions,), column-major (order='F'), read-only
+            Tangent+normal basis at the bootstrap iteration (iteration 1), retained for the
+            whole growth, never evicted by the trailing o-window above -- see
+            `accept_ensemble`'s tangent-space-drift criterion in misc/mod_STC.md. All-zero
+            whenever iteration 1 itself never produced a genuine observable, same condition
+            as `low_confidence_mask` above.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        d_first : int
+            Intrinsic dimension at the bootstrap iteration, see `U_first`. Zero under the
+            same all-zero condition as `U_first`.
 
     Raises
     ------
@@ -269,6 +290,8 @@ def ensemble_identification(
     accepted_history = np.empty((o,), dtype=np.bool_, order='C')
     member_added_at_step = np.empty((n_vectors,), dtype=np.int32, order='C')
     low_confidence_mask = np.empty((n_vectors,), dtype=np.bool_, order='C')
+    U_first = np.empty((n_dimensions, n_dimensions,), dtype=np.float64, order='F')
+    d_first = ctypes.c_int(0)
     ierr = ctypes.c_int(0)
 
     _lib.ensemble_identification_c(
@@ -279,9 +302,10 @@ def ensemble_identification(
         dimension_order,
         ctypes.byref(ctypes.c_int(seed_index)),
         ctypes.byref(ctypes.c_int(k_min)),
-        ctypes.byref(ctypes.c_double(alpha_max)),
+        ctypes.byref(ctypes.c_double(chordal_dist_max_as_prcnt_of_range)),
         ctypes.byref(ctypes.c_int(d_max)),
         ctypes.byref(ctypes.c_double(G_max)),
+        ctypes.byref(ctypes.c_double(RMSE_change_max)),
         ctypes.byref(ctypes.c_double(f_max)),
         ctypes.byref(ctypes.c_int(a)),
         ctypes.byref(ctypes.c_int(o)),
@@ -297,6 +321,8 @@ def ensemble_identification(
         accepted_history,
         member_added_at_step,
         low_confidence_mask,
+        U_first,
+        ctypes.byref(d_first),
         ctypes.byref(ierr),
     )
 
@@ -313,6 +339,7 @@ def ensemble_identification(
     accepted_history.flags.writeable = False
     member_added_at_step.flags.writeable = False
     low_confidence_mask.flags.writeable = False
+    U_first.flags.writeable = False
 
     return {
         "final_ensemble_mask": final_ensemble_mask,
@@ -327,6 +354,8 @@ def ensemble_identification(
         "accepted_history": accepted_history,
         "member_added_at_step": member_added_at_step,
         "low_confidence_mask": low_confidence_mask,
+        "U_first": U_first,
+        "d_first": d_first.value,
     }
 
 def ensemble_identification_merged(
@@ -334,9 +363,10 @@ def ensemble_identification_merged(
         kd_indices,
         dimension_order,
         seed_selection_mask,
-        alpha_max,
+        chordal_dist_max_as_prcnt_of_range,
         d_max,
         G_max,
+        RMSE_change_max,
         o,
         k_min=30,
         f_max=0.95,
@@ -363,15 +393,19 @@ def ensemble_identification_merged(
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
         The default value is `30`.
-    alpha_max : float
-        Maximum tolerated principal angle (radians), see `accept_ensemble`
+    chordal_dist_max_as_prcnt_of_range : float
+        Maximum tolerated chordal distance between tangent bases, as a fraction of its
+        own [0, sqrt(d)] range, see `accept_ensemble`
         The minimum valid value is `0.0`.
-        The maximum valid value is `2.0 * atan(1.0)`.
+        The maximum valid value is `1.0`.
     d_max : int
         Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
         The minimum valid value is `0`.
     G_max : float
         Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+        The minimum valid value is `0.0`.
+    RMSE_change_max : float
+        Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
         The minimum valid value is `0.0`.
     f_max : float, optional, default 0.95
         Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -428,6 +462,12 @@ def ensemble_identification_merged(
             A result is a value; call `.copy()` to obtain a modifiable array.
         ensemble_low_confidence_masks : np.ndarray[np.bool_] of shape (n_vectors, n_selected_seed,), column-major (order='F'), read-only
             Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_U_first : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions, n_selected_seed,), column-major (order='F'), read-only
+            Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_d_first : np.ndarray[np.int32] of shape (n_selected_seed,), read-only
+            Per-ensemble bootstrap-iteration intrinsic dimension, see `d_first`
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -498,6 +538,8 @@ def ensemble_identification_merged(
     ensemble_accepted_history = np.empty((o, n_selected_seed,), dtype=np.bool_, order='F')
     ensemble_member_added_at_step = np.empty((n_vectors, n_selected_seed,), dtype=np.int32, order='F')
     ensemble_low_confidence_masks = np.empty((n_vectors, n_selected_seed,), dtype=np.bool_, order='F')
+    ensemble_U_first = np.empty((n_dimensions, n_dimensions, n_selected_seed,), dtype=np.float64, order='F')
+    ensemble_d_first = np.empty((n_selected_seed,), dtype=np.int32, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.ensemble_identification_merged_c(
@@ -509,9 +551,10 @@ def ensemble_identification_merged(
         seed_selection_mask,
         ctypes.byref(ctypes.c_int(n_selected_seed)),
         ctypes.byref(ctypes.c_int(k_min)),
-        ctypes.byref(ctypes.c_double(alpha_max)),
+        ctypes.byref(ctypes.c_double(chordal_dist_max_as_prcnt_of_range)),
         ctypes.byref(ctypes.c_int(d_max)),
         ctypes.byref(ctypes.c_double(G_max)),
+        ctypes.byref(ctypes.c_double(RMSE_change_max)),
         ctypes.byref(ctypes.c_double(f_max)),
         ctypes.byref(ctypes.c_int(a)),
         ctypes.byref(ctypes.c_int(o)),
@@ -527,6 +570,8 @@ def ensemble_identification_merged(
         ensemble_accepted_history,
         ensemble_member_added_at_step,
         ensemble_low_confidence_masks,
+        ensemble_U_first,
+        ensemble_d_first,
         ctypes.byref(ierr),
     )
 
@@ -545,6 +590,8 @@ def ensemble_identification_merged(
     ensemble_accepted_history.flags.writeable = False
     ensemble_member_added_at_step.flags.writeable = False
     ensemble_low_confidence_masks.flags.writeable = False
+    ensemble_U_first.flags.writeable = False
+    ensemble_d_first.flags.writeable = False
 
     return {
         "ensemble_masks": ensemble_masks,
@@ -559,4 +606,6 @@ def ensemble_identification_merged(
         "ensemble_accepted_history": ensemble_accepted_history,
         "ensemble_member_added_at_step": ensemble_member_added_at_step,
         "ensemble_low_confidence_masks": ensemble_low_confidence_masks,
+        "ensemble_U_first": ensemble_U_first,
+        "ensemble_d_first": ensemble_d_first,
     }

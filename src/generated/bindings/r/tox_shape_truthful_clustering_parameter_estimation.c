@@ -113,7 +113,7 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     double estimated_k_min = 0;
     double estimated_k_density = 0;
     double estimated_density_quantile = 0;
-    double estimated_alpha_max = 0;
+    double estimated_chordal_dist_max_as_prcnt_of_range = 0;
     double estimated_G_max = 0;
     double estimated_d_max = 0;
     int ierr = 0;
@@ -132,7 +132,7 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
         &estimated_k_min,
         &estimated_k_density,
         &estimated_density_quantile,
-        &estimated_alpha_max,
+        &estimated_chordal_dist_max_as_prcnt_of_range,
         &estimated_G_max,
         &estimated_d_max,
         &ierr
@@ -142,7 +142,7 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(estimated_k_min));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarReal(estimated_k_density));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(estimated_density_quantile));
-    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(estimated_alpha_max));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(estimated_chordal_dist_max_as_prcnt_of_range));
     SET_VECTOR_ELT(_out, 4, Rf_ScalarReal(estimated_G_max));
     SET_VECTOR_ELT(_out, 5, Rf_ScalarReal(estimated_d_max));
     SET_VECTOR_ELT(_out, 6, Rf_ScalarInteger(ierr));
@@ -150,7 +150,7 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     SET_STRING_ELT(_nms, 0, Rf_mkChar("estimated_k_min"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("estimated_k_density"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("estimated_density_quantile"));
-    SET_STRING_ELT(_nms, 3, Rf_mkChar("estimated_alpha_max"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("estimated_chordal_dist_max_as_prcnt_of_range"));
     SET_STRING_ELT(_nms, 4, Rf_mkChar("estimated_G_max"));
     SET_STRING_ELT(_nms, 5, Rf_mkChar("estimated_d_max"));
     SET_STRING_ELT(_nms, 6, Rf_mkChar("ierr"));

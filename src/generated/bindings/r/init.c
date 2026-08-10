@@ -135,10 +135,10 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP, SEXP, SEXP);
 SEXP compute_relative_axis_contributions_call(SEXP);
 SEXP relative_axes_changes_from_shift_vector_call(SEXP);
 SEXP relative_axes_expression_from_expression_vector_call(SEXP);
-SEXP ensemble_identification_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP ensemble_identification_merged_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP accept_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP, SEXP);
+SEXP ensemble_identification_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP ensemble_identification_merged_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP accept_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP);
 SEXP calc_ensemble_growth_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP grow_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normal_error_call(SEXP, SEXP);
@@ -262,10 +262,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_relative_axis_contributions_call", (DL_FUNC) &compute_relative_axis_contributions_call, 1},
     {"relative_axes_changes_from_shift_vector_call", (DL_FUNC) &relative_axes_changes_from_shift_vector_call, 1},
     {"relative_axes_expression_from_expression_vector_call", (DL_FUNC) &relative_axes_expression_from_expression_vector_call, 1},
-    {"ensemble_identification_call", (DL_FUNC) &ensemble_identification_call, 11},
-    {"ensemble_identification_merged_call", (DL_FUNC) &ensemble_identification_merged_call, 11},
-    {"accept_ensemble_call", (DL_FUNC) &accept_ensemble_call, 9},
-    {"tox_stc_accept_ensemble_svd_workspace_call", (DL_FUNC) &tox_stc_accept_ensemble_svd_workspace_call, 2},
+    {"ensemble_identification_call", (DL_FUNC) &ensemble_identification_call, 12},
+    {"ensemble_identification_merged_call", (DL_FUNC) &ensemble_identification_merged_call, 12},
+    {"accept_ensemble_call", (DL_FUNC) &accept_ensemble_call, 15},
+    {"tox_stc_accept_ensemble_svd_workspace_call", (DL_FUNC) &tox_stc_accept_ensemble_svd_workspace_call, 1},
     {"calc_ensemble_growth_radius_call", (DL_FUNC) &calc_ensemble_growth_radius_call, 6},
     {"grow_ensemble_call", (DL_FUNC) &grow_ensemble_call, 5},
     {"normal_error_call", (DL_FUNC) &normal_error_call, 2},

@@ -45,9 +45,10 @@ contains
             dimension_order,&
             seed_index,&
             k_min,&
-            alpha_max,&
+            chordal_dist_max_as_prcnt_of_range,&
             d_max,&
             G_max,&
+            RMSE_change_max,&
             f_max,&
             a,&
             o,&
@@ -63,6 +64,8 @@ contains
             accepted_history,&
             member_added_at_step,&
             low_confidence_mask,&
+            U_first,&
+            d_first,&
             ierr&
         )
         integer(int32), intent(in) :: n_dimensions
@@ -95,15 +98,19 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
-        real(real64), intent(in) :: alpha_max
-            !! Maximum tolerated principal angle (radians), see `accept_ensemble`
+        real(real64), intent(in) :: chordal_dist_max_as_prcnt_of_range
+            !! Maximum tolerated chordal distance between tangent bases, as a fraction of its
+            !! own [0, sqrt(d)] range, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `2.0_real64 * atan(1.0_real64)`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
         real(real64), intent(in) :: G_max
             !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), intent(in) :: RMSE_change_max
+            !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
         real(real64), intent(in), optional :: f_max
             !! Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -162,6 +169,15 @@ contains
             !! genuine observable (an isolated seed, or a seed whose very first growth step
             !! already exceeds f_max*N) -- see "Ensemble identification", "Output" in
             !! misc/mod_STC.md
+        real(real64), dimension(n_dimensions, n_dimensions), intent(out) :: U_first
+            !! Tangent+normal basis at the bootstrap iteration (iteration 1), retained for the
+            !! whole growth, never evicted by the trailing o-window above -- see
+            !! `accept_ensemble`'s tangent-space-drift criterion in misc/mod_STC.md. All-zero
+            !! whenever iteration 1 itself never produced a genuine observable, same condition
+            !! as `low_confidence_mask` above.
+        integer(int32), intent(out) :: d_first
+            !! Intrinsic dimension at the bootstrap iteration, see `U_first`. Zero under the
+            !! same all-zero condition as `U_first`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
@@ -173,12 +189,13 @@ contains
         call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
         call validate_in_range_int(seed_index, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors)
         call validate_in_range_int(k_min, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors - 1_int32)
-        call validate_in_range_real(alpha_max, ierr, arg_pos=8_int32, min=0.0_real64, max=2.0_real64 * atan(1.0_real64))
+        call validate_in_range_real(chordal_dist_max_as_prcnt_of_range, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(d_max, ierr, arg_pos=9_int32, min=0_int32)
         call validate_in_range_real(G_max, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_in_range_real(f_max, ierr, arg_pos=11_int32, min=above(0.0_real64), max=1.0_real64)
-        call validate_in_range_int(a, ierr, arg_pos=12_int32, min=1_int32)
-        call validate_in_range_int(o, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_in_range_real(RMSE_change_max, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_real(f_max, ierr, arg_pos=12_int32, min=above(0.0_real64), max=1.0_real64)
+        call validate_in_range_int(a, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_in_range_int(o, ierr, arg_pos=14_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -193,9 +210,10 @@ contains
             dimension_order = dimension_order,&
             seed_index = seed_index,&
             k_min = k_min,&
-            alpha_max = alpha_max,&
+            chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
             d_max = d_max,&
             G_max = G_max,&
+            RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
             a = a,&
             o = o,&
@@ -211,6 +229,8 @@ contains
             accepted_history = accepted_history,&
             member_added_at_step = member_added_at_step,&
             low_confidence_mask = low_confidence_mask,&
+            U_first = U_first,&
+            d_first = d_first,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
@@ -244,9 +264,10 @@ contains
             seed_selection_mask,&
             n_selected_seed,&
             k_min,&
-            alpha_max,&
+            chordal_dist_max_as_prcnt_of_range,&
             d_max,&
             G_max,&
+            RMSE_change_max,&
             f_max,&
             a,&
             o,&
@@ -262,6 +283,8 @@ contains
             ensemble_accepted_history,&
             ensemble_member_added_at_step,&
             ensemble_low_confidence_masks,&
+            ensemble_U_first,&
+            ensemble_d_first,&
             ierr&
         )
         integer(int32), intent(in) :: n_dimensions
@@ -295,15 +318,19 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
-        real(real64), intent(in) :: alpha_max
-            !! Maximum tolerated principal angle (radians), see `accept_ensemble`
+        real(real64), intent(in) :: chordal_dist_max_as_prcnt_of_range
+            !! Maximum tolerated chordal distance between tangent bases, as a fraction of its
+            !! own [0, sqrt(d)] range, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `2.0_real64 * atan(1.0_real64)`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
         real(real64), intent(in) :: G_max
             !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), intent(in) :: RMSE_change_max
+            !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
         real(real64), intent(in), optional :: f_max
             !! Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
@@ -339,6 +366,10 @@ contains
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
         logical, dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_low_confidence_masks
             !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
+        real(real64), dimension(n_dimensions, n_dimensions, n_selected_seed), intent(out) :: ensemble_U_first
+            !! Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`
+        integer(int32), dimension(n_selected_seed), intent(out) :: ensemble_d_first
+            !! Per-ensemble bootstrap-iteration intrinsic dimension, see `d_first`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
@@ -349,12 +380,13 @@ contains
         call validate_dimension_size(n_vectors, ierr, arg_pos=3_int32)
         call validate_in_range_int(n_selected_seed, ierr, arg_pos=7_int32, min=0_int32, max=n_vectors)
         call validate_in_range_int(k_min, ierr, arg_pos=8_int32, min=1_int32, max=n_vectors - 1_int32)
-        call validate_in_range_real(alpha_max, ierr, arg_pos=9_int32, min=0.0_real64, max=2.0_real64 * atan(1.0_real64))
+        call validate_in_range_real(chordal_dist_max_as_prcnt_of_range, ierr, arg_pos=9_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(d_max, ierr, arg_pos=10_int32, min=0_int32)
         call validate_in_range_real(G_max, ierr, arg_pos=11_int32, min=0.0_real64)
-        call validate_in_range_real(f_max, ierr, arg_pos=12_int32, min=above(0.0_real64), max=1.0_real64)
-        call validate_in_range_int(a, ierr, arg_pos=13_int32, min=1_int32)
-        call validate_in_range_int(o, ierr, arg_pos=14_int32, min=1_int32)
+        call validate_in_range_real(RMSE_change_max, ierr, arg_pos=12_int32, min=0.0_real64)
+        call validate_in_range_real(f_max, ierr, arg_pos=13_int32, min=above(0.0_real64), max=1.0_real64)
+        call validate_in_range_int(a, ierr, arg_pos=14_int32, min=1_int32)
+        call validate_in_range_int(o, ierr, arg_pos=15_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -371,9 +403,10 @@ contains
             seed_selection_mask = seed_selection_mask,&
             n_selected_seed = n_selected_seed,&
             k_min = k_min,&
-            alpha_max = alpha_max,&
+            chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
             d_max = d_max,&
             G_max = G_max,&
+            RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
             a = a,&
             o = o,&
@@ -389,6 +422,8 @@ contains
             ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
             ensemble_low_confidence_masks = ensemble_low_confidence_masks,&
+            ensemble_U_first = ensemble_U_first,&
+            ensemble_d_first = ensemble_d_first,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)

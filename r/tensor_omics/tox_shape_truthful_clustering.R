@@ -39,12 +39,15 @@
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors - 1`.
 #'   The default value is `30`.
-#' @param alpha_max a numeric scalar. Maximum tolerated principal angle (radians), see `accept_ensemble`
+#' @param chordal_dist_max_as_prcnt_of_range a numeric scalar. Maximum tolerated chordal distance between tangent bases, as a fraction of its
+#'   own [0, sqrt(d)] range, see `accept_ensemble`
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `2.0 * atan(1.0)`.
+#'   The maximum valid value is `1.0`.
 #' @param d_max a integer scalar. Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
 #'   The minimum valid value is `0`.
 #' @param G_max a numeric scalar. Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+#'   The minimum valid value is `0.0`.
+#' @param RMSE_change_max a numeric scalar. Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
 #'   The minimum valid value is `0.0`.
 #' @param f_max a numeric scalar. Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
 #'   The minimum valid value is `above(0.0)`.
@@ -95,16 +98,24 @@
 #'     genuine observable (an isolated seed, or a seed whose very first growth step
 #'     already exceeds f_max*N) -- see "Ensemble identification", "Output" in
 #'     misc/mod_STC.md}
+#'   \item{U_first}{a numeric matrix. Tangent+normal basis at the bootstrap iteration (iteration 1), retained for the
+#'     whole growth, never evicted by the trailing o-window above -- see
+#'     `accept_ensemble`'s tangent-space-drift criterion in misc/mod_STC.md. All-zero
+#'     whenever iteration 1 itself never produced a genuine observable, same condition
+#'     as `low_confidence_mask` above.}
+#'   \item{d_first}{a integer scalar. Intrinsic dimension at the bootstrap iteration, see `U_first`. Zero under the
+#'     same all-zero condition as `U_first`.}
 #' @export
-ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_index, k_min = 30L, alpha_max, d_max, G_max, f_max = 0.95, a = 2L, o) {
+ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_index, k_min = 30L, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max = 0.95, a = 2L, o) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
     seed_index <- .tox_as_integer_scalar(seed_index, "seed_index")
     k_min <- .tox_as_integer_scalar(k_min, "k_min")
-    alpha_max <- .tox_as_double_scalar(alpha_max, "alpha_max")
+    chordal_dist_max_as_prcnt_of_range <- .tox_as_double_scalar(chordal_dist_max_as_prcnt_of_range, "chordal_dist_max_as_prcnt_of_range")
     d_max <- .tox_as_integer_scalar(d_max, "d_max")
     G_max <- .tox_as_double_scalar(G_max, "G_max")
+    RMSE_change_max <- .tox_as_double_scalar(RMSE_change_max, "RMSE_change_max")
     f_max <- .tox_as_double_scalar(f_max, "f_max")
     a <- .tox_as_integer_scalar(a, "a")
     o <- .tox_as_integer_scalar(o, "o")
@@ -113,9 +124,9 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
     if (length(kd_indices) != dim(vectors)[2])
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
-    .result <- .Call("ensemble_identification_call", vectors, kd_indices, dimension_order, seed_index, k_min, alpha_max, d_max, G_max, f_max, a, o)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("ensemble_identification_call", vectors, kd_indices, dimension_order, seed_index, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, o)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "U_first", "d_first", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -130,7 +141,9 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
         k_history = .result$k_history,
         accepted_history = .result$accepted_history,
         member_added_at_step = .result$member_added_at_step,
-        low_confidence_mask = .result$low_confidence_mask
+        low_confidence_mask = .result$low_confidence_mask,
+        U_first = .result$U_first,
+        d_first = .result$d_first
     )
 }
 
@@ -170,12 +183,15 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors - 1`.
 #'   The default value is `30`.
-#' @param alpha_max a numeric scalar. Maximum tolerated principal angle (radians), see `accept_ensemble`
+#' @param chordal_dist_max_as_prcnt_of_range a numeric scalar. Maximum tolerated chordal distance between tangent bases, as a fraction of its
+#'   own [0, sqrt(d)] range, see `accept_ensemble`
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `2.0 * atan(1.0)`.
+#'   The maximum valid value is `1.0`.
 #' @param d_max a integer scalar. Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
 #'   The minimum valid value is `0`.
 #' @param G_max a numeric scalar. Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+#'   The minimum valid value is `0.0`.
+#' @param RMSE_change_max a numeric scalar. Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
 #'   The minimum valid value is `0.0`.
 #' @param f_max a numeric scalar. Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
 #'   The minimum valid value is `above(0.0)`.
@@ -201,16 +217,19 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
 #'   \item{ensemble_accepted_history}{a logical matrix. Per-ensemble trailing accepted flags, see `accepted_history`}
 #'   \item{ensemble_member_added_at_step}{a integer matrix. Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`}
 #'   \item{ensemble_low_confidence_masks}{a logical matrix. Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`}
+#'   \item{ensemble_U_first}{a numeric array of rank 3. Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`}
+#'   \item{ensemble_d_first}{a integer vector. Per-ensemble bootstrap-iteration intrinsic dimension, see `d_first`}
 #' @export
-ensemble_identification_merged <- function(vectors, kd_indices, dimension_order, seed_selection_mask, k_min = 30L, alpha_max, d_max, G_max, f_max = 0.95, a = 2L, o) {
+ensemble_identification_merged <- function(vectors, kd_indices, dimension_order, seed_selection_mask, k_min = 30L, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max = 0.95, a = 2L, o) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
     seed_selection_mask <- .tox_as_logical(seed_selection_mask, "seed_selection_mask")
     k_min <- .tox_as_integer_scalar(k_min, "k_min")
-    alpha_max <- .tox_as_double_scalar(alpha_max, "alpha_max")
+    chordal_dist_max_as_prcnt_of_range <- .tox_as_double_scalar(chordal_dist_max_as_prcnt_of_range, "chordal_dist_max_as_prcnt_of_range")
     d_max <- .tox_as_integer_scalar(d_max, "d_max")
     G_max <- .tox_as_double_scalar(G_max, "G_max")
+    RMSE_change_max <- .tox_as_double_scalar(RMSE_change_max, "RMSE_change_max")
     f_max <- .tox_as_double_scalar(f_max, "f_max")
     a <- .tox_as_integer_scalar(a, "a")
     o <- .tox_as_integer_scalar(o, "o")
@@ -221,9 +240,9 @@ ensemble_identification_merged <- function(vectors, kd_indices, dimension_order,
     if (length(seed_selection_mask) != dim(vectors)[2])
         .tox_shape_error("seed_selection_mask", length(seed_selection_mask), "vectors", dim(vectors)[2])
 
-    .result <- .Call("ensemble_identification_merged_call", vectors, kd_indices, dimension_order, seed_selection_mask, k_min, alpha_max, d_max, G_max, f_max, a, o)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "alpha_max", "d_max", "G_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("ensemble_identification_merged_call", vectors, kd_indices, dimension_order, seed_selection_mask, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, o)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -238,6 +257,8 @@ ensemble_identification_merged <- function(vectors, kd_indices, dimension_order,
         ensemble_k_history = .result$ensemble_k_history,
         ensemble_accepted_history = .result$ensemble_accepted_history,
         ensemble_member_added_at_step = .result$ensemble_member_added_at_step,
-        ensemble_low_confidence_masks = .result$ensemble_low_confidence_masks
+        ensemble_low_confidence_masks = .result$ensemble_low_confidence_masks,
+        ensemble_U_first = .result$ensemble_U_first,
+        ensemble_d_first = .result$ensemble_d_first
     )
 }

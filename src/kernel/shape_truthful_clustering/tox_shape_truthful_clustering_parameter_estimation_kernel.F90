@@ -3,8 +3,9 @@
 !> # Shape Truthful Clustering (STC): Parameter Estimation
 !|
 !| A separate, optional pipeline step estimating near-optimal starting values for the crucial
-!| parameters (`k_min`, `k_density`, `density_quantile`, `alpha_max`, `G_max`, `d_max`)
-!| directly from the input data, at a fraction of the cost of a grid search or a
+!| parameters (`k_min`, `k_density`, `density_quantile`,
+!| `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
+!| fraction of the cost of a grid search or a
 !| resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local
 !| neighborhoods using the same primitives the real pipeline already has
 !| (`density_labels`, `observable`), then read the parameters off simple summary statistics of
@@ -201,7 +202,7 @@ contains
 
     end subroutine tox_stc_estimate_parameters_svd_workspace
 
-    !> summary: Estimate k_min, k_density, density_quantile, alpha_max, G_max, d_max from the data
+    !> summary: Estimate k_min, k_density, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
     !| AUTHOR_ASIS_HALLAB
     !| Orchestrates density_labels -> sample_estimator_anchors -> grow_estimator_anchor_clouds
     !| -> observable (once per EA) -> pairwise EA comparisons -> aggregation. See
@@ -209,12 +210,14 @@ contains
     !| output and the reasoning behind each. EAs whose final cloud has fewer than 2 members
     !| (no meaningful SVD possible -- a documented, deliberately unguarded-against possibility
     !| of `grow_estimator_anchor_clouds`'s own stop condition, see there) are excluded from
-    !| every statistic below; `ierr` is set if fewer than 2 EAs remain usable, since no
-    !| pairwise comparison -- and therefore no alpha_max/G_max/d_max estimate -- is possible
-    !| at all in that case. This is the one genuine, input-shape-dependent runtime failure this
-    !| SKG can hit that no simple per-argument DM_* annotation could foresee (it depends on the
-    !| data's own spatial distribution, not just n_vectors/n_anchors/seed_max_set_size in
-    !| isolation) -- see `codegen_guide.md` section 5.14.
+    !| every statistic below; `ierr` is set if fewer than 2 EAs remain usable (no pairwise
+    !| comparison -- and therefore no G_max/d_max estimate -- is possible at all), or if every
+    !| usable pair has a zero shared rank (no chordal-distance estimate possible either, even
+    !| though G_max/d_max still are). Both are the one genuine, input-shape-dependent runtime
+    !| failure this SKG can hit that no simple per-argument DM_* annotation could foresee (it
+    !| depends on the data's own spatial distribution, not just
+    !| n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
+    !| 5.14.
     pure subroutine estimate_stc_parameters_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                    k_density, bandwidth_percentile, &
                                                    n_anchors, seed_max_set_size, first_quartile_percentile, &
@@ -225,7 +228,8 @@ contains
                                                    tmp_y, tmp_s, tmp_u_econ, tmp_vt_econ, tmp_work, tmp_iwork, &
                                                    tmp_angle_m, tmp_angle_s, tmp_angle_work, &
                                                    estimated_k_min, estimated_k_density, estimated_density_quantile, &
-                                                   estimated_alpha_max, estimated_G_max, estimated_d_max, ierr)
+                                                   estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, &
+                                                   estimated_d_max, ierr)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
             !! DM_MIN(2_int32)
@@ -264,7 +268,7 @@ contains
             !! DM_DEFAULT(CM_SEED_MAX_SET_SIZE_DEFAULT)
         real(real64), intent(in), optional :: first_quartile_percentile
             !! Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
-            !! alpha_max/G_max/d_max, see estimate_stc_parameters
+            !! chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
             !! DM_DEFAULT(CM_FIRST_QUARTILE_PERCENTILE_DEFAULT)
@@ -317,8 +321,8 @@ contains
             !! Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         real(real64), intent(out) :: estimated_density_quantile
             !! Estimated density_quantile -- a literal radius (data units), not a percentile
-        real(real64), intent(out) :: estimated_alpha_max
-            !! Estimated alpha_max (radians)
+        real(real64), intent(out) :: estimated_chordal_dist_max_as_prcnt_of_range
+            !! Estimated chordal_dist_max_as_prcnt_of_range (0 to 1)
         real(real64), intent(out) :: estimated_G_max
             !! Estimated G_max
         real(real64), intent(out) :: estimated_d_max
@@ -326,7 +330,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success
 
-        integer(int32) :: actual_n_anchors, e, i, j, n_valid, d_common, info
+        integer(int32) :: actual_n_anchors, e, i, j, k, n_valid, d_common, info
         real(real64)   :: u_dummy(1, 1), vt_dummy(1, 1)
         real(real64)   :: actual_first_quartile_percentile
         real(real64)   :: k_vals(n_vectors), dist_vals(n_vectors), median_dist_vals(n_vectors)
@@ -334,13 +338,13 @@ contains
         real(real64)   :: G_vals(n_vectors)
         real(real64)   :: U_vals(n_dimensions, n_dimensions, n_vectors)
         integer(int32) :: k_perm(n_vectors), dist_perm(n_vectors)
-        integer(int32) :: n_pairs, pair_perm(n_vectors*(n_vectors - 1)/2)
-        real(real64)   :: angle_vals(n_vectors*(n_vectors - 1)/2)
+        integer(int32) :: n_pairs, n_chordal_pairs, pair_perm(n_vectors*(n_vectors - 1)/2)
+        real(real64)   :: chordal_vals(n_vectors*(n_vectors - 1)/2)
         real(real64)   :: g_ratio_vals(n_vectors*(n_vectors - 1)/2)
         real(real64)   :: d_diff_vals(n_vectors*(n_vectors - 1)/2)
         real(real64)   :: mu_local(n_dimensions), normal_error_local, tangent_scales_local(n_dimensions)
         real(real64)   :: eigenvalues_local(n_dimensions)
-        real(real64)   :: cos_alpha, tmp_median
+        real(real64)   :: cos_theta, chordal_sum_sq, tmp_median
         integer(int32) :: n_members
 
         call set_ok(ierr)
@@ -418,7 +422,8 @@ contains
                                     estimated_density_quantile)
 
         ! --- Aggregation: first_quartile_percentile over all pairs of the n_valid EAs -------
-        n_pairs = 0
+        n_pairs         = 0
+        n_chordal_pairs = 0
         do i = 1, n_valid - 1
             do j = i + 1, n_valid
                 n_pairs = n_pairs + 1
@@ -434,13 +439,20 @@ contains
                         call set_err_once(ierr, ERR_INTERNAL)
                         return
                     end if
-                    ! dgesvd's singular values are descending, so index d_common holds the
-                    ! smallest -- cos of the *largest* principal angle, i.e. the one
-                    ! accept_ensemble's own all-angles-must-pass check would actually bind on.
-                    cos_alpha = max(-1.0_real64, min(1.0_real64, tmp_angle_s(d_common)))
-                    angle_vals(n_pairs) = acos(cos_alpha)
-                else
-                    angle_vals(n_pairs) = 0.0_real64
+                    ! Chordal distance across all d_common principal angles (not just the
+                    ! worst one), normalized by sqrt(d_common) -- exactly
+                    ! chordal_dist_max_as_prcnt_of_range's own definition, see
+                    ! misc/mod_STC.md, SKG accept_ensemble, criterion (1). Pairs with
+                    ! d_common=0 are excluded from this sample entirely (nothing to compare),
+                    ! not counted as a zero -- unlike g_ratio_vals/d_diff_vals below, which
+                    ! stay defined for every pair regardless of d_common.
+                    n_chordal_pairs = n_chordal_pairs + 1
+                    chordal_sum_sq  = 0.0_real64
+                    do k = 1, d_common
+                        cos_theta      = max(-1.0_real64, min(1.0_real64, tmp_angle_s(k)))
+                        chordal_sum_sq = chordal_sum_sq + (1.0_real64 - cos_theta**2)
+                    end do
+                    chordal_vals(n_chordal_pairs) = sqrt(chordal_sum_sq)/sqrt(real(d_common, real64))
                 end if
 
                 g_ratio_vals(n_pairs) = abs(log(G_vals(j)/G_vals(i)))
@@ -448,10 +460,15 @@ contains
             end do
         end do
 
-        call init_perm(pair_perm(1:n_pairs))
-        call sort_real_heapsort(angle_vals(1:n_pairs), pair_perm(1:n_pairs))
-        call calc_percentile_helper(angle_vals(1:n_pairs), pair_perm(1:n_pairs), &
-                                    actual_first_quartile_percentile, estimated_alpha_max)
+        if (n_chordal_pairs < 1) then
+            call set_err_once(ierr, ERR_INTERNAL)
+            return
+        end if
+
+        call init_perm(pair_perm(1:n_chordal_pairs))
+        call sort_real_heapsort(chordal_vals(1:n_chordal_pairs), pair_perm(1:n_chordal_pairs))
+        call calc_percentile_helper(chordal_vals(1:n_chordal_pairs), pair_perm(1:n_chordal_pairs), &
+                                    actual_first_quartile_percentile, estimated_chordal_dist_max_as_prcnt_of_range)
 
         call init_perm(pair_perm(1:n_pairs))
         call sort_real_heapsort(g_ratio_vals(1:n_pairs), pair_perm(1:n_pairs))

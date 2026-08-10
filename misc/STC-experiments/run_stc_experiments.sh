@@ -24,12 +24,12 @@ fi
 
 # --- 3. Argument parsing ----------------------------------------------------------------
 if [ "$#" -lt 1 ]; then
-    echo "Usage: $0 <file.csv|all> [k_min_list] [alpha_max_deg_list] [d_max_list] [g_max_list] [reconciliation_mode_list] [min_jsi_list] [k_density_list] [exclusion_radius_percentile_list]"
-    echo "Example: $0 data/2d/s_curve_2d_noise_low.csv 30 30 1 3.0 merge_jsi 0.1"
-    echo "Example with lists: $0 data/2d/s_curve_2d_noise_low.csv 15,30 30,60 1,2 3.0,8.0 merge_jsi,merge_any 0.1"
+    echo "Usage: $0 <file.csv|all> [k_min_list] [chordal_dist_max_as_prcnt_of_range_list] [d_max_list] [g_max_list] [reconciliation_mode_list] [min_jsi_list] [k_density_list] [exclusion_radius_percentile_list]"
+    echo "Example: $0 data/2d/s_curve_2d_noise_low.csv 30 0.5 1 3.0 merge_jsi 0.1"
+    echo "Example with lists: $0 data/2d/s_curve_2d_noise_low.csv 15,30 0.5,0.7 1,2 3.0,8.0 merge_jsi,merge_any 0.1"
     echo "Example, all datasets: $0 all"
     echo "Example, k_density and exclusion_radius_percentile swept independently of k_min:"
-    echo "  $0 data/2d/s_curve_2d_noise_low.csv 30 30 1 3.0 merge_jsi 0.1 15,30 25,50"
+    echo "  $0 data/2d/s_curve_2d_noise_low.csv 30 0.5 1 3.0 merge_jsi 0.1 15,30 25,50"
     echo "Note: k_density_list defaults to 30 (not k_min_list) if omitted -- these two are"
     echo "independent SKG-level parameters, see run_stc.py's own --k-density help text."
     exit 1
@@ -37,7 +37,7 @@ fi
 
 dataset_input=$1
 k_min_list=(${2:-30}); k_min_list=(${k_min_list[@]//,/ })
-alpha_max_deg_list=(${3:-30}); alpha_max_deg_list=(${alpha_max_deg_list[@]//,/ })
+chordal_dist_max_list=(${3:-0.5}); chordal_dist_max_list=(${chordal_dist_max_list[@]//,/ })
 d_max_list=(${4:-1}); d_max_list=(${d_max_list[@]//,/ })
 g_max_list=(${5:-3.0}); g_max_list=(${g_max_list[@]//,/ })
 mode_list=(${6:-merge_jsi}); mode_list=(${mode_list[@]//,/ })
@@ -55,7 +55,7 @@ process_file() {
     local base_name
     base_name=$(basename "$f" .csv)
     for k in "${k_min_list[@]}"; do
-        for alpha in "${alpha_max_deg_list[@]}"; do
+        for chordal in "${chordal_dist_max_list[@]}"; do
             for d in "${d_max_list[@]}"; do
                 for g in "${g_max_list[@]}"; do
                     for mode in "${mode_list[@]}"; do
@@ -64,11 +64,12 @@ process_file() {
                                 for erp in "${exclusion_radius_percentile_list[@]}"; do
                                     echo "------------------------------------------"
                                     echo "EXECUTING: $f"
-                                    echo "Parameters: k_min=$k, k_density=$kd, alpha_max_deg=$alpha, d_max=$d, g_max=$g, reconciliation_mode=$mode, min_jsi=$min_jsi, exclusion_radius_percentile=$erp"
+                                    echo "Parameters: k_min=$k, k_density=$kd, chordal_dist_max_as_prcnt_of_range=$chordal, d_max=$d, g_max=$g, reconciliation_mode=$mode, min_jsi=$min_jsi, exclusion_radius_percentile=$erp"
 
-                                    prefix="$SCRIPT_DIR/results/data/${base_name}_k${k}_kd${kd}_a${alpha}_d${d}_g${g}_${mode}_j${min_jsi}_erp${erp}"
+                                    prefix="$SCRIPT_DIR/results/data/${base_name}_k${k}_kd${kd}_cd${chordal}_d${d}_g${g}_${mode}_j${min_jsi}_erp${erp}"
                                     python3 "$SCRIPT_DIR/run_stc.py" "$f" \
-                                        --k-min "$k" --k-density "$kd" --alpha-max-deg "$alpha" --d-max "$d" --g-max "$g" \
+                                        --k-min "$k" --k-density "$kd" --chordal-dist-max-as-prcnt-of-range "$chordal" \
+                                        --d-max "$d" --g-max "$g" \
                                         --reconciliation-mode "$mode" --min-jsi "$min_jsi" \
                                         --exclusion-radius-percentile "$erp" --estimate-parameters \
                                         --out-prefix "$prefix"

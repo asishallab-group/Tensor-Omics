@@ -78,17 +78,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(4)
         real(real64)   :: growth_radius, G_history(4), mu_history(2, 4), S_history(2, 4), U_history(2, 2, 4)
+        real(real64)   :: U_first(2, 2)
+        integer(int32) :: d_first
 
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=4_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -116,6 +118,13 @@ contains
         expected_mask(1:2) = .true.
         call assert_equal_array_logical(low_confidence_mask, expected_mask, 7_int32, &
                                         "natural fixed point: low_confidence_mask is iteration 1's own mask")
+
+        ! U_first/d_first: the bootstrap iteration's own tangent basis, {1,2} along the x-axis
+        ! -- collinear, so d_first=1 and the first column is the x-axis unit vector (up to
+        ! SVD's own sign ambiguity), never overwritten by the three further accepted iterations.
+        call assert_equal_int(d_first, 1_int32, "natural fixed point: d_first is the bootstrap's own d")
+        call assert_equal_real(abs(U_first(1,1)), 1.0d0, 1.0d-9, "natural fixed point: U_first column 1, x")
+        call assert_equal_real(abs(U_first(2,1)), 0.0d0, 1.0d-9, "natural fixed point: U_first column 1, y")
     end subroutine test_ensemble_identification_natural_fixed_point
 
     !> Same fixture and trajectory, but o=2: only the last 2 of the 4 accepted iterations
@@ -129,17 +138,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(2)
         real(real64)   :: growth_radius, G_history(2), mu_history(2, 2), S_history(2, 2), U_history(2, 2, 2)
+        real(real64)   :: U_first(2, 2)
+        integer(int32) :: d_first
 
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=2_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=2_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -162,17 +173,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
+        real(real64)   :: U_first(2, 2)
+        integer(int32) :: d_first
 
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, f_max=0.2d0, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, f_max=0.2d0, &
                                      o=3_int32, final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -192,6 +205,8 @@ contains
         ! after-acceptance case below, there is no real iteration-1 data to report either.
         call assert_true(.not. any(low_confidence_mask), &
                          "max size at bootstrap: low_confidence_mask stays empty, no SVD ever ran")
+        call assert_equal_int(d_first, 0_int32, "max size at bootstrap: d_first stays zero, no SVD ever ran")
+        call assert_true(.not. any(U_first /= 0.0d0), "max size at bootstrap: U_first stays zero, no SVD ever ran")
     end subroutine test_ensemble_identification_max_size_at_bootstrap
 
     !> f_max=0.35 (threshold 2.45 of N=7): the bootstrap's 2-member candidate is under it and
@@ -206,17 +221,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
+        real(real64)   :: U_first(2, 2)
+        integer(int32) :: d_first
 
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, f_max=0.35d0, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, f_max=0.35d0, &
                                      o=3_int32, final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -239,6 +256,12 @@ contains
         expected_mask(1:2) = .true.
         call assert_equal_array_logical(low_confidence_mask, expected_mask, 7_int32, &
                                         "max size poisons: low_confidence_mask survives the reset that wipes everything else")
+
+        ! U_first/d_first get the exact same treatment as low_confidence_mask, and for the
+        ! same reason -- see the module comment on U_first in the kernel.
+        call assert_equal_int(d_first, 1_int32, "max size poisons: d_first survives the reset")
+        call assert_equal_real(abs(U_first(1,1)), 1.0d0, 1.0d-9, "max size poisons: U_first survives the reset, x")
+        call assert_equal_real(abs(U_first(2,1)), 0.0d0, 1.0d-9, "max size poisons: U_first survives the reset, y")
     end subroutine test_ensemble_identification_max_size_poisons_prior_accepts
 
     ! --- Fixture B: D=3, N=7. A 5-point x-axis line (0,0,0)..(4,0,0), plus a 2-point branch
@@ -280,17 +303,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(2), expected_accepted(2)
         real(real64)   :: growth_radius, G_history(2), mu_history(3, 2), S_history(3, 2), U_history(3, 3, 2)
+        real(real64)   :: U_first(3, 3)
+        integer(int32) :: d_first
 
         call build_fixture_b(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 3_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=2_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=2_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -353,17 +378,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3), expected_accepted(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(3, 3), S_history(3, 3), U_history(3, 3, 3)
+        real(real64)   :: U_first(3, 3)
+        integer(int32) :: d_first
 
         call build_fixture_c(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 3_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=3_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=3_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'ensemble_identification failed unexpectedly: ', ierr
             error stop
@@ -401,17 +428,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
+        real(real64)   :: U_first(2, 2)
+        integer(int32) :: d_first
 
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 8_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=3_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=3_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         call assert_true(is_err(ierr), "ensemble_identification should reject seed_index > n_vectors")
     end subroutine test_ensemble_identification_seed_index_out_of_range
 
@@ -424,17 +453,19 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(0)
         real(real64)   :: growth_radius, G_history(0), mu_history(2, 0), S_history(2, 0), U_history(2, 2, 0)
+        real(real64)   :: U_first(2, 2)
+        integer(int32) :: d_first
 
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=0_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=0_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         call assert_true(is_err(ierr), "ensemble_identification should reject o=0")
     end subroutine test_ensemble_identification_o_zero
 
@@ -447,6 +478,8 @@ contains
         logical        :: low_confidence_mask(7)
         logical        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(1, 3), S_history(1, 3), U_history(1, 1, 3)
+        real(real64)   :: U_first(1, 1)
+        integer(int32) :: d_first
         integer(int32) :: i
 
         do i = 1, 7
@@ -460,13 +493,13 @@ contains
         end if
 
         call ensemble_identification(vectors, 1_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, alpha_max=0.1d0, d_max=0_int32, G_max=1.0d10, o=3_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=3_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
                                      k_history=k_history, accepted_history=accepted_history, &
                                      member_added_at_step=member_added_at_step, &
-                                     low_confidence_mask=low_confidence_mask, ierr=ierr)
+                                     low_confidence_mask=low_confidence_mask, U_first=U_first, d_first=d_first, ierr=ierr)
         call assert_true(is_err(ierr), "ensemble_identification should reject n_dimensions=1")
     end subroutine test_ensemble_identification_n_dimensions_too_small
 

@@ -116,9 +116,10 @@ def test_grow_clouds_invalid_seed_max_set_size():
 # =====================
 # D=2, N=21, a perfectly collinear, evenly-spaced line (0,0)..(20,0). Every estimator
 # anchor's grown cloud is itself a sub-interval of the same line, so every EA agrees exactly
-# on d=1 and on tangent direction -- alpha_max and d_max must both come out exactly 0.
-# k_min/k_density/density_quantile/G_max are cross-checked against this exact, already-
-# verified, fully deterministic kernel's own real output (no randomness anywhere here).
+# on d=1 and on tangent direction -- chordal_dist_max_as_prcnt_of_range and d_max must both
+# come out exactly 0. k_min/k_density/density_quantile/G_max are cross-checked against this
+# exact, already-verified, fully deterministic kernel's own real output (no randomness
+# anywhere here).
 def _collinear_line_21():
     vectors = np.zeros((2, 21), dtype=np.float64, order='F')
     vectors[0, :] = np.arange(21, dtype=np.float64)
@@ -131,7 +132,7 @@ def test_estimate_parameters_collinear_line():
     vectors, kd_indices, dimension_order = _collinear_line_21()
     result = estimate_stc_parameters(vectors, kd_indices, dimension_order, seed_max_set_size=50.0)
 
-    assert abs(result["estimated_alpha_max"] - 0.0) < 1e-9
+    assert abs(result["estimated_chordal_dist_max_as_prcnt_of_range"] - 0.0) < 1e-9
     assert abs(result["estimated_d_max"] - 0.0) < 1e-9
     assert abs(result["estimated_k_min"] - 4.0) < 1e-9
     assert abs(result["estimated_k_density"] - result["estimated_k_min"]) < 1e-9

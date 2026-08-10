@@ -20,24 +20,20 @@ _lib.tox_stc_accept_ensemble_svd_workspace_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_TOX_STC_ACCEPT_ENSEMBLE_SVD_WORKSPACE_ARGUMENTS = ("d_t", "d_tp1", "lwork",)
+_TOX_STC_ACCEPT_ENSEMBLE_SVD_WORKSPACE_ARGUMENTS = ("n_dimensions", "lwork",)
 
 def tox_stc_accept_ensemble_svd_workspace(
-        d_t,
-        d_tp1,
+        n_dimensions,
 ):
-    r"""Recommend LAPACK dgesvd workspace size for accept_ensemble's principal-angle SVD
+    r"""Recommend LAPACK dgesvd workspace size for accept_ensemble's principal-angle SVDs
 
     Parameters
     ----------
-    d_t : int
-        Ensemble's intrinsic dimension at t
-    d_tp1 : int
-        Ensemble's intrinsic dimension at t+1
+    n_dimensions : int
+        Ambient dimension D
 
     Returns
     -------
@@ -59,8 +55,7 @@ def tox_stc_accept_ensemble_svd_workspace(
     ierr = ctypes.c_int(0)
 
     _lib.tox_stc_accept_ensemble_svd_workspace_c(
-        ctypes.byref(ctypes.c_int(d_t)),
-        ctypes.byref(ctypes.c_int(d_tp1)),
+        ctypes.byref(ctypes.c_int(n_dimensions)),
         ctypes.byref(lwork),
         ctypes.byref(ierr),
     )

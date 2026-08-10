@@ -42,7 +42,7 @@ fixture_c <- function() {
 test_natural_fixed_point <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 4)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 4)
 
   assert_true(res$stop_reason == STOP_REASON_FIXED_POINT)
   assert_true(abs(res$growth_radius - 1.0) < 1e-9)
@@ -63,12 +63,19 @@ test_natural_fixed_point <- function() {
   expected_low_confidence <- rep(FALSE, 7)
   expected_low_confidence[1:2] <- TRUE
   assert_true(all(res$low_confidence_mask == expected_low_confidence))
+
+  # U_first/d_first: the bootstrap iteration's own tangent basis, {1,2} along the x-axis --
+  # collinear, so d_first=1 and the first column is the x-axis unit vector (up to SVD's own
+  # sign ambiguity), never overwritten by the three further accepted iterations.
+  assert_true(res$d_first == 1)
+  assert_true(abs(abs(res$U_first[1, 1]) - 1.0) < 1e-9)
+  assert_true(abs(abs(res$U_first[2, 1]) - 0.0) < 1e-9)
 }
 
 test_history_window_shifts <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 2)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 2)
 
   assert_true(res$stop_reason == STOP_REASON_FIXED_POINT)
   assert_true(all(res$k_history == c(4, 5)))
@@ -78,7 +85,7 @@ test_history_window_shifts <- function() {
 test_max_size_at_bootstrap <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 alpha_max = 0.1, d_max = 0, G_max = 1e10, f_max = 0.2, o = 3)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, f_max = 0.2, o = 3)
 
   assert_true(res$stop_reason == STOP_REASON_MAX_SIZE)
   assert_true(!any(res$final_ensemble_mask))
@@ -88,12 +95,14 @@ test_max_size_at_bootstrap <- function() {
   # Stop Condition 1 fires before observable is ever called at all: no genuine SVD ever
   # happened, so there is no real iteration-1 data to report.
   assert_true(!any(res$low_confidence_mask))
+  assert_true(res$d_first == 0)
+  assert_true(!any(res$U_first != 0.0))
 }
 
 test_max_size_poisons_prior_accepts <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 alpha_max = 0.1, d_max = 0, G_max = 1e10, f_max = 0.35, o = 3)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, f_max = 0.35, o = 3)
 
   assert_true(res$stop_reason == STOP_REASON_MAX_SIZE)
   assert_true(!any(res$final_ensemble_mask))
@@ -105,12 +114,17 @@ test_max_size_poisons_prior_accepts <- function() {
   expected_low_confidence <- rep(FALSE, 7)
   expected_low_confidence[1:2] <- TRUE
   assert_true(all(res$low_confidence_mask == expected_low_confidence))
+  # U_first/d_first get the exact same treatment as low_confidence_mask, and for the same
+  # reason -- see the module comment on U_first in the kernel.
+  assert_true(res$d_first == 1)
+  assert_true(abs(abs(res$U_first[1, 1]) - 1.0) < 1e-9)
+  assert_true(abs(abs(res$U_first[2, 1]) - 0.0) < 1e-9)
 }
 
 test_rejected_immediately <- function() {
   fx <- fixture_b()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 2)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 2)
 
   assert_true(res$stop_reason == STOP_REASON_REJECTED_IMMEDIATELY)
 
@@ -130,7 +144,7 @@ test_rejected_immediately <- function() {
 test_rejected_after_stable <- function() {
   fx <- fixture_c()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 3)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 3)
 
   assert_true(res$stop_reason == STOP_REASON_REJECTED_AFTER_STABLE)
 
@@ -150,14 +164,14 @@ test_rejected_after_stable <- function() {
 test_seed_index_out_of_range <- function() {
   fx <- fixture_a()
   assert_error(ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 8, k_min = 1,
-                                       alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 3),
+                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 3),
                "Expected error for seed_index > n_vectors", ERR_INVALID_INPUT)
 }
 
 test_o_zero <- function() {
   fx <- fixture_a()
   assert_error(ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                       alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 0),
+                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 0),
                "Expected error for o=0", ERR_INVALID_INPUT)
 }
 
@@ -167,7 +181,7 @@ test_n_dimensions_too_small <- function() {
   kd_indices <- build_kd_index(vectors, dimension_order)
 
   assert_error(ensemble_identification(vectors, kd_indices, dimension_order, 1, k_min = 1,
-                                       alpha_max = 0.1, d_max = 0, G_max = 1e10, o = 3),
+                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 3),
                "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 }
 

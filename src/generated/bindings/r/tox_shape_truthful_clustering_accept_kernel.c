@@ -5,21 +5,19 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void tox_stc_accept_ensemble_svd_workspace_c(const int*, const int*, int*, int*);
+void tox_stc_accept_ensemble_svd_workspace_c(const int*, int*, int*);
 
-SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP d_t, SEXP d_tp1) {
+SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP n_dimensions) {
     int nprot = 0;
     // scalar inputs, pulled from their length-1 vectors
-    int d_t_v = Rf_asInteger(d_t);
-    int d_tp1_v = Rf_asInteger(d_tp1);
+    int n_dimensions_v = Rf_asInteger(n_dimensions);
 
     // outputs and work space
     int lwork = 0;
     int ierr = 0;
 
     tox_stc_accept_ensemble_svd_workspace_c(
-        &d_t_v,
-        &d_tp1_v,
+        &n_dimensions_v,
         &lwork,
         &ierr
     );

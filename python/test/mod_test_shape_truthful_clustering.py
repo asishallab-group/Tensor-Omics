@@ -62,7 +62,7 @@ def _fixture_c():
 
 def test_natural_fixed_point():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 4,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 4,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_FIXED_POINT
@@ -85,10 +85,17 @@ def test_natural_fixed_point():
     expected_low_confidence[0:2] = True
     assert np.array_equal(result['low_confidence_mask'], expected_low_confidence)
 
+    # U_first/d_first: the bootstrap iteration's own tangent basis, {1,2} along the x-axis --
+    # collinear, so d_first=1 and the first column is the x-axis unit vector (up to SVD's own
+    # sign ambiguity), never overwritten by the three further accepted iterations.
+    assert result['d_first'] == 1
+    assert abs(abs(result['U_first'][0, 0]) - 1.0) < 1e-9
+    assert abs(abs(result['U_first'][1, 0]) - 0.0) < 1e-9
+
 
 def test_history_window_shifts():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 2,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 2,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_FIXED_POINT
@@ -98,7 +105,7 @@ def test_history_window_shifts():
 
 def test_max_size_at_bootstrap():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 3,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
                                      k_min=1, f_max=0.2)
 
     assert result['stop_reason'] == STOP_REASON_MAX_SIZE
@@ -109,11 +116,13 @@ def test_max_size_at_bootstrap():
     # Stop Condition 1 fires before observable is ever called at all: no genuine SVD ever
     # happened, so there is no real iteration-1 data to report.
     assert not np.any(result['low_confidence_mask'])
+    assert result['d_first'] == 0
+    assert not np.any(result['U_first'] != 0.0)
 
 
 def test_max_size_poisons_prior_accepts():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 3,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
                                      k_min=1, f_max=0.35)
 
     assert result['stop_reason'] == STOP_REASON_MAX_SIZE
@@ -126,11 +135,16 @@ def test_max_size_poisons_prior_accepts():
     expected_low_confidence = np.zeros(7, dtype=np.bool_)
     expected_low_confidence[0:2] = True
     assert np.array_equal(result['low_confidence_mask'], expected_low_confidence)
+    # U_first/d_first get the exact same treatment as low_confidence_mask, and for the same
+    # reason -- see the module comment on U_first in the kernel.
+    assert result['d_first'] == 1
+    assert abs(abs(result['U_first'][0, 0]) - 1.0) < 1e-9
+    assert abs(abs(result['U_first'][1, 0]) - 0.0) < 1e-9
 
 
 def test_rejected_immediately():
     vectors, kd_indices, dimension_order = _fixture_b()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 2,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 2,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_REJECTED_IMMEDIATELY
@@ -150,7 +164,7 @@ def test_rejected_immediately():
 
 def test_rejected_after_stable():
     vectors, kd_indices, dimension_order = _fixture_c()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 3,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_REJECTED_AFTER_STABLE
@@ -170,14 +184,14 @@ def test_rejected_after_stable():
 
 def test_seed_index_out_of_range():
     vectors, kd_indices, dimension_order = _fixture_a()
-    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 8, 0.1, 0, 1.0e10, 3,
+    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 8, 0.1, 0, 1.0e10, 1.0e10, 3,
                                                  k_min=1),
                  "Expected error for seed_index > n_vectors", ERR_INVALID_INPUT)
 
 
 def test_o_zero():
     vectors, kd_indices, dimension_order = _fixture_a()
-    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 0,
+    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 0,
                                                  k_min=1),
                  "Expected error for o=0", ERR_INVALID_INPUT)
 
@@ -188,7 +202,7 @@ def test_n_dimensions_too_small():
     dimension_order = np.array([1], dtype=np.int32)
     kd_indices = build_kd_index(vectors, dimension_order)
 
-    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 3,
+    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
                                                  k_min=1),
                  "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 
