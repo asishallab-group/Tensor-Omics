@@ -44,6 +44,7 @@ program main
     use mod_test_shape_truthful_clustering_parameter_estimation, only: &
         get_all_tests_shape_truthful_clustering_parameter_estimation
     use mod_test_shape_truthful_clustering_json, only: get_all_tests_shape_truthful_clustering_json
+    use mod_test_shape_truthful_clustering_csv, only: get_all_tests_shape_truthful_clustering_csv
     use mod_test_json, only: get_all_tests_json
     implicit none
 
@@ -94,6 +95,7 @@ program main
     call add_suite("shape_truthful_clustering_parameter_estimation", &
                    get_all_tests_shape_truthful_clustering_parameter_estimation)
     call add_suite("shape_truthful_clustering_json", get_all_tests_shape_truthful_clustering_json)
+    call add_suite("shape_truthful_clustering_csv", get_all_tests_shape_truthful_clustering_csv)
     call add_suite("json", get_all_tests_json)
 
     nargs = command_argument_count()

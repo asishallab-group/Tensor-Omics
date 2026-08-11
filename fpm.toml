@@ -35,6 +35,17 @@ name = "run_tests"
 source-dir = "test"
 main = "run_tests.F90"
 
+# The STC command line interface: GNU argp + libcsv, see misc/mod_STC.md's own "Command line
+# interface (CLI) in C" section. libcsv (LGPL-2.1-or-later) is linked dynamically and scoped to
+# just this executable -- `libtensor-omics.so` itself (what Python/R load) never needs it, and
+# dynamic linking is exactly what LGPL asks for from a non-LGPL project like this one. On
+# Fedora: `dnf install libcsv-devel`; argp itself ships in glibc, no extra link needed there.
+[[executable]]
+name = "stc_cli"
+main = "stc_cli.c"
+source-dir = "C-layer"
+link = ["csv", "m"]
+
 [extra.ford]
 project = "TensorOmics"
 output_dir = "doc"

@@ -131,5 +131,20 @@ Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/
   and its deliberate simplicity trade-offs. Not yet wired into
   `misc/STC-experiments/run_stc.py`.
 
+STC's own output layer, hand-written (not generated) but not kernels either:
+
+- `src/tox_stc_html_assets.F90` -- generated (via `helper/embed_stc_html_assets.py`, not the
+  main codegen pipeline; do not hand-edit) compile-time Fortran string constants for the
+  vendored D3 bundle and the interactive report template.
+- `src/tox_stc_json.F90` -- `M_EXPORT_C` module: `serialize_stc_results_as_json`,
+  `write_stc_interactive_html_report`. Takes STC's raw pipeline arrays directly.
+- `src/tox_stc_csv.F90` -- `M_EXPORT_C` module: `serialize_stc_points_as_csv`,
+  `serialize_stc_ensemble_overlap_as_csv`, `serialize_stc_super_ensembles_as_tsv` --
+  plain-text companions to the JSON/HTML report, for post-processing in Python/R/etc.
+- `C-layer/` -- the C CLI (`stc_cli`, GNU argp + libcsv), see `C-layer/README.md` and
+  `misc/mod_STC.md`'s own "Command line interface (CLI) in C" section. Intended, eventually,
+  to replace `misc/STC-experiments/run_stc.py`/`plot_stc.R`, contingent on feature parity;
+  every individual STC function stays callable from Python/R directly regardless.
+
 `src/lomanle.F90`: existing module. Only integrate STC into LoManLe's pipeline after STC
 itself is implemented and tested in isolation -- do not interleave the two.

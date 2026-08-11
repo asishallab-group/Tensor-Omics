@@ -887,6 +887,10 @@ from and refine, not a guarantee.
 
 # Command line interface (CLI) in C
 
+Implemented in `C-layer/` (`csv_table.h`/`csv_table.c`, `stc_cli.c`; see `C-layer/README.md`
+for usage) -- not `src/f42/`, since it is C, not Fortran, and not part of the generator's own
+kernel/wrapper split.
+
 Use GNU argp to create a C command line interface that leverages `libcsv` to
 parse an input table with callbacks to create a 2D real Fortran array of input
 data vectors, then call the Fortran `_c` API to run our Shape Truthful

@@ -207,6 +207,11 @@ from .tox_shape_truthful_clustering_seeding import (
 from .tox_shift_vectors import (
     compute_shift_vector_field,
 )
+from .tox_stc_csv import (
+    serialize_stc_points_as_csv,
+    serialize_stc_ensemble_overlap_as_csv,
+    serialize_stc_super_ensembles_as_tsv,
+)
 from .tox_stc_json import (
     serialize_stc_results_as_json,
     write_stc_interactive_html_report,
@@ -348,7 +353,10 @@ __all__ = [
     "serialize_int_helper",
     "serialize_logical_helper",
     "serialize_real_helper",
+    "serialize_stc_ensemble_overlap_as_csv",
+    "serialize_stc_points_as_csv",
     "serialize_stc_results_as_json",
+    "serialize_stc_super_ensembles_as_tsv",
     "serialize_tox_data_as_flyer_json",
     "tangent_scales",
     "tox_loess_required_workspace",

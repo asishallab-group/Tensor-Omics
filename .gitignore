@@ -73,6 +73,12 @@
 !/helper/*.py
 !/helper/*.sh
 
+# C-layer (the STC CLI: GNU argp + libcsv, see misc/mod_STC.md)
+!/C-layer
+!/C-layer/*.c
+!/C-layer/*.h
+!/C-layer/*.sh
+
 # helper/codegen
 # [a-z]*/ keeps __pycache__ excluded, as for src
 !/helper/codegen
