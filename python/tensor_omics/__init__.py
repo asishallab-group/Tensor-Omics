@@ -10,6 +10,7 @@ from .error_handling import (
 from .f42_binary_search_tree import (
     build_bst_index,
     bst_range_query,
+    bst_range_query_expert,
 )
 from .f42_kd_tree import (
     build_kd_index,
@@ -191,6 +192,7 @@ __all__ = [
     "ToxError",
     "check_err_code",
     "bst_range_query",
+    "bst_range_query_expert",
     "build_bst_index",
     "build_kd_index",
     "build_residual_histograms",

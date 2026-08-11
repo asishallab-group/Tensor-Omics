@@ -909,13 +909,18 @@ Because the procedure is not a numeric procedure of the pipeline:
   OrthoFinder readers, the data-set validation and the accessors. One family, one directory,
   named for what the modules are rather than for the one mechanism only `tox_data_archive`
   performs.
-- **`src/f42/`** — library-agnostic infrastructure: `f42_kd_tree`, `f42_binary_search_tree`,
-  `f42_stats`, the serde family. Whether an f42 procedure is exported at all is a per-case
-  judgement, which is exactly why the marker stays explicit here.
+- **`src/f42/`** — library-agnostic infrastructure: `f42_kd_tree` and the serde family, whose
+  procedures open files or hand out buffers no binding language can own. Whether an f42
+  procedure is exported at all is a per-case judgement, which is exactly why the marker stays
+  explicit here. It is not a licence: `f42_stats` and `f42_binary_search_tree` were both
+  hand-written exports until someone asked what a wrapper around them would do, and the answer
+  was "validate what they were validating by hand, and build the permutation their callers were
+  building" — so both are implementations now.
 - **inside an implementation module** — a recommend/sizing routine
   (`tox_loess_required_workspace`, `calc_neighborhood_size`) or a utility a caller genuinely
   needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
-  wrapper to call (§5.9).
+  wrapper to call (§5.9). The test is the same one: a wrapper around `calc_neighborhood_size`
+  would validate nothing and prepare nothing, so there is nothing to generate.
 
 If your procedure is a numeric procedure of the pipeline, take Part I instead. "It was easier to
 export it directly" is how an unvalidated API gets shipped.

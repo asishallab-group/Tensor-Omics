@@ -43,7 +43,8 @@
 
 // forward declarations of the .Call entry points
 SEXP build_bst_index_call(SEXP);
-SEXP bst_range_query_call(SEXP, SEXP, SEXP, SEXP);
+SEXP bst_range_query_call(SEXP, SEXP, SEXP);
+SEXP bst_range_query_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP build_kd_index_call(SEXP, SEXP);
 SEXP build_spherical_kd_call(SEXP, SEXP);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
@@ -152,7 +153,8 @@ SEXP normalize_all_trajectories_call(SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"build_bst_index_call", (DL_FUNC) &build_bst_index_call, 1},
-    {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 4},
+    {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 3},
+    {"bst_range_query_expert_call", (DL_FUNC) &bst_range_query_expert_call, 4},
     {"build_kd_index_call", (DL_FUNC) &build_kd_index_call, 2},
     {"build_spherical_kd_call", (DL_FUNC) &build_spherical_kd_call, 2},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},

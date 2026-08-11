@@ -288,7 +288,7 @@ the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distanc
 simply stayed in `f42_stats_impl` and were published from there, unsplit and unchanged.
 
 That they *could* stay is what made it worth asking whether they should, and both converted a
-step later — see "Two exports that were implementations" below.
+step later — see "Exports that were implementations" below.
 
 **`alloc_suffix` outlives the conversion, for now.** The generator never emits `_alloc`, and
 after `f42_kd_tree` converts no hand-written pair will be left for `stripped_name`'s
@@ -307,7 +307,7 @@ signature takes the subset as an optional `n_considered` count rather than a sec
 which keeps `array_perm` sized like `array` so the `<base>_perm` convention applies unchanged,
 and puts the slice case inside the validated API for the first time.
 
-### Two exports that were implementations
+### Exports that were implementations
 
 `loess_smooth_2d` and `compute_scaled_distance_quantile` survived the family conversion as
 ordinary `M_EXPORT_C` procedures inside `f42_stats_impl`, because nothing in the mechanism
@@ -337,6 +337,20 @@ and the test shims kept exactly that one line.
 Both keep `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` on the RDI arrays. Neither validated anything
 before, and `identify_outliers_impl` — the one caller in `src/` — already declares the same
 quantity that way; tightening it here would have made one array answer to two contracts.
+
+`f42_binary_search_tree` followed, and it is the clearest instance of the same test.
+`bst_range_query` demanded a `sorted_indices` that its callers got from `build_bst_index`, so
+every test in three languages opened by building an index it then used once. Renamed to
+`values_perm`, that index is what the allocating tier exists to produce: `bst_range_query(values,
+lower, upper)` is now the whole call, and `bst_range_query_expert` keeps the argument for a caller
+holding an index it wants to reuse across queries — which is the case `build_bst_index` still
+serves, so it stays published.
+
+`build_bst_index` is worth a note of its own, because its body after conversion is `init_perm`
+followed by `sort_array_heapsort` — exactly what the emitter writes into an allocating wrapper. An
+implementation that *is* a prologue looks like a mistake and is not one: what the convention
+automates for an argument is still a published operation in its own right, and the only thing the
+conversion took away was the hand-written `validate_dimension_size` that the wrapper now emits.
 
 ---
 
