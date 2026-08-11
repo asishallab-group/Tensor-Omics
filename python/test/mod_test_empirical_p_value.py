@@ -16,10 +16,10 @@ from test_helpers import run_all_tests
 
 
 def compute_scaled_distance_quantile(distribution, c_const):
-    """Sort-prep in front of the raw Fortran routine, which takes rdi/sorted_rdi/perm.
+    """Clamp-prep in front of the Fortran routine, which takes rdi and the distribution.
 
-    Negatives are invalid and clamped to zero; perm is the 1-based ascending
-    permutation of that clamped array.
+    Negatives are invalid and clamped to zero. The permutation that sorts the clamped
+    array is built by the entry point itself, so only the clamping is left here.
     """
     dist = np.ascontiguousarray(distribution, dtype=np.float64)
     if dist.size == 0:
@@ -27,9 +27,8 @@ def compute_scaled_distance_quantile(distribution, c_const):
 
     sorted_rdi = dist.copy()
     sorted_rdi[sorted_rdi < 0.0] = 0.0
-    perm = (np.argsort(sorted_rdi, kind="mergesort").astype(np.int32) + 1)
 
-    return _compute_scaled_distance_quantile(dist, sorted_rdi, perm, float(c_const))
+    return _compute_scaled_distance_quantile(dist, sorted_rdi, float(c_const))
 
 
 def _assert_allclose(a, b, tol=1e-12, msg=""):

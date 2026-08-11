@@ -5,22 +5,17 @@
 !| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_stats_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    ! loess_smooth_2d validates its own inputs; the two implementations below no longer
-    ! validate anything, because their generated wrappers do
-    use tox_errors, only: set_ok, is_err, validate_all_in_range_int, validate_dimension_size
-    use tox_errors, only: validate_in_range_real
     use f42_sort_impl, only: binary_search_insertion
     M_IMPLICIT_NONE
 
 contains
 
-    !> M_EXPORT_C
-    !| summary: Performs LOESS smoothing on a set of data points
+    !> summary: Performs LOESS smoothing on a set of data points
     !| AUTHOR_VIVIAN_BASS
     !| Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.
     !| The user must pre-filter data and provide only valid indices in indices_used.
-    pure subroutine loess_smooth_2d(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
-                                    kernel_sigma, kernel_cutoff, y_out, ierr)
+    pure subroutine loess_smooth_2d_impl(n_total, n_target, x_ref, y_ref, indices_used, n_used, x_query, &
+                                         kernel_sigma, kernel_cutoff, y_out)
         integer(int32), intent(in) :: n_total
             !! Total number of reference points.
         integer(int32), intent(in) :: n_target
@@ -31,37 +26,26 @@ contains
             !! Reference y-coordinates (length n_total).
         integer(int32), intent(in) :: indices_used(n_used)
             !! Indices of reference points used for smoothing (only valid indices).
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_total)
         integer(int32), intent(in) :: n_used
             !! Number of indices actually used for smoothing.
         real(real64), intent(in) :: x_query(n_target)
             !! Target x-coordinates to smooth.
         real(real64), intent(in) :: kernel_sigma
             !! Bandwidth parameter for the kernel.
+            !! DM_MIN(0.0_real64)
         real(real64), intent(in) :: kernel_cutoff
             !! Cutoff for the kernel, not used if zero
+            !! DM_MIN(0.0_real64)
         real(real64), intent(out) :: y_out(n_target)
             !! Output smoothed values (length n_target).
-        integer(int32), intent(out) :: ierr
-            !! Error code
 
         integer(int32) :: i_target, i_used, used_idx
         real(real64) :: query_x, ref_x, delta, sum_weights, weight
         real(real64) :: min_dist
         integer(int32) :: min_idx
         logical :: exact_match_found, use_kernel
-
-        ! Initialize error code
-        call set_ok(ierr)
-
-        ! Input validation
-        call validate_dimension_size(n_total, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_target, ierr, arg_pos=2_int32)
-        call validate_dimension_size(n_used, ierr, arg_pos=6_int32)
-        call validate_in_range_real(kernel_sigma, ierr, min=0.0_real64, arg_pos=8_int32)
-        call validate_in_range_real(kernel_cutoff, ierr, min=0.0_real64, arg_pos=9_int32)
-        call validate_all_in_range_int(indices_used, n_used, ierr, min=1_int32, max=n_total, arg_pos=5_int32)
-
-        if (is_err(ierr)) return
 
         ! Check if we should use kernel smoothing
         use_kernel = (kernel_sigma > 0.0_real64)
@@ -115,7 +99,7 @@ contains
                 end if
             end if
         end do
-    end subroutine loess_smooth_2d
+    end subroutine loess_smooth_2d_impl
 
 
     !> summary: Compute the Empirical Distribution Function (EDF) from a sorted permutation
@@ -241,8 +225,7 @@ contains
     end subroutine calc_percentile_impl
 
 
-    !> M_EXPORT_C
-    !| summary: Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+    !> summary: Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
     !| AUTHOR_VIVIAN_BASS
     !| This is NOT a null-hypothesis-testing p-value: each distance is compared against the
     !| observed distribution it was drawn from, not an independently generated null distribution.
@@ -256,19 +239,27 @@ contains
     !| Assumptions / preconditions:
     !| - sorted_rdi(1:n_genes) contains the empirical distribution D.
     !| - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
-    pure subroutine compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, perm, quantile, c_const)
+    pure subroutine compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, sorted_rdi_perm, &
+                                                          quantile, c_const)
         integer(int32), intent(in) :: n_genes
             !! Number of genes being processed.
         real(real64), intent(in) :: rdi(n_genes)
             !! empirical distribution D
+            !! DM_ALLOW_NAN
+            !! DM_ALLOW_INFINITE
         real(real64), intent(in) :: sorted_rdi(n_genes)
             !! empirical distribution D with non negative values
+            !! DM_ALLOW_NAN
+            !! DM_ALLOW_INFINITE
         real(real64), intent(out) :: quantile(n_genes)
             !! Output array to store the computed quantile for each gene.
         real(real64), intent(in) :: c_const
             !! Constant used in the computation, typically 1
-        integer(int32), intent(in) :: perm(n_genes)
-            !! Permutation array with sorted indices for sorted_rdi
+        integer(int32), intent(in) :: sorted_rdi_perm(n_genes)
+            !! Permutation of `sorted_rdi` in ascending order. The allocating entry point builds
+            !! and heapsorts it for you; the expert one takes whatever order you supply.
+            !! DM_MIN(1_int32)
+            !! DM_MAX(n_genes)
 
         integer(int32) :: i, first_ge, count_ge
         real(real64) :: denom, d
@@ -288,7 +279,7 @@ contains
                 cycle
             end if
 
-            first_ge = binary_search_insertion(sorted_rdi, perm, d)
+            first_ge = binary_search_insertion(sorted_rdi, sorted_rdi_perm, d)
 
             if (first_ge <= n_genes) then
                 count_ge = n_genes - first_ge + 1_int32
@@ -299,5 +290,5 @@ contains
             quantile(i) = (real(count_ge, real64) + c_const)/denom
         end do
 
-    end subroutine compute_scaled_distance_quantile
+    end subroutine compute_scaled_distance_quantile_impl
 end module f42_stats_impl

@@ -285,9 +285,10 @@ conversion had to begin by splitting the module into the part that becomes an im
 and the part that stays a hand-written export, because a generated module is whole-file. That
 premise was wrong: an implementation module may hold ordinary exported procedures, exactly as
 the recommend routines already do. `loess_smooth_2d` and `compute_scaled_distance_quantile`
-simply stayed in `f42_stats_impl` and are published from there. They move from
-`f42_stats.py` to `f42_stats_impl.py` in the Python package and keep their names, their
-signatures and their flat `from tensor_omics import ...` import.
+simply stayed in `f42_stats_impl` and were published from there, unsplit and unchanged.
+
+That they *could* stay is what made it worth asking whether they should, and both converted a
+step later — see "Two exports that were implementations" below.
 
 **`alloc_suffix` outlives the conversion, for now.** The generator never emits `_alloc`, and
 after `f42_kd_tree` converts no hand-written pair will be left for `stripped_name`'s
@@ -305,6 +306,37 @@ routing around the validated entry point and into the unvalidated helper. The co
 signature takes the subset as an optional `n_considered` count rather than a second extent,
 which keeps `array_perm` sized like `array` so the `<base>_perm` convention applies unchanged,
 and puts the slice case inside the validated API for the first time.
+
+### Two exports that were implementations
+
+`loess_smooth_2d` and `compute_scaled_distance_quantile` survived the family conversion as
+ordinary `M_EXPORT_C` procedures inside `f42_stats_impl`, because nothing in the mechanism
+required them to move. Then they converted too, and the reason is worth keeping: **a hand-written
+export inside an implementation module is only correct when there is no wrapper to generate.**
+That is true of the recommend routines — `calc_neighborhood_size` returns an integer from three
+integers, and a wrapper around it would validate nothing and prepare nothing. It was not true of
+these two.
+
+`loess_smooth_2d` carried a `set_ok` / `validate_*` / `if (is_err(ierr)) return` block of its own,
+with hand-counted `arg_pos=` literals. That block *is* the emitter's output, written by hand, and
+the hand-written copy was already less than the generated one: it checked the two kernel scalars
+and the index array but left `x_ref`, `y_ref` and `x_query` unchecked, so a NaN reference point
+reached the smoother. Four `DM_MIN`/`DM_MAX` lines replace it and the finiteness checks come for
+free. Its published signature is unchanged — it takes over no work array and has no permutation,
+so it generates a lone wrapper under the plain name.
+
+`compute_scaled_distance_quantile` made the case from the other side: it demanded a `perm` its
+callers had to build. Both binding test suites opened with the same prep — clamp the negatives,
+`argsort`, add one for 1-based. Renaming the argument to `sorted_rdi_perm` hands the sort to the
+allocating tier; the published call loses the argument, and `..._expert` keeps it for a caller
+that already has the order — which is what `tox_get_outliers_impl` is, reaching the implementation
+directly with the permutation `compute_rdi_impl` built. What no wrapper can take over is the
+clamping of invalid (negative) RDIs to zero, because it is not a sort — it stays with the caller,
+and the test shims kept exactly that one line.
+
+Both keep `DM_ALLOW_NAN` / `DM_ALLOW_INFINITE` on the RDI arrays. Neither validated anything
+before, and `identify_outliers_impl` — the one caller in `src/` — already declares the same
+quantity that way; tightening it here would have made one array answer to two contracts.
 
 ---
 

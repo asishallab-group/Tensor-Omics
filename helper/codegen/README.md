@@ -479,14 +479,11 @@ code.
 
 ## Open items
 
-- **f42's hand-written pairs**: an `_impl` module is accepted anywhere under `src/`, so
-  `src/f42/utils/f42_stats_impl.F90` would generate `src/generated/f42/utils/f42_stats.F90`
-  with no special case in the generator — f42 simply has not been converted. Its four pairs
-  (`compute_edf`, `calc_percentile`, `build_kd_index`, `build_spherical_kd`) still write both
-  tiers by hand as `<p>` / `<p>_alloc`, and `stripped_name` still translates that shape into
-  the published names. Converting them is a separate job because a generated module is
-  whole-file while theirs are mixed — `f42_stats` also holds `loess_smooth_2d` and other
-  ordinary exports — so each has to be split first.
+- **f42's last hand-written pair**: `f42_kd_tree` still writes both tiers by hand as `<p>` /
+  `<p>_alloc` for `build_kd_index` and `build_spherical_kd`, and `stripped_name` still
+  translates that shape into the published names. The `f42_utils` family has converted, so
+  that one module is all that keeps the translating branch alive; retiring the branch is a
+  separate change from converting the module (`design/impl-layer.md`).
 - **ifx**: the F2018 features used (`OPTIONAL` in `bind(C)`, `implicit none (type,
   external)`) are verified with gfortran only. ifx is expected to agree; worth a check.
 - **Compile check in CI**: the end-to-end tests need a compiler. They are marked to skip

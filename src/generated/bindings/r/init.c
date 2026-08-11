@@ -57,12 +57,13 @@ SEXP serialize_int_helper_call(SEXP, SEXP);
 SEXP serialize_logical_helper_call(SEXP, SEXP);
 SEXP serialize_real_helper_call(SEXP, SEXP);
 SEXP get_array_metadata_call(SEXP, SEXP);
+SEXP loess_smooth_2d_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_edf_call(SEXP);
 SEXP compute_edf_expert_call(SEXP, SEXP);
 SEXP calc_percentile_call(SEXP, SEXP, SEXP);
 SEXP calc_percentile_expert_call(SEXP, SEXP, SEXP, SEXP);
-SEXP loess_smooth_2d_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP compute_scaled_distance_quantile_call(SEXP, SEXP, SEXP, SEXP);
+SEXP compute_scaled_distance_quantile_call(SEXP, SEXP, SEXP);
+SEXP compute_scaled_distance_quantile_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP cluster_factor_trajectories_k_means_call(SEXP, SEXP, SEXP);
 SEXP k_means_clustering_call(SEXP, SEXP, SEXP);
 SEXP linkage_clustering_call(SEXP, SEXP);
@@ -165,12 +166,13 @@ static const R_CallMethodDef CallEntries[] = {
     {"serialize_logical_helper_call", (DL_FUNC) &serialize_logical_helper_call, 2},
     {"serialize_real_helper_call", (DL_FUNC) &serialize_real_helper_call, 2},
     {"get_array_metadata_call", (DL_FUNC) &get_array_metadata_call, 2},
+    {"loess_smooth_2d_call", (DL_FUNC) &loess_smooth_2d_call, 6},
     {"compute_edf_call", (DL_FUNC) &compute_edf_call, 1},
     {"compute_edf_expert_call", (DL_FUNC) &compute_edf_expert_call, 2},
     {"calc_percentile_call", (DL_FUNC) &calc_percentile_call, 3},
     {"calc_percentile_expert_call", (DL_FUNC) &calc_percentile_expert_call, 4},
-    {"loess_smooth_2d_call", (DL_FUNC) &loess_smooth_2d_call, 6},
-    {"compute_scaled_distance_quantile_call", (DL_FUNC) &compute_scaled_distance_quantile_call, 4},
+    {"compute_scaled_distance_quantile_call", (DL_FUNC) &compute_scaled_distance_quantile_call, 3},
+    {"compute_scaled_distance_quantile_expert_call", (DL_FUNC) &compute_scaled_distance_quantile_expert_call, 4},
     {"cluster_factor_trajectories_k_means_call", (DL_FUNC) &cluster_factor_trajectories_k_means_call, 3},
     {"k_means_clustering_call", (DL_FUNC) &k_means_clustering_call, 3},
     {"linkage_clustering_call", (DL_FUNC) &linkage_clustering_call, 2},

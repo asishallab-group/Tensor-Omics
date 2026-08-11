@@ -49,14 +49,13 @@ from .f42_serde_arrays_utils import (
     get_array_metadata,
 )
 from .f42_stats import (
+    loess_smooth_2d,
     compute_edf,
     compute_edf_expert,
     calc_percentile,
     calc_percentile_expert,
-)
-from .f42_stats_impl import (
-    loess_smooth_2d,
     compute_scaled_distance_quantile,
+    compute_scaled_distance_quantile_expert,
 )
 from .tox_clustering import (
     cluster_factor_trajectories_k_means,
@@ -220,6 +219,7 @@ __all__ = [
     "compute_relative_axis_contributions",
     "compute_residuals",
     "compute_scaled_distance_quantile",
+    "compute_scaled_distance_quantile_expert",
     "compute_shift_vector_field",
     "compute_tissue_versatility",
     "compute_velocity_acceleration_contributions",

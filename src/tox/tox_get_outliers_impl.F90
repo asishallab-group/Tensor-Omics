@@ -14,7 +14,7 @@ module tox_get_outliers_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: logx, is_close
     use f42_sort_impl, only: sort_array, init_perm
-    use f42_stats_impl, only: calc_percentile_impl, compute_scaled_distance_quantile
+    use f42_stats_impl, only: calc_percentile_impl, compute_scaled_distance_quantile_impl
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err
     use tox_loess_impl, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
     M_IMPLICIT_NONE
@@ -506,7 +506,7 @@ contains
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        call compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
+        call compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
 
     end subroutine identify_outliers_impl
 

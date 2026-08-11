@@ -1016,20 +1016,17 @@ pure subroutine build_kd_index(points, n_dimensions, n_points, kd_indices, dimen
 
 `abi/c_abi.py:stripped_name` translates that shape into the published one, so the export path and
 the implementation path publish the same two names: the `_alloc` half loses its suffix and becomes
-`foo`, and a plain half that has an `_alloc` sibling becomes `foo_expert`. Export **both**, as
-`f42_stats` does with `compute_edf`, and the C symbols are `compute_edf_c` (from
-`compute_edf_alloc`) and `compute_edf_expert_c` (from `compute_edf`) — exactly as on the
-implementation path, which is the point of the translation. Export only the `_alloc`, as
-`f42_kd_tree` does, and it alone is published — as plain `build_kd_index` — while the
-buffer-taking half stays a Fortran-only entry point: a deliberate choice, not an oversight,
-because there is no sensible way for a Python caller to own those buffers.
+`foo`, and a plain half that has an `_alloc` sibling becomes `foo_expert`. Export **both** and the
+C symbols are `foo_c` and `foo_expert_c` — exactly as on the implementation path, which is the
+point of the translation. Export only the `_alloc`, as `f42_kd_tree` does, and it alone is
+published — as plain `build_kd_index` — while the buffer-taking half stays a Fortran-only entry
+point: a deliberate choice, not an oversight, because there is no sensible way for a Python caller
+to own those buffers.
 
-That this branch still exists is the only reason f42 keeps its hand-written pairs. Converting them
-to `_impl` is a separate job rather than an omission: each pair sits in a *mixed* module —
-`f42_stats` also holds `loess_smooth_2d` and other ordinary exports — and a generated module is
-written whole, so converting one triple means first splitting the module it lives in. Until then
-the branch keeps f42's published API identical to what it always was, and it retires itself the
-day those implementations become `_impl`.
+`f42_kd_tree` is the last module writing a pair this way, so the translating branch retires with
+it. Nothing about the shape was ever the obstacle to converting: an implementation module may hold
+ordinary exported procedures alongside its implementations, so no module ever had to be split
+first — see `design/impl-layer.md`.
 
 ### 6.6 An array of any rank through one signature
 
