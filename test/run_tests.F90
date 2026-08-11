@@ -43,6 +43,7 @@ program main
     use mod_test_shape_truthful_clustering_accept, only: get_all_tests_shape_truthful_clustering_accept
     use mod_test_shape_truthful_clustering_parameter_estimation, only: &
         get_all_tests_shape_truthful_clustering_parameter_estimation
+    use mod_test_json, only: get_all_tests_json
     implicit none
 
     integer :: nargs
@@ -91,6 +92,7 @@ program main
     call add_suite("shape_truthful_clustering_accept", get_all_tests_shape_truthful_clustering_accept)
     call add_suite("shape_truthful_clustering_parameter_estimation", &
                    get_all_tests_shape_truthful_clustering_parameter_estimation)
+    call add_suite("json", get_all_tests_json)
 
     nargs = command_argument_count()
 

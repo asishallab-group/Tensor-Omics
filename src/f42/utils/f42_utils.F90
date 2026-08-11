@@ -12,4 +12,5 @@ module f42_utils
     use f42_random
     use f42_vector
     use f42_stats
+    use f42_io
 end module f42_utils

@@ -115,6 +115,9 @@ from .tox_euclidean_distance import (
     euclidean_distance,
     distance_to_centroid,
 )
+from .tox_flyer_json import (
+    serialize_tox_data_as_flyer_json,
+)
 from .tox_gene_centroids import (
     mean_vector,
     group_centroid_orthologs,
@@ -341,6 +344,7 @@ __all__ = [
     "serialize_int_helper",
     "serialize_logical_helper",
     "serialize_real_helper",
+    "serialize_tox_data_as_flyer_json",
     "tangent_scales",
     "tox_loess_required_workspace",
     "tox_stc_accept_ensemble_svd_workspace",

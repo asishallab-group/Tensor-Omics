@@ -13,6 +13,14 @@ unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "lapack", "blas"]
 ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5", "lapack", "blas"]
 
+# nvfortran feature: nvfortran treats '\' in a character context as an escape by default,
+# so -Mbackslash is required for correct JSON string escaping (see f42_json/serialize_string).
+# This flag must apply to every nvfortran build (it is correctness, not optimization), hence it
+# lives on the always-active nvfortran feature rather than under optimization/diagnostics.
+# build.link is intentionally left out for now: nvfortran support is unverified (it currently
+# rejects procedure calls inside do-concurrent loops), so completing the feature is deferred.
+nvfortran.nvfortran.flags = "-Mbackslash"
+
 optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
 optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
 optimization.gfortran.flags = "-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize"
