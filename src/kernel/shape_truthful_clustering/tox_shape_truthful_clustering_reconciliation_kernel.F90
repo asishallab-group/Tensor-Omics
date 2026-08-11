@@ -14,16 +14,17 @@ module tox_shape_truthful_clustering_reconciliation_kernel
     M_IMPLICIT_NONE
 
 #define CM_STC_MODE_REPORT 1_int32
-#define CM_STC_MODE_MERGE_JSI 2_int32
+#define CM_STC_MODE_MERGE_OVERLAP_COEFFICIENT 2_int32
 #define CM_STC_MODE_MERGE_ANY 3_int32
-#define CM_STC_MIN_JSI_DEFAULT 0.1_real64
+#define CM_STC_MIN_OVERLAP_COEFFICIENT_DEFAULT 0.9_real64
 
     private
 
     !> Mode 1: report every intersecting pair as its own 2-row column, no transitive grouping.
     integer(int32), parameter, public :: MODE_REPORT = CM_STC_MODE_REPORT
-    !> Mode 2: transitively group ensembles connected by an edge whose JSI is >= `min_jsi`.
-    integer(int32), parameter, public :: MODE_MERGE_JSI = CM_STC_MODE_MERGE_JSI
+    !> Mode 2: transitively group ensembles connected by an edge whose Overlap Coefficient is
+    !| >= `min_overlap_coefficient`.
+    integer(int32), parameter, public :: MODE_MERGE_OVERLAP_COEFFICIENT = CM_STC_MODE_MERGE_OVERLAP_COEFFICIENT
     !> Mode 3: transitively group ensembles connected by any nonempty intersection.
     integer(int32), parameter, public :: MODE_MERGE_ANY = CM_STC_MODE_MERGE_ANY
 
@@ -34,12 +35,14 @@ contains
     !> summary: Identify and group intersecting ensembles from Ensemble Identification's merged output
     !| AUTHOR_ASIS_HALLAB
     !| Detecting an intersection at all already requires $|\mathcal{E}_i \cap \mathcal{E}_j|$,
-    !| needed by every mode; the JSI itself is a single extra $O(1)$ step per pair once each
-    !| ensemble's own size is known, via
-    !| $|\mathcal{E}_i \cup \mathcal{E}_j| = |\mathcal{E}_i| + |\mathcal{E}_j| - |\mathcal{E}_i \cap \mathcal{E}_j|$
+    !| needed by every mode; the Overlap Coefficient itself is a single extra $O(1)$ step per
+    !| pair once each ensemble's own size is known --
+    !| $\text{OC}(\mathcal{E}_i, \mathcal{E}_j) = |\mathcal{E}_i \cap \mathcal{E}_j| /
+    !| \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$, cheaper even than the Jaccard Similarity Index
+    !| it replaces (no union to derive, just the smaller of the two already-precomputed sizes)
     !| -- but modes 1 and 3 do not need it for their own decision, so its computation is
-    !| guarded behind `report_jsi`, never unconditional (see `misc/mod_STC.md`'s explicit note
-    !| on this).
+    !| guarded behind `report_overlap_coefficient`, never unconditional (see `misc/mod_STC.md`'s
+    !| explicit note on this).
     !|
     !| Modes 2 and 3 group via a union-find over the qualifying-edge graph (`stc_uf_find`/
     !| `stc_uf_union` below), unioning the smaller index under the larger's root so that a
@@ -50,9 +53,11 @@ contains
     !| static input check could foresee (it depends on the actual intersection pattern), so it
     !| is reported via `ierr` rather than silently truncated -- see `codegen_guide.md` section
     !| 5.14.
-    pure subroutine ensemble_reconciliation_kernel(ensemble_masks, n_vectors, n_ensembles, mode, min_jsi, report_jsi, &
+    pure subroutine ensemble_reconciliation_kernel(ensemble_masks, n_vectors, n_ensembles, mode, &
+                                                    min_overlap_coefficient, report_overlap_coefficient, &
                                                     max_group_size, &
-                                                    super_ensembles, n_super_ensembles, super_ensembles_JSI, ierr)
+                                                    super_ensembles, n_super_ensembles, &
+                                                    super_ensembles_overlap_coefficient, ierr)
         integer(int32), intent(in) :: n_vectors
             !! Number of input vectors N
         integer(int32), intent(in) :: n_ensembles
@@ -68,19 +73,20 @@ contains
             !! | Mode | Value |
             !! |------|-------|
             !! | Report intersecting pairs only        | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]     |
-            !! | Merge transitively at a minimum JSI    | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_JSI(variable)]]  |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]  |
             !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]  |
             !! DM_DEFAULT(CM_STC_MODE_REPORT)
-        real(real64), intent(in), optional :: min_jsi
-            !! Minimum Jaccard Similarity Index for an edge to qualify in mode
-            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_JSI(variable)]];
+        real(real64), intent(in), optional :: min_overlap_coefficient
+            !! Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
+            !! \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
+            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]];
             !! ignored in every other mode
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(CM_STC_MIN_JSI_DEFAULT)
-        logical, intent(in), optional :: report_jsi
-            !! Whether to compute and return `super_ensembles_JSI` at all -- see the note
-            !! above on this being guarded, not unconditional
+            !! DM_DEFAULT(CM_STC_MIN_OVERLAP_COEFFICIENT_DEFAULT)
+        logical, intent(in), optional :: report_overlap_coefficient
+            !! Whether to compute and return `super_ensembles_overlap_coefficient` at all --
+            !! see the note above on this being guarded, not unconditional
             !! DM_DEFAULT(.false.)
         integer(int32), intent(in) :: max_group_size
             !! Maximum number of ensembles one super-ensemble (one column of `super_ensembles`)
@@ -108,12 +114,12 @@ contains
             !! safe, if looser, upper bound for modes 2 and 3 too, whose groups can never
             !! outnumber mode 1's own worst case.
         integer(int32), intent(out) :: n_super_ensembles
-            !! Number of leading columns of `super_ensembles`/`super_ensembles_JSI` actually
-            !! filled
-        real(real64), intent(out) :: super_ensembles_JSI(max_group_size - 1, n_ensembles*(n_ensembles - 1))
-            !! Column $l$, row $c_i$: the JSI between the ensembles in `super_ensembles(c_i, l)`
-            !! and `super_ensembles(c_i + 1, l)`. All zero unless `report_jsi` was requested --
-            !! see the note above.
+            !! Number of leading columns of `super_ensembles`/`super_ensembles_overlap_coefficient`
+            !! actually filled
+        real(real64), intent(out) :: super_ensembles_overlap_coefficient(max_group_size - 1, n_ensembles*(n_ensembles - 1))
+            !! Column $l$, row $c_i$: the Overlap Coefficient between the ensembles in
+            !! `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`. All zero unless
+            !! `report_overlap_coefficient` was requested -- see the note above.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only if a discovered component's size exceeds
             !! `max_group_size` -- not a condition any input check could foresee, see above.
@@ -122,19 +128,19 @@ contains
         integer(int32) :: parent(n_ensembles)
         integer(int32) :: member(n_ensembles)
         integer(int32) :: actual_mode
-        real(real64)   :: actual_min_jsi
-        logical        :: actual_report_jsi
+        real(real64)   :: actual_min_overlap_coefficient
+        logical        :: actual_report_overlap_coefficient
         integer(int32) :: i, j, l, r, group_size, intersect_count, root
 
         call set_ok(ierr)
 
         M_DEFAULT_VAL(mode, actual_mode, CM_STC_MODE_REPORT)
-        M_DEFAULT_VAL(min_jsi, actual_min_jsi, CM_STC_MIN_JSI_DEFAULT)
-        M_DEFAULT_VAL(report_jsi, actual_report_jsi, .false.)
+        M_DEFAULT_VAL(min_overlap_coefficient, actual_min_overlap_coefficient, CM_STC_MIN_OVERLAP_COEFFICIENT_DEFAULT)
+        M_DEFAULT_VAL(report_overlap_coefficient, actual_report_overlap_coefficient, .false.)
 
-        super_ensembles     = 0
-        super_ensembles_JSI = 0.0_real64
-        n_super_ensembles   = 0
+        super_ensembles                       = 0
+        super_ensembles_overlap_coefficient   = 0.0_real64
+        n_super_ensembles                     = 0
 
         do i = 1, n_ensembles
             ensemble_size(i) = count(ensemble_masks(:, i))
@@ -151,9 +157,9 @@ contains
                     n_super_ensembles = n_super_ensembles + 1
                     super_ensembles(1, n_super_ensembles) = i
                     super_ensembles(2, n_super_ensembles) = j
-                    if (actual_report_jsi) then
-                        super_ensembles_JSI(1, n_super_ensembles) = real(intersect_count, real64) / &
-                            real(ensemble_size(i) + ensemble_size(j) - intersect_count, real64)
+                    if (actual_report_overlap_coefficient) then
+                        super_ensembles_overlap_coefficient(1, n_super_ensembles) = real(intersect_count, real64) / &
+                            real(min(ensemble_size(i), ensemble_size(j)), real64)
                     end if
                 end do
             end do
@@ -164,9 +170,9 @@ contains
                 do j = i + 1, n_ensembles
                     intersect_count = count(ensemble_masks(:, i) .and. ensemble_masks(:, j))
                     if (intersect_count < 1) cycle
-                    if (actual_mode == CM_STC_MODE_MERGE_JSI) then
+                    if (actual_mode == CM_STC_MODE_MERGE_OVERLAP_COEFFICIENT) then
                         if (real(intersect_count, real64) / &
-                            real(ensemble_size(i) + ensemble_size(j) - intersect_count, real64) < actual_min_jsi) cycle
+                            real(min(ensemble_size(i), ensemble_size(j)), real64) < actual_min_overlap_coefficient) cycle
                     end if
                     call stc_uf_union(parent, n_ensembles, i, j)
                 end do
@@ -196,11 +202,11 @@ contains
                 n_super_ensembles = n_super_ensembles + 1
                 super_ensembles(1:group_size, n_super_ensembles) = member(1:group_size)
 
-                if (actual_report_jsi) then
+                if (actual_report_overlap_coefficient) then
                     do l = 1, group_size - 1
                         intersect_count = count(ensemble_masks(:, member(l)) .and. ensemble_masks(:, member(l + 1)))
-                        super_ensembles_JSI(l, n_super_ensembles) = real(intersect_count, real64) / &
-                            real(ensemble_size(member(l)) + ensemble_size(member(l + 1)) - intersect_count, real64)
+                        super_ensembles_overlap_coefficient(l, n_super_ensembles) = real(intersect_count, real64) / &
+                            real(min(ensemble_size(member(l)), ensemble_size(member(l + 1))), real64)
                     end do
                 end if
             end do

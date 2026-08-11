@@ -74,7 +74,7 @@
   </div>
 </div>
 
-<h2>Pairwise JSI heatmap</h2>
+<h2>Pairwise Overlap Coefficient heatmap</h2>
 <div id="heatmap-wrap"><svg id="heatmap"></svg></div>
 
 <h2>Parameters</h2>
@@ -276,7 +276,7 @@ const DATA = __STC_DATA__;
     .forEach(id => document.getElementById(id).addEventListener("change", render));
   render();
 
-  // ---- JSI heatmap ---------------------------------------------------------------------
+  // ---- Overlap Coefficient heatmap ------------------------------------------------------
   const ensIds = nonEmptyEnsembles.map(e => e.id).sort((a, b) => a - b);
   const cell = Math.max(3, Math.min(14, Math.floor(700 / Math.max(ensIds.length, 1))));
   const hmMargin = { top: 10, right: 10, bottom: 10, left: 10 };
@@ -286,22 +286,24 @@ const DATA = __STC_DATA__;
     .attr("height", hmSize + hmMargin.top + hmMargin.bottom);
   const heatmapG = heatmapSvg.append("g").attr("transform", `translate(${hmMargin.left},${hmMargin.top})`);
   const idxOf = new Map(ensIds.map((id, i) => [id, i]));
-  const jsiLookup = new Map();
-  DATA.jsi_matrix.forEach(({ a, b, jsi }) => { jsiLookup.set(a + "_" + b, jsi); jsiLookup.set(b + "_" + a, jsi); });
+  const ocLookup = new Map();
+  DATA.overlap_coefficient_matrix.forEach(({ a, b, overlap_coefficient }) => {
+    ocLookup.set(a + "_" + b, overlap_coefficient); ocLookup.set(b + "_" + a, overlap_coefficient);
+  });
   const viridis = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]);
 
   const hmData = [];
   ensIds.forEach((ea, i) => ensIds.forEach((eb, j) => {
-    const jsi = ea === eb ? 1 : (jsiLookup.get(ea + "_" + eb) || 0);
-    hmData.push({ ea, eb, i, j, jsi });
+    const overlapCoefficient = ea === eb ? 1 : (ocLookup.get(ea + "_" + eb) || 0);
+    hmData.push({ ea, eb, i, j, overlapCoefficient });
   }));
 
   heatmapG.selectAll("rect").data(hmData).join("rect")
     .attr("x", d => d.i * cell).attr("y", d => d.j * cell)
     .attr("width", cell).attr("height", cell)
-    .attr("fill", d => viridis(d.jsi))
+    .attr("fill", d => viridis(d.overlapCoefficient))
     .on("mouseenter", (event, d) => {
-      tooltip.style("opacity", 1).html(`ensemble ${d.ea} &times; ${d.eb}<br>JSI = ${d.jsi.toFixed(3)}`);
+      tooltip.style("opacity", 1).html(`ensemble ${d.ea} &times; ${d.eb}<br>Overlap Coefficient = ${d.overlapCoefficient.toFixed(3)}`);
     })
     .on("mousemove", (event) => {
       tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px");

@@ -5,8 +5,8 @@ Runs run_stc.py twice on the same input: once with the parameters you give it (t
 chordal_dist_max_as_prcnt_of_range/g_max/d_max actually applied as the real run parameters
 (the "estimated" run) -- not just reported, unlike --estimate-parameters on its own.
 `density_quantile` has no direct CLI equivalent (see run_stc.py's own params-table "no
-equivalent" note) and is skipped; reconciliation_mode/min_jsi/rmse_change_max are held fixed
-across both runs, since the estimator does not touch them.
+equivalent" note) and is skipped; reconciliation_mode/min_overlap_coefficient/rmse_change_max
+are held fixed across both runs, since the estimator does not touch them.
 
 Run: python3 run_stc_pair.py <input.csv> [run_stc.py options for the "original" run]
 Writes <out-prefix>_original_* and <out-prefix>_estimated_* (defaults to
@@ -62,7 +62,7 @@ def main():
     # Hold reconciliation behavior (and RMSE_change_max, which estimate_stc_parameters does
     # not propose a value for, see misc/mod_STC.md) fixed across both runs -- the estimator
     # does not touch these, so comparing the two runs makes sense only if they match.
-    for flag in ("--reconciliation-mode", "--min-jsi", "--max-group-size", "--rmse-change-max"):
+    for flag in ("--reconciliation-mode", "--min-overlap-coefficient", "--max-group-size", "--rmse-change-max"):
         key = flag.lstrip("-").replace("-", "_")
         if original_params.get(key) not in (None, "None"):
             estimated_flags.extend([flag, str(original_params[key])])

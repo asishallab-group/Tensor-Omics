@@ -31,7 +31,7 @@ _lib.ensemble_reconciliation_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_RECONCILIATION_ARGUMENTS = ("ensemble_masks", "n_vectors", "n_ensembles", "mode", "min_jsi", "report_jsi", "max_group_size", "super_ensembles", "n_super_ensembles", "super_ensembles_JSI", "ierr",)
+_ENSEMBLE_RECONCILIATION_ARGUMENTS = ("ensemble_masks", "n_vectors", "n_ensembles", "mode", "min_overlap_coefficient", "report_overlap_coefficient", "max_group_size", "super_ensembles", "n_super_ensembles", "super_ensembles_overlap_coefficient", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _ENSEMBLE_RECONCILIATION_ARGUMENT_SOURCES = (None, "ensemble_masks", "ensemble_masks", None, None, None, "super_ensembles", None, None, None, None,)
 
@@ -39,8 +39,8 @@ def ensemble_reconciliation(
         ensemble_masks,
         max_group_size,
         mode='report',
-        min_jsi=0.1,
-        report_jsi=False,
+        min_overlap_coefficient=0.9,
+        report_overlap_coefficient=False,
 ):
     r"""Identify and group intersecting ensembles from Ensemble Identification's merged output
 
@@ -48,20 +48,21 @@ def ensemble_reconciliation(
     ----------
     ensemble_masks : np.ndarray[np.bool_] of shape (n_vectors, n_ensembles,), column-major (order='F')
         Per-ensemble membership, see Ensemble Identification's merged output
-    mode : str, one of 'report' | 'merge_jsi' | 'merge_any', optional, default 'report'
+    mode : str, one of 'report' | 'merge_overlap_coefficient' | 'merge_any', optional, default 'report'
         How intersections are processed
 
         The default value is `1`.
-    min_jsi : float, optional, default 0.1
-        Minimum Jaccard Similarity Index for an edge to qualify in mode
-        ``'merge_jsi'``;
+    min_overlap_coefficient : float, optional, default 0.9
+        Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
+        \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
+        ``'merge_overlap_coefficient'``;
         ignored in every other mode
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
-        The default value is `0.1`.
-    report_jsi : bool, optional, default False
-        Whether to compute and return `super_ensembles_JSI` at all -- see the note
-        above on this being guarded, not unconditional
+        The default value is `0.9`.
+    report_overlap_coefficient : bool, optional, default False
+        Whether to compute and return `super_ensembles_overlap_coefficient` at all --
+        see the note above on this being guarded, not unconditional
         The default value is `False`.
     max_group_size : int
         Maximum number of ensembles one super-ensemble (one column of `super_ensembles`)
@@ -96,12 +97,12 @@ def ensemble_reconciliation(
             outnumber mode 1's own worst case.
             A result is a value; call `.copy()` to obtain a modifiable array.
         n_super_ensembles : int
-            Number of leading columns of `super_ensembles`/`super_ensembles_JSI` actually
-            filled
-        super_ensembles_JSI : np.ndarray[np.float64] of shape (max_group_size-1, n_ensembles*(n_ensembles-1),), column-major (order='F'), read-only
-            Column $l$, row $c_i$: the JSI between the ensembles in `super_ensembles(c_i, l)`
-            and `super_ensembles(c_i + 1, l)`. All zero unless `report_jsi` was requested --
-            see the note above.
+            Number of leading columns of `super_ensembles`/`super_ensembles_overlap_coefficient`
+            actually filled
+        super_ensembles_overlap_coefficient : np.ndarray[np.float64] of shape (max_group_size-1, n_ensembles*(n_ensembles-1),), column-major (order='F'), read-only
+            Column $l$, row $c_i$: the Overlap Coefficient between the ensembles in
+            `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`. All zero unless
+            `report_overlap_coefficient` was requested -- see the note above.
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -121,7 +122,7 @@ def ensemble_reconciliation(
         raise TypeError(f"'ensemble_masks' must be an array of np.bool_: {error}") from None
     if ensemble_masks.ndim != 2:
         raise ValueError(f"'ensemble_masks' must have 2 dimensions, but has {ensemble_masks.ndim}")
-    mode = np.array([str(mode).lower().encode()], dtype="S9")
+    mode = np.array([str(mode).lower().encode()], dtype="S25")
 
     # what the inputs already say, rather than asking for it again
     n_vectors = ensemble_masks.shape[0]
@@ -130,7 +131,7 @@ def ensemble_reconciliation(
     # outputs and work arrays, which the caller never sees
     super_ensembles = np.empty((max_group_size, n_ensembles*(n_ensembles-1),), dtype=np.int32, order='F')
     n_super_ensembles = ctypes.c_int(0)
-    super_ensembles_JSI = np.empty((max_group_size-1, n_ensembles*(n_ensembles-1),), dtype=np.float64, order='F')
+    super_ensembles_overlap_coefficient = np.empty((max_group_size-1, n_ensembles*(n_ensembles-1),), dtype=np.float64, order='F')
     ierr = ctypes.c_int(0)
 
     _lib.ensemble_reconciliation_c(
@@ -138,12 +139,12 @@ def ensemble_reconciliation(
         ctypes.byref(ctypes.c_int(n_vectors)),
         ctypes.byref(ctypes.c_int(n_ensembles)),
         mode,
-        ctypes.byref(ctypes.c_double(min_jsi)),
-        ctypes.byref(ctypes.c_bool(report_jsi)),
+        ctypes.byref(ctypes.c_double(min_overlap_coefficient)),
+        ctypes.byref(ctypes.c_bool(report_overlap_coefficient)),
         ctypes.byref(ctypes.c_int(max_group_size)),
         super_ensembles,
         ctypes.byref(n_super_ensembles),
-        super_ensembles_JSI,
+        super_ensembles_overlap_coefficient,
         ctypes.byref(ierr),
     )
 
@@ -151,10 +152,10 @@ def ensemble_reconciliation(
 
     # a result is a value: modify a copy, not this
     super_ensembles.flags.writeable = False
-    super_ensembles_JSI.flags.writeable = False
+    super_ensembles_overlap_coefficient.flags.writeable = False
 
     return {
         "super_ensembles": super_ensembles,
         "n_super_ensembles": n_super_ensembles.value,
-        "super_ensembles_JSI": super_ensembles_JSI,
+        "super_ensembles_overlap_coefficient": super_ensembles_overlap_coefficient,
     }

@@ -71,7 +71,7 @@ def main():
     low_confidence_rows = read_csv_rows(f"{prefix}_low_confidence_membership.csv")
     ensembles_rows = read_csv_rows(f"{prefix}_ensembles.csv")
     super_ensembles_rows = read_csv_rows(f"{prefix}_super_ensembles.csv")
-    jsi_matrix_rows = read_csv_rows(f"{prefix}_ensemble_jsi_matrix.csv")
+    overlap_coefficient_matrix_rows = read_csv_rows(f"{prefix}_ensemble_overlap_coefficient_matrix.csv")
 
     ensembles_by_point = defaultdict(list)
     seed_ensembles_by_point = defaultdict(list)
@@ -130,8 +130,9 @@ def main():
 
     super_ensembles = [{"group_id": gid, "ensemble_ids": sorted(eids)} for gid, eids in sorted(groups.items())]
 
-    jsi_matrix = [{"a": int(row["ensemble_id_1"]), "b": int(row["ensemble_id_2"]), "jsi": float(row["jsi"])}
-                  for row in jsi_matrix_rows]
+    overlap_coefficient_matrix = [{"a": int(row["ensemble_id_1"]), "b": int(row["ensemble_id_2"]),
+                                    "overlap_coefficient": float(row["overlap_coefficient"])}
+                                   for row in overlap_coefficient_matrix_rows]
 
     payload = {
         "dim_names": dim_names,
@@ -139,7 +140,7 @@ def main():
         "points": points,
         "ensembles": ensembles,
         "super_ensembles": super_ensembles,
-        "jsi_matrix": jsi_matrix,
+        "overlap_coefficient_matrix": overlap_coefficient_matrix,
     }
 
     out_path = f"{prefix}.json"

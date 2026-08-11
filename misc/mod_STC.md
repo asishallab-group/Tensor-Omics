@@ -693,7 +693,7 @@ local linear manifolds.
 This module first identifies ensembles that intersect. It then offers three
 different modes of how to process intersections:
 * (1) just report them
-* (2) merge with a minimal Jaccard Similarity Index (JSI; default 0.1)
+* (2) merge with a minimal set Overlap Coefficient (SOC; default 0.9)
 * (3) merge all, i.e. if the intersection has size >= 1, merge.
 
 The module does not alter the result produced by "Ensemble Identification". It
@@ -704,17 +704,27 @@ ensembles indicating which have intersections (mode 1), or have been merged
 Detecting an intersection at all already requires computing
 $|\mathcal{E}_i \cap \mathcal{E}_j|$, needed by every mode, and each
 ensemble's own size $|\mathcal{E}_i|$ is cheap to precompute once per
-ensemble ($O(N_{\mathcal{E}})$ total, not once per pair). The JSI itself,
-$|\mathcal{E}_i \cap \mathcal{E}_j| / |\mathcal{E}_i \cup \mathcal{E}_j|$, is
-then a single extra $O(1)$ step per pair, via
-$|\mathcal{E}_i \cup \mathcal{E}_j| = |\mathcal{E}_i| + |\mathcal{E}_j| -
-|\mathcal{E}_i \cap \mathcal{E}_j|$ -- so reporting it is made available
-regardless of mode, via an optional user flag, rather than tied to mode 2
-specifically. Modes 1 and 3 do not need the JSI for their own decision, so
+ensemble ($O(N_{\mathcal{E}})$ total, not once per pair). The **Overlap
+Coefficient** (Szymkiewicz-Simpson coefficient) itself,
+$$
+\text{OC}(\mathcal{E}_i, \mathcal{E}_j) = \frac{|\mathcal{E}_i \cap \mathcal{E}_j|}{\min(|\mathcal{E}_i|, |\mathcal{E}_j|)},
+$$
+is then a single extra $O(1)$ step per pair -- even cheaper than the Jaccard
+Similarity Index this replaces, since the denominator is just the smaller of
+the two already-precomputed sizes, not a union requiring both sizes and the
+intersection combined. Overlap Coefficient (unlike Jaccard) is exactly the
+statistic for "is one ensemble, or most of it, contained within the other,"
+which is the actual question a true or partial subset relationship poses:
+two ensembles where the smaller is fully contained in the larger score
+$\text{OC}=1$ regardless of how much larger the other one is, whereas their
+JSI would be driven arbitrarily low by the size difference alone -- exactly
+the containment relation JSI fails to capture. Reporting it is made
+available regardless of mode, via an optional user flag, rather than tied to
+mode 2 specifically. Modes 1 and 3 do not need it for their own decision, so
 **the implementation must guard the computation behind that flag** (an `if
-(report_jsi) ...`, not an unconditional computation): the added cost is
-small, but it is not exactly zero, and nothing here should be computed that
-nobody asked for.
+(report_overlap_coefficient) ...`, not an unconditional computation): the
+added cost is small, but it is not exactly zero, and nothing here should be
+computed that nobody asked for.
 
 The output assumes a maximum number of ensembles that can belong to one
 merged group, to enable allocation of the sparse adjacency matrix
@@ -726,12 +736,13 @@ or have been merged (modes 2 and 3); its rows hold that group's member
 ensembles, padded with `0` (an invalid ensemble number, since ensembles are
 1-indexed) beyond the group's actual size. The content of each cell are the
 column indices of module Ensemble Identification's `ensemble_masks` output,
-thus identifying the ensembles directly via their indices. If JSI reporting
-was requested, an optional two dimensional real `super_ensembles_JSI` array
-is returned additionally. It has the same number of columns as
-`super_ensembles` and one row less. Each column in `super_ensembles_JSI`
-represents the super-ensemble in `super_ensembles` directly. Within each
-column $l$, each cell index $c_i$ indicates the JSI between the ensemble
+thus identifying the ensembles directly via their indices. If Overlap
+Coefficient reporting was requested, an optional two dimensional real
+`super_ensembles_overlap_coefficient` array is returned additionally. It has
+the same number of columns as `super_ensembles` and one row less. Each
+column in `super_ensembles_overlap_coefficient` represents the
+super-ensemble in `super_ensembles` directly. Within each column $l$, each
+cell index $c_i$ indicates the Overlap Coefficient between the ensemble
 number stored in `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`.
 
 ## Estimate parameters from data
@@ -873,3 +884,48 @@ strong density heterogeneity, all anchors could land in similar regions), and
 the `seed_max_set_size` size cap. Treat its output the way any of this
 family's other tunable defaults are treated: a reasonable value to start
 from and refine, not a guarantee.
+
+# Command line interface (CLI) in C
+
+Use GNU argp to create a C command line interface that leverages `libcsv` to
+parse an input table with callbacks to create a 2D real Fortran array of input
+data vectors, then call the Fortran `_c` API to run our Shape Truthful
+Clustering from the command line interface.
+
+## Real 2D array from a CSV with libcsv
+
+Write a F42 module that uses C's libcsv to parse a CSV and creates a transposed
+2D array from the input data. In this first version assume all values are real
+numbers. Also note our `src/f42/f42_safeguard.F90` ensuring that C types match
+Fortran types.
+
+The module expects the following arguments:
+* file, i.e. the complete file path to the input CSV
+* separator, i.e. the char used to separate columns
+* header, i.e. a flag indicating whether a header line is present
+
+The module implements the following parsing approach:
+* Query libcsv for the number of columns, e.g. by parsing the first line, then
+  instantiate a real 2D array with nrows equal to the number of columns. If
+  possible use some file information to get the number of lines and instantiate
+  the the read 2D array with nrows and nlines, i.e. the input CSV will be
+  stored transposed in Fortran, because Fortan is column major. 
+  * If not possible to obtain the number of lines, makes this a required input
+    argument.
+* Then use libcsv's callback mechanism to populate the above output 2D array.
+  Do all of this still in C.
+* Once parsing has passed provide a pointer and dimension information to pass
+  the 2D array with zero copy to Fortran. Our codebase has many examples of how
+  to do this with zero copy.
+
+## Arguments of CLI
+
+The command line interface will require arguments:
+* file, i.e. the complete file path to the input CSV
+* separator, i.e. the char used to separate columns
+* header, i.e. a flag indicating whether a header line is present
+* the arguments required by STC, like k_min, etc.
+  * include optional arguments with default values, i.e. the user can provide
+    values but is not required to.
+* output-dir, required argument of a directory-path to which to write our
+  output files, including the HTML/D3 plot.

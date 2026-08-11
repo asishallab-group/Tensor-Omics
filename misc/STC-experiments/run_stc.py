@@ -77,10 +77,12 @@ def parse_args():
                     help="Stop condition 2: accepted-iteration count for a later rejection to count as stable (default 2)")
     p.add_argument("--o", type=int, default=10,
                     help="Trailing observable-history window depth (default 10)")
-    p.add_argument("--reconciliation-mode", choices=["report", "merge_jsi", "merge_any"], default="merge_jsi",
-                    help="How Ensemble Reconciliation processes intersections (default merge_jsi)")
-    p.add_argument("--min-jsi", type=float, default=0.1,
-                    help="Reconciliation: minimum Jaccard Similarity Index for mode merge_jsi (default 0.1)")
+    p.add_argument("--reconciliation-mode", choices=["report", "merge_overlap_coefficient", "merge_any"],
+                    default="merge_overlap_coefficient",
+                    help="How Ensemble Reconciliation processes intersections (default merge_overlap_coefficient)")
+    p.add_argument("--min-overlap-coefficient", type=float, default=0.9,
+                    help="Reconciliation: minimum Overlap Coefficient (|intersection| / min(|A|,|B|)) for mode "
+                         "merge_overlap_coefficient (default 0.9)")
     p.add_argument("--max-group-size", type=int, default=None,
                     help="Reconciliation: max ensembles per super-ensemble (default min(1024, n_ensembles))")
     p.add_argument("--estimate-parameters", action="store_true",
@@ -258,53 +260,55 @@ def main():
     ensembles_df = pd.DataFrame(ensemble_rows)
     ensembles_df.to_csv(f"{out_prefix}_ensembles.csv", index=False)
 
-    # --- reconciliation: super_ensembles.csv / super_ensembles_jsi.csv ---
-    group_rows, jsi_rows = [], []
+    # --- reconciliation: super_ensembles.csv / super_ensembles_overlap_coefficient.csv ---
+    group_rows, overlap_coefficient_rows = [], []
     if n_ensembles >= 2:
         max_group_size = args.max_group_size or min(1024, n_ensembles)
         recon = ensemble_reconciliation(
             result["ensemble_masks"], max_group_size,
-            mode=args.reconciliation_mode, min_jsi=args.min_jsi, report_jsi=True,
+            mode=args.reconciliation_mode, min_overlap_coefficient=args.min_overlap_coefficient,
+            report_overlap_coefficient=True,
         )
         n_groups = int(recon["n_super_ensembles"])
         super_ensembles = recon["super_ensembles"]
-        super_ensembles_jsi = recon["super_ensembles_JSI"]
+        super_ensembles_overlap_coefficient = recon["super_ensembles_overlap_coefficient"]
         for g in range(n_groups):
             members = super_ensembles[:, g]
             members = members[members > 0]
             for m in members:
                 group_rows.append((g + 1, int(m)))
             for row_idx in range(len(members) - 1):
-                jsi_rows.append((g + 1, int(members[row_idx]), int(members[row_idx + 1]),
-                                  float(super_ensembles_jsi[row_idx, g])))
+                overlap_coefficient_rows.append((g + 1, int(members[row_idx]), int(members[row_idx + 1]),
+                                  float(super_ensembles_overlap_coefficient[row_idx, g])))
         print(f"[run_stc] {stem}: reconciliation mode={args.reconciliation_mode} -> {n_groups} super-ensemble(s)")
     else:
         print(f"[run_stc] {stem}: fewer than 2 ensembles, skipping reconciliation")
 
     pd.DataFrame(group_rows, columns=["group_id", "ensemble_id"]).to_csv(f"{out_prefix}_super_ensembles.csv", index=False)
-    pd.DataFrame(jsi_rows, columns=["group_id", "ensemble_id_from", "ensemble_id_to", "jsi"]).to_csv(
-        f"{out_prefix}_super_ensembles_jsi.csv", index=False)
+    pd.DataFrame(overlap_coefficient_rows, columns=["group_id", "ensemble_id_from", "ensemble_id_to", "overlap_coefficient"]).to_csv(
+        f"{out_prefix}_super_ensembles_overlap_coefficient.csv", index=False)
 
-    # --- ensemble_jsi_matrix.csv: every pairwise JSI between non-empty ensembles, not just
-    # the consecutive-within-a-group pairs super_ensembles_jsi.csv reports -- for the "JSI
-    # between ensembles" heatmap, which needs the full matrix (including pairs that never
-    # qualified for reconciliation at all, JSI=0) rather than only super-ensemble members.
-    # Cheap: a single boolean matmul over the same ensemble_masks reconciliation already used.
+    # --- ensemble_overlap_coefficient_matrix.csv: every pairwise Overlap Coefficient between
+    # non-empty ensembles, not just the consecutive-within-a-group pairs
+    # super_ensembles_overlap_coefficient.csv reports -- for the "Overlap Coefficient between
+    # ensembles" heatmap, which needs the full matrix (including pairs that never qualified
+    # for reconciliation at all, OC=0) rather than only super-ensemble members. Cheap: a
+    # single boolean matmul over the same ensemble_masks reconciliation already used.
     nonempty = np.nonzero(result["ensemble_masks"].sum(axis=0) > 0)[0]
-    jsi_matrix_rows = []
+    overlap_coefficient_matrix_rows = []
     if len(nonempty) >= 2:
         masks_i = result["ensemble_masks"][:, nonempty].astype(np.int64)
         sizes_i = masks_i.sum(axis=0)
         intersection = masks_i.T @ masks_i
-        union = sizes_i[:, None] + sizes_i[None, :] - intersection
-        jsi_full = np.divide(intersection, union, out=np.zeros_like(intersection, dtype=np.float64), where=union > 0)
+        min_size = np.minimum(sizes_i[:, None], sizes_i[None, :])
+        oc_full = np.divide(intersection, min_size, out=np.zeros_like(intersection, dtype=np.float64), where=min_size > 0)
         for a_idx, e_a in enumerate(nonempty):
             for b_idx, e_b in enumerate(nonempty):
                 if e_b <= e_a:
                     continue
-                jsi_matrix_rows.append((int(e_a) + 1, int(e_b) + 1, float(jsi_full[a_idx, b_idx])))
-    pd.DataFrame(jsi_matrix_rows, columns=["ensemble_id_1", "ensemble_id_2", "jsi"]).to_csv(
-        f"{out_prefix}_ensemble_jsi_matrix.csv", index=False)
+                overlap_coefficient_matrix_rows.append((int(e_a) + 1, int(e_b) + 1, float(oc_full[a_idx, b_idx])))
+    pd.DataFrame(overlap_coefficient_matrix_rows, columns=["ensemble_id_1", "ensemble_id_2", "overlap_coefficient"]).to_csv(
+        f"{out_prefix}_ensemble_overlap_coefficient_matrix.csv", index=False)
 
     # --- params.json / params.txt: for the plot script's caption. Both are written: .json
     # for anything that wants to parse it programmatically, .txt (plain key=value lines) so
@@ -325,7 +329,8 @@ def main():
             fh.write(f"{key}={value}\n")
 
     print(f"[run_stc] wrote {out_prefix}_{{points,membership,low_confidence_membership,ensembles,"
-          f"super_ensembles,super_ensembles_jsi,ensemble_jsi_matrix,params}}.{{csv,json,txt}}")
+          f"super_ensembles,super_ensembles_overlap_coefficient,ensemble_overlap_coefficient_matrix,"
+          f"params}}.{{csv,json,txt}}")
 
 
 if __name__ == "__main__":

@@ -57,8 +57,8 @@ usage message, printed when you run it with no arguments, for the exact position
 
 ```bash
 misc/STC-experiments/run_stc_experiments.sh misc/STC-experiments/data/2d/kinked_curve_2d_noise_medium.csv \
-    15,30 0.5,0.7 1,2 3.0,8.0 merge_jsi,merge_any 0.1
-#   ^k_min ^chordal_dist_max_as_prcnt_of_range ^d_max ^g_max ^reconciliation_mode ^min_jsi
+    15,30 0.5,0.7 1,2 3.0,8.0 merge_overlap_coefficient,merge_any 0.9
+#   ^k_min ^chordal_dist_max_as_prcnt_of_range ^d_max ^g_max ^reconciliation_mode ^min_overlap_coefficient
 ```
 
 produces one PDF per combination (2×2×2×2×2×1 = 16 here). Two more optional, trailing lists
@@ -68,8 +68,8 @@ growth-phase radius, see "Known limitations" below):
 
 ```bash
 misc/STC-experiments/run_stc_experiments.sh misc/STC-experiments/data/2d/kinked_curve_2d_noise_medium.csv \
-    30 0.5 1 3.0 merge_jsi 0.1 15,30 25,50
-#   ^k_min ^chordal ^d_max ^g_max ^mode ^min_jsi ^k_density ^exclusion_radius_percentile
+    30 0.5 1 3.0 merge_overlap_coefficient 0.9 15,30 25,50
+#   ^k_min ^chordal ^d_max ^g_max ^mode ^min_overlap_coefficient ^k_density ^exclusion_radius_percentile
 ```
 
 Before this was wired up, `k_density` and `exclusion_radius_percentile` were not
@@ -101,8 +101,8 @@ run_stc.py  (per CSV, per parameter combination)
                                     |
                                     v
               results/data/<prefix>_{points,membership,low_confidence_membership,
-                                      ensembles,super_ensembles,super_ensembles_jsi,
-                                      ensemble_jsi_matrix,params}.csv
+                                      ensembles,super_ensembles,super_ensembles_overlap_coefficient,
+                                      ensemble_overlap_coefficient_matrix,params}.csv
                                     |
                           +---------+---------+
                           v                   v
@@ -161,8 +161,8 @@ they mean algorithmically (see `misc/mod_STC.md` for the full definitions):
 | `--f-max` | Stop Condition 1's ensemble-size-fraction ceiling | 0.95 |
 | `--a` | Stop Condition 2's "stably accepted" threshold | 2 |
 | `--o` | trailing observable-history window depth | 10 |
-| `--reconciliation-mode` | `report` / `merge_jsi` / `merge_any` | `merge_jsi` |
-| `--min-jsi` | minimum JSI for `merge_jsi` | 0.1 |
+| `--reconciliation-mode` | `report` / `merge_overlap_coefficient` / `merge_any` | `merge_overlap_coefficient` |
+| `--min-overlap-coefficient` | minimum Overlap Coefficient (`\|intersection\| / min(\|A\|,\|B\|)`) for `merge_overlap_coefficient` | 0.9 |
 | `--max-group-size` | cap on ensembles per super-ensemble | `min(1024, n_ensembles)` |
 | `--exclusion-radius-percentile` | `seeds`' own coverage/exclusion radius quantile | 50.0 |
 | `--bandwidth-percentile` | `density_labels`' local KDE bandwidth quantile | 68.27 |
@@ -171,8 +171,8 @@ they mean algorithmically (see `misc/mod_STC.md` for the full definitions):
 
 It writes eight files per run (`<prefix>_points.csv`, `..._membership.csv`,
 `..._low_confidence_membership.csv`, `..._ensembles.csv`, `..._super_ensembles.csv`,
-`..._super_ensembles_jsi.csv`, `..._ensemble_jsi_matrix.csv`, `..._params.{json,txt}`) --
-see "Output CSV schemas" below.
+`..._super_ensembles_overlap_coefficient.csv`, `..._ensemble_overlap_coefficient_matrix.csv`,
+`..._params.{json,txt}`) -- see "Output CSV schemas" below.
 
 ### `plot_stc.R`
 
@@ -203,10 +203,11 @@ was not passed):
    filled points are ensembles that got grouped, colored by super-ensemble; open circles are
    ensembles that did not qualify at the current mode/threshold. Grouping only -- deliberately
    *not* drawn as an ordered chain/skeleton, see "No stitched manifolds" below.
-7b. **JSI heatmap** -- every non-empty ensemble pair's Jaccard similarity, from
-    `<prefix>_ensemble_jsi_matrix.csv`, as a `geom_tile()` heatmap (viridis fill, diagonal
-    forced to 1.0). Unlike Page 7, this includes pairs that never reached the reconciliation
-    threshold, so it is the "before thresholding" view Page 7 is a slice of.
+7b. **Overlap Coefficient heatmap** -- every non-empty ensemble pair's Overlap Coefficient
+    (`\|intersection\| / min(\|A\|,\|B\|)`), from `<prefix>_ensemble_overlap_coefficient_matrix.csv`,
+    as a `geom_tile()` heatmap (viridis fill, diagonal forced to 1.0). Unlike Page 7, this
+    includes pairs that never reached the reconciliation threshold, so it is the "before
+    thresholding" view Page 7 is a slice of.
 8. **Low-confidence fallback coverage** -- every point colored by one of three categories: in
    a retained ensemble; orphaned by the retained pipeline but reachable by some seed's
    iteration-1 `low_confidence_mask` (a fallback LoManLe may choose to use, see
@@ -222,7 +223,8 @@ was not passed):
 `plot_stc.R` never draws a super-ensemble's members as a connected, ordered path/skeleton --
 `ensemble_reconciliation` only ever reports *which* ensembles intersect enough to group, not
 in what order or with what geometry they connect. An earlier version of this script did draw
-such a chain (via `super_ensembles_JSI`'s per-column consecutive-pair JSI values), and it was
+such a chain (via the per-column consecutive-pair similarity values reconciliation already
+computed), and it was
 actively misleading: `super_ensembles`' member order within a group is ensemble-*discovery*
 order (highest density first), not spatial order, so the "chain" zigzagged across the data
 with no relationship to the actual manifold shape. Turning a set of intersecting ensembles
@@ -286,20 +288,21 @@ the usage message.
 ### The interactive HTML report
 
 The 2D pages of `plot_stc.R`'s PDF report (Pages 1-7b: point cloud/seeds, clusters, overlap
-density, growth radii, both tangent directions, super-ensembles, JSI heatmap) also exist as
-one interactive HTML page you can open in a browser, `<prefix>_interactive.html` -- built
-from three pieces:
+density, growth radii, both tangent directions, super-ensembles, Overlap Coefficient heatmap)
+also exist as one interactive HTML page you can open in a browser, `<prefix>_interactive.html`
+-- built from three pieces:
 
 - **`export_json.py <prefix>`** -- reads the same `<prefix>_*.csv`/`_params.txt` files
   `plot_stc.R` does and consolidates them into one `<prefix>.json`: per-point
   `ensembles`/`low_confidence_ensembles`/`seed_of` lists precomputed (not left for the
-  browser to join at view time), per-ensemble `super_ensemble_id`, the full JSI matrix, and
-  `params`.
+  browser to join at view time), per-ensemble `super_ensemble_id`, the full Overlap
+  Coefficient matrix, and `params`.
 - **`interactive_template.html`** -- the reusable part; a self-contained D3 v7 page with
   `__STC_D3_JS__`/`__STC_DATA__` placeholders. Controls panel (point color mode, which single
-  ensemble to highlight, layer checkboxes for growth-radius circles/tangent segments/JSI
-  heatmap) plus a hover tooltip showing every relevant fact about a point (seed status,
-  which ensemble(s) and super-ensemble(s) it belongs to, low-confidence coverage). Replaces
+  ensemble to highlight, layer checkboxes for growth-radius circles/tangent segments) plus a
+  separate, always-shown Overlap Coefficient heatmap, and a hover tooltip showing every
+  relevant fact about a point (seed status, which ensemble(s) and super-ensemble(s) it
+  belongs to, low-confidence coverage). Replaces
   the old approach of drawing every information layer at once and letting them overplot each
   other -- exactly one ensemble-point relation is highlighted at a time, chosen from the
   dropdown. Edit this file to change the visualization; nothing else needs to change per
@@ -328,7 +331,7 @@ once with that estimate's `k_min`/`k_density`/`chordal_dist_max_as_prcnt_of_rang
 `d_max` actually applied as real run parameters (the "estimated" run) -- not just reported,
 unlike `--estimate-parameters` on its own, which never feeds back into the same run.
 `density_quantile` has no direct CLI flag (see the options table's "no equivalent" note) and
-is skipped; `reconciliation_mode`/`min_jsi`/`max_group_size`/`rmse_change_max` are held fixed
+is skipped; `reconciliation_mode`/`min_overlap_coefficient`/`max_group_size`/`rmse_change_max` are held fixed
 across both runs, since the estimator does not propose values for them. Writes
 `<out-prefix>_original_*`/`<out-prefix>_estimated_*` (PDF, 3D PDF where applicable, JSON,
 interactive HTML) side by side, so the two can be compared directly -- this is how "run two
@@ -362,13 +365,15 @@ For reuse outside `plot_stc.R` (a different plotting tool, a notebook, ad-hoc an
   tangent directions and their scales -- `s2` is 0 when `d < 2`).
 - **`<prefix>_super_ensembles.csv`** (long, one row per (super-ensemble, member ensemble)
   pair): `group_id`, `ensemble_id`.
-- **`<prefix>_super_ensembles_jsi.csv`** (long, one row per consecutive pair within a
-  super-ensemble's column): `group_id`, `ensemble_id_from`, `ensemble_id_to`, `jsi`.
-- **`<prefix>_ensemble_jsi_matrix.csv`** (long, one row per unordered pair of non-empty
-  ensembles): `ensemble_id_1`, `ensemble_id_2`, `jsi`. The *full* pairwise matrix -- including
-  pairs that never qualified for reconciliation at all (`jsi=0`), unlike
-  `super_ensembles_jsi.csv`, which only ever reports consecutive pairs within an already-formed
-  group. Feeds the JSI heatmap (Page 7b, see below).
+- **`<prefix>_super_ensembles_overlap_coefficient.csv`** (long, one row per consecutive pair
+  within a super-ensemble's column): `group_id`, `ensemble_id_from`, `ensemble_id_to`,
+  `overlap_coefficient`.
+- **`<prefix>_ensemble_overlap_coefficient_matrix.csv`** (long, one row per unordered pair of
+  non-empty ensembles): `ensemble_id_1`, `ensemble_id_2`, `overlap_coefficient`. The *full*
+  pairwise matrix -- including pairs that never qualified for reconciliation at all
+  (`overlap_coefficient=0`), unlike `super_ensembles_overlap_coefficient.csv`, which only ever
+  reports consecutive pairs within an already-formed group. Feeds the Overlap Coefficient
+  heatmap (Page 7b, see below).
 - **`<prefix>_params.json`** / **`<prefix>_params.txt`**: every parameter `run_stc.py` ran
   with, plus `n_vectors`/`n_dimensions`/`n_ensembles`, plus (only with
   `--estimate-parameters`) `estimated_k_min`/`estimated_k_density`/

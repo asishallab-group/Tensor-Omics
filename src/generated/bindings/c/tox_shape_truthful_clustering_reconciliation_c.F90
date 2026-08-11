@@ -17,12 +17,14 @@ contains
 
     !> summary: C-wrapper for [[tox_shape_truthful_clustering_reconciliation(module):ensemble_reconciliation(subroutine)]]
     !| Detecting an intersection at all already requires $|\mathcal{E}_i \cap \mathcal{E}_j|$,
-    !| needed by every mode; the JSI itself is a single extra $O(1)$ step per pair once each
-    !| ensemble's own size is known, via
-    !| $|\mathcal{E}_i \cup \mathcal{E}_j| = |\mathcal{E}_i| + |\mathcal{E}_j| - |\mathcal{E}_i \cap \mathcal{E}_j|$
+    !| needed by every mode; the Overlap Coefficient itself is a single extra $O(1)$ step per
+    !| pair once each ensemble's own size is known --
+    !| $\text{OC}(\mathcal{E}_i, \mathcal{E}_j) = |\mathcal{E}_i \cap \mathcal{E}_j| /
+    !| \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$, cheaper even than the Jaccard Similarity Index
+    !| it replaces (no union to derive, just the smaller of the two already-precomputed sizes)
     !| -- but modes 1 and 3 do not need it for their own decision, so its computation is
-    !| guarded behind `report_jsi`, never unconditional (see `misc/mod_STC.md`'s explicit note
-    !| on this).
+    !| guarded behind `report_overlap_coefficient`, never unconditional (see `misc/mod_STC.md`'s
+    !| explicit note on this).
     !|
     !| Modes 2 and 3 group via a union-find over the qualifying-edge graph (`stc_uf_find`/
     !| `stc_uf_union` below), unioning the smaller index under the larger's root so that a
@@ -38,16 +40,16 @@ contains
             n_vectors,&
             n_ensembles,&
             mode,&
-            min_jsi,&
-            report_jsi,&
+            min_overlap_coefficient,&
+            report_overlap_coefficient,&
             max_group_size,&
             super_ensembles,&
             n_super_ensembles,&
-            super_ensembles_JSI,&
+            super_ensembles_overlap_coefficient,&
             ierr&
         ) bind(C, name="ensemble_reconciliation_c")
         use tox_shape_truthful_clustering_reconciliation, only: ensemble_reconciliation
-        use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_MERGE_ANY, MODE_MERGE_JSI, MODE_REPORT
+        use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_MERGE_ANY, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_REPORT
 
         integer(c_int), intent(in), target :: n_vectors
             !! Number of input vectors N
@@ -69,25 +71,26 @@ contains
             !! The maximum valid value is `n_ensembles`.
         logical(c_bool), dimension(n_vectors, n_ensembles), intent(in), target :: ensemble_masks
             !! Per-ensemble membership, see Ensemble Identification's merged output
-        character(len=1, kind=c_char), dimension(9), intent(in), target :: mode
+        character(len=1, kind=c_char), dimension(25), intent(in), target :: mode
             !! How intersections are processed
             !!
-            !! | Mode                                   | Value                                                                                    |
-            !! |----------------------------------------|------------------------------------------------------------------------------------------|
-            !! | Report intersecting pairs only         | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]    |
-            !! | Merge transitively at a minimum JSI    | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_JSI(variable)]] |
-            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]] |
+            !! | Mode                                                | Value                                                                                                    |
+            !! |-----------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+            !! | Report intersecting pairs only                      | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]                    |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
+            !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]                 |
             !! The default value is `1_int32`.
-        real(c_double), intent(in), target :: min_jsi
-            !! Minimum Jaccard Similarity Index for an edge to qualify in mode
-            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_JSI(variable)]];
+        real(c_double), intent(in), target :: min_overlap_coefficient
+            !! Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
+            !! \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
+            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]];
             !! ignored in every other mode
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.1_real64`.
-        logical(c_bool), intent(in), target :: report_jsi
-            !! Whether to compute and return `super_ensembles_JSI` at all -- see the note
-            !! above on this being guarded, not unconditional
+            !! The default value is `0.9_real64`.
+        logical(c_bool), intent(in), target :: report_overlap_coefficient
+            !! Whether to compute and return `super_ensembles_overlap_coefficient` at all --
+            !! see the note above on this being guarded, not unconditional
             !! The default value is `.false.`.
         integer(c_int), dimension(max_group_size, n_ensembles*(n_ensembles-1)), intent(out), target :: super_ensembles
             !! One super-ensemble per column: the 1-indexed column indices of `ensemble_masks`
@@ -104,31 +107,31 @@ contains
             !! safe, if looser, upper bound for modes 2 and 3 too, whose groups can never
             !! outnumber mode 1's own worst case.
         integer(c_int), intent(out), target :: n_super_ensembles
-            !! Number of leading columns of `super_ensembles`/`super_ensembles_JSI` actually
-            !! filled
-        real(c_double), dimension(max_group_size-1, n_ensembles*(n_ensembles-1)), intent(out), target :: super_ensembles_JSI
-            !! Column $l$, row $c_i$: the JSI between the ensembles in `super_ensembles(c_i, l)`
-            !! and `super_ensembles(c_i + 1, l)`. All zero unless `report_jsi` was requested --
-            !! see the note above.
+            !! Number of leading columns of `super_ensembles`/`super_ensembles_overlap_coefficient`
+            !! actually filled
+        real(c_double), dimension(max_group_size-1, n_ensembles*(n_ensembles-1)), intent(out), target :: super_ensembles_overlap_coefficient
+            !! Column $l$, row $c_i$: the Overlap Coefficient between the ensembles in
+            !! `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`. All zero unless
+            !! `report_overlap_coefficient` was requested -- see the note above.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success. Set only if a discovered component's size exceeds
             !! `max_group_size` -- not a condition any input check could foresee, see above.
         logical, dimension(n_vectors, n_ensembles) :: ensemble_masks_f
         integer(int32) :: mode_mode_f
-        logical :: report_jsi_f
+        logical :: report_overlap_coefficient_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_vectors)
         M_CHECK_NON_NULL(n_ensembles)
-        M_CHECK_NON_NULL(min_jsi)
-        M_CHECK_NON_NULL(report_jsi)
+        M_CHECK_NON_NULL(min_overlap_coefficient)
+        M_CHECK_NON_NULL(report_overlap_coefficient)
         M_CHECK_NON_NULL(max_group_size)
         M_CHECK_NON_NULL(n_super_ensembles)
         M_CHECK_ARRAY_NON_NULL(ensemble_masks, n_vectors * n_ensembles)
-        M_CHECK_ARRAY_NON_NULL(mode, 9)
+        M_CHECK_ARRAY_NON_NULL(mode, 25)
         M_CHECK_ARRAY_NON_NULL(super_ensembles, max_group_size * (n_ensembles*(n_ensembles-1)))
-        M_CHECK_ARRAY_NON_NULL(super_ensembles_JSI, (max_group_size-1) * (n_ensembles*(n_ensembles-1)))
+        M_CHECK_ARRAY_NON_NULL(super_ensembles_overlap_coefficient, (max_group_size-1) * (n_ensembles*(n_ensembles-1)))
 
         ensemble_masks_f = ensemble_masks
         block
@@ -139,8 +142,8 @@ contains
             select case (mode_f)
                 case ("report")
                     mode_mode_f = MODE_REPORT
-                case ("merge_jsi")
-                    mode_mode_f = MODE_MERGE_JSI
+                case ("merge_overlap_coefficient")
+                    mode_mode_f = MODE_MERGE_OVERLAP_COEFFICIENT
                 case ("merge_any")
                     mode_mode_f = MODE_MERGE_ANY
                 case default
@@ -148,19 +151,19 @@ contains
                     return
             end select
         end block
-        report_jsi_f = report_jsi
+        report_overlap_coefficient_f = report_overlap_coefficient
 
         call ensemble_reconciliation(&
             ensemble_masks = ensemble_masks_f,&
             n_vectors = n_vectors,&
             n_ensembles = n_ensembles,&
             mode = mode_mode_f,&
-            min_jsi = min_jsi,&
-            report_jsi = report_jsi_f,&
+            min_overlap_coefficient = min_overlap_coefficient,&
+            report_overlap_coefficient = report_overlap_coefficient_f,&
             max_group_size = max_group_size,&
             super_ensembles = super_ensembles,&
             n_super_ensembles = n_super_ensembles,&
-            super_ensembles_JSI = super_ensembles_JSI,&
+            super_ensembles_overlap_coefficient = super_ensembles_overlap_coefficient,&
             ierr = ierr&
         )
     end subroutine ensemble_reconciliation_c

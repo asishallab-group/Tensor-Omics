@@ -23,8 +23,8 @@
 # Usage: Rscript plot_stc.R <prefix>
 #   where <prefix> is what run_stc.py was given as --out-prefix, i.e. this script reads
 #   <prefix>_{points,membership,low_confidence_membership,ensembles,super_ensembles,
-#   super_ensembles_jsi,params}.{csv,json} and writes <prefix>.pdf, plus <prefix>_3d.html
-#   when the data has 3 or more ambient dimensions.
+#   super_ensembles_overlap_coefficient,params}.{csv,json} and writes <prefix>.pdf, plus
+#   <prefix>_3d.html when the data has 3 or more ambient dimensions.
 
 suppressPackageStartupMessages(library(ggplot2))
 
@@ -42,7 +42,7 @@ points_df <- read.csv(paste0(prefix, "_points.csv"), check.names = FALSE)
 if (!("n_low_confidence_ensembles" %in% names(points_df))) points_df$n_low_confidence_ensembles <- 0
 membership_df <- read_or_empty(paste0(prefix, "_membership.csv"), point_id = integer(), ensemble_id = integer(), is_seed = integer())
 low_confidence_df <- read_or_empty(paste0(prefix, "_low_confidence_membership.csv"), point_id = integer(), ensemble_id = integer())
-jsi_matrix_df <- read_or_empty(paste0(prefix, "_ensemble_jsi_matrix.csv"), ensemble_id_1 = integer(), ensemble_id_2 = integer(), jsi = numeric())
+overlap_coefficient_matrix_df <- read_or_empty(paste0(prefix, "_ensemble_overlap_coefficient_matrix.csv"), ensemble_id_1 = integer(), ensemble_id_2 = integer(), overlap_coefficient = numeric())
 ensembles_df <- read_or_empty(paste0(prefix, "_ensembles.csv"), ensemble_id = integer())
 groups_df <- read_or_empty(paste0(prefix, "_super_ensembles.csv"), group_id = integer(), ensemble_id = integer())
 
@@ -64,7 +64,7 @@ param_caption <- function(params) {
   if (is.null(params)) return("")
   keys <- c("k_min", "k_density", "bandwidth_percentile", "exclusion_radius_percentile",
             "chordal_dist_max_as_prcnt_of_range", "d_max", "g_max", "rmse_change_max", "f_max", "a", "o",
-            "reconciliation_mode", "min_jsi", "n_vectors", "n_dimensions", "n_ensembles")
+            "reconciliation_mode", "min_overlap_coefficient", "n_vectors", "n_dimensions", "n_ensembles")
   keys <- keys[keys %in% names(params)]
   paste(sprintf("%s = %s", keys, unlist(params[keys])), collapse = ", ")
 }
@@ -226,28 +226,30 @@ if (nrow(groups_df) > 0) {
   message("No super-ensembles found at this reconciliation threshold -- skipping the reconciliation page.")
 }
 
-# --- Page 7b: JSI heatmap, every non-empty ensemble pair (not just reconciled ones) ------
-if (nrow(jsi_matrix_df) > 0) {
-  ens_order <- sort(unique(c(jsi_matrix_df$ensemble_id_1, jsi_matrix_df$ensemble_id_2)))
+# --- Page 7b: Overlap Coefficient heatmap, every non-empty ensemble pair (not just reconciled
+# ones) -------------------------------------------------------------------------------------
+if (nrow(overlap_coefficient_matrix_df) > 0) {
+  ens_order <- sort(unique(c(overlap_coefficient_matrix_df$ensemble_id_1, overlap_coefficient_matrix_df$ensemble_id_2)))
   heat_df <- rbind(
-    jsi_matrix_df,
-    data.frame(ensemble_id_1 = jsi_matrix_df$ensemble_id_2, ensemble_id_2 = jsi_matrix_df$ensemble_id_1, jsi = jsi_matrix_df$jsi),
-    data.frame(ensemble_id_1 = ens_order, ensemble_id_2 = ens_order, jsi = 1.0)
+    overlap_coefficient_matrix_df,
+    data.frame(ensemble_id_1 = overlap_coefficient_matrix_df$ensemble_id_2, ensemble_id_2 = overlap_coefficient_matrix_df$ensemble_id_1,
+               overlap_coefficient = overlap_coefficient_matrix_df$overlap_coefficient),
+    data.frame(ensemble_id_1 = ens_order, ensemble_id_2 = ens_order, overlap_coefficient = 1.0)
   )
-  p7b <- ggplot(heat_df, aes(x = as.factor(ensemble_id_1), y = as.factor(ensemble_id_2), fill = jsi)) +
+  p7b <- ggplot(heat_df, aes(x = as.factor(ensemble_id_1), y = as.factor(ensemble_id_2), fill = overlap_coefficient)) +
     geom_tile() +
-    scale_fill_viridis_c(option = "viridis", name = "JSI", limits = c(0, 1)) +
+    scale_fill_viridis_c(option = "viridis", name = "Overlap\nCoefficient", limits = c(0, 1)) +
     coord_fixed() +
     theme_minimal() +
     theme(axis.text = if (length(ens_order) > 40) element_blank() else element_text(size = 6),
           axis.ticks = element_blank()) +
-    labs(title = "Ensemble Reconciliation: pairwise JSI heatmap",
-         subtitle = sprintf("Every non-empty ensemble pair (%d ensembles) -- independent of reconciliation_mode/min_jsi, unlike the super-ensembles page",
+    labs(title = "Ensemble Reconciliation: pairwise Overlap Coefficient heatmap",
+         subtitle = sprintf("Every non-empty ensemble pair (%d ensembles) -- independent of reconciliation_mode/min_overlap_coefficient, unlike the super-ensembles page",
                              length(ens_order)),
          x = "ensemble_id", y = "ensemble_id")
   plot(p7b)
 } else {
-  message("Fewer than 2 non-empty ensembles -- skipping the JSI heatmap page.")
+  message("Fewer than 2 non-empty ensembles -- skipping the Overlap Coefficient heatmap page.")
 }
 
 # --- Page 8: low-confidence fallback coverage -------------------------------------------
