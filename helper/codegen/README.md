@@ -479,11 +479,12 @@ code.
 
 ## Open items
 
-- **f42's last hand-written pair**: `f42_kd_tree` still writes both tiers by hand as `<p>` /
-  `<p>_alloc` for `build_kd_index` and `build_spherical_kd`, and `stripped_name` still
-  translates that shape into the published names. The `f42_utils` family has converted, so
-  that one module is all that keeps the translating branch alive; retiring the branch is a
-  separate change from converting the module (`design/impl-layer.md`).
+- **`stripped_name`'s `_alloc` branch is now dead code**: f42 is fully converted, so no source
+  writes a hand-written `<p>` / `<p>_alloc` pair and nothing exercises the translation. Retiring
+  it — along with `entities.is_alloc_variant` / `alloc_sibling` — is deliberately a separate
+  change from the conversions, so that a bug in the retirement and a bug in a conversion cannot
+  land in the same lines. `alloc_suffix` and the reserved-name rule stay either way
+  (`design/impl-layer.md`).
 - **ifx**: the F2018 features used (`OPTIONAL` in `bind(C)`, `implicit none (type,
   external)`) are verified with gfortran only. ifx is expected to agree; worth a check.
 - **Compile check in CI**: the end-to-end tests need a compiler. They are marked to skip

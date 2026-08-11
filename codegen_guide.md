@@ -909,13 +909,12 @@ Because the procedure is not a numeric procedure of the pipeline:
   OrthoFinder readers, the data-set validation and the accessors. One family, one directory,
   named for what the modules are rather than for the one mechanism only `tox_data_archive`
   performs.
-- **`src/f42/`** — library-agnostic infrastructure: `f42_kd_tree` and the serde family, whose
-  procedures open files or hand out buffers no binding language can own. Whether an f42
-  procedure is exported at all is a per-case judgement, which is exactly why the marker stays
-  explicit here. It is not a licence: `f42_stats` and `f42_binary_search_tree` were both
-  hand-written exports until someone asked what a wrapper around them would do, and the answer
-  was "validate what they were validating by hand, and build the permutation their callers were
-  building" — so both are implementations now.
+- **`src/f42/`** — library-agnostic infrastructure: the serde family, whose procedures open files.
+  Whether an f42 procedure is exported at all is a per-case judgement, which is exactly why the
+  marker stays explicit here. It is not a licence: `f42_stats`, `f42_binary_search_tree` and
+  `f42_kd_tree` were all hand-written exports until someone asked what a wrapper around them
+  would do, and the answer was "validate what they were validating by hand, and allocate and sort
+  what their callers were allocating and sorting" — so all three are implementations now.
 - **inside an implementation module** — a recommend/sizing routine
   (`tox_loess_required_workspace`, `calc_neighborhood_size`) or a utility a caller genuinely
   needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
@@ -1001,37 +1000,25 @@ What is *not* available: the generated validation block, the plain wrapper's aut
 and sorting, the prologue hook, and the mode split. Those are things the generator writes into a
 wrapper, and here there is no wrapper for it to write into.
 
-### 6.5 An `_alloc` pair by hand
+### 6.5 An `_alloc` pair by hand — don't
 
-`_alloc` is the one naming convention that survives only on this path, and it is on its way out: the `f42_utils` family has converted, so only `f42_kd_tree` still writes a pair by hand. **The generator never emits
-it** — a generated pair is named `foo` / `foo_expert` outright (§2). It is still recognised on the
-export path, because it is the shape the framework used before the wrappers were generated and the
-shape f42 still writes: two procedures in one module, named `<p>_alloc` and `<p>`, of which the
-allocating one is the one callers want.
+**No source writes one any more.** `f42_kd_tree` was the last, and it converted; the section is
+kept because `abi/c_abi.py:stripped_name` still recognises the shape, so it is still possible to
+write one by accident. Don't: write an `_impl` and let §2 give you `foo` / `foo_expert`.
 
-```fortran
-!> M_EXPORT_C
-!| summary: Build a k-d tree index using a stack-based, non-recursive approach
-pure subroutine build_kd_index_alloc(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)
+What the shape was: two procedures in one module, named `<p>_alloc` and `<p>`, of which the
+allocating one is the one callers want. `stripped_name` translates it into the published names —
+the `_alloc` half loses its suffix and becomes `foo`, and a plain half that has an `_alloc` sibling
+becomes `foo_expert` — so the export path and the implementation path publish the same two names.
+**The generator never emits it**: a generated pair is named `foo` / `foo_expert` outright.
 
-! not exported: the expert form, for a Fortran caller that owns the buffers
-pure subroutine build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, &
-                               tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)
-```
+That translation is now unexercised by anything in `src/`, and retiring it is a change of its own.
+Until then it is a trap and not a tool: the reserved-name rule refuses `foo_alloc_impl` for exactly
+that reason (see `design/impl-layer.md`).
 
-`abi/c_abi.py:stripped_name` translates that shape into the published one, so the export path and
-the implementation path publish the same two names: the `_alloc` half loses its suffix and becomes
-`foo`, and a plain half that has an `_alloc` sibling becomes `foo_expert`. Export **both** and the
-C symbols are `foo_c` and `foo_expert_c` — exactly as on the implementation path, which is the
-point of the translation. Export only the `_alloc`, as `f42_kd_tree` does, and it alone is
-published — as plain `build_kd_index` — while the buffer-taking half stays a Fortran-only entry
-point: a deliberate choice, not an oversight, because there is no sensible way for a Python caller
-to own those buffers.
-
-`f42_kd_tree` is the last module writing a pair this way, so the translating branch retires with
-it. Nothing about the shape was ever the obstacle to converting: an implementation module may hold
-ordinary exported procedures alongside its implementations, so no module ever had to be split
-first — see `design/impl-layer.md`.
+Nothing about the shape was ever the obstacle to converting one, either. An implementation module
+may hold ordinary exported procedures alongside its implementations, so no module ever had to be
+split first.
 
 ### 6.6 An array of any rank through one signature
 

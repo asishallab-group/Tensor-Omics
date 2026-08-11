@@ -1,6 +1,6 @@
 """f42_kd_tree
 
-k-d tree spatial index over fixed-dimensional point sets.
+Generated from the implementation; do not edit -- regenerate instead.
 
 Python binding, generated from f42_kd_tree. Do not edit.
 """
@@ -57,6 +57,8 @@ def build_kd_index(
         Data points
     dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
         Dimension order (by variance)
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
 
     Returns
     -------
@@ -71,7 +73,7 @@ def build_kd_index(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_kd_tree::build_kd_index_alloc`, whose argument names are
+    Generated from the Fortran procedure `f42_kd_tree::build_kd_index`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -130,6 +132,8 @@ def build_spherical_kd(
         Data points
     dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
         Dimension order (by variance)
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
 
     Returns
     -------
@@ -144,7 +148,7 @@ def build_spherical_kd(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_kd_tree::build_spherical_kd_alloc`, whose argument names are
+    Generated from the Fortran procedure `f42_kd_tree::build_spherical_kd`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

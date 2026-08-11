@@ -291,7 +291,7 @@ That they *could* stay is what made it worth asking whether they should, and bot
 step later — see "Exports that were implementations" below.
 
 **`alloc_suffix` outlives the conversion, for now.** The generator never emits `_alloc`, and
-after `f42_kd_tree` converts no hand-written pair will be left for `stripped_name`'s
+with `f42_kd_tree` converted no hand-written pair is left for `stripped_name`'s
 translating branch to recognise. Retiring that branch is kept as a separate change so that a
 bug in the retirement and a bug in the conversion cannot land in the same lines. The reserved
 name stays regardless: `_check_impl_is_not_named_for_a_wrapper` refuses `foo_alloc_impl` and
@@ -351,6 +351,36 @@ followed by `sort_array_heapsort` — exactly what the emitter writes into an al
 implementation that *is* a prologue looks like a mistake and is not one: what the convention
 automates for an argument is still a published operation in its own right, and the only thing the
 conversion took away was the hand-written `validate_dimension_size` that the wrapper now emits.
+
+### f42_kd_tree: the hand-written triple the layer was designed for
+
+The last conversion, and the only one that was already the right shape: `build_kd_index_alloc`
+allocated four work arrays and called `build_kd_index_helper`; `build_kd_index` took the same four
+from the caller and called the same helper; both validated identically. That is `foo` /
+`foo_expert` / `foo_impl` written out by hand, down to the `tmp_` prefixes. Deleting the two outer
+tiers and renaming the helper to `build_kd_index_impl` reproduced them exactly. Same for
+`build_spherical_kd`, which is not a triple but a delegation — its implementation is one call to
+`build_kd_index_impl`, and it earns its own pair for the same reason it earned its own name.
+
+**The published surface does not move**, which is the point worth recording: `build_kd_index` and
+`build_spherical_kd` keep their Python and R signatures byte-for-byte. The `_expert` forms differ
+from the allocating ones only in the four `tmp_` arrays, and the C ABI hides those, so
+`alloc_does_more` is false and no second binding is published. C gains `build_kd_index_expert_c`
+and `build_spherical_kd_expert_c`; Python and R gain nothing. That is the same judgement the old
+sources made by simply not exporting the buffer-taking half — reached now by a rule rather than by
+someone remembering to leave the marker off.
+
+**Adopt the `_alloc` half's argument names, not the workspace half's.** They disagreed:
+`points`/`n_points`/`kd_indices` versus `vectors`/`n_vectors`/`sphere_indices`. Only the first set
+was ever published, so taking the workspace half's names — the natural move, since its signature is
+the one the implementation keeps — would have silently renamed two published arguments.
+
+**Two things went with it.** `partial_sort_by_dimension` was a validating tier over
+`partial_sort_by_dimension_helper` that nothing called, in either half of the pair: dead on
+arrival, deleted. And the implementation used `!!` for ordinary comments inside the procedure body,
+which is Ford's docmark — invisible while the procedure was unexported, and four stray lines in the
+generated wrapper's documentation the moment it was not. Body comments in an implementation are
+`!`, never `!!`.
 
 ---
 

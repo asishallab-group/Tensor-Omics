@@ -2,11 +2,13 @@
 
 #' Build a k-d tree index using a stack-based, non-recursive approach
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::build_kd_index_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{f42_kd_tree::build_kd_index}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param points a numeric matrix. Data points
 #' @param dimension_order a integer vector. Dimension order (by variance)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
 #' @return a integer vector. Output index array (k-d tree order)
 #' @export
 build_kd_index <- function(points, dimension_order) {
@@ -29,11 +31,13 @@ build_kd_index <- function(points, dimension_order) {
 #' \code{\link{build_kd_index}} (plain per-axis median splits);
 #' callers are responsible for ensuring `points` are actually unit-normalized beforehand.
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::build_spherical_kd_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{f42_kd_tree::build_spherical_kd}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param points a numeric matrix. Data points
 #' @param dimension_order a integer vector. Dimension order (by variance)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
 #' @return a integer vector. Output index array (k-d tree order)
 #' @export
 build_spherical_kd <- function(points, dimension_order) {
