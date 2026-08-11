@@ -154,6 +154,8 @@ SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
+SEXP serialize_stc_results_as_json_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP write_stc_interactive_html_report_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_p_values_call(SEXP, SEXP, SEXP, SEXP);
@@ -282,6 +284,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"density_labels_call", (DL_FUNC) &density_labels_call, 5},
     {"seeds_call", (DL_FUNC) &seeds_call, 6},
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
+    {"serialize_stc_results_as_json_call", (DL_FUNC) &serialize_stc_results_as_json_call, 34},
+    {"write_stc_interactive_html_report_call", (DL_FUNC) &write_stc_interactive_html_report_call, 34},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},
     {"compute_p_values_call", (DL_FUNC) &compute_p_values_call, 4},

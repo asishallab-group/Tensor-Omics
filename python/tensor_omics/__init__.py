@@ -207,6 +207,10 @@ from .tox_shape_truthful_clustering_seeding import (
 from .tox_shift_vectors import (
     compute_shift_vector_field,
 )
+from .tox_stc_json import (
+    serialize_stc_results_as_json,
+    write_stc_interactive_html_report,
+)
 from .tox_tissue_versatility import (
     compute_tissue_versatility,
 )
@@ -344,6 +348,7 @@ __all__ = [
     "serialize_int_helper",
     "serialize_logical_helper",
     "serialize_real_helper",
+    "serialize_stc_results_as_json",
     "serialize_tox_data_as_flyer_json",
     "tangent_scales",
     "tox_loess_required_workspace",
@@ -357,4 +362,5 @@ __all__ = [
     "validate_gene_to_family_mapping",
     "validate_shift_vectors",
     "validate_string_array_uniqueness",
+    "write_stc_interactive_html_report",
 ]
