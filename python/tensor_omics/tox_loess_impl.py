@@ -1,6 +1,19 @@
-"""tox_loess_impl
+r"""tox_loess_impl
 
-Implementations for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
+LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.
+
+Two fits: `loess_fit_plain` and `loess_fit_robust`, the latter reweighting against outliers over
+a number of iterations. There is deliberately no combined entry point dispatching on a mode --
+a caller chooses the routine, and supplies the weights and the evaluation points it wants.
+
+A sample too degenerate to fit (fewer distinct points than the degree needs) is answered
+directly from the observations rather than handed to netlib, which cannot fit one and dies
+inside its decomposition instead of reporting. Nothing about that is visible to a caller
+beyond the result.
+
+`tox_loess_required_workspace` sizes the workspace for a caller that wants to own it; the
+mode and iteration constants and `EPS_LOESS` are here for the same reason. The netlib
+routines themselves are not re-documented beyond their calling convention.
 
 Python binding, generated from tox_loess_impl. Do not edit.
 """

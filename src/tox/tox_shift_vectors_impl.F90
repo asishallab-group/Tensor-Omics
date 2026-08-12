@@ -1,9 +1,10 @@
 #include <src/macros.h>
 
-!> Implementation for computing the shift vector field for all genes.
+!> The shift vector field: where each gene sits relative to its family's centroid.
 !|
-!| Hand-written implementation only. The generator turns this into the validating wrapper
-!| [[tox_shift_vectors(module):compute_shift_vector_field]] in module `tox_shift_vectors`.
+!| One vector per gene, from the centroid of the family it belongs to to the gene itself. It is
+!| the input the relative-axis plane tools project and measure angles in, and what the
+!| paralog-pattern detection reads a gene's direction and magnitude off.
 module tox_shift_vectors_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     M_IMPLICIT_NONE

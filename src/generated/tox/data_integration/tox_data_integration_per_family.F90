@@ -1,7 +1,12 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_data_integration_per_family_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation per family
+!|
+!| The JSD value for a sub-neighborhood -- typically the genes of one family -- obtained by
+!| driving the same pipeline over a masked set of neighbors. Answers whether two studies are
+!| compatible *for this family*, which the global figure can hide either way.
+!|
+!| Generated from [[tox_data_integration_per_family_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_per_family
     use tox_data_integration_per_family_impl, only: fjct_compute_contribution_scores_impl, fjct_compute_jsd_impl, fjct_compute_masked_jsd_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

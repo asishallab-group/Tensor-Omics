@@ -1,7 +1,12 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_euclidean_distance_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Euclidean distances in gene expression space.
+!|
+!| `euclidean_distance` between two expression vectors, and `distance_to_centroid` from every
+!| gene of a family to that family's centroid -- the distance the outlier detection and the
+!| relative-distance index are built on.
+!|
+!| Generated from [[tox_euclidean_distance_impl(module)]]; do not edit -- regenerate instead.
 module tox_euclidean_distance
     use tox_euclidean_distance_impl, only: distance_to_centroid_impl, euclidean_distance_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

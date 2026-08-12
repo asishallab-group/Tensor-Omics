@@ -2,7 +2,11 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_trajectory_normalization(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Min-max normalization of factor trajectories over time.
+!|
+!| Each factor's time series is rescaled to `[0,1]` independently, per sample -- so trajectories
+!| of very different magnitudes can be compared by shape. `normalize_single_trajectory` does one;
+!| `normalize_all_trajectories` does a whole tensor of them in one call.
 module tox_trajectory_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

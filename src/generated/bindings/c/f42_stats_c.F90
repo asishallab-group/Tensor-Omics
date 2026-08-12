@@ -2,7 +2,9 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[f42_stats(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+!|
+!| One of the modules the `f42_utils` family gathers.
 module f42_stats_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

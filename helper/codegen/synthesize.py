@@ -32,14 +32,6 @@ from .ir.types import BaseType, FortranType, Intent
 
 #: Documentation for the `ierr` a wrapper carries when the implementation declares none
 _ERROR_DOC = "Error code; zero on success, non-zero on failure."
-#: Documentation body of a generated wrapper module (the emitter adds the summary above it)
-_MODULE_DOC = "Generated from the implementation; do not edit -- regenerate instead."
-#: Documentation body of a generated re-export module
-_REEXPORT_DOC = (
-    "Generated from the implementation tree; do not edit -- regenerate instead. "
-    "Use this module to reach the whole family; the split into the modules below is an "
-    "implementation detail."
-)
 
 
 def generated_path_for(
@@ -363,11 +355,15 @@ def synthesize_wrappers(
         Module(
             name,
             procedures=procedures,
-            # a fresh doc rather than the implementation module's own, which describes the
-            # implementation and not this API; the emitter adds a "Wrappers for <impl>" summary
-            # above it
-            doc=Doc.parse([_MODULE_DOC]),
-            meta=Meta(),
+            # the implementation module's own documentation, verbatim. A generated module is
+            # the published API -- what Python imports, what the R help pages are built from,
+            # what a Fortran caller `use`s -- so what the author wrote about the family is what
+            # a reader of any of those gets. It used to get a "do not edit" banner instead, on
+            # the argument that an implementation module's doc describes the implementation;
+            # the answer to that is that the doc has to be written as API prose, not that the
+            # API should go undocumented. Each emitter adds its own generated-from note.
+            doc=sources[name].doc,
+            meta=sources[name].meta,
             location=sources[name].location,
         )
         for name, procedures in by_module.items()
@@ -413,9 +409,7 @@ def _reexport_modules(
     if not candidates:
         return []
 
-    locations = {
-        module.name[: -len(suffix)]: module.location for module in impl_modules
-    }
+    parents = {module.name[: -len(suffix)]: module for module in impl_modules}
     generated = set(wrapper_modules)
     while True:
         resolved = {
@@ -430,9 +424,9 @@ def _reexport_modules(
     return [
         Module(
             name,
-            doc=Doc.parse([_REEXPORT_DOC]),
-            meta=Meta(),
-            location=locations[name],
+            doc=parents[name].doc,
+            meta=parents[name].meta,
+            location=parents[name].location,
             uses=[child for child in children if child in generated],
         )
         for name, children in sorted(candidates.items())

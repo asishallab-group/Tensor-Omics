@@ -1,6 +1,12 @@
-"""tox_clustering
+r"""tox_clustering
 
-Generated from the implementation; do not edit -- regenerate instead.
+Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+(agglomerative) linkage clustering over a precomputed distance matrix.
+
+`k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
+applies the same to whole time series, treating each factor's trajectory as one point.
+`linkage_clustering` takes the distances already computed and merges under the linkage
+criterion asked for, so the same matrix can be re-clustered without recomputing it.
 
 Python binding, generated from tox_clustering. Do not edit.
 """

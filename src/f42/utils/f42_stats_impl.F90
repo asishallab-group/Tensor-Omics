@@ -2,7 +2,7 @@
 
 !> Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
 !|
-!| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
+!| One of the modules the `f42_utils` family gathers.
 module f42_stats_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use f42_sort_impl, only: binary_search_insertion

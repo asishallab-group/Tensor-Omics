@@ -2,7 +2,11 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_shift_vectors(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| The shift vector field: where each gene sits relative to its family's centroid.
+!|
+!| One vector per gene, from the centroid of the family it belongs to to the gene itself. It is
+!| the input the relative-axis plane tools project and measure angles in, and what the
+!| paralog-pattern detection reads a gene's direction and magnitude off.
 module tox_shift_vectors_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

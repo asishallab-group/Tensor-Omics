@@ -1,4 +1,4 @@
-"""f42_serde_arrays_serialize_real
+r"""f42_serde_arrays_serialize_real
 
 Module for serializing real arrays into files
 

@@ -1,6 +1,12 @@
-"""tox_trajectory_contribution_analysis
+r"""tox_trajectory_contribution_analysis
 
-Generated from the implementation; do not edit -- regenerate instead.
+Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+
+Contributions are computed per timepoint as the product of both series' deviations from a chosen
+baseline, for raw expression trajectories as well as for their velocity (first difference) and
+acceleration (second difference) derivatives. Statistical significance of an observed contribution can
+be assessed via a permutation test that recomputes the same contribution against a randomly chosen
+other sample.
 
 Python binding, generated from tox_trajectory_contribution_analysis. Do not edit.
 """

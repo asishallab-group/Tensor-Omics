@@ -1,6 +1,13 @@
-"""tox_data_validation
+r"""tox_data_validation
 
 Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+and cross-array consistency).
+
+Complements ``tox_errors``'s generic per-argument validators
+(`validate_dimension_size`, `validate_in_range_int/real`, ...) with checks specific to the
+TensorOmics gene/family/expression/centroid/shift-vector data model, such as verifying that
+`shift_vectors` was actually derived from `expression_vectors` and `family_centroids` as
+expected. :func:`tensor_omics.validate_all_data` runs the full suite.
 
 Python binding, generated from tox_data_validation. Do not edit.
 """

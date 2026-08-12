@@ -1,6 +1,10 @@
-"""tox_shift_vectors
+r"""tox_shift_vectors
 
-Generated from the implementation; do not edit -- regenerate instead.
+The shift vector field: where each gene sits relative to its family's centroid.
+
+One vector per gene, from the centroid of the family it belongs to to the gene itself. It is
+the input the relative-axis plane tools project and measure angles in, and what the
+paralog-pattern detection reads a gene's direction and magnitude off.
 
 Python binding, generated from tox_shift_vectors. Do not edit.
 """

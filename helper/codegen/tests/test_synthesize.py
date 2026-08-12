@@ -557,6 +557,62 @@ class TestModeSplitSynthesis:
         assert spec.mode_fix is None
 
 
+class TestGeneratedModuleDocumentation:
+    """The generated module publishes what the author wrote about the implementation module.
+
+    It is the module Python imports, R builds its help pages from and Fortran `use`s, so its
+    documentation has to be the family's documentation. It used to be a "do not edit" banner,
+    which left every published module described by the same one sentence.
+    """
+
+    DOC = ["Percentiles and the empirical distribution function.", "", "Second paragraph."]
+
+    def generated(self):
+        impl = module(
+            "tox_demo_impl",
+            procedure(
+                "work_impl",
+                real("x", Intent.INOUT, doc="the value"),
+                meta=Meta(summary="Work", author="AUTHOR"),
+            ),
+            doc=self.DOC,
+            meta=Meta(summary="Descriptive statistics", author="MODULE_AUTHOR"),
+        )
+        return synthesize_wrappers(project(impl)).project.module("tox_demo")
+
+    def test_the_documentation_is_the_implementation_module_s_own(self):
+        assert [line.text for line in self.generated().doc.lines] == self.DOC
+
+    def test_the_summary_is_the_author_s_first_line(self):
+        # what Python puts in its module docstring, and Ford in every one-line listing
+        assert self.generated().doc.summary == self.DOC[0]
+
+    def test_the_meta_tags_come_across_too(self):
+        assert self.generated().meta.summary == "Descriptive statistics"
+        assert self.generated().meta.author == "MODULE_AUTHOR"
+
+    def test_no_generated_note_is_added_to_the_ir(self):
+        """It is per-file, so each emitter says it in its own words; carried here, Python
+        would print it once from the doc and once from its own trailer."""
+        assert not any(
+            "do not edit" in line.text.lower() for line in self.generated().doc.lines
+        )
+
+    def test_a_re_export_parent_carries_its_parent_s_documentation(self):
+        parent, first, second = split_family_modules()
+        parent = module(
+            "tox_demo_impl",
+            uses=("tox_demo_left_impl", "tox_demo_right_impl"),
+            doc=["Gathers the demo family."],
+        )
+
+        generated = synthesize_wrappers(
+            project(parent, first, second)
+        ).project.module("tox_demo")
+
+        assert generated.doc.summary == "Gathers the demo family."
+
+
 def split_family_modules():
     """A family split across two implementation modules, gathered by a parent that re-exports them.
 

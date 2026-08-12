@@ -2,12 +2,12 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test
 !|
-!| Implementation for a permutation test that estimates an empirical p-value for the weighted global JSD
-!| computed by the JSD implementations. Under the null hypothesis that both studies are exchangeable,
-!| S1/S2 residuals are repeatedly shuffled within each reference point's pooled neighborhood and
-!| the JSD pipeline is recomputed, giving a null distribution against which the observed JSD is
-!| compared. The generator turns `gjct_permutation_test_impl` into the validating and
-!| allocating wrappers in module tox_data_integration_stats.
+!| A permutation test estimating an empirical p-value for the weighted global JSD. Under the null
+!| hypothesis that both studies are exchangeable, S1/S2 residuals are repeatedly shuffled within
+!| each reference point's pooled neighborhood and the JSD is recomputed, giving a null
+!| distribution against which the observed value is compared.
+!|
+!| Work copies are shuffled, never the caller's arrays.
 module tox_data_integration_stats_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_random_impl, only: init_random, shuffle_vector

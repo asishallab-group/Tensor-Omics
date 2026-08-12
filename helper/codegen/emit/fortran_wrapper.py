@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..config import CONVENTIONS, Conventions
+from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
 from ..render import Writer
@@ -100,10 +101,7 @@ class FortranWrapperEmitter:
         writer.line(f"#include <{self.macros_header}>")
         writer.blank()
 
-        link = f"[[{self._impl_module(module)}(module)]]"
-        writer.block(
-            render_doc(module.doc, kind="module", summary=f"Wrappers for {link}")
-        )
+        writer.block(self._module_doc(module))
         writer.line(f"module {module.name}")
         with writer.indent():
             self._module_uses(writer, module)
@@ -135,14 +133,33 @@ class FortranWrapperEmitter:
         neither the macros header nor `implicit none`.
         """
         writer = Writer()
-        summary = f"Gathers the {module.name} family"
-        writer.block(render_doc(module.doc, kind="module", summary=summary))
+        writer.block(self._module_doc(module))
         writer.line(f"module {module.name}")
         with writer.indent():
             for used in module.uses:
                 writer.line(f"use {used}")
         writer.line(f"end module {module.name}")
         return writer.render(trailing_newline=True)
+
+    def _module_doc(self, module: Module) -> str:
+        """The module's documentation, with a note saying where the file came from.
+
+        The documentation is the implementation module's own, unchanged: a generated module is
+        the published API, so the author's prose about the family is what a reader of it wants.
+        The note is added here rather than carried in the IR because it is about *this file* --
+        Python and R say the same thing in their own words, and would otherwise print it twice.
+
+        No `summary:` tag either. The doc's own first line is the summary; a "Wrappers for
+        <impl>" tag above it would displace that everywhere Ford shows a one-liner, to say what
+        the note at the bottom of the same comment already says.
+        """
+        impl = self._impl_module(module)
+        note = f"Generated from [[{impl}(module)]]; do not edit -- regenerate instead."
+        blocks = list(module.doc.blocks)
+        if blocks:
+            blocks.append(DocLine.parse(""))
+        blocks.append(DocLine.parse(note))
+        return render_doc(Doc(tuple(blocks)), kind="module")
 
     def _impl_module(self, module: Module) -> str:
         return f"{module.name}{self.conventions.impl_suffix}"

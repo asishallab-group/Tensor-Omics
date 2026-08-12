@@ -1,4 +1,4 @@
-"""f42_serde_arrays_deserialize_logical
+r"""f42_serde_arrays_deserialize_logical
 
 Module for deserializing logical arrays from files
 

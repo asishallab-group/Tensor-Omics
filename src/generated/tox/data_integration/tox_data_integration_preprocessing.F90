@@ -1,7 +1,15 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_data_integration_preprocessing_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
+!|
+!| The step that turns expression vectors into the neighborhood residuals the rest of the test
+!| consumes: gene-wise means, the signed deviation of each replicate from them, and the
+!| neighborhoods of reference points those residuals are grouped into so the comparison is
+!| conditioned on expression level rather than pooled across it.
+!|
+!| `calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own.
+!|
+!| Generated from [[tox_data_integration_preprocessing_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_preprocessing
     use tox_data_integration_preprocessing_impl, only: compute_gene_means_impl, compute_residuals_impl, construct_neighborhoods_impl, pool_means_impl
     use tox_data_integration_preprocessing_impl, only: pool_study_means_impl

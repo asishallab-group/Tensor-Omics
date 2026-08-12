@@ -1,6 +1,14 @@
-"""tox_data_archive
+r"""tox_data_archive
 
 Zip-archive backed persistence for TensorOmics data sets.
+
+Wraps libzip (via C bindings declared in the interface block below) to create/extract zip
+archives whose members are ``tox_data_read_write``-serialized arrays, indexed by a
+plain-text `manifest.txt` mapping logical keys (e.g. `gene_ids`, `expression`) to member
+filenames. :func:`tensor_omics.save_tox_data` and
+``read_tox_data`` are the standard entry points for the
+fixed TensorOmics data set schema; `create_zip_archive`/`extract_zip_archive` and the
+`*_manifest*` routines below are the generic key/filename building blocks they are built on.
 
 Python binding, generated from tox_data_archive. Do not edit.
 """

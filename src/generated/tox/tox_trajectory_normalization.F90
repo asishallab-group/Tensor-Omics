@@ -1,7 +1,12 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_trajectory_normalization_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Min-max normalization of factor trajectories over time.
+!|
+!| Each factor's time series is rescaled to `[0,1]` independently, per sample -- so trajectories
+!| of very different magnitudes can be compared by shape. `normalize_single_trajectory` does one;
+!| `normalize_all_trajectories` does a whole tensor of them in one call.
+!|
+!| Generated from [[tox_trajectory_normalization_impl(module)]]; do not edit -- regenerate instead.
 module tox_trajectory_normalization
     use tox_trajectory_normalization_impl, only: normalize_all_trajectories_impl, normalize_single_trajectory_impl, normalize_variable_timeseries_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

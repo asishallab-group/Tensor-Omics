@@ -1,7 +1,13 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_tissue_versatility_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.
+!|
+!| An angle-based metric. A gene expressed equally across every selected axis points along the
+!| diagonal of that subspace and scores maximally versatile; one confined to a single tissue
+!| points along that axis and scores minimally. Normalized, so scores over different numbers of
+!| selected axes are comparable.
+!|
+!| Generated from [[tox_tissue_versatility_impl(module)]]; do not edit -- regenerate instead.
 module tox_tissue_versatility
     use tox_tissue_versatility_impl, only: compute_tissue_versatility_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

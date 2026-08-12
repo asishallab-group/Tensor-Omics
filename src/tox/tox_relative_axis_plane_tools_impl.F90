@@ -1,13 +1,18 @@
 #include <src/macros.h>
 
-!> Implementations for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space.
-!| The generator turns the `*_impl` procedures into the validating wrappers omics_vector_RAP_projection,
-!| omics_field_RAP_projection, clock_hand_angle_between_vectors, clock_hand_angles_for_shift_vectors,
-!| relative_axes_changes_from_shift_vector and relative_axes_expression_from_expression_vector in module
-!| tox_relative_axis_plane_tools. The implementations keep only the checks a per-argument validator cannot express
-!| (a count(mask) matching its claimed size, and the unique-axes check); the mechanical dimension and
-!| finiteness checks come from the generated wrappers. The compute helpers below carry no `_impl` suffix
-!| and are shared by several implementations, so they stay here untouched.
+!> Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
+!| what can be read off a vector once it is projected onto one.
+!|
+!| A RAP is picked by selecting axes (tissues) from the full expression space.
+!| `vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+!| field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
+!| between two vectors -- signed by an orientation reference, so the sign means the same thing in
+!| every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
+!| vector field at once.
+!|
+!| `relative_axes_changes_from_shift_vector` and `relative_axes_expression_from_expression_vector`
+!| give the per-axis breakdown instead of the angle: how much of a change, or of an expression
+!| level, falls on each selected axis.
 module tox_relative_axis_plane_tools_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, set_err_once, ERR_DIVISION_BY_ZERO

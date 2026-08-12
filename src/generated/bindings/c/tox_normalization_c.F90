@@ -2,7 +2,16 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_normalization(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Normalization of expression data: putting samples on a comparable scale before anything
+!| distance-based is computed from them.
+!|
+!| Several schemes, each its own entry point rather than a mode: a log2 transformation, scaling
+!| by standard deviation (LOESS-smoothed against expression level, so the correction follows the
+!| mean-variance trend rather than assuming one), root-mean-square scaling, quantile
+!| normalization, and normalization to unit length.
+!|
+!| `normalization_pipeline` chains them in the order the analysis expects, and is what most
+!| callers want. The individual routines are published for a caller assembling their own.
 module tox_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

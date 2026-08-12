@@ -2,7 +2,9 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[f42_binary_search_tree(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+!| This module provides routines to build a BST index (via sorting), access sorted values,
+!| and perform range queries over a real-valued array using the sorted index.
 module f42_binary_search_tree_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

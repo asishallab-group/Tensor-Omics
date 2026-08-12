@@ -1,7 +1,13 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_data_integration_jsd_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
+!|
+!| The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+!| a JSD value: residuals are binned into histograms per study, the two distributions are
+!| compared per reference point, and the per-point divergences are weighted into one global
+!| figure for the pair of studies.
+!|
+!| Generated from [[tox_data_integration_jsd_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_jsd
     use tox_data_integration_jsd_impl, only: build_residual_histograms_impl, compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, determine_shared_residual_range_impl
     use tox_data_integration_jsd_impl, only: determine_study_shared_residual_range_impl

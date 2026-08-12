@@ -1,7 +1,7 @@
 {
   "f42_binary_search_tree (import)": {
     "prefix": "f42:binary_search_tree.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.",
     "body": [
       "from tensor_omics.f42_binary_search_tree import (",
       "    ${1|build_bst_index,bst_range_query,bst_range_query_expert|},",
@@ -42,7 +42,7 @@
   },
   "f42_kd_tree (import)": {
     "prefix": "f42:kd_tree.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from k-d tree spatial index over fixed-dimensional point sets.",
     "body": [
       "from tensor_omics.f42_kd_tree import (",
       "    ${1|build_kd_index,build_spherical_kd|},",
@@ -275,7 +275,7 @@
   },
   "f42_stats (import)": {
     "prefix": "f42:stats.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.",
     "body": [
       "from tensor_omics.f42_stats import (",
       "    ${1|loess_smooth_2d,compute_edf,compute_edf_expert,calc_percentile,calc_percentile_expert,compute_scaled_distance_quantile,compute_scaled_distance_quantile_expert|},",

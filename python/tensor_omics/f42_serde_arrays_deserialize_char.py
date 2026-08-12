@@ -1,4 +1,4 @@
-"""f42_serde_arrays_deserialize_char
+r"""f42_serde_arrays_deserialize_char
 
 Module for deserializing character arrays from files
 

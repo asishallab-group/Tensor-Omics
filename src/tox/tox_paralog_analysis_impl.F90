@@ -1,6 +1,6 @@
 #include <src/macros.h>
 
-!> Implementations for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.
+!> Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
 !|
 !| Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
 !| starting from single genes. At every extension step the candidate is scored against the pattern-specific
@@ -8,12 +8,11 @@
 !| subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
 !| extended further, which keeps the combinatorial subset search tractable.
 !|
-!| Both pattern-taking implementations are **mode-split**: their `pattern` table names a procedure per value, so
-!| the generator emits `detect_dosage_effect`/`detect_subfunctionalization` and
-!| `filter_paralogs_by_pattern_dosage_effect`/`_subfunctionalization` into module `tox_paralog_analysis`,
-!| replacing the hand-written per-mode wrappers -- and with them the `map_err_arg_pos` remapping, since
-!| each generated wrapper validates its own arguments at their own positions. The implementations keep `ierr`
-!| only for their runtime paths (bit-mask writes, the subset-search bookkeeping).
+!| There is a routine per pattern rather than one taking a pattern flag:
+!| `detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
+!| `filter_paralogs_by_pattern_dosage_effect` / `_subfunctionalization` reduce a set of genes to
+!| those matching. Which criterion a result was scored against is therefore visible at the call
+!| site, and each routine takes only the thresholds its own pattern needs.
 module tox_paralog_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int

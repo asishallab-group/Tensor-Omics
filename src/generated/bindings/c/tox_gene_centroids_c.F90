@@ -2,7 +2,12 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_gene_centroids(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Expression centroids of gene families.
+!|
+!| `mean_vector` is the centroid of a set of expression vectors. `group_centroid_orthologs`
+!| and `group_centroid_all` take the centroid of a family: over its orthologs only, or over
+!| every gene in it -- two routines rather than one taking a flag, so which set a result is
+!| over is visible at the call site.
 module tox_gene_centroids_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

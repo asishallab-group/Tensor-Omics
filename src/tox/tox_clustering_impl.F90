@@ -1,12 +1,12 @@
 #include <src/macros.h>
 
-!> Implementations for clustering routines used in tensor-omics: k-means for factor/trajectory
-!| grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.
-!| The generator turns the `*_impl` procedures into the validating wrappers
-!| cluster_factor_trajectories_k_means, k_means_clustering and linkage_clustering in module
-!| tox_clustering. The implementations are pure: `n_clusters <= n_points` is an upper-bound annotation, and
-!| the distance-matrix structure check comes from the distance-matrix naming convention -- both emitted
-!| into the wrappers. The many compute helpers below carry no `_impl` suffix and stay here untouched.
+!> Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+!| (agglomerative) linkage clustering over a precomputed distance matrix.
+!|
+!| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
+!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| `linkage_clustering` takes the distances already computed and merges under the linkage
+!| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan

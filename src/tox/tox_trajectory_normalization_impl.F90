@@ -1,9 +1,10 @@
 #include <src/macros.h>
 
-!> Implementations for min-max normalization of factor trajectories over time.
-!| Each factor's time series is independently rescaled to `[0,1]` per sample/entity. The
-!| generator turns these into the validating (and, for the all-trajectories implementation, the
-!| allocating) wrappers in module `tox_trajectory_normalization`.
+!> Min-max normalization of factor trajectories over time.
+!|
+!| Each factor's time series is rescaled to `[0,1]` independently, per sample -- so trajectories
+!| of very different magnitudes can be compared by shape. `normalize_single_trajectory` does one;
+!| `normalize_all_trajectories` does a whole tensor of them in one call.
 module tox_trajectory_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO

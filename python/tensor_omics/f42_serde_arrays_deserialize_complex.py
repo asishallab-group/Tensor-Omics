@@ -1,4 +1,4 @@
-"""f42_serde_arrays_deserialize_complex
+r"""f42_serde_arrays_deserialize_complex
 
 Module for deserializing complex arrays from files
 

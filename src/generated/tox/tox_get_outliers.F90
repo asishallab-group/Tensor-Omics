@@ -1,7 +1,15 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_get_outliers_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Gene outliers, from how far each gene sits from its family's centroid.
+!|
+!| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
+!| a relative distance index, scaled per family so families of different spread are comparable.
+!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
+!| applies the threshold and reports which genes exceed it.
+!|
+!| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
+!|
+!| Generated from [[tox_get_outliers_impl(module)]]; do not edit -- regenerate instead.
 module tox_get_outliers
     use tox_get_outliers_impl, only: compute_family_scaling_impl, compute_rdi_impl, detect_outliers_impl, identify_outliers_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

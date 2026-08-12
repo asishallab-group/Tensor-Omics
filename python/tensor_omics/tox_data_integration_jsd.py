@@ -1,6 +1,11 @@
-"""tox_data_integration_jsd
+r"""tox_data_integration_jsd
 
-Generated from the implementation; do not edit -- regenerate instead.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
+
+The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+a JSD value: residuals are binned into histograms per study, the two distributions are
+compared per reference point, and the per-point divergences are weighted into one global
+figure for the pair of studies.
 
 Python binding, generated from tox_data_integration_jsd. Do not edit.
 """

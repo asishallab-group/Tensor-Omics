@@ -2,7 +2,11 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[f42_kd_tree(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| k-d tree spatial index over fixed-dimensional point sets.
+!| Builds a k-d tree by recursively partitioning `kd_indices` around the median point along a
+!| caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
+!| is safe to call from `pure` procedures. The tree is stored implicitly as an in-place-permuted
+!| index array rather than as linked nodes.
 module f42_kd_tree_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

@@ -2,11 +2,10 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
 !|
-!| Implementations for the pipeline that turns neighborhood residuals -- as produced by the
-!| preprocessing implementations -- into a JSD value. The generator turns the `*_impl` procedures
-!| into the validating and allocating wrappers in module tox_data_integration_jsd;
-!| `jct_compute_jsd_pipeline_helper` is an internal helper the permutation test and the
-!| per-family analysis both drive, and carries no `_impl` suffix.
+!| The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+!| a JSD value: residuals are binned into histograms per study, the two distributions are
+!| compared per reference point, and the per-point divergences are weighted into one global
+!| figure for the pair of studies.
 module tox_data_integration_jsd_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan

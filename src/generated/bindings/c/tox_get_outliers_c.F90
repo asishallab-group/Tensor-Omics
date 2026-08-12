@@ -2,7 +2,14 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_get_outliers(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Gene outliers, from how far each gene sits from its family's centroid.
+!|
+!| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
+!| a relative distance index, scaled per family so families of different spread are comparable.
+!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
+!| applies the threshold and reports which genes exceed it.
+!|
+!| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc

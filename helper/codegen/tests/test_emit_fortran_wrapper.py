@@ -161,6 +161,45 @@ class TestModuleShell:
         # a non-empty module doc avoids a Ford "module has no documentation" warning
         assert "do not edit" in demo()
 
+
+class TestModuleDocumentation:
+    """A generated module is the published API, so it carries the author's own module doc."""
+
+    def emitted(self):
+        from builders import module, project
+
+        impl = impl_module()
+        documented = module(
+            "tox_demo_impl",
+            *impl.procedures,
+            doc=["Scaling vectors in place.", "", "A second paragraph."],
+            path="src/tox/tox_demo_impl.F90",
+        )
+        return emitted(project(documented))
+
+    def test_the_author_s_documentation_is_carried_verbatim(self):
+        text = self.emitted()
+        assert "!> Scaling vectors in place." in text
+        assert "!| A second paragraph." in text
+
+    def test_the_author_s_first_line_is_the_summary(self):
+        """No `summary:` tag of the emitter's own -- it would displace the author's opening
+        line everywhere Ford shows a one-liner, to say what the note below already says."""
+        header = self.emitted().split("module tox_demo")[0].splitlines()
+        assert not any(line.startswith("!> summary:") for line in header)
+        assert header[2] == "!> Scaling vectors in place."
+
+    def test_the_generated_note_comes_last(self):
+        header = self.emitted().split("module tox_demo")[0].splitlines()
+        assert header[-1] == (
+            "!| Generated from [[tox_demo_impl(module)]]; do not edit -- regenerate instead."
+        )
+
+    def test_an_undocumented_module_still_gets_the_note(self):
+        # `impl_module` has no module doc, so the note is the whole of it -- and has to open
+        # with `!>` rather than the `!|` continuation, or Ford reads no documentation at all
+        assert demo().splitlines()[2].startswith("!> Generated from ")
+
     def test_the_synthesised_ierr_is_documented(self):
         # ... and a doc on the synthesised ierr avoids the argument-level warning
         assert "Error code; zero on success" in demo()

@@ -2,7 +2,13 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_clustering(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+!| (agglomerative) linkage clustering over a precomputed distance matrix.
+!|
+!| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
+!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| `linkage_clustering` takes the distances already computed and merges under the linkage
+!| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc

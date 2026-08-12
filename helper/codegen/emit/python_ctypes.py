@@ -22,7 +22,7 @@ from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 from .error_arguments import sources_of
-from .doc_numpydoc import render_docstring
+from .doc_numpydoc import _description, render_docstring
 
 #: A Fortran numeric literal's kind suffix -- `0_int32`, `2.0_real64`. Python has no such
 #: thing, so an extent expression carried over verbatim (`max(0_int32, n - 1)`) is a syntax
@@ -266,18 +266,25 @@ class PythonEmitter:
 
     def module(self, module: CWrapperModule) -> str:
         writer = Writer()
-        # the name first, then whatever the module says about itself: interpolating that
-        # summary into a sentence turns a generated module's "do not edit" banner into
-        # "Python binding to Generated from the implementation; do not edit".
-        summary = module.doc.summary
-        body = f"{summary}\n\n" if summary else ""
-        writer.block(
-            f'"""{module.stripped_name}\n'
-            f"\n"
-            f"{body}"
-            f"Python binding, generated from {module.stripped_name}. Do not edit.\n"
-            f'"""'
+        # The module's whole documentation, not only its first line. A generated module is
+        # the published API, so what the author wrote about the family is what a Python
+        # reader should get; taking the summary alone dropped every module doc to one
+        # sentence. Rendered through `_description` like any other doc, so Ford links
+        # resolve to the bindings a Python caller can actually reach.
+        body = Writer()
+        _description(body, module.doc, self)
+        rendered = body.render()
+        # raw, for the same reason a procedure docstring is: an author's prose carries LaTeX
+        # (`\(`, `\frac`), which is an invalid escape sequence in a plain string
+        writer.line(f'r"""{module.stripped_name}')
+        writer.blank()
+        if rendered:
+            writer.block(rendered)
+            writer.blank()
+        writer.line(
+            f"Python binding, generated from {module.stripped_name}. Do not edit."
         )
+        writer.line('"""')
         writer.blank()
         writer.line("import ctypes")
         writer.line("import os")

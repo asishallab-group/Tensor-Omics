@@ -1,7 +1,10 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[f42_binary_search_tree_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+!| This module provides routines to build a BST index (via sorting), access sorted values,
+!| and perform range queries over a real-valued array using the sorted index.
+!|
+!| Generated from [[f42_binary_search_tree_impl(module)]]; do not edit -- regenerate instead.
 module f42_binary_search_tree
     use f42_binary_search_tree_impl, only: bst_range_query_impl, build_bst_index_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

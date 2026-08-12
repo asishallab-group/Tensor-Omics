@@ -1,6 +1,13 @@
-"""tox_data_integration_preprocessing
+r"""tox_data_integration_preprocessing
 
-Generated from the implementation; do not edit -- regenerate instead.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
+
+The step that turns expression vectors into the neighborhood residuals the rest of the test
+consumes: gene-wise means, the signed deviation of each replicate from them, and the
+neighborhoods of reference points those residuals are grouped into so the comparison is
+conditioned on expression level rather than pooled across it.
+
+`calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own.
 
 Python binding, generated from tox_data_integration_preprocessing. Do not edit.
 """

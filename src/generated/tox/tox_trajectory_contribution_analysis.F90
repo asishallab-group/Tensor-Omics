@@ -1,7 +1,14 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_trajectory_contribution_analysis_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.
+!|
+!| Contributions are computed per timepoint as the product of both series' deviations from a chosen
+!| baseline, for raw expression trajectories as well as for their velocity (first difference) and
+!| acceleration (second difference) derivatives. Statistical significance of an observed contribution can
+!| be assessed via a permutation test that recomputes the same contribution against a randomly chosen
+!| other sample.
+!|
+!| Generated from [[tox_trajectory_contribution_analysis_impl(module)]]; do not edit -- regenerate instead.
 module tox_trajectory_contribution_analysis
     use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW, compute_acceleration_from_velocity_impl
     use tox_trajectory_contribution_analysis_impl, only: compute_acceleration_from_velocity_trajectory_impl, compute_all_contributions_impl, compute_baselines_factor_dependent_impl, compute_contributions_impl

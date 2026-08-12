@@ -1,14 +1,13 @@
 #include <src/macros.h>
 
-!> Implementations to identify gene outliers based on their distances to family centroids.
-!| The generator turns the `*_impl` procedures into the validating wrappers in module
-!| tox_get_outliers. compute_family_scaling is an expert implementation (its ~15 LOESS work arrays + the
-!| recommend-sized workspace + tmp_perm are allocated by the generated compute_family_scaling);
-!| span/degree/mode/n_iters are optional with defaults so the allocating wrapper matches the old
-!| hand-written one. compute_rdi and identify_outliers are pure. detect_outliers is an expert
-!| orchestrator that exposes every work array and calls the three implementations directly (an implementation module
-!| cannot call the generated allocating wrappers). The runtime error paths (percentile, logx, LOESS)
-!| keep ierr; the input-range validation the originals did not perform is not added back.
+!> Gene outliers, from how far each gene sits from its family's centroid.
+!|
+!| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
+!| a relative distance index, scaled per family so families of different spread are comparable.
+!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
+!| applies the threshold and reports which genes exceed it.
+!|
+!| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan

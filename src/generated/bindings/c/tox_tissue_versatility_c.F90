@@ -2,7 +2,12 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_tissue_versatility(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.
+!|
+!| An angle-based metric. A gene expressed equally across every selected axis points along the
+!| diagonal of that subspace and scores maximally versatile; one confined to a single tissue
+!| points along that axis and scores minimally. Normalized, so scores over different numbers of
+!| selected axes are comparable.
 module tox_tissue_versatility_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

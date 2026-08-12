@@ -1,6 +1,8 @@
-"""f42_binary_search_tree
+r"""f42_binary_search_tree
 
-Generated from the implementation; do not edit -- regenerate instead.
+Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+This module provides routines to build a BST index (via sorting), access sorted values,
+and perform range queries over a real-valued array using the sorted index.
 
 Python binding, generated from f42_binary_search_tree. Do not edit.
 """

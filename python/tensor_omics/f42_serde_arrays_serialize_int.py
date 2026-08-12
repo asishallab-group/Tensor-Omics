@@ -1,4 +1,4 @@
-"""f42_serde_arrays_serialize_int
+r"""f42_serde_arrays_serialize_int
 
 Module for serializing integer arrays into files
 

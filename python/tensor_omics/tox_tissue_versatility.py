@@ -1,6 +1,11 @@
-"""tox_tissue_versatility
+r"""tox_tissue_versatility
 
-Generated from the implementation; do not edit -- regenerate instead.
+Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.
+
+An angle-based metric. A gene expressed equally across every selected axis points along the
+diagonal of that subspace and scores maximally versatile; one confined to a single tissue
+points along that axis and scores minimally. Normalized, so scores over different numbers of
+selected axes are comparable.
 
 Python binding, generated from tox_tissue_versatility. Do not edit.
 """

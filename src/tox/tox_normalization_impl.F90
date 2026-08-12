@@ -1,14 +1,15 @@
 #include <src/macros.h>
 
-!> Implementations for normalization routines for tensor omics.
-!| The generator turns the `*_impl` procedures into the validating wrappers in module
-!| tox_normalization, and into an allocating entry point wherever an implementation takes `tmp_`
-!| work arrays. Dimension and (where the original checked it) finiteness validation comes from the
-!| wrappers; the implementations keep only what a per-argument validator cannot express -- the reps/replicate
-!| sum, the min-valid-points gate, and the runtime error paths (division-by-zero, log of a non-positive).
-!| The `*_inplace_helper` compute routines carry no `_impl` suffix and stay here untouched.
-!| Nothing in this module allocates: every buffer is a `tmp_` argument, so the generated entry point
-!| wrapper owns the memory and an expert caller can hand in buffers it already has.
+!> Normalization of expression data: putting samples on a comparable scale before anything
+!| distance-based is computed from them.
+!|
+!| Several schemes, each its own entry point rather than a mode: a log2 transformation, scaling
+!| by standard deviation (LOESS-smoothed against expression level, so the correction follows the
+!| mean-variance trend rather than assuming one), root-mean-square scaling, quantile
+!| normalization, and normalization to unit length.
+!|
+!| `normalization_pipeline` chains them in the order the analysis expects, and is what most
+!| callers want. The individual routines are published for a caller assembling their own.
 module tox_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_in_range_real, ERR_SIZE_MISMATCH

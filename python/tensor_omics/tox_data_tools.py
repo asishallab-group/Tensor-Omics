@@ -1,6 +1,11 @@
-"""tox_data_tools
+r"""tox_data_tools
 
 Parsers for the plain-text input formats TensorOmics data sets are built from (gene-expression
+TSV/CSV files, OrthoFinder-style family files), plus small array-filtering helpers.
+
+These populate the raw `gene_ids` / `expression` / `gene_to_family` / `family_ids` arrays that
+:func:`tensor_omics.save_tox_data` later persists; unlike the archive/serde
+layers, everything here works from delimited text rather than the library's binary array format.
 
 Python binding, generated from tox_data_tools. Do not edit.
 """

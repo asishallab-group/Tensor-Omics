@@ -1,4 +1,4 @@
-"""f42_serde_arrays_deserialize_int
+r"""f42_serde_arrays_deserialize_int
 
 Module for deserializing integer arrays from files
 

@@ -1,4 +1,4 @@
-"""f42_serde_arrays_serialize_logical
+r"""f42_serde_arrays_serialize_logical
 
 Module for serializing logical arrays into files
 

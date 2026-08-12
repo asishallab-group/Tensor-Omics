@@ -1,9 +1,10 @@
 #include <src/macros.h>
 
-!> Implementations for Euclidean distance computation for tensor omics.
-!| The generator turns `euclidean_distance_impl` and `distance_to_centroid_impl` into the
-!| validating wrappers `euclidean_distance` and `distance_to_centroid` in module
-!| `tox_euclidean_distance`.
+!> Euclidean distances in gene expression space.
+!|
+!| `euclidean_distance` between two expression vectors, and `distance_to_centroid` from every
+!| gene of a family to that family's centroid -- the distance the outlier detection and the
+!| relative-distance index are built on.
 module tox_euclidean_distance_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     M_IMPLICIT_NONE

@@ -1,6 +1,10 @@
-"""f42_kd_tree
+r"""f42_kd_tree
 
-Generated from the implementation; do not edit -- regenerate instead.
+k-d tree spatial index over fixed-dimensional point sets.
+Builds a k-d tree by recursively partitioning `kd_indices` around the median point along a
+caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
+is safe to call from `pure` procedures. The tree is stored implicitly as an in-place-permuted
+index array rather than as linked nodes.
 
 Python binding, generated from f42_kd_tree. Do not edit.
 """

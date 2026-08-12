@@ -2,7 +2,14 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_data_integration_stats(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test
+!|
+!| A permutation test estimating an empirical p-value for the weighted global JSD. Under the null
+!| hypothesis that both studies are exchangeable, S1/S2 residuals are repeatedly shuffled within
+!| each reference point's pooled neighborhood and the JSD is recomputed, giving a null
+!| distribution against which the observed value is compared.
+!|
+!| Work copies are shuffled, never the caller's arrays.
 module tox_data_integration_stats_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

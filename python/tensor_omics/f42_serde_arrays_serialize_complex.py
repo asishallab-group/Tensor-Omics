@@ -1,4 +1,4 @@
-"""f42_serde_arrays_serialize_complex
+r"""f42_serde_arrays_serialize_complex
 
 Module for serializing complex arrays into files
 

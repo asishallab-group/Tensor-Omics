@@ -1,6 +1,13 @@
-"""tox_data_integration_stats
+r"""tox_data_integration_stats
 
-Generated from the implementation; do not edit -- regenerate instead.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test
+
+A permutation test estimating an empirical p-value for the weighted global JSD. Under the null
+hypothesis that both studies are exchangeable, S1/S2 residuals are repeatedly shuffled within
+each reference point's pooled neighborhood and the JSD is recomputed, giving a null
+distribution against which the observed value is compared.
+
+Work copies are shuffled, never the caller's arrays.
 
 Python binding, generated from tox_data_integration_stats. Do not edit.
 """

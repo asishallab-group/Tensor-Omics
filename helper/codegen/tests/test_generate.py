@@ -85,6 +85,27 @@ class TestGenerate:
 
         assert not any("DM_OUTPUT_FROM" in w.message for w in result.diagnostics.warnings)
 
+    def test_the_python_module_docstring_carries_the_whole_module_doc(self, real_project):
+        """Not just its first line. A generated module is the published API, and taking the
+        summary alone reduced every module in the package to one sentence."""
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
+        written = {f.path.name: f.content for f in result.files}
+
+        docstring = written["tox_loess.py"].split('"""')[1]
+        impl = (REPO_ROOT / REAL_SRC / "tox" / "tox_loess_impl.F90").read_text()
+        for line in impl.splitlines():
+            if line.startswith("!| ") and len(line) > 20:
+                assert line[3:] in docstring
+
+    def test_the_python_module_docstring_says_do_not_edit_once(self, real_project):
+        """The Fortran wrapper's own "generated from" note is added by its emitter, not
+        carried in the IR -- carried, every language would print it beside their own."""
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
+        written = {f.path.name: f.content for f in result.files}
+
+        docstring = written["tox_loess.py"].split('"""')[1]
+        assert docstring.lower().count("do not edit") == 1
+
     def test_files_are_not_written_by_generate(self, isolated_repo, real_project):
         result = generate(paths(isolated_repo, REAL_SRC), targets=("python",), parsed=real_project)
 

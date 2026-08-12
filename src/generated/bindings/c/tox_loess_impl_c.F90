@@ -2,17 +2,20 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_loess_impl(module)]]
-!| Implementations for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.
-!| The generator turns `loess_fit_plain_impl` / `loess_fit_robust_impl` into the expert fitting
-!| wrappers `loess_fit_plain` / `loess_fit_robust`, each with an allocating sibling, in module
-!| `tox_loess`. Both answer data too degenerate to fit with `loess_degenerate_fit`, so it is
-!| answered there and the netlib call is skipped -- the implementations themselves fit, and assume they were
-!| given something fittable. There is no combined entry point that dispatches on a mode: a caller
-!| chooses the plain or the robust routine, and supplies the weights and evaluation points it wants.
-!| The netlib
-!| interface blocks, the mode/iteration constants, `EPS_LOESS` and the workspace-sizing routine
-!| `tox_loess_required_workspace` live here for callers (and the generated wrappers) to use; the
-!| netlib routines themselves are not re-documented beyond their calling convention.
+!| LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.
+!|
+!| Two fits: `loess_fit_plain` and `loess_fit_robust`, the latter reweighting against outliers over
+!| a number of iterations. There is deliberately no combined entry point dispatching on a mode --
+!| a caller chooses the routine, and supplies the weights and the evaluation points it wants.
+!|
+!| A sample too degenerate to fit (fewer distinct points than the degree needs) is answered
+!| directly from the observations rather than handed to netlib, which cannot fit one and dies
+!| inside its decomposition instead of reporting. Nothing about that is visible to a caller
+!| beyond the result.
+!|
+!| `tox_loess_required_workspace` sizes the workspace for a caller that wants to own it; the
+!| mode and iteration constants and `EPS_LOESS` are here for the same reason. The netlib
+!| routines themselves are not re-documented beyond their calling convention.
 module tox_loess_impl_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_int, c_loc

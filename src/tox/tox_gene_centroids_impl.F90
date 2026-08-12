@@ -1,10 +1,11 @@
 #include <src/macros.h>
 
-!> Implementations for computing expression centroids of gene families.
+!> Expression centroids of gene families.
 !|
-!| The generator turns these into the `mean_vector` wrapper and, from the mode-split
-!| `group_centroid_impl`, the per-mode wrappers `group_centroid_orthologs` and
-!| `group_centroid_all` in module `tox_gene_centroids`.
+!| `mean_vector` is the centroid of a set of expression vectors. `group_centroid_orthologs`
+!| and `group_centroid_all` take the centroid of a family: over its orthologs only, or over
+!| every gene in it -- two routines rather than one taking a flag, so which set a result is
+!| over is visible at the call site.
 module tox_gene_centroids_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_vector_impl, only: add_vector

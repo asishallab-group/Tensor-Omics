@@ -1,4 +1,4 @@
-"""f42_serde_arrays_deserialize_real
+r"""f42_serde_arrays_deserialize_real
 
 Module for deserializing real arrays from files
 

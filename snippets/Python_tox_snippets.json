@@ -1,7 +1,7 @@
 {
   "tox_clustering (import)": {
     "prefix": "tox:clustering.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Clustering for tensor omics: k-means over factors and trajectories, and hierarchical",
     "body": [
       "from tensor_omics.tox_clustering import (",
       "    ${1|cluster_factor_trajectories_k_means,k_means_clustering,linkage_clustering|},",
@@ -101,7 +101,7 @@
   },
   "tox_data_integration_jsd (import)": {
     "prefix": "tox:data_integration_jsd.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation",
     "body": [
       "from tensor_omics.tox_data_integration_jsd import (",
       "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,compute_divergence_per_reference_point,compute_weighted_global_divergence|},",
@@ -175,7 +175,7 @@
   },
   "tox_data_integration_per_family (import)": {
     "prefix": "tox:data_integration_per_family.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation per family",
     "body": [
       "from tensor_omics.tox_data_integration_per_family import (",
       "    ${1|fjct_compute_jsd,fjct_compute_masked_jsd,fjct_compute_contribution_scores|},",
@@ -225,7 +225,7 @@
   },
   "tox_data_integration_preprocessing (import)": {
     "prefix": "tox:data_integration_preprocessing.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing import (",
       "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods|},",
@@ -318,7 +318,7 @@
   },
   "tox_data_integration_stats (import)": {
     "prefix": "tox:data_integration_stats.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test",
     "body": [
       "from tensor_omics.tox_data_integration_stats import (",
       "    ${1|gjct_permutation_test|},",
@@ -500,7 +500,7 @@
   },
   "tox_euclidean_distance (import)": {
     "prefix": "tox:euclidean_distance.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Euclidean distances in gene expression space.",
     "body": [
       "from tensor_omics.tox_euclidean_distance import (",
       "    ${1|euclidean_distance,distance_to_centroid|},",
@@ -530,7 +530,7 @@
   },
   "tox_gene_centroids (import)": {
     "prefix": "tox:gene_centroids.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Expression centroids of gene families.",
     "body": [
       "from tensor_omics.tox_gene_centroids import (",
       "    ${1|mean_vector,group_centroid_orthologs,group_centroid_all|},",
@@ -572,7 +572,7 @@
   },
   "tox_get_outliers (import)": {
     "prefix": "tox:get_outliers.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Gene outliers, from how far each gene sits from its family's centroid.",
     "body": [
       "from tensor_omics.tox_get_outliers import (",
       "    ${1|compute_family_scaling,compute_rdi,identify_outliers,detect_outliers|},",
@@ -631,7 +631,7 @@
   },
   "tox_loess (import)": {
     "prefix": "tox:loess.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
     "body": [
       "from tensor_omics.tox_loess import (",
       "    ${1|loess_fit_plain,loess_fit_robust|},",
@@ -675,7 +675,7 @@
   },
   "tox_loess_impl (import)": {
     "prefix": "tox:loess_impl.setup",
-    "description": "Import a function from Implementations for LOESS (netlib `dloess`/`lowesd` family) local polynomial regression smoothing.",
+    "description": "Import a function from LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.",
     "body": [
       "from tensor_omics.tox_loess_impl import (",
       "    ${1|tox_loess_required_workspace|},",
@@ -695,7 +695,7 @@
   },
   "tox_normalization (import)": {
     "prefix": "tox:normalization.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Normalization of expression data: putting samples on a comparable scale before anything",
     "body": [
       "from tensor_omics.tox_normalization import (",
       "    ${1|normalize_unit_length,normalization_pipeline,normalize_by_std_dev,root_mean_sq_normalization,quantile_normalization,log2_transformation,calc_tiss_avg,calc_fchange|},",
@@ -785,7 +785,7 @@
   },
   "tox_paralog_analysis (import)": {
     "prefix": "tox:paralog_analysis.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
     "body": [
       "from tensor_omics.tox_paralog_analysis import (",
       "    ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization|},",
@@ -861,7 +861,7 @@
   },
   "tox_paralog_analysis_impl (import)": {
     "prefix": "tox:paralog_analysis_impl.setup",
-    "description": "Import a function from Implementations for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.",
+    "description": "Import a function from Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.",
     "body": [
       "from tensor_omics.tox_paralog_analysis_impl import (",
       "    ${1|mask_check_state,mask_chunk_count,calc_work_arr_paralog_subsets_size|},",
@@ -900,7 +900,7 @@
   },
   "tox_relative_axis_plane_tools (import)": {
     "prefix": "tox:relative_axis_plane_tools.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and",
     "body": [
       "from tensor_omics.tox_relative_axis_plane_tools import (",
       "    ${1|omics_vector_RAP_projection,omics_field_RAP_projection,clock_hand_angle_between_vectors,clock_hand_angles_for_shift_vectors,compute_relative_axis_contributions,relative_axes_changes_from_shift_vector,relative_axes_expression_from_expression_vector|},",
@@ -980,7 +980,7 @@
   },
   "tox_shift_vectors (import)": {
     "prefix": "tox:shift_vectors.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from The shift vector field: where each gene sits relative to its family's centroid.",
     "body": [
       "from tensor_omics.tox_shift_vectors import (",
       "    ${1|compute_shift_vector_field|},",
@@ -1000,7 +1000,7 @@
   },
   "tox_tissue_versatility (import)": {
     "prefix": "tox:tissue_versatility.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.",
     "body": [
       "from tensor_omics.tox_tissue_versatility import (",
       "    ${1|compute_tissue_versatility|},",
@@ -1020,7 +1020,7 @@
   },
   "tox_trajectory_contribution_analysis (import)": {
     "prefix": "tox:trajectory_contribution_analysis.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Module for quantifying how much one trajectory (a \"factor\") contributes to another (a \"dependent\") over time.",
     "body": [
       "from tensor_omics.tox_trajectory_contribution_analysis import (",
       "    ${1|perform_permutation_test,compute_p_values,compute_contributions,compute_all_contributions,compute_baselines_factor_dependent,compute_velocity_trajectory,compute_acceleration_from_velocity_trajectory,compute_velocity_trajectories,compute_acceleration_from_velocity,compute_velocity_acceleration_contributions|},",
@@ -1138,7 +1138,7 @@
   },
   "tox_trajectory_normalization (import)": {
     "prefix": "tox:trajectory_normalization.setup",
-    "description": "Import a function from Generated from the implementation; do not edit -- regenerate instead.",
+    "description": "Import a function from Min-max normalization of factor trajectories over time.",
     "body": [
       "from tensor_omics.tox_trajectory_normalization import (",
       "    ${1|normalize_variable_timeseries,normalize_single_trajectory,normalize_all_trajectories|},",

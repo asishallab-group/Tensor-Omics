@@ -1,6 +1,18 @@
-"""tox_paralog_analysis
+r"""tox_paralog_analysis
 
-Generated from the implementation; do not edit -- regenerate instead.
+Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
+
+Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
+starting from single genes. At every extension step the candidate is scored against the pattern-specific
+criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
+subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
+extended further, which keeps the combinatorial subset search tractable.
+
+There is a routine per pattern rather than one taking a pattern flag:
+`detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
+`filter_paralogs_by_pattern_dosage_effect` / `_subfunctionalization` reduce a set of genes to
+those matching. Which criterion a result was scored against is therefore visible at the call
+site, and each routine takes only the thresholds its own pattern needs.
 
 Python binding, generated from tox_paralog_analysis. Do not edit.
 """

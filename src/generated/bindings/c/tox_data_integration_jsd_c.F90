@@ -2,7 +2,12 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_data_integration_jsd(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!| # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
+!|
+!| The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+!| a JSD value: residuals are binned into histograms per study, the two distributions are
+!| compared per reference point, and the per-point divergences are weighted into one global
+!| figure for the pair of studies.
 module tox_data_integration_jsd_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc

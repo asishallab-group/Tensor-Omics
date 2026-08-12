@@ -1,6 +1,8 @@
-"""f42_stats
+r"""f42_stats
 
-Generated from the implementation; do not edit -- regenerate instead.
+Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+
+One of the modules the `f42_utils` family gathers.
 
 Python binding, generated from f42_stats. Do not edit.
 """

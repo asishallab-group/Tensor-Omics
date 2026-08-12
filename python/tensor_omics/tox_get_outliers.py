@@ -1,6 +1,13 @@
-"""tox_get_outliers
+r"""tox_get_outliers
 
-Generated from the implementation; do not edit -- regenerate instead.
+Gene outliers, from how far each gene sits from its family's centroid.
+
+The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
+a relative distance index, scaled per family so families of different spread are comparable.
+`compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
+applies the threshold and reports which genes exceed it.
+
+`detect_outliers` runs all three in one call, and is the entry point to reach for first.
 
 Python binding, generated from tox_get_outliers. Do not edit.
 """

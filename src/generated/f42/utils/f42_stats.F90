@@ -1,7 +1,10 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[f42_stats_impl(module)]]
-!| Generated from the implementation; do not edit -- regenerate instead.
+!> Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+!|
+!| One of the modules the `f42_utils` family gathers.
+!|
+!| Generated from [[f42_stats_impl(module)]]; do not edit -- regenerate instead.
 module f42_stats
     use f42_stats_impl, only: calc_percentile_impl, compute_edf_impl, compute_scaled_distance_quantile_impl, loess_smooth_2d_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64

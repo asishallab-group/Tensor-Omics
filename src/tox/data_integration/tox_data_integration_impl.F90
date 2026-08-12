@@ -17,9 +17,9 @@
 !| Rather than comparing mean expression values, the method focuses on the distribution of signed residuals (replicate deviations from the gene-wise mean),
 !| conditioned on mean expression levels to account for heteroscedasticity, which is a well-known property of omics data.
 !|
-!| The family is split over four implementation modules -- preprocessing, JSD calculation, per-family
-!| JSD calculation and the permutation test -- which this module gathers, so a caller reaches
-!| the whole pipeline through it.
+!| The test is split over four modules -- preprocessing, JSD calculation, per-family JSD
+!| calculation and the permutation test -- which this one gathers, so a caller reaches the whole
+!| pipeline through it and the split stays out of the way.
 module tox_data_integration_impl
     use tox_data_integration_preprocessing_impl
     use tox_data_integration_jsd_impl
