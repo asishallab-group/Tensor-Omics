@@ -823,6 +823,54 @@ runtime choices; forcing them into separate procedures would be wrong. Opt-in ke
 available. **Rejected — a separate split marker macro:** it would duplicate the signal the name
 column already carries.
 
+### The documentation is the API's, and it is checked (2026-08-12)
+
+**A generated module carries the implementation module's `!>` block verbatim, `Meta` and all.**
+It is the published API — what Python imports, what the R help pages are built from, what a
+Fortran caller `use`s — so the author's prose about the family is what a reader of any of those
+gets, and `Doc.summary` is their own first line rather than a banner.
+
+**Rejected — the "Generated from the implementation; do not edit" banner it replaced.** The
+argument for it was sound as far as it went: an implementation module's doc describes the
+implementation, not the API. The answer is that this makes the *doc* wrong, not the publishing:
+eighteen of them opened "Implementations for X" and went on to explain which `*_impl` the
+generator turns into which wrapper — several already stale, some plainly changelog. They were
+rewritten as API prose. The banner had left every published module in four languages described
+by the same one sentence, which is not a smaller problem than the one it avoided.
+
+**The "generated from" note lives in each emitter, not in the IR.** It is a fact about one
+*file*, and each language already says it in its own idiom; carried in the doc, Python printed
+it beside its own trailer. The Fortran emitter also adds no `summary:` tag of its own — that
+would displace the author's opening line everywhere Ford shows a one-liner, to say what the
+note at the bottom of the same comment already says.
+
+**A Ford `[[...]]` link that names nothing is an error** (`validate.check_doc_links`), resolved
+against the *augmented* project so that a link into a generated module — the wrapper a reader
+can actually call — is correct rather than dangling. It is the failure with no other symptom:
+Ford prints the literal text, and `emit/doc_links` falls back to plain code deliberately,
+because a dangling R `\link` fails `R CMD check`. Nothing downstream can tell a broken link from
+a working one, so nothing downstream will ever report one. Converting f42 broke twenty-three in
+one pass and none surfaced for a month.
+
+**Rejected — making it a warning.** That was the first answer, on the grounds that a dangling
+link degrades documentation without making anything wrong, and that a typo in a comment should
+not stop a build. FES overruled it, and the rule generalises: the generated documentation *is*
+the API's documentation in four languages, so the one part of it a machine can check gets the
+same weight as a signature the C layer cannot express.
+
+The promotion is what forced `ir/doc.py` to follow Ford's link grammar exactly rather than
+approximate it, since a false positive now refuses a build: the component and item type
+vocabularies are **not** interchangeable (Ford warns and generates no link for a mismatch), a
+component type may carry an `ext` prefix naming another project's entity — which the check skips
+rather than reporting missing — and since Ford 7 a `[[...]]` inside backticks is inline code,
+left verbatim. Getting any of those wrong is silent in the worst way: a type outside the list
+makes the whole link fail to *match*, so it is not a mis-resolved link, it is not a link at all.
+
+It also needed the IR to carry two things it had no other use for — public generic interfaces
+and derived types (`entities.Declaration`). A binding can express neither, but authors link to
+both, and an interface block's own `!>` comment belongs to no procedure and no module, so
+without it the links inside it were read nowhere at all.
+
 ---
 
 ## How the generator builds it

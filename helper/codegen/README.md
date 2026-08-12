@@ -272,6 +272,15 @@ The parts a source author does not need, and a generator maintainer does:
   there being no second tier for an `_expert` name to distinguish it from — nearly half the
   wrappers in the tree today. Naming the lone one `foo_expert` unconditionally would generate,
   compile and bind perfectly well, and quietly rename every entry point that has no work arrays.
+- **The generated module carries the implementation module's own documentation**, verbatim,
+  and its `Meta` with it (`synthesize`). It is the published API -- what Python imports, what
+  the R help pages are built from, what a Fortran caller `use`s -- so an author's prose about
+  the family is what a reader of any of those gets, and `Doc.summary` is their own first line.
+  It was a two-line "do not edit" banner until 2026-08-12, which left every published module
+  described by the same sentence; the argument for it (an implementation module's doc describes
+  the implementation) was answered by rewriting eighteen of those docs as API prose instead.
+  The "generated from" note is added by each **emitter**, not carried in the IR: it is about
+  one file, and carried in the doc, Python printed it beside its own trailer.
 - **A name is published as it stands.** Synthesis names the tiers `foo` and `foo_expert`
   outright, so they cross as `foo_c` and `foo_expert_c` with nothing to decide, and a
   hand-written export is published as written. `abi/c_abi.stripped_name` is therefore the

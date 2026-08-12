@@ -339,11 +339,12 @@ with your `summary:` as the docstring, your argument docs as the parameter docs,
 | Explicit `intent` on every dummy | decides constness in C and R, and input/output/in-out everywhere |
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
+| **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (§7) |
 | An author tag (`AUTHOR_*` from [`authors.h`](authors.h)) | attribution, rendered into the Ford docs |
 | A `!!` doc on **every** argument | inherited by the C wrapper and by both language layers |
 | **No `ierr` for validation** | validation is the wrapper's job; see §5.14 for the one case where an implementation keeps an `ierr` |
 | **No `M_EXPORT_C` on the implementation** | the generated wrapper is what the bindings call; exporting the implementation beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of §5.9 — *are* exported: they have no wrapper |
-| **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which the export path republishes as `foo` (§6.5) and collides with the real `foo` beside it. Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (§5.7) |
+| **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which every author here reads as the allocating tier while being an ordinary second procedure beside the generated `foo` that is one (§6.5). Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (§5.7) |
 | **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local *or a dummy* declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
 | **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header |
 
@@ -1075,6 +1076,12 @@ docstring and the R `.Rd` help page. So:
 - **The generator never rewrites your prose.** It renders *its own* macro output per language,
   and resolves markup — nothing else. If a sentence is wrong in Python, it was wrong in the
   implementation; fix it there and all four fix at once.
+- **The module's `!>` block is published too**, verbatim, as the generated module's own
+  documentation — the Python module docstring and the Ford page a caller lands on. So write it
+  for a caller: what the family is for, what its entry points are, what a result means. Not
+  "Implementations for X", and not a description of what the generator will make of it — the
+  generated file says where it came from, and this guide says how. The `_impl` modules were
+  rewritten along these lines on 2026-08-12; `tox_get_outliers_impl` is a short worked example.
 - **Literals are rendered per language.** `0.7_real64` reaches Python and R as `0.7`; `.true.`
   becomes `True` / `TRUE`.
 - **Ford links resolve to what the reader can call.** `[[tox_loess_impl(module):MODE_PLAIN(variable)]]`
@@ -1191,8 +1198,9 @@ Then the suites, all of which must pass:
 python -m pytest helper/codegen/tests -q                 # the generator's own suite
 ```
 
-`run_all_tests.sh` reports the Python and R files pass/fail only. When one fails, run it alone
-for the actual message:
+`run_all_tests.sh` exits non-zero if anything fails, and stops at a failed Fortran build rather
+than reporting a library the Python and R suites could not have loaded. It prints the Python and
+R files as pass/fail only, so run a failing one alone for the actual message:
 
 ```sh
 ./test_runner.sh --skip-kinds-test --reuse-mod-files     # Fortran, with output
@@ -1225,11 +1233,19 @@ Two things that will bite when you convert an existing procedure to an implement
 - [ ] `./build.sh` green; Fortran, Python, R and codegen suites green.
 - [ ] Nothing generated was edited by hand (`src/generated/`, `python/tensor_omics/`,
       `r/tensor_omics/`, `snippets/`); the regenerated diff is committed with the source change.
+- [ ] If you renamed anything published, `python helper/generate_code.py --target snippets` too:
+      `snippets/` is **not** in the default targets, so neither a plain run nor `--check`
+      touches it, and it drifts silently.
 
 **Part I — an implementation**
 
 - [ ] Module `tox_*_impl` in a file of the same name, procedure `*_impl`, and **not**
       `M_EXPORT_C`.
+- [ ] The module's `!>` block reads as documentation of the published API, not of the
+      implementation — it is carried onto the generated module verbatim (§7).
+- [ ] No `!!` on an ordinary comment inside a procedure *body*: `!!` is Ford's docmark, silent
+      while the procedure is unexported and stray documentation lines in the wrapper once it is
+      not. `grep -n '^\s*!! ' <file>` before converting one.
 - [ ] Every bounded value carries `DM_MIN` / `DM_MAX` / `DM_SENTINEL`. Every real that may be
       non-finite carries the matching `DM_ALLOW_*` — and no other real does.
 - [ ] No validation in the implementation; no `ierr` unless it reports a genuine runtime failure.
