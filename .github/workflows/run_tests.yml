@@ -41,10 +41,14 @@ jobs:
       - name: Install R
         uses: ./.github/actions/install-R
 
+      # `status` rather than a bare loop: a loop exits with the status of its *last* iteration,
+      # so a suite that fails anywhere but at the end passes the step silently.
       - name: Run R Tests
         run: |
           bash build.sh ${{ inputs.extra_build_args }} --skip-code-generation --compiler="${{ inputs.compiler }}"
-          for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i ; done
+          status=0
+          for i in r/test/*.[rR]; do echo ; echo $i ; Rscript $i || status=1 ; done
+          exit $status
 
       - name: Install Python
         uses: ./.github/actions/install-Python
@@ -52,7 +56,10 @@ jobs:
           packages: numpy pandas
 
       - name: Run Python Tests
-        run: for i in python/test/*.py; do echo ; echo $i ; python $i ; done
+        run: |
+          status=0
+          for i in python/test/*.py; do echo ; echo $i ; python $i || status=1 ; done
+          exit $status
 
       - name: Ensure the code generator doesn't need to be run.
         run: |
