@@ -81,6 +81,112 @@
       ")"
     ]
   },
+  "determine_shared_residual_range (call)": {
+    "prefix": "tox:determine_shared_residual_range",
+    "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from",
+    "body": [
+      "${1:result} <- determine_shared_residual_range(",
+      "  abs_residual_pool = ${2:abs_residual_pool},",
+      "  residual_range_quantile = ${3:95.0}",
+      ")"
+    ]
+  },
+  "determine_shared_residual_range_expert (call)": {
+    "prefix": "tox:determine_shared_residual_range_expert",
+    "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from",
+    "body": [
+      "${1:result} <- determine_shared_residual_range_expert(",
+      "  abs_residual_pool = ${2:abs_residual_pool},",
+      "  abs_residual_pool_perm = ${3:abs_residual_pool_perm},",
+      "  residual_range_quantile = ${4:95.0}",
+      ")"
+    ]
+  },
+  "determine_study_shared_residual_range (call)": {
+    "prefix": "tox:determine_study_shared_residual_range",
+    "description": "Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly",
+    "body": [
+      "${1:result} <- determine_study_shared_residual_range(",
+      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
+      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
+      "  residual_range_quantile = ${4:95.0}",
+      ")"
+    ]
+  },
+  "build_residual_histograms (call)": {
+    "prefix": "tox:build_residual_histograms",
+    "description": "The probability mass function `pmf(residual, bin)` is actually a matrix.",
+    "body": [
+      "${1:result} <- build_residual_histograms(",
+      "  neighborhood_residuals = ${2:neighborhood_residuals},",
+      "  shared_residual_range = ${3:shared_residual_range},",
+      "  n_bins = ${4:n_bins},",
+      "  neighbor_mask = ${5:NULL}",
+      ")"
+    ]
+  },
+  "compute_divergence_per_reference_point (call)": {
+    "prefix": "tox:compute_divergence_per_reference_point",
+    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`.",
+    "body": [
+      "${1:result} <- compute_divergence_per_reference_point(",
+      "  pmf_S1 = ${2:pmf_S1},",
+      "  pmf_S2 = ${3:pmf_S2}",
+      ")"
+    ]
+  },
+  "compute_weighted_global_divergence (call)": {
+    "prefix": "tox:compute_weighted_global_divergence",
+    "description": "Takes the divergences produced by `compute_divergence_per_reference_point`.",
+    "body": [
+      "${1:result} <- compute_weighted_global_divergence(",
+      "  js_divergences = ${2:js_divergences},",
+      "  included_n_reps_S1 = ${3:included_n_reps_S1},",
+      "  included_n_reps_S2 = ${4:included_n_reps_S2}",
+      ")"
+    ]
+  },
+  "fjct_compute_jsd (call)": {
+    "prefix": "tox:fjct_compute_jsd",
+    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts",
+    "body": [
+      "${1:result} <- fjct_compute_jsd(",
+      "  family_idx = ${2:family_idx},",
+      "  gene_to_family_S1 = ${3:gene_to_family_S1},",
+      "  gene_to_family_S2 = ${4:gene_to_family_S2},",
+      "  neighborhood_residuals_S1 = ${5:neighborhood_residuals_S1},",
+      "  neighborhood_residuals_S2 = ${6:neighborhood_residuals_S2},",
+      "  neighborhood_genes_S1 = ${7:neighborhood_genes_S1},",
+      "  neighborhood_genes_S2 = ${8:neighborhood_genes_S2},",
+      "  n_bins = ${9:n_bins},",
+      "  shared_residual_range = ${10:shared_residual_range}",
+      ")"
+    ]
+  },
+  "fjct_compute_masked_jsd (call)": {
+    "prefix": "tox:fjct_compute_masked_jsd",
+    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts the",
+    "body": [
+      "${1:result} <- fjct_compute_masked_jsd(",
+      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
+      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
+      "  neighbor_mask_S1 = ${4:neighbor_mask_S1},",
+      "  neighbor_mask_S2 = ${5:neighbor_mask_S2},",
+      "  n_bins = ${6:n_bins},",
+      "  shared_residual_range = ${7:shared_residual_range}",
+      ")"
+    ]
+  },
+  "fjct_compute_contribution_scores (call)": {
+    "prefix": "tox:fjct_compute_contribution_scores",
+    "description": "Combines",
+    "body": [
+      "${1:result} <- fjct_compute_contribution_scores(",
+      "  global_js_divergences = ${2:global_js_divergences},",
+      "  total_included_n_reps_per_f = ${3:total_included_n_reps_per_f}",
+      ")"
+    ]
+  },
   "compute_gene_means (call)": {
     "prefix": "tox:compute_gene_means",
     "description": "compute_gene_means",
@@ -102,18 +208,17 @@
   },
   "pool_means (call)": {
     "prefix": "tox:pool_means",
-    "description": "pool_means",
+    "description": "This takes the pool already built; `pool_study_means` pools the means of two studies",
     "body": [
       "${1:result} <- pool_means(",
-      "  mean_S1 = ${2:mean_S1},",
-      "  mean_S2 = ${3:mean_S2},",
-      "  n_points = ${4:n_points}",
+      "  pooled_means = ${2:pooled_means},",
+      "  n_points = ${3:n_points}",
       ")"
     ]
   },
   "pool_means_expert (call)": {
     "prefix": "tox:pool_means_expert",
-    "description": "pool_means_expert",
+    "description": "This takes the pool already built; `pool_study_means` pools the means of two studies",
     "body": [
       "${1:result} <- pool_means_expert(",
       "  pooled_means = ${2:pooled_means},",
@@ -122,15 +227,14 @@
       ")"
     ]
   },
-  "calc_neighborhood_size (call)": {
-    "prefix": "tox:calc_neighborhood_size",
-    "description": "The `desired_size` works as upper limit, as the actual neighborhood size might be lower due to few genes with non-NaN mean.",
+  "pool_study_means (call)": {
+    "prefix": "tox:pool_study_means",
+    "description": "Concatenates the two studies' means, sorts the pool, and turns it into reference",
     "body": [
-      "${1:result} <- calc_neighborhood_size(",
-      "  n_pool = ${2:n_pool},",
-      "  n_points = ${3:n_points},",
-      "  mean_S = ${4:mean_S},",
-      "  desired_size = ${5:1000L}",
+      "${1:result} <- pool_study_means(",
+      "  mean_S1 = ${2:mean_S1},",
+      "  mean_S2 = ${3:mean_S2},",
+      "  n_points = ${4:n_points}",
       ")"
     ]
   },
@@ -146,9 +250,21 @@
       ")"
     ]
   },
+  "calc_neighborhood_size (call)": {
+    "prefix": "tox:calc_neighborhood_size",
+    "description": "The `desired_size` works as upper limit, as the actual neighborhood size might be lower",
+    "body": [
+      "${1:result} <- calc_neighborhood_size(",
+      "  n_pool = ${2:n_pool},",
+      "  n_points = ${3:n_points},",
+      "  mean_S = ${4:mean_S},",
+      "  desired_size = ${5:1000L}",
+      ")"
+    ]
+  },
   "gjct_permutation_test (call)": {
     "prefix": "tox:gjct_permutation_test",
-    "description": "gjct_permutation_test",
+    "description": "Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in",
     "body": [
       "${1:result} <- gjct_permutation_test(",
       "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
@@ -160,119 +276,6 @@
       "  random_seed = ${8:NULL},",
       "  neighbor_mask_S1 = ${9:NULL},",
       "  neighbor_mask_S2 = ${10:NULL}",
-      ")"
-    ]
-  },
-  "gjct_permutation_test_expert (call)": {
-    "prefix": "tox:gjct_permutation_test_expert",
-    "description": "gjct_permutation_test_expert",
-    "body": [
-      "${1:result} <- gjct_permutation_test_expert(",
-      "  neighborhood_residuals_S1_copy = ${2:neighborhood_residuals_S1_copy},",
-      "  neighborhood_residuals_S2_copy = ${3:neighborhood_residuals_S2_copy},",
-      "  global_jsd_observed = ${4:global_jsd_observed},",
-      "  n_bins = ${5:n_bins},",
-      "  shared_residual_range = ${6:shared_residual_range},",
-      "  n_permutations = ${7:n_permutations},",
-      "  random_seed = ${8:NULL},",
-      "  neighbor_mask_S1 = ${9:NULL},",
-      "  neighbor_mask_S2 = ${10:NULL}",
-      ")"
-    ]
-  },
-  "determine_shared_residual_range_expert (call)": {
-    "prefix": "tox:determine_shared_residual_range_expert",
-    "description": "determine_shared_residual_range_expert",
-    "body": [
-      "${1:result} <- determine_shared_residual_range_expert(",
-      "  abs_residual_pool = ${2:abs_residual_pool},",
-      "  abs_residual_pool_perm = ${3:abs_residual_pool_perm},",
-      "  residual_range_quantile = ${4:95.0}",
-      ")"
-    ]
-  },
-  "determine_shared_residual_range (call)": {
-    "prefix": "tox:determine_shared_residual_range",
-    "description": "determine_shared_residual_range",
-    "body": [
-      "${1:result} <- determine_shared_residual_range(",
-      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
-      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
-      "  residual_range_quantile = ${4:95.0}",
-      ")"
-    ]
-  },
-  "build_residual_histograms (call)": {
-    "prefix": "tox:build_residual_histograms",
-    "description": "build_residual_histograms",
-    "body": [
-      "${1:result} <- build_residual_histograms(",
-      "  neighborhood_residuals = ${2:neighborhood_residuals},",
-      "  shared_residual_range = ${3:shared_residual_range},",
-      "  n_bins = ${4:n_bins},",
-      "  neighbor_mask = ${5:NULL}",
-      ")"
-    ]
-  },
-  "compute_divergence_per_reference_point (call)": {
-    "prefix": "tox:compute_divergence_per_reference_point",
-    "description": "compute_divergence_per_reference_point",
-    "body": [
-      "${1:result} <- compute_divergence_per_reference_point(",
-      "  pmf_S1 = ${2:pmf_S1},",
-      "  pmf_S2 = ${3:pmf_S2}",
-      ")"
-    ]
-  },
-  "compute_weighted_global_divergence (call)": {
-    "prefix": "tox:compute_weighted_global_divergence",
-    "description": "compute_weighted_global_divergence",
-    "body": [
-      "${1:result} <- compute_weighted_global_divergence(",
-      "  js_divergences = ${2:js_divergences},",
-      "  included_n_reps_S1 = ${3:included_n_reps_S1},",
-      "  included_n_reps_S2 = ${4:included_n_reps_S2}",
-      ")"
-    ]
-  },
-  "fjct_compute_jsd (call)": {
-    "prefix": "tox:fjct_compute_jsd",
-    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricting residual samples to genes belonging to the specified family",
-    "body": [
-      "${1:result} <- fjct_compute_jsd(",
-      "  family_idx = ${2:family_idx},",
-      "  gene_to_family_S1 = ${3:gene_to_family_S1},",
-      "  gene_to_family_S2 = ${4:gene_to_family_S2},",
-      "  neighborhood_residuals_S1 = ${5:neighborhood_residuals_S1},",
-      "  neighborhood_residuals_S2 = ${6:neighborhood_residuals_S2},",
-      "  neighborhood_genes_S1 = ${7:neighborhood_genes_S1},",
-      "  neighborhood_genes_S2 = ${8:neighborhood_genes_S2},",
-      "  n_bins = ${9:n_bins},",
-      "  shared_residual_range = ${10:shared_residual_range}",
-      ")"
-    ]
-  },
-  "fjct_compute_jsd_expert (call)": {
-    "prefix": "tox:fjct_compute_jsd_expert",
-    "description": "Restricts residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2` (typically all neighbors belonging to one gene family; see [[tox_data_integration(module):fjct_compute_jsd_alloc(interface)]] for the family-index-based entry point that builds these masks)",
-    "body": [
-      "${1:result} <- fjct_compute_jsd_expert(",
-      "  neighborhood_residuals_S1 = ${2:neighborhood_residuals_S1},",
-      "  neighborhood_residuals_S2 = ${3:neighborhood_residuals_S2},",
-      "  neighbor_mask_S1 = ${4:neighbor_mask_S1},",
-      "  neighbor_mask_S2 = ${5:neighbor_mask_S2},",
-      "  n_bins = ${6:n_bins},",
-      "  shared_residual_range = ${7:shared_residual_range}",
-      ")"
-    ]
-  },
-  "fjct_compute_contribution_scores (call)": {
-    "prefix": "tox:fjct_compute_contribution_scores",
-    "description": "Combines (1) how divergent the family is between the studies, and (2) how much residual support the family has overall, using the outputs from [[tox_data_integration(module):fjct_compute_jsd(interface)]], collected for the analyzed sub-neighborhoods.",
-    "body": [
-      "${1:result} <- fjct_compute_contribution_scores(",
-      "  global_js_divergences = ${2:global_js_divergences},",
-      "  total_included_n_reps_per_f = ${3:total_included_n_reps_per_f}",
       ")"
     ]
   },
@@ -445,42 +448,41 @@
       ")"
     ]
   },
-  "group_centroid (call)": {
-    "prefix": "tox:group_centroid",
-    "description": "group_centroid",
+  "group_centroid_orthologs (call)": {
+    "prefix": "tox:group_centroid_orthologs",
+    "description": "group_centroid_orthologs",
     "body": [
-      "${1:result} <- group_centroid(",
+      "${1:result} <- group_centroid_orthologs(",
       "  expression_vectors = ${2:expression_vectors},",
       "  gene_to_family = ${3:gene_to_family},",
       "  n_families = ${4:n_families},",
-      "  mode = ${5|group_orthologs,group_all|},",
-      "  ortholog_set = ${6:NULL}",
+      "  ortholog_set = ${5:ortholog_set}",
       ")"
     ]
   },
-  "compute_family_scaling_expert (call)": {
-    "prefix": "tox:compute_family_scaling_expert",
-    "description": "Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.",
+  "group_centroid_all (call)": {
+    "prefix": "tox:group_centroid_all",
+    "description": "group_centroid_all",
     "body": [
-      "${1:result} <- compute_family_scaling_expert(",
-      "  n_families = ${2:n_families},",
-      "  distances = ${3:distances},",
-      "  gene_to_fam = ${4:gene_to_fam},",
-      "  span = ${5:span},",
-      "  degree = ${6:degree},",
-      "  mode = ${7|plain,robust|},",
-      "  n_iters = ${8:n_iters}",
+      "${1:result} <- group_centroid_all(",
+      "  expression_vectors = ${2:expression_vectors},",
+      "  gene_to_family = ${3:gene_to_family},",
+      "  n_families = ${4:n_families}",
       ")"
     ]
   },
   "compute_family_scaling (call)": {
     "prefix": "tox:compute_family_scaling",
-    "description": "This makes usage easier since users don't need to care about internal array requirements.",
+    "description": "Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.",
     "body": [
       "${1:result} <- compute_family_scaling(",
       "  n_families = ${2:n_families},",
       "  distances = ${3:distances},",
-      "  gene_to_fam = ${4:gene_to_fam}",
+      "  gene_to_fam = ${4:gene_to_fam},",
+      "  span = ${5:0.7},",
+      "  degree = ${6:2L},",
+      "  mode = ${7|plain,robust|},",
+      "  n_iters = ${8:3L}",
       ")"
     ]
   },
@@ -509,13 +511,48 @@
   },
   "detect_outliers (call)": {
     "prefix": "tox:detect_outliers",
-    "description": "Orchestrates the full pipeline: computes per-family scaling factors via",
+    "description": "Orchestrates the full pipeline: per-family scaling via",
     "body": [
       "${1:result} <- detect_outliers(",
       "  n_families = ${2:n_families},",
       "  distances = ${3:distances},",
       "  gene_to_fam = ${4:gene_to_fam},",
       "  percentile = ${5:95.0}",
+      ")"
+    ]
+  },
+  "loess_fit_plain (call)": {
+    "prefix": "tox:loess_fit_plain",
+    "description": "Data too degenerate to fit is answered directly, by the observations themselves; see",
+    "body": [
+      "${1:result} <- loess_fit_plain(",
+      "  x = ${2:x},",
+      "  y = ${3:y},",
+      "  weights = ${4:weights},",
+      "  eval_points = ${5:eval_points},",
+      "  span = ${6:span},",
+      "  degree = ${7:degree},",
+      "  max_neighborhood_size = ${8:max_neighborhood_size},",
+      "  compute_influence = ${9:FALSE},",
+      "  save_factorization = ${10:FALSE}",
+      ")"
+    ]
+  },
+  "loess_fit_robust (call)": {
+    "prefix": "tox:loess_fit_robust",
+    "description": "Data too degenerate to fit is answered directly, by the observations themselves; see",
+    "body": [
+      "${1:result} <- loess_fit_robust(",
+      "  x = ${2:x},",
+      "  y = ${3:y},",
+      "  weights = ${4:weights},",
+      "  eval_points = ${5:eval_points},",
+      "  span = ${6:span},",
+      "  degree = ${7:degree},",
+      "  max_neighborhood_size = ${8:max_neighborhood_size},",
+      "  compute_influence = ${9:FALSE},",
+      "  save_factorization = ${10:FALSE},",
+      "  n_iters = ${11:3L}",
       ")"
     ]
   },
@@ -527,59 +564,6 @@
       "  n_dim = ${2:n_dim},",
       "  max_neighborhood_size = ${3:max_neighborhood_size},",
       "  save_factorization = ${4:save_factorization}",
-      ")"
-    ]
-  },
-  "loess_fit_plain (call)": {
-    "prefix": "tox:loess_fit_plain",
-    "description": "Fits a LOESS model to the data using the specified smoothing parameter.",
-    "body": [
-      "${1:result} <- loess_fit_plain(",
-      "  x = ${2:x},",
-      "  y = ${3:y},",
-      "  weights = ${4:weights},",
-      "  eval_points = ${5:eval_points},",
-      "  span = ${6:span},",
-      "  degree = ${7:degree},",
-      "  max_neighborhood_size = ${8:max_neighborhood_size},",
-      "  compute_influence = ${9:compute_influence},",
-      "  save_factorization = ${10:save_factorization}",
-      ")"
-    ]
-  },
-  "loess_fit_robust (call)": {
-    "prefix": "tox:loess_fit_robust",
-    "description": "Fits a LOESS model to the data using robust iterations to handle outliers.",
-    "body": [
-      "${1:result} <- loess_fit_robust(",
-      "  x = ${2:x},",
-      "  y = ${3:y},",
-      "  weights = ${4:weights},",
-      "  eval_points = ${5:eval_points},",
-      "  span = ${6:span},",
-      "  degree = ${7:degree},",
-      "  max_neighborhood_size = ${8:max_neighborhood_size},",
-      "  compute_influence = ${9:compute_influence},",
-      "  save_factorization = ${10:save_factorization},",
-      "  n_iters = ${11:n_iters},",
-      "  robust_weights = ${12:robust_weights},",
-      "  combined_weights = ${13:combined_weights},",
-      "  residuals = ${14:residuals},",
-      "  permutation_indices = ${15:permutation_indices}",
-      ")"
-    ]
-  },
-  "loess (call)": {
-    "prefix": "tox:loess",
-    "description": "This subroutine selects between plain and robust LOESS fitting based on the mode.",
-    "body": [
-      "${1:result} <- loess(",
-      "  x = ${2:x},",
-      "  y = ${3:y},",
-      "  span = ${4:span},",
-      "  degree = ${5:degree},",
-      "  mode = ${6|plain,robust|},",
-      "  n_iters = ${7:3L}",
       ")"
     ]
   },
@@ -664,16 +648,6 @@
       ")"
     ]
   },
-  "mask_check_state (call)": {
-    "prefix": "tox:mask_check_state",
-    "description": "mask_check_state",
-    "body": [
-      "${1:result} <- mask_check_state(",
-      "  bit_mask = ${2:bit_mask},",
-      "  i_gene = ${3:i_gene}",
-      ")"
-    ]
-  },
   "detect_neofunctionalization (call)": {
     "prefix": "tox:detect_neofunctionalization",
     "description": "detect_neofunctionalization",
@@ -707,26 +681,30 @@
       "${1:result} <- detect_subfunctionalization(",
       "  ancestor = ${2:ancestor},",
       "  genes = ${3:genes},",
-      "  rdi_threshold = ${4:rdi_threshold},",
-      "  filtered_paralogs_mask = ${5:filtered_paralogs_mask},",
-      "  max_subset_size = ${6:max_subset_size},",
+      "  filtered_paralogs_mask = ${4:filtered_paralogs_mask},",
+      "  max_subset_size = ${5:max_subset_size},",
+      "  rdi_threshold = ${6:rdi_threshold},",
       "  paralog_norms = ${7:paralog_norms},",
       "  sorted_paralog_norms_perm = ${8:sorted_paralog_norms_perm}",
       ")"
     ]
   },
-  "mask_chunk_count (call)": {
-    "prefix": "tox:mask_chunk_count",
-    "description": "mask_chunk_count",
+  "filter_paralogs_by_pattern_dosage_effect (call)": {
+    "prefix": "tox:filter_paralogs_by_pattern_dosage_effect",
+    "description": "This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.",
     "body": [
-      "${1:result} <- mask_chunk_count(",
-      "  n_genes = ${2:n_genes}",
+      "${1:result} <- filter_paralogs_by_pattern_dosage_effect(",
+      "  gene_angles = ${2:gene_angles},",
+      "  threshold = ${3:threshold},",
+      "  n_families = ${4:n_families},",
+      "  gene_to_fam = ${5:gene_to_fam},",
+      "  n_mask_chunks = ${6:n_mask_chunks}",
       ")"
     ]
   },
   "filter_paralogs_by_pattern_subfunctionalization (call)": {
     "prefix": "tox:filter_paralogs_by_pattern_subfunctionalization",
-    "description": "as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.",
+    "description": "This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.",
     "body": [
       "${1:result} <- filter_paralogs_by_pattern_subfunctionalization(",
       "  gene_angles = ${2:gene_angles},",
@@ -737,16 +715,22 @@
       ")"
     ]
   },
-  "filter_paralogs_by_pattern_dosage_effect (call)": {
-    "prefix": "tox:filter_paralogs_by_pattern_dosage_effect",
-    "description": "as genes that are already too distant in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.",
+  "mask_check_state (call)": {
+    "prefix": "tox:mask_check_state",
+    "description": "mask_check_state",
     "body": [
-      "${1:result} <- filter_paralogs_by_pattern_dosage_effect(",
-      "  gene_angles = ${2:gene_angles},",
-      "  threshold = ${3:threshold},",
-      "  n_families = ${4:n_families},",
-      "  gene_to_fam = ${5:gene_to_fam},",
-      "  n_mask_chunks = ${6:n_mask_chunks}",
+      "${1:result} <- mask_check_state(",
+      "  bit_mask = ${2:bit_mask},",
+      "  i_gene = ${3:i_gene}",
+      ")"
+    ]
+  },
+  "mask_chunk_count (call)": {
+    "prefix": "tox:mask_chunk_count",
+    "description": "mask_chunk_count",
+    "body": [
+      "${1:result} <- mask_chunk_count(",
+      "  n_genes = ${2:n_genes}",
       ")"
     ]
   },
@@ -785,23 +769,32 @@
   },
   "clock_hand_angle_between_vectors (call)": {
     "prefix": "tox:clock_hand_angle_between_vectors",
-    "description": "Calculates the signed rotation angle between two normalized vectors in RAP space.",
+    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying",
     "body": [
       "${1:result} <- clock_hand_angle_between_vectors(",
       "  v1 = ${2:v1},",
       "  v2 = ${3:v2},",
-      "  selected_axes_for_signed = ${4:selected_axes_for_signed}",
+      "  orientation_reference = ${4:orientation_reference}",
       ")"
     ]
   },
   "clock_hand_angles_for_shift_vectors (call)": {
     "prefix": "tox:clock_hand_angles_for_shift_vectors",
-    "description": "clock_hand_angles_for_shift_vectors",
+    "description": "Each selected field is angled by the rule of",
     "body": [
       "${1:result} <- clock_hand_angles_for_shift_vectors(",
       "  fields = ${2:fields},",
       "  fields_selection_mask = ${3:fields_selection_mask},",
-      "  selected_axes_for_signed = ${4:selected_axes_for_signed}",
+      "  orientation_reference = ${4:orientation_reference}",
+      ")"
+    ]
+  },
+  "compute_relative_axis_contributions (call)": {
+    "prefix": "tox:compute_relative_axis_contributions",
+    "description": "Shared utility: the shift-vector and expression-vector entry points below both drive it.",
+    "body": [
+      "${1:result} <- compute_relative_axis_contributions(",
+      "  vec = ${2:vec}",
       ")"
     ]
   },
@@ -825,7 +818,7 @@
   },
   "compute_shift_vector_field (call)": {
     "prefix": "tox:compute_shift_vector_field",
-    "description": "Computes the shift vectors by substracting the corresponding family centroid from the expression vector.",
+    "description": "Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.",
     "body": [
       "${1:result} <- compute_shift_vector_field(",
       "  expression_vectors = ${2:expression_vectors},",
@@ -840,16 +833,14 @@
     "body": [
       "${1:result} <- compute_tissue_versatility(",
       "  expression_vectors = ${2:expression_vectors},",
-      "  exp_vecs_selection_index = ${3:exp_vecs_selection_index},",
-      "  n_selected_vectors = ${4:n_selected_vectors},",
-      "  axes_selection = ${5:axes_selection},",
-      "  n_selected_axes = ${6:n_selected_axes}",
+      "  vectors_selection_mask = ${3:vectors_selection_mask},",
+      "  axes_selection_mask = ${4:axes_selection_mask}",
       ")"
     ]
   },
   "perform_permutation_test (call)": {
     "prefix": "tox:perform_permutation_test",
-    "description": "For a given factor-dependent pair, this subroutine calculates the contributions by taking the same dependent but from a random different sample.",
+    "description": "perform_permutation_test",
     "body": [
       "${1:result} <- perform_permutation_test(",
       "  trajectories = ${2:trajectories},",
@@ -864,7 +855,7 @@
   },
   "compute_p_values (call)": {
     "prefix": "tox:compute_p_values",
-    "description": "Once the permutation tests are calculated ([[tox_trajectory_contribution_analysis(module):perform_permutation_test(subroutine)]]),",
+    "description": "Given the permutation tests ([[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(subroutine)]]),",
     "body": [
       "${1:result} <- compute_p_values(",
       "  local_contributions_observed = ${2:local_contributions_observed},",
@@ -946,16 +937,6 @@
       ")"
     ]
   },
-  "compute_velocity_acceleration_contributions_expert (call)": {
-    "prefix": "tox:compute_velocity_acceleration_contributions_expert",
-    "description": "@note",
-    "body": [
-      "${1:result} <- compute_velocity_acceleration_contributions_expert(",
-      "  trajectories = ${2:trajectories},",
-      "  baseline_mode = ${3|raw,mean,min|}",
-      ")"
-    ]
-  },
   "compute_velocity_acceleration_contributions (call)": {
     "prefix": "tox:compute_velocity_acceleration_contributions",
     "description": "@note",
@@ -986,7 +967,7 @@
   },
   "normalize_all_trajectories (call)": {
     "prefix": "tox:normalize_all_trajectories",
-    "description": "Normalizes each factor independently across time for each sample",
+    "description": "independently across time for each sample.",
     "body": [
       "${1:result} <- normalize_all_trajectories(",
       "  trajectories = ${2:trajectories}",

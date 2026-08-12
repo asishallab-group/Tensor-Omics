@@ -1,702 +1,721 @@
 {
-  "Fortran Call of subroutine 'init_perm'": {
-    "prefix": "f42:init_perm",
-    "body": "call init_perm(${1:perm})",
-    "description": "Call of Fortran subroutine 'init_perm' from module 'f42_utils'"
+  "f42_binary_search_tree (use)": {
+    "prefix": "f42:binary_search_tree.use",
+    "description": "use f42_binary_search_tree, only: ...",
+    "body": [
+      "use f42_binary_search_tree, only: ${1|build_bst_index,bst_range_query,bst_range_query_expert|}"
+    ]
   },
-  "Fortran Call of function 'mean'": {
-    "prefix": "f42:mean",
-    "body": "${{1:result}} = mean(${2:vec})",
-    "description": "Call of Fortran function 'mean' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'std_dev'": {
-    "prefix": "f42:std_dev",
-    "body": "${{1:result}} = std_dev(${2:vec}, ${3:do_bessel_correction})",
-    "description": "Call of Fortran function 'std_dev' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'binary_search_insertion'": {
-    "prefix": "f42:binary_search_insertion",
-    "body": "${{1:result}} = binary_search_insertion(${2:arr}, ${3:perm}, ${4:value}, ${5:lower_idx}, ${6:upper_idx})",
-    "description": "Call of Fortran function 'binary_search_insertion' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'binary_search'": {
-    "prefix": "f42:binary_search",
-    "body": "${{1:result}} = binary_search(${2:arr}, ${3:perm}, ${4:value})",
-    "description": "Call of Fortran function 'binary_search' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'clamp_real'": {
-    "prefix": "f42:clamp_real",
-    "body": "${{1:result}} = clamp_real(${2:val}, ${3:min_val}, ${4:max_val})",
-    "description": "Call of Fortran function 'clamp_real' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'clamp_int'": {
-    "prefix": "f42:clamp_int",
-    "body": "${{1:result}} = clamp_int(${2:val}, ${3:min_val}, ${4:max_val})",
-    "description": "Call of Fortran function 'clamp_int' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'logx'": {
-    "prefix": "f42:logx",
-    "body": "call logx(${1:val}, ${2:base}, ${3:exponent}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'logx' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'init_random'": {
-    "prefix": "f42:init_random",
-    "body": "call init_random(${1:seed})",
-    "description": "Call of Fortran subroutine 'init_random' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'rand_range'": {
-    "prefix": "f42:rand_range",
-    "body": "${{1:result}} = rand_range(${2:min}, ${3:max})",
-    "description": "Call of Fortran function 'rand_range' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'shuffle_vector_real'": {
-    "prefix": "f42:shuffle_vector_real",
-    "body": "call shuffle_vector_real(${1:vec})",
-    "description": "Call of Fortran subroutine 'shuffle_vector_real' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'shuffle_vector_int'": {
-    "prefix": "f42:shuffle_vector_int",
-    "body": "call shuffle_vector_int(${1:vec})",
-    "description": "Call of Fortran subroutine 'shuffle_vector_int' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'below'": {
-    "prefix": "f42:below",
-    "body": "${{1:result}} = below(${2:val})",
-    "description": "Call of Fortran function 'below' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'above'": {
-    "prefix": "f42:above",
-    "body": "${{1:result}} = above(${2:val})",
-    "description": "Call of Fortran function 'above' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'is_close'": {
-    "prefix": "f42:is_close",
-    "body": "${{1:result}} = is_close(${2:a}, ${3:b})",
-    "description": "Call of Fortran function 'is_close' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'next_power_of_two'": {
-    "prefix": "f42:next_power_of_two",
-    "body": "${{1:result}} = next_power_of_two(${2:n})",
-    "description": "Call of Fortran function 'next_power_of_two' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'angle_between'": {
-    "prefix": "f42:angle_between",
-    "body": "call angle_between(${1:v1}, ${2:v2}, ${3:n_dims}, ${4:angle}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'angle_between' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'radians'": {
-    "prefix": "f42:radians",
-    "body": "${{1:result}} = radians(${2:degrees})",
-    "description": "Call of Fortran function 'radians' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'degrees'": {
-    "prefix": "f42:degrees",
-    "body": "${{1:result}} = degrees(${2:radians})",
-    "description": "Call of Fortran function 'degrees' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'norm'": {
-    "prefix": "f42:norm",
-    "body": "${{1:result}} = norm(${2:vector})",
-    "description": "Call of Fortran function 'norm' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'add_vector'": {
-    "prefix": "f42:add_vector",
-    "body": "call add_vector(${1:vector}, ${2:to_be_added})",
-    "description": "Call of Fortran subroutine 'add_vector' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'subtract_vector'": {
-    "prefix": "f42:subtract_vector",
-    "body": "call subtract_vector(${1:vector}, ${2:to_be_subtracted})",
-    "description": "Call of Fortran subroutine 'subtract_vector' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_real'": {
-    "prefix": "f42:sort_real",
-    "body": "call sort_real(${1:array}, ${2:perm}, ${3:tmp_stack_left}, ${4:tmp_stack_right})",
-    "description": "Call of Fortran subroutine 'sort_real' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_integer'": {
-    "prefix": "f42:sort_integer",
-    "body": "call sort_integer(${1:array}, ${2:perm}, ${3:tmp_stack_left}, ${4:tmp_stack_right})",
-    "description": "Call of Fortran subroutine 'sort_integer' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_character'": {
-    "prefix": "f42:sort_character",
-    "body": "call sort_character(${1:array}, ${2:perm}, ${3:tmp_stack_left}, ${4:tmp_stack_right})",
-    "description": "Call of Fortran subroutine 'sort_character' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_real_heapsort'": {
-    "prefix": "f42:sort_real_heapsort",
-    "body": "call sort_real_heapsort(${1:array}, ${2:perm})",
-    "description": "Call of Fortran subroutine 'sort_real_heapsort' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_real_heapsort_expl_size'": {
-    "prefix": "f42:sort_real_heapsort_expl_size",
-    "body": "call sort_real_heapsort_expl_size(${1:array}, ${2:perm}, ${3:n})",
-    "description": "Call of Fortran subroutine 'sort_real_heapsort_expl_size' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_integer_heapsort'": {
-    "prefix": "f42:sort_integer_heapsort",
-    "body": "call sort_integer_heapsort(${1:array}, ${2:perm})",
-    "description": "Call of Fortran subroutine 'sort_integer_heapsort' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'sort_character_heapsort'": {
-    "prefix": "f42:sort_character_heapsort",
-    "body": "call sort_character_heapsort(${1:array}, ${2:perm})",
-    "description": "Call of Fortran subroutine 'sort_character_heapsort' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'quicksort_real'": {
-    "prefix": "f42:quicksort_real",
-    "body": "call quicksort_real(${1:array}, ${2:perm}, ${3:n}, ${4:tmp_stack_left}, ${5:tmp_stack_right})",
-    "description": "Call of Fortran subroutine 'quicksort_real' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'quicksort_int'": {
-    "prefix": "f42:quicksort_int",
-    "body": "call quicksort_int(${1:array}, ${2:perm}, ${3:n}, ${4:tmp_stack_left}, ${5:tmp_stack_right})",
-    "description": "Call of Fortran subroutine 'quicksort_int' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'quicksort_char'": {
-    "prefix": "f42:quicksort_char",
-    "body": "call quicksort_char(${1:array}, ${2:perm}, ${3:n}, ${4:tmp_stack_left}, ${5:tmp_stack_right})",
-    "description": "Call of Fortran subroutine 'quicksort_char' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'heapsort_real'": {
-    "prefix": "f42:heapsort_real",
-    "body": "call heapsort_real(${1:array}, ${2:perm}, ${3:n_arr}, ${4:n_perm})",
-    "description": "Call of Fortran subroutine 'heapsort_real' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'heapify_real'": {
-    "prefix": "f42:heapify_real",
-    "body": "call heapify_real(${1:array}, ${2:perm}, ${3:heap_size}, ${4:root})",
-    "description": "Call of Fortran subroutine 'heapify_real' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'heapsort_integer'": {
-    "prefix": "f42:heapsort_integer",
-    "body": "call heapsort_integer(${1:array}, ${2:perm}, ${3:n_arr}, ${4:n_perm})",
-    "description": "Call of Fortran subroutine 'heapsort_integer' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'heapify_integer'": {
-    "prefix": "f42:heapify_integer",
-    "body": "call heapify_integer(${1:array}, ${2:perm}, ${3:heap_size}, ${4:root})",
-    "description": "Call of Fortran subroutine 'heapify_integer' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'heapsort_character'": {
-    "prefix": "f42:heapsort_character",
-    "body": "call heapsort_character(${1:array}, ${2:perm}, ${3:n_arr}, ${4:n_perm})",
-    "description": "Call of Fortran subroutine 'heapsort_character' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'heapify_character'": {
-    "prefix": "f42:heapify_character",
-    "body": "call heapify_character(${1:array}, ${2:perm}, ${3:heap_size}, ${4:root})",
-    "description": "Call of Fortran subroutine 'heapify_character' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'swap_int'": {
-    "prefix": "f42:swap_int",
-    "body": "call swap_int(${1:a}, ${2:b})",
-    "description": "Call of Fortran subroutine 'swap_int' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'swap_real'": {
-    "prefix": "f42:swap_real",
-    "body": "call swap_real(${1:a}, ${2:b})",
-    "description": "Call of Fortran subroutine 'swap_real' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'real_less'": {
-    "prefix": "f42:real_less",
-    "body": "${{1:result}} = real_less(${2:lhs}, ${3:rhs})",
-    "description": "Call of Fortran function 'real_less' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'real_greater'": {
-    "prefix": "f42:real_greater",
-    "body": "${{1:result}} = real_greater(${2:lhs}, ${3:rhs})",
-    "description": "Call of Fortran function 'real_greater' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'which'": {
-    "prefix": "f42:which",
-    "body": "call which(${1:mask}, ${2:n}, ${3:idx_out}, ${4:m_max}, ${5:m_out}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'which' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'loess_smooth_2d'": {
-    "prefix": "f42:loess_smooth_2d",
-    "body": "call loess_smooth_2d(${1:n_total}, ${2:n_target}, ${3:x_ref}, ${4:y_ref}, ${5:indices_used}, ${6:n_used}, ${7:x_query}, ${8:kernel_sigma}, ${9:kernel_cutoff}, ${10:y_out}, ${11:ierr})",
-    "description": "Call of Fortran subroutine 'loess_smooth_2d' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'compute_edf'": {
-    "prefix": "f42:compute_edf",
-    "body": "call compute_edf(${1:values}, ${2:n_values}, ${3:perm}, ${4:unique_values}, ${5:cdf_values}, ${6:n_unique}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'compute_edf' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'compute_edf_helper'": {
-    "prefix": "f42:compute_edf_helper",
-    "body": "call compute_edf_helper(${1:values}, ${2:n_values}, ${3:perm}, ${4:unique_values}, ${5:cdf_values}, ${6:n_unique})",
-    "description": "Call of Fortran subroutine 'compute_edf_helper' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'compute_edf_alloc'": {
-    "prefix": "f42:compute_edf_alloc",
-    "body": "call compute_edf_alloc(${1:values}, ${2:n_values}, ${3:unique_values}, ${4:cdf_values}, ${5:n_unique}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'compute_edf_alloc' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'calc_percentile'": {
-    "prefix": "f42:calc_percentile",
-    "body": "call calc_percentile(${1:array}, ${2:permutation}, ${3:percentile}, ${4:value}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'calc_percentile' from module 'f42_utils'"
-  },
-  "Fortran Call of function 'calc_percentile_rank'": {
-    "prefix": "f42:calc_percentile_rank",
-    "body": "${{1:result}} = calc_percentile_rank(${2:percentile}, ${3:n})",
-    "description": "Call of Fortran function 'calc_percentile_rank' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'calc_percentile_helper'": {
-    "prefix": "f42:calc_percentile_helper",
-    "body": "call calc_percentile_helper(${1:array}, ${2:permutation}, ${3:percentile}, ${4:value})",
-    "description": "Call of Fortran subroutine 'calc_percentile_helper' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'calc_percentile_alloc'": {
-    "prefix": "f42:calc_percentile_alloc",
-    "body": "call calc_percentile_alloc(${1:array}, ${2:percentile}, ${3:value}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'calc_percentile_alloc' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'compute_scaled_distance_quantile'": {
-    "prefix": "f42:compute_scaled_distance_quantile",
-    "body": "call compute_scaled_distance_quantile(${1:n_genes}, ${2:rdi}, ${3:sorted_rdi}, ${4:perm}, ${5:quantile}, ${6:c_const})",
-    "description": "Call of Fortran subroutine 'compute_scaled_distance_quantile' from module 'f42_utils'"
-  },
-  "Fortran Call of subroutine 'build_kd_index_alloc'": {
-    "prefix": "f42:build_kd_index_alloc",
-    "body": "call build_kd_index_alloc(${1:points}, ${2:n_dimensions}, ${3:n_points}, ${4:kd_indices}, ${5:dimension_order}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'build_kd_index_alloc' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'build_kd_index'": {
-    "prefix": "f42:build_kd_index",
-    "body": "call build_kd_index(${1:points}, ${2:n_dimensions}, ${3:n_points}, ${4:kd_indices}, ${5:dimension_order}, ${6:tmp_workspace}, ${7:tmp_value_buffer}, ${8:tmp_permutation}, ${9:tmp_recursion_stack}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'build_kd_index' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'build_kd_index_helper'": {
-    "prefix": "f42:build_kd_index_helper",
-    "body": "call build_kd_index_helper(${1:points}, ${2:n_dimensions}, ${3:n_points}, ${4:kd_indices}, ${5:dimension_order}, ${6:tmp_workspace}, ${7:tmp_value_buffer}, ${8:tmp_permutation}, ${9:tmp_recursion_stack})",
-    "description": "Call of Fortran subroutine 'build_kd_index_helper' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'partial_sort_by_dimension'": {
-    "prefix": "f42:partial_sort_by_dimension",
-    "body": "call partial_sort_by_dimension(${1:points}, ${2:n_points}, ${3:n_dimensions}, ${4:kd_indices}, ${5:left_idx}, ${6:right_idx}, ${7:dim}, ${8:tmp_workspace}, ${9:tmp_value_buffer}, ${10:tmp_permutation}, ${11:ierr})",
-    "description": "Call of Fortran subroutine 'partial_sort_by_dimension' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'partial_sort_by_dimension_helper'": {
-    "prefix": "f42:partial_sort_by_dimension_helper",
-    "body": "call partial_sort_by_dimension_helper(${1:points}, ${2:n_points}, ${3:n_dimensions}, ${4:kd_indices}, ${5:left_idx}, ${6:right_idx}, ${7:dim}, ${8:tmp_workspace}, ${9:tmp_value_buffer}, ${10:tmp_permutation})",
-    "description": "Call of Fortran subroutine 'partial_sort_by_dimension_helper' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'build_spherical_kd_alloc'": {
-    "prefix": "f42:build_spherical_kd_alloc",
-    "body": "call build_spherical_kd_alloc(${1:points}, ${2:n_dimensions}, ${3:n_points}, ${4:kd_indices}, ${5:dimension_order}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'build_spherical_kd_alloc' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'build_spherical_kd'": {
-    "prefix": "f42:build_spherical_kd",
-    "body": "call build_spherical_kd(${1:vectors}, ${2:n_dimensions}, ${3:n_vectors}, ${4:sphere_indices}, ${5:dimension_order}, ${6:tmp_workspace}, ${7:tmp_value_buffer}, ${8:tmp_permutation}, ${9:tmp_recursion_stack}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'build_spherical_kd' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'get_kd_point'": {
-    "prefix": "f42:get_kd_point",
-    "body": "call get_kd_point(${1:points}, ${2:kd_indices}, ${3:position}, ${4:point_values}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'get_kd_point' from module 'f42_kd_tree'"
-  },
-  "Fortran Call of subroutine 'build_bst_index'": {
+  "build_bst_index (call)": {
     "prefix": "f42:build_bst_index",
-    "body": "call build_bst_index(${1:values}, ${2:n_values}, ${3:sorted_indices}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'build_bst_index' from module 'f42_binary_search_tree'"
+    "description": "build_bst_index",
+    "body": [
+      "call build_bst_index( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    sorted_indices=${3:sorted_indices}, &",
+      "    ierr=${4:ierr})"
+    ]
   },
-  "Fortran Call of function 'get_sorted_value'": {
-    "prefix": "f42:get_sorted_value",
-    "body": "${{1:result}} = get_sorted_value(${2:values}, ${3:sorted_indices}, ${4:position}, ${5:ierr})",
-    "description": "Call of Fortran function 'get_sorted_value' from module 'f42_binary_search_tree'"
+  "build_bst_index (call, checked)": {
+    "prefix": "f42:build_bst_index.checked",
+    "description": "build_bst_index (with error check)",
+    "body": [
+      "call build_bst_index( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    sorted_indices=${3:sorted_indices}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'bst_range_query'": {
+  "bst_range_query (call)": {
     "prefix": "f42:bst_range_query",
-    "body": "call bst_range_query(${1:values}, ${2:sorted_indices}, ${3:n_values}, ${4:lower_bound}, ${5:upper_bound}, ${6:output_indices}, ${7:n_matches}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'bst_range_query' from module 'f42_binary_search_tree'"
+    "description": "bst_range_query",
+    "body": [
+      "call bst_range_query( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    lower_bound=${3:lower_bound}, &",
+      "    upper_bound=${4:upper_bound}, &",
+      "    output_indices=${5:output_indices}, &",
+      "    n_matches=${6:n_matches}, &",
+      "    ierr=${7:ierr})"
+    ]
   },
-  "Fortran Call of function 'xxh3_hash_c'": {
-    "prefix": "f42:xxh3_hash_c",
-    "body": "${{1:result}} = xxh3_hash_c(${2:key}, ${3:length})",
-    "description": "Call of Fortran function 'xxh3_hash_c' from module 'f42_xxh3_hashmap'"
+  "bst_range_query (call, checked)": {
+    "prefix": "f42:bst_range_query.checked",
+    "description": "bst_range_query (with error check)",
+    "body": [
+      "call bst_range_query( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    lower_bound=${3:lower_bound}, &",
+      "    upper_bound=${4:upper_bound}, &",
+      "    output_indices=${5:output_indices}, &",
+      "    n_matches=${6:n_matches}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'hashmap_create'": {
-    "prefix": "f42:hashmap_create",
-    "body": "call hashmap_create(${1:map}, ${2:initial_size})",
-    "description": "Call of Fortran subroutine 'hashmap_create' from module 'f42_xxh3_hashmap'"
+  "bst_range_query_expert (call)": {
+    "prefix": "f42:bst_range_query_expert",
+    "description": "bst_range_query_expert",
+    "body": [
+      "call bst_range_query_expert( &",
+      "    values=${1:values}, &",
+      "    values_perm=${2:values_perm}, &",
+      "    n_values=${3:n_values}, &",
+      "    lower_bound=${4:lower_bound}, &",
+      "    upper_bound=${5:upper_bound}, &",
+      "    output_indices=${6:output_indices}, &",
+      "    n_matches=${7:n_matches}, &",
+      "    ierr=${8:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'hashset_create'": {
-    "prefix": "f42:hashset_create",
-    "body": "call hashset_create(${1:set}, ${2:initial_size})",
-    "description": "Call of Fortran subroutine 'hashset_create' from module 'f42_xxh3_hashmap'"
+  "bst_range_query_expert (call, checked)": {
+    "prefix": "f42:bst_range_query_expert.checked",
+    "description": "bst_range_query_expert (with error check)",
+    "body": [
+      "call bst_range_query_expert( &",
+      "    values=${1:values}, &",
+      "    values_perm=${2:values_perm}, &",
+      "    n_values=${3:n_values}, &",
+      "    lower_bound=${4:lower_bound}, &",
+      "    upper_bound=${5:upper_bound}, &",
+      "    output_indices=${6:output_indices}, &",
+      "    n_matches=${7:n_matches}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'hashmap_base_create'": {
-    "prefix": "f42:hashmap_base_create",
-    "body": "call hashmap_base_create(${1:map}, ${2:initial_size})",
-    "description": "Call of Fortran subroutine 'hashmap_base_create' from module 'f42_xxh3_hashmap'"
+  "f42_kd_tree (use)": {
+    "prefix": "f42:kd_tree.use",
+    "description": "use f42_kd_tree, only: ...",
+    "body": [
+      "use f42_kd_tree, only: ${1|build_kd_index,build_spherical_kd|}"
+    ]
   },
-  "Fortran Call of subroutine 'hashmap_destroy'": {
-    "prefix": "f42:hashmap_destroy",
-    "body": "call hashmap_destroy(${1:map})",
-    "description": "Call of Fortran subroutine 'hashmap_destroy' from module 'f42_xxh3_hashmap'"
+  "build_kd_index (call)": {
+    "prefix": "f42:build_kd_index",
+    "description": "build_kd_index",
+    "body": [
+      "call build_kd_index( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    ierr=${6:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'hashset_destroy'": {
-    "prefix": "f42:hashset_destroy",
-    "body": "call hashset_destroy(${1:set})",
-    "description": "Call of Fortran subroutine 'hashset_destroy' from module 'f42_xxh3_hashmap'"
+  "build_kd_index (call, checked)": {
+    "prefix": "f42:build_kd_index.checked",
+    "description": "build_kd_index (with error check)",
+    "body": [
+      "call build_kd_index( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of function 'xxh3_hash_fortran'": {
-    "prefix": "f42:xxh3_hash_fortran",
-    "body": "${{1:result}} = xxh3_hash_fortran(${2:key}, ${3:table_size})",
-    "description": "Call of Fortran function 'xxh3_hash_fortran' from module 'f42_xxh3_hashmap'"
+  "build_spherical_kd (call)": {
+    "prefix": "f42:build_spherical_kd",
+    "description": "This is a thin, semantically-named wrapper: partitioning is identical to",
+    "body": [
+      "call build_spherical_kd( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    ierr=${6:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'hashmap_put'": {
-    "prefix": "f42:hashmap_put",
-    "body": "call hashmap_put(${1:map}, ${2:key}, ${3:value})",
-    "description": "Call of Fortran subroutine 'hashmap_put' from module 'f42_xxh3_hashmap'"
+  "build_spherical_kd (call, checked)": {
+    "prefix": "f42:build_spherical_kd.checked",
+    "description": "This is a thin, semantically-named wrapper: partitioning is identical to (with error check)",
+    "body": [
+      "call build_spherical_kd( &",
+      "    points=${1:points}, &",
+      "    n_dimensions=${2:n_dimensions}, &",
+      "    n_points=${3:n_points}, &",
+      "    kd_indices=${4:kd_indices}, &",
+      "    dimension_order=${5:dimension_order}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'hashset_put'": {
-    "prefix": "f42:hashset_put",
-    "body": "call hashset_put(${1:set}, ${2:key}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'hashset_put' from module 'f42_xxh3_hashmap'"
+  "f42_serde_arrays_deserialize_char (use)": {
+    "prefix": "f42:serde_arrays_deserialize_char.use",
+    "description": "use f42_serde_arrays_deserialize_char, only: ...",
+    "body": [
+      "use f42_serde_arrays_deserialize_char, only: ${1|deserialize_char_helper|}"
+    ]
   },
-  "Fortran Call of function 'is_in_hashset'": {
-    "prefix": "f42:is_in_hashset",
-    "body": "${{1:result}} = is_in_hashset(${2:hashset}, ${3:key})",
-    "description": "Call of Fortran function 'is_in_hashset' from module 'f42_xxh3_hashmap'"
-  },
-  "Fortran Call of function 'hashmap_get'": {
-    "prefix": "f42:hashmap_get",
-    "body": "${{1:result}} = hashmap_get(${2:map}, ${3:key})",
-    "description": "Call of Fortran function 'hashmap_get' from module 'f42_xxh3_hashmap'"
-  },
-  "Fortran Call of subroutine 'resize_hashmap'": {
-    "prefix": "f42:resize_hashmap",
-    "body": "call resize_hashmap(${1:map})",
-    "description": "Call of Fortran subroutine 'resize_hashmap' from module 'f42_xxh3_hashmap'"
-  },
-  "Fortran Call of subroutine 'resize_hashset'": {
-    "prefix": "f42:resize_hashset",
-    "body": "call resize_hashset(${1:set})",
-    "description": "Call of Fortran subroutine 'resize_hashset' from module 'f42_xxh3_hashmap'"
-  },
-  "Fortran Call of subroutine 'write_file_header'": {
-    "prefix": "f42:write_file_header",
-    "body": "call write_file_header(${1:filename}, ${2:unit}, ${3:type_code}, ${4:ndim}, ${5:dims}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'write_file_header' from module 'f42_serde_arrays_utils'"
-  },
-  "Fortran Call of subroutine 'check_file_header'": {
-    "prefix": "f42:check_file_header",
-    "body": "call check_file_header(${1:filename}, ${2:expected_type_code}, ${3:expected_shape}, ${4:unit}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'check_file_header' from module 'f42_serde_arrays_utils'"
-  },
-  "Fortran Call of subroutine 'read_file_header_helper'": {
-    "prefix": "f42:read_file_header_helper",
-    "body": "call read_file_header_helper(${1:filename}, ${2:unit}, ${3:type_code}, ${4:ndims}, ${5:dims}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'read_file_header_helper' from module 'f42_serde_arrays_utils'"
-  },
-  "Fortran Call of subroutine 'get_array_metadata'": {
-    "prefix": "f42:get_array_metadata",
-    "body": "call get_array_metadata(${1:filename}, ${2:dims_out}, ${3:dims_out_capacity}, ${4:ndims}, ${5:type_code}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'get_array_metadata' from module 'f42_serde_arrays_utils'"
-  },
-  "Fortran Call of subroutine 'deserialize_char_helper'": {
+  "deserialize_char_helper (call)": {
     "prefix": "f42:deserialize_char_helper",
-    "body": "call deserialize_char_helper(${1:arr}, ${2:n_strings}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_char_helper' from module 'f42_serde_arrays_deserialize_char'"
+    "description": "deserialize_char_helper",
+    "body": [
+      "call deserialize_char_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_strings=${2:n_strings}, &",
+      "    strlen=${3:strlen}, &",
+      "    arr_shape=${4:arr_shape}, &",
+      "    filename=${5:filename}, &",
+      "    ierr=${6:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_char_1d'": {
-    "prefix": "f42:deserialize_char_1d",
-    "body": "call deserialize_char_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_char_1d' from module 'f42_serde_arrays_deserialize_char'"
+  "deserialize_char_helper (call, checked)": {
+    "prefix": "f42:deserialize_char_helper.checked",
+    "description": "deserialize_char_helper (with error check)",
+    "body": [
+      "call deserialize_char_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_strings=${2:n_strings}, &",
+      "    strlen=${3:strlen}, &",
+      "    arr_shape=${4:arr_shape}, &",
+      "    filename=${5:filename}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_char_2d'": {
-    "prefix": "f42:deserialize_char_2d",
-    "body": "call deserialize_char_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_char_2d' from module 'f42_serde_arrays_deserialize_char'"
+  "f42_serde_arrays_deserialize_complex (use)": {
+    "prefix": "f42:serde_arrays_deserialize_complex.use",
+    "description": "use f42_serde_arrays_deserialize_complex, only: ...",
+    "body": [
+      "use f42_serde_arrays_deserialize_complex, only: ${1|deserialize_complex_helper|}"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_char_3d'": {
-    "prefix": "f42:deserialize_char_3d",
-    "body": "call deserialize_char_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_char_3d' from module 'f42_serde_arrays_deserialize_char'"
-  },
-  "Fortran Call of subroutine 'deserialize_char_4d'": {
-    "prefix": "f42:deserialize_char_4d",
-    "body": "call deserialize_char_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_char_4d' from module 'f42_serde_arrays_deserialize_char'"
-  },
-  "Fortran Call of subroutine 'deserialize_char_5d'": {
-    "prefix": "f42:deserialize_char_5d",
-    "body": "call deserialize_char_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_char_5d' from module 'f42_serde_arrays_deserialize_char'"
-  },
-  "Fortran Call of subroutine 'deserialize_complex_helper'": {
+  "deserialize_complex_helper (call)": {
     "prefix": "f42:deserialize_complex_helper",
-    "body": "call deserialize_complex_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_helper' from module 'f42_serde_arrays_deserialize_complex'"
+    "description": "deserialize_complex_helper",
+    "body": [
+      "call deserialize_complex_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_complex_1d'": {
-    "prefix": "f42:deserialize_complex_1d",
-    "body": "call deserialize_complex_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_1d' from module 'f42_serde_arrays_deserialize_complex'"
+  "deserialize_complex_helper (call, checked)": {
+    "prefix": "f42:deserialize_complex_helper.checked",
+    "description": "deserialize_complex_helper (with error check)",
+    "body": [
+      "call deserialize_complex_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_complex_2d'": {
-    "prefix": "f42:deserialize_complex_2d",
-    "body": "call deserialize_complex_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_2d' from module 'f42_serde_arrays_deserialize_complex'"
+  "f42_serde_arrays_deserialize_int (use)": {
+    "prefix": "f42:serde_arrays_deserialize_int.use",
+    "description": "use f42_serde_arrays_deserialize_int, only: ...",
+    "body": [
+      "use f42_serde_arrays_deserialize_int, only: ${1|deserialize_int_helper|}"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_complex_3d'": {
-    "prefix": "f42:deserialize_complex_3d",
-    "body": "call deserialize_complex_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_3d' from module 'f42_serde_arrays_deserialize_complex'"
-  },
-  "Fortran Call of subroutine 'deserialize_complex_4d'": {
-    "prefix": "f42:deserialize_complex_4d",
-    "body": "call deserialize_complex_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_4d' from module 'f42_serde_arrays_deserialize_complex'"
-  },
-  "Fortran Call of subroutine 'deserialize_complex_5d'": {
-    "prefix": "f42:deserialize_complex_5d",
-    "body": "call deserialize_complex_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_complex_5d' from module 'f42_serde_arrays_deserialize_complex'"
-  },
-  "Fortran Call of subroutine 'deserialize_real_helper'": {
-    "prefix": "f42:deserialize_real_helper",
-    "body": "call deserialize_real_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_real_helper' from module 'f42_serde_arrays_deserialize_real'"
-  },
-  "Fortran Call of subroutine 'deserialize_real_1d'": {
-    "prefix": "f42:deserialize_real_1d",
-    "body": "call deserialize_real_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_real_1d' from module 'f42_serde_arrays_deserialize_real'"
-  },
-  "Fortran Call of subroutine 'deserialize_real_2d'": {
-    "prefix": "f42:deserialize_real_2d",
-    "body": "call deserialize_real_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_real_2d' from module 'f42_serde_arrays_deserialize_real'"
-  },
-  "Fortran Call of subroutine 'deserialize_real_3d'": {
-    "prefix": "f42:deserialize_real_3d",
-    "body": "call deserialize_real_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_real_3d' from module 'f42_serde_arrays_deserialize_real'"
-  },
-  "Fortran Call of subroutine 'deserialize_real_4d'": {
-    "prefix": "f42:deserialize_real_4d",
-    "body": "call deserialize_real_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_real_4d' from module 'f42_serde_arrays_deserialize_real'"
-  },
-  "Fortran Call of subroutine 'deserialize_real_5d'": {
-    "prefix": "f42:deserialize_real_5d",
-    "body": "call deserialize_real_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_real_5d' from module 'f42_serde_arrays_deserialize_real'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_helper'": {
-    "prefix": "f42:deserialize_logical_helper",
-    "body": "call deserialize_logical_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_helper' from module 'f42_serde_arrays_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_1d'": {
-    "prefix": "f42:deserialize_logical_1d",
-    "body": "call deserialize_logical_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_1d' from module 'f42_serde_arrays_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_2d'": {
-    "prefix": "f42:deserialize_logical_2d",
-    "body": "call deserialize_logical_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_2d' from module 'f42_serde_arrays_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_3d'": {
-    "prefix": "f42:deserialize_logical_3d",
-    "body": "call deserialize_logical_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_3d' from module 'f42_serde_arrays_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_4d'": {
-    "prefix": "f42:deserialize_logical_4d",
-    "body": "call deserialize_logical_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_4d' from module 'f42_serde_arrays_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_logical_5d'": {
-    "prefix": "f42:deserialize_logical_5d",
-    "body": "call deserialize_logical_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_logical_5d' from module 'f42_serde_arrays_deserialize_logical'"
-  },
-  "Fortran Call of subroutine 'deserialize_int_helper'": {
+  "deserialize_int_helper (call)": {
     "prefix": "f42:deserialize_int_helper",
-    "body": "call deserialize_int_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_helper' from module 'f42_serde_arrays_deserialize_int'"
+    "description": "deserialize_int_helper",
+    "body": [
+      "call deserialize_int_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_int_1d'": {
-    "prefix": "f42:deserialize_int_1d",
-    "body": "call deserialize_int_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_1d' from module 'f42_serde_arrays_deserialize_int'"
+  "deserialize_int_helper (call, checked)": {
+    "prefix": "f42:deserialize_int_helper.checked",
+    "description": "deserialize_int_helper (with error check)",
+    "body": [
+      "call deserialize_int_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_int_2d'": {
-    "prefix": "f42:deserialize_int_2d",
-    "body": "call deserialize_int_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_2d' from module 'f42_serde_arrays_deserialize_int'"
+  "f42_serde_arrays_deserialize_logical (use)": {
+    "prefix": "f42:serde_arrays_deserialize_logical.use",
+    "description": "use f42_serde_arrays_deserialize_logical, only: ...",
+    "body": [
+      "use f42_serde_arrays_deserialize_logical, only: ${1|deserialize_logical_helper|}"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_int_3d'": {
-    "prefix": "f42:deserialize_int_3d",
-    "body": "call deserialize_int_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_3d' from module 'f42_serde_arrays_deserialize_int'"
+  "deserialize_logical_helper (call)": {
+    "prefix": "f42:deserialize_logical_helper",
+    "description": "deserialize_logical_helper",
+    "body": [
+      "call deserialize_logical_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_int_4d'": {
-    "prefix": "f42:deserialize_int_4d",
-    "body": "call deserialize_int_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_4d' from module 'f42_serde_arrays_deserialize_int'"
+  "deserialize_logical_helper (call, checked)": {
+    "prefix": "f42:deserialize_logical_helper.checked",
+    "description": "deserialize_logical_helper (with error check)",
+    "body": [
+      "call deserialize_logical_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'deserialize_int_5d'": {
-    "prefix": "f42:deserialize_int_5d",
-    "body": "call deserialize_int_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'deserialize_int_5d' from module 'f42_serde_arrays_deserialize_int'"
+  "f42_serde_arrays_deserialize_real (use)": {
+    "prefix": "f42:serde_arrays_deserialize_real.use",
+    "description": "use f42_serde_arrays_deserialize_real, only: ...",
+    "body": [
+      "use f42_serde_arrays_deserialize_real, only: ${1|deserialize_real_helper|}"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_complex_helper'": {
-    "prefix": "f42:serialize_complex_helper",
-    "body": "call serialize_complex_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_helper' from module 'f42_serde_arrays_serialize_complex'"
+  "deserialize_real_helper (call)": {
+    "prefix": "f42:deserialize_real_helper",
+    "description": "deserialize_real_helper",
+    "body": [
+      "call deserialize_real_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_complex_1d'": {
-    "prefix": "f42:serialize_complex_1d",
-    "body": "call serialize_complex_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_1d' from module 'f42_serde_arrays_serialize_complex'"
+  "deserialize_real_helper (call, checked)": {
+    "prefix": "f42:deserialize_real_helper.checked",
+    "description": "deserialize_real_helper (with error check)",
+    "body": [
+      "call deserialize_real_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_complex_2d'": {
-    "prefix": "f42:serialize_complex_2d",
-    "body": "call serialize_complex_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_2d' from module 'f42_serde_arrays_serialize_complex'"
+  "f42_serde_arrays_serialize_char (use)": {
+    "prefix": "f42:serde_arrays_serialize_char.use",
+    "description": "use f42_serde_arrays_serialize_char, only: ...",
+    "body": [
+      "use f42_serde_arrays_serialize_char, only: ${1|serialize_char_helper|}"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_complex_3d'": {
-    "prefix": "f42:serialize_complex_3d",
-    "body": "call serialize_complex_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_3d' from module 'f42_serde_arrays_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_4d'": {
-    "prefix": "f42:serialize_complex_4d",
-    "body": "call serialize_complex_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_4d' from module 'f42_serde_arrays_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_complex_5d'": {
-    "prefix": "f42:serialize_complex_5d",
-    "body": "call serialize_complex_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_complex_5d' from module 'f42_serde_arrays_serialize_complex'"
-  },
-  "Fortran Call of subroutine 'serialize_int_helper'": {
-    "prefix": "f42:serialize_int_helper",
-    "body": "call serialize_int_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_helper' from module 'f42_serde_arrays_serialize_int'"
-  },
-  "Fortran Call of subroutine 'serialize_int_1d'": {
-    "prefix": "f42:serialize_int_1d",
-    "body": "call serialize_int_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_1d' from module 'f42_serde_arrays_serialize_int'"
-  },
-  "Fortran Call of subroutine 'serialize_int_2d'": {
-    "prefix": "f42:serialize_int_2d",
-    "body": "call serialize_int_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_2d' from module 'f42_serde_arrays_serialize_int'"
-  },
-  "Fortran Call of subroutine 'serialize_int_3d'": {
-    "prefix": "f42:serialize_int_3d",
-    "body": "call serialize_int_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_3d' from module 'f42_serde_arrays_serialize_int'"
-  },
-  "Fortran Call of subroutine 'serialize_int_4d'": {
-    "prefix": "f42:serialize_int_4d",
-    "body": "call serialize_int_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_4d' from module 'f42_serde_arrays_serialize_int'"
-  },
-  "Fortran Call of subroutine 'serialize_int_5d'": {
-    "prefix": "f42:serialize_int_5d",
-    "body": "call serialize_int_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_int_5d' from module 'f42_serde_arrays_serialize_int'"
-  },
-  "Fortran Call of subroutine 'serialize_real_helper'": {
-    "prefix": "f42:serialize_real_helper",
-    "body": "call serialize_real_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_real_helper' from module 'f42_serde_arrays_serialize_real'"
-  },
-  "Fortran Call of subroutine 'serialize_real_1d'": {
-    "prefix": "f42:serialize_real_1d",
-    "body": "call serialize_real_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_real_1d' from module 'f42_serde_arrays_serialize_real'"
-  },
-  "Fortran Call of subroutine 'serialize_real_2d'": {
-    "prefix": "f42:serialize_real_2d",
-    "body": "call serialize_real_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_real_2d' from module 'f42_serde_arrays_serialize_real'"
-  },
-  "Fortran Call of subroutine 'serialize_real_3d'": {
-    "prefix": "f42:serialize_real_3d",
-    "body": "call serialize_real_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_real_3d' from module 'f42_serde_arrays_serialize_real'"
-  },
-  "Fortran Call of subroutine 'serialize_real_4d'": {
-    "prefix": "f42:serialize_real_4d",
-    "body": "call serialize_real_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_real_4d' from module 'f42_serde_arrays_serialize_real'"
-  },
-  "Fortran Call of subroutine 'serialize_real_5d'": {
-    "prefix": "f42:serialize_real_5d",
-    "body": "call serialize_real_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_real_5d' from module 'f42_serde_arrays_serialize_real'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_helper'": {
-    "prefix": "f42:serialize_logical_helper",
-    "body": "call serialize_logical_helper(${1:arr}, ${2:n_elements}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_helper' from module 'f42_serde_arrays_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_1d'": {
-    "prefix": "f42:serialize_logical_1d",
-    "body": "call serialize_logical_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_1d' from module 'f42_serde_arrays_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_2d'": {
-    "prefix": "f42:serialize_logical_2d",
-    "body": "call serialize_logical_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_2d' from module 'f42_serde_arrays_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_3d'": {
-    "prefix": "f42:serialize_logical_3d",
-    "body": "call serialize_logical_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_3d' from module 'f42_serde_arrays_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_4d'": {
-    "prefix": "f42:serialize_logical_4d",
-    "body": "call serialize_logical_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_4d' from module 'f42_serde_arrays_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_logical_5d'": {
-    "prefix": "f42:serialize_logical_5d",
-    "body": "call serialize_logical_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_logical_5d' from module 'f42_serde_arrays_serialize_logical'"
-  },
-  "Fortran Call of subroutine 'serialize_char_helper'": {
+  "serialize_char_helper (call)": {
     "prefix": "f42:serialize_char_helper",
-    "body": "call serialize_char_helper(${1:arr}, ${2:n_strings}, ${3:orig_shape}, ${4:filename}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_helper' from module 'f42_serde_arrays_serialize_char'"
+    "description": "serialize_char_helper",
+    "body": [
+      "call serialize_char_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_strings=${2:n_strings}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_char_1d'": {
-    "prefix": "f42:serialize_char_1d",
-    "body": "call serialize_char_1d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_1d' from module 'f42_serde_arrays_serialize_char'"
+  "serialize_char_helper (call, checked)": {
+    "prefix": "f42:serialize_char_helper.checked",
+    "description": "serialize_char_helper (with error check)",
+    "body": [
+      "call serialize_char_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_strings=${2:n_strings}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_char_2d'": {
-    "prefix": "f42:serialize_char_2d",
-    "body": "call serialize_char_2d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_2d' from module 'f42_serde_arrays_serialize_char'"
+  "f42_serde_arrays_serialize_complex (use)": {
+    "prefix": "f42:serde_arrays_serialize_complex.use",
+    "description": "use f42_serde_arrays_serialize_complex, only: ...",
+    "body": [
+      "use f42_serde_arrays_serialize_complex, only: ${1|serialize_complex_helper|}"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_char_3d'": {
-    "prefix": "f42:serialize_char_3d",
-    "body": "call serialize_char_3d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_3d' from module 'f42_serde_arrays_serialize_char'"
+  "serialize_complex_helper (call)": {
+    "prefix": "f42:serialize_complex_helper",
+    "description": "serialize_complex_helper",
+    "body": [
+      "call serialize_complex_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_char_4d'": {
-    "prefix": "f42:serialize_char_4d",
-    "body": "call serialize_char_4d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_4d' from module 'f42_serde_arrays_serialize_char'"
+  "serialize_complex_helper (call, checked)": {
+    "prefix": "f42:serialize_complex_helper.checked",
+    "description": "serialize_complex_helper (with error check)",
+    "body": [
+      "call serialize_complex_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'serialize_char_5d'": {
-    "prefix": "f42:serialize_char_5d",
-    "body": "call serialize_char_5d(${1:arr}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'serialize_char_5d' from module 'f42_serde_arrays_serialize_char'"
+  "f42_serde_arrays_serialize_int (use)": {
+    "prefix": "f42:serde_arrays_serialize_int.use",
+    "description": "use f42_serde_arrays_serialize_int, only: ...",
+    "body": [
+      "use f42_serde_arrays_serialize_int, only: ${1|serialize_int_helper|}"
+    ]
+  },
+  "serialize_int_helper (call)": {
+    "prefix": "f42:serialize_int_helper",
+    "description": "serialize_int_helper",
+    "body": [
+      "call serialize_int_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "serialize_int_helper (call, checked)": {
+    "prefix": "f42:serialize_int_helper.checked",
+    "description": "serialize_int_helper (with error check)",
+    "body": [
+      "call serialize_int_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "f42_serde_arrays_serialize_logical (use)": {
+    "prefix": "f42:serde_arrays_serialize_logical.use",
+    "description": "use f42_serde_arrays_serialize_logical, only: ...",
+    "body": [
+      "use f42_serde_arrays_serialize_logical, only: ${1|serialize_logical_helper|}"
+    ]
+  },
+  "serialize_logical_helper (call)": {
+    "prefix": "f42:serialize_logical_helper",
+    "description": "serialize_logical_helper",
+    "body": [
+      "call serialize_logical_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "serialize_logical_helper (call, checked)": {
+    "prefix": "f42:serialize_logical_helper.checked",
+    "description": "serialize_logical_helper (with error check)",
+    "body": [
+      "call serialize_logical_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "f42_serde_arrays_serialize_real (use)": {
+    "prefix": "f42:serde_arrays_serialize_real.use",
+    "description": "use f42_serde_arrays_serialize_real, only: ...",
+    "body": [
+      "use f42_serde_arrays_serialize_real, only: ${1|serialize_real_helper|}"
+    ]
+  },
+  "serialize_real_helper (call)": {
+    "prefix": "f42:serialize_real_helper",
+    "description": "serialize_real_helper",
+    "body": [
+      "call serialize_real_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "serialize_real_helper (call, checked)": {
+    "prefix": "f42:serialize_real_helper.checked",
+    "description": "serialize_real_helper (with error check)",
+    "body": [
+      "call serialize_real_helper( &",
+      "    arr=${1:arr}, &",
+      "    n_elements=${2:n_elements}, &",
+      "    arr_shape=${3:arr_shape}, &",
+      "    filename=${4:filename}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "f42_serde_arrays_utils (use)": {
+    "prefix": "f42:serde_arrays_utils.use",
+    "description": "use f42_serde_arrays_utils, only: ...",
+    "body": [
+      "use f42_serde_arrays_utils, only: ${1|get_array_metadata|}"
+    ]
+  },
+  "get_array_metadata (call)": {
+    "prefix": "f42:get_array_metadata",
+    "description": "get_array_metadata",
+    "body": [
+      "call get_array_metadata( &",
+      "    filename=${1:filename}, &",
+      "    dims_out=${2:dims_out}, &",
+      "    dims_out_capacity=${3:dims_out_capacity}, &",
+      "    ndims=${4:ndims}, &",
+      "    type_code=${5:type_code}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "get_array_metadata (call, checked)": {
+    "prefix": "f42:get_array_metadata.checked",
+    "description": "get_array_metadata (with error check)",
+    "body": [
+      "call get_array_metadata( &",
+      "    filename=${1:filename}, &",
+      "    dims_out=${2:dims_out}, &",
+      "    dims_out_capacity=${3:dims_out_capacity}, &",
+      "    ndims=${4:ndims}, &",
+      "    type_code=${5:type_code}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "f42_stats (use)": {
+    "prefix": "f42:stats.use",
+    "description": "use f42_stats, only: ...",
+    "body": [
+      "use f42_stats, only: ${1|loess_smooth_2d,compute_edf,compute_edf_expert,calc_percentile,calc_percentile_expert,compute_scaled_distance_quantile,compute_scaled_distance_quantile_expert|}"
+    ]
+  },
+  "loess_smooth_2d (call)": {
+    "prefix": "f42:loess_smooth_2d",
+    "description": "Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.",
+    "body": [
+      "call loess_smooth_2d( &",
+      "    n_total=${1:n_total}, &",
+      "    n_target=${2:n_target}, &",
+      "    x_ref=${3:x_ref}, &",
+      "    y_ref=${4:y_ref}, &",
+      "    indices_used=${5:indices_used}, &",
+      "    n_used=${6:n_used}, &",
+      "    x_query=${7:x_query}, &",
+      "    kernel_sigma=${8:kernel_sigma}, &",
+      "    kernel_cutoff=${9:kernel_cutoff}, &",
+      "    y_out=${10:y_out}, &",
+      "    ierr=${11:ierr})"
+    ]
+  },
+  "loess_smooth_2d (call, checked)": {
+    "prefix": "f42:loess_smooth_2d.checked",
+    "description": "Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters. (with error check)",
+    "body": [
+      "call loess_smooth_2d( &",
+      "    n_total=${1:n_total}, &",
+      "    n_target=${2:n_target}, &",
+      "    x_ref=${3:x_ref}, &",
+      "    y_ref=${4:y_ref}, &",
+      "    indices_used=${5:indices_used}, &",
+      "    n_used=${6:n_used}, &",
+      "    x_query=${7:x_query}, &",
+      "    kernel_sigma=${8:kernel_sigma}, &",
+      "    kernel_cutoff=${9:kernel_cutoff}, &",
+      "    y_out=${10:y_out}, &",
+      "    ierr=${11:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_edf (call)": {
+    "prefix": "f42:compute_edf",
+    "description": "Returns the sorted unique values and their cumulative frequencies in [0,1].",
+    "body": [
+      "call compute_edf( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    unique_values=${3:unique_values}, &",
+      "    cdf_values=${4:cdf_values}, &",
+      "    n_unique=${5:n_unique}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "compute_edf (call, checked)": {
+    "prefix": "f42:compute_edf.checked",
+    "description": "Returns the sorted unique values and their cumulative frequencies in [0,1]. (with error check)",
+    "body": [
+      "call compute_edf( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    unique_values=${3:unique_values}, &",
+      "    cdf_values=${4:cdf_values}, &",
+      "    n_unique=${5:n_unique}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_edf_expert (call)": {
+    "prefix": "f42:compute_edf_expert",
+    "description": "Returns the sorted unique values and their cumulative frequencies in [0,1].",
+    "body": [
+      "call compute_edf_expert( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    values_perm=${3:values_perm}, &",
+      "    unique_values=${4:unique_values}, &",
+      "    cdf_values=${5:cdf_values}, &",
+      "    n_unique=${6:n_unique}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "compute_edf_expert (call, checked)": {
+    "prefix": "f42:compute_edf_expert.checked",
+    "description": "Returns the sorted unique values and their cumulative frequencies in [0,1]. (with error check)",
+    "body": [
+      "call compute_edf_expert( &",
+      "    values=${1:values}, &",
+      "    n_values=${2:n_values}, &",
+      "    values_perm=${3:values_perm}, &",
+      "    unique_values=${4:unique_values}, &",
+      "    cdf_values=${5:cdf_values}, &",
+      "    n_unique=${6:n_unique}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "calc_percentile (call)": {
+    "prefix": "f42:calc_percentile",
+    "description": "Uses linear interpolation between adjacent values.",
+    "body": [
+      "call calc_percentile( &",
+      "    array=${1:array}, &",
+      "    n_array=${2:n_array}, &",
+      "    percentile=${3:percentile}, &",
+      "    value=${4:value}, &",
+      "    n_considered=${5:n_considered}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "calc_percentile (call, checked)": {
+    "prefix": "f42:calc_percentile.checked",
+    "description": "Uses linear interpolation between adjacent values. (with error check)",
+    "body": [
+      "call calc_percentile( &",
+      "    array=${1:array}, &",
+      "    n_array=${2:n_array}, &",
+      "    percentile=${3:percentile}, &",
+      "    value=${4:value}, &",
+      "    n_considered=${5:n_considered}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "calc_percentile_expert (call)": {
+    "prefix": "f42:calc_percentile_expert",
+    "description": "Uses linear interpolation between adjacent values.",
+    "body": [
+      "call calc_percentile_expert( &",
+      "    array=${1:array}, &",
+      "    n_array=${2:n_array}, &",
+      "    array_perm=${3:array_perm}, &",
+      "    percentile=${4:percentile}, &",
+      "    value=${5:value}, &",
+      "    n_considered=${6:n_considered}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "calc_percentile_expert (call, checked)": {
+    "prefix": "f42:calc_percentile_expert.checked",
+    "description": "Uses linear interpolation between adjacent values. (with error check)",
+    "body": [
+      "call calc_percentile_expert( &",
+      "    array=${1:array}, &",
+      "    n_array=${2:n_array}, &",
+      "    array_perm=${3:array_perm}, &",
+      "    percentile=${4:percentile}, &",
+      "    value=${5:value}, &",
+      "    n_considered=${6:n_considered}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_scaled_distance_quantile (call)": {
+    "prefix": "f42:compute_scaled_distance_quantile",
+    "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
+    "body": [
+      "call compute_scaled_distance_quantile( &",
+      "    n_genes=${1:n_genes}, &",
+      "    rdi=${2:rdi}, &",
+      "    sorted_rdi=${3:sorted_rdi}, &",
+      "    quantile=${4:quantile}, &",
+      "    c_const=${5:c_const}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "compute_scaled_distance_quantile (call, checked)": {
+    "prefix": "f42:compute_scaled_distance_quantile.checked",
+    "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the (with error check)",
+    "body": [
+      "call compute_scaled_distance_quantile( &",
+      "    n_genes=${1:n_genes}, &",
+      "    rdi=${2:rdi}, &",
+      "    sorted_rdi=${3:sorted_rdi}, &",
+      "    quantile=${4:quantile}, &",
+      "    c_const=${5:c_const}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_scaled_distance_quantile_expert (call)": {
+    "prefix": "f42:compute_scaled_distance_quantile_expert",
+    "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
+    "body": [
+      "call compute_scaled_distance_quantile_expert( &",
+      "    n_genes=${1:n_genes}, &",
+      "    rdi=${2:rdi}, &",
+      "    sorted_rdi=${3:sorted_rdi}, &",
+      "    sorted_rdi_perm=${4:sorted_rdi_perm}, &",
+      "    quantile=${5:quantile}, &",
+      "    c_const=${6:c_const}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "compute_scaled_distance_quantile_expert (call, checked)": {
+    "prefix": "f42:compute_scaled_distance_quantile_expert.checked",
+    "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the (with error check)",
+    "body": [
+      "call compute_scaled_distance_quantile_expert( &",
+      "    n_genes=${1:n_genes}, &",
+      "    rdi=${2:rdi}, &",
+      "    sorted_rdi=${3:sorted_rdi}, &",
+      "    sorted_rdi_perm=${4:sorted_rdi_perm}, &",
+      "    quantile=${5:quantile}, &",
+      "    c_const=${6:c_const}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   }
 }
