@@ -22,6 +22,7 @@ repeating them.
 - [The source contract](#the-source-contract)
   - [What the generator makes of it](#what-the-generator-makes-of-it)
   - [What is rejected, and why](#what-is-rejected-and-why)
+  - [Documentation that names something](#documentation-that-names-something)
 - [Edge cases handled](#edge-cases-handled)
 - [How it is tested](#how-it-is-tested)
 - [Extending it](#extending-it)
@@ -386,6 +387,33 @@ A `DM_PROLOGUE` is checked too, having had no analysis or validation at all befo
 - the implementation must generate an allocating wrapper for it to run in (it does when
   anything is taken over, or when the prologue asks for an argument of its own)
 - it may not produce anything the allocations, permutation sorts or recommend calls above it read
+
+### Documentation that names something
+
+**Every Ford `[[...]]` cross-reference is resolved against the project, and one that names
+nothing warns** (`validate.check_doc_links`). It is the failure with no other symptom: Ford
+renders a dangling link as the literal text an author typed, and `emit/doc_links` falls back to
+plain code on purpose, because an R `\link` to a missing topic fails `R CMD check`. So a link
+left pointing at a renamed module keeps generating, keeps compiling, keeps passing, and quietly
+stops being a link in four languages at once — which is exactly what converting f42 to `_impl`
+modules did to twenty-three of them, unnoticed for a month.
+
+Resolution runs over the **augmented** project, so a link into a generated module is correct:
+`[[f42_binary_search_tree(module):build_bst_index]]` names the wrapper a reader can call, and
+that is what `doc_links` turns it into. What counts as existing is what Ford would document —
+its parse is already filtered by visibility, so a link to a *private* routine warns, as it
+dangles in the rendered documentation too.
+
+Generic interfaces and derived types are read for this and nothing else (`ir.entities.Declaration`,
+`frontend._declarations`): a binding can express neither, but authors link to both, and an
+interface block's own doc comment is prose that belongs to no procedure and no module, so
+without it the links inside it would be read nowhere. `_ITEM_TYPES` in `ir/doc.py` was missing
+`interface` until 2026-08-12 — a `(interface)` link did not match the pattern at all, so it was
+never a link to resolve, to check, or to render.
+
+Warnings rather than errors: a link that no longer resolves degrades documentation without
+making anything wrong, and a typo in a comment should not stop a build. The house bar is zero
+warnings regardless.
 
 ---
 

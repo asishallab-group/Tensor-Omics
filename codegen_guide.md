@@ -1080,6 +1080,11 @@ docstring and the R `.Rd` help page. So:
 - **Ford links resolve to what the reader can call.** `[[tox_loess_impl(module):MODE_PLAIN(variable)]]`
   becomes the mode *string* in a Python or R doc, and a link to an implementation becomes a link
   to the binding that wraps it — never to an implementation the reader cannot reach.
+- **A link that names nothing is a warning.** Name the module that *defines* the thing —
+  `[[f42_math_impl(module):is_close(interface)]]`, not the parent that re-exports it — and note
+  that a private routine counts as naming nothing, because Ford documents only what a module
+  makes public. Linking to a *generated* module is right where the reader is meant to call it:
+  `[[f42_binary_search_tree(module):build_bst_index]]` becomes the Python and R binding.
 - **Write plainly about arguments the reader actually passes.** Terms like "pre-allocated" or
   "workspace" describe the Fortran expert signature; a Python caller who never sees that
   argument only finds them confusing.
@@ -1126,7 +1131,7 @@ source and carries a note saying what to write instead.
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
 | an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (§4) |
 | an implementation module in a file not named after it | generation reads the module name while the cleaner and the Ford exclusion read file names — the two would name different files, and the generator would parse its own output next run (§4) |
-| an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` the export path republishes as `foo` (§6.5), the second a second procedure called `foo_expert` (§4) |
+| an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` that reads as the allocating tier beside the generated `foo` that is one (§6.5), the second a second procedure called `foo_expert` (§4) |
 | an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (§4, §5.7) |
 | a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (§4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
@@ -1144,6 +1149,8 @@ errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 - a value table on an argument that is *not* named as a mode (`baseline` rather than
   `baseline_mode`) — the table is then documentation only, and the value crosses the binding as
   a bare integer instead of its name
+- a Ford `[[...]]` link naming a module or a name that does not exist — it silently stops being
+  a link in all four languages (§7)
 
 ---
 

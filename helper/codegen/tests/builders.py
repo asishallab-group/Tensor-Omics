@@ -15,7 +15,15 @@ from pathlib import Path
 from codegen.diagnostics import SourceLocation
 from codegen.ir.directives import Directives
 from codegen.ir.doc import Doc
-from codegen.ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
+from codegen.ir.entities import (
+    Argument,
+    Declaration,
+    Meta,
+    Module,
+    Parameter,
+    Procedure,
+    Project,
+)
 from codegen.ir.types import (
     BaseType,
     CharacterLength,
@@ -98,6 +106,15 @@ def parameter(name, expression, kind="int32", base=BaseType.INTEGER, doc=""):
         type=FortranType(base, kind=kind),
         expression=expression,
         doc=Doc.parse([doc]) if doc else Doc(),
+    )
+
+
+def declaration(name, kind="interface", doc=""):
+    """A public generic interface or derived type: a name and its documentation, nothing more."""
+    return Declaration(
+        name=name,
+        kind=kind,
+        doc=Doc.parse(doc if isinstance(doc, list) else [doc]) if doc else Doc(),
     )
 
 

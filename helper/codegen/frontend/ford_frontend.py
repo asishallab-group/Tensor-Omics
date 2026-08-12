@@ -23,7 +23,7 @@ from ..config import CONVENTIONS, Conventions, Paths
 from ..diagnostics import DiagnosticBag, SourceLocation
 from ..ir.directives import DirectiveError, DirectiveParser, Directives
 from ..ir.doc import Doc, DocParseError
-from ..ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
+from ..ir.entities import Argument, Declaration, Meta, Module, Parameter, Procedure, Project
 from ..ir.types import (
     BaseType,
     CharacterLength,
@@ -190,11 +190,39 @@ class FordFrontend:
                 for variable in ford_module.variables
                 if getattr(variable, "parameter", False)
             ],
+            declarations=list(self._declarations(ford_module, path)),
             doc=doc,
             meta=self._meta(ford_module),
             location=location,
             uses=self._uses_of(ford_module),
         )
+
+    def _declarations(self, ford_module, path: Path):
+        """The public generic interfaces and derived types, by name and documentation.
+
+        Nothing is generated from either, so nothing more of them is modelled. They are read
+        because documentation names them -- `[[f42_math_impl(module):is_close(interface)]]` --
+        and because their own doc comments hold links, which live nowhere else in the IR:
+        an interface block's `!>` comment is attached to no procedure and no module.
+
+        Only *generic* interfaces. An interface block also declares the module procedures of a
+        submodule, which `_module_routines` already takes as procedures, and the `bind(C)`
+        externals of libzip, which are nobody's public API.
+        """
+        for interface in getattr(ford_module, "interfaces", ()) or ():
+            name = getattr(interface, "name", None)
+            if not name or not getattr(interface, "generic", False):
+                continue
+            location = self.index.module(path, ford_module.name)
+            doc, _ = self._documentation(getattr(interface, "doc_list", []) or [], location)
+            yield Declaration(name=name, kind="interface", doc=doc, location=location)
+        for derived in getattr(ford_module, "types", ()) or ():
+            name = getattr(derived, "name", None)
+            if not name:
+                continue
+            location = self.index.module(path, ford_module.name)
+            doc, _ = self._documentation(getattr(derived, "doc_list", []) or [], location)
+            yield Declaration(name=name, kind="type", doc=doc, location=location)
 
     @staticmethod
     def _uses_of(entity) -> list[str]:

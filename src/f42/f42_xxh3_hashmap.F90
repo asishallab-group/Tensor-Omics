@@ -3,9 +3,8 @@
 !> AUTHOR_AARON_SCHROEDER
 !| String-keyed hashmap (`character -> integer(int32)`) and hashset (`character` membership),
 !| implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
-!| algorithm for hashing. Both containers grow automatically via [[f42_xxh3_hashmap(module):resize_hashmap(subroutine)]]
-!| / [[f42_xxh3_hashmap(module):resize_hashset(subroutine)]] once the load factor exceeds
-!| [[f42_xxh3_hashmap(module):MAX_LOAD_FACTOR(variable)]].
+!| algorithm for hashing. Both containers rehash into a larger bucket array of their own accord
+!| once three quarters full, so a caller never sizes one twice.
 module f42_xxh3_hashmap
     use, intrinsic :: iso_c_binding, only: c_loc
     use iso_fortran_env, only: int32, int64

@@ -21,6 +21,9 @@ class TestFordLink:
             ("[[mod(module):sub(subroutine)]]", "mod", "module", "sub", "subroutine"),
             ("[[mod(module):MODE_X(variable)]]", "mod", "module", "MODE_X", "variable"),
             ("[[ mod (module) : sub (function) ]]", "mod", "module", "sub", "function"),
+            # a generic interface. Missing from the item types until 2026-08-12, so the whole
+            # link failed to match and reached every binding as the raw text an author typed
+            ("[[mod(module):is_close(interface)]]", "mod", "module", "is_close", "interface"),
         ],
     )
     def test_parse(self, text, component, component_type, item, item_type):
@@ -35,6 +38,7 @@ class TestFordLink:
         "text",
         [
             "[[mod(module):sub(subroutine)]]",
+            "[[mod(module):is_close(interface)]]",
             "[[mod(module)]]",
             "[[mod:sub]]",
             "[[mod]]",

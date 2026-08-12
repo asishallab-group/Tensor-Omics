@@ -33,8 +33,12 @@ _COMPONENT_TYPES = (
     "procedure|proc|subroutine|function|binding|absbinding|block|type|file|"
     "module|submodule|program|namelist"
 )
+#: `interface` was missing until 2026-08-12, and its absence was silent in the worst way: a
+#: `[[m(module):is_close(interface)]]` simply did not match, so it was never a link at all --
+#: not resolved for Python or R, not checked by `validate.check_doc_links`, and rendered into
+#: every binding as the raw `[[...]]` text an author typed.
 _ITEM_TYPES = (
-    "absbinding|bound|common|constructor|final|function|binding|modproc|"
+    "absbinding|bound|common|constructor|final|function|binding|interface|modproc|"
     "subroutine|type|variable"
 )
 

@@ -6,8 +6,12 @@ from codegen.diagnostics import DiagnosticBag
 from codegen.ir.entities import Meta
 from codegen.ir.roles import analyse
 from codegen.ir.types import Intent
+from pathlib import Path
+
+from codegen.diagnostics import SourceLocation
 from codegen.ir.validate import (
     _within_one_edit,
+    check_doc_links,
     validate_module,
     validate_procedure,
     validate_project,
@@ -1075,3 +1079,110 @@ class TestTheMisspellingHeuristic:
 
         assert _nearly("n_gene", {"n_genes", "values", "result"}) == "n_genes"
         assert _nearly("percentile", {"n_genes", "values", "result"}) is None
+
+
+class TestDocLinks:
+    """A Ford `[[...]]` cross-reference has to name something that exists.
+
+    The failure it catches has no other symptom: Ford prints the literal text, the Python and
+    R emitters fall back to plain code on purpose (a dangling R `\\link` fails R CMD check),
+    and everything still generates, compiles and passes.
+    """
+
+    def warnings(self, *modules):
+        bag = DiagnosticBag()
+        check_doc_links(b.project(*modules), bag)
+        return [d.message for d in bag.warnings]
+
+    def test_a_link_to_a_procedure_in_another_module_resolves(self):
+        assert not self.warnings(
+            b.module("a", doc="see [[m(module):crunch(subroutine)]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+    def test_a_link_to_a_module_that_does_not_exist_warns(self):
+        (warning,) = self.warnings(b.module("a", doc="see [[gone(module)]]"))
+
+        assert "'gone', which is not a module here" in warning
+
+    def test_a_link_to_a_name_the_module_does_not_publish_warns(self):
+        (warning,) = self.warnings(
+            b.module("a", doc="see [[m(module):missing(subroutine)]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+        assert "'missing', which 'm' does not publish" in warning
+
+    def test_a_module_constant_resolves(self):
+        assert not self.warnings(
+            b.module("a", doc="see [[m(module):MODE_WARD(variable)]]"),
+            b.module("m", parameters=(b.parameter("MODE_WARD", "1"),)),
+        )
+
+    def test_a_generic_interface_resolves(self):
+        """It is nothing the generator models -- a generic has no one signature -- but Ford
+        documents it and authors link to it, so it is carried by name."""
+        assert not self.warnings(
+            b.module("a", doc="see [[m(module):is_close(interface)]]"),
+            b.module("m", declarations=(b.declaration("is_close"),)),
+        )
+
+    def test_a_derived_type_resolves(self):
+        assert not self.warnings(
+            b.module("a", doc="see [[m(module):hashmap_type(type)]]"),
+            b.module("m", declarations=(b.declaration("hashmap_type", kind="type"),)),
+        )
+
+    def test_a_link_inside_an_interface_s_own_documentation_is_checked(self):
+        """The one place these links live that is nowhere else in the IR: an interface block's
+        comment belongs to no procedure and no module."""
+        (warning,) = self.warnings(
+            b.module("m", declarations=(b.declaration("is_close", doc="see [[gone(module)]]"),))
+        )
+
+        assert "'gone', which is not a module here" in warning
+
+    def test_an_argument_comment_is_checked(self):
+        (warning,) = self.warnings(
+            b.module(
+                "m",
+                b.procedure("crunch", b.real("x", Intent.IN, doc="see [[gone(module)]]")),
+            )
+        )
+
+        assert "'gone', which is not a module here" in warning
+
+    def test_a_bare_entity_link_resolves_against_the_whole_project(self):
+        # `[[crunch]]`, with no module named: Ford resolves it project-wide, so this does too
+        assert not self.warnings(
+            b.module("a", doc="see [[crunch]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+    def test_the_same_authored_line_warns_once(self):
+        """A generated wrapper carries the implementation's documentation verbatim, so one bad
+        link reaches the check once per module that inherited it."""
+        shared = b.real("x", Intent.IN, doc="see [[gone(module)]]")
+        location = SourceLocation(Path("src/tox/tox_demo_impl.F90"), 12)
+        first = b.procedure("crunch_impl", replace_location(shared, location))
+        second = b.procedure("crunch", replace_location(shared, location))
+
+        assert len(self.warnings(b.module("m", first, second))) == 1
+
+    def test_a_link_into_a_generated_module_is_correct(self):
+        """`[[f42_binary_search_tree(module):build_bst_index]]` names the wrapper a reader can
+        call; `emit/doc_links` turns it into that binding. Resolution therefore runs over the
+        augmented project, generated modules included."""
+        assert not self.warnings(
+            b.module("m_impl", doc="see [[m(module):crunch(subroutine)]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+
+def replace_location(argument, location):
+    """A copy of `argument` at `location` -- two entities from one authored line."""
+    import copy
+
+    clone = copy.deepcopy(argument)
+    clone.location = location
+    return clone

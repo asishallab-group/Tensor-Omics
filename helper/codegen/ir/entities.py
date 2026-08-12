@@ -242,6 +242,32 @@ class Parameter:
     parent: Module | None = None
 
 
+@dataclass
+class Declaration:
+    """A public name the generator carries by name and documentation alone.
+
+    A generic interface (`interface is_close`) and a derived type are both things Ford
+    documents and things author prose links to, and neither is anything a binding can express
+    -- a generic has no one signature, a derived type no C form. So the generator models
+    nothing about them beyond their existence, which is exactly what `validate._check_doc_links`
+    needs to resolve a link *to* one, and their documentation, which is prose that may hold
+    links of its own.
+
+    Only the public ones reach here, because only the public ones reach Ford's own output: a
+    link to a private routine dangles in the HTML as surely as a link to one that never
+    existed.
+    """
+
+    entity_kind: ClassVar[str] = "declaration"
+
+    name: str
+    #: `interface` or `type` -- what the link that names it should be spelled as
+    kind: str = "interface"
+    doc: Doc = field(default_factory=Doc)
+    location: SourceLocation = field(default_factory=SourceLocation)
+    parent: Module | None = None
+
+
 class Module(Entity):
     entity_kind: ClassVar[str] = "module"
 
@@ -254,10 +280,13 @@ class Module(Entity):
         meta: Meta = Meta(),
         location: SourceLocation = SourceLocation(),
         uses: Sequence[str] = (),
+        declarations: Sequence[Declaration] = (),
     ):
         self.name = name
         self.procedures = tuple(procedures)
         self.parameters = tuple(parameters)
+        #: the public generic interfaces and derived types, by name and documentation only
+        self.declarations = tuple(declarations)
         self.doc = doc
         self.meta = meta
         self.location = location
@@ -268,6 +297,7 @@ class Module(Entity):
 
         self._adopt(self.procedures)
         self._adopt(self.parameters)
+        self._adopt(self.declarations)
 
     def procedure(self, name: str) -> Procedure | None:
         lowered = name.lower()
@@ -282,6 +312,20 @@ class Module(Entity):
             if parameter.name.lower() == lowered:
                 return parameter
         return None
+
+    @property
+    def public_names(self) -> set[str]:
+        """Every name this module publishes, lower-cased, as documentation may link to it.
+
+        Procedures, module constants, generic interfaces and derived types -- the four things
+        Ford gives a page. Ford has already filtered by visibility, so a private routine is
+        absent here exactly as it is absent from the rendered documentation.
+        """
+        return {
+            entity.name.lower()
+            for group in (self.procedures, self.parameters, self.declarations)
+            for entity in group
+        }
 
     @property
     def exported_procedures(self) -> tuple[Procedure, ...]:

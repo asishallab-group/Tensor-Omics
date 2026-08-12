@@ -30,6 +30,92 @@ def validate_project(project: Project, diagnostics: DiagnosticBag,
                      conventions: Conventions = CONVENTIONS) -> None:
     for module in project:
         validate_module(module, diagnostics, conventions)
+    check_doc_links(project, diagnostics)
+
+
+def check_doc_links(project: Project, diagnostics: DiagnosticBag) -> None:
+    """Every Ford `[[...]]` cross-reference names something that exists.
+
+    A dangling link is the failure with no symptom. Ford renders it as the literal text an
+    author typed; `emit/doc_links.py` falls back to plain code, deliberately, because an R
+    `\\link` to a missing topic fails `R CMD check`. So a link left pointing at a renamed
+    module keeps generating, keeps compiling, keeps passing -- and quietly stops being a link
+    in four languages at once. Converting f42 to `_impl` modules broke twenty-three of them in
+    one pass and nothing said a word for a month.
+
+    Warnings, not errors: a link that no longer resolves degrades documentation without making
+    anything wrong, and a typo in a comment should not stop a build. It is the same weight as
+    "module has no documentation" above, and the tree is kept at zero warnings.
+
+    Resolved against the whole project, generated modules included -- a link into
+    `[[f42_binary_search_tree(module):build_bst_index]]` is *correct*: it names the wrapper a
+    reader can call, and `doc_links` turns it into that binding's name.
+
+    What it cannot see: documentation attached to something the IR does not model -- a derived
+    type's components, a private routine's own comment. Those are read by nobody downstream
+    either, so the gap costs a check on prose that reaches no output.
+    """
+    modules = {module.name.lower(): module for module in project}
+    # One authored line, one warning. A generated wrapper carries the implementation's
+    # documentation verbatim, so a single bad link in an argument comment reaches here once
+    # from the implementation and once per wrapper generated from it -- four times, for a
+    # procedure with both tiers. They all point at the same file and line, which is what makes
+    # them the same finding.
+    reported: set[tuple] = set()
+    for module in project:
+        for entity, doc in _documented(module):
+            for link in doc.links:
+                where = (entity.location.file, entity.location.line, str(link))
+                if where in reported:
+                    continue
+                reported.add(where)
+                _check_link(link, entity, modules, diagnostics)
+
+
+def _documented(module: Module):
+    """Every entity of `module` that carries documentation, with its doc."""
+    yield module, module.doc
+    for procedure in module.procedures:
+        yield procedure, procedure.doc
+        for argument in procedure.arguments:
+            yield argument, argument.doc
+        if procedure.result is not None:
+            yield procedure.result, procedure.result.doc
+    for parameter in module.parameters:
+        yield parameter, parameter.doc
+    for declaration in module.declarations:
+        yield declaration, declaration.doc
+
+
+def _check_link(link, entity, modules, diagnostics: DiagnosticBag) -> None:
+    named = modules.get(link.component.lower())
+    if named is None:
+        # a link whose component is not a module names an entity directly -- Ford resolves
+        # that against the whole project, so accept it wherever any module publishes the name
+        if link.item is None and any(
+            link.component.lower() in m.public_names for m in modules.values()
+        ):
+            return
+        diagnostics.warn(
+            f"documentation links to '{link.component}', which is not a module here",
+            entity=entity,
+            note=(
+                f"{link} resolves to nothing: Ford renders it as this literal text, and the "
+                "Python and R bindings fall back to plain code. Name the module that defines "
+                "it, or drop the link and write the name in backticks"
+            ),
+        )
+        return
+    if link.item is not None and link.item.lower() not in named.public_names:
+        diagnostics.warn(
+            f"documentation links to '{link.item}', which '{named.name}' does not publish",
+            entity=entity,
+            note=(
+                f"{link} resolves to nothing -- the name is private, or it moved. Ford "
+                "documents only what a module makes public, so a link to a private routine "
+                "dangles as surely as a link to one that never existed"
+            ),
+        )
 
 
 def validate_module(module: Module, diagnostics: DiagnosticBag,

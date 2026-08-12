@@ -280,9 +280,9 @@ contains
         real(c_double), intent(in), target :: total_contribution_observed
             !! Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
         real(c_double), dimension(n_timepoints, n_permutations), intent(in), target :: local_contributions_perm_test
-            !! Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test(subroutine)]]
+            !! Per-timepoint contributions for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(subroutine)]]
         real(c_double), dimension(n_permutations), intent(in), target :: total_contributions_perm_test
-            !! Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test(subroutine)]]
+            !! Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from [[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(subroutine)]]
         real(c_double), dimension(n_timepoints), intent(out), target :: local_p_values
             !! calculated p values for local contributions, like: `(local_contributions_perm_test >= local_contributions_observed)/n_permutations`
         real(c_double), intent(out), target :: total_p_value
