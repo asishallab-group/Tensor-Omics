@@ -24,6 +24,12 @@ class TestFordLink:
             # a generic interface. Missing from the item types until 2026-08-12, so the whole
             # link failed to match and reached every binding as the raw text an author typed
             ("[[mod(module):is_close(interface)]]", "mod", "module", "is_close", "interface"),
+            ("[[iface(interface)]]", "iface", "interface", None, None),
+            ("[[iface(absinterface)]]", "iface", "absinterface", None, None),
+            ("[[mod(module):cb(absinterface)]]", "mod", "module", "cb", "absinterface"),
+            # an entity of a different project -- Ford allows `ext` on a component type
+            ("[[zlib(extmodule)]]", "zlib", "extmodule", None, None),
+            ("[[zip_open(extproc)]]", "zip_open", "extproc", None, None),
         ],
     )
     def test_parse(self, text, component, component_type, item, item_type):
@@ -46,6 +52,42 @@ class TestFordLink:
     )
     def test_str_round_trips(self, text):
         assert str(DocLine.parse(text).links[0]) == text
+
+    @pytest.mark.parametrize("text", [
+        # the two vocabularies are not interchangeable: Ford warns and generates no link, and
+        # neither does this. `binding`/`absbinding` are item types Ford does not accept at all
+        "[[mod(variable)]]",
+        "[[mod(bound)]]",
+        "[[mod(module):sub(program)]]",
+        "[[mod(module):sub(file)]]",
+        "[[mod(binding)]]",
+        "[[mod(module):sub(absbinding)]]",
+    ])
+    def test_a_type_the_other_position_takes_is_not_a_link(self, text):
+        assert DocLine.parse(text).links == ()
+
+
+class TestLinksInsideCode:
+    """Ford 7 leaves inline code verbatim, cross-references included."""
+
+    def test_a_backticked_link_is_prose(self):
+        line = DocLine.parse("write `[[mod(module)]]` to link")
+
+        assert line.links == ()
+        assert line.text == "write `[[mod(module)]]` to link"
+
+    def test_a_link_outside_the_code_span_still_parses(self):
+        line = DocLine.parse("`x[[i]]` and [[mod(module)]]")
+
+        assert [str(link) for link in line.links] == ["[[mod(module)]]"]
+
+    def test_an_unclosed_backtick_opens_nothing(self):
+        assert DocLine.parse("` [[mod(module)]]").links != ()
+
+    def test_a_double_backtick_span_is_closed_by_a_double(self):
+        line = DocLine.parse("``a ` b [[mod(module)]]`` and [[other(module)]]")
+
+        assert [str(link) for link in line.links] == ["[[other(module)]]"]
 
     def test_target_prefers_the_item(self):
         assert FordLink("mod", "module", "sub", "subroutine").target == "sub"

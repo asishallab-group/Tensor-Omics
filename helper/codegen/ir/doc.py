@@ -29,18 +29,31 @@ class DocParseError(Exception):
 
 
 _NAME = "[A-Za-z][A-Za-z_0-9]*"
+
+#: The two type vocabularies are **not interchangeable**, and Ford says so: give a component an
+#: item type (or the reverse) and it warns and generates no link. So they are spelled out
+#: separately, from Ford's own documentation of `[[component(type):item(type)]]`, rather than
+#: shared. Both lists were wrong until 2026-08-12 -- each carried two of the other's types and
+#: was missing `interface`/`absinterface` -- and the way they were wrong was the bad way: a type
+#: not in the list makes the *whole link* fail to match, so it was never a link at all. Not
+#: resolved for Python or R, not checked by `validate.check_doc_links`, and rendered into every
+#: binding as the raw `[[...]]` text the author typed.
+#:
+#: Longest alternative first where one is a prefix of another (`procedure` before `proc`): the
+#: engine backtracks correctly either way, but the intent should not depend on that.
 _COMPONENT_TYPES = (
-    "procedure|proc|subroutine|function|binding|absbinding|block|type|file|"
-    "module|submodule|program|namelist"
+    "procedure|proc|subroutine|function|absinterface|interface|block|type|file|"
+    "submodule|module|program|namelist"
 )
-#: `interface` was missing until 2026-08-12, and its absence was silent in the worst way: a
-#: `[[m(module):is_close(interface)]]` simply did not match, so it was never a link at all --
-#: not resolved for Python or R, not checked by `validate.check_doc_links`, and rendered into
-#: every binding as the raw `[[...]]` text an author typed.
 _ITEM_TYPES = (
-    "absbinding|bound|common|constructor|final|function|binding|interface|modproc|"
+    "absinterface|interface|bound|common|constructor|final|function|modproc|"
     "subroutine|type|variable"
 )
+#: A component type may carry an `ext` prefix, naming an entity in an *external* project.
+#: Nothing in this project can resolve one, and `validate.check_doc_links` says so rather than
+#: reporting it missing.
+EXTERNAL_PREFIX = "ext"
+_COMPONENT_TYPES = f"(?:{EXTERNAL_PREFIX})?(?:{_COMPONENT_TYPES})"
 
 
 def _link_part(name: str, types: str) -> str:
@@ -98,6 +111,30 @@ class Text:
 
 Span = Text | FordLink
 
+#: A run of backticks, which opens an inline-code span and is closed by a run of the same length
+_BACKTICK_RUN = re.compile(r"`+")
+
+
+def _code_spans(text: str) -> list[tuple[int, int]]:
+    """The `(start, end)` of every inline-code span, as Markdown delimits them.
+
+    A run of *n* backticks opens a span that the next run of exactly *n* closes; an unclosed
+    run is not a span at all. Ford has left the contents of these verbatim since v7, markup
+    and cross-references alike, so nothing inside one is this parser's business either.
+    """
+    runs = list(_BACKTICK_RUN.finditer(text))
+    spans: list[tuple[int, int]] = []
+    index = 0
+    while index < len(runs):
+        opener = runs[index]
+        for offset in range(index + 1, len(runs)):
+            if runs[offset].group() == opener.group():
+                spans.append((opener.start(), runs[offset].end()))
+                index = offset
+                break
+        index += 1
+    return spans
+
 
 @dataclass(frozen=True)
 class DocLine:
@@ -111,9 +148,16 @@ class DocLine:
         text = text.strip()
         spans: list[Span] = []
         position = 0
+        code = _code_spans(text)
 
         for match in FordLink.RE.finditer(text):
             start, end = match.span()
+            # Ford 7 leaves a link inside inline code verbatim, like any other markup: an
+            # author writing `` `call [[my_sub]]` `` means to *show* the link syntax. Parsing
+            # it here would resolve something Ford does not, and -- since a dangling link is
+            # an error now -- could refuse a build over prose that was never a link.
+            if any(s <= start and end <= e for s, e in code):
+                continue
             if start > position:
                 spans.append(Text(text[position:start]))
             spans.append(FordLink._from_match(match))

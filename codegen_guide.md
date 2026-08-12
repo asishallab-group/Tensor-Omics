@@ -1080,11 +1080,18 @@ docstring and the R `.Rd` help page. So:
 - **Ford links resolve to what the reader can call.** `[[tox_loess_impl(module):MODE_PLAIN(variable)]]`
   becomes the mode *string* in a Python or R doc, and a link to an implementation becomes a link
   to the binding that wraps it — never to an implementation the reader cannot reach.
-- **A link that names nothing is a warning.** Name the module that *defines* the thing —
+- **A link that names nothing is an error.** Name the module that *defines* the thing —
   `[[f42_math_impl(module):is_close(interface)]]`, not the parent that re-exports it — and note
   that a private routine counts as naming nothing, because Ford documents only what a module
   makes public. Linking to a *generated* module is right where the reader is meant to call it:
   `[[f42_binary_search_tree(module):build_bst_index]]` becomes the Python and R binding.
+  The two type vocabularies are **not interchangeable**: a component takes `module`, `type`,
+  `subroutine`, `function`, `proc`, `interface`, `absinterface`, `submodule`, `program`,
+  `block`, `file`, `namelist` (any of them `ext`-prefixed for another project); an item takes
+  `variable`, `bound`, `common`, `constructor`, `final`, `modproc` and the procedure/interface
+  kinds. Give one the other's type and it is not a link at all.
+  To *show* the syntax rather than follow it, wrap it in backticks — Ford 7 leaves inline code
+  verbatim, and so does the generator.
 - **Write plainly about arguments the reader actually passes.** Terms like "pre-allocated" or
   "workspace" describe the Fortran expert signature; a Python caller who never sees that
   argument only finds them confusing.
@@ -1140,6 +1147,7 @@ source and carries a note saying what to write instead.
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (§5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (§5.13) |
 | a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (§5.13) |
+| a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (§7) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:
@@ -1149,8 +1157,7 @@ errors, and the house bar is **zero warnings**, so treat them as errors anyway:
 - a value table on an argument that is *not* named as a mode (`baseline` rather than
   `baseline_mode`) — the table is then documentation only, and the value crosses the binding as
   a bare integer instead of its name
-- a Ford `[[...]]` link naming a module or a name that does not exist — it silently stops being
-  a link in all four languages (§7)
+
 
 ---
 

@@ -411,9 +411,23 @@ without it the links inside it would be read nowhere. `_ITEM_TYPES` in `ir/doc.p
 `interface` until 2026-08-12 — a `(interface)` link did not match the pattern at all, so it was
 never a link to resolve, to check, or to render.
 
-Warnings rather than errors: a link that no longer resolves degrades documentation without
-making anything wrong, and a typo in a comment should not stop a build. The house bar is zero
-warnings regardless.
+Errors rather than warnings. The generated documentation *is* the API's documentation in four
+languages, and a link is the one part of it that can be checked mechanically -- so it is checked
+at the weight of a signature the C layer cannot express.
+
+Two pieces of Ford's syntax the parser has to get exactly right, because getting either wrong
+makes a link silently not-a-link:
+
+- **the two type vocabularies are not interchangeable.** A component takes `module`, `type`,
+  `submodule`, `program`, `block`, `file`, `namelist` and the procedure/interface kinds, each
+  optionally `ext`-prefixed for an entity of another project; an item takes `variable`, `bound`,
+  `common`, `constructor`, `final`, `modproc` and the procedure/interface kinds. Ford warns and
+  generates nothing for a mismatch. `_COMPONENT_TYPES` and `_ITEM_TYPES` each carried two of the
+  other's entries until 2026-08-12.
+- **inline code is left verbatim** (Ford 7). ``` `[[my_sub]]` ``` shows the syntax rather than
+  following it, so `DocLine.parse` skips any link inside a backtick span -- which also keeps an
+  R-style ``` `x[[i]]` ``` in a comment from being read as a link to `i`, and now from failing
+  a build over it.
 
 ---
 

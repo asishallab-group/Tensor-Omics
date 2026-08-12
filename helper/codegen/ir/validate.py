@@ -14,6 +14,7 @@ import re
 
 from ..config import CONVENTIONS, Conventions
 from ..diagnostics import DiagnosticBag
+from .doc import EXTERNAL_PREFIX
 from .entities import Argument, Module, Procedure, Project
 from .types import BaseType, Intent
 
@@ -43,9 +44,11 @@ def check_doc_links(project: Project, diagnostics: DiagnosticBag) -> None:
     in four languages at once. Converting f42 to `_impl` modules broke twenty-three of them in
     one pass and nothing said a word for a month.
 
-    Warnings, not errors: a link that no longer resolves degrades documentation without making
-    anything wrong, and a typo in a comment should not stop a build. It is the same weight as
-    "module has no documentation" above, and the tree is kept at zero warnings.
+    Errors, not warnings. The generator's documentation *is* the API's documentation in four
+    languages, and a link is the one piece of it that can be checked mechanically -- so it is,
+    at the same weight as a signature the C layer cannot express. It also has the property that
+    decides these: nothing downstream can tell a broken link from a working one, so nothing
+    downstream will ever report it.
 
     Resolved against the whole project, generated modules included -- a link into
     `[[f42_binary_search_tree(module):build_bst_index]]` is *correct*: it names the wrapper a
@@ -56,7 +59,7 @@ def check_doc_links(project: Project, diagnostics: DiagnosticBag) -> None:
     either, so the gap costs a check on prose that reaches no output.
     """
     modules = {module.name.lower(): module for module in project}
-    # One authored line, one warning. A generated wrapper carries the implementation's
+    # One authored line, one diagnostic. A generated wrapper carries the implementation's
     # documentation verbatim, so a single bad link in an argument comment reaches here once
     # from the implementation and once per wrapper generated from it -- four times, for a
     # procedure with both tiers. They all point at the same file and line, which is what makes
@@ -88,6 +91,10 @@ def _documented(module: Module):
 
 
 def _check_link(link, entity, modules, diagnostics: DiagnosticBag) -> None:
+    # `[[zlib(extmodule)]]` names an entity of another project entirely. Nothing here can
+    # resolve one, and reporting it missing would be a lie.
+    if (link.component_type or "").lower().startswith(EXTERNAL_PREFIX):
+        return
     named = modules.get(link.component.lower())
     if named is None:
         # a link whose component is not a module names an entity directly -- Ford resolves
@@ -96,7 +103,7 @@ def _check_link(link, entity, modules, diagnostics: DiagnosticBag) -> None:
             link.component.lower() in m.public_names for m in modules.values()
         ):
             return
-        diagnostics.warn(
+        diagnostics.error(
             f"documentation links to '{link.component}', which is not a module here",
             entity=entity,
             note=(
@@ -107,7 +114,7 @@ def _check_link(link, entity, modules, diagnostics: DiagnosticBag) -> None:
         )
         return
     if link.item is not None and link.item.lower() not in named.public_names:
-        diagnostics.warn(
+        diagnostics.error(
             f"documentation links to '{link.item}', which '{named.name}' does not publish",
             entity=entity,
             note=(
