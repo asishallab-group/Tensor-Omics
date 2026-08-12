@@ -365,9 +365,9 @@ test_compute_velocity_acceleration_contributions <- function() {
 # =====================================================
 # Test: compute_velocity_acceleration_contributions
 # =====================================================
-test_compute_velocity_acceleration_contributions_alloc <- function() {
+test_compute_velocity_acceleration_contributions_plain <- function() {
 
-  # Same input as non-alloc test so outputs should match
+  # Same input as the expert test so outputs should match
   trajectories <- array(0.0, dim = c(2L, 1L, 4L))
 
   # Factor 1, Sample 1

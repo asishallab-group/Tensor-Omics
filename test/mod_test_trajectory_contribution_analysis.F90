@@ -36,7 +36,7 @@ contains
         all_tests(12) = test_case("test_compute_velocity_trajectories", test_compute_velocity_trajectories)
         all_tests(13) = test_case("test_compute_acceleration_from_velocity", test_compute_acceleration_from_velocity)
         all_tests(14) = test_case("test_compute_velocity_acceleration_contributions", test_compute_velocity_acceleration_contributions)
-        all_tests(15) = test_case("test_compute_velocity_acceleration_contributions_alloc", test_compute_velocity_acceleration_contribs_alloc)
+        all_tests(15) = test_case("test_compute_velocity_acceleration_contributions_plain", test_compute_velocity_acceleration_contribs_plain)
         all_tests(16) = test_case("test_compute_velocity_trajectory", test_compute_velocity_trajectory)
         all_tests(17) = test_case("test_compute_acceleration_from_velocity_trajectory", test_compute_acceleration_from_velocity_trajectory)
 
@@ -219,7 +219,7 @@ contains
                                      "compute_velocity_acceleration_contributions: acceleration series")
     end subroutine test_compute_velocity_acceleration_contributions
 
-    subroutine test_compute_velocity_acceleration_contribs_alloc()
+    subroutine test_compute_velocity_acceleration_contribs_plain()
         real(real64) :: trajectories(2, 1, 4)
         real(real64) :: factor_velocity(3, 2)
         real(real64) :: dependent_velocity(3)
@@ -228,10 +228,10 @@ contains
         real(real64) :: C_acc_ref(2, 2, 1)
         real(real64) :: series_vel_ref(4, 2, 2, 1)
         real(real64) :: series_acc_ref(4, 2, 2, 1)
-        real(real64) :: C_vel_alloc(2, 2, 1)
-        real(real64) :: C_acc_alloc(2, 2, 1)
-        real(real64) :: series_vel_alloc(4, 2, 2, 1)
-        real(real64) :: series_acc_alloc(4, 2, 2, 1)
+        real(real64) :: C_vel_plain(2, 2, 1)
+        real(real64) :: C_acc_plain(2, 2, 1)
+        real(real64) :: series_vel_plain(4, 2, 2, 1)
+        real(real64) :: series_acc_plain(4, 2, 2, 1)
         integer(int32) :: ierr
         integer(int32) :: mode
 
@@ -245,28 +245,28 @@ contains
         call compute_velocity_acceleration_contributions_expert(trajectories, 2, 1, 4, mode, &
                                                          factor_velocity, dependent_velocity, velocity_contrib, &
                                                          C_vel_ref, series_vel_ref, C_acc_ref, series_acc_ref, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions_alloc: reference call")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions (plain tier): reference call")
 
         call compute_velocity_acceleration_contributions(trajectories, 2, 1, 4, mode, &
-                                                               C_vel_alloc, series_vel_alloc, C_acc_alloc, series_acc_alloc, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions_alloc: expected OK status")
+                                                               C_vel_plain, series_vel_plain, C_acc_plain, series_acc_plain, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions (plain tier): expected OK status")
 
-        call assert_equal_array_real(reshape(C_vel_alloc, [size(C_vel_alloc)]), &
-                                     reshape(C_vel_ref, [size(C_vel_ref)]), size(C_vel_alloc), TOL, &
-                                     "compute_velocity_acceleration_contributions_alloc: velocity totals")
+        call assert_equal_array_real(reshape(C_vel_plain, [size(C_vel_plain)]), &
+                                     reshape(C_vel_ref, [size(C_vel_ref)]), size(C_vel_plain), TOL, &
+                                     "compute_velocity_acceleration_contributions (plain tier): velocity totals")
 
-        call assert_equal_array_real(reshape(series_vel_alloc, [size(series_vel_alloc)]), &
-                                     reshape(series_vel_ref, [size(series_vel_ref)]), size(series_vel_alloc), TOL, &
-                                     "compute_velocity_acceleration_contributions_alloc: velocity series")
+        call assert_equal_array_real(reshape(series_vel_plain, [size(series_vel_plain)]), &
+                                     reshape(series_vel_ref, [size(series_vel_ref)]), size(series_vel_plain), TOL, &
+                                     "compute_velocity_acceleration_contributions (plain tier): velocity series")
 
-        call assert_equal_array_real(reshape(C_acc_alloc, [size(C_acc_alloc)]), &
-                                     reshape(C_acc_ref, [size(C_acc_ref)]), size(C_acc_alloc), TOL, &
-                                     "compute_velocity_acceleration_contributions_alloc: acceleration totals")
+        call assert_equal_array_real(reshape(C_acc_plain, [size(C_acc_plain)]), &
+                                     reshape(C_acc_ref, [size(C_acc_ref)]), size(C_acc_plain), TOL, &
+                                     "compute_velocity_acceleration_contributions (plain tier): acceleration totals")
 
-        call assert_equal_array_real(reshape(series_acc_alloc, [size(series_acc_alloc)]), &
-                                     reshape(series_acc_ref, [size(series_acc_ref)]), size(series_acc_alloc), TOL, &
-                                     "compute_velocity_acceleration_contributions_alloc: acceleration series")
-    end subroutine test_compute_velocity_acceleration_contribs_alloc
+        call assert_equal_array_real(reshape(series_acc_plain, [size(series_acc_plain)]), &
+                                     reshape(series_acc_ref, [size(series_acc_ref)]), size(series_acc_plain), TOL, &
+                                     "compute_velocity_acceleration_contributions (plain tier): acceleration series")
+    end subroutine test_compute_velocity_acceleration_contribs_plain
 
     !> initializes random number generator with a randomly selected seed
     subroutine setup_random

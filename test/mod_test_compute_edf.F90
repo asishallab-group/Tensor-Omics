@@ -23,7 +23,7 @@ contains
         all_tests(6) = test_case("test_compute_edf_empty_input", test_compute_edf_empty_input)
         all_tests(7) = test_case("test_compute_edf_large_dataset", test_compute_edf_large_dataset)
         all_tests(8) = test_case("test_compute_edf_negative_values", test_compute_edf_negative_values)
-        all_tests(9) = test_case("test_compute_edf_alloc", test_compute_edf_alloc)
+        all_tests(9) = test_case("test_compute_edf_sorts_internally", test_compute_edf_sorts_internally)
         all_tests(10) = test_case("test_compute_edf_with_perm", test_compute_edf_with_perm)
     end function get_all_tests_compute_edf
 
@@ -173,8 +173,8 @@ contains
                                "test_compute_edf_negative_values: final CDF should be 1.0")
     end subroutine
 
-    !> Test compute_edf_alloc helper (automatic workspace allocation).
-    subroutine test_compute_edf_alloc()
+    !> Test the plain entry point, which sorts internally instead of taking a permutation.
+    subroutine test_compute_edf_sorts_internally()
         real(real64) :: values(5) = [3.0_real64, 1.0_real64, 2.0_real64, 1.0_real64, 2.0_real64]
         integer(int32) :: n_values = 5
         real(real64) :: unique_values(5), cdf_values(5)
@@ -188,11 +188,11 @@ contains
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
         call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_alloc: error code should be ERR_OK")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_sorts_internally: error code should be ERR_OK")
         call assert_equal_array_real(unique_values(1:3), expected_unique, 3, &
-                                     1d-12, "test_compute_edf_alloc: unique values mismatch")
+                                     1d-12, "test_compute_edf_sorts_internally: unique values mismatch")
         call assert_equal_array_real(cdf_values(1:3), expected_cdf, 3, &
-                                     1d-12, "test_compute_edf_alloc: CDF values mismatch")
+                                     1d-12, "test_compute_edf_sorts_internally: CDF values mismatch")
     end subroutine
 
     !> Test compute_edf using an explicitly assigned and sorted perm vector.

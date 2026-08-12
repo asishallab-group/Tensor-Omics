@@ -212,9 +212,9 @@ def _published_to_the_languages(
 ) -> CBinding:
     """The binding as Python and R publish it: without the empty expert tiers.
 
-    `foo` reaches those languages as `foo_expert`, a name promising control over what is handed
-    to the implementation. Where `foo_alloc` only validates and allocates, there is no such
-    control to give -- the binding allocates the work arrays for both tiers and computes the
+    `foo_expert` promises control over what is handed to the implementation. Where `foo` only
+    validates and allocates, there is no such control to give -- the binding allocates the work
+    arrays for both tiers and computes the
     `DM_OUTPUT_FROM` sizes for both -- so the two are the same call and one of them lies about
     it. Dropped here rather than in each emitter, so Python, R, the R `.Call` shims and the
     snippets cannot disagree about what exists.
