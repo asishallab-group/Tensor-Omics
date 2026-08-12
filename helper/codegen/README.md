@@ -271,15 +271,12 @@ The parts a source author does not need, and a generator maintainer does:
   there being no second tier for an `_expert` name to distinguish it from — nearly half the
   wrappers in the tree today. Naming the lone one `foo_expert` unconditionally would generate,
   compile and bind perfectly well, and quietly rename every entry point that has no work arrays.
-- **A generated name is published as it stands; a hand-written pair is translated.** Synthesis
-  names the tiers `foo` and `foo_expert` outright, so they cross as `foo_c` and `foo_expert_c`
-  with nothing left to decide. The case that still needs deciding is the hand-written pair: f42
-  writes its two tiers as `foo` / `foo_alloc`, the shape the whole framework used before any
-  wrapper was generated, and the allocating one is the one callers want — so
-  `abi/c_abi.stripped_name` gives `<p>_alloc` the plain symbol `<p>_c` and renames its
-  non-allocating twin to `<p>_expert_c`, but only where such a twin exists, so a lone
-  `<p>_alloc` is never needlessly renamed. That branch keeps f42's published API unchanged
-  while its implementations are hand-written, and retires itself when they are converted.
+- **A name is published as it stands.** Synthesis names the tiers `foo` and `foo_expert`
+  outright, so they cross as `foo_c` and `foo_expert_c` with nothing to decide, and a
+  hand-written export is published as written. `abi/c_abi.stripped_name` is therefore the
+  identity — it was not until 2026-08-12, when it translated a hand-written `foo` / `foo_alloc`
+  pair into the published `foo` / `foo_expert`. f42 wrote the last of those, and the rule went
+  with them: renaming a procedure behind its author's back needs a live customer.
 - **A mode crosses as a string.** The binding languages pass the parameter name without its
   prefix, lower-cased (`METHOD_WARD` → `"ward"`), and the C wrapper maps it back to the integer,
   rejecting an unknown one before Fortran is entered. The Fortran wrapper separately checks
@@ -355,8 +352,8 @@ dropping the fixed directory they used to be scoped to:
   and the suffix is the generator's to add. `foo_expert_impl` beside `foo_impl` yields two
   procedures called `foo_expert`, and the emitter would strip the suffix and call `foo_impl`
   from the wrong one: wrong code that compiles, because `foo_impl` exists. `foo_alloc_impl`
-  yields `foo_alloc`, which `stripped_name` then publishes to Python and R as `foo`, colliding
-  with a real `foo` in the same family
+  yields `foo_alloc`, which every author of this framework reads as the allocating tier while
+  being an ordinary second procedure beside the generated `foo` that really is one
 - an **`allocatable` local or dummy** in any procedure of the module, implementations and
   helpers alike — the generated wrapper owns the memory. Seen through the declaration, since no
   body is ever read; a `pointer` local aliases and is fine. The dummy is the subtler half: it
@@ -479,12 +476,6 @@ code.
 
 ## Open items
 
-- **`stripped_name`'s `_alloc` branch is now dead code**: f42 is fully converted, so no source
-  writes a hand-written `<p>` / `<p>_alloc` pair and nothing exercises the translation. Retiring
-  it — along with `entities.is_alloc_variant` / `alloc_sibling` — is deliberately a separate
-  change from the conversions, so that a bug in the retirement and a bug in a conversion cannot
-  land in the same lines. `alloc_suffix` and the reserved-name rule stay either way
-  (`design/impl-layer.md`).
 - **ifx**: the F2018 features used (`OPTIONAL` in `bind(C)`, `implicit none (type,
   external)`) are verified with gfortran only. ifx is expected to agree; worth a check.
 - **Compile check in CI**: the end-to-end tests need a compiler. They are marked to skip

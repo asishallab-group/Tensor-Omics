@@ -224,27 +224,6 @@ class Procedure(Entity):
     def has_error_argument(self) -> bool:
         return self.argument(self.conventions.error_arg) is not None
 
-    @property
-    def is_alloc_variant(self) -> bool:
-        """Whether this is the allocating half of an `_alloc` / expert pair."""
-        return self.name.lower().endswith(self.conventions.alloc_suffix)
-
-    @property
-    def alloc_sibling(self) -> Procedure | None:
-        """The `<name>_alloc` procedure in the *same module*, if there is one.
-
-        The old generator asked `procedure.find_child(f"{name}_alloc")`, which searches a
-        procedure's own children rather than its module, so it never found the sibling and
-        the `_expert_c` naming rule never fired.
-        """
-        if self.module is None or self.is_alloc_variant:
-            return None
-        return self.module.procedure(f"{self.name}{self.conventions.alloc_suffix}")
-
-    @property
-    def has_alloc_sibling(self) -> bool:
-        return self.alloc_sibling is not None
-
     def __iter__(self) -> Iterator[Argument]:
         return iter(self.arguments)
 

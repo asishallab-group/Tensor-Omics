@@ -37,14 +37,14 @@ class Conventions:
     #: read from it, so this is the name the diagnostics quote back.
     export_marker: str = "M_EXPORT_C"
 
-    #: Suffix of the allocating half of a *hand-written* procedure pair. The generator never
-    #: emits it: a generated allocating wrapper takes the plain name. It is still recognised
-    #: because f42 writes its pairs by hand (`compute_edf` / `compute_edf_alloc`), and that is
-    #: the shape `stripped_name` translates into the published `foo` / `foo_expert`.
+    #: Suffix of the allocating half of a *hand-written* procedure pair -- the shape the
+    #: framework used before any wrapper was generated (`compute_edf` / `compute_edf_alloc`).
+    #: Nothing writes one since f42 converted, and nothing generates one: an allocating
+    #: wrapper takes the plain name. Kept only so `validate` can go on reserving `_alloc` as
+    #: an implementation base-name suffix, which is what stops one coming back by accident.
     alloc_suffix: str = "_alloc"
     #: Suffix of the non-allocating entry point, in Fortran and as the binding languages
-    #: publish it. A generated pair is named `foo` / `foo_expert` outright; a hand-written
-    #: `foo` / `foo_alloc` pair is published under those names by `abi.c_abi.stripped_name`.
+    #: publish it. Synthesis names the tiers `foo` / `foo_expert` outright.
     expert_suffix: str = "_expert"
     #: Suffix of every generated C symbol and of the modules holding them
     c_suffix: str = "_c"

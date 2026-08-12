@@ -150,10 +150,9 @@ def _raises(writer: Writer, wrapper: CWrapper) -> None:
 def _notes(writer: Writer, wrapper: CWrapper, emitter=None) -> None:
     procedure = wrapper.procedure
     # the procedure, not just the module: an error message names an argument from
-    # *its* dummy list -- including extents, work arrays and ierr, which no caller of this
-    # binding passes -- and the suffix mapping is not guessable (`loess_fit_plain` here is
-    # `loess_fit_plain_alloc` there, while `loess_fit_plain_expert` is `loess_fit_plain`).
-    # Naming it is what lets a reader take "(argument 'n_dscale_elements')" back to a signature.
+    # *its* dummy list -- including the extents, work arrays and ierr that no caller of this
+    # binding passes, and, on the expert tier, several this one does not either. Naming it is
+    # what lets a reader take "(argument 'n_dscale_elements')" back to a signature that has one.
     origin = (
         f"{procedure.module.name}::{procedure.name}" if procedure.module else procedure.name
     )

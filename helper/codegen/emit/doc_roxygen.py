@@ -57,10 +57,9 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
         writer.line("#'")
 
     # the procedure, not just the module: an error message names an argument from
-    # *its* dummy list -- including extents, work arrays and ierr, which no caller of this
-    # binding passes -- and the suffix mapping is not guessable (`loess_fit_plain` here is
-    # `loess_fit_plain_alloc` there, while `loess_fit_plain_expert` is `loess_fit_plain`).
-    # Naming it is what lets a reader take "(argument 'n_dscale_elements')" back to a signature.
+    # *its* dummy list -- including the extents, work arrays and ierr that no caller of this
+    # binding passes, and, on the expert tier, several this one does not either. Naming it is
+    # what lets a reader take "(argument 'n_dscale_elements')" back to a signature that has one.
     #
     # And it goes here, in the description, rather than after @return: roxygen gives untagged
     # text to whichever tag precedes it, so trailing it after @return filed the provenance

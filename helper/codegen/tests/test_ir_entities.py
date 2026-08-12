@@ -191,44 +191,6 @@ class TestExportSelection:
         assert not b.module("m", b.procedure("internal", meta=Meta())).has_exports
 
 
-class TestAllocSibling:
-    def test_the_expert_half_finds_its_alloc_sibling(self):
-        # the old generator searched the procedure's children instead of the module's,
-        # so it never found this and the _expert_c naming rule never fired
-        module = b.module("m", b.procedure("cluster"), b.procedure("cluster_alloc"))
-
-        assert module.procedure("cluster").has_alloc_sibling
-        assert module.procedure("cluster").alloc_sibling.name == "cluster_alloc"
-
-    def test_an_alloc_procedure_is_not_its_own_sibling(self):
-        module = b.module("m", b.procedure("cluster"), b.procedure("cluster_alloc"))
-
-        assert module.procedure("cluster_alloc").is_alloc_variant
-        assert not module.procedure("cluster_alloc").has_alloc_sibling
-
-    def test_a_lone_procedure_has_no_sibling(self):
-        module = b.module("m", b.procedure("cluster"))
-
-        assert not module.procedure("cluster").has_alloc_sibling
-
-    def test_a_sibling_in_another_module_does_not_count(self):
-        # the naming rule is explicitly scoped to the same module
-        project = b.project(
-            b.module("a", b.procedure("cluster")),
-            b.module("b", b.procedure("cluster_alloc")),
-        )
-
-        assert not project.procedure("a", "cluster").has_alloc_sibling
-
-    def test_an_unparented_procedure_has_no_sibling(self):
-        assert not b.procedure("cluster").has_alloc_sibling
-
-    def test_sibling_lookup_is_case_insensitive(self):
-        module = b.module("m", b.procedure("Cluster"), b.procedure("CLUSTER_ALLOC"))
-
-        assert module.procedure("cluster").has_alloc_sibling
-
-
 class TestModule:
     def test_lookup_by_name(self):
         module = b.module("m", b.procedure("p"), parameters=(b.parameter("MODE_X", "1"),))

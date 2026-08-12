@@ -296,7 +296,7 @@ class TestDirectives:
         assert argument.directives.default.expression == expression
 
     def test_output_from_is_read(self, project):
-        argument = project.procedure("fx_edges", "fx_cluster").argument("n_work")
+        argument = project.procedure("fx_edges", "fx_cluster_expert").argument("n_work")
 
         directive = argument.directives.output_from
         assert directive.procedure == "fx_work_size"

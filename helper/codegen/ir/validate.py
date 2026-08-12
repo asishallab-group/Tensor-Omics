@@ -194,9 +194,10 @@ def _check_impl_is_not_exported(procedure: Procedure, diagnostics: DiagnosticBag
 #: with. `_expert` is the generator's own: `foo_expert_impl` beside `foo_impl` makes two
 #: procedures called `foo_expert`, and the emitter would strip the suffix and call
 #: `foo_impl` from the wrong one -- wrong code that compiles, because `foo_impl` exists.
-#: `_alloc` is the hand-written pair convention `abi.c_abi.stripped_name` still reads, so
-#: `foo_alloc_impl` would generate `foo_alloc` and publish it to Python and R as `foo`,
-#: colliding with a real `foo` in the same family.
+#: `_alloc` is the hand-written pair convention the framework used before any wrapper was
+#: generated. Nothing reads it any more, which is exactly why it stays reserved: `foo_alloc`
+#: beside a generated `foo` would read to every author as the allocating tier while being an
+#: ordinary second procedure, and the shape is one nobody should reintroduce.
 _RESERVED_BASE_SUFFIXES = ("expert_suffix", "alloc_suffix")
 
 

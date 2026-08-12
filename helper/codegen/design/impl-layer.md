@@ -79,11 +79,12 @@ bindings. Python and R have always published `foo` and `foo_expert`;
 the two halves of the same procedure went by different names depending on which language you
 read. Now Fortran says what Python and R say, and one name means one thing in all four.
 
-The consequence worth recording is what that does to `stripped_name`: for generated code it is
-now the **identity**. Synthesis names the tiers `foo` and `foo_expert` outright, and the C
+The consequence worth recording is what that does to `stripped_name`: it is now the
+**identity**, full stop. Synthesis names the tiers `foo` and `foo_expert` outright, and the C
 symbols come out `foo_c` and `foo_expert_c` by adding a suffix rather than by translating a
-name. The translating branch survives only for f42's hand-written pairs (below) and retires
-itself when those are converted. Because the translation was already producing these names,
+name. The translating branch survived a while longer for f42's hand-written pairs (below) and
+was retired on 2026-08-12, once none was left. Because the translation was already producing
+these names,
 the exported C symbols and the published Python and R functions came through the rename
 unchanged, byte for byte; the whole of it is internal to Fortran and to the generator.
 
@@ -290,14 +291,18 @@ simply stayed in `f42_stats_impl` and were published from there, unsplit and unc
 That they *could* stay is what made it worth asking whether they should, and both converted a
 step later — see "Exports that were implementations" below.
 
-**`alloc_suffix` outlives the conversion, for now.** The generator never emits `_alloc`, and
-with `f42_kd_tree` converted no hand-written pair is left for `stripped_name`'s
-translating branch to recognise. Retiring that branch is kept as a separate change so that a
-bug in the retirement and a bug in the conversion cannot land in the same lines. The reserved
-name stays regardless: `_check_impl_is_not_named_for_a_wrapper` refuses `foo_alloc_impl` and
-`foo_expert_impl` alike, the first because its published name would collide with a real `foo`
-in the same family, the second because it would put two procedures called `foo_expert` in one
-module and the emitter would call `foo_impl` from the wrong one — wrong code that compiles.
+**`alloc_suffix` outlives the conversion; the translation did not.** With `f42_kd_tree`
+converted no hand-written pair was left for `stripped_name`'s translating branch to recognise,
+and it was retired on 2026-08-12 -- a separate commit from the conversions, so that a bug in
+the retirement and a bug in a conversion could not land in the same lines. `is_alloc_variant`
+and `alloc_sibling` went with it. What a `foo_alloc` gets today is publication as `foo_alloc`:
+a rule that renames a procedure behind its author's back has to have a customer, and this one
+stopped having any. The reserved name stays regardless:
+`_check_impl_is_not_named_for_a_wrapper` refuses `foo_alloc_impl` and `foo_expert_impl` alike
+— the first because `foo_alloc` beside a generated `foo` reads to every author of this
+framework as the allocating tier while being an ordinary second procedure, the second because
+it would put two procedures called `foo_expert` in one module and the emitter would call
+`foo_impl` from the wrong one — wrong code that compiles.
 
 **A bug the conversion surfaced.** `calc_percentile` validated `size(array) <= size(perm)`,
 the inverse of the contract it exists to serve: a percentile over a *slice* of a sorted
@@ -838,8 +843,8 @@ read, and a Fortran emitter renders them into `src/generated/`.
    prologue's own); give both `Meta(category = the export category)` and the frontend's
    conventions, and put both in one synthesised `module tox_X`. The names are decided here and
    are final: the allocating wrapper is `foo` and its twin `foo_expert`, or, with nothing to
-   take over, the lone wrapper is `foo` — so `abi.c_abi.stripped_name` has nothing left to
-   translate and the C symbols follow by suffix alone. A side table records, per wrapper, only
+   take over, the lone wrapper is `foo` — so `abi.c_abi.stripped_name` has nothing to translate
+   (it is the identity) and the C symbols follow by suffix alone. A side table records, per wrapper, only
    what its own signature cannot give: the implementation it calls, and the mode a per-mode
    wrapper fixes. The dropped arguments and the permutations to sort are not recorded — the
    emitter recomputes them through the same `taken_over_arguments` and `sorted_permutations`

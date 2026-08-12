@@ -99,7 +99,7 @@ def _prepares(plain: CWrapper, expert: CWrapper, by_impl_name, conventions):
     The arguments only the expert half asks for, named -- and, for a generated pair, what is
     actually done to them, which the signature alone cannot say. A hand-written pair gets the
     argument names only: the generator does not read bodies, so it will not claim to know
-    how an author's own `_alloc` prepares them.
+    how a hand-written entry point prepares them.
     """
     theirs = {argument.name.lower() for argument in expert.arguments}
     ours = {argument.name.lower() for argument in plain.arguments}
@@ -109,7 +109,7 @@ def _prepares(plain: CWrapper, expert: CWrapper, by_impl_name, conventions):
     spec = by_impl_name.get(expert.procedure.name.lower())
     if spec is None:
         # a hand-written pair: the generator does not read bodies, so it names the arguments
-        # and will not claim to know how the author's own `_alloc` prepares them
+        # and will not claim to know how the author's own entry point prepares them
         return (names, (f"prepares {_join(names)}",)) if names else ((), ())
 
     how = []

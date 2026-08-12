@@ -105,24 +105,21 @@ def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) 
 def stripped_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
     """The wrapper name without the `_c` suffix, as the binding languages call it.
 
-    A generated wrapper is published under its own Fortran name: synthesis names the tiers
-    `foo` and `foo_expert` outright, so there is nothing left to translate.
+    Which is the Fortran name, unchanged. Synthesis names the tiers `foo` and `foo_expert`
+    outright, and a hand-written export is published as written.
 
-    A **hand-written** pair is the one that still needs translating. f42 writes its two tiers
-    as `foo` and `foo_alloc` -- the shape the whole framework used before the wrappers were
-    generated -- and the allocating one is the one callers want, so it takes the plain name
-    and its twin becomes `foo_expert`. Only where such a twin exists: a lone `foo_alloc`
-    keeps its name rather than being needlessly renamed.
+    It was not always the identity. Until f42 converted (2026-08-11) this translated a
+    hand-written `foo` / `foo_alloc` pair into the published `foo` / `foo_expert`, which is
+    how the framework spelled the two tiers before any of them were generated. No source
+    writes that pair now, so the translation went with it: a rule that renames procedures
+    behind the author's back has to earn its keep, and one with no remaining customer cannot.
+    An author who writes `foo_alloc` today gets a procedure published as `foo_alloc`.
 
-    This branch is what keeps f42's published API unchanged while its implementations are
-    still hand-written, and it retires itself the moment they are converted to `_impl`.
+    `Conventions.alloc_suffix` outlives this. `validate` still refuses an implementation whose
+    base name ends in it, which is what stops the shape being reintroduced where it would do
+    real damage -- beside a generated `foo` that already means the allocating tier.
     """
-    name = procedure.name
-    if procedure.is_alloc_variant:
-        return name[: -len(conventions.alloc_suffix)]
-    if procedure.has_alloc_sibling:
-        return f"{name}{conventions.expert_suffix}"
-    return name
+    return procedure.name
 
 
 class _Builder:

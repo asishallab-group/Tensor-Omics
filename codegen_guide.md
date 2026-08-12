@@ -60,7 +60,7 @@ Related reading, once this is not enough:
   - [6.2 What you write: `M_EXPORT_C`](#62-what-you-write-m_export_c)
   - [6.3 What you now do yourself: validate](#63-what-you-now-do-yourself-validate)
   - [6.4 What works exactly as in Part I](#64-what-works-exactly-as-in-part-i)
-  - [6.5 An `_alloc` pair by hand](#65-an-_alloc-pair-by-hand)
+  - [6.5 An `_alloc` pair by hand — gone](#65-an-_alloc-pair-by-hand--gone)
   - [6.6 An array of any rank through one signature](#66-an-array-of-any-rank-through-one-signature)
   - [6.7 Never export an implementation](#67-never-export-an-implementation)
 
@@ -995,27 +995,26 @@ Everything that is a *binding* rule rather than a wrapper rule, which is most of
 | `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
 | `DM_RESULT_SIZE_IS` | as in Part I (§5.6): Python and R trim the result, Fortran callers still get the full buffer |
 | a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
-| the two tiers | the same `foo` / `foo_expert` API, but you write both halves and name them `<p>_alloc` / `<p>` (§6.5) |
 
 What is *not* available: the generated validation block, the plain wrapper's automatic allocation
 and sorting, the prologue hook, and the mode split. Those are things the generator writes into a
 wrapper, and here there is no wrapper for it to write into.
 
-### 6.5 An `_alloc` pair by hand — don't
+### 6.5 An `_alloc` pair by hand — gone
 
-**No source writes one any more.** `f42_kd_tree` was the last, and it converted; the section is
-kept because `abi/c_abi.py:stripped_name` still recognises the shape, so it is still possible to
-write one by accident. Don't: write an `_impl` and let §2 give you `foo` / `foo_expert`.
+**Do not write one, and do not expect the generator to know what it is.** Write an `_impl` and
+let §2 give you `foo` / `foo_expert`.
 
-What the shape was: two procedures in one module, named `<p>_alloc` and `<p>`, of which the
-allocating one is the one callers want. `stripped_name` translates it into the published names —
-the `_alloc` half loses its suffix and becomes `foo`, and a plain half that has an `_alloc` sibling
-becomes `foo_expert` — so the export path and the implementation path publish the same two names.
-**The generator never emits it**: a generated pair is named `foo` / `foo_expert` outright.
+The shape was two hand-written procedures in one module, `<p>_alloc` and `<p>`, of which the
+allocating one is the one callers want — how this framework spelled the two tiers before any
+wrapper was generated. `abi/c_abi.py:stripped_name` used to translate it on the way out, so the
+pair published as `foo` / `foo_expert` and matched what the implementation path produces.
+`f42_kd_tree` was the last source writing one; it converted on 2026-08-11, and the translation
+was retired on 2026-08-12. **Every procedure is now published under its own Fortran name.**
 
-That translation is now unexercised by anything in `src/`, and retiring it is a change of its own.
-Until then it is a trap and not a tool: the reserved-name rule refuses `foo_alloc_impl` for exactly
-that reason (see `design/impl-layer.md`).
+So a `foo_alloc` written today is published as `foo_alloc`. The reserved-name rule still refuses
+`foo_alloc_impl`, because that name beside a generated `foo` reads as the allocating tier while
+being an ordinary second procedure (see `design/impl-layer.md`).
 
 Nothing about the shape was ever the obstacle to converting one, either. An implementation module
 may hold ordinary exported procedures alongside its implementations, so no module ever had to be

@@ -16,14 +16,14 @@ def link(item, item_type="subroutine"):
 
 
 class TestAProcedureWithABinding:
-    resolver = LinkResolver(bindings={"build_kd_index_alloc": "build_kd_index"})
+    resolver = LinkResolver(bindings={"build_kd_index": "build_kd_index"})
 
     def test_python_gets_a_sphinx_reference(self):
-        assert (render_link(link("build_kd_index_alloc"), self.resolver, "python")
+        assert (render_link(link("build_kd_index"), self.resolver, "python")
                 == ":func:`tensor_omics.build_kd_index`")
 
     def test_r_gets_a_help_link(self):
-        assert (render_link(link("build_kd_index_alloc"), self.resolver, "r")
+        assert (render_link(link("build_kd_index"), self.resolver, "r")
                 == r"\code{\link{build_kd_index}}")
 
 
@@ -54,8 +54,8 @@ class TestAnImplementation:
 class TestAModeParameter:
     def test_in_a_split_family_it_names_the_procedure(self):
         # there is no mode argument left to pass a value to, so the parameter names a function
-        resolver = LinkResolver(bindings={"detect_dosage_effect_alloc": "detect_dosage_effect"},
-                                modes={"mode_dosage": "detect_dosage_effect_alloc"})
+        resolver = LinkResolver(bindings={"detect_dosage_effect": "detect_dosage_effect"},
+                                modes={"mode_dosage": "detect_dosage_effect"})
         assert (render_link(link("MODE_DOSAGE", "variable"), resolver, "python")
                 == ":func:`tensor_omics.detect_dosage_effect`")
 
