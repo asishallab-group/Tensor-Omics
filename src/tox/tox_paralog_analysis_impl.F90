@@ -139,7 +139,7 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(PI)
         real(real64), dimension(n_genes), intent(in), optional :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
             !! DM_REQUIRED_IF_MODE(pattern_mode, tox_paralog_analysis_impl, MODE_SUBFUNC_PATTERN)
             !! DM_MIN(0.0_real64)
         integer(int32), dimension(n_genes), intent(in), optional :: sorted_paralog_norms_perm
@@ -250,7 +250,7 @@ contains
         real(real64), intent(in), optional :: dosage_max_angle
             !! maximum angle in radians that a subset candidate must not exceed, otherwise pruned, default is Pi
         real(real64), dimension(n_genes), intent(in), optional :: subfunc_paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
         integer(int32), dimension(n_genes), intent(in), optional :: subfunc_sorted_paralog_norms_perm
             !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
         real(real64), dimension(n_genes), intent(out), optional :: tmp_subfunc_work_array

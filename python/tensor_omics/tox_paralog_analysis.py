@@ -385,7 +385,7 @@ def detect_subfunctionalization(
         max allowed residual distance from `ancestor`
         The minimum valid value is `0.0`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
-        euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+        euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
         The minimum valid value is `0.0`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
         ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor

@@ -390,13 +390,14 @@ generated wrapper's documentation the moment it was not. Body comments in an imp
 src/
   macros.h            included by every source, by this path
   f42/                infrastructure, library-agnostic
-    utils/              f42_utils re-exports f42_math, _sort, _random, _vector, _stats
+    utils/              f42_utils_impl re-exports f42_{math,sort,random,vector,stats}_impl
     serde/              likewise, per element type
   tox/                the tox implementations -- the API's source of truth, hand-written
     data_integration/   a family too big for one file
   data/               the hand-written data-set API (tox_data_*)
   generated/          NOTHING here is hand-written
     tox/                the wrappers, mirroring src/tox
+    f42/                likewise for src/f42
     bindings/c/         the Fortran C wrappers
     bindings/r/         the R `.Call` shims
 ```

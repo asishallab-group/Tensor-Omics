@@ -11,14 +11,14 @@ module f42_sort_impl
     M_IMPLICIT_NONE
 
     !> Generic indirect (permutation-based) sort, dispatches on the array's element type.
-    !| See [[f42_utils(module):sort_real(subroutine)]], [[f42_utils(module):sort_integer(subroutine)]],
-    !| [[f42_utils(module):sort_character(subroutine)]] for the implementations. Uses quicksort.
+    !| See [[f42_sort_impl(module):sort_real(subroutine)]], [[f42_sort_impl(module):sort_integer(subroutine)]],
+    !| [[f42_sort_impl(module):sort_character(subroutine)]] for the implementations. Uses quicksort.
     interface sort_array
         module procedure sort_real, sort_integer, sort_character
     end interface sort_array
 
     !> Generic indirect (permutation-based) heapsort, dispatches on the array's element type.
-    !| Prefer this over [[f42_utils(module):sort_array(interface)]] when a worst-case O(n log n)
+    !| Prefer this over [[f42_sort_impl(module):sort_array(interface)]] when a worst-case O(n log n)
     !| guarantee is needed (quicksort's manual-stack partitioning can degrade on adversarial input),
     !| or when the temporary quicksort stack workspace should be avoided.
     interface sort_array_heapsort
@@ -26,12 +26,12 @@ module f42_sort_impl
         module procedure sort_real_heapsort_expl_size
     end interface sort_array_heapsort
 
-    !> NaN-aware `<` comparison operator for `real(real64)`; see [[f42_utils(module):real_less(function)]].
+    !> NaN-aware `<` comparison operator for `real(real64)`; see [[f42_sort_impl(module):real_less(function)]].
     interface operator(.lessthan.)
         module procedure real_less
     end interface operator(.lessthan.)
 
-    !> NaN-aware `>` comparison operator for `real(real64)`; see [[f42_utils(module):real_greater(function)]].
+    !> NaN-aware `>` comparison operator for `real(real64)`; see [[f42_sort_impl(module):real_greater(function)]].
     interface operator(.greaterthan.)
         module procedure real_greater
     end interface operator(.greaterthan.)

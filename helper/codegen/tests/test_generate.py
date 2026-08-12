@@ -20,7 +20,7 @@ from conftest import REPO_ROOT
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 #: the real tox_errors lives here, so a full generate can build the error module
 # The whole source tree: a DM_DEFAULT may reference a parameter from another package
-# (max_angle's default is f42_utils's PI), and constant resolution only sees the modules
+# (max_angle's default is f42_math_impl's PI), and constant resolution only sees the modules
 # that are parsed. The generator is always run on the full tree, so these end-to-end tests
 # are too. Parsing it per test is slow, so the `real_project` fixture parses it once and the
 # tests reuse it through generate(parsed=...); only the CLI tests, which go through argv,

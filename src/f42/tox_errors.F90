@@ -326,7 +326,7 @@ contains
     !|
     !| @note
     !| This validation is inclusive: `min<=val<=max`<br>
-    !| To achieve exclusive bounds, us above/below from f42_utils,
+    !| To achieve exclusive bounds, use above/below from f42_math_impl,
     !| like: `validate_in_range_real(x, ierr, min=above(0.0_real64), max=below(100.0_real64))` for `0<x<100`
     !| @endnote
     pure subroutine validate_in_range_real(val, ierr, arg_pos, min, max, sentinel, allow_nan, allow_infinite)

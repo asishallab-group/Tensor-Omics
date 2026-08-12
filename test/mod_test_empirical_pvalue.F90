@@ -1,6 +1,6 @@
 !> @file mod_test_empirical_pvalue.f90
 !> Unit test suite for EDF (Empirical Distribution Function)
-!> Contains dedicated tests for compute_edf from f42_utils.
+!> Contains dedicated tests for compute_edf from f42_stats.
 
 module mod_test_empirical_pvalue
   use asserts

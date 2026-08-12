@@ -64,7 +64,7 @@ module f42_xxh3_hashmap
     !| Base type for hashmap and hashset (currently)
     type :: hashmap_base
         integer(int32) :: size = 0
-            !! Number of buckets (always a power of two, see [[f42_utils(module):next_power_of_two(function)]]).
+            !! Number of buckets (always a power of two, see [[f42_math_impl(module):next_power_of_two(function)]]).
         integer(int32) :: count = 0
             !! Number of key-value pairs currently stored.
     end type hashmap_base

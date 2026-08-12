@@ -37,7 +37,7 @@ module tox_trajectory_contribution_analysis_impl
 contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_utils(module):init_random(subroutine)]] beforehand.
+    !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_random_impl(module):init_random(subroutine)]] beforehand.
     subroutine select_random_sample(n_samples, current_sample, random_sample, ierr)
         integer(int32), intent(in) :: n_samples
             !! number of samples
@@ -59,7 +59,7 @@ contains
     end subroutine select_random_sample
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_utils(module):init_random(subroutine)]] beforehand.
+    !| Selects a random sample different to `current_sample`. For reproducibility call [[f42_random_impl(module):init_random(subroutine)]] beforehand.
     subroutine select_random_sample_helper(n_samples, current_sample, random_sample)
         integer(int32), intent(in) :: n_samples
             !! number of samples

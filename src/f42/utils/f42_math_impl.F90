@@ -19,15 +19,15 @@ module f42_math_impl
     !| Called as `is_close(a, b)` with the machine-epsilon tolerance, or as
     !| `is_close(a, b, eps)` where the caller has its own notion of "the same" -- a domain
     !| epsilon such as a smoothing floor, which is coarser than anything the arithmetic
-    !| itself would justify. See [[f42_utils(module):is_close_within(function)]].
+    !| itself would justify. See [[f42_math_impl(module):is_close_within(function)]].
     interface is_close
         module procedure is_close_default
         module procedure is_close_within
     end interface is_close
 
-    !> Tolerance-based approximate equality operator for `real(real64)`; see [[f42_utils(module):is_close_default(function)]].
+    !> Tolerance-based approximate equality operator for `real(real64)`; see [[f42_math_impl(module):is_close_default(function)]].
     !| An operator takes exactly its two operands, so the custom-tolerance form is reachable
-    !| only by calling [[f42_utils(module):is_close(interface)]] directly.
+    !| only by calling [[f42_math_impl(module):is_close(interface)]] directly.
     interface operator(.isclose.)
         module procedure is_close_default
     end interface operator(.isclose.)
@@ -37,9 +37,9 @@ module f42_math_impl
     real(real64), parameter :: PI = 4.0_real64*atan(1.0_real64)
         !! The mathematical constant \( \pi \).
     real(real64), parameter :: EPS = CM_EPS
-        !! Machine epsilon for `real64`, the base tolerance used by [[f42_utils(module):is_close(function)]].
+        !! Machine epsilon for `real64`, the base tolerance used by [[f42_math_impl(module):is_close(interface)]].
     real(real64), parameter :: LOG_2 = log(2.0_real64)
-        !! Natural logarithm of 2, used to compute base-2 logarithms in [[f42_utils(module):logx(subroutine)]].
+        !! Natural logarithm of 2, used to compute base-2 logarithms in [[f42_math_impl(module):logx(subroutine)]].
 
 contains
 

@@ -345,7 +345,7 @@ contains
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
         real(c_double), dimension(n_genes), intent(in), target :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
             !! The minimum valid value is `0.0_real64`.
         integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
             !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
@@ -451,7 +451,7 @@ contains
             !! max allowed residual distance from `ancestor`
             !! The minimum valid value is `0.0_real64`.
         real(c_double), dimension(n_genes), intent(in), target :: paralog_norms
-            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+            !! euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
             !! The minimum valid value is `0.0_real64`.
         integer(c_int), dimension(n_genes), intent(in), target :: sorted_paralog_norms_perm
             !! ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
