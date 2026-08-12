@@ -10,9 +10,11 @@
 
 source build_utils.sh
 
-failed=0
+./test_runner.sh "$@"
 
-./test_runner.sh "$@" || failed=1
+check_exit_code "Test runner failed"
+
+failed=0
 
 echo
 for i in python/test/*.py; do
