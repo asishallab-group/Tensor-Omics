@@ -13,7 +13,7 @@ RUN curl -L --output /usr/local/bin/fpm \
   chmod a+x /usr/local/bin/fpm
 
 # Install R Rcpp package
-RUN Rscript -e "install.packages(c('Rcpp', 'dplyr', 'tidyr', 'ggplot2', 'purr', 'patchwork', 'data.table', 'parallel'), repos='https://cloud.r-project.org/')"
+RUN Rscript -e "install.packages(c('Rcpp'), repos='https://cloud.r-project.org/')"
 
 WORKDIR /opt
 
