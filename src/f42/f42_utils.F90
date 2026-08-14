@@ -262,11 +262,7 @@ contains
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| (no input validation) Compute logarithm for any base: `log_base(val) = log(val)/log(base)`.
-    !| This is the non-validating core of [[f42_utils(module):logx(subroutine)]], split out so it can
-    !| be called from inside `do concurrent` loops without a shared `ierr` (which would be a data
-    !| race). The caller is responsible for guaranteeing valid inputs beforehand -- `val > 0`,
-    !| `base > 0` and `base /= 1` -- e.g. via an up-front [[tox_errors(module):validate_in_range_real(subroutine)]]
-    !| pass; violating them yields a NaN/Inf result instead of an error code.
+    !| Ensure `val > 0`, `base > 0` and `base /= 1`, yields a NaN/Inf result otherwise.
     pure subroutine logx_helper(val, base, exponent)
         real(real64), intent(in) :: val
             !! Value (`x` in \( b^y = x \)), must be `> 0`
