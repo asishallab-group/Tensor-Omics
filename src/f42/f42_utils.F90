@@ -1357,7 +1357,7 @@ contains
         integer(int32), intent(in) :: permutation(:)
             !! permutation vector representing sorted order
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         real(real64), intent(out) :: value
             !! output percentile value
         integer(int32), intent(out) :: ierr
@@ -1373,7 +1373,7 @@ contains
         call validate_dimension_size(n, ierr, arg_pos=2_int32)
         call validate_in_range_int(size(array, kind=int32), ierr, min=1_int32, max=n, arg_pos=1_int32)
         call validate_all_in_range_int(permutation, n, ierr, min=1_int32, max=size(array, kind=int32), arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=3_int32)
+        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=1.0_real64, arg_pos=3_int32)
 
         if (is_err(ierr)) return
 
@@ -1386,9 +1386,9 @@ contains
         integer(int32), intent(in) :: n
             !! Sample size
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 
-        rank = (percentile/100.0_real64)*real(n - 1, real64) + 1.0_real64
+        rank = percentile*real(n - 1, real64) + 1.0_real64
     end function calc_percentile_rank
 
     !> AUTHOR_AARON_SCHROEDER
@@ -1400,7 +1400,7 @@ contains
         integer(int32), intent(in) :: permutation(:)
             !! permutation vector representing sorted order
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         real(real64), intent(out) :: value
             !! output percentile value
 
@@ -1439,7 +1439,7 @@ contains
         real(real64), intent(in) :: array(:)
             !! Input array
         real(real64), intent(in) :: percentile
-            !! Desired percentile (0-100)
+            !! Desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         real(real64), intent(out) :: value
             !! Output percentile value
         integer(int32), intent(out) :: ierr
@@ -1453,7 +1453,7 @@ contains
         call set_ok(ierr)
 
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
-        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=100.0_real64, arg_pos=2_int32)
+        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=1.0_real64, arg_pos=2_int32)
 
         if (is_err(ierr)) return
 

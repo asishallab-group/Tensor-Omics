@@ -429,7 +429,7 @@ module tox_data_integration
             integer(int32), intent(in) :: pool_size
                 !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
             real(real64), intent(in), optional :: residual_range_quantile
-                !! Quantile for determining the residual range, default: 95.0
+                !! Quantile in [0,1] for determining the residual range, default: 0.95
             real(real64), intent(out) :: shared_residual_range
                 !! Computed residual range (R)
             real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -447,7 +447,7 @@ module tox_data_integration
             integer(int32), intent(in) :: pool_size
                 !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
             real(real64), intent(in), optional :: residual_range_quantile
-                !! Quantile for determining the residual range, default: 95.0
+                !! Quantile in [0,1] for determining the residual range, default: 0.95
             real(real64), intent(out) :: shared_residual_range
                 !! Computed residual range (R)
             real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -473,7 +473,7 @@ module tox_data_integration
             real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
                 !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
             real(real64), intent(in), optional :: residual_range_quantile
-                !! Quantile for determining the residual range, default: 95.0
+                !! Quantile in [0,1] for determining the residual range, default: 0.95
             real(real64), intent(out) :: shared_residual_range
                 !! Computed residual range (R)
             integer(int32), intent(out) :: ierr
