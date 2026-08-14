@@ -12,8 +12,8 @@
 module tox_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -225,9 +225,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(method, 8)
 
         block
-            character(len=:), allocatable :: method_f
-            call c_char_1d_as_string(method, method_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: method_f
+            method_f => c_char_as_view(method)
 
             select case (method_f)
                 case ("average")

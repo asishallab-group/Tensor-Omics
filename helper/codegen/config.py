@@ -61,13 +61,10 @@ class Conventions:
     #: also fixes the direction of the dependency -- an implementation can no longer reach a
     #: generated wrapper, which would invert the layering and, within one family, be a cycle.
     #:
-    #: NOT every member is allocation-free, which the list long claimed and nothing checked:
-    #: `tox_conversions` has one procedure returning a deferred-length string, and in Fortran
-    #: that can only be `allocatable`. It was two until the C layer moved strings to a pointer
-    #: view; the survivor is `c_char_1d_as_string`, which stays because `zip_get_name` hands
-    #: back a NUL-terminated name in a fixed window with no bound to remap against. No
-    #: implementation imports the module at all, so nothing is wrong today -- but the list is a
-    #: curated boundary, not a proof. See the design note.
+    #: Every member is allocation-free, and as of 2026-08-14 that is true rather than assumed:
+    #: `tox_conversions` was the last holdout, and its string conversions became pointer views.
+    #: Nothing here allocates, so the check that would prove it is now worth writing -- which
+    #: was the whole reason it kept being deferred.
     #:
     #: `f42_utils` sat here while its `f42_stats` child still had hand-written `_alloc` halves,
     #: and it left the list when that family became `_impl` modules -- reached now by the

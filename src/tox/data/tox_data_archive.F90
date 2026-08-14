@@ -235,7 +235,7 @@ contains
         type(c_ptr) :: zip_handle
         integer(c_int) :: error
         integer(c_int64_t) :: i, num_entries
-        character(len=:), allocatable :: filename
+        character(len=:), pointer :: filename
         logical(c_bool) :: file_exists
         integer(int32) :: i_fortran
         integer(c_int64_t) :: i_c
@@ -267,8 +267,9 @@ contains
         num_entries = zip_get_num_entries(zip_handle, 0)
         do i_fortran = 0, int(num_entries - 1, int32)
             call int32_as_c_int64(i_fortran, i_c)
-            call get_zip_entry_name(zip_handle, i_c, filename, ierr)
-            if (is_err(ierr)) then
+            call get_zip_entry_name(zip_handle, i_c, filename)
+            if (.not. associated(filename)) then
+                call set_err_once(ierr, ERR_READ_DATA)
                 error = zip_close(zip_handle)
                 return
             end if
@@ -329,25 +330,31 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Helper function to get the name of a ZIP entry
-    subroutine get_zip_entry_name(zip_handle, entry_index, entry_name, ierr)
-        use tox_conversions, only: c_char_1d_as_string
+    !| `entry_name` is a **view into libzip's own memory**, not a copy: it is valid only while
+    !| `zip_handle` is open, and must not be kept past `zip_close`. The one caller uses it
+    !| inside the loop that reads the archive, which is exactly that window.
+    subroutine get_zip_entry_name(zip_handle, entry_index, entry_name)
+        use tox_conversions, only: c_char_as_view
         type(c_ptr), intent(in) :: zip_handle
             !! Zip file connection
         integer(c_int64_t), intent(in) :: entry_index
             !! Index of the entry
-        character(len=:), allocatable, intent(out) :: entry_name
-            !! Name of the entry
-        integer(int32), intent(out) :: ierr
-            !! Error code
+        character(len=:), pointer, intent(out) :: entry_name
+            !! Name of the entry, ending at libzip's NUL. Unassociated if the entry has no name.
 
         character(kind=c_char, len=1), pointer :: name_ptr(:)
+        type(c_ptr) :: name_cptr
         integer(int32), parameter :: MAX_NAME_LENGTH = 4096  ! Reasonable maximum
+
         ! zip_get_name returns a pointer to a NUL-terminated C string of unknown length; we don't
-        ! have a real bound from libzip, so we map a fixed-size window over it and rely on
-        ! c_char_1d_as_string to stop at the first NUL byte. MAX_NAME_LENGTH must stay >= the
+        ! have a real bound from libzip, so we map a fixed-size window over it and let
+        ! c_char_as_view stop at the first NUL byte. MAX_NAME_LENGTH must stay >= the
         ! longest entry name any archive we read can contain.
-        call c_f_pointer(zip_get_name(zip_handle, entry_index, 0), name_ptr, [MAX_NAME_LENGTH])
-        call c_char_1d_as_string(name_ptr, entry_name, ierr)
+        nullify (entry_name)
+        name_cptr = zip_get_name(zip_handle, entry_index, 0)
+        if (.not. c_associated(name_cptr)) return
+        call c_f_pointer(name_cptr, name_ptr, [MAX_NAME_LENGTH])
+        entry_name => c_char_as_view(name_ptr)
     end subroutine get_zip_entry_name
 
     !> AUTHOR_AARON_SCHROEDER

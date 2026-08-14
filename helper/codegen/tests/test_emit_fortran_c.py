@@ -545,12 +545,14 @@ class TestItCompiles:
         # to a non-existent procedure compile as an implicit external
         source = (built / "fx_basics_c.F90").read_text()
         probe = tmp_path / "probe.F90"
-        probe.write_text(source.replace("c_char_1d_as_string(", "c_char_1d_as_string_typo(", 1))
+        probe.write_text(source.replace("c_char_as_view(", "c_char_as_view_typo(", 1))
 
         result = compile_fortran(probe, built)
 
         assert result.returncode != 0
-        assert "not explicitly declared" in result.stderr
+        # gfortran words it differently for a function reference ("has no IMPLICIT type") than
+        # for a call ("not explicitly declared"), so pin the symbol rather than the phrasing
+        assert "c_char_as_view_typo" in result.stderr
 
 
 class TestImportsMatchTheBody:
@@ -579,13 +581,21 @@ class TestImportsMatchTheBody:
             parameters=[b.parameter("MODE_MEAN", "1"), b.parameter("MODE_MEDIAN", "2")],
         )
 
-    def test_is_err_is_imported_where_an_input_is_converted(self):
-        # a mode string is the only conversion left that can fail -- it may name no
-        # parameter -- so the body bails on its own error and therefore names is_err
+    def test_is_err_is_imported_nowhere_now_that_no_conversion_can_fail(self):
+        """A mode string was the last input conversion that could fail, because it allocated.
+        It takes a pointer view now, which cannot -- so no wrapper reads its own `ierr` after
+        a conversion, and none should name `is_err`.
+
+        An unused `only:` name is not a compile error in any Fortran, so this is the only
+        thing standing between the import list and silent rot. It earned that when the view
+        replaced the allocation and left the import behind."""
         text = self.mode_module()
 
-        assert "is_err" in _errors_imported(text)
-        assert "if (is_err(ierr)) return" in text
+        assert "is_err" not in _errors_imported(text)
+        assert "is_err" not in text
+        # and the mode still rejects an unknown value -- the error path is intact, it is
+        # only the conversion that stopped being able to fail
+        assert "ERR_INVALID_INPUT" in text
 
     def test_is_err_is_not_imported_where_nothing_is_converted(self):
         text = self.module_of(b.real("x", Intent.IN, doc="a plain input"))

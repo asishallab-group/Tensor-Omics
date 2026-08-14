@@ -210,12 +210,20 @@ turn the list from an assertion into a claim the build tests, which is the bette
 deferred once because it would have failed on `f42_stats` while that conversion was still
 scheduled, and the note here then said it would pass afterwards.
 
-**It would not.** Checked 2026-08-14: `tox_conversions` has one procedure,
-`c_char_1d_as_string`, whose `intent(out)` string is `character(len=:), allocatable` — a
-deferred-length result has no other spelling in Fortran. So the module-level form of the check
-still fails today. (It was two procedures until the C layer moved strings to a pointer view;
-`c_char_2d_as_string` went with that change, and the survivor stays only because
-`get_zip_entry_name` needs a NUL scan over a libzip pointer of unknown length.)
+**It would not — and then it did.** Checked 2026-08-14: `tox_conversions` had two procedures
+whose `intent(out)` string was `character(len=:), allocatable`, a deferred-length result having
+no other spelling in Fortran, so the module-level check failed. Later the same day the C layer
+moved strings to pointer views. `c_char_2d_as_string` went with that change; the survivor,
+`c_char_1d_as_string`, looked permanent because `get_zip_entry_name` needs a NUL scan over a
+libzip pointer of unknown length — until FES pointed out the scan does not require an
+allocation. It is now `c_char_as_view`: view the fixed window, find the NUL, and set the length
+by **pointer assignment to a substring**, which is what a deferred-length pointer accepts.
+(`c_f_pointer` onto a deferred length is the construct that compiles and then misbehaves; see
+`c-layer.md`. And a length scanned inside a procedure cannot be declared there at all, because
+a pointer's non-deferred length must be a specification expression — hence the substring.)
+
+**So every whitelisted module is allocation-free, and the check is unblocked.** The cheap
+module-level form is the one to write; the per-imported-procedure form is no longer needed.
 
 What it does *not* mean is that anything is wrong: **no implementation module imports
 `tox_conversions` at all.** Its only consumers are `f42_safeguard`, which takes the elemental

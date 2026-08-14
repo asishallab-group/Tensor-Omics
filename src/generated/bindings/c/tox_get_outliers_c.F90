@@ -13,8 +13,8 @@
 module tox_get_outliers_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -115,9 +115,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(excluded_low_sd, n_families)
 
         block
-            character(len=:), allocatable :: mode_f
-            call c_char_1d_as_string(mode, mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: mode_f
+            mode_f => c_char_as_view(mode)
 
             select case (mode_f)
                 case ("plain")
@@ -314,9 +313,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_means_aux, n_families)
 
         block
-            character(len=:), allocatable :: mode_f
-            call c_char_1d_as_string(mode, mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: mode_f
+            mode_f => c_char_as_view(mode)
 
             select case (mode_f)
                 case ("plain")

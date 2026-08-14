@@ -12,8 +12,8 @@
 module tox_trajectory_contribution_analysis_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -105,9 +105,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(total_contributions, n_permutations)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -219,9 +218,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_dependent, n_timepoints)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -357,9 +355,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(local_contributions, n_dims)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -452,9 +449,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(total_contributions, n_selected_factors * n_selected_dependents * n_samples)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -560,9 +556,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_dependent, n_timepoints)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -638,9 +633,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -881,9 +875,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(acceleration_contribution_series, n_timepoints * n_factors * n_factors * n_samples)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")
@@ -991,9 +984,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(acceleration_contribution_series, n_timepoints * n_factors * n_factors * n_samples)
 
         block
-            character(len=:), allocatable :: baseline_mode_f
-            call c_char_1d_as_string(baseline_mode, baseline_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: baseline_mode_f
+            baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
                 case ("raw")

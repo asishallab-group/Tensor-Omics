@@ -116,8 +116,6 @@ class FortranCEmitter:
         # what the body will actually name -- an unused `only:` name is not a compile error
         # in any Fortran, so a fixed list goes stale silently
         errors = ["set_ok", "set_err"]
-        if _converts_an_input(module):
-            errors.append("is_err")  # every read-in conversion bails on its own error
         errors.append("ERR_POINTER_NULL")
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
@@ -456,9 +454,13 @@ class FortranCEmitter:
         writer = Writer()
         writer.line("block")
         with writer.indent():
-            writer.line(f"character(len=:), allocatable :: {local}")
-            writer.line(f"call c_char_1d_as_string({name}, {local}, {error})")
-            writer.line(f"if (is_err({error})) return")
+            # A view, not a copy: nothing to allocate and nothing that can fail, so no ierr
+            # check follows. It ends at the first NUL where the caller wrote one and spans
+            # the buffer where it did not, so a C caller's "ward\0\0\0\0" and a generated
+            # binding's "ward    " both reach the same case -- the second because Fortran
+            # blank-pads the shorter operand of the comparison.
+            writer.line(f"character(len=:), pointer :: {local}")
+            writer.line(f"{local} => c_char_as_view({name})")
             writer.blank()
             writer.line(f"select case ({local})")
             with writer.indent():
@@ -558,23 +560,15 @@ def _conversion_helpers(wrapper: CWrapper) -> set[str]:
     helpers: set[str] = set()
     for argument in wrapper:
         if argument.conversion is Conversion.MODE:
-            helpers.add("c_char_1d_as_string")
+            helpers.add("c_char_as_view")
     return helpers
 
 
-def _converts_an_input(module: CWrapperModule) -> bool:
-    """Whether any wrapper here reads a value in through a conversion that can fail.
-
-    A mode string is the only one: it may name no parameter, and `c_char_1d_as_string` may
-    fail to allocate. That is what makes the body test `is_err`. A character remap cannot
-    fail, and a logical assignment cannot either, so a module doing only those never
-    names it.
-    """
-    return any(
-        a.conversion is Conversion.MODE
-        for wrapper in module
-        for a in wrapper
-    )
+# `is_err` used to be imported wherever a wrapper read a value in through a conversion that
+# could fail -- which meant a mode string, the only one that allocated. Nothing in this layer
+# converts an input any more: a character is remapped, a logical is assigned, and a mode takes
+# a view, none of which can fail. An unused `only:` name is not a compile error in any Fortran,
+# so the import would have gone stale silently; `TestImportsMatchTheBody` is what caught it.
 
 
 def _chunks(items, size):
