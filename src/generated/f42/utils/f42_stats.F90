@@ -209,9 +209,9 @@ contains
         real(real64), dimension(n_array), intent(in) :: array
             !! input array
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         real(real64), intent(out) :: value
             !! output percentile value
         integer(int32), intent(in), optional :: n_considered
@@ -229,7 +229,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_array, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=3_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(percentile, ierr, arg_pos=3_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(n_considered, ierr, arg_pos=5_int32, min=0_int32, max=n_array)
         call validate_all_in_range_real(array, n_array, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
@@ -270,9 +270,9 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_array`.
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         real(real64), intent(out) :: value
             !! output percentile value
         integer(int32), intent(in), optional :: n_considered
@@ -289,7 +289,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_array, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=4_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(percentile, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(n_considered, ierr, arg_pos=6_int32, min=0_int32, max=n_array)
         call validate_all_in_range_real(array, n_array, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(array_perm, n_array, ierr, arg_pos=3_int32, min=1_int32, max=n_array)

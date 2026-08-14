@@ -46,10 +46,10 @@ contains
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: abs_residual_pool_perm
@@ -57,7 +57,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=2_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=4_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
         if (is_err(ierr)) return
 #endif
@@ -98,17 +98,17 @@ contains
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=5_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=5_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_int(abs_residual_pool_perm, pool_size, ierr, arg_pos=2_int32, min=1_int32, max=pool_size)
         if (is_err(ierr)) return
@@ -154,10 +154,10 @@ contains
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:), allocatable :: tmp_abs_residual_pool
@@ -169,7 +169,7 @@ contains
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return
@@ -229,10 +229,10 @@ contains
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -242,7 +242,7 @@ contains
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=10_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
         if (is_err(ierr)) return

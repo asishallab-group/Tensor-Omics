@@ -114,7 +114,7 @@
     "body": [
       "${1:result} = determine_shared_residual_range(",
       "    abs_residual_pool=${2:abs_residual_pool},",
-      "    residual_range_quantile=${3:95.0},",
+      "    residual_range_quantile=${3:0.95},",
       ")"
     ]
   },
@@ -125,7 +125,7 @@
       "${1:result} = determine_shared_residual_range_expert(",
       "    abs_residual_pool=${2:abs_residual_pool},",
       "    abs_residual_pool_perm=${3:abs_residual_pool_perm},",
-      "    residual_range_quantile=${4:95.0},",
+      "    residual_range_quantile=${4:0.95},",
       ")"
     ]
   },
@@ -136,7 +136,7 @@
       "${1:result} = determine_study_shared_residual_range(",
       "    neighborhood_residuals_S1=${2:neighborhood_residuals_S1},",
       "    neighborhood_residuals_S2=${3:neighborhood_residuals_S2},",
-      "    residual_range_quantile=${4:95.0},",
+      "    residual_range_quantile=${4:0.95},",
       ")"
     ]
   },
@@ -613,7 +613,7 @@
       "    rdi=${2:rdi},",
       "    sorted_rdi=${3:sorted_rdi},",
       "    perm=${4:perm},",
-      "    percentile=${5:95.0},",
+      "    percentile=${5:0.95},",
       ")"
     ]
   },
@@ -625,7 +625,7 @@
       "    n_families=${2:n_families},",
       "    distances=${3:distances},",
       "    gene_to_fam=${4:gene_to_fam},",
-      "    percentile=${5:95.0},",
+      "    percentile=${5:0.95},",
       ")"
     ]
   },

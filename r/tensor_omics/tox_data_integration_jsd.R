@@ -13,13 +13,13 @@
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
 #'   NaN is permitted for this value.
-#' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `100.0`.
-#'   The default value is `95.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @return a numeric scalar. Computed residual range (R)
 #' @export
-determine_shared_residual_range <- function(abs_residual_pool, residual_range_quantile = 95.0) {
+determine_shared_residual_range <- function(abs_residual_pool, residual_range_quantile = 0.95) {
     abs_residual_pool <- .tox_as_double_vector(abs_residual_pool, "abs_residual_pool")
     residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
     .result <- .Call("determine_shared_residual_range_call", abs_residual_pool, residual_range_quantile)
@@ -46,13 +46,13 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
 #' @param abs_residual_pool_perm a integer vector. The permutation vector that sorts `abs_residual_pool`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `pool_size`.
-#' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `100.0`.
-#'   The default value is `95.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @return a numeric scalar. Computed residual range (R)
 #' @export
-determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residual_pool_perm, residual_range_quantile = 95.0) {
+determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residual_pool_perm, residual_range_quantile = 0.95) {
     abs_residual_pool <- .tox_as_double_vector(abs_residual_pool, "abs_residual_pool")
     abs_residual_pool_perm <- .tox_as_integer_vector(abs_residual_pool_perm, "abs_residual_pool_perm")
     residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
@@ -79,13 +79,13 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 #'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
-#' @param residual_range_quantile a numeric scalar. Quantile for determining the residual range
+#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `100.0`.
-#'   The default value is `95.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
 #' @return a numeric scalar. Computed residual range (R)
 #' @export
-determine_study_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 95.0) {
+determine_study_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 0.95) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
     neighborhood_residuals_S2 <- .tox_as_double_array(neighborhood_residuals_S2, "neighborhood_residuals_S2", 3L)
     residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")

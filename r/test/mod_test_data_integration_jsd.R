@@ -22,11 +22,11 @@ test_determine_shared_residual_range <- function() {
     9,0,1,2
   ), dim = c(3, 2, 2))
 
-  R <- determine_study_shared_residual_range(S1, S2, 95)
+  R <- determine_study_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 10.65), "Test 1 failed: expected ~10.65")
 
   # Test 2 — Custom quantile
-  R <- determine_study_shared_residual_range(S1, S2, 50)
+  R <- determine_study_shared_residual_range(S1, S2, 0.5)
   assert_true(approx_equal(R, 4.0), "Test 2 failed: expected ~4.0")
 
   # Test 3 — Quantile < 0 → error
@@ -35,10 +35,10 @@ test_determine_shared_residual_range <- function() {
     "Test 3 failed: expected error for negative quantile", ERR_INVALID_INPUT
   )
 
-  # Test 4 — Quantile > 100 → error
+  # Test 4 — Quantile > 1 → error
   assert_error(
-    determine_study_shared_residual_range(S1, S2, 150),
-    "Test 4 failed: expected error for quantile > 100", ERR_INVALID_INPUT
+    determine_study_shared_residual_range(S1, S2, 1.5),
+    "Test 4 failed: expected error for quantile > 1", ERR_INVALID_INPUT
   )
 
   # Test 5 — NaNs ignored
@@ -56,19 +56,19 @@ test_determine_shared_residual_range <- function() {
     9,10,NA_real_
   ), dim = c(3,2,2))
 
-  R <- determine_study_shared_residual_range(S1, S2, 95)
+  R <- determine_study_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 11.0), "Test 5 failed: expected ~11.0")
 
   # Test 6 — All zeros
   S1 <- array(0, dim = c(4,2,2))
   S2 <- array(0, dim = c(3,2,2))
-  R <- determine_study_shared_residual_range(S1, S2, 95)
+  R <- determine_study_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 0.0), "Test 6 failed: expected 0")
 
   # Test 7 — Single residual
   S1 <- array(3, dim = c(1, 1, 1))
   S2 <- array(-4, dim = c(1, 1, 1))
-  R <- determine_study_shared_residual_range(S1, S2, 95)
+  R <- determine_study_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 3.95), "Test 7 failed: expected ~3.95")
 }
 
@@ -98,11 +98,11 @@ test_determine_shared_residual_range_expert <- function() {
   pp <- make_pool(S1, S2)
 
   # Test 1
-  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 10.65), "Test 1 failed")
 
   # Test 2
-  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 50)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 0.5)
   assert_true(approx_equal(R, 4.0), "Test 2 failed")
 
   # Test 3
@@ -113,7 +113,7 @@ test_determine_shared_residual_range_expert <- function() {
 
   # Test 4
   assert_error(
-    determine_shared_residual_range_expert(pp$pool, pp$perm, 150),
+    determine_shared_residual_range_expert(pp$pool, pp$perm, 1.5),
     "Test 4 failed", ERR_INVALID_INPUT
   )
 
@@ -133,21 +133,21 @@ test_determine_shared_residual_range_expert <- function() {
   ), dim = c(3,2,2))
 
   pp <- make_pool(S1, S2)
-  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 11.0), "Test 5 failed")
 
   # Test 6 — All zeros
   S1 <- array(0, dim = c(4,2,2))
   S2 <- array(0, dim = c(3,2,2))
   pp <- make_pool(S1, S2)
-  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 0.0), "Test 6 failed")
 
   # Test 7 — Single residual
   S1 <- array(3, dim = c(1, 1, 1))
   S2 <- array(-4, dim = c(1, 1, 1))
   pp <- make_pool(S1, S2)
-  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 3.95), "Test 7 failed")
 }
 

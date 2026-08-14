@@ -111,8 +111,8 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param perm a integer vector. Permutation array with sorted indices
-#' @param percentile a numeric scalar. Percentile threshold (top 5% for the default).
-#'   The default value is `95.0`.
+#' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] (top 5% for the default).
+#'   The default value is `0.95`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{threshold}{a numeric scalar. Output threshold value used for detection}
@@ -121,7 +121,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
 #'     upper-tail quantile is used.}
 #' @export
-identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
+identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     perm <- .tox_as_integer_vector(perm, "perm")
@@ -158,8 +158,8 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
-#' @param percentile a numeric scalar. Percentile threshold for outlier detection.
-#'   The default value is `95.0`.
+#' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] for outlier detection.
+#'   The default value is `0.95`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{loess_x}{a numeric vector. Reference x-coordinates.}
@@ -170,7 +170,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
 #'     upper-tail quantile is used.}
 #' @export
-detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.0) {
+detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 0.95) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     distances <- .tox_as_double_vector(distances, "distances")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")

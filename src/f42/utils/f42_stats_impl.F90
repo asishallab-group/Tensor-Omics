@@ -160,9 +160,9 @@ contains
         integer(int32), intent(in) :: n
             !! Sample size
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 
-        rank = (percentile/100.0_real64)*real(n - 1, real64) + 1.0_real64
+        rank = percentile*real(n - 1, real64) + 1.0_real64
     end function calc_percentile_rank
 
     !> summary: Calculate the percentile of an array given a sorted permutation
@@ -179,9 +179,9 @@ contains
             !! DM_MIN(1_int32)
             !! DM_MAX(n_array)
         real(real64), intent(in) :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! DM_MIN(0.0_real64)
-            !! DM_MAX(100.0_real64)
+            !! DM_MAX(1.0_real64)
         real(real64), intent(out) :: value
             !! output percentile value
         integer(int32), intent(in), optional :: n_considered

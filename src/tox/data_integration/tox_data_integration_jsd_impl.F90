@@ -23,10 +23,10 @@ contains
         integer(int32), intent(in) :: pool_size
             !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
-            !! DM_MAX(100.0_real64)
-            !! DM_DEFAULT(95.0)
+            !! DM_MAX(1.0_real64)
+            !! DM_DEFAULT(0.95)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -40,7 +40,7 @@ contains
         integer(int32) :: i_pool, last_non_nan
         real(real64) :: actual_quantile
 
-        M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 95.0_real64)
+        M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 0.95_real64)
 
         last_non_nan = pool_size
         ! NaN is always last -> find last non-NaN index for percentile calculation
@@ -86,10 +86,10 @@ contains
         integer(int32), dimension((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), intent(out) :: tmp_abs_residual_pool_perm
             !! Work array for the permutation that sorts `tmp_abs_residual_pool`
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
-            !! DM_MAX(100.0_real64)
-            !! DM_DEFAULT(95.0)
+            !! DM_MAX(1.0_real64)
+            !! DM_DEFAULT(0.95)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
 

@@ -505,8 +505,8 @@ contains
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail quantile is used.
         real(real64), intent(in), optional :: percentile
-            !! Percentile threshold (top 5% for the default).
-            !! The default value is `95.0_real64`.
+            !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -573,8 +573,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         real(real64), intent(in), optional :: percentile
-            !! Percentile threshold for outlier detection.
-            !! The default value is `95.0_real64`.
+            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+            !! The default value is `0.95_real64`.
         integer(int32), dimension(:), allocatable :: tmp_perm
         integer(int32), dimension(:), allocatable :: tmp_stack_left
         integer(int32), dimension(:), allocatable :: tmp_stack_right
@@ -794,8 +794,8 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         real(real64), intent(in), optional :: percentile
-            !! Percentile threshold for outlier detection.
-            !! The default value is `95.0_real64`.
+            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+            !! The default value is `0.95_real64`.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION

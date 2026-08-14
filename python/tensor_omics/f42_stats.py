@@ -416,9 +416,9 @@ def calc_percentile(
     array : np.ndarray[np.float64] of shape (n_array,)
         input array
     percentile : float
-        desired percentile (0-100)
+        desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
+        The maximum valid value is `1.0`.
     n_considered : int, optional, default 0
         How many leading entries of `array_perm` the percentile is taken over, for a
         percentile of a subset -- the trailing entries are ignored rather than sliced
@@ -492,9 +492,9 @@ def calc_percentile_expert(
         The minimum valid value is `1`.
         The maximum valid value is `n_array`.
     percentile : float
-        desired percentile (0-100)
+        desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
+        The maximum valid value is `1.0`.
     n_considered : int, optional, default 0
         How many leading entries of `array_perm` the percentile is taken over, for a
         percentile of a subset -- the trailing entries are ignored rather than sliced

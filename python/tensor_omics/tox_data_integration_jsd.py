@@ -120,7 +120,7 @@ _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES = (None, "js_divergences", 
 
 def determine_shared_residual_range(
         abs_residual_pool,
-        residual_range_quantile=95.0,
+        residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
 
@@ -129,11 +129,11 @@ def determine_shared_residual_range(
     abs_residual_pool : np.ndarray[np.float64] of shape (pool_size,)
         The absolute residual values of the concatenated S1,S2 residuals
         NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -183,7 +183,7 @@ def determine_shared_residual_range(
 def determine_shared_residual_range_expert(
         abs_residual_pool,
         abs_residual_pool_perm,
-        residual_range_quantile=95.0,
+        residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
 
@@ -196,11 +196,11 @@ def determine_shared_residual_range_expert(
         The permutation vector that sorts `abs_residual_pool`
         The minimum valid value is `1`.
         The maximum valid value is `pool_size`.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -263,7 +263,7 @@ def determine_shared_residual_range_expert(
 def determine_study_shared_residual_range(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        residual_range_quantile=95.0,
+        residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
 
@@ -275,11 +275,11 @@ def determine_study_shared_residual_range(
     neighborhood_residuals_S2 : np.ndarray[np.float64] of shape (n_reps_S2, n_neighbors, n_points,), column-major (order='F')
         Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------

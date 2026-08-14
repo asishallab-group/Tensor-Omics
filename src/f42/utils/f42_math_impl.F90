@@ -134,12 +134,30 @@ contains
 
         if (is_err(ierr)) return
 
+        call logx_helper(val, base, exponent)
+    end subroutine logx
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| (no input validation) Compute logarithm for any base: `log_base(val) = log(val)/log(base)`.
+    !| Ensure `val > 0`, `base > 0` and `base /= 1`, yields a NaN/Inf result otherwise.
+    !|
+    !| For a caller that has already established those three facts about a whole array -- so the
+    !| per-element check would only re-derive what is known -- and therefore wants the transform
+    !| in a `do concurrent` with no shared `ierr` to write.
+    pure subroutine logx_helper(val, base, exponent)
+        real(real64), intent(in) :: val
+            !! Value (`x` in \( b^y = x \)), must be `> 0`
+        real(real64), intent(in) :: base
+            !! Base (`b` in \( b^y = x \)), must be `> 0` and `/= 1`
+        real(real64), intent(out) :: exponent
+            !! Exponent (`y` in \( b^y = x \))
+
         if (base == 2.0_real64) then
             exponent = log(val)/LOG_2
         else
             exponent = log(val)/log(base)
         end if
-    end subroutine logx
+    end subroutine logx_helper
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus `below(0.0_real64)==-tiny(1.0_real64)` and `below(tiny(1.0_real64))==0.0_real64`

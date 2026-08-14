@@ -119,9 +119,9 @@ compute_edf_expert <- function(values, values_perm) {
 #' Call \code{calc_percentile_expert} to do that yourself.
 #'
 #' @param array a numeric vector. input array
-#' @param percentile a numeric scalar. desired percentile (0-100)
+#' @param percentile a numeric scalar. desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `100.0`.
+#'   The maximum valid value is `1.0`.
 #' @param n_considered a integer scalar. How many leading entries of `array_perm` the percentile is taken over, for a
 #'   percentile of a subset -- the trailing entries are ignored rather than sliced
 #'   off, so the permutation stays the shape the sort produced. Zero, the default,
@@ -158,9 +158,9 @@ calc_percentile <- function(array, percentile, n_considered = 0L) {
 #'   heapsorts it for you; the expert one takes whatever order you supply.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_array`.
-#' @param percentile a numeric scalar. desired percentile (0-100)
+#' @param percentile a numeric scalar. desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 #'   The minimum valid value is `0.0`.
-#'   The maximum valid value is `100.0`.
+#'   The maximum valid value is `1.0`.
 #' @param n_considered a integer scalar. How many leading entries of `array_perm` the percentile is taken over, for a
 #'   percentile of a subset -- the trailing entries are ignored rather than sliced
 #'   off, so the permutation stays the shape the sort produced. Zero, the default,

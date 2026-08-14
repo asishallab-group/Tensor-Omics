@@ -212,9 +212,9 @@ contains
         real(c_double), dimension(n_array), intent(in), target :: array
             !! input array
         real(c_double), intent(in), target :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         real(c_double), intent(out), target :: value
             !! output percentile value
         integer(c_int), intent(in), target :: n_considered
@@ -269,9 +269,9 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_array`.
         real(c_double), intent(in), target :: percentile
-            !! desired percentile (0-100)
+            !! desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         real(c_double), intent(out), target :: value
             !! output percentile value
         integer(c_int), intent(in), target :: n_considered

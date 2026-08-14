@@ -45,10 +45,10 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -93,10 +93,10 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -151,10 +151,10 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -221,10 +221,10 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile for determining the residual range
+            !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `95.0`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 

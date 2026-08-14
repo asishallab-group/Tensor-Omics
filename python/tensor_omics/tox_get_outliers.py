@@ -353,7 +353,7 @@ def identify_outliers(
         rdi,
         sorted_rdi,
         perm,
-        percentile=95.0,
+        percentile=0.95,
 ):
     r"""Identify gene outliers based on the top percentile of RDI values
 
@@ -369,9 +369,9 @@ def identify_outliers(
         Infinite values are permitted for this value.
     perm : np.ndarray[np.int32] of shape (n_genes,)
         Permutation array with sorted indices
-    percentile : float, optional, default 95.0
-        Percentile threshold (top 5% for the default).
-        The default value is `95.0`.
+    percentile : float, optional, default 0.95
+        Percentile threshold as a fraction in [0,1] (top 5% for the default).
+        The default value is `0.95`.
 
     Returns
     -------
@@ -467,7 +467,7 @@ def detect_outliers(
         n_families,
         distances,
         gene_to_fam,
-        percentile=95.0,
+        percentile=0.95,
 ):
     r"""Main routine to detect outliers using RDI and LOESS-based scaling
 
@@ -481,9 +481,9 @@ def detect_outliers(
         Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Gene-to-family mapping (1-based indexing)
-    percentile : float, optional, default 95.0
-        Percentile threshold for outlier detection.
-        The default value is `95.0`.
+    percentile : float, optional, default 0.95
+        Percentile threshold as a fraction in [0,1] for outlier detection.
+        The default value is `0.95`.
 
     Returns
     -------

@@ -534,8 +534,8 @@ contains
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail quantile is used.
         real(c_double), intent(in), target :: percentile
-            !! Percentile threshold (top 5% for the default).
-            !! The default value is `95.0_real64`.
+            !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         logical, dimension(n_genes) :: is_outlier_f
@@ -612,8 +612,8 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         real(c_double), intent(in), target :: percentile
-            !! Percentile threshold for outlier detection.
-            !! The default value is `95.0_real64`.
+            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+            !! The default value is `0.95_real64`.
         logical, dimension(n_genes) :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
@@ -772,8 +772,8 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         real(c_double), intent(in), target :: percentile
-            !! Percentile threshold for outlier detection.
-            !! The default value is `95.0_real64`.
+            !! Percentile threshold as a fraction in [0,1] for outlier detection.
+            !! The default value is `0.95_real64`.
         logical, dimension(n_genes) :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
