@@ -32,3 +32,10 @@
 *.synctex.gz
 *.toc
 *.vrb
+
+# Fortran build artifacts. misc/bench/ compiles here; the runners target /tmp and clean up
+# after themselves, but an interrupted run leaves these behind.
+*.mod
+*.smod
+*.o
+*.a

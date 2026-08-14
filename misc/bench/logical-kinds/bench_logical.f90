@@ -11,7 +11,8 @@
 ! and the copy. This measures what that is worth, and what it would cost inside the
 ! kernels, where every intrinsic yielding a default `logical` would then need converting.
 !
-! Build -- two units, and NOT with -flto / -ipo, or the copies are optimised away:
+! Build with ./run_bench.sh, which does every configuration. By hand -- two units, and NOT
+! with -flto / -ipo, or the copies are optimised away (see ../README.md):
 !     gfortran -O0 -c bench_kernels.f90 && gfortran -O0 bench_kernels.o bench_logical.f90 -o bench
 !     gfortran -O3 -march=native -mtune=native -funroll-loops -ftree-vectorize ...
 !     ifx -O0 -heap-arrays ...          (-heap-arrays: see the note on marshal_automatic)

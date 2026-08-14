@@ -114,11 +114,6 @@ reach seconds.
 
 ## Notes on the benchmark itself
 
-Two compilation units, and it must not be built with `-flto` / `-ipo`. With everything in one
-program ifx sees that a copied mask is only ever counted, rewrites `count(dst)` as `count(src)`
-and reports a copy costing a tenth of the truth.
-
-Best of three trials, discarding non-positive results. Partly the usual noise floor — the
-single-shot `-O0` figures came out 3x too high — and partly necessary, because **ifx's
-`system_clock` is wall-clock based** (its count is the Unix epoch in microseconds, where
-gfortran's is monotonic uptime), so an NTP step lands as a backwards jump mid-measurement.
+Two compilation units, best of three trials, and never `-flto` / `-ipo`. Both rules were
+learned here and both produced confidently wrong numbers first; they apply to every benchmark
+in this tree, so the reasoning lives in [`../README.md`](../README.md) rather than here.

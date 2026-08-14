@@ -213,7 +213,7 @@ scalar, and only because `mask_check_state` is a `logical function` whose *resul
 default-kind, where there is no memory to win and a condition accepts any kind anyway.
 
 The decision was memory, not speed: no boundary buffer, and a quarter of the bytes for every
-mask in the library. `misc/bench/RESULTS.md` has the measurements, and they point the same way
+mask in the library. `misc/bench/logical-kinds/RESULTS.md` has the measurements, and they point the same way
 — at the sizes where the memory argument bites, `c_bool` is *faster* for the same reason it is
 smaller.
 
@@ -280,7 +280,7 @@ Two things the emitter has to get right, both found by compiling:
   `str_out` is `intent(out), allocatable`, so it deallocates on entry; allocating first is an
   immediate allocate-and-free. The helper uses `M_ALLOCATE` itself, so the checked path holds.
 
-The measured cost of the copies these locals exist for is in `misc/bench/RESULTS.md`; it is
+The measured cost of the copies these locals exist for is in `misc/bench/logical-kinds/RESULTS.md`; it is
 small, and the stack is the reason this changed, not the speed.
 
 ---
