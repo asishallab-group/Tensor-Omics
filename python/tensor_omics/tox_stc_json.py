@@ -40,6 +40,10 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
@@ -52,6 +56,14 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
+    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS')),
+    nullable(ctypes.POINTER(ctypes.c_int)),
+    nullable(ctypes.POINTER(ctypes.c_int)),
+    nullable(ctypes.POINTER(ctypes.c_double)),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     nullable(ctypes.POINTER(ctypes.c_int)),
     nullable(ctypes.POINTER(ctypes.c_int)),
     nullable(ctypes.POINTER(ctypes.c_double)),
@@ -62,9 +74,9 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_low_confidence_masks", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_d_min", "filter_d_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.write_stc_interactive_html_report_c.restype = None
 _lib.write_stc_interactive_html_report_c.argtypes = (
@@ -91,6 +103,10 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
@@ -103,6 +119,14 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
     ctypes.POINTER(ctypes.c_double),
+    nullable(np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS')),
+    nullable(ctypes.POINTER(ctypes.c_int)),
+    nullable(ctypes.POINTER(ctypes.c_int)),
+    nullable(ctypes.POINTER(ctypes.c_double)),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     nullable(ctypes.POINTER(ctypes.c_int)),
     nullable(ctypes.POINTER(ctypes.c_int)),
     nullable(ctypes.POINTER(ctypes.c_double)),
@@ -113,9 +137,9 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_low_confidence_masks", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_d_min", "filter_d_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def serialize_stc_results_as_json(
         filename,
@@ -132,7 +156,11 @@ def serialize_stc_results_as_json(
         ensemble_G_history,
         ensemble_mu_history,
         ensemble_k_history,
+        ensemble_accepted_history,
+        ensemble_member_added_at_step,
         ensemble_low_confidence_masks,
+        ensemble_U_first,
+        ensemble_d_first,
         super_ensembles,
         k_min,
         k_density,
@@ -146,6 +174,14 @@ def serialize_stc_results_as_json(
         bandwidth_percentile,
         reconciliation_mode,
         min_overlap_coefficient,
+        ensemble_eligible,
+        ensemble_eligible_by_stop_condition,
+        ensemble_eligible_by_dimension,
+        ensemble_eligible_by_var_explained,
+        allowed_stop_reasons=None,
+        filter_d_min=None,
+        filter_d_max=None,
+        filter_var_explained_min=None,
         estimated_k_min=None,
         estimated_k_density=None,
         estimated_density_quantile=None,
@@ -185,8 +221,23 @@ def serialize_stc_results_as_json(
         Per-ensemble trailing centers
     ensemble_k_history : np.ndarray[np.int32] of shape (o, n_selected_seed,), column-major (order='F')
         Per-ensemble trailing sizes
+    ensemble_accepted_history : np.ndarray[np.bool_] of shape (o, n_selected_seed,), column-major (order='F')
+        Whether the growth iteration retained in each history column was itself accepted
+        -- `stc_push_ensemble_history` also pushes a *rejected* final candidate before
+        `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
+        `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is not always
+        the ensemble's actual last accepted state; this module uses this array to find
+        the last column that genuinely is (see `stc_last_accepted_history_index`)
+    ensemble_member_added_at_step : np.ndarray[np.int32] of shape (n_vectors, n_selected_seed,), column-major (order='F')
+        Per-ensemble growth-iteration-joined bookkeeping, see `ensemble_identification`'s
+        `member_added_at_step`; this module only ever reads its column max (= T, the
+        final accepted growth iteration), not the per-vector values themselves
     ensemble_low_confidence_masks : np.ndarray[np.bool_] of shape (n_vectors, n_selected_seed,), column-major (order='F')
         Per-ensemble iteration-1 fallback membership
+    ensemble_U_first : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions, n_selected_seed,), column-major (order='F')
+        Per-ensemble tangent+normal basis at the bootstrap iteration (iteration 1)
+    ensemble_d_first : np.ndarray[np.int32] of shape (n_selected_seed,)
+        Per-ensemble intrinsic dimension at the bootstrap iteration
     super_ensembles : np.ndarray[np.int32] of shape (max_group_size, n_selected_seed*(n_selected_seed-1),), column-major (order='F')
         One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
     k_min : int
@@ -214,6 +265,33 @@ def serialize_stc_results_as_json(
 
     min_overlap_coefficient : float
         This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
+    allowed_stop_reasons : np.ndarray[np.bool_] of shape (4,), optional
+        This run's per-Stop-Condition eligibility actually used by
+        `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
+        for transparency only; this module no longer derives eligibility from it itself,
+        see `ensemble_eligible` below
+    filter_d_min : int, optional
+        This run's minimum tolerated final intrinsic dimension for reconciliation
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
+    filter_d_max : int, optional
+        This run's maximum tolerated final intrinsic dimension for reconciliation
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
+    filter_var_explained_min : float, optional
+        This run's minimum tolerated final variance explained for reconciliation
+        eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        `var_explained_min`; reported for transparency only, same as
+        `allowed_stop_reasons` above
+    ensemble_eligible : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        Per-ensemble combined reconciliation eligibility actually used by
+        `ensemble_reconciliation`, see its own `eligible` output
+    ensemble_eligible_by_stop_condition : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        See `ensemble_reconciliation`'s own `eligible_by_stop_condition`
+    ensemble_eligible_by_dimension : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        See `ensemble_reconciliation`'s own `eligible_by_dimension`
+    ensemble_eligible_by_var_explained : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        See `ensemble_reconciliation`'s own `eligible_by_var_explained`
     estimated_k_min : int, optional
         `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
     estimated_k_density : int, optional
@@ -317,11 +395,35 @@ def serialize_stc_results_as_json(
     if ensemble_k_history.ndim != 2:
         raise ValueError(f"'ensemble_k_history' must have 2 dimensions, but has {ensemble_k_history.ndim}")
     try:
+        ensemble_accepted_history = np.asfortranarray(ensemble_accepted_history, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_accepted_history' must be an array of np.bool_: {error}") from None
+    if ensemble_accepted_history.ndim != 2:
+        raise ValueError(f"'ensemble_accepted_history' must have 2 dimensions, but has {ensemble_accepted_history.ndim}")
+    try:
+        ensemble_member_added_at_step = np.asfortranarray(ensemble_member_added_at_step, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_member_added_at_step' must be an array of np.int32: {error}") from None
+    if ensemble_member_added_at_step.ndim != 2:
+        raise ValueError(f"'ensemble_member_added_at_step' must have 2 dimensions, but has {ensemble_member_added_at_step.ndim}")
+    try:
         ensemble_low_confidence_masks = np.asfortranarray(ensemble_low_confidence_masks, dtype=np.bool_)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'ensemble_low_confidence_masks' must be an array of np.bool_: {error}") from None
     if ensemble_low_confidence_masks.ndim != 2:
         raise ValueError(f"'ensemble_low_confidence_masks' must have 2 dimensions, but has {ensemble_low_confidence_masks.ndim}")
+    try:
+        ensemble_U_first = np.asfortranarray(ensemble_U_first, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_U_first' must be an array of np.float64: {error}") from None
+    if ensemble_U_first.ndim != 3:
+        raise ValueError(f"'ensemble_U_first' must have 3 dimensions, but has {ensemble_U_first.ndim}")
+    try:
+        ensemble_d_first = np.ascontiguousarray(ensemble_d_first, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_d_first' must be an array of np.int32: {error}") from None
+    if ensemble_d_first.ndim != 1:
+        raise ValueError(f"'ensemble_d_first' must have 1 dimension, but has {ensemble_d_first.ndim}")
     try:
         super_ensembles = np.asfortranarray(super_ensembles, dtype=np.int32)
     except (TypeError, ValueError) as error:
@@ -329,6 +431,37 @@ def serialize_stc_results_as_json(
     if super_ensembles.ndim != 2:
         raise ValueError(f"'super_ensembles' must have 2 dimensions, but has {super_ensembles.ndim}")
     reconciliation_mode = np.array([str(reconciliation_mode).lower().encode()], dtype="S25")
+    if allowed_stop_reasons is not None:
+        try:
+            allowed_stop_reasons = np.ascontiguousarray(allowed_stop_reasons, dtype=np.bool_)
+        except (TypeError, ValueError) as error:
+            raise TypeError(f"'allowed_stop_reasons' must be an array of np.bool_: {error}") from None
+        if allowed_stop_reasons.ndim != 1:
+            raise ValueError(f"'allowed_stop_reasons' must have 1 dimension, but has {allowed_stop_reasons.ndim}")
+    try:
+        ensemble_eligible = np.ascontiguousarray(ensemble_eligible, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible.ndim != 1:
+        raise ValueError(f"'ensemble_eligible' must have 1 dimension, but has {ensemble_eligible.ndim}")
+    try:
+        ensemble_eligible_by_stop_condition = np.ascontiguousarray(ensemble_eligible_by_stop_condition, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible_by_stop_condition' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible_by_stop_condition.ndim != 1:
+        raise ValueError(f"'ensemble_eligible_by_stop_condition' must have 1 dimension, but has {ensemble_eligible_by_stop_condition.ndim}")
+    try:
+        ensemble_eligible_by_dimension = np.ascontiguousarray(ensemble_eligible_by_dimension, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible_by_dimension' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible_by_dimension.ndim != 1:
+        raise ValueError(f"'ensemble_eligible_by_dimension' must have 1 dimension, but has {ensemble_eligible_by_dimension.ndim}")
+    try:
+        ensemble_eligible_by_var_explained = np.ascontiguousarray(ensemble_eligible_by_var_explained, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible_by_var_explained' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible_by_var_explained.ndim != 1:
+        raise ValueError(f"'ensemble_eligible_by_var_explained' must have 1 dimension, but has {ensemble_eligible_by_var_explained.ndim}")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -356,12 +489,20 @@ def serialize_stc_results_as_json(
         raise ValueError(f"'ensemble_mu_history' has {ensemble_mu_history.shape[0]} along axis 0, but "
             f"'vectors' implies n_dimensions == {n_dimensions}"
         )
+    if ensemble_U_first.shape[0] != n_dimensions:
+        raise ValueError(f"'ensemble_U_first' has {ensemble_U_first.shape[0]} along axis 0, but "
+            f"'vectors' implies n_dimensions == {n_dimensions}"
+        )
     if seed_selection_mask.shape[0] != n_vectors:
         raise ValueError(f"'seed_selection_mask' has {seed_selection_mask.shape[0]} along axis 0, but "
             f"'vectors' implies n_vectors == {n_vectors}"
         )
     if ensemble_masks.shape[0] != n_vectors:
         raise ValueError(f"'ensemble_masks' has {ensemble_masks.shape[0]} along axis 0, but "
+            f"'vectors' implies n_vectors == {n_vectors}"
+        )
+    if ensemble_member_added_at_step.shape[0] != n_vectors:
+        raise ValueError(f"'ensemble_member_added_at_step' has {ensemble_member_added_at_step.shape[0]} along axis 0, but "
             f"'vectors' implies n_vectors == {n_vectors}"
         )
     if ensemble_low_confidence_masks.shape[0] != n_vectors:
@@ -400,8 +541,40 @@ def serialize_stc_results_as_json(
         raise ValueError(f"'ensemble_k_history' has {ensemble_k_history.shape[1]} along axis 1, but "
             f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
         )
+    if ensemble_accepted_history.shape[1] != n_selected_seed:
+        raise ValueError(f"'ensemble_accepted_history' has {ensemble_accepted_history.shape[1]} along axis 1, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_member_added_at_step.shape[1] != n_selected_seed:
+        raise ValueError(f"'ensemble_member_added_at_step' has {ensemble_member_added_at_step.shape[1]} along axis 1, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
     if ensemble_low_confidence_masks.shape[1] != n_selected_seed:
         raise ValueError(f"'ensemble_low_confidence_masks' has {ensemble_low_confidence_masks.shape[1]} along axis 1, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_U_first.shape[2] != n_selected_seed:
+        raise ValueError(f"'ensemble_U_first' has {ensemble_U_first.shape[2]} along axis 2, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_d_first.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_d_first' has {ensemble_d_first.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible' has {ensemble_eligible.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible_by_stop_condition.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible_by_stop_condition' has {ensemble_eligible_by_stop_condition.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible_by_dimension.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible_by_dimension' has {ensemble_eligible_by_dimension.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible_by_var_explained.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible_by_var_explained' has {ensemble_eligible_by_var_explained.shape[0]} along axis 0, but "
             f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
         )
     if ensemble_S_history.shape[1] != o:
@@ -422,6 +595,10 @@ def serialize_stc_results_as_json(
         )
     if ensemble_k_history.shape[0] != o:
         raise ValueError(f"'ensemble_k_history' has {ensemble_k_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_accepted_history.shape[0] != o:
+        raise ValueError(f"'ensemble_accepted_history' has {ensemble_accepted_history.shape[0]} along axis 0, but "
             f"'ensemble_U_history' implies o == {o}"
         )
 
@@ -450,7 +627,11 @@ def serialize_stc_results_as_json(
         ensemble_G_history,
         ensemble_mu_history,
         ensemble_k_history,
+        ensemble_accepted_history,
+        ensemble_member_added_at_step,
         ensemble_low_confidence_masks,
+        ensemble_U_first,
+        ensemble_d_first,
         super_ensembles,
         ctypes.byref(ctypes.c_int(k_min)),
         ctypes.byref(ctypes.c_int(k_density)),
@@ -464,6 +645,14 @@ def serialize_stc_results_as_json(
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         reconciliation_mode,
         ctypes.byref(ctypes.c_double(min_overlap_coefficient)),
+        allowed_stop_reasons,
+        None if filter_d_min is None else ctypes.byref(ctypes.c_int(filter_d_min)),
+        None if filter_d_max is None else ctypes.byref(ctypes.c_int(filter_d_max)),
+        None if filter_var_explained_min is None else ctypes.byref(ctypes.c_double(filter_var_explained_min)),
+        ensemble_eligible,
+        ensemble_eligible_by_stop_condition,
+        ensemble_eligible_by_dimension,
+        ensemble_eligible_by_var_explained,
         None if estimated_k_min is None else ctypes.byref(ctypes.c_int(estimated_k_min)),
         None if estimated_k_density is None else ctypes.byref(ctypes.c_int(estimated_k_density)),
         None if estimated_density_quantile is None else ctypes.byref(ctypes.c_double(estimated_density_quantile)),
@@ -492,7 +681,11 @@ def write_stc_interactive_html_report(
         ensemble_G_history,
         ensemble_mu_history,
         ensemble_k_history,
+        ensemble_accepted_history,
+        ensemble_member_added_at_step,
         ensemble_low_confidence_masks,
+        ensemble_U_first,
+        ensemble_d_first,
         super_ensembles,
         k_min,
         k_density,
@@ -506,6 +699,14 @@ def write_stc_interactive_html_report(
         bandwidth_percentile,
         reconciliation_mode,
         min_overlap_coefficient,
+        ensemble_eligible,
+        ensemble_eligible_by_stop_condition,
+        ensemble_eligible_by_dimension,
+        ensemble_eligible_by_var_explained,
+        allowed_stop_reasons=None,
+        filter_d_min=None,
+        filter_d_max=None,
+        filter_var_explained_min=None,
         estimated_k_min=None,
         estimated_k_density=None,
         estimated_density_quantile=None,
@@ -545,8 +746,23 @@ def write_stc_interactive_html_report(
         Per-ensemble trailing centers
     ensemble_k_history : np.ndarray[np.int32] of shape (o, n_selected_seed,), column-major (order='F')
         Per-ensemble trailing sizes
+    ensemble_accepted_history : np.ndarray[np.bool_] of shape (o, n_selected_seed,), column-major (order='F')
+        Whether the growth iteration retained in each history column was itself accepted
+        -- `stc_push_ensemble_history` also pushes a *rejected* final candidate before
+        `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
+        `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is not always
+        the ensemble's actual last accepted state; this module uses this array to find
+        the last column that genuinely is (see `stc_last_accepted_history_index`)
+    ensemble_member_added_at_step : np.ndarray[np.int32] of shape (n_vectors, n_selected_seed,), column-major (order='F')
+        Per-ensemble growth-iteration-joined bookkeeping, see `ensemble_identification`'s
+        `member_added_at_step`; this module only ever reads its column max (= T, the
+        final accepted growth iteration), not the per-vector values themselves
     ensemble_low_confidence_masks : np.ndarray[np.bool_] of shape (n_vectors, n_selected_seed,), column-major (order='F')
         Per-ensemble iteration-1 fallback membership
+    ensemble_U_first : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions, n_selected_seed,), column-major (order='F')
+        Per-ensemble tangent+normal basis at the bootstrap iteration (iteration 1)
+    ensemble_d_first : np.ndarray[np.int32] of shape (n_selected_seed,)
+        Per-ensemble intrinsic dimension at the bootstrap iteration
     super_ensembles : np.ndarray[np.int32] of shape (max_group_size, n_selected_seed*(n_selected_seed-1),), column-major (order='F')
         One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
     k_min : int
@@ -574,6 +790,33 @@ def write_stc_interactive_html_report(
 
     min_overlap_coefficient : float
         This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
+    allowed_stop_reasons : np.ndarray[np.bool_] of shape (4,), optional
+        This run's per-Stop-Condition eligibility actually used by
+        `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
+        for transparency only; this module no longer derives eligibility from it itself,
+        see `ensemble_eligible` below
+    filter_d_min : int, optional
+        This run's minimum tolerated final intrinsic dimension for reconciliation
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
+    filter_d_max : int, optional
+        This run's maximum tolerated final intrinsic dimension for reconciliation
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
+    filter_var_explained_min : float, optional
+        This run's minimum tolerated final variance explained for reconciliation
+        eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        `var_explained_min`; reported for transparency only, same as
+        `allowed_stop_reasons` above
+    ensemble_eligible : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        Per-ensemble combined reconciliation eligibility actually used by
+        `ensemble_reconciliation`, see its own `eligible` output
+    ensemble_eligible_by_stop_condition : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        See `ensemble_reconciliation`'s own `eligible_by_stop_condition`
+    ensemble_eligible_by_dimension : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        See `ensemble_reconciliation`'s own `eligible_by_dimension`
+    ensemble_eligible_by_var_explained : np.ndarray[np.bool_] of shape (n_selected_seed,)
+        See `ensemble_reconciliation`'s own `eligible_by_var_explained`
     estimated_k_min : int, optional
         `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
     estimated_k_density : int, optional
@@ -677,11 +920,35 @@ def write_stc_interactive_html_report(
     if ensemble_k_history.ndim != 2:
         raise ValueError(f"'ensemble_k_history' must have 2 dimensions, but has {ensemble_k_history.ndim}")
     try:
+        ensemble_accepted_history = np.asfortranarray(ensemble_accepted_history, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_accepted_history' must be an array of np.bool_: {error}") from None
+    if ensemble_accepted_history.ndim != 2:
+        raise ValueError(f"'ensemble_accepted_history' must have 2 dimensions, but has {ensemble_accepted_history.ndim}")
+    try:
+        ensemble_member_added_at_step = np.asfortranarray(ensemble_member_added_at_step, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_member_added_at_step' must be an array of np.int32: {error}") from None
+    if ensemble_member_added_at_step.ndim != 2:
+        raise ValueError(f"'ensemble_member_added_at_step' must have 2 dimensions, but has {ensemble_member_added_at_step.ndim}")
+    try:
         ensemble_low_confidence_masks = np.asfortranarray(ensemble_low_confidence_masks, dtype=np.bool_)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'ensemble_low_confidence_masks' must be an array of np.bool_: {error}") from None
     if ensemble_low_confidence_masks.ndim != 2:
         raise ValueError(f"'ensemble_low_confidence_masks' must have 2 dimensions, but has {ensemble_low_confidence_masks.ndim}")
+    try:
+        ensemble_U_first = np.asfortranarray(ensemble_U_first, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_U_first' must be an array of np.float64: {error}") from None
+    if ensemble_U_first.ndim != 3:
+        raise ValueError(f"'ensemble_U_first' must have 3 dimensions, but has {ensemble_U_first.ndim}")
+    try:
+        ensemble_d_first = np.ascontiguousarray(ensemble_d_first, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_d_first' must be an array of np.int32: {error}") from None
+    if ensemble_d_first.ndim != 1:
+        raise ValueError(f"'ensemble_d_first' must have 1 dimension, but has {ensemble_d_first.ndim}")
     try:
         super_ensembles = np.asfortranarray(super_ensembles, dtype=np.int32)
     except (TypeError, ValueError) as error:
@@ -689,6 +956,37 @@ def write_stc_interactive_html_report(
     if super_ensembles.ndim != 2:
         raise ValueError(f"'super_ensembles' must have 2 dimensions, but has {super_ensembles.ndim}")
     reconciliation_mode = np.array([str(reconciliation_mode).lower().encode()], dtype="S25")
+    if allowed_stop_reasons is not None:
+        try:
+            allowed_stop_reasons = np.ascontiguousarray(allowed_stop_reasons, dtype=np.bool_)
+        except (TypeError, ValueError) as error:
+            raise TypeError(f"'allowed_stop_reasons' must be an array of np.bool_: {error}") from None
+        if allowed_stop_reasons.ndim != 1:
+            raise ValueError(f"'allowed_stop_reasons' must have 1 dimension, but has {allowed_stop_reasons.ndim}")
+    try:
+        ensemble_eligible = np.ascontiguousarray(ensemble_eligible, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible.ndim != 1:
+        raise ValueError(f"'ensemble_eligible' must have 1 dimension, but has {ensemble_eligible.ndim}")
+    try:
+        ensemble_eligible_by_stop_condition = np.ascontiguousarray(ensemble_eligible_by_stop_condition, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible_by_stop_condition' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible_by_stop_condition.ndim != 1:
+        raise ValueError(f"'ensemble_eligible_by_stop_condition' must have 1 dimension, but has {ensemble_eligible_by_stop_condition.ndim}")
+    try:
+        ensemble_eligible_by_dimension = np.ascontiguousarray(ensemble_eligible_by_dimension, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible_by_dimension' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible_by_dimension.ndim != 1:
+        raise ValueError(f"'ensemble_eligible_by_dimension' must have 1 dimension, but has {ensemble_eligible_by_dimension.ndim}")
+    try:
+        ensemble_eligible_by_var_explained = np.ascontiguousarray(ensemble_eligible_by_var_explained, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_eligible_by_var_explained' must be an array of np.bool_: {error}") from None
+    if ensemble_eligible_by_var_explained.ndim != 1:
+        raise ValueError(f"'ensemble_eligible_by_var_explained' must have 1 dimension, but has {ensemble_eligible_by_var_explained.ndim}")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -716,12 +1014,20 @@ def write_stc_interactive_html_report(
         raise ValueError(f"'ensemble_mu_history' has {ensemble_mu_history.shape[0]} along axis 0, but "
             f"'vectors' implies n_dimensions == {n_dimensions}"
         )
+    if ensemble_U_first.shape[0] != n_dimensions:
+        raise ValueError(f"'ensemble_U_first' has {ensemble_U_first.shape[0]} along axis 0, but "
+            f"'vectors' implies n_dimensions == {n_dimensions}"
+        )
     if seed_selection_mask.shape[0] != n_vectors:
         raise ValueError(f"'seed_selection_mask' has {seed_selection_mask.shape[0]} along axis 0, but "
             f"'vectors' implies n_vectors == {n_vectors}"
         )
     if ensemble_masks.shape[0] != n_vectors:
         raise ValueError(f"'ensemble_masks' has {ensemble_masks.shape[0]} along axis 0, but "
+            f"'vectors' implies n_vectors == {n_vectors}"
+        )
+    if ensemble_member_added_at_step.shape[0] != n_vectors:
+        raise ValueError(f"'ensemble_member_added_at_step' has {ensemble_member_added_at_step.shape[0]} along axis 0, but "
             f"'vectors' implies n_vectors == {n_vectors}"
         )
     if ensemble_low_confidence_masks.shape[0] != n_vectors:
@@ -760,8 +1066,40 @@ def write_stc_interactive_html_report(
         raise ValueError(f"'ensemble_k_history' has {ensemble_k_history.shape[1]} along axis 1, but "
             f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
         )
+    if ensemble_accepted_history.shape[1] != n_selected_seed:
+        raise ValueError(f"'ensemble_accepted_history' has {ensemble_accepted_history.shape[1]} along axis 1, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_member_added_at_step.shape[1] != n_selected_seed:
+        raise ValueError(f"'ensemble_member_added_at_step' has {ensemble_member_added_at_step.shape[1]} along axis 1, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
     if ensemble_low_confidence_masks.shape[1] != n_selected_seed:
         raise ValueError(f"'ensemble_low_confidence_masks' has {ensemble_low_confidence_masks.shape[1]} along axis 1, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_U_first.shape[2] != n_selected_seed:
+        raise ValueError(f"'ensemble_U_first' has {ensemble_U_first.shape[2]} along axis 2, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_d_first.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_d_first' has {ensemble_d_first.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible' has {ensemble_eligible.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible_by_stop_condition.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible_by_stop_condition' has {ensemble_eligible_by_stop_condition.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible_by_dimension.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible_by_dimension' has {ensemble_eligible_by_dimension.shape[0]} along axis 0, but "
+            f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
+        )
+    if ensemble_eligible_by_var_explained.shape[0] != n_selected_seed:
+        raise ValueError(f"'ensemble_eligible_by_var_explained' has {ensemble_eligible_by_var_explained.shape[0]} along axis 0, but "
             f"'ensemble_masks' implies n_selected_seed == {n_selected_seed}"
         )
     if ensemble_S_history.shape[1] != o:
@@ -782,6 +1120,10 @@ def write_stc_interactive_html_report(
         )
     if ensemble_k_history.shape[0] != o:
         raise ValueError(f"'ensemble_k_history' has {ensemble_k_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_accepted_history.shape[0] != o:
+        raise ValueError(f"'ensemble_accepted_history' has {ensemble_accepted_history.shape[0]} along axis 0, but "
             f"'ensemble_U_history' implies o == {o}"
         )
 
@@ -810,7 +1152,11 @@ def write_stc_interactive_html_report(
         ensemble_G_history,
         ensemble_mu_history,
         ensemble_k_history,
+        ensemble_accepted_history,
+        ensemble_member_added_at_step,
         ensemble_low_confidence_masks,
+        ensemble_U_first,
+        ensemble_d_first,
         super_ensembles,
         ctypes.byref(ctypes.c_int(k_min)),
         ctypes.byref(ctypes.c_int(k_density)),
@@ -824,6 +1170,14 @@ def write_stc_interactive_html_report(
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         reconciliation_mode,
         ctypes.byref(ctypes.c_double(min_overlap_coefficient)),
+        allowed_stop_reasons,
+        None if filter_d_min is None else ctypes.byref(ctypes.c_int(filter_d_min)),
+        None if filter_d_max is None else ctypes.byref(ctypes.c_int(filter_d_max)),
+        None if filter_var_explained_min is None else ctypes.byref(ctypes.c_double(filter_var_explained_min)),
+        ensemble_eligible,
+        ensemble_eligible_by_stop_condition,
+        ensemble_eligible_by_dimension,
+        ensemble_eligible_by_var_explained,
         None if estimated_k_min is None else ctypes.byref(ctypes.c_int(estimated_k_min)),
         None if estimated_k_density is None else ctypes.byref(ctypes.c_int(estimated_k_density)),
         None if estimated_density_quantile is None else ctypes.byref(ctypes.c_double(estimated_density_quantile)),

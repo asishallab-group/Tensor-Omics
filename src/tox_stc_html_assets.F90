@@ -16,237 +16,1455 @@ module tox_stc_html_assets
         achar(10)//'<head>'//achar(10)//&
         '<meta charset="utf-8">'//achar(10)//'<title>STC interactive report</title>'//&
         achar(10)//'<style>'//achar(10)//&
-        '  :root { --fg: #222; --bg: #fff; --grid: #e8e8e8; --muted: #999; }'//achar(10)//'  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var('//&
-        '--fg);'//achar(10)//'         background: var(--bg); margin: 0; padding: 16px 20px 40px; }'//&
-        achar(10)//'  h1 { font-size: 1.3em; margin: 0 0 4px; }'//achar(10)//&
-        '  h2 { font-size: 1.05em; margin: 28px 0 8px; border-top: 1px solid var(--grid); padding-t'//'op: 16px; }'//achar(10)//&
-        '  #subtitle { color: var(--muted); font-size: 0.85em; margin-bottom: 16px; }'//achar(10)//'  #layout { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }'//&
-        achar(10)//'  #controls { min-width: 220px; max-width: 260px; font-size: 0.85em; }'//achar(10)//&
-        '  #controls fieldset { border: 1px solid var(--grid); border-radius: 6px; margin: 0 0 12px'//'; padding: 8px 10px; }'//achar(10)//&
-        '  #controls legend { font-weight: 600; padding: 0 4px; }'//achar(10)//'  #controls label { display: block; margin: 4px 0; cursor: pointer; }'//&
-        achar(10)//'  #controls select { width: 100%; margin-top: 2px; }'//achar(10)//&
-        '  #main-panel { position: relative; }'//achar(10)//'  svg { background: var(--bg); }'//&
-        achar(10)//'  #scatter { border: 1px solid var(--grid); }'//achar(10)//&
-        '  .axis text { font-size: 10px; fill: var(--muted); }'//achar(10)//'  .axis path, .axis line { stroke: var(--grid); }'//&
-        achar(10)//'  .point { cursor: pointer; }'//achar(10)//&
-        '  .seed-marker { pointer-events: none; }'//achar(10)//'  .tangent-line { pointer-events: none; }'//&
-        achar(10)//'  .radius-circle { pointer-events: none; fill: steelblue; fill-opacity: 0.05; stroke: stee'//'lblue; stroke-width: 0.6; }'//&
-        achar(10)//'  #tooltip { position: absolute; pointer-events: none; background: rgba(20,20,20,0.92); co'//'lor: #fff;'//&
-        achar(10)//'             padding: 6px 9px; border-radius: 4px; font-size: 0.78em; line-height: 1.4; ma'//'x-width: 280px;'//&
-        achar(10)//'             opacity: 0; transition: opacity 0.08s; z-index: 10; }'//achar(10)//&
-        '  #heatmap-wrap { overflow: auto; max-width: 100%; }'//achar(10)//'  table.params { border-collapse: collapse; font-size: 0.82em; }'//&
-        achar(10)//'  table.params caption { text-align: left; font-weight: 600; margin-bottom: 4px; }'//achar(10)//&
-        '  table.params td, table.params th { padding: 3px 10px 3px 0; text-align: left; border-bot'//'tom: 1px solid var(--grid); }'//achar(10)//&
-        '  #params-tables { display: flex; gap: 40px; flex-wrap: wrap; }'//achar(10)//'  .legend-item { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; '//&
-        'font-size: 0.8em; }'//achar(10)//'  .legend-swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }'//&
-        achar(10)//'</style>'//achar(10)//&
-        '</head>'//achar(10)//'<body>'//&
-        achar(10)//achar(10)//'<h1 id="title">STC interactive report</h1>'//&
-        achar(10)//'<div id="subtitle"></div>'//achar(10)//&
-        achar(10)//'<div id="layout">'//achar(10)//&
+        '  :root {'//achar(10)//'    --fg: #222; --bg: #fff; --grid: #e8e8e8; --muted: #999; --panel-bg: #fafafa;'//&
+        achar(10)//'    --blue: #2166ac; --red: #b2182b; --grey: #bbb;'//achar(10)//&
+        '    --lc-retained: #4682b4; --lc-fallback: #e08214; --lc-none: #bbb;'//achar(10)//'  }'//&
+        achar(10)//'  * { box-sizing: border-box; }'//achar(10)//&
+        '  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var('//'--fg);'//achar(10)//&
+        '         background: var(--bg); margin: 0; padding: 0 20px 40px; }'//achar(10)//'  h1 { font-size: 1.3em; margin: 0; padding: 16px 0 4px; }'//&
+        achar(10)//'  h2 { font-size: 1.05em; margin: 0 0 10px; }'//achar(10)//&
+        '  h3 { font-size: 0.95em; margin: 14px 0 6px; }'//achar(10)//'  #subtitle { color: var(--muted); font-size: 0.85em; margin-bottom: 10px; }'//&
+        achar(10)//'  a, button, select, input { font-family: inherit; }'//achar(10)//&
+        '  button { cursor: pointer; }'//achar(10)//achar(10)//&
+        '  /* ---- top bar: additional-plots toggles ------------------------------------------- */'//achar(10)//'  #addl-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }'//&
+        achar(10)//'  #addl-bar button { font-size: 0.82em; padding: 6px 12px; border: 1px solid var(--grid);'//achar(10)//&
+        '                      border-radius: 14px; background: #fff; color: var(--fg); }'//achar(10)//'  #addl-bar button.active { background: var(--blue); color: #fff; border-color: var(--blue'//&
+        '); }'//achar(10)//achar(10)//&
+        '  /* ---- main plot layout -------------------------------------------------------------- '//'*/'//achar(10)//&
+        '  #main-layout { display: flex; gap: 16px; align-items: flex-start; }'//achar(10)//'  #hamburger-toggle { position: sticky; top: 10px; z-index: 20; width: 34px; height: 34px;'//&
+        achar(10)//'                       border-radius: 6px; border: 1px solid var(--grid); background: #fff'//';'//&
+        achar(10)//'                       font-size: 1.1em; line-height: 1; flex: 0 0 auto; align-self: flex-'//'start; }'//&
+        achar(10)//'  #controls { min-width: 240px; max-width: 280px; font-size: 0.82em; flex: 0 0 auto; }'//achar(10)//&
+        '  #controls.collapsed { display: none; }'//achar(10)//'  #controls fieldset { border: 1px solid var(--grid); border-radius: 6px; margin: 0 0 10px'//&
+        '; padding: 8px 10px; }'//achar(10)//'  #controls legend { font-weight: 600; padding: 0 4px; }'//&
+        achar(10)//'  #controls label { display: block; margin: 4px 0; cursor: pointer; }'//achar(10)//&
+        '  #controls select { width: 100%; margin-top: 2px; }'//achar(10)//'  #controls input[type=range] { width: 100%; }'//&
+        achar(10)//'  #controls .hint { color: var(--muted); margin: 6px 0 0; }'//achar(10)//&
+        '  .multi-select-list { max-height: 130px; overflow-y: auto; border: 1px solid var(--grid);'//achar(10)//'                        border-radius: 4px; padding: 4px 6px; margin-top: 4px; background:'//&
+        ' #fff; }'//achar(10)//'  .multi-select-list label { margin: 2px 0; font-size: 0.95em; }'//&
+        achar(10)//'  .ens-sel-swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px;'//achar(10)//&
+        '                    margin-right: 3px; vertical-align: middle; }'//achar(10)//'  .row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }'//&
+        achar(10)//'  .row .val { color: var(--muted); min-width: 2.2em; text-align: right; }'//achar(10)//&
+        achar(10)//'  #main-panel { position: relative; flex: 1 1 auto; min-width: 0; }'//achar(10)//&
+        '  .panel-toolbar { display: flex; justify-content: flex-end; margin-bottom: 4px; position:'//' relative; }'//achar(10)//&
+        '  svg { background: var(--bg); max-width: 100%; }'//achar(10)//'  #scatter { border: 1px solid var(--grid); width: 100%; height: auto; }'//&
+        achar(10)//'  .axis text { font-size: 10px; fill: var(--muted); }'//achar(10)//&
+        '  .axis path, .axis line { stroke: var(--grid); }'//achar(10)//'  .point { cursor: pointer; }'//&
+        achar(10)//'  .seed-marker, .radius-circle { pointer-events: none; }'//achar(10)//&
+        '  /* .tangent-line is deliberately NOT included above: it needs hover (ensemble ID + singu'//'lar'//achar(10)//&
+        '     value tooltip, see misc/mod_STC.md''s "Lines - Local tangent representation"), set via'//' the'//achar(10)//&
+        '     `pointer-events="stroke"` presentation attribute in JS -- a blanket CSS class rule he'//'re'//achar(10)//&
+        '     would silently win over that attribute regardless of which one looks like it should t'//'ake'//achar(10)//&
+        '     precedence (a stylesheet rule always beats a presentation attribute in the CSS cascad'//'e,'//achar(10)//&
+        '     no matter the paint order), which is exactly why hover silently never fired. */'//achar(10)//'  #tooltip { position: absolute; pointer-events: none; background: rgba(20,20,20,0.94); co'//&
+        'lor: #fff;'//achar(10)//'             padding: 6px 9px; border-radius: 4px; font-size: 0.78em; line-height: 1.4; ma'//&
+        'x-width: 300px;'//achar(10)//'             opacity: 0; transition: opacity 0.08s; z-index: 30; }'//&
+        achar(10)//'  #tooltip svg { background: transparent; }'//achar(10)//&
+        '  /* Cross-linking (see buildMainPlot''s own tooltip-link wiring): individual ensemble/'//achar(10)//'     super-ensemble mentions inside the point/tangent-line tooltips are clickable, so they'//&
+        achar(10)//'     opt back into pointer-events despite #tooltip''s own blanket `none` above -- same'//achar(10)//&
+        '     ancestor-none/descendant-auto override already used for .tangent-line''s own hover, se'//'e'//achar(10)//&
+        '     that class''s own comment above. */'//achar(10)//'  #tooltip .tt-link { pointer-events: auto; cursor: pointer; color: #8ab4f8; text-decorati'//&
+        'on: underline dotted; }'//achar(10)//'  #tooltip .tt-link:hover { color: #fff; }'//&
+        achar(10)//'  /* "not merge-eligible" warning text -- a class instead of an inline color so pinned mod'//'e''s'//&
+        achar(10)//'     white background (below) can retint it for contrast; an inline style can''t be overrid'//'den'//&
+        achar(10)//'     by a class rule regardless of cascade order. */'//achar(10)//&
+        '  #tooltip .tt-warn { color: #ffb4b4; }'//achar(10)//'  #tooltip.pinned .tt-warn { color: #b3261e; }'//&
+        achar(10)//achar(10)//'  /* Pinned state (click/right-click on a point or tangent line -- see pinTooltip/'//&
+        achar(10)//'     unpinTooltip): turns opaque white so it visually reads as a different, interactive'//achar(10)//&
+        '     mode rather than a fleeting hover preview, re-enables pointer-events on the whole'//achar(10)//'     tooltip (not just .tt-link, since .tt-close below also needs to be clickable and the'//&
+        achar(10)//'     user must be able to move the mouse over the pinned body without it vanishing), and'//achar(10)//&
+        '     re-tunes link colors for readability against a light background instead of the dark'//achar(10)//'     hover-preview background above. */'//&
+        achar(10)//'  #tooltip.pinned { pointer-events: auto; background: #fff; color: var(--fg);'//achar(10)//&
+        '                     border: 1px solid var(--grid); box-shadow: 0 2px 10px rgba(0,0,0,0.18'//');'//achar(10)//&
+        '                     padding: 8px 26px 8px 9px; }'//achar(10)//'  #tooltip.pinned .tt-link { color: var(--blue); text-decoration: underline; }'//&
+        achar(10)//'  #tooltip.pinned .tt-link:hover { color: var(--red); }'//achar(10)//&
+        '  .tt-close { position: absolute; top: 4px; right: 6px; cursor: pointer; font-size: 1.1em;'//achar(10)//'              line-height: 1; color: var(--muted); pointer-events: auto; }'//&
+        achar(10)//'  .tt-close:hover { color: var(--red); }'//achar(10)//&
+        achar(10)//'  /* ---- undo/reset icon for tooltip cross-link clicks (main plot only) -----------------'//'- */'//&
+        achar(10)//'  #undo-link-icon { position: absolute; top: 6px; left: 6px; z-index: 21; width: 26px; hei'//'ght: 26px;'//&
+        achar(10)//'                     border-radius: 50%; border: 1px solid var(--blue); background: #eaf2f'//'b; color: var(--blue);'//&
+        achar(10)//'                     font-size: 14px; line-height: 1; padding: 0; }'//achar(10)//&
+        '  #undo-link-icon:hover { background: #d7e8fb; }'//achar(10)//achar(10)//&
+        '  /* ---- export button ------------------------------------------------------------------'//' */'//achar(10)//&
+        '  .export-wrap { position: relative; display: inline-block; }'//achar(10)//'  .export-btn { font-size: 0.78em; padding: 4px 9px; border: 1px solid var(--grid); border'//&
+        '-radius: 5px;'//achar(10)//'                background: #fff; }'//&
+        achar(10)//'  .export-menu { position: absolute; right: 0; top: 100%; margin-top: 2px; background: #ff'//'f;'//&
+        achar(10)//'                 border: 1px solid var(--grid); border-radius: 5px; box-shadow: 0 2px 8px '//'rgba(0,0,0,0.12);'//&
+        achar(10)//'                 display: none; z-index: 25; min-width: 90px; }'//achar(10)//&
+        '  .export-menu.open { display: block; }'//achar(10)//'  .export-menu button { display: block; width: 100%; text-align: left; padding: 6px 10px;'//&
+        achar(10)//'                         font-size: 0.78em; border: none; background: none; }'//achar(10)//&
+        '  .export-menu button:hover { background: var(--panel-bg); }'//achar(10)//achar(10)//&
+        '  /* ---- zoom icon / mode menu / resize grip (every SVG panel) --------------------------'//'- */'//achar(10)//&
+        '  .zoom-icon-wrap { user-select: none; }'//achar(10)//'  .zoom-menu-panel { background: #fff; border: 1px solid var(--grid); border-radius: 5px;'//&
+        achar(10)//'                      padding: 6px 8px; font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,'//'0.15); }'//&
+        achar(10)//'  .zoom-menu-panel label { display: block; margin: 2px 0; cursor: pointer; font-weight: no'//'rmal; }'//&
+        achar(10)//'  .zoom-menu-panel button { margin-top: 4px; width: 100%; font-size: 11px; }'//achar(10)//&
+        '  .resize-grip { cursor: nesw-resize; user-select: none; }'//achar(10)//'  /* Zoom is off by default and only responds to wheel/drag/arrow-keys once explicitly "ar'//&
+        'med"'//achar(10)//'     via a panel''s own magnifying-glass icon -- this outline is the persistent visual cue '//&
+        'for'//achar(10)//'     which single panel (at most one, system-wide) is currently armed. */'//&
+        achar(10)//'  svg.zoom-armed { outline: 2px solid var(--blue); outline-offset: -2px; }'//achar(10)//&
+        achar(10)//'  /* ---- additional plot panels ---------------------------------------------------------'//'- */'//&
+        achar(10)//'  .addl-panel { margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--grid); }'//achar(10)//&
+        '  .addl-panel[hidden] { display: none; }'//achar(10)//'  #heatmap-wrap { overflow: auto; max-width: 100%; }'//&
+        achar(10)//'  .legend-item { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; '//'font-size: 0.8em; }'//&
+        achar(10)//'  .legend-swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; }'//achar(10)//&
+        '  #legend, .legend-row { margin-top: 8px; }'//achar(10)//achar(10)//&
+        '  table.params { border-collapse: collapse; font-size: 0.82em; width: 100%; max-width: 720'//'px; }'//achar(10)//&
+        '  table.params caption { text-align: left; font-weight: 600; margin-bottom: 4px; }'//achar(10)//'  table.params td, table.params th { padding: 4px 10px 4px 0; text-align: left; border-bot'//&
+        'tom: 1px solid var(--grid);'//achar(10)//'                                      vertical-align: top; }'//&
+        achar(10)//'  table.params td.explain { color: var(--muted); font-size: 0.92em; }'//achar(10)//&
+        '  table.stats { border-collapse: collapse; font-size: 0.82em; margin: 6px 0 16px; }'//achar(10)//'  table.stats caption { text-align: left; font-weight: 600; margin-bottom: 4px; }'//&
+        achar(10)//'  table.stats td, table.stats th { padding: 3px 10px; text-align: right; border-bottom: 1p'//'x solid var(--grid); }'//&
+        achar(10)//'  table.stats th:first-child, table.stats td:first-child { text-align: left; }'//achar(10)//&
+        '  #runinfo-tables { display: flex; gap: 40px; flex-wrap: wrap; }'//achar(10)//'  #runinfo-summary { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 6px; }'//&
+        achar(10)//achar(10)//'  /* ---- tree ------------------------------------------------------------------------ */'//&
+        achar(10)//'  .tree-link { fill: none; stroke: var(--grid); stroke-width: 1.4px; }'//achar(10)//&
+        '  .tree-node circle.super-dot { fill: #fff; stroke: var(--fg); stroke-width: 1.2px; cursor'//': pointer; }'//achar(10)//&
+        '  .tree-node text { font-size: 10px; }'//achar(10)//achar(10)//&
+        '  /* ---- observable plots ---------------------------------------------------------------'//' */'//achar(10)//&
+        '  #obs-selector-row { display: flex; justify-content: center; margin-bottom: 6px; }'//achar(10)//'  #obs-info-pane { font-size: 0.85em; margin: 4px 0 12px; padding: 7px 11px; background: v'//&
+        'ar(--panel-bg);'//achar(10)//'                    border-radius: 6px; border: 1px solid var(--grid); }'//&
+        achar(10)//'  #obs-charts { display: flex; gap: 18px; flex-wrap: wrap; }'//achar(10)//&
+        '  .obs-chart-wrap { flex: 1 1 280px; min-width: 260px; }'//achar(10)//'  .obs-caption { font-size: 0.8em; color: var(--muted); margin: 2px 0 6px; min-height: 1.4'//&
+        'em; }'//achar(10)//'  .ribbon { fill: var(--blue); fill-opacity: 0.18; }'//&
+        achar(10)//'  .mean-line { fill: none; stroke: var(--fg); stroke-width: 2.2px; }'//achar(10)//&
+        '  .obs-line { fill: none; stroke: var(--blue); stroke-width: 1.6px; }'//achar(10)//'  .obs-dot { fill: var(--blue); cursor: pointer; }'//&
+        achar(10)//'  .gap-tick { font-size: 12px; fill: var(--muted); text-anchor: middle; }'//achar(10)//&
+        achar(10)//'  /* ---- reusable ensemble-selector widget (point color / tangent lines) ----------------'//'-- */'//&
+        achar(10)//'  .ens-sel-mode-row { display: flex; gap: 12px; margin: 6px 0 4px; }'//achar(10)//&
+        '  .ens-sel-mode-row label { font-weight: normal; display: inline-flex; align-items: center'//'; gap: 3px; }'//achar(10)//&
+        '  .ens-sel-reuse { display: block; margin: 4px 0; font-size: 0.95em; }'//achar(10)//'  .ens-sel-facet { margin-top: 6px; }'//&
+        achar(10)//'  .ens-sel-facet-title { font-size: 0.85em; font-weight: 600; margin: 6px 0 2px; }'//achar(10)//&
+        '  .ens-sel-toolbar { display: flex; gap: 6px; margin: 4px 0; }'//achar(10)//'  .ens-sel-search { flex: 1 1 auto; min-width: 0; padding: 3px 6px; border: 1px solid var('//&
+        '--grid);'//achar(10)//'                     border-radius: 4px; font-size: 0.85em; }'//&
+        achar(10)//'  .ens-sel-toolbar button { font-size: 0.78em; padding: 3px 8px; border: 1px solid var(--g'//'rid);'//&
+        achar(10)//'                             border-radius: 4px; background: #fff; }'//achar(10)//&
+        achar(10)//'  /* two-handle range slider: two overlapping native <input type=range>, a filled track dr'//'awn'//&
+        achar(10)//'     between their current values -- no third-party slider library, same zero-new-dependen'//'cy'//&
+        achar(10)//'     convention as this report''s own export mechanism. */'//achar(10)//&
+        '  .range-slider { position: relative; height: 22px; margin: 4px 0 2px; }'//achar(10)//'  .range-slider input[type=range] { position: absolute; left: 0; width: 100%; top: 7px; ma'//&
+        'rgin: 0;'//achar(10)//'                                     background: transparent; pointer-events: none; -webki'//&
+        't-appearance: none; }'//achar(10)//'  .range-slider input[type=range]::-webkit-slider-thumb { pointer-events: auto; -webkit-ap'//&
+        'pearance: none;'//achar(10)//'    width: 12px; height: 12px; border-radius: 50%; background: var(--blue); cursor: pointe'//&
+        'r; }'//achar(10)//'  .range-slider input[type=range]::-moz-range-thumb { pointer-events: auto; width: 12px; h'//&
+        'eight: 12px;'//achar(10)//'    border-radius: 50%; background: var(--blue); cursor: pointer; border: none; }'//&
+        achar(10)//'  .range-slider input[type=range]::-webkit-slider-runnable-track { background: transparent'//'; }'//&
+        achar(10)//'  .range-slider input[type=range]::-moz-range-track { background: transparent; }'//achar(10)//&
+        '  .range-slider .track { position: absolute; left: 0; right: 0; top: 10px; height: 3px; ba'//'ckground: var(--grid); }'//achar(10)//&
+        '  .range-slider .track-fill { position: absolute; top: 10px; height: 3px; background: var('//'--blue); }'//achar(10)//&
+        '  .range-values { display: flex; justify-content: space-between; font-size: 0.78em; color:'//' var(--muted); }'//achar(10)//&
+        '</style>'//achar(10)//'</head>'//&
+        achar(10)//'<body>'//achar(10)//&
+        achar(10)//'<button id="hamburger-toggle" title="Toggle menu (space)">&#9776;</button>'//achar(10)//&
+        achar(10)//'<h1 id="title">STC interactive report</h1>'//achar(10)//&
+        '<div id="subtitle"></div>'//achar(10)//achar(10)//&
+        '<div id="addl-bar">'//achar(10)//'  <button data-panel="panel-heatmap">Overlap Coefficient Heatmap</button>'//&
+        achar(10)//'  <button data-panel="panel-tree">Super-Ensemble Tree</button>'//achar(10)//&
+        '  <button data-panel="panel-observable">Ensemble Observable Plots</button>'//achar(10)//'  <button data-panel="panel-runinfo">STC Run Info</button>'//&
+        achar(10)//'</div>'//achar(10)//&
+        achar(10)//'<div id="main-layout">'//achar(10)//&
         '  <div id="controls">'//achar(10)//'    <fieldset>'//&
-        achar(10)//'      <legend>Color points by</legend>'//achar(10)//&
-        '      <select id="color-mode">'//achar(10)//'        <option value="none">Single color</option>'//&
-        achar(10)//'        <option value="n_ensembles" selected>Intersection density (# ensembles)</option>'//achar(10)//&
-        '        <option value="coverage">Low-confidence fallback coverage</option>'//achar(10)//'        <option value="super_ensemble">Super-ensemble grouping</option>'//&
-        achar(10)//'      </select>'//achar(10)//&
+        achar(10)//'      <legend>Point color</legend>'//achar(10)//&
+        '      <select id="color-mode">'//achar(10)//'        <option value="intersection" selected>Intersection density (# ensembles)</option>'//&
+        achar(10)//'        <option value="ensemble">Ensemble ID</option>'//achar(10)//&
+        '        <option value="super_ensemble">Super-ensemble ID</option>'//achar(10)//'        <option value="low_confidence">Low-confidence fallback coverage</option>'//&
+        achar(10)//'        <option value="single">Single color</option>'//achar(10)//&
+        '      </select>'//achar(10)//'      <div id="single-color-wrap" style="display:none;">'//&
+        achar(10)//'        <input type="color" id="single-color" value="#4682b4">'//achar(10)//&
+        '      </div>'//achar(10)//'      <div id="color-mode-extra"></div>'//&
+        achar(10)//'    </fieldset>'//achar(10)//&
+        '    <fieldset>'//achar(10)//'      <legend>Point shape</legend>'//&
+        achar(10)//'      <label><input type="checkbox" id="layer-points" checked> Show points (circles)</labe'//'l>'//&
+        achar(10)//'      <div class="row"><span>Point diameter</span></div>'//achar(10)//&
+        '      <input type="range" id="point-diameter" min="1" max="12" step="0.5" value="4">'//achar(10)//'      <label><input type="checkbox" id="layer-seeds" checked> Show seeds (triangles)</labe'//&
+        'l>'//achar(10)//'      <div class="row"><span>Seed diameter</span></div>'//&
+        achar(10)//'      <input type="range" id="seed-diameter" min="1" max="14" step="0.5" value="4.8">'//achar(10)//&
+        '      <label><input type="checkbox" id="seed-color-link"> Triangle color follows point col'//'or (else black)</label>'//achar(10)//&
         '    </fieldset>'//achar(10)//'    <fieldset>'//&
-        achar(10)//'      <legend>Highlight one ensemble</legend>'//achar(10)//&
-        '      <select id="highlight-ensemble">'//achar(10)//'        <option value="">(none -- show all, colored by mode above)</option>'//&
-        achar(10)//'      </select>'//achar(10)//&
-        '      <label style="margin-top:6px;"><input type="checkbox" id="layer-seeds" checked> Seed'//'s</label>'//achar(10)//&
-        '      <label><input type="checkbox" id="layer-radii"> Growth radii</label>'//achar(10)//'      <label><input type="checkbox" id="layer-tangent1"> Tangent PC1</label>'//&
-        achar(10)//'      <label><input type="checkbox" id="layer-tangent2"> Tangent PC2</label>'//achar(10)//&
-        '      <p style="color:var(--muted); margin: 8px 0 0;">With no ensemble selected, seeds sho'//'w for'//achar(10)//&
-        '      all ensembles; growth-radii/tangent layers are drawn for all non-empty ensembles whe'//'n'//achar(10)//&
-        '      none is selected, which can get busy -- pick one to declutter.</p>'//achar(10)//'    </fieldset>'//&
-        achar(10)//'    <div id="legend"></div>'//achar(10)//&
+        achar(10)//'      <legend>Tangent lines</legend>'//achar(10)//&
+        '      <label><input type="checkbox" id="layer-tangent" checked> Show tangent lines</label>'//achar(10)//'      <label><input type="checkbox" id="tangent-single-color"> Use single color for all li'//&
+        'nes</label>'//achar(10)//'      <input type="color" id="tangent-color" value="#b2182b">'//&
+        achar(10)//'      <div class="row"><span>Thickness</span></div>'//achar(10)//&
+        '      <input type="range" id="tangent-thickness" min="0.5" max="6" step="0.5" value="1.6">'//achar(10)//'      <div class="hint">Which ensembles'' lines are shown:</div>'//&
+        achar(10)//'      <div id="tangent-line-select"></div>'//achar(10)//&
+        '    </fieldset>'//achar(10)//'    <fieldset>'//&
+        achar(10)//'      <legend>Seed growth radii</legend>'//achar(10)//&
+        '      <label><input type="checkbox" id="layer-radii"> Show growth radii</label>'//achar(10)//'      <label><input type="checkbox" id="radii-ensemble-color"> Color by grown ensemble (el'//&
+        'se same as triangles)</label>'//achar(10)//'      <div class="row"><span>Opacity</span></div>'//&
+        achar(10)//'      <input type="range" id="radii-opacity" min="0.02" max="0.6" step="0.02" value="0.08"'//'>'//&
+        achar(10)//'    </fieldset>'//achar(10)//&
+        '    <p class="hint">The legend for the current point-color mode is drawn inside the plot i'//'tself (top-right), so it is included when you export it.</p>'//achar(10)//&
         '  </div>'//achar(10)//achar(10)//&
-        '  <div id="main-panel">'//achar(10)//'    <svg id="scatter"></svg>'//&
-        achar(10)//'  </div>'//achar(10)//&
+        '  <div id="main-panel">'//achar(10)//'    <div class="panel-toolbar" id="scatter-toolbar"></div>'//&
+        achar(10)//'    <button id="undo-link-icon" title="Undo ensemble-link clicks" hidden>&#8630;</button>'//achar(10)//&
+        '    <svg id="scatter"></svg>'//achar(10)//'  </div>'//&
+        achar(10)//'</div>'//achar(10)//&
+        achar(10)//'<div id="panel-heatmap" class="addl-panel" hidden>'//achar(10)//&
+        '  <h2>Ensemble Overlap Coefficient (OvC) Heatmap</h2>'//achar(10)//'  <div id="heatmap-controls" style="font-size:0.82em; margin-bottom:8px;">'//&
+        achar(10)//'    <label style="margin-right:14px;"><input type="checkbox" id="hm-axis-labels" checked> '//'Axis labels</label>'//&
+        achar(10)//'    <label><input type="checkbox" id="hm-borders" checked> Cell borders</label>'//achar(10)//&
+        '  </div>'//achar(10)//'  <div class="panel-toolbar" id="heatmap-toolbar"></div>'//&
+        achar(10)//'  <div id="heatmap-wrap"><svg id="heatmap"></svg></div>'//achar(10)//&
         '</div>'//achar(10)//achar(10)//&
-        '<h2>Pairwise Overlap Coefficient heatmap</h2>'//achar(10)//'<div id="heatmap-wrap"><svg id="heatmap"></svg></div>'//&
-        achar(10)//achar(10)//'<h2>Parameters</h2>'//&
-        achar(10)//'<div id="params-tables"></div>'//achar(10)//&
-        achar(10)//'<div id="tooltip"></div>'//achar(10)//&
-        achar(10)//'<script>'//achar(10)//&
-        '/* ---- vendored D3 v7.9.0 (https://d3js.org, BSD-3-Clause), inlined for a self-contained,'//achar(10)//'   offline-usable report -- no CDN dependency at view time. ---- */'//&
-        achar(10)
+        '<div id="panel-tree" class="addl-panel" hidden>'//achar(10)//'  <h2>Super-Ensemble Tree</h2>'//&
+        achar(10)//'  <div class="panel-toolbar" id="tree-toolbar"></div>'//achar(10)//&
+        '  <div id="tree-wrap" style="overflow:auto; max-width:100%;"><svg id="tree"></svg></div>'//achar(10)//'</div>'//&
+        achar(10)//achar(10)//'<div id="panel-observable" class="addl-panel" hidden>'//&
+        achar(10)//'  <h2>Ensemble Observable Plots</h2>'//achar(10)//&
+        '  <div id="obs-selector-row">'//achar(10)//'    <select id="obs-ensemble-select"></select>'//&
+        achar(10)//'  </div>'//achar(10)//&
+        '  <div id="obs-info-pane"></div>'//achar(10)//'  <div id="obs-charts">'//&
+        achar(10)//'    <div class="obs-chart-wrap">'//achar(10)//&
+        '      <h3>Spectral Gap</h3>'//achar(10)//'      <div class="panel-toolbar" id="obs-g-toolbar"></div>'//&
+        achar(10)//'      <svg id="obs-g" width="100%" viewBox="0 0 320 220"></svg>'//achar(10)//&
+        '    </div>'//achar(10)//'    <div class="obs-chart-wrap">'//&
+        achar(10)//'      <h3>RMSE</h3>'//achar(10)//&
+        '      <div class="panel-toolbar" id="obs-rmse-toolbar"></div>'//achar(10)//'      <svg id="obs-rmse" width="100%" viewBox="0 0 320 220"></svg>'//&
+        achar(10)//'    </div>'//achar(10)//&
+        '    <div class="obs-chart-wrap">'//achar(10)//'      <h3>Consecutive Tangent-Space Drift</h3>'//&
+        achar(10)//'      <div class="obs-caption" id="obs-drift-caption"></div>'//achar(10)//&
+        '      <div class="panel-toolbar" id="obs-drift-toolbar"></div>'//achar(10)//'      <svg id="obs-drift" width="100%" viewBox="0 0 320 220"></svg>'//&
+        achar(10)//'    </div>'//achar(10)//&
+        '  </div>'//achar(10)//'</div>'//&
+        achar(10)//achar(10)//'<div id="panel-runinfo" class="addl-panel" hidden>'//&
+        achar(10)//'  <h2>STC run info</h2>'//achar(10)//&
+        '  <div id="runinfo-summary"></div>'//achar(10)//'  <div id="runinfo-stats"></div>'//&
+        achar(10)//'  <div id="runinfo-tables"></div>'//achar(10)//&
+        '</div>'//achar(10)//achar(10)//&
+        '<div id="tooltip"></div>'//achar(10)//achar(10)//&
+        '<script>'//achar(10)//'/* ---- vendored D3 v7.9.0 (https://d3js.org, BSD-3-Clause), inlined for a self-contained,'//&
+        achar(10)//'   offline-usable report -- no CDN dependency at view time. ---- */'//achar(10)
 
     character(len=*), parameter :: REPORT_TEMPLATE_MID = &
         achar(10)//'</script>'//achar(10)//&
         '<script>'//achar(10)//'/* ====================================================================================='//&
-        achar(10)//'   Data contract: a single JSON object (see misc/STC-experiments/export_json.py), injected'//achar(10)//&
-        '   below by render_interactive.py. Re-run render_interactive.py <prefix> to regenerate thi'//'s'//achar(10)//&
-        '   file from a different prefix''s data -- this whole block, and everything above it, is th'//'e'//achar(10)//&
-        '   reusable template; only this DATA constant changes per report.'//achar(10)//'   ===================================================================================== *'//&
-        '/'//achar(10)//'const DATA = '
+        achar(10)//'   Data contract: a single JSON object, matching src/tox_stc_json.F90''s own schema --'//achar(10)//&
+        '   injected below by tox_stc_json::write_stc_interactive_html_report (see C-layer/stc_cli.'//'c'//achar(10)//&
+        '   for the CLI that calls it). This whole block, and everything above it, is the reusable'//achar(10)//'   template; only this DATA constant changes per report.'//&
+        achar(10)//'   ===================================================================================== *'//'/'//&
+        achar(10)//'const DATA = '
 
     character(len=*), parameter :: REPORT_TEMPLATE_TAIL = &
         ';'//achar(10)//achar(10)//&
         '(function () {'//achar(10)//'  "use strict";'//&
-        achar(10)//achar(10)//'  const dimX = DATA.dim_names[0], dimY = DATA.dim_names[1];'//&
-        achar(10)//'  const pointById = new Map(DATA.points.map(p => [p.id, p]));'//achar(10)//&
-        '  const ensembleById = new Map(DATA.ensembles.map(e => [e.id, e]));'//achar(10)//'  const nonEmptyEnsembles = DATA.ensembles.filter(e => e.size > 0);'//&
-        achar(10)//achar(10)//'  document.getElementById("title").textContent = "STC interactive report -- " + (DATA.para'//&
-        'ms.input_csv || "");'//achar(10)//'  document.getElementById("subtitle").textContent ='//&
-        achar(10)//'    `${DATA.points.length} points, ${nonEmptyEnsembles.length} non-empty ensembles, ` +'//achar(10)//&
-        '    `${DATA.super_ensembles.length} super-ensemble(s). Hover a point for full detail; ` +'//achar(10)//'    "over-plotting is avoided by highlighting one ensemble at a time instead of stacking c'//&
-        'olors.";'//achar(10)//achar(10)//&
-        '  const highlightSelect = document.getElementById("highlight-ensemble");'//achar(10)//'  nonEmptyEnsembles.slice().sort((a, b) => b.size - a.size).forEach(e => {'//&
-        achar(10)//'    const opt = document.createElement("option");'//achar(10)//&
-        '    opt.value = e.id;'//achar(10)//'    opt.textContent = `Ensemble ${e.id} (seed ${e.seed_point_id}, ${e.size} members, d=${e'//&
-        '.d}, ${e.stop_reason})`;'//achar(10)//'    highlightSelect.appendChild(opt);'//&
-        achar(10)//'  });'//achar(10)//&
-        achar(10)//'  // ---- Scatter plot ------------------------------------------------------------------'//achar(10)//&
-        '  const margin = { top: 10, right: 20, bottom: 36, left: 46 };'//achar(10)//'  const width = 640, height = 560;'//&
-        achar(10)//'  const svg = d3.select("#scatter").attr("width", width).attr("height", height);'//achar(10)//&
-        '  const plot = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`'//');'//achar(10)//&
-        '  const innerW = width - margin.left - margin.right, innerH = height - margin.top - margin'//'.bottom;'//achar(10)//&
-        achar(10)//'  const xExtent = d3.extent(DATA.points, p => p.coords[0]);'//achar(10)//&
-        '  const yExtent = d3.extent(DATA.points, p => p.coords[1]);'//achar(10)//'  const xSpan = xExtent[1] - xExtent[0] || 1, ySpan = yExtent[1] - yExtent[0] || 1;'//&
-        achar(10)//'  // A single shared units-per-pixel scale for both axes (coord_fixed()''s equivalent) --'//achar(10)//&
-        '  // circles and tangent segments would otherwise be visually distorted.'//achar(10)//'  const unitsPerPixel = Math.max(xSpan / innerW, ySpan / innerH) * 1.08;'//&
-        achar(10)//'  const xMid = (xExtent[0] + xExtent[1]) / 2, yMid = (yExtent[0] + yExtent[1]) / 2;'//achar(10)//&
-        '  const x = d3.scaleLinear().domain([xMid - unitsPerPixel * innerW / 2, xMid + unitsPerPix'//'el * innerW / 2]).range([0, innerW]);'//achar(10)//&
-        '  const y = d3.scaleLinear().domain([yMid - unitsPerPixel * innerH / 2, yMid + unitsPerPix'//'el * innerH / 2]).range([innerH, 0]);'//achar(10)//&
-        achar(10)//'  plot.append("g").attr("class", "axis").attr("transform", `translate(0,${innerH})`).call('//'d3.axisBottom(x).ticks(6));'//&
-        achar(10)//'  plot.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(6));'//achar(10)//&
-        '  svg.append("text").attr("x", margin.left + innerW / 2).attr("y", height - 4).attr("text-'//'anchor", "middle")'//achar(10)//&
-        '    .attr("font-size", 11).attr("fill", "var(--muted)").text(dimX);'//achar(10)//'  svg.append("text").attr("transform", "rotate(-90)").attr("x", -(margin.top + innerH / 2)'//&
-        ').attr("y", 12)'//achar(10)//'    .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "var(--muted)").text'//&
-        '(dimY);'//achar(10)//achar(10)//&
-        '  const pointsLayer = plot.append("g");'//achar(10)//'  const overlayLayer = plot.append("g"); // radii circles, drawn under points but over bac'//&
-        'kground'//achar(10)//'  plot.node().before ? null : null; // no-op, keeps layer creation order obvious below'//&
-        achar(10)//'  pointsLayer.raise();'//achar(10)//&
-        '  const seedLayer = plot.append("g");'//achar(10)//'  const tangentLayer = plot.append("g");'//&
-        achar(10)//achar(10)//'  const tooltip = d3.select("#tooltip");'//&
-        achar(10)//'  const magma = d3.scaleSequential(d3.interpolateMagma);'//achar(10)//&
-        '  const coverageColor = { "Retained ensemble": "#4682b4", "Low-confidence fallback only": '//'"#e08214", "Uncovered": "#bbb" };'//achar(10)//&
-        '  const superEnsembleColor = d3.scaleOrdinal(d3.schemeCategory10);'//achar(10)//achar(10)//&
-        '  function coverageCategory(p) {'//achar(10)//'    if (p.n_ensembles > 0) return "Retained ensemble";'//&
-        achar(10)//'    if (p.n_low_confidence_ensembles > 0) return "Low-confidence fallback only";'//achar(10)//&
-        '    return "Uncovered";'//achar(10)//'  }'//&
-        achar(10)//achar(10)//'  function pointColor(p, colorMode, highlightId) {'//&
-        achar(10)//'    if (highlightId) {'//achar(10)//&
-        '      return p.ensembles.includes(highlightId) ? "#2166ac" : "#d9d9d9";'//achar(10)//'    }'//&
-        achar(10)//'    switch (colorMode) {'//achar(10)//&
-        '      case "n_ensembles": {'//achar(10)//'        const maxN = d3.max(DATA.points, d => d.n_ensembles) || 1;'//&
-        achar(10)//'        magma.domain([maxN + 1, 0]); // reversed: brighter = more overlap, avoids near-bla'//'ck-on-white'//&
-        achar(10)//'        return p.n_ensembles === 0 ? "#ddd" : magma(p.n_ensembles);'//achar(10)//&
-        '      }'//achar(10)//'      case "coverage":'//&
-        achar(10)//'        return coverageColor[coverageCategory(p)];'//achar(10)//&
-        '      case "super_ensemble": {'//achar(10)//'        const groupIds = p.ensembles.map(eid => ensembleById.get(eid) && ensembleById.get('//&
-        'eid).super_ensemble_id)'//achar(10)//'          .filter(g => g !== null && g !== undefined);'//&
-        achar(10)//'        return groupIds.length ? superEnsembleColor(Math.min(...groupIds)) : "#ddd";'//achar(10)//&
-        '      }'//achar(10)//'      default:'//&
-        achar(10)//'        return "#4682b4";'//achar(10)//&
-        '    }'//achar(10)//'  }'//&
-        achar(10)//achar(10)//'  function tooltipHtml(p) {'//&
-        achar(10)//'    const rows = ['//achar(10)//&
-        '      `<b>point ${p.id}</b>`,'//achar(10)//'      `${dimX}=${p.coords[0].toFixed(4)}, ${dimY}=${p.coords[1].toFixed(4)}`,'//&
-        achar(10)//'      `in ${p.n_ensembles} retained ensemble(s): ${p.ensembles.join(", ") || "none"}`,'//achar(10)//&
-        '      `low-confidence fallback: ${p.low_confidence_ensembles.join(", ") || "none"}`,'//achar(10)//'    ];'//&
-        achar(10)//'    if (p.seed_of.length) rows.push(`seed of ensemble(s): ${p.seed_of.join(", ")}`);'//achar(10)//&
-        '    const superIds = [...new Set(p.ensembles.map(eid => ensembleById.get(eid) && ensembleB'//'yId.get(eid).super_ensemble_id)'//achar(10)//&
-        '      .filter(g => g !== null && g !== undefined))];'//achar(10)//'    if (superIds.length) rows.push(`super-ensemble(s): ${superIds.join(", ")}`);'//&
-        achar(10)//'    return rows.join("<br>");'//achar(10)//&
+        achar(10)//achar(10)//'  // ============================================================================'//&
+        achar(10)//'  // ---- Shared helpers, lookups, color scales -----------------------------------'//achar(10)//&
+        '  // ============================================================================'//achar(10)//achar(10)//&
+        '  const dims2D = DATA.dim_names.length === 2;'//achar(10)//'  const dimX = DATA.dim_names[0], dimY = DATA.dim_names.length > 1 ? DATA.dim_names[1] : n'//&
+        'ull;'//achar(10)//'  const pointById = new Map(DATA.points.map(p => [p.id, p]));'//&
+        achar(10)//'  const ensembleById = new Map(DATA.ensembles.map(e => [e.id, e]));'//achar(10)//&
+        '  const nonEmptyEnsembles = DATA.ensembles.filter(e => e.size > 0);'//achar(10)//'  const historyEnsembles = DATA.ensembles.filter(e => e.observable_history && e.observable'//&
+        '_history.length > 0);'//achar(10)//'  const tooltip = d3.select("#tooltip");'//&
+        achar(10)//'  const GREY = "#ccc";'//achar(10)//&
+        achar(10)//'  // Short reference explanations for the STC run-info pane -- declared here, ahead of eve'//'ry'//&
+        achar(10)//'  // function that might run before the script reaches its own textual location further do'//'wn'//&
+        achar(10)//'  // (buildRunInfo() is called well before this point in program order; a `const` referenc'//'ed'//&
+        achar(10)//'  // from inside an already-hoisted function declaration is still only usable once its own'//achar(10)//&
+        '  // initializer has actually executed, so this must sit above every call site, not just a'//'bove'//achar(10)//&
+        '  // buildRunInfo''s own definition).'//achar(10)//'  const PARAM_EXPLANATIONS = {'//&
+        achar(10)//'    k_min: "Neighborhood size (kNN pool) used to compute each ensemble''s growth radius. La'//'rger = smoother, less locally-adaptive radius.",'//&
+        achar(10)//'    k_density: "Neighborhood size for local density estimation during seeding. Independent'//' of k_min even though they share a default.",'//&
+        achar(10)//'    chordal_dist_max_as_prcnt_of_range: "Max tolerated tangent-space rotation vs. any refe'//'rence basis, as a fraction of its [0,sqrt(d)] range. Higher = more tolerant of orientation'//&
+        ' drift.",'//achar(10)//'    d_max: "Max tolerated change in intrinsic dimension vs. the bootstrap iteration and vs'//&
+        '. the previous iteration.",'//achar(10)//'    g_max: "Max tolerated |log| change in spectral gap between consecutive growth iteratio'//&
+        'ns.",'//achar(10)//'    rmse_change_max: "Max tolerated |log| change in residual (RMSE) between consecutive gr'//&
+        'owth iterations.",'//achar(10)//'    f_max: "Ensemble size fraction of N above which growth is abandoned entirely (evidence'//&
+        ' against local structure). 0-1.",'//achar(10)//'    a: "Minimum number of accepted iterations required before a later rejection counts as '//&
+        'a stable stop rather than an immediate one.",'//achar(10)//'    o: "Depth of the trailing observable-history window retained per ensemble.",'//&
+        achar(10)//'    exclusion_radius_percentile: "Percentile (0-100) of kNN distances used as each seed''s '//'own coverage/exclusion radius during seeding. Lower = less over-eager suppression, more (s'//&
+        'maller) ensembles.",'//achar(10)//'    bandwidth_percentile: "Percentile (0-100) of kNN distances used as the local density-e'//&
+        'stimate kernel bandwidth.",'//achar(10)//'    reconciliation_mode: "How intersecting ensembles are processed: report only, merge abo'//&
+        've a minimum Overlap Coefficient, or merge on any intersection.",'//achar(10)//'    min_overlap_coefficient: "Minimum Overlap Coefficient required to merge two ensembles '//&
+        'in ''merge_overlap_coefficient'' mode. 0-1.",'//achar(10)//'    excluded_stop_reasons: "Stop Conditions excluded from ensemble_reconciliation''s own me'//&
+        'rging — those ensembles still exist everywhere else in this report, they just cannot join '//'a super-ensemble or appear in the overlap-coefficient matrix.",'//achar(10)//&
+        '    filter_d_min: "Minimum final intrinsic dimension (inclusive) required for an ensemble '//'to be eligible for merging. Ensembles below this are still reported everywhere, just exclu'//'ded from reconciliation.",'//&
+        achar(10)//'    filter_d_max: "Maximum final intrinsic dimension (inclusive) required for an ensemble '//'to be eligible for merging. Distinct from d_max above, which bounds dimension drift during'//&
+        ' growth, not the final value.",'//achar(10)//'    filter_var_explained_min: "Minimum final classical variance explained (tangent eigenva'//&
+        'lue energy / total energy) required for an ensemble to be eligible for merging — excludes '//'ensembles that mostly ''learned noise''.",'//achar(10)//&
+        '    max_group_size: "Maximum number of ensembles one super-ensemble can hold.",'//achar(10)//'    n_vectors: "Number of input data points (ambient vector count), N.",'//&
+        achar(10)//'    n_dimensions: "Ambient dimensionality, D.",'//achar(10)//&
+        '    n_ensembles: "Number of seeds / ensembles this run produced.",'//achar(10)//'  };'//&
+        achar(10)//achar(10)//'  // Evenly spread hue across the full [1..N] ensemble-ID range via d3''s own perceptually-'//&
+        'tuned'//achar(10)//'  // cyclic rainbow interpolator (already in the vendored bundle) -- unlike the previous'//&
+        achar(10)//'  // golden-angle hue-stepping scheme (a technique meant for streaming/unbounded category'//achar(10)//&
+        '  // counts), this guarantees maximum even hue spacing for the actual, already-known N at'//achar(10)//'  // render time, rather than an arbitrary-looking subset of the hue circle. A secondary 3'//&
+        '-way'//achar(10)//'  // lightness alternation, keyed on id, additionally separates hue-*adjacent* neighbors ('//&
+        'the'//achar(10)//'  // ones most likely to look similar) beyond what hue alone provides: hue-only variation '//&
+        'runs'//achar(10)//'  // out of reliable simultaneous human distinguishability well before this project''s typi'//&
+        'cal'//achar(10)//'  // ensemble counts (60-280, see misc/STC-experiments/README.md) -- a real physiological '//&
+        'limit'//achar(10)//'  // (reliable simultaneous color discrimination tops out around 20-30 categories) that no'//&
+        achar(10)//'  // single palette dimension fully overcomes; this just pushes distinguishability as far '//'as'//&
+        achar(10)//'  // reasonably achievable. Denominators are fixed once, from the *total* ensemble/'//achar(10)//&
+        '  // super-ensemble counts, never from whatever subset a filter currently shows, so a give'//'n'//achar(10)//&
+        '  // ensemble''s color never changes as the user filters/toggles panels.'//achar(10)//'  const N_ENSEMBLES_TOTAL = Math.max(1, DATA.ensembles.length);'//&
+        achar(10)//'  const N_SUPER_TOTAL = Math.max(1, DATA.super_ensembles.length);'//achar(10)//&
+        '  const ENSEMBLE_COLOR_L_BANDS = [0, 9, -9]; // lightness offset (percentage points), cycl'//'ed by id'//achar(10)//&
+        '  function shiftLightness(colorStr, deltaL) {'//achar(10)//'    const c = d3.hsl(colorStr);'//&
+        achar(10)//'    c.l = Math.max(0.08, Math.min(0.92, c.l + deltaL / 100));'//achar(10)//&
+        '    return c.toString();'//achar(10)//'  }'//&
+        achar(10)//'  function ensembleColor(id) {'//achar(10)//&
+        '    const t = ((id - 1) % N_ENSEMBLES_TOTAL) / N_ENSEMBLES_TOTAL;'//achar(10)//'    return shiftLightness(d3.interpolateRainbow(t), ENSEMBLE_COLOR_L_BANDS[(id - 1) % ENSE'//&
+        'MBLE_COLOR_L_BANDS.length]);'//achar(10)//'  }'//&
+        achar(10)//'  function superEnsembleColor(id) {'//achar(10)//&
+        '    // A separate, much smaller id space (1..n_super_ensembles) -- offset by half a turn s'//'o'//achar(10)//&
+        '    // low super-ensemble ids don''t visually alias with low ensemble ids.'//achar(10)//'    const t = (((id - 1) % N_SUPER_TOTAL) / N_SUPER_TOTAL + 0.5) % 1;'//&
+        achar(10)//'    return shiftLightness(d3.interpolateRainbow(t), ENSEMBLE_COLOR_L_BANDS[(id - 1) % ENSE'//'MBLE_COLOR_L_BANDS.length]);'//&
+        achar(10)//'  }'//achar(10)//&
+        achar(10)//'  function largestEnsembleForPoint(p) {'//achar(10)//&
+        '    if (!p.ensembles.length) return null;'//achar(10)//'    let best = null, bestSize = -1;'//&
+        achar(10)//'    p.ensembles.forEach(m => {'//achar(10)//&
+        '      const e = ensembleById.get(m.id);'//achar(10)//'      if (e && e.size > bestSize) { best = e; bestSize = e.size; }'//&
+        achar(10)//'    });'//achar(10)//&
+        '    return best;'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  function mean(arr) { return d3.mean(arr); }'//&
+        achar(10)//'  function sd(arr) { return d3.deviation(arr) || 0; }'//achar(10)//&
+        '  function quantile(arr, p) { return d3.quantile(arr.slice().sort((a, b) => a - b), p); }'//achar(10)//'  function fmt(v) { return (v === null || v === undefined) ? "n/a" : (typeof v === "number'//&
+        '" ? d3.format(".4g")(v) : v); }'//achar(10)//achar(10)//&
+        '  function escapeHtml(s) {'//achar(10)//'    return String(s).replace(/[&<>"'']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '''//&
+        '"'': "&quot;", "''": "&#39;" }[c]));'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  let tooltipHideTimer = null;'//&
+        achar(10)//'  function showTooltip(html, event) {'//achar(10)//&
+        '    if (isPinned()) return; // a pinned tooltip only changes via pinTooltip/unpinTooltip'//achar(10)//'    clearTimeout(tooltipHideTimer);'//&
+        achar(10)//'    tooltip.style("opacity", 1).html(html);'//achar(10)//&
+        '    moveTooltip(event);'//achar(10)//'  }'//&
+        achar(10)//'  function moveTooltip(event) {'//achar(10)//&
+        '    if (isPinned()) return;'//achar(10)//'    tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px'//&
+        '");'//achar(10)//'  }'//&
+        achar(10)//'  function hideTooltip() { if (!isPinned()) tooltip.style("opacity", 0); }'//achar(10)//&
+        '  // Grace period against flicker when the pointer briefly crosses a gap between adjacent'//achar(10)//'  // hoverable elements (e.g. points packed close together). Reaching a .tt-link no longer'//&
+        achar(10)//'  // depends on this delay -- links are only reachable via a *pinned* tooltip (click/'//achar(10)//&
+        '  // right-click a point or tangent-line; see pinTooltip below), which stays open'//achar(10)//'  // indefinitely and ignores hover-driven hide/move entirely.'//&
+        achar(10)//'  function scheduleHideTooltip() { clearTimeout(tooltipHideTimer); tooltipHideTimer = setT'//'imeout(hideTooltip, 300); }'//&
+        achar(10)//'  function cancelHideTooltip() { clearTimeout(tooltipHideTimer); }'//achar(10)//&
+        achar(10)//'  // ---- Click-to-pin tooltip (points and tangent-lines only) -------------------------'//achar(10)//&
+        '  // Plain hover still shows a transient, unreachable preview (pointer-events:none on'//achar(10)//'  // #tooltip, exactly as before) -- clicking (left or right button) the point/tangent'//&
+        achar(10)//'  // "pins" it instead: white background, a close icon, frozen position, and'//achar(10)//&
+        '  // pointer-events:auto so the mouse can travel onto and click a .tt-link inside it. Only'//achar(10)//'  // one tooltip is ever pinned at a time -- pinning a new element replaces whichever was'//&
+        achar(10)//'  // pinned before. Closes only via the close icon or Escape (see the document keydown'//achar(10)//&
+        '  // listener below, which also disarms an armed zoom panel on the same Escape press if on'//'e'//achar(10)//&
+        '  // happens to be active -- deliberate "Escape closes whatever overlay is open" semantics'//','//achar(10)//&
+        '  // not two competing behaviors).'//achar(10)//'  let pinnedSource = null; // the DOM element (point circle / tangent line) currently pinn'//&
+        'ed, or null'//achar(10)//'  function isPinned() { return pinnedSource !== null; }'//&
+        achar(10)//'  function pinTooltip(html, event, sourceElement, wireFn) {'//achar(10)//&
+        '    clearTimeout(tooltipHideTimer);'//achar(10)//'    pinnedSource = sourceElement;'//&
+        achar(10)//'    tooltip.classed("pinned", true).style("opacity", 1)'//achar(10)//&
+        '      .html(html + ''<span class="tt-close" title="Close (Esc)">&times;</span>'');'//achar(10)//'    tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "px'//&
+        '");'//achar(10)//'    tooltip.select(".tt-close").on("click", (ev) => { ev.stopPropagation(); unpinTooltip()'//&
+        '; });'//achar(10)//'    wireFn();'//&
+        achar(10)//'  }'//achar(10)//&
+        '  function unpinTooltip() {'//achar(10)//'    if (!pinnedSource) return;'//&
+        achar(10)//'    pinnedSource = null;'//achar(10)//&
+        '    tooltip.classed("pinned", false);'//achar(10)//'    tooltip.style("opacity", 0);'//&
+        achar(10)//'  }'//achar(10)//&
+        '  // Unconditional (not gated on armedZoomPanel, unlike the keydown listener further below'//achar(10)//'  // that only exists while a zoom panel is armed) -- a pinned tooltip can be open regardl'//&
+        'ess'//achar(10)//'  // of zoom state, so its own Escape handling lives here instead.'//&
+        achar(10)//'  document.addEventListener("keydown", (event) => {'//achar(10)//&
+        '    if (event.code === "Escape" && isPinned()) unpinTooltip();'//achar(10)//'  });'//&
+        achar(10)//achar(10)//'  // ---- Generic zero-dependency SVG/PNG/JPG export ------------------------------------'//&
+        achar(10)//'  function serializeSvg(svgNode) {'//achar(10)//&
+        '    const clone = svgNode.cloneNode(true);'//achar(10)//'    // Zoom icon/mode-menu and the resize grip are viewer-only UI chrome, not part of the '//&
+        'data'//achar(10)//'    // picture -- strip them from the exported copy (the original, still-live svgNode is'//&
+        achar(10)//'    // untouched).'//achar(10)//&
+        '    clone.querySelectorAll(".zoom-icon-wrap, .zoom-menu, .resize-grip").forEach(el => el.r'//'emove());'//achar(10)//&
+        '    if (!clone.getAttribute("xmlns")) clone.setAttribute("xmlns", "http://www.w3.org/2000/'//'svg");'//achar(10)//&
+        '    const bbox = svgNode.getBBox ? (function () { try { return svgNode.getBBox(); } catch '//'(e) { return null; } })() : null;'//achar(10)//&
+        '    if (bbox && (!clone.getAttribute("width") || clone.getAttribute("width") === "100%")) '//'{'//achar(10)//&
+        '      clone.setAttribute("width", Math.ceil(bbox.x + bbox.width + 10));'//achar(10)//'      clone.setAttribute("height", Math.ceil(bbox.y + bbox.height + 10));'//&
+        achar(10)//'    }'//achar(10)//&
+        '    return new XMLSerializer().serializeToString(clone);'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  function downloadBlob(blob, filename) {'//&
+        achar(10)//'    const url = URL.createObjectURL(blob);'//achar(10)//&
+        '    const a = document.createElement("a");'//achar(10)//'    a.href = url; a.download = filename;'//&
+        achar(10)//'    document.body.appendChild(a); a.click(); document.body.removeChild(a);'//achar(10)//&
+        '    setTimeout(() => URL.revokeObjectURL(url), 1000);'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  function exportSvg(svgNode, filenamePrefix) {'//&
+        achar(10)//'    const xml = serializeSvg(svgNode);'//achar(10)//&
+        '    downloadBlob(new Blob([xml], { type: "image/svg+xml" }), filenamePrefix + ".svg");'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  function exportRaster(svgNode, filenamePrefix, mime, ext) {'//&
+        achar(10)//'    const xml = serializeSvg(svgNode);'//achar(10)//&
+        '    const width = +svgNode.getAttribute("width") || svgNode.clientWidth || 800;'//achar(10)//'    const height = +svgNode.getAttribute("height") || svgNode.clientHeight || 600;'//&
+        achar(10)//'    const svgBlob = new Blob([xml], { type: "image/svg+xml" });'//achar(10)//&
+        '    const url = URL.createObjectURL(svgBlob);'//achar(10)//'    const img = new Image();'//&
+        achar(10)//'    img.onload = function () {'//achar(10)//&
+        '      const canvas = document.createElement("canvas");'//achar(10)//'      canvas.width = width; canvas.height = height;'//&
+        achar(10)//'      const ctx = canvas.getContext("2d");'//achar(10)//&
+        '      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, width, height);'//achar(10)//'      ctx.drawImage(img, 0, 0, width, height);'//&
+        achar(10)//'      URL.revokeObjectURL(url);'//achar(10)//&
+        '      canvas.toBlob(blob => downloadBlob(blob, filenamePrefix + "." + ext), mime, 0.95);'//achar(10)//'    };'//&
+        achar(10)//'    img.onerror = function () { URL.revokeObjectURL(url); };'//achar(10)//&
+        '    img.src = url;'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  // Attaches a small "Export ▾" button + dropdown (SVG/PNG/JPG) into `toolbarSel` for `sv'//&
+        'gSel`.'//achar(10)//'  function makeExportButton(toolbarSel, svgSel, filenamePrefix) {'//&
+        achar(10)//'    const wrap = toolbarSel.append("div").attr("class", "export-wrap");'//achar(10)//&
+        '    const btn = wrap.append("button").attr("class", "export-btn").text("Export ▾");'//achar(10)//'    const menu = wrap.append("div").attr("class", "export-menu");'//&
+        achar(10)//'    [["SVG", () => exportSvg(svgSel.node(), filenamePrefix)],'//achar(10)//&
+        '     ["PNG", () => exportRaster(svgSel.node(), filenamePrefix, "image/png", "png")],'//achar(10)//'     ["JPG", () => exportRaster(svgSel.node(), filenamePrefix, "image/jpeg", "jpg")]]'//&
+        achar(10)//'      .forEach(([label, fn]) => {'//achar(10)//&
+        '        menu.append("button").text(label).on("click", () => { fn(); menu.classed("open", f'//'alse); });'//achar(10)//&
+        '      });'//achar(10)//'    btn.on("click", (event) => {'//&
+        achar(10)//'      event.stopPropagation();'//achar(10)//&
+        '      document.querySelectorAll(".export-menu.open").forEach(el => { if (el !== menu.node('//')) el.classList.remove("open"); });'//achar(10)//&
+        '      menu.classed("open", !menu.classed("open"));'//achar(10)//'    });'//&
+        achar(10)//'    document.addEventListener("click", () => menu.classed("open", false));'//achar(10)//&
         '  }'//achar(10)//achar(10)//&
-        '  function render() {'//achar(10)//'    const colorMode = document.getElementById("color-mode").value;'//&
-        achar(10)//'    const highlightId = highlightSelect.value ? +highlightSelect.value : null;'//achar(10)//&
-        '    const showSeeds = document.getElementById("layer-seeds").checked;'//achar(10)//'    const showRadii = document.getElementById("layer-radii").checked;'//&
-        achar(10)//'    const showT1 = document.getElementById("layer-tangent1").checked;'//achar(10)//&
-        '    const showT2 = document.getElementById("layer-tangent2").checked;'//achar(10)//'    const relevantEnsembles = highlightId ? nonEmptyEnsembles.filter(e => e.id === highlig'//&
-        'htId) : nonEmptyEnsembles;'//achar(10)//achar(10)//&
-        '    pointsLayer.selectAll("circle.point").data(DATA.points, d => d.id).join("circle")'//achar(10)//'      .attr("class", "point")'//&
-        achar(10)//'      .attr("cx", d => x(d.coords[0])).attr("cy", d => y(d.coords[1]))'//achar(10)//&
-        '      .attr("r", d => highlightId && d.ensembles.includes(highlightId) ? 3 : 2)'//achar(10)//'      .attr("fill", d => pointColor(d, colorMode, highlightId))'//&
-        achar(10)//'      .attr("fill-opacity", d => highlightId && !d.ensembles.includes(highlightId) ? 0.35 '//': 0.85)'//&
-        achar(10)//'      .on("mouseenter", (event, d) => {'//achar(10)//&
-        '        tooltip.style("opacity", 1).html(tooltipHtml(d));'//achar(10)//'      })'//&
-        achar(10)//'      .on("mousemove", (event) => {'//achar(10)//&
-        '        tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) +'//' "px");'//achar(10)//&
-        '      })'//achar(10)//'      .on("mouseleave", () => tooltip.style("opacity", 0));'//&
-        achar(10)//achar(10)//'    seedLayer.selectAll("path.seed-marker").data(showSeeds ? relevantEnsembles : [], d => '//&
-        'd.id).join("path")'//achar(10)//'      .attr("class", "seed-marker")'//&
-        achar(10)//'      .attr("d", d3.symbol(d3.symbolTriangle, 40))'//achar(10)//&
-        '      .attr("transform", d => {'//achar(10)//'        const p = pointById.get(d.seed_point_id);'//&
-        achar(10)//'        return p ? `translate(${x(p.coords[0])},${y(p.coords[1])})` : null;'//achar(10)//&
-        '      })'//achar(10)//'      .attr("fill", "black");'//&
-        achar(10)//achar(10)//'    overlayLayer.selectAll("circle.radius-circle").data(showRadii ? relevantEnsembles : []'//&
-        ', d => d.id).join("circle")'//achar(10)//'      .attr("class", "radius-circle")'//&
-        achar(10)//'      .attr("cx", d => x(pointById.get(d.seed_point_id).coords[0]))'//achar(10)//&
-        '      .attr("cy", d => y(pointById.get(d.seed_point_id).coords[1]))'//achar(10)//'      .attr("r", d => Math.abs(x(d.growth_radius) - x(0)));'//&
-        achar(10)//achar(10)//'    function tangentSegments(show, uKey, sKey) {'//&
-        achar(10)//'      return (show ? relevantEnsembles : []).filter(d => d[uKey] && d[sKey] > 0);'//achar(10)//&
-        '    }'//achar(10)//'    tangentLayer.selectAll("line.t1").data(tangentSegments(showT1, "u1", "s1"), d => d.id)'//&
-        '.join("line")'//achar(10)//'      .attr("class", "tangent-line t1")'//&
-        achar(10)//'      .attr("x1", d => x(d.mu[0] - d.u1[0] * d.s1)).attr("y1", d => y(d.mu[1] - d.u1[1] * '//'d.s1))'//&
-        achar(10)//'      .attr("x2", d => x(d.mu[0] + d.u1[0] * d.s1)).attr("y2", d => y(d.mu[1] + d.u1[1] * '//'d.s1))'//&
-        achar(10)//'      .attr("stroke", "#b2182b").attr("stroke-width", 1.6);'//achar(10)//&
-        '    tangentLayer.selectAll("line.t2").data(tangentSegments(showT2, "u2", "s2"), d => d.id)'//'.join("line")'//achar(10)//&
-        '      .attr("class", "tangent-line t2")'//achar(10)//'      .attr("x1", d => x(d.mu[0] - d.u2[0] * d.s2)).attr("y1", d => y(d.mu[1] - d.u2[1] * '//&
-        'd.s2))'//achar(10)//'      .attr("x2", d => x(d.mu[0] + d.u2[0] * d.s2)).attr("y2", d => y(d.mu[1] + d.u2[1] * '//&
-        'd.s2))'//achar(10)//'      .attr("stroke", "#2166ac").attr("stroke-width", 1.6);'//&
-        achar(10)//achar(10)//'    renderLegend(colorMode, highlightId);'//&
+        '  // ============================================================================'//achar(10)//'  // ---- Reusable zoom / pan / resize control (every SVG panel) ------------------'//&
+        achar(10)//'  // ============================================================================'//achar(10)//&
+        '  // Transform-based zoom: applies d3.zoom()''s emitted transform (translate+scale) directl'//'y to'//achar(10)//&
+        '  // a panel''s already-rendered content group, rather than recomputing/redrawing each pane'//'l''s'//achar(10)//&
+        '  // own x/y scales and axes on every zoom step -- this is what lets one implementation wo'//'rk'//achar(10)//&
+        '  // uniformly across every panel type this report has (continuous linear scales on the ma'//'in'//achar(10)//&
+        '  // plot, a plain pixel grid on the heatmap, tree-layout coordinates, and scalePoint-base'//'d line'//achar(10)//&
+        '  // charts), instead of needing bespoke rescale logic per scale type. Known, accepted'//achar(10)//'  // simplification: axis tick labels are not repositioned/relabeled during zoom -- they k'//&
+        'eep'//achar(10)//'  // showing the original full-extent domain; this is a "zoom in to inspect a magnified re'//&
+        'gion"'//achar(10)//'  // tool, not a recalibrating chart.'//&
+        achar(10)//'  //'//achar(10)//&
+        '  // `getContent()` must return the *current* d3 selection to transform (re-queried live, '//'not a'//achar(10)//&
+        '  // stale captured reference) -- required for panels whose content group is torn down and'//achar(10)//'  // rebuilt on interaction (the Super-Ensemble Tree''s expand/collapse, the Observable Plo'//&
+        'ts'''//achar(10)//'  // ensemble-selector change): after such a rebuild, the fresh content starts untransform'//&
+        'ed'//achar(10)//'  // even though this control''s own zoom state hasn''t reset, so those call sites must invo'//&
+        'ke'//achar(10)//'  // the returned `api.reapply()` once after finishing their own rebuild (see buildTree/'//&
+        achar(10)//'  // buildObservablePlots below for the two places this is actually needed; the main plot '//'and'//&
+        achar(10)//'  // heatmap never tear down their content wholesale, only update data joins in place, so '//'they'//&
+        achar(10)//'  // don''t need it).'//achar(10)//&
+        '  //'//achar(10)//'  // Zoom is off by default, on every panel, and only responds to wheel/drag/arrow-keys on'//&
+        'ce'//achar(10)//'  // explicitly "armed" -- clicking a panel''s own magnifying-glass icon arms it (see'//&
+        achar(10)//'  // makeZoomResizeControl''s own icon click handler below); at most one panel is armed'//achar(10)//&
+        '  // system-wide, arming a different one disarms whichever was previously armed. Exits (ba'//'ck to'//achar(10)//&
+        '  // inert) on a genuine click anywhere, or Enter/Escape/Space -- tracked here, once, rath'//'er'//achar(10)//&
+        '  // than duplicated per panel.'//achar(10)//'  let armedZoomPanel = null;'//&
+        achar(10)//achar(10)//'  // A *genuine* click (negligible movement between mousedown and mouseup) exits armed mod'//&
+        'e; a'//achar(10)//'  // drag -- d3.zoom''s own pan gesture, which is exactly what should happen while armed --'//&
+        ' must'//achar(10)//'  // not, or dragging to pan would be impossible (every drag would immediately disarm itse'//&
+        'lf'//achar(10)//'  // mid-gesture). Elements that need their own mousedown/mouseup pairs to *not* count as '//&
+        'this'//achar(10)//'  // exit-click (the resize grip''s own drag, the zoom mode-menu''s own controls) stop propa'//&
+        'gation'//achar(10)//'  // on mousedown themselves -- see makeZoomResizeControl below -- so this pair never sees'//&
+        ' them.'//achar(10)//'  let armedClickDownAt = null;'//&
+        achar(10)//'  document.addEventListener("mousedown", (event) => { armedClickDownAt = [event.clientX, e'//'vent.clientY]; });'//&
+        achar(10)//'  document.addEventListener("mouseup", (event) => {'//achar(10)//&
+        '    if (!armedZoomPanel || !armedClickDownAt) { armedClickDownAt = null; return; }'//achar(10)//'    const dx = event.clientX - armedClickDownAt[0], dy = event.clientY - armedClickDownAt['//&
+        '1];'//achar(10)//'    armedClickDownAt = null;'//&
+        achar(10)//'    if (Math.hypot(dx, dy) < 4) armedZoomPanel.disarm();'//achar(10)//&
+        '  });'//achar(10)//achar(10)//&
+        '  document.addEventListener("keydown", (event) => {'//achar(10)//'    if (!armedZoomPanel) return;'//&
+        achar(10)//'    const tag = (event.target.tagName || "").toLowerCase();'//achar(10)//&
+        '    if (tag === "input" || tag === "select" || tag === "textarea" || event.target.isConten'//'tEditable) return;'//achar(10)//&
+        '    if (event.code === "Enter" || event.code === "Escape" || event.code === "Space") {'//achar(10)//'      event.preventDefault();'//&
+        achar(10)//'      event.stopImmediatePropagation(); // also pre-empts the hamburger-toggle Space handl'//'er below'//&
+        achar(10)//'      armedZoomPanel.disarm();'//achar(10)//&
+        '      return;'//achar(10)//'    }'//&
+        achar(10)//'    const deltas = { ArrowLeft: [-30, 0], ArrowRight: [30, 0], ArrowUp: [0, -30], ArrowDow'//'n: [0, 30] };'//&
+        achar(10)//'    const d = deltas[event.code];'//achar(10)//&
+        '    if (!d) return;'//achar(10)//'    event.preventDefault();'//&
+        achar(10)//'    armedZoomPanel.panBy(d[0], d[1]);'//achar(10)//&
+        '  });'//achar(10)//achar(10)//&
+        '  function makeZoomResizeControl(svgSel, getContent) {'//achar(10)//'    const svgNode = svgSel.node();'//&
+        achar(10)//'    let mode = "both"; // "both" | "x" | "y"'//achar(10)//&
+        '    let transform = d3.zoomIdentity;'//achar(10)//'    let armed = false; // off by default -- see the module-level armedZoomPanel doc commen'//&
+        't above'//achar(10)//achar(10)//&
+        '    function currentSize() {'//achar(10)//'      return [+svgSel.attr("width") || svgNode.clientWidth || 300, +svgSel.attr("height") '//&
+        '|| svgNode.clientHeight || 200];'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    function applyTransform(t) {'//&
+        achar(10)//'      transform = t;'//achar(10)//&
+        '      const content = getContent();'//achar(10)//'      if (!content || content.empty()) return;'//&
+        achar(10)//'      if (mode === "both") content.attr("transform", t);'//achar(10)//&
+        '      else if (mode === "x") content.attr("transform", `translate(${t.x},0) scale(${t.k},1'//')`);'//achar(10)//&
+        '      else content.attr("transform", `translate(0,${t.y}) scale(1,${t.k})`);'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    // `filter` is what actually gates wheel/drag/touch behind the armed state -- d3.zoom '//&
+        'stays'//achar(10)//'    // attached throughout (so its own transform math/state is always ready to go the inst'//&
+        'ant'//achar(10)//'    // this panel is armed), it simply ignores every gesture while `armed` is false. The r'//&
+        'est of'//achar(10)//'    // the filter matches d3.zoom''s own documented default (ignore non-primary-button drag'//&
+        's and'//achar(10)//'    // ctrl-modified wheel events, the latter reserved for pinch-zoom on trackpads) -- unr'//&
+        'elated'//achar(10)//'    // to arming, just preserved rather than silently dropped.'//&
+        achar(10)//'    const zoomBehavior = d3.zoom().scaleExtent([0.2, 40])'//achar(10)//&
+        '      .filter((event) => armed && !event.ctrlKey && !event.button)'//achar(10)//'      .on("zoom", (event) => applyTransform(event.transform));'//&
+        achar(10)//'    svgSel.call(zoomBehavior).on("dblclick.zoom", null);'//achar(10)//&
+        achar(10)//'    // ---- lower-right magnifying-glass icon + armed-mode indicator/mode-menu -----------'//'---'//&
+        achar(10)//'    const iconSize = 22;'//achar(10)//&
+        '    const iconWrap = svgSel.append("g").attr("class", "zoom-icon-wrap").style("cursor", "p'//'ointer");'//achar(10)//&
+        '    function positionIcon() {'//achar(10)//'      const [w, h] = currentSize();'//&
+        achar(10)//'      iconWrap.attr("transform", `translate(${Math.max(0, w - iconSize - 4)},${Math.max(0,'//' h - iconSize - 4)})`);'//&
+        achar(10)//'    }'//achar(10)//&
+        '    positionIcon();'//achar(10)//'    const iconBg = iconWrap.append("rect").attr("width", iconSize).attr("height", iconSize'//&
+        ').attr("rx", 4)'//achar(10)//'      .attr("fill", "#fff").attr("stroke", "var(--grid)");'//&
+        achar(10)//'    iconWrap.append("text").attr("x", iconSize / 2).attr("y", iconSize / 2 + 4).attr("text'//'-anchor", "middle")'//&
+        achar(10)//'      .attr("font-size", 13).text("\u{1F50D}");'//achar(10)//&
+        '    const modeBadge = iconWrap.append("text").attr("x", iconSize - 3).attr("y", 8).attr("f'//'ont-size", 7)'//achar(10)//&
+        '      .attr("text-anchor", "end").attr("fill", "var(--blue)").attr("font-weight", 700);'//achar(10)//'    function updateBadge() { modeBadge.text(mode === "both" ? "" : mode.toUpperCase()); }'//&
+        achar(10)//'    updateBadge();'//achar(10)//&
+        '    // Discoverability: this whole click-to-arm/click-or-Enter/Esc/Space-to-exit mechanism'//' has'//achar(10)//&
+        '    // no other affordance on the page, so it must be explained on hover -- reuses this re'//'port''s'//achar(10)//&
+        '    // own themed tooltip (not a native `title`) for visual consistency with every other'//achar(10)//'    // hover-explained element (points, tangent lines, tree nodes, heatmap cells).'//&
+        achar(10)//'    const ZOOM_HELP = "Click to enter zoom mode. While active: mouse wheel zooms, arrow ke'//'ys pan " +'//&
+        achar(10)//'      "(per the axis mode selected below); click anywhere, or press Enter, Esc, or Space, '//'to exit.";'//&
+        achar(10)//'    iconWrap.on("mouseenter", (event) => showTooltip(ZOOM_HELP, event))'//achar(10)//&
+        '      .on("mousemove", moveTooltip).on("mouseleave", hideTooltip);'//achar(10)//achar(10)//&
+        '    // Mode-select/reset panel, now doubling as the "you are in zoom mode" indicator: visi'//'ble'//achar(10)//&
+        '    // for exactly as long as this panel is armed (not click-toggled independently of armi'//'ng,'//achar(10)//&
+        '    // as an earlier version of this control did).'//achar(10)//'    const menuFO = svgSel.append("foreignObject").attr("class", "zoom-menu").style("displa'//&
+        'y", "none")'//achar(10)//'      .attr("width", 150).attr("height", 138);'//&
+        achar(10)//'    const menuDiv = menuFO.append("xhtml:div").attr("class", "zoom-menu-panel");'//achar(10)//&
+        '    const modeLabel = menuDiv.append("div").attr("style", "font-weight:600; margin-bottom:'//'4px;");'//achar(10)//&
+        '    function updateModeLabel() { modeLabel.text("Zoom mode: " + (mode === "both" ? "X + Y"'//' : mode.toUpperCase() + " only")); }'//achar(10)//&
+        '    updateModeLabel();'//achar(10)//'    const radioName = "zoommode-" + Math.random().toString(36).slice(2);'//&
+        achar(10)//'    const modeRadios = {}; // m -> its <input type=radio> selection, kept for setState''s o'//'wn restore below'//&
+        achar(10)//'    [["both", "Zoom X + Y"], ["x", "Zoom X only"], ["y", "Zoom Y only"]].forEach(([m, text'//']) => {'//&
+        achar(10)//'      const lab = menuDiv.append("label");'//achar(10)//&
+        '      modeRadios[m] = lab.append("input").attr("type", "radio").attr("name", radioName).pr'//'operty("checked", mode === m)'//achar(10)//&
+        '        .on("change", function () { if (this.checked) { mode = m; updateBadge(); updateMod'//'eLabel(); applyTransform(transform); } });'//achar(10)//&
+        '      lab.append("span").text(" " + text);'//achar(10)//'    });'//&
+        achar(10)//'    menuDiv.append("button").text("Reset zoom")'//achar(10)//&
+        '      .on("click", (event) => { event.stopPropagation(); svgSel.call(zoomBehavior.transfor'//'m, d3.zoomIdentity); });'//achar(10)//&
+        '    menuDiv.append("div").attr("style", "color:var(--muted); margin-top:5px; font-size:10p'//'x;")'//achar(10)//&
+        '      .text("Click anywhere, or Enter / Esc / Space, to exit.");'//achar(10)//'    // The mode radios/reset button are themselves ordinary clicks (mousedown+mouseup, ~ze'//&
+        'ro'//achar(10)//'    // movement) -- without this, using them while armed would immediately exit zoom mode '//&
+        'via'//achar(10)//'    // the module-level "genuine click disarms" listener, right as the user tries to chang'//&
+        'e'//achar(10)//'    // something *within* zoom mode. Stopping propagation here keeps that document-level'//&
+        achar(10)//'    // mousedown/mouseup pair from ever seeing these.'//achar(10)//&
+        '    menuDiv.on("mousedown", (event) => event.stopPropagation());'//achar(10)//achar(10)//&
+        '    function positionMenu() {'//achar(10)//'      const [w, h] = currentSize();'//&
+        achar(10)//'      menuFO.attr("x", Math.max(0, w - iconSize - 4 - 150)).attr("y", Math.max(0, h - icon'//'Size - 4 - 138));'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function setArmedVisual(isArmed) {'//achar(10)//&
+        '      iconBg.attr("stroke", isArmed ? "var(--blue)" : "var(--grid)").attr("stroke-width", '//'isArmed ? 2 : 1)'//achar(10)//&
+        '        .attr("fill", isArmed ? "#eaf2fb" : "#fff");'//achar(10)//'      svgSel.classed("zoom-armed", isArmed);'//&
+        achar(10)//'      if (isArmed) { positionMenu(); menuFO.style("display", null); }'//achar(10)//&
+        '      else menuFO.style("display", "none");'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    // Same stopPropagation reasoning as the menu above: the icon''s own click already deci'//&
+        'des'//achar(10)//'    // arm/disarm directly (toggling on the *current* `armed` value at click time) -- lett'//&
+        'ing'//achar(10)//'    // that same click also reach the module-level exit-click listener would race it (mous'//&
+        'eup'//achar(10)//'    // fires, and hence that listener runs, before this "click" handler does), which would'//&
+        achar(10)//'    // otherwise disarm-then-immediately-rearm on every single click of an already-armed i'//'con.'//&
+        achar(10)//'    iconWrap.on("mousedown", (event) => event.stopPropagation());'//achar(10)//&
+        '    iconWrap.on("click", (event) => {'//achar(10)//'      event.stopPropagation();'//&
+        achar(10)//'      if (armed) api.disarm(); else api.arm();'//achar(10)//&
+        '    });'//achar(10)//achar(10)//&
+        '    // ---- resize grip (lower-left -- lower-right is the zoom icon, toolbars sit above --'//'----'//achar(10)//&
+        '    // the svg, not on it, so no other corner is in play) --------------------------------'//'-----'//achar(10)//&
+        '    const grip = svgSel.append("g").attr("class", "resize-grip");'//achar(10)//'    grip.append("path").attr("d", "M0,14 L14,0 M4,14 L14,4 M8,14 L14,8").attr("stroke", "v'//&
+        'ar(--muted)").attr("stroke-width", 1.4);'//achar(10)//'    grip.append("rect").attr("width", 16).attr("height", 16).attr("fill", "transparent");'//&
+        achar(10)//'    function positionGrip() {'//achar(10)//&
+        '      const [, h] = currentSize();'//achar(10)//'      grip.attr("transform", `translate(2,${Math.max(0, h - 18)})`);'//&
+        achar(10)//'    }'//achar(10)//&
+        '    positionGrip();'//achar(10)//'    grip.call(d3.drag()'//&
+        achar(10)//'      .on("start", (event) => { event.sourceEvent.stopPropagation(); })'//achar(10)//&
+        '      .on("drag", (event) => {'//achar(10)//'        const [w, h] = currentSize();'//&
+        achar(10)//'        const newW = Math.max(160, w - event.dx), newH = Math.max(120, h + event.dy);'//achar(10)//&
+        '        svgSel.attr("width", newW).attr("height", newH);'//achar(10)//'        if (svgSel.attr("viewBox")) svgSel.attr("viewBox", `0 0 ${newW} ${newH}`).attr("pr'//&
+        'eserveAspectRatio", "none");'//achar(10)//'        positionIcon(); positionGrip();'//&
+        achar(10)//'      }));'//achar(10)//&
+        achar(10)//'    const api = {'//achar(10)//&
+        '      panBy(dx, dy) {'//achar(10)//'        if (mode === "y") dx = 0;'//&
+        achar(10)//'        if (mode === "x") dy = 0;'//achar(10)//&
+        '        svgSel.call(zoomBehavior.transform, transform.translate(dx / transform.k, dy / tra'//'nsform.k));'//achar(10)//&
+        '      },'//achar(10)//'      arm() {'//&
+        achar(10)//'        if (armed) return;'//achar(10)//&
+        '        if (armedZoomPanel && armedZoomPanel !== api) armedZoomPanel.disarm();'//achar(10)//'        armed = true;'//&
+        achar(10)//'        armedZoomPanel = api;'//achar(10)//&
+        '        setArmedVisual(true);'//achar(10)//'      },'//&
+        achar(10)//'      disarm() {'//achar(10)//&
+        '        if (!armed) return;'//achar(10)//'        armed = false;'//&
+        achar(10)//'        if (armedZoomPanel === api) armedZoomPanel = null;'//achar(10)//&
+        '        setArmedVisual(false);'//achar(10)//'      },'//&
+        achar(10)//'      reapply() { applyTransform(transform); positionIcon(); positionMenu(); positionGrip('//'); },'//&
+        achar(10)//'      // getState()/setState() convention (see makeEnsembleSelectorWidget''s own matching p'//'air'//&
+        achar(10)//'      // for the full rationale): deliberately excludes the transient `armed` boolean -- a'//'rming'//&
+        achar(10)//'      // is "am I currently mid-interaction with this panel''s own zoom", not part of what '//'a'//&
+        achar(10)//'      // saved/restored view means, and restoring it could steal the system-wide single-ar'//'med-'//&
+        achar(10)//'      // panel slot from whatever the user actually has armed at restore time.'//achar(10)//&
+        '      getState() {'//achar(10)//'        const [w, h] = currentSize();'//&
+        achar(10)//'        return { mode, transform: { x: transform.x, y: transform.y, k: transform.k }, widt'//'h: w, height: h };'//&
+        achar(10)//'      },'//achar(10)//&
+        '      setState(s) {'//achar(10)//'        if (!s) return;'//&
+        achar(10)//'        mode = s.mode || "both";'//achar(10)//&
+        '        updateBadge(); updateModeLabel();'//achar(10)//'        Object.entries(modeRadios).forEach(([m, inp]) => inp.property("checked", m === mod'//&
+        'e));'//achar(10)//'        if (s.width && s.height) {'//&
+        achar(10)//'          svgSel.attr("width", s.width).attr("height", s.height);'//achar(10)//&
+        '          if (svgSel.attr("viewBox")) svgSel.attr("viewBox", `0 0 ${s.width} ${s.height}`)'//'.attr("preserveAspectRatio", "none");'//achar(10)//&
+        '        }'//achar(10)//'        const t = s.transform || { x: 0, y: 0, k: 1 };'//&
+        achar(10)//'        svgSel.call(zoomBehavior.transform, d3.zoomIdentity.translate(t.x, t.y).scale(t.k)'//');'//&
+        achar(10)//'        positionIcon(); positionMenu(); positionGrip();'//achar(10)//&
+        '      },'//achar(10)//'    };'//&
+        achar(10)//'    svgNode.__reapplyZoom = api.reapply;'//achar(10)//&
+        '    return api;'//achar(10)//'  }'//&
+        achar(10)//achar(10)//'  // ============================================================================'//&
+        achar(10)//'  // ---- Reusable ensemble-selector widget (point color / tangent lines) --------'//achar(10)//&
+        '  // ============================================================================'//achar(10)//'  // Two modes: "manual" (pick exact ensemble IDs, the pre-existing plain multi-select) or'//&
+        achar(10)//'  // "filter" (super-ensemble facet AND stop-condition facet AND size-range facet; each fa'//'cet'//&
+        achar(10)//'  // on its own is an OR across whatever is checked, and an empty facet is unconstrained, '//'not'//&
+        achar(10)//'  // "matches nothing"). Either use site (point color, tangent lines) may instead "reuse" '//'the'//&
+        achar(10)//'  // other''s live selection -- offered only when the other is not itself reusing back, whi'//'ch is'//&
+        achar(10)//'  // what prevents a reuse-of-reuse cycle: peerHasOwnSelection() below is false whenever t'//'he'//&
+        achar(10)//'  // peer''s own mode is "reuse", so this instance simply never renders the checkbox that w'//'ould'//&
+        achar(10)//'  // let it point back at a peer that is already pointing here.'//achar(10)//&
+        '  function makeEnsembleSelectorWidget(ensembles, label, initialIds, onChange) {'//achar(10)//'    const allSuperIds = [...new Set(ensembles.map(e => e.super_ensemble_id)'//&
+        achar(10)//'      .filter(v => v !== null && v !== undefined))].sort((a, b) => a - b);'//achar(10)//&
+        '    const hasUngrouped = ensembles.some(e => e.super_ensemble_id === null || e.super_ensem'//'ble_id === undefined);'//achar(10)//&
+        '    const allStopReasons = [...new Set(ensembles.map(e => e.stop_reason))];'//achar(10)//'    const sizeMin = ensembles.length ? d3.min(ensembles, e => e.size) : 0;'//&
+        achar(10)//'    const sizeMax = ensembles.length ? d3.max(ensembles, e => e.size) : 0;'//achar(10)//&
+        achar(10)//'    const container = d3.select(document.createElement("div"));'//achar(10)//&
+        '    const state = {'//achar(10)//'      mode: "manual", // "manual" | "filter" | "reuse"'//&
+        achar(10)//'      manualIds: new Set(initialIds),'//achar(10)//&
+        '      superSel: new Set(),'//achar(10)//'      stopSel: new Set(),'//&
+        achar(10)//'      rangeMin: sizeMin,'//achar(10)//&
+        '      rangeMax: sizeMax,'//achar(10)//'      peer: null,'//&
+        achar(10)//'      // Manual-mode search box text. Deliberately NOT part of getState()/setState() below'//' --'//&
+        achar(10)//'      // it''s a transient list-filtering convenience local to this rendering, not part of'//achar(10)//&
+        '      // "what''s selected," so undo/restore never touches it.'//achar(10)//'      manualFilter: "",'//&
+        achar(10)//'    };'//achar(10)//&
+        achar(10)//'    function computeFilterIds() {'//achar(10)//&
+        '      return new Set(ensembles.filter(e => {'//achar(10)//'        if (state.superSel.size) {'//&
+        achar(10)//'          const key = (e.super_ensemble_id === null || e.super_ensemble_id === undefined) '//'? "none" : String(e.super_ensemble_id);'//&
+        achar(10)//'          if (!state.superSel.has(key)) return false;'//achar(10)//&
+        '        }'//achar(10)//'        if (state.stopSel.size && !state.stopSel.has(e.stop_reason)) return false;'//&
+        achar(10)//'        if (e.size < state.rangeMin || e.size > state.rangeMax) return false;'//achar(10)//&
+        '        return true;'//achar(10)//'      }).map(e => e.id));'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function getSelectedIds() {'//achar(10)//&
+        '      if (state.mode === "reuse" && state.peer) return state.peer.getSelectedIds();'//achar(10)//'      if (state.mode === "filter") return computeFilterIds();'//&
+        achar(10)//'      return state.manualIds;'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function peerHasOwnSelection() {'//achar(10)//'      return !!(state.peer && state.peer.mode !== "reuse");'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function fireChange() {'//achar(10)//&
+        '      render();'//achar(10)//'      onChange();'//&
+        achar(10)//'      if (state.peer) state.peer.render(); // peer''s reuse-availability, or its reused ids'//', may have changed'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    // Like fireChange, but does NOT rebuild this widget''s own DOM. Used by the range slid'//'er''s'//&
+        achar(10)//'    // drag handlers specifically: nothing about state.mode changes while dragging (still'//achar(10)//&
+        '    // "filter"), rangeMin/rangeMax are already reflected in-place by updateFill(), so a f'//'ull'//achar(10)//&
+        '    // render() here would tear down and recreate the very <input> elements the browser is'//' mid-'//achar(10)//&
+        '    // drag on -- confirmed via a real CDP mouse-drag test to be the dominant cause of the'//achar(10)//'    // reported "reluctant" slider (a fresh element mid-gesture can''t keep receiving the O'//&
+        'S'//achar(10)//'    // drag the old one was tracking). The peer''s own render() is still needed, since this'//&
+        achar(10)//'    // instance''s live selection (and hence the peer''s reuse-availability) did change.'//achar(10)//&
+        '    function notifyChange() {'//achar(10)//'      onChange();'//&
+        achar(10)//'      if (state.peer) state.peer.render();'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function checkboxList(parent, items, idFn, labelFn, selectedSet, swatchFn) {'//achar(10)//'      const list = parent.append("div").attr("class", "multi-select-list");'//&
+        achar(10)//'      items.forEach(item => {'//achar(10)//&
+        '        const id = idFn(item);'//achar(10)//'        // data-item-id: read back by manualEnsembleList''s own search filter below to hide'//&
+        '/show'//achar(10)//'        // rows without a data join; harmless (unused) on the super-ensemble/stop-conditio'//&
+        'n'//achar(10)//'        // facet lists, which don''t offer search.'//&
+        achar(10)//'        const lab = list.append("label").attr("data-item-id", String(id));'//achar(10)//&
+        '        lab.append("input").attr("type", "checkbox").property("checked", selectedSet.has(i'//'d))'//achar(10)//&
+        '          .on("change", function () {'//achar(10)//'            if (this.checked) selectedSet.add(id); else selectedSet.delete(id);'//&
+        achar(10)//'            fireChange();'//achar(10)//&
+        '          });'//achar(10)//'        if (swatchFn) lab.append("span").attr("class", "ens-sel-swatch").style("background'//&
+        '", swatchFn(item));'//achar(10)//'        lab.append("span").text(" " + labelFn(item));'//&
+        achar(10)//'      });'//achar(10)//&
+        '      return list;'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    // ids matching the current manual-mode search filter -- shared by the live row-hiding'//&
+        achar(10)//'    // below and by the select-all/none buttons, so both agree on "the current Manual list'//'".'//&
+        achar(10)//'    function visibleManualIds() {'//achar(10)//&
+        '      const q = (state.manualFilter || "").trim();'//achar(10)//'      if (!q) return ensembles.map(e => e.id);'//&
+        achar(10)//'      return ensembles.filter(e => String(e.id).includes(q)).map(e => e.id);'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    // Manual-mode-only: a numeric search box plus select-all/none, layered on top of the '//'plain'//achar(10)//&
+        '    // checkboxList above. Contains-match (not prefix-only) -- typing "12" finds E12 as we'//'ll as'//achar(10)//&
+        '    // E112/E120/E212, which is the more forgiving reading of "search" for an ID list wher'//'e the'//achar(10)//&
+        '    // user may only remember a fragment.'//achar(10)//'    function manualEnsembleList(parent) {'//&
+        achar(10)//'      const toolbar = parent.append("div").attr("class", "ens-sel-toolbar");'//achar(10)//&
+        '      const search = toolbar.append("input").attr("type", "text").attr("inputmode", "numer'//'ic")'//achar(10)//&
+        '        .attr("placeholder", "Filter by ID…").attr("class", "ens-sel-search")'//achar(10)//'        .property("value", state.manualFilter);'//&
+        achar(10)//'      const selAllBtn = toolbar.append("button").attr("type", "button").text("All");'//achar(10)//&
+        '      const selNoneBtn = toolbar.append("button").attr("type", "button").text("None");'//achar(10)//achar(10)//&
+        '      const list = checkboxList(parent, ensembles.slice().sort((a, b) => b.size - a.size),'//' e => e.id,'//achar(10)//&
+        '        e => `E${e.id} (n=${e.size}, ${e.stop_reason})`, state.manualIds, e => ensembleCol'//'or(e.id));'//achar(10)//&
+        achar(10)//'      // Live in-place filtering on every keystroke: hides (never removes) non-matching ro'//'ws,'//&
+        achar(10)//'      // so a hidden row''s checked state survives clearing the search. Deliberately does N'//'OT'//&
+        achar(10)//'      // go through fireChange()/render() -- that would tear down and recreate this very'//achar(10)//&
+        '      // <input> mid-keystroke and drop focus after the first character typed, the same'//achar(10)//'      // "fresh element mid-gesture" trap already documented on the range slider''s own'//&
+        achar(10)//'      // notifyChange() above, here for text-input focus instead of drag tracking.'//achar(10)//&
+        '      function applyFilter() {'//achar(10)//'        const q = (state.manualFilter || "").trim();'//&
+        achar(10)//'        list.selectAll("label").style("display", function () {'//achar(10)//&
+        '          if (!q) return null;'//achar(10)//'          return this.getAttribute("data-item-id").includes(q) ? null : "none";'//&
+        achar(10)//'        });'//achar(10)//&
+        '      }'//achar(10)//'      applyFilter(); // reapply a filter carried over from a prior render() (e.g. a checkb'//&
+        'ox click elsewhere)'//achar(10)//'      search.on("input", function () { state.manualFilter = this.value; applyFilter(); });'//&
+        achar(10)//achar(10)//'      // Select-all/none act on whatever the search currently leaves visible ("the current'//&
+        achar(10)//'      // Manual list"), not the full ensemble roster underneath it -- selecting all 100 wh'//'en'//&
+        achar(10)//'      // the user just filtered down to 3 would silently reselect the 97 they filtered awa'//'y.'//&
+        achar(10)//'      selAllBtn.on("click", () => { visibleManualIds().forEach(id => state.manualIds.add(i'//'d)); fireChange(); });'//&
+        achar(10)//'      selNoneBtn.on("click", () => { visibleManualIds().forEach(id => state.manualIds.dele'//'te(id)); fireChange(); });'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function rangeSlider(parent) {'//achar(10)//&
+        '      const wrap = parent.append("div").attr("class", "range-slider");'//achar(10)//'      wrap.append("div").attr("class", "track");'//&
+        achar(10)//'      const fill = wrap.append("div").attr("class", "track-fill");'//achar(10)//&
+        '      const lo = wrap.append("input").attr("type", "range").attr("min", sizeMin).attr("max'//'", sizeMax)'//achar(10)//&
+        '        .attr("step", 1).property("value", state.rangeMin);'//achar(10)//'      const hi = wrap.append("input").attr("type", "range").attr("min", sizeMin).attr("max'//&
+        '", sizeMax)'//achar(10)//'        .attr("step", 1).property("value", state.rangeMax);'//&
+        achar(10)//'      const valuesRow = parent.append("div").attr("class", "range-values");'//achar(10)//&
+        '      const loVal = valuesRow.append("span");'//achar(10)//'      const hiVal = valuesRow.append("span");'//&
+        achar(10)//achar(10)//'      function updateFill() {'//&
+        achar(10)//'        const span = (sizeMax - sizeMin) || 1;'//achar(10)//&
+        '        const l = (state.rangeMin - sizeMin) / span * 100, h = (state.rangeMax - sizeMin) '//'/ span * 100;'//achar(10)//&
+        '        fill.attr("style", `left:${l}%; width:${Math.max(0, h - l)}%;`);'//achar(10)//'        loVal.text(state.rangeMin); hiVal.text(state.rangeMax);'//&
+        achar(10)//'      }'//achar(10)//&
+        '      updateFill();'//achar(10)//achar(10)//&
+        '      // Only ever write `.value` back when a clamp genuinely changes it (handles crossing'//') --'//achar(10)//&
+        '      // reassigning `.value` on a range input on *every* input event, even as a same-valu'//'e'//achar(10)//&
+        '      // no-op, resets the browser''s own internal pointer-to-value drag tracking mid-gestu'//'re,'//achar(10)//&
+        '      // which made dragging feel extremely sluggish/reluctant everywhere, worst when tryi'//'ng to'//achar(10)//&
+        '      // reach either boundary (furthest total cursor travel, so the accumulated resistanc'//'e is'//achar(10)//&
+        '      // most noticeable there) -- confirmed empirically via a real Chrome DevTools Protoc'//'ol'//achar(10)//&
+        '      // mouse-drag simulation: with this handler attached, dragging to the visual midpoin'//'t'//achar(10)//&
+        '      // only reached ~15% of the way there; with the handler removed (pure native behavio'//'r),'//achar(10)//&
+        '      // the same drag landed within 1 unit of the true midpoint.'//achar(10)//'      lo.on("input", function () {'//&
+        achar(10)//'        const v = Math.min(+this.value, state.rangeMax);'//achar(10)//&
+        '        if (v !== +this.value) this.value = v;'//achar(10)//'        state.rangeMin = v;'//&
+        achar(10)//'        updateFill(); notifyChange();'//achar(10)//&
+        '      });'//achar(10)//'      hi.on("input", function () {'//&
+        achar(10)//'        const v = Math.max(+this.value, state.rangeMin);'//achar(10)//&
+        '        if (v !== +this.value) this.value = v;'//achar(10)//'        state.rangeMax = v;'//&
+        achar(10)//'        updateFill(); notifyChange();'//achar(10)//&
+        '      });'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    function render() {'//&
+        achar(10)//'      container.selectAll("*").remove();'//achar(10)//&
+        achar(10)//'      if (state.mode === "reuse" && state.peer) {'//achar(10)//&
+        '        const lab = container.append("label").attr("class", "ens-sel-reuse");'//achar(10)//'        lab.append("input").attr("type", "checkbox").property("checked", true)'//&
+        achar(10)//'          .on("change", function () { if (!this.checked) { state.mode = "manual"; fireChan'//'ge(); } });'//&
+        achar(10)//'        lab.append("span").text(" Reuse " + state.peer.label + "''s selection");'//achar(10)//&
+        '        return;'//achar(10)//'      }'//&
+        achar(10)//achar(10)//'      const modeRow = container.append("div").attr("class", "ens-sel-mode-row");'//&
+        achar(10)//'      ["manual", "filter"].forEach(m => {'//achar(10)//&
+        '        const lab = modeRow.append("label");'//achar(10)//'        lab.append("input").attr("type", "radio").attr("name", "ens-sel-mode-" + label.rep'//&
+        'lace(/\s+/g, "-"))'//achar(10)//'          .property("checked", state.mode === m)'//&
+        achar(10)//'          .on("change", function () { if (this.checked) { state.mode = m; fireChange(); } '//'});'//&
+        achar(10)//'        lab.append("span").text(m === "manual" ? "Manual" : "Filter");'//achar(10)//&
+        '      });'//achar(10)//achar(10)//&
+        '      if (peerHasOwnSelection()) {'//achar(10)//'        const lab = container.append("label").attr("class", "ens-sel-reuse");'//&
+        achar(10)//'        lab.append("input").attr("type", "checkbox").property("checked", false)'//achar(10)//&
+        '          .on("change", function () { if (this.checked) { state.mode = "reuse"; fireChange'//'(); } });'//achar(10)//&
+        '        lab.append("span").text(" Reuse " + state.peer.label + "''s selection instead");'//achar(10)//'      }'//&
+        achar(10)//achar(10)//'      if (state.mode === "manual") {'//&
+        achar(10)//'        manualEnsembleList(container);'//achar(10)//&
+        '      } else {'//achar(10)//'        container.append("div").attr("class", "ens-sel-facet-title").text("Super-ensemble '//&
+        '(OR):");'//achar(10)//'        const superItems = allSuperIds.map(id => ({ key: String(id), label: `SE${id}` }));'//&
+        achar(10)//'        if (hasUngrouped) superItems.push({ key: "none", label: "(ungrouped)" });'//achar(10)//&
+        '        checkboxList(container.append("div").attr("class", "ens-sel-facet"), superItems, d'//' => d.key, d => d.label, state.superSel);'//achar(10)//&
+        achar(10)//'        container.append("div").attr("class", "ens-sel-facet-title").text("Stop condition '//'(OR):");'//&
+        achar(10)//'        checkboxList(container.append("div").attr("class", "ens-sel-facet"), allStopReason'//'s.map(r => ({ key: r })),'//&
+        achar(10)//'          d => d.key, d => d.key, state.stopSel);'//achar(10)//&
+        achar(10)//'        container.append("div").attr("class", "ens-sel-facet-title").text(`Ensemble size ['//'${sizeMin}, ${sizeMax}]:`);'//&
+        achar(10)//'        rangeSlider(container.append("div").attr("class", "ens-sel-facet"));'//achar(10)//&
+        '      }'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    render();'//&
+        achar(10)//'    return {'//achar(10)//&
+        '      label, get mode() { return state.mode; }, node: container.node(), getSelectedIds, re'//'nder,'//achar(10)//&
+        '      setPeer(p) { state.peer = p; },'//achar(10)//'      // getState()/setState(): the convention behind the tooltip cross-link undo icon (se'//&
+        'e'//achar(10)//'      // buildMainPlot), and groundwork for a larger, not-yet-built idea (a report generat'//&
+        'ed'//achar(10)//'      // with some zoom/highlight/selection state already preset). manualFilter is'//&
+        achar(10)//'      // deliberately excluded -- see its own declaration above.'//achar(10)//&
+        '      getState() {'//achar(10)//'        return {'//&
+        achar(10)//'          mode: state.mode,'//achar(10)//&
+        '          manualIds: [...state.manualIds],'//achar(10)//'          superSel: [...state.superSel],'//&
+        achar(10)//'          stopSel: [...state.stopSel],'//achar(10)//&
+        '          rangeMin: state.rangeMin,'//achar(10)//'          rangeMax: state.rangeMax,'//&
+        achar(10)//'          // Purely informational: this instance has exactly one, fixed peer (wired once v'//'ia'//&
+        achar(10)//'          // setPeer at construction) -- setState never needs this to know which widget to'//achar(10)//&
+        '          // reuse, it''s included only so a captured state object fully describes itself.'//achar(10)//'          reuseTarget: state.mode === "reuse" && state.peer ? state.peer.label : null,'//&
+        achar(10)//'        };'//achar(10)//&
+        '      },'//achar(10)//'      setState(s) {'//&
+        achar(10)//'        if (!s) return;'//achar(10)//&
+        '        state.mode = s.mode;'//achar(10)//'        state.manualIds = new Set(s.manualIds || []);'//&
+        achar(10)//'        state.superSel = new Set(s.superSel || []);'//achar(10)//&
+        '        state.stopSel = new Set(s.stopSel || []);'//achar(10)//'        state.rangeMin = s.rangeMin !== undefined ? s.rangeMin : sizeMin;'//&
+        achar(10)//'        state.rangeMax = s.rangeMax !== undefined ? s.rangeMax : sizeMax;'//achar(10)//&
+        '        fireChange();'//achar(10)//'      },'//&
+        achar(10)//'    };'//achar(10)//&
+        '  }'//achar(10)//achar(10)//&
+        '  // ============================================================================'//achar(10)//'  // ---- Header, additional-plots toggle bar, hamburger menu ---------------------'//&
+        achar(10)//'  // ============================================================================'//achar(10)//&
+        achar(10)//'  document.getElementById("title").textContent = "STC interactive report";'//achar(10)//&
+        '  document.getElementById("subtitle").textContent ='//achar(10)//'    `${DATA.points.length} points, ${nonEmptyEnsembles.length} non-empty ensembles, ` +'//&
+        achar(10)//'    `${DATA.super_ensembles.length} super-ensemble(s). Hover a point, line, or cell for de'//'tail.`;'//&
+        achar(10)//achar(10)//'  document.querySelectorAll("#addl-bar button").forEach(btn => {'//&
+        achar(10)//'    btn.addEventListener("click", () => {'//achar(10)//&
+        '      const panel = document.getElementById(btn.dataset.panel);'//achar(10)//'      const show = panel.hasAttribute("hidden");'//&
+        achar(10)//'      if (show) panel.removeAttribute("hidden"); else panel.setAttribute("hidden", "");'//achar(10)//&
+        '      btn.classList.toggle("active", show);'//achar(10)//'    });'//&
+        achar(10)//'  });'//achar(10)//&
+        achar(10)//'  const controlsEl = document.getElementById("controls");'//achar(10)//&
+        '  document.getElementById("hamburger-toggle").addEventListener("click", () => controlsEl.c'//'lassList.toggle("collapsed"));'//achar(10)//&
+        '  document.addEventListener("keydown", (event) => {'//achar(10)//'    if (event.code !== "Space") return;'//&
+        achar(10)//'    const tag = (event.target.tagName || "").toLowerCase();'//achar(10)//&
+        '    if (tag === "input" || tag === "select" || tag === "textarea" || event.target.isConten'//'tEditable) return;'//achar(10)//&
+        '    event.preventDefault();'//achar(10)//'    controlsEl.classList.toggle("collapsed");'//&
+        achar(10)//'  });'//achar(10)//&
+        achar(10)//'  if (!dims2D) {'//achar(10)//&
+        '    document.getElementById("main-layout").innerHTML ='//achar(10)//'      ''<p style="color:var(--muted)">The main scatter plot only supports 2-dimensional inp'//&
+        'ut data; '' +'//achar(10)//'      "this run has " + DATA.dim_names.length + " dimension(s). See the additional plots a'//&
+        'bove instead.</p>";'//achar(10)//'  } else {'//&
+        achar(10)//'    buildMainPlot();'//achar(10)//&
+        '  }'//achar(10)//'  buildHeatmap();'//&
+        achar(10)//'  buildTree();'//achar(10)//&
+        '  buildObservablePlots();'//achar(10)//'  buildRunInfo();'//&
+        achar(10)//achar(10)//'  // ============================================================================'//&
+        achar(10)//'  // ---- Main 2D scatter plot -----------------------------------------------------'//achar(10)//&
+        '  // ============================================================================'//achar(10)//achar(10)//&
+        '  function buildMainPlot() {'//achar(10)//'    const width = Math.max(560, Math.round((window.innerWidth || 1200) * 0.8));'//&
+        achar(10)//'    const height = Math.max(420, Math.round((window.innerHeight || 900) * 0.72));'//achar(10)//&
+        '    const margin = { top: 10, right: 112, bottom: 36, left: 46 };'//achar(10)//'    const svg = d3.select("#scatter").attr("width", width).attr("height", height)'//&
+        achar(10)//'      .attr("viewBox", `0 0 ${width} ${height}`);'//achar(10)//&
+        '    makeExportButton(d3.select("#scatter-toolbar"), svg, "stc_main_plot");'//achar(10)//achar(10)//&
+        '    const plot = svg.append("g").attr("transform", `translate(${margin.left},${margin.top}'//')`);'//achar(10)//&
+        '    const innerW = width - margin.left - margin.right, innerH = height - margin.top - marg'//'in.bottom;'//achar(10)//&
+        achar(10)//'    const xExtent = d3.extent(DATA.points, p => p.coords[0]);'//achar(10)//&
+        '    const yExtent = d3.extent(DATA.points, p => p.coords[1]);'//achar(10)//'    const xSpan = xExtent[1] - xExtent[0] || 1, ySpan = yExtent[1] - yExtent[0] || 1;'//&
+        achar(10)//'    const unitsPerPixel = Math.max(xSpan / innerW, ySpan / innerH) * 1.08;'//achar(10)//&
+        '    const xMid = (xExtent[0] + xExtent[1]) / 2, yMid = (yExtent[0] + yExtent[1]) / 2;'//achar(10)//'    const x = d3.scaleLinear().domain([xMid - unitsPerPixel * innerW / 2, xMid + unitsPerP'//&
+        'ixel * innerW / 2]).range([0, innerW]);'//achar(10)//'    const y = d3.scaleLinear().domain([yMid - unitsPerPixel * innerH / 2, yMid + unitsPerP'//&
+        'ixel * innerH / 2]).range([innerH, 0]);'//achar(10)//'    const pxPerUnit = innerW / (x.domain()[1] - x.domain()[0]);'//&
+        achar(10)//achar(10)//'    plot.append("g").attr("class", "axis").attr("transform", `translate(0,${innerH})`).cal'//&
+        'l(d3.axisBottom(x).ticks(6));'//achar(10)//'    plot.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(6));'//&
+        achar(10)//'    svg.append("text").attr("x", margin.left + innerW / 2).attr("y", height - 4).attr("tex'//'t-anchor", "middle")'//&
+        achar(10)//'      .attr("font-size", 11).attr("fill", "var(--muted)").text(dimX);'//achar(10)//&
+        '    svg.append("text").attr("transform", "rotate(-90)").attr("x", -(margin.top + innerH / '//'2)).attr("y", 12)'//achar(10)//&
+        '      .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "var(--muted)").te'//'xt(dimY);'//achar(10)//&
+        achar(10)//'    // Everything that should pan/zoom lives under one group -- axes, axis titles, and the'//achar(10)//&
+        '    // legend stay direct children of svg/plot instead, so they stay fixed in the viewport'//achar(10)//'    // while zoomContent''s own transform changes (see makeZoomResizeControl above).'//&
+        achar(10)//'    const zoomContent = plot.append("g").attr("class", "zoom-content");'//achar(10)//&
+        '    const radiiLayer = zoomContent.append("g");'//achar(10)//'    const pointsLayer = zoomContent.append("g");'//&
+        achar(10)//'    const seedLayer = zoomContent.append("g");'//achar(10)//&
+        '    const tangentLayer = zoomContent.append("g");'//achar(10)//'    // Legend lives inside this <svg> (not a sidebar HTML div) specifically so it is captu'//&
+        'red'//achar(10)//'    // by this panel''s own SVG/PNG/JPG export, which only ever serializes the <svg> elemen'//&
+        't.'//achar(10)//'    const legendGroup = svg.append("g").attr("class", "legend-group")'//&
+        achar(10)//'      .attr("transform", `translate(${width - margin.right + 10},${margin.top})`);'//achar(10)//&
+        '    makeZoomResizeControl(svg, () => zoomContent);'//achar(10)//achar(10)//&
+        '    // ---- color scales -----------------------------------------------------------------'//achar(10)//'    const maxN = d3.max(DATA.points, d => d.n_ensembles) || 1;'//&
+        achar(10)//'    const blueRed = d3.scaleSequential(t => d3.interpolateRdBu(1 - t)).domain([0, maxN]);'//achar(10)//&
+        '    const lcColor = { retained: "var(--lc-retained)", fallback: "var(--lc-fallback)", none'//': "var(--lc-none)" };'//achar(10)//&
+        achar(10)//'    // ---- ensemble-selector widgets: point color (ensemble/super-ensemble modes share on'//'e'//&
+        achar(10)//'    // instance) and tangent-line visibility, each able to reuse the other''s live selectio'//'n --'//&
+        achar(10)//'    // see makeEnsembleSelectorWidget above. ---------------------------------------------'//'---'//&
+        achar(10)//'    const lineCapableEnsembles = nonEmptyEnsembles.filter(e => e.line_start);'//achar(10)//&
+        '    const pointColorSelector = makeEnsembleSelectorWidget('//achar(10)//'      nonEmptyEnsembles, "point color", nonEmptyEnsembles.map(e => e.id), () => render());'//&
+        achar(10)//'    const tangentLineSelector = makeEnsembleSelectorWidget('//achar(10)//&
+        '      lineCapableEnsembles, "tangent lines", lineCapableEnsembles.map(e => e.id), () => re'//'nder());'//achar(10)//&
+        '    pointColorSelector.setPeer(tangentLineSelector);'//achar(10)//'    tangentLineSelector.setPeer(pointColorSelector);'//&
+        achar(10)//'    d3.select("#tangent-line-select").node().appendChild(tangentLineSelector.node);'//achar(10)//&
+        achar(10)//'    // ---- tooltip ensemble/super-ensemble links + shared undo --------------------------'//'----'//&
+        achar(10)//'    // One shared undo icon/snapshot set, not one per selector: a user clicking links from'//achar(10)//&
+        '    // both the point tooltip and the tangent-line tooltip within the same short burst of'//achar(10)//'    // exploration frames that mentally as one "session" they may want to back out of'//&
+        achar(10)//'    // together, not two independently tracked edits -- a single icon undoing everything'//achar(10)//&
+        '    // touched since the last reset matches that framing and avoids two near-identical ico'//'ns'//achar(10)//&
+        '    // stacked in the same corner with no way to tell them apart at a glance. Each targete'//'d'//achar(10)//&
+        '    // widget is still snapshotted lazily and independently the first time *it* is touched'//achar(10)//'    // (getState() once per widget per session, never once per click) via snapshotForUndo'''//&
+        's'//achar(10)//'    // own guard below -- so an undo reverts the whole multi-click, possibly multi-widget,'//&
+        achar(10)//'    // sequence in one step.'//achar(10)//&
+        '    const undoIcon = d3.select("#undo-link-icon");'//achar(10)//'    const crossLinkSnapshots = {}; // "point" | "tangent" -> that widget''s pre-click getSt'//&
+        'ate()'//achar(10)//'    function widgetForLink(kind) { return kind === "point" ? pointColorSelector : tangentL'//&
+        'ineSelector; }'//achar(10)//'    function snapshotForUndo(kind) {'//&
+        achar(10)//'      if (crossLinkSnapshots[kind]) return; // already snapshotted this session -- don''t o'//'verwrite'//&
+        achar(10)//'      crossLinkSnapshots[kind] = widgetForLink(kind).getState();'//achar(10)//&
+        '      undoIcon.node().hidden = false;'//achar(10)//'    }'//&
+        achar(10)//'    function toggleEnsembleLink(kind, ensembleId) {'//achar(10)//&
+        '      snapshotForUndo(kind);'//achar(10)//'      const widget = widgetForLink(kind);'//&
+        achar(10)//'      const s = widget.getState();'//achar(10)//&
+        '      s.mode = "manual"; // "switching to Manual mode first if needed"'//achar(10)//'      const ids = new Set(s.manualIds);'//&
+        achar(10)//'      if (ids.has(ensembleId)) ids.delete(ensembleId); else ids.add(ensembleId);'//achar(10)//&
+        '      s.manualIds = [...ids];'//achar(10)//'      widget.setState(s);'//&
+        achar(10)//'    }'//achar(10)//&
+        '    function toggleSuperEnsembleLink(kind, superId) {'//achar(10)//'      const se = DATA.super_ensembles.find(sup => sup.group_id === superId);'//&
+        achar(10)//'      if (!se) return;'//achar(10)//&
+        '      snapshotForUndo(kind);'//achar(10)//'      const widget = widgetForLink(kind);'//&
+        achar(10)//'      const s = widget.getState();'//achar(10)//&
+        '      s.mode = "manual";'//achar(10)//'      const ids = new Set(s.manualIds);'//&
+        achar(10)//'      // Group toggle, not a per-member independent flip: if every member is already selec'//'ted,'//&
+        achar(10)//'      // clicking removes the whole group; otherwise (none or only some selected) clicking'//' adds'//&
+        achar(10)//'      // every member -- the super-ensemble link acts as one unit, either fully in or full'//'y out,'//&
+        achar(10)//'      // rather than inverting each member''s bit independently (which would produce a'//achar(10)//&
+        '      // hard-to-predict partial selection on a second click).'//achar(10)//'      const allIn = se.ensemble_ids.every(id => ids.has(id));'//&
+        achar(10)//'      se.ensemble_ids.forEach(id => { if (allIn) ids.delete(id); else ids.add(id); });'//achar(10)//&
+        '      s.manualIds = [...ids];'//achar(10)//'      widget.setState(s);'//&
+        achar(10)//'    }'//achar(10)//&
+        '    undoIcon.on("click", () => {'//achar(10)//'      Object.keys(crossLinkSnapshots).forEach(kind => widgetForLink(kind).setState(crossLi'//&
+        'nkSnapshots[kind]));'//achar(10)//'      Object.keys(crossLinkSnapshots).forEach(kind => delete crossLinkSnapshots[kind]);'//&
+        achar(10)//'      undoIcon.node().hidden = true;'//achar(10)//&
+        '    });'//achar(10)//'    // Binds click (+hover-driven tooltip-persistence) on the .tt-link elements just injec'//&
+        'ted'//achar(10)//'    // into #tooltip''s own live HTML by showTooltip() -- called right after showTooltip on'//&
+        ' the'//achar(10)//'    // point/tangent-line hover handlers below, never for any other hover source (see'//&
+        achar(10)//'    // tooltipHtmlForPoint''s own tt-link markup and the tangent-line hover handler further'//achar(10)//&
+        '    // down). `targetKind` picks which selector a click here should mutate.'//achar(10)//'    function wireTooltipLinks(targetKind) {'//&
+        achar(10)//'      tooltip.selectAll(".tt-link")'//achar(10)//&
+        '        .on("mouseenter", cancelHideTooltip)'//achar(10)//'        .on("mouseleave", scheduleHideTooltip)'//&
+        achar(10)//'        .on("click", function (event) {'//achar(10)//&
+        '          event.stopPropagation();'//achar(10)//'          const kind = this.getAttribute("data-kind");'//&
+        achar(10)//'          const id = +this.getAttribute("data-id");'//achar(10)//&
+        '          if (kind === "ensemble") toggleEnsembleLink(targetKind, id); else toggleSuperEns'//'embleLink(targetKind, id);'//achar(10)//&
+        '        });'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    const colorModeExtra = d3.select("#color-mode-extra");'//&
+        achar(10)//'    const singleColorWrap = document.getElementById("single-color-wrap");'//achar(10)//&
+        '    function renderColorModeExtra(mode) {'//achar(10)//'      colorModeExtra.selectAll("*").remove();'//&
+        achar(10)//'      singleColorWrap.style.display = mode === "single" ? "" : "none";'//achar(10)//&
+        '      if (mode === "ensemble" || mode === "super_ensemble") {'//achar(10)//'        colorModeExtra.append("div").attr("class", "hint").text(mode === "ensemble" ?'//&
+        achar(10)//'          "Ensembles included in coloring:" : "Ensembles included in coloring (colored by '//'their super-ensemble):");'//&
+        achar(10)//'        colorModeExtra.node().appendChild(pointColorSelector.node);'//achar(10)//&
+        '      }'//achar(10)//'    }'//&
+        achar(10)//'    renderColorModeExtra("intersection");'//achar(10)//&
+        achar(10)//'    function lowConfidenceCategory(p) {'//achar(10)//&
+        '      if (p.n_ensembles > 0) return "retained";'//achar(10)//'      if (p.n_low_confidence_ensembles > 0) return "fallback";'//&
+        achar(10)//'      return "none";'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function pointColor(p) {'//achar(10)//'      const mode = document.getElementById("color-mode").value;'//&
+        achar(10)//'      switch (mode) {'//achar(10)//&
+        '        case "intersection":'//achar(10)//'          return p.n_ensembles === 0 ? GREY : blueRed(p.n_ensembles);'//&
+        achar(10)//'        case "ensemble": {'//achar(10)//&
+        '          const top = largestEnsembleForPoint(p);'//achar(10)//'          if (!top || !pointColorSelector.getSelectedIds().has(top.id)) return GREY;'//&
+        achar(10)//'          return ensembleColor(top.id);'//achar(10)//&
+        '        }'//achar(10)//'        case "super_ensemble": {'//&
+        achar(10)//'          const top = largestEnsembleForPoint(p);'//achar(10)//&
+        '          const sid = top ? top.super_ensemble_id : null;'//achar(10)//'          if (sid === null || sid === undefined || !top || !pointColorSelector.getSelected'//&
+        'Ids().has(top.id)) return GREY;'//achar(10)//'          return superEnsembleColor(sid);'//&
+        achar(10)//'        }'//achar(10)//&
+        '        case "low_confidence":'//achar(10)//'          return `var(--lc-${lowConfidenceCategory(p) === "none" ? "none" : lowConfidenceC'//&
+        'ategory(p)})`;'//achar(10)//'        case "single":'//&
+        achar(10)//'          return document.getElementById("single-color").value;'//achar(10)//&
+        '        default:'//achar(10)//'          return "var(--blue)";'//&
+        achar(10)//'      }'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function triangleColorFor(ensemble) {'//achar(10)//'      if (!document.getElementById("seed-color-link").checked) return "#000";'//&
+        achar(10)//'      const p = pointById.get(ensemble.seed_point_id);'//achar(10)//&
+        '      return p ? pointColor(p) : "#000";'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    function tooltipHtmlForPoint(p) {'//&
+        achar(10)//'      const rows = [`<b>point ${p.id}</b>`, `${dimX}=${p.coords[0].toFixed(4)}, ${dimY}=${'//'p.coords[1].toFixed(4)}`];'//&
+        achar(10)//'      if (p.ensembles.length) {'//achar(10)//&
+        '        rows.push("ensembles:");'//achar(10)//'        p.ensembles.forEach(m => {'//&
+        achar(10)//'          const e = ensembleById.get(m.id);'//achar(10)//&
+        '          const eligSuffix = e && !e.reconciliation_eligible ? ", not merge-eligible" : ""'//';'//achar(10)//&
+        '          rows.push(`&nbsp;&nbsp;<span class="tt-link" data-kind="ensemble" data-id="${m.i'//'d}">E${m.id}</span>: ` +'//achar(10)//&
+        '            `residual=${m.residual_length.toFixed(4)}, stop=${e ? e.stop_reason : "?"}${el'//'igSuffix}`);'//achar(10)//&
+        '        });'//achar(10)//'      } else {'//&
+        achar(10)//'        rows.push("in no retained ensemble" + (p.n_low_confidence_ensembles ? " (low-confi'//'dence fallback only)" : ""));'//&
+        achar(10)//'      }'//achar(10)//&
+        '      if (p.seed_of.length) rows.push(`seed of ensemble ${p.seed_of[0]}`);'//achar(10)//'      const superIds = [...new Set(p.ensembles.map(m => ensembleById.get(m.id) && ensemble'//&
+        'ById.get(m.id).super_ensemble_id)'//achar(10)//'        .filter(g => g !== null && g !== undefined))];'//&
+        achar(10)//'      superIds.forEach(sid => {'//achar(10)//&
+        '        const se = DATA.super_ensembles.find(s => s.group_id === sid);'//achar(10)//'        rows.push(`<span class="tt-link" data-kind="super" data-id="${sid}">super-ensemble'//&
+        ' ${sid}</span>: ` +'//achar(10)//'          `ensembles [${se ? se.ensemble_ids.join(",") : ""}]`);'//&
+        achar(10)//'      });'//achar(10)//&
+        '      return rows.join("<br>");'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    function tooltipHtmlForTangent(d) {'//&
+        achar(10)//'      const sid = d.super_ensemble_id;'//achar(10)//&
+        '      const superLine = (sid === null || sid === undefined) ? "" :'//achar(10)//'        `<br><span class="tt-link" data-kind="super" data-id="${sid}">super-ensemble ${sid'//&
+        '}</span>`;'//achar(10)//'      return `<b>ensemble <span class="tt-link" data-kind="ensemble" data-id="${d.id}">${d'//&
+        '.id}</span></b>` +'//achar(10)//'        `<br>singular value s1=${d.s1.toFixed(4)}${superLine}` +'//&
+        achar(10)//'        (d.reconciliation_eligible ? "" : `<br><span class="tt-warn">not merge-eligible ($'//'{d.excluded_by.join(", ")})</span>`);'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function render() {'//achar(10)//&
+        '      const diameter = +document.getElementById("point-diameter").value;'//achar(10)//'      const r = diameter / 2;'//&
+        achar(10)//'      const seedDiameter = +document.getElementById("seed-diameter").value;'//achar(10)//&
+        '      const showPoints = document.getElementById("layer-points").checked;'//achar(10)//'      const showSeeds = document.getElementById("layer-seeds").checked;'//&
+        achar(10)//'      const showRadii = document.getElementById("layer-radii").checked;'//achar(10)//&
+        '      const showTangent = document.getElementById("layer-tangent").checked;'//achar(10)//'      const radiiByEnsembleColor = document.getElementById("radii-ensemble-color").checked'//&
+        ';'//achar(10)//'      const radiiOpacity = +document.getElementById("radii-opacity").value;'//&
+        achar(10)//'      const tangentSingleColor = document.getElementById("tangent-single-color").checked;'//achar(10)//&
+        '      const tangentColor = document.getElementById("tangent-color").value;'//achar(10)//'      const tangentThickness = +document.getElementById("tangent-thickness").value;'//&
+        achar(10)//achar(10)//'      pointsLayer.selectAll("circle.point").data(showPoints ? DATA.points : [], d => d.id)'//&
+        '.join("circle")'//achar(10)//'        .attr("class", "point")'//&
+        achar(10)//'        .attr("cx", d => x(d.coords[0])).attr("cy", d => y(d.coords[1]))'//achar(10)//&
+        '        .attr("r", r)'//achar(10)//'        .attr("fill", d => pointColor(d))'//&
+        achar(10)//'        .attr("fill-opacity", 0.85)'//achar(10)//&
+        '        .on("mouseenter", (event, d) => { showTooltip(tooltipHtmlForPoint(d), event); wire'//'TooltipLinks("point"); })'//achar(10)//&
+        '        .on("mousemove", moveTooltip)'//achar(10)//'        .on("mouseleave", scheduleHideTooltip)'//&
+        achar(10)//'        .on("click", function (event, d) {'//achar(10)//&
+        '          event.stopPropagation(); // keep this off the document-level click listener that'//' closes the zoom mode-menu'//achar(10)//&
+        '          pinTooltip(tooltipHtmlForPoint(d), event, this, () => wireTooltipLinks("point"))'//';'//achar(10)//&
+        '        })'//achar(10)//'        .on("contextmenu", function (event, d) {'//&
+        achar(10)//'          event.preventDefault(); // suppress the native browser context menu -- right-cli'//'ck pins too'//&
+        achar(10)//'          event.stopPropagation();'//achar(10)//&
+        '          pinTooltip(tooltipHtmlForPoint(d), event, this, () => wireTooltipLinks("point"))'//';'//achar(10)//&
+        '        });'//achar(10)//achar(10)//&
+        '      const seedEnsembles = showSeeds ? nonEmptyEnsembles : [];'//achar(10)//'      seedLayer.selectAll("path.seed-marker").data(seedEnsembles, d => d.id).join("path")'//&
+        achar(10)//'        .attr("class", "seed-marker")'//achar(10)//&
+        '        .attr("d", d3.symbol().type(d3.symbolTriangle).size(Math.pow(seedDiameter, 2) * 1.'//'6))'//achar(10)//&
+        '        .attr("transform", d => {'//achar(10)//'          const p = pointById.get(d.seed_point_id);'//&
+        achar(10)//'          return p ? `translate(${x(p.coords[0])},${y(p.coords[1])})` : null;'//achar(10)//&
+        '        })'//achar(10)//'        .attr("fill", triangleColorFor);'//&
+        achar(10)//achar(10)//'      const radiiEnsembles = showRadii ? nonEmptyEnsembles : [];'//&
+        achar(10)//'      radiiLayer.selectAll("circle.radius-circle").data(radiiEnsembles, d => d.id).join("c'//'ircle")'//&
+        achar(10)//'        .attr("class", "radius-circle")'//achar(10)//&
+        '        .attr("cx", d => { const p = pointById.get(d.seed_point_id); return p ? x(p.coords'//'[0]) : 0; })'//achar(10)//&
+        '        .attr("cy", d => { const p = pointById.get(d.seed_point_id); return p ? y(p.coords'//'[1]) : 0; })'//achar(10)//&
+        '        .attr("r", d => d.growth_radius * pxPerUnit)'//achar(10)//'        .attr("fill", d => radiiByEnsembleColor ? ensembleColor(d.id) : triangleColorFor(d'//&
+        '))'//achar(10)//'        .attr("fill-opacity", radiiOpacity)'//&
+        achar(10)//'        .attr("stroke", d => radiiByEnsembleColor ? ensembleColor(d.id) : triangleColorFor'//'(d))'//&
+        achar(10)//'        .attr("stroke-width", 0.6).attr("stroke-opacity", Math.min(1, radiiOpacity * 4));'//achar(10)//&
+        achar(10)//'      const lineEnsembles = showTangent ?'//achar(10)//&
+        '        nonEmptyEnsembles.filter(e => e.line_start && tangentLineSelector.getSelectedIds()'//'.has(e.id)) : [];'//achar(10)//&
+        '      tangentLayer.selectAll("line.tangent-line").data(lineEnsembles, d => d.id).join("lin'//'e")'//achar(10)//&
+        '        .attr("class", "tangent-line")'//achar(10)//'        .attr("x1", d => x(d.line_start[0])).attr("y1", d => y(d.line_start[1]))'//&
+        achar(10)//'        .attr("x2", d => x(d.line_end[0])).attr("y2", d => y(d.line_end[1]))'//achar(10)//&
+        '        .attr("stroke", d => tangentSingleColor ? tangentColor : ensembleColor(d.id))'//achar(10)//'        .attr("stroke-width", tangentThickness)'//&
+        achar(10)//'        .attr("pointer-events", "stroke")'//achar(10)//&
+        '        .style("cursor", "pointer")'//achar(10)//'        .on("mouseenter", (event, d) => { showTooltip(tooltipHtmlForTangent(d), event); wi'//&
+        'reTooltipLinks("tangent"); })'//achar(10)//'        .on("mousemove", moveTooltip)'//&
+        achar(10)//'        .on("mouseleave", scheduleHideTooltip)'//achar(10)//&
+        '        .on("click", function (event, d) {'//achar(10)//'          event.stopPropagation();'//&
+        achar(10)//'          pinTooltip(tooltipHtmlForTangent(d), event, this, () => wireTooltipLinks("tangen'//'t"));'//&
+        achar(10)//'        })'//achar(10)//&
+        '        .on("contextmenu", function (event, d) {'//achar(10)//'          event.preventDefault();'//&
+        achar(10)//'          event.stopPropagation();'//achar(10)//&
+        '          pinTooltip(tooltipHtmlForTangent(d), event, this, () => wireTooltipLinks("tangen'//'t"));'//achar(10)//&
+        '        });'//achar(10)//achar(10)//&
+        '      renderLegend();'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    // Resolves a CSS var(--x) color to its actual computed value -- SVG `fill`/`stroke`'//&
+        achar(10)//'    // attributes exported via XMLSerializer keep working with var() references fine when '//'the'//&
+        achar(10)//'    // <style> that defines them travels with the export (it currently doesn''t, exports ar'//'e'//&
+        achar(10)//'    // just the <svg> subtree), so legend swatches use resolved colors, not var() referenc'//'es,'//&
+        achar(10)//'    // to render correctly in a standalone exported SVG/PNG/JPG viewed outside this report'//'.'//&
+        achar(10)//'    const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(n'//'ame).trim();'//&
+        achar(10)//achar(10)//'    function gradientLegend(g) {'//&
+        achar(10)//'      const w = 14, h = 120;'//achar(10)//&
+        '      const gradId = "grad-intersection";'//achar(10)//'      let defs = svg.select("defs"); if (defs.empty()) defs = svg.append("defs");'//&
+        achar(10)//'      defs.select("#" + gradId).remove();'//achar(10)//&
+        '      const grad = defs.append("linearGradient").attr("id", gradId).attr("x1", "0%").attr('//'"y1", "100%").attr("x2", "0%").attr("y2", "0%");'//achar(10)//&
+        '      d3.range(0, 1.0001, 0.1).forEach(t => grad.append("stop").attr("offset", (t * 100) +'//' "%").attr("stop-color", blueRed(t * maxN)));'//achar(10)//&
+        '      g.append("rect").attr("x", 0).attr("y", 0).attr("width", w).attr("height", h).attr("'//'fill", `url(#${gradId})`);'//achar(10)//&
+        '      g.append("text").attr("x", w + 4).attr("y", h).attr("font-size", 9).attr("fill", "va'//'r(--muted)").text("0");'//achar(10)//&
+        '      g.append("text").attr("x", w + 4).attr("y", 8).attr("font-size", 9).attr("fill", "va'//'r(--muted)").text(maxN);'//achar(10)//&
+        '      g.append("text").attr("x", 0).attr("y", h + 14).attr("font-size", 9).attr("fill", "v'//'ar(--muted)").text("# ensembles");'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function swatchLegend(g, items) {'//achar(10)//'      // items: [[color, label(s) -- an array of short lines]]'//&
+        achar(10)//'      let y = 0;'//achar(10)//&
+        '      items.forEach(([color, lines]) => {'//achar(10)//'        g.append("rect").attr("x", 0).attr("y", y).attr("width", 10).attr("height", 10).at'//&
+        'tr("fill", color);'//achar(10)//'        (Array.isArray(lines) ? lines : [lines]).forEach((line, i) => {'//&
+        achar(10)//'          g.append("text").attr("x", 14).attr("y", y + 9 + i * 11).attr("font-size", 9).at'//'tr("fill", "var(--muted)").text(line);'//&
+        achar(10)//'        });'//achar(10)//&
+        '        y += 12 + (Array.isArray(lines) ? lines.length - 1 : 0) * 11 + 8;'//achar(10)//'      });'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function renderLegend() {'//achar(10)//&
+        '      legendGroup.selectAll("*").remove();'//achar(10)//'      const mode = document.getElementById("color-mode").value;'//&
+        achar(10)//'      legendGroup.append("text").attr("x", 0).attr("y", -2).attr("font-size", 10).attr("fo'//'nt-weight", 600)'//&
+        achar(10)//'        .attr("fill", "var(--fg)").text("Legend");'//achar(10)//&
+        '      const body = legendGroup.append("g").attr("transform", "translate(0,10)");'//achar(10)//'      if (mode === "intersection") {'//&
+        achar(10)//'        gradientLegend(body);'//achar(10)//&
+        '      } else if (mode === "low_confidence") {'//achar(10)//'        swatchLegend(body, ['//&
+        achar(10)//'          [cssVar("--lc-retained"), ["Retained", "ensemble"]],'//achar(10)//&
+        '          [cssVar("--lc-fallback"), ["Low-confidence", "fallback only"]],'//achar(10)//'          [cssVar("--lc-none"), ["Neither"]],'//&
+        achar(10)//'        ]);'//achar(10)//&
+        '      } else if (mode === "single") {'//achar(10)//'        swatchLegend(body, [[document.getElementById("single-color").value, ["All points"]'//&
+        ']]);'//achar(10)//'      } else {'//&
+        achar(10)//'        body.append("text").attr("x", 0).attr("y", 9).attr("font-size", 9).attr("fill", "v'//'ar(--muted)").text("Rainbow scale");'//&
+        achar(10)//'        body.append("text").attr("x", 0).attr("y", 21).attr("font-size", 9).attr("fill", "'//'var(--muted)").text("per ensemble;");'//&
+        achar(10)//'        body.append("text").attr("x", 0).attr("y", 33).attr("font-size", 9).attr("fill", "'//'var(--muted)").text("grey = excluded.");'//&
+        achar(10)//'      }'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    ["color-mode", "point-diameter", "seed-diameter", "layer-points", "layer-seeds", "seed'//'-color-link",'//achar(10)//&
+        '     "layer-radii", "radii-ensemble-color", "radii-opacity", "layer-tangent", "tangent-sin'//'gle-color",'//achar(10)//&
+        '     "tangent-color", "tangent-thickness", "single-color"]'//achar(10)//'      .forEach(id => document.getElementById(id).addEventListener("input", render));'//&
+        achar(10)//'    document.getElementById("color-mode").addEventListener("change", (event) => renderColo'//'rModeExtra(event.target.value));'//&
+        achar(10)//achar(10)//'    render();'//&
         achar(10)//'  }'//achar(10)//&
-        achar(10)//'  function renderLegend(colorMode, highlightId) {'//achar(10)//&
-        '    const el = document.getElementById("legend");'//achar(10)//'    el.innerHTML = "";'//&
-        achar(10)//'    let items = [];'//achar(10)//&
-        '    if (highlightId) {'//achar(10)//'      items = [["#2166ac", "in ensemble " + highlightId], ["#d9d9d9", "not in it"]];'//&
-        achar(10)//'    } else if (colorMode === "coverage") {'//achar(10)//&
-        '      items = Object.entries(coverageColor).map(([k, v]) => [v, k]);'//achar(10)//'    } else if (colorMode === "super_ensemble") {'//&
-        achar(10)//'      items = [["#ddd", "no super-ensemble"]];'//achar(10)//&
-        '    } else if (colorMode === "n_ensembles") {'//achar(10)//'      items = [["#ddd", "0 ensembles"], [magma(1), "few"], [magma(d3.max(DATA.points, d =>'//&
-        ' d.n_ensembles) || 1), "many"]];'//achar(10)//'    }'//&
-        achar(10)//'    items.forEach(([color, label]) => {'//achar(10)//&
-        '      const span = document.createElement("span");'//achar(10)//'      span.className = "legend-item";'//&
-        achar(10)//'      span.innerHTML = `<span class="legend-swatch" style="background:${color}"></span>${l'//'abel}`;'//&
-        achar(10)//'      el.appendChild(span);'//achar(10)//&
-        '    });'//achar(10)//'  }'//&
-        achar(10)//achar(10)//'  ["color-mode", "highlight-ensemble", "layer-seeds", "layer-radii", "layer-tangent1", "la'//&
-        'yer-tangent2"]'//achar(10)//'    .forEach(id => document.getElementById(id).addEventListener("change", render));'//&
-        achar(10)//'  render();'//achar(10)//&
-        achar(10)//'  // ---- Overlap Coefficient heatmap ----------------------------------------------------'//'--'//&
-        achar(10)//'  const ensIds = nonEmptyEnsembles.map(e => e.id).sort((a, b) => a - b);'//achar(10)//&
-        '  const cell = Math.max(3, Math.min(14, Math.floor(700 / Math.max(ensIds.length, 1))));'//achar(10)//'  const hmMargin = { top: 10, right: 10, bottom: 10, left: 10 };'//&
-        achar(10)//'  const hmSize = cell * ensIds.length;'//achar(10)//&
-        '  const heatmapSvg = d3.select("#heatmap")'//achar(10)//'    .attr("width", hmSize + hmMargin.left + hmMargin.right)'//&
-        achar(10)//'    .attr("height", hmSize + hmMargin.top + hmMargin.bottom);'//achar(10)//&
-        '  const heatmapG = heatmapSvg.append("g").attr("transform", `translate(${hmMargin.left},${'//'hmMargin.top})`);'//achar(10)//&
-        '  const idxOf = new Map(ensIds.map((id, i) => [id, i]));'//achar(10)//'  const ocLookup = new Map();'//&
-        achar(10)//'  DATA.overlap_coefficient_matrix.forEach(({ a, b, overlap_coefficient }) => {'//achar(10)//&
-        '    ocLookup.set(a + "_" + b, overlap_coefficient); ocLookup.set(b + "_" + a, overlap_coef'//'ficient);'//achar(10)//&
-        '  });'//achar(10)//'  const viridis = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]);'//&
-        achar(10)//achar(10)//'  const hmData = [];'//&
-        achar(10)//'  ensIds.forEach((ea, i) => ensIds.forEach((eb, j) => {'//achar(10)//&
-        '    const overlapCoefficient = ea === eb ? 1 : (ocLookup.get(ea + "_" + eb) || 0);'//achar(10)//'    hmData.push({ ea, eb, i, j, overlapCoefficient });'//&
-        achar(10)//'  }));'//achar(10)//&
-        achar(10)//'  heatmapG.selectAll("rect").data(hmData).join("rect")'//achar(10)//&
-        '    .attr("x", d => d.i * cell).attr("y", d => d.j * cell)'//achar(10)//'    .attr("width", cell).attr("height", cell)'//&
-        achar(10)//'    .attr("fill", d => viridis(d.overlapCoefficient))'//achar(10)//&
-        '    .on("mouseenter", (event, d) => {'//achar(10)//'      tooltip.style("opacity", 1).html(`ensemble ${d.ea} &times; ${d.eb}<br>Overlap Coeffi'//&
-        'cient = ${d.overlapCoefficient.toFixed(3)}`);'//achar(10)//'    })'//&
-        achar(10)//'    .on("mousemove", (event) => {'//achar(10)//&
-        '      tooltip.style("left", (event.pageX + 12) + "px").style("top", (event.pageY + 12) + "'//'px");'//achar(10)//&
-        '    })'//achar(10)//'    .on("mouseleave", () => tooltip.style("opacity", 0))'//&
-        achar(10)//'    .on("click", (event, d) => {'//achar(10)//&
-        '      if (d.ea !== d.eb) { highlightSelect.value = d.ea; render(); }'//achar(10)//'    });'//&
-        achar(10)//achar(10)//'  // ---- Parameters tables ------------------------------------------------------------'//&
-        achar(10)//'  function paramsTable(caption, entries) {'//achar(10)//&
-        '    if (!entries.length) return null;'//achar(10)//'    const wrap = document.createElement("table");'//&
-        achar(10)//'    wrap.className = "params";'//achar(10)//&
-        '    wrap.innerHTML = `<caption>${caption}</caption><tr><th>parameter</th><th>value</th></t'//'r>` +'//achar(10)//&
-        '      entries.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");'//achar(10)//'    return wrap;'//&
+        achar(10)//'  // ============================================================================'//achar(10)//&
+        '  // ---- Overlap Coefficient heatmap (upper triangular) ---------------------------'//achar(10)//'  // ============================================================================'//&
+        achar(10)//achar(10)//'  function buildHeatmap() {'//&
+        achar(10)//'    const ensIds = nonEmptyEnsembles.map(e => e.id).sort((a, b) => a - b);'//achar(10)//&
+        '    const svg = d3.select("#heatmap");'//achar(10)//'    makeExportButton(d3.select("#heatmap-toolbar"), svg, "stc_ovc_heatmap");'//&
+        achar(10)//'    if (ensIds.length < 2) {'//achar(10)//&
+        '      svg.attr("width", 1).attr("height", 1);'//achar(10)//'      d3.select("#heatmap-wrap").append("p").attr("style", "color:var(--muted)")'//&
+        achar(10)//'        .text("Fewer than two ensembles -- no pairwise Overlap Coefficient to show.");'//achar(10)//&
+        '      return;'//achar(10)//'    }'//&
+        achar(10)//'    const cell = Math.max(3, Math.min(16, Math.floor(700 / ensIds.length)));'//achar(10)//&
+        '    const legendW = 60;'//achar(10)//'    // Column (top) labels render rotated 90deg -- see hm-col below -- so top margin must '//&
+        'fit'//achar(10)//'    // the longest ensemble-ID string''s rendered length, not just one text line''s height;'//&
+        achar(10)//'    // 3+ digit ids would otherwise overlap their neighbors when read horizontally.'//achar(10)//&
+        '    const maxIdLen = Math.max(...ensIds.map(id => String(id).length));'//achar(10)//'    const margin = { top: 14 + maxIdLen * 7, right: 10 + legendW, bottom: 10, left: 10 };'//&
+        achar(10)//'    const hmSize = cell * ensIds.length;'//achar(10)//&
+        '    svg.attr("width", hmSize + margin.left + margin.right).attr("height", hmSize + margin.'//'top + margin.bottom);'//achar(10)//&
+        '    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`)'//';'//achar(10)//&
+        '    const idxOf = new Map(ensIds.map((id, i) => [id, i]));'//achar(10)//'    const ocLookup = new Map();'//&
+        achar(10)//'    DATA.overlap_coefficient_matrix.forEach(({ a, b, overlap_coefficient }) => {'//achar(10)//&
+        '      ocLookup.set(a + "_" + b, overlap_coefficient); ocLookup.set(b + "_" + a, overlap_co'//'efficient);'//achar(10)//&
+        '    });'//achar(10)//'    const viridis = d3.scaleSequential(d3.interpolateViridis).domain([0, 1]);'//&
+        achar(10)//achar(10)//'    const hmData = [];'//&
+        achar(10)//'    ensIds.forEach((ea, i) => ensIds.forEach((eb, j) => {'//achar(10)//&
+        '      if (j <= i) return; // upper triangular only, diagonal excluded'//achar(10)//'      hmData.push({ ea, eb, i, j, overlapCoefficient: ocLookup.get(ea + "_" + eb) || 0 });'//&
+        achar(10)//'    }));'//achar(10)//&
+        achar(10)//'    // Grid + labels pan/zoom together; the vertical color-scale legend below stays a dire'//'ct'//&
+        achar(10)//'    // child of `g`, fixed in the viewport, same reasoning as the main plot''s zoomContent.'//achar(10)//&
+        '    const zoomContent = g.append("g").attr("class", "zoom-content");'//achar(10)//'    const cells = zoomContent.append("g").attr("id", "hm-cells").selectAll("rect").data(hm'//&
+        'Data).join("rect")'//achar(10)//'      .attr("x", d => d.i * cell).attr("y", d => d.j * cell)'//&
+        achar(10)//'      .attr("width", cell).attr("height", cell)'//achar(10)//&
+        '      .attr("fill", d => viridis(d.overlapCoefficient))'//achar(10)//'      .on("mouseenter", (event, d) => showTooltip(`ensemble ${d.ea} &times; ${d.eb}<br>Ove'//&
+        'rlap Coefficient = ${d.overlapCoefficient.toFixed(3)}`, event))'//achar(10)//'      .on("mousemove", moveTooltip).on("mouseleave", hideTooltip);'//&
+        achar(10)//achar(10)//'    const borderGroup = zoomContent.append("g").attr("id", "hm-borders");'//&
+        achar(10)//'    ensIds.forEach((id, i) => {'//achar(10)//&
+        '      borderGroup.append("rect").attr("x", i * cell).attr("y", i * cell).attr("width", (en'//'sIds.length - i) * cell)'//achar(10)//&
+        '        .attr("height", cell).attr("fill", "none").attr("stroke", "#000").attr("stroke-wid'//'th", 0.4);'//achar(10)//&
+        '      borderGroup.append("rect").attr("x", 0).attr("y", i * cell).attr("width", (i + 1) * '//'cell)'//achar(10)//&
+        '        .attr("height", cell).attr("fill", "none").attr("stroke", "#000").attr("stroke-wid'//'th", 0.4);'//achar(10)//&
+        '    });'//achar(10)//achar(10)//&
+        '    const labelsGroup = zoomContent.append("g").attr("id", "hm-labels");'//achar(10)//'    // Rotated 90deg (reading bottom-to-top, growing upward away from the grid) so 3+ digi'//&
+        't'//achar(10)//'    // ensemble IDs no longer overlap their horizontal neighbors -- text-anchor "start" wi'//&
+        'th'//achar(10)//'    // the anchor point pinned to the grid''s own top edge is what makes the label extend a'//&
+        'way'//achar(10)//'    // from the data rather than into it once rotated.'//&
+        achar(10)//'    labelsGroup.selectAll("text.hm-col").data(ensIds).join("text").attr("class", "hm-col")'//achar(10)//&
+        '      .attr("transform", (d, i) => `translate(${i * cell + cell / 2},-4) rotate(-90)`)'//achar(10)//'      .attr("text-anchor", "start")'//&
+        achar(10)//'      .attr("font-size", Math.min(9, cell)).attr("fill", "var(--muted)").text(d => d);'//achar(10)//&
+        '    labelsGroup.selectAll("text.hm-row").data(ensIds).join("text").attr("class", "hm-row")'//achar(10)//'      .attr("x", hmSize + 3).attr("y", (d, i) => i * cell + cell / 2 + 3)'//&
+        achar(10)//'      .attr("font-size", Math.min(9, cell)).attr("fill", "var(--muted)").text(d => d);'//achar(10)//&
+        achar(10)//'    // vertical color-scale legend'//achar(10)//&
+        '    const legendX = hmSize + 26;'//achar(10)//'    const legendH = Math.min(hmSize, 160);'//&
+        achar(10)//'    const gradId = "grad-ovc";'//achar(10)//&
+        '    const defs = svg.append("defs");'//achar(10)//'    const grad = defs.append("linearGradient").attr("id", gradId).attr("x1", "0%").attr("y'//&
+        '1", "100%").attr("x2", "0%").attr("y2", "0%");'//achar(10)//'    d3.range(0, 1.0001, 0.1).forEach(t => grad.append("stop").attr("offset", (t * 100) + "'//&
+        '%").attr("stop-color", viridis(t)));'//achar(10)//'    g.append("rect").attr("x", legendX).attr("y", 0).attr("width", 14).attr("height", lege'//&
+        'ndH).attr("fill", `url(#${gradId})`);'//achar(10)//'    const legendScale = d3.scaleLinear().domain([0, 1]).range([legendH, 0]);'//&
+        achar(10)//'    g.append("g").attr("transform", `translate(${legendX + 14},0)`).call(d3.axisRight(lege'//'ndScale).ticks(5).tickSize(3))'//&
+        achar(10)//'      .attr("font-size", 9);'//achar(10)//&
+        achar(10)//'    document.getElementById("hm-axis-labels").addEventListener("change", (e) => labelsGrou'//'p.style("display", e.target.checked ? null : "none"));'//&
+        achar(10)//'    document.getElementById("hm-borders").addEventListener("change", (e) => borderGroup.st'//'yle("display", e.target.checked ? null : "none"));'//&
+        achar(10)//achar(10)//'    makeZoomResizeControl(svg, () => zoomContent);'//&
         achar(10)//'  }'//achar(10)//&
-        '  const allEntries = Object.entries(DATA.params);'//achar(10)//'  const inputEntries = allEntries.filter(([k]) => !k.startsWith("estimated_"));'//&
-        achar(10)//'  const estimatedEntries = allEntries.filter(([k]) => k.startsWith("estimated_")).map(([k,'//' v]) => [k.replace(/^estimated_/, ""), v]);'//&
-        achar(10)//'  const tablesEl = document.getElementById("params-tables");'//achar(10)//&
-        '  [paramsTable("This run''s own parameters", inputEntries),'//achar(10)//'   paramsTable("estimate_stc_parameters (informational, never auto-applied)", estimatedEnt'//&
-        'ries)]'//achar(10)//'    .filter(Boolean).forEach(t => tablesEl.appendChild(t));'//&
-        achar(10)//'})();'//achar(10)//&
-        '</script>'//achar(10)//'</body>'//&
-        achar(10)//'</html>'//achar(10)
+        achar(10)//'  // ============================================================================'//achar(10)//&
+        '  // ---- Super-Ensemble Tree -------------------------------------------------------'//achar(10)//'  // ============================================================================'//&
+        achar(10)//achar(10)//'  function buildTree() {'//&
+        achar(10)//'    const svg = d3.select("#tree");'//achar(10)//&
+        '    makeExportButton(d3.select("#tree-toolbar"), svg, "stc_super_ensemble_tree");'//achar(10)//achar(10)//&
+        '    const stopSymbols = {'//achar(10)//'      fixed_point: d3.symbolCircle, rejected_after_stable: d3.symbolSquare,'//&
+        achar(10)//'      rejected_immediately: d3.symbolDiamond, max_size: d3.symbolCross, error: d3.symbolCr'//'oss,'//&
+        achar(10)//'    };'//achar(10)//&
+        achar(10)//'    // Each ensemble''s own member point IDs, precomputed once from DATA.points -- the only'//' place'//&
+        achar(10)//'    // that association exists in the schema (DATA.ensembles[] only carries a `size` count'//', not'//&
+        achar(10)//'    // the member point IDs themselves). Needed to compute a super-ensemble''s *true* cover'//'age'//&
+        achar(10)//'    // below: member ensembles were merged together precisely because they intersect, ofte'//'n'//&
+        achar(10)//'    // substantially, so naively summing their individual `size`s double- (or N-times-) co'//'unts'//&
+        achar(10)//'    // every shared point -- this is exactly what previously let a heavily-overlapping gro'//'up'//&
+        achar(10)//'    // report e.g. 416% coverage. The real figure is the size of the *union* of member poi'//'nts.'//&
+        achar(10)//'    const memberPointIdsByEnsemble = new Map();'//achar(10)//&
+        '    DATA.points.forEach(p => {'//achar(10)//'      p.ensembles.forEach(m => {'//&
+        achar(10)//'        if (!memberPointIdsByEnsemble.has(m.id)) memberPointIdsByEnsemble.set(m.id, new Se'//'t());'//&
+        achar(10)//'        memberPointIdsByEnsemble.get(m.id).add(p.id);'//achar(10)//&
+        '      });'//achar(10)//'    });'//&
+        achar(10)//'    function unionCoverage(ensembleIds) {'//achar(10)//&
+        '      const union = new Set();'//achar(10)//'      ensembleIds.forEach(id => {'//&
+        achar(10)//'        const s = memberPointIdsByEnsemble.get(id);'//achar(10)//&
+        '        if (s) s.forEach(pid => union.add(pid));'//achar(10)//'      });'//&
+        achar(10)//'      return union.size;'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    const groupedIds = new Set();'//achar(10)//'    const children = DATA.super_ensembles.map(se => {'//&
+        achar(10)//'      se.ensemble_ids.forEach(id => groupedIds.add(id));'//achar(10)//&
+        '      const totalPoints = unionCoverage(se.ensemble_ids);'//achar(10)//'      return {'//&
+        achar(10)//'        name: "SE" + se.group_id, type: "super", se, totalPoints,'//achar(10)//&
+        '        children: se.ensemble_ids.map(id => ({ name: "E" + id, type: "ensemble", ensemble:'//' ensembleById.get(id) })),'//achar(10)//&
+        '      };'//achar(10)//'    });'//&
+        achar(10)//'    // Ungrouped ensembles can still pairwise-overlap each other (e.g. mode "report", whic'//'h'//&
+        achar(10)//'    // never merges at all) -- same union-not-sum treatment for this synthetic bucket. Spl'//'it'//&
+        achar(10)//'    // into two: ensembles that were eligible but genuinely never intersected another ense'//'mble'//&
+        achar(10)//'    // enough to merge, vs. ensembles excluded from merging entirely by a reconciliation f'//'ilter'//&
+        achar(10)//'    // (see misc/mod_STC.md''s "Filtering ensembles before merging") regardless of whether '//'they''d'//&
+        achar(10)//'    // otherwise have qualified -- conflating the two into one "Ungrouped" bucket would hi'//'de'//&
+        achar(10)//'    // *why* an ensemble has no super-ensemble, which is exactly the distinction this sess'//'ion''s'//&
+        achar(10)//'    // new eligibility filters need to be visible.'//achar(10)//&
+        '    const ungroupedAll = nonEmptyEnsembles.filter(e => !groupedIds.has(e.id));'//achar(10)//'    const ungroupedEligible = ungroupedAll.filter(e => e.reconciliation_eligible);'//&
+        achar(10)//'    const ungroupedExcluded = ungroupedAll.filter(e => !e.reconciliation_eligible);'//achar(10)//&
+        '    if (ungroupedEligible.length) {'//achar(10)//'      children.push({'//&
+        achar(10)//'        name: "No intersecting ensembles", type: "super",'//achar(10)//&
+        '        se: { group_id: null, ensemble_ids: ungroupedEligible.map(e => e.id) },'//achar(10)//'        totalPoints: unionCoverage(ungroupedEligible.map(e => e.id)),'//&
+        achar(10)//'        children: ungroupedEligible.map(e => ({ name: "E" + e.id, type: "ensemble", ensemb'//'le: e })),'//&
+        achar(10)//'      });'//achar(10)//&
+        '    }'//achar(10)//'    if (ungroupedExcluded.length) {'//&
+        achar(10)//'      children.push({'//achar(10)//&
+        '        name: "Excluded from merging", type: "super",'//achar(10)//'        se: { group_id: null, ensemble_ids: ungroupedExcluded.map(e => e.id) },'//&
+        achar(10)//'        totalPoints: unionCoverage(ungroupedExcluded.map(e => e.id)),'//achar(10)//&
+        '        children: ungroupedExcluded.map(e => ({ name: "E" + e.id, type: "ensemble", ensemb'//'le: e })),'//achar(10)//&
+        '      });'//achar(10)//'    }'//&
+        achar(10)//'    const rootData = { name: "root", type: "root", children };'//achar(10)//&
+        achar(10)//'    if (!children.length) {'//achar(10)//&
+        '      svg.attr("width", 1).attr("height", 1);'//achar(10)//'      d3.select("#tree-wrap").append("p").attr("style", "color:var(--muted)").text("No ens'//&
+        'embles to show.");'//achar(10)//'      return;'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    const root = d3.hierarchy(rootData);'//achar(10)//&
+        '    root.x0 = 0; root.y0 = 0;'//achar(10)//'    root.children.forEach(collapse0); // super-ensembles start expanded, this is a no-op h'//&
+        'ook kept for symmetry'//achar(10)//achar(10)//&
+        '    const nodeHeight = 20;'//achar(10)//'    // top: room for up to 4 stacked legend rows (legendLineHeight below) plus its own 4px'//&
+        achar(10)//'    // top offset, comfortably clear of the tree''s own root node.'//achar(10)//&
+        '    const margin = { top: 60, right: 160, bottom: 20, left: 90 };'//achar(10)//achar(10)//&
+        '    // Legend lives inside this <svg>, appended once here (not inside update(), which tear'//'s'//achar(10)//&
+        '    // down and rebuilds "g.tree-root" on every expand/collapse -- a separate class keeps '//'this'//achar(10)//&
+        '    // group untouched by that) so SVG/PNG/JPG export captures it. Only reasons actually'//achar(10)//'    // present get a row. Stacked vertically with a fixed line height (matching the main'//&
+        achar(10)//'    // plot''s own swatchLegend convention) rather than laid out left-to-right by measured '//'text'//&
+        achar(10)//'    // width: this panel is built eagerly while still `hidden` (display:none, see'//achar(10)//&
+        '    // "Additional plots" toggling above), and getComputedTextLength() returns 0 for text '//'with'//achar(10)//&
+        '    // no layout box -- every entry silently collapsed to the same fixed 24px step regardl'//'ess'//achar(10)//&
+        '    // of its real (100+px for "rejected_after_stable") width, so entries overlapped. A fi'//'xed'//achar(10)//&
+        '    // vertical line height has no such dependency on the panel''s own visibility at build '//'time.'//achar(10)//&
+        '    const presentReasons = [...new Set(nonEmptyEnsembles.map(e => e.stop_reason))];'//achar(10)//'    const treeLegend = svg.append("g").attr("class", "tree-legend-group").attr("transform"'//&
+        ', "translate(4,4)");'//achar(10)//'    const legendLineHeight = 14;'//&
+        achar(10)//'    // Estimated (not DOM-measured, see the note above on why) rightmost extent of the leg'//'end,'//&
+        achar(10)//'    // used below to make sure the tree''s own SVG width leaves room for it.'//achar(10)//&
+        '    const legendX = 4 + 10 + Math.max(...presentReasons.map(r => r.length)) * 5.5;'//achar(10)//'    presentReasons.forEach((reason, i) => {'//&
+        achar(10)//'      const legendY = i * legendLineHeight;'//achar(10)//&
+        '      const item = treeLegend.append("g").attr("transform", `translate(0,${legendY})`);'//achar(10)//'      item.append("path").attr("d", d3.symbol().type(stopSymbols[reason] || d3.symbolCircl'//&
+        'e).size(50)).attr("fill", "var(--fg)");'//achar(10)//'      item.append("text").attr("x", 10).attr("y", 3).attr("font-size", 9).attr("fill", "va'//&
+        'r(--muted)").text(reason);'//achar(10)//'    });'//&
+        achar(10)//achar(10)//'    function collapse0() { /* placeholder: super-ensembles start expanded by default */ }'//&
+        achar(10)//achar(10)//'    function update() {'//&
+        achar(10)//'      const treeLayout = d3.tree().nodeSize([nodeHeight, 180]);'//achar(10)//&
+        '      treeLayout(root);'//achar(10)//'      const nodes = root.descendants();'//&
+        achar(10)//'      const links = root.links();'//achar(10)//&
+        '      const minX = d3.min(nodes, d => d.x), maxX = d3.max(nodes, d => d.x);'//achar(10)//'      const maxY = d3.max(nodes, d => d.y);'//&
+        achar(10)//'      const width = Math.max(maxY + margin.left + margin.right, legendX + 8);'//achar(10)//&
+        '      const height = (maxX - minX) + margin.top + margin.bottom;'//achar(10)//'      svg.attr("width", width).attr("height", height);'//&
+        achar(10)//'      svg.selectAll("g.tree-root").remove();'//achar(10)//&
+        '      const g = svg.append("g").attr("class", "tree-root").attr("transform", `translate(${'//'margin.left},${margin.top - minX})`);'//achar(10)//&
+        achar(10)//'      g.selectAll("path.tree-link").data(links).join("path").attr("class", "tree-link")'//achar(10)//&
+        '        .attr("d", d3.linkHorizontal().x(d => d.y).y(d => d.x));'//achar(10)//achar(10)//&
+        '      const node = g.selectAll("g.tree-node").data(nodes, d => d.data.name + "|" + (d.pare'//'nt ? d.parent.data.name : "")).join("g")'//achar(10)//&
+        '        .attr("class", "tree-node").attr("transform", d => `translate(${d.y},${d.x})`);'//achar(10)//achar(10)//&
+        '      node.filter(d => d.data.type === "super").append("circle").attr("class", "super-dot"'//').attr("r", 5)'//achar(10)//&
+        '        .on("click", (event, d) => {'//achar(10)//'          if (d.children) { d._children = d.children; d.children = null; }'//&
+        achar(10)//'          else { d.children = d._children; d._children = null; }'//achar(10)//&
+        '          update();'//achar(10)//'        })'//&
+        achar(10)//'        .on("mouseenter", (event, d) => {'//achar(10)//&
+        '          const frac = DATA.points.length ? (d.data.totalPoints / DATA.points.length * 100'//') : 0;'//achar(10)//&
+        '          showTooltip(`<b>${d.data.name}</b><br>${d.data.se.ensemble_ids.length} ensemble('//'s)<br>` +'//achar(10)//&
+        '            `${d.data.totalPoints} point(s), ${frac.toFixed(1)}% of all input points`, eve'//'nt);'//achar(10)//&
+        '        }).on("mousemove", moveTooltip).on("mouseleave", hideTooltip);'//achar(10)//achar(10)//&
+        '      node.filter(d => d.data.type === "ensemble").append("path")'//achar(10)//'        .attr("d", d3.symbol().size(64).type(d => stopSymbols[d.data.ensemble ? d.data.ens'//&
+        'emble.stop_reason : "error"] || d3.symbolCircle))'//achar(10)//'        .attr("fill", d => d.data.ensemble ? ensembleColor(d.data.ensemble.id) : GREY)'//&
+        achar(10)//'        .on("mouseenter", (event, d) => {'//achar(10)//&
+        '          const e = d.data.ensemble;'//achar(10)//'          if (!e) return;'//&
+        achar(10)//'          const frac = DATA.points.length ? (e.size / DATA.points.length * 100) : 0;'//achar(10)//&
+        '          const eligLine = e.reconciliation_eligible ? "" :'//achar(10)//'            `<br>not eligible for merging (excluded by: ${e.excluded_by.join(", ")})`;'//&
+        achar(10)//'          showTooltip(`<b>ensemble ${e.id}</b><br>stop: ${e.stop_reason}<br>seed: point ${'//'e.seed_point_id}<br>` +'//&
+        achar(10)//'            `d=${fmt(e.d)}, G=${fmt(e.G)}<br>${e.size} point(s), ${frac.toFixed(1)}% of al'//'l input points${eligLine}`, event);'//&
+        achar(10)//'        }).on("mousemove", moveTooltip).on("mouseleave", hideTooltip);'//achar(10)//&
+        achar(10)//'      node.append("text").attr("dy", "0.32em").attr("x", d => d.children || d._children ? '//'-9 : 9)'//&
+        achar(10)//'        .attr("text-anchor", d => d.children || d._children ? "end" : "start").text(d => d'//'.data.name);'//&
+        achar(10)//achar(10)//'      // update() rebuilds g.tree-root from scratch on every expand/collapse (see above), '//&
+        'so any'//achar(10)//'      // zoom/pan transform must be reapplied to the fresh group -- see makeZoomResizeCont'//&
+        'rol''s'//achar(10)//'      // own doc comment on why getContent() is a live re-query rather than a captured sel'//&
+        'ection.'//achar(10)//'      if (svg.node().__reapplyZoom) svg.node().__reapplyZoom();'//&
+        achar(10)//'    }'//achar(10)//&
+        '    update();'//achar(10)//'    makeZoomResizeControl(svg, () => svg.select("g.tree-root"));'//&
+        achar(10)//'  }'//achar(10)//&
+        achar(10)//'  // ============================================================================'//achar(10)//&
+        '  // ---- Ensemble Observable Plots -------------------------------------------------'//achar(10)//'  // ============================================================================'//&
+        achar(10)//achar(10)//'  function buildObservablePlots() {'//&
+        achar(10)//'    const select = d3.select("#obs-ensemble-select");'//achar(10)//&
+        '    select.append("option").attr("value", "").text("All ensembles");'//achar(10)//'    historyEnsembles.slice().sort((a, b) => b.size - a.size).forEach(e => {'//&
+        achar(10)//'      select.append("option").attr("value", e.id).text(`Ensemble ${e.id} (n=${e.size}, T=$'//'{e.t_final})`);'//&
+        achar(10)//'    });'//achar(10)//&
+        achar(10)//'    const gToolbar = d3.select("#obs-g-toolbar"), rmseToolbar = d3.select("#obs-rmse-toolb'//'ar"), driftToolbar = d3.select("#obs-drift-toolbar");'//&
+        achar(10)//'    makeExportButton(gToolbar, d3.select("#obs-g"), "stc_spectral_gap");'//achar(10)//&
+        '    makeExportButton(rmseToolbar, d3.select("#obs-rmse"), "stc_rmse");'//achar(10)//'    makeExportButton(driftToolbar, d3.select("#obs-drift"), "stc_consecutive_drift");'//&
+        achar(10)//'    // drawSingleEnsemble/drawAllEnsembles both fully tear down and rebuild their svg''s co'//'ntent'//&
+        achar(10)//'    // on every render (ensemble-selector change, all-vs-single toggle) -- getContent() is'//' a'//&
+        achar(10)//'    // live re-query for exactly that reason, and each draw function reapplies the current'//' zoom'//&
+        achar(10)//'    // transform once it''s done rebuilding (see makeZoomResizeControl''s own doc comment).'//achar(10)//&
+        '    ["#obs-g", "#obs-rmse", "#obs-drift"].forEach(sel => {'//achar(10)//'      const svgSel = d3.select(sel);'//&
+        achar(10)//'      makeZoomResizeControl(svgSel, () => svgSel.select(".zoom-content"));'//achar(10)//&
+        '    });'//achar(10)//achar(10)//&
+        '    if (!historyEnsembles.length) {'//achar(10)//'      d3.select("#obs-charts").html(''<p style="color:var(--muted)">No ensemble has a retai'//&
+        'ned observable history '' +'//achar(10)//'        "(every ensemble was rejected at its very first growth step, or none exist).</p>")'//&
+        ';'//achar(10)//'      return;'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function contiguousRuns(series) {'//achar(10)//&
+        '      // series: [{iteration, value}], value already filtered non-null by caller'//achar(10)//'      const runs = [];'//&
+        achar(10)//'      let cur = [];'//achar(10)//&
+        '      series.forEach(pt => {'//achar(10)//'        if (cur.length && pt.iteration !== cur[cur.length - 1].iteration + 1) { runs.push('//&
+        'cur); cur = []; }'//achar(10)//'        cur.push(pt);'//&
+        achar(10)//'      });'//achar(10)//&
+        '      if (cur.length) runs.push(cur);'//achar(10)//'      return runs;'//&
+        achar(10)//'    }'//achar(10)//&
+        achar(10)//'    function xAxisLabel(g, innerW, innerH) {'//achar(10)//&
+        '      g.append("text").attr("x", innerW / 2).attr("y", innerH + 32).attr("text-anchor", "m'//'iddle")'//achar(10)//&
+        '        .attr("font-size", 9).attr("fill", "var(--muted)").text("time [iteration number]")'//';'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function drawSingleEnsemble(svgSel, ensemble, valueKey, driftFormula) {'//achar(10)//'      const width = 320, height = 220, margin = { top: 10, right: 14, bottom: 36, left: 42'//&
+        ' };'//achar(10)//'      // Scoped to "g.obs-chart-root" only -- svgSel.selectAll("*").remove() would also de'//&
+        'stroy'//achar(10)//'      // the zoom-icon-wrap/zoom-menu/resize-grip makeZoomResizeControl already appended a'//&
+        's'//achar(10)//'      // siblings of this chart content (see buildObservablePlots'' own setup call), the sa'//&
+        'me'//achar(10)//'      // "g.tree-root"-only scoping buildTree''s own update() already uses for exactly this'//&
+        achar(10)//'      // reason -- see its comment.'//achar(10)//&
+        '      svgSel.selectAll("g.obs-chart-root").remove();'//achar(10)//'      svgSel.attr("viewBox", `0 0 ${width} ${height}`);'//&
+        achar(10)//'      const innerW = width - margin.left - margin.right, innerH = height - margin.top - ma'//'rgin.bottom;'//&
+        achar(10)//'      const g = svgSel.append("g").attr("class", "obs-chart-root")'//achar(10)//&
+        '        .attr("transform", `translate(${margin.left},${margin.top})`);'//achar(10)//achar(10)//&
+        '      const raw = ensemble.observable_history.map(h => ({ iteration: h.iteration, value: h'//'[valueKey] }));'//achar(10)//&
+        '      const iters = raw.map(h => h.iteration);'//achar(10)//'      const xScale = d3.scalePoint().domain(iters).range([0, innerW]).padding(0.5);'//&
+        achar(10)//'      const defined = raw.filter(h => h.value !== null && h.value !== undefined);'//achar(10)//&
+        '      const yExtent = d3.extent(defined, h => h.value);'//achar(10)//'      const yPad = (yExtent[1] - yExtent[0]) * 0.1 || Math.abs(yExtent[0] || 1) * 0.1 || 1'//&
+        ';'//achar(10)//'      const yScale = d3.scaleLinear().domain([(yExtent[0] || 0) - yPad, (yExtent[1] || 1) '//&
+        '+ yPad]).range([innerH, 0]).nice();'//achar(10)//achar(10)//&
+        '      g.append("g").attr("transform", `translate(0,${innerH})`)'//achar(10)//'        .call(d3.axisBottom(xScale).tickValues(iters.filter((v, i) => i % Math.ceil(iters.'//&
+        'length / 8 || 1) === 0)))'//achar(10)//'        .attr("font-size", 9);'//&
+        achar(10)//'      g.append("g").call(d3.axisLeft(yScale).ticks(5)).attr("font-size", 9);'//achar(10)//&
+        '      xAxisLabel(g, innerW, innerH);'//achar(10)//achar(10)//&
+        '      // Data marks (line/dots/gap-tick) pan/zoom together, under their own group -- axes '//'and'//achar(10)//&
+        '      // the x-axis label stay direct children of `g`, fixed in the viewport, same reasoni'//'ng as'//achar(10)//&
+        '      // the main plot''s own zoomContent above.'//achar(10)//'      const zoomContent = g.append("g").attr("class", "zoom-content");'//&
+        achar(10)//achar(10)//'      // gap marker: iteration 1 not adjacent to the next retained iteration'//&
+        achar(10)//'      if (iters.length && iters[0] > 1 && iters.length > 1 && iters[1] - iters[0] > 1) {'//achar(10)//&
+        '        zoomContent.append("text").attr("class", "gap-tick").attr("x", (xScale(iters[0]) +'//' xScale(iters[1])) / 2)'//achar(10)//&
+        '          .attr("y", innerH + 4).text("⋯");'//achar(10)//'      }'//&
+        achar(10)//achar(10)//'      const line = d3.line().x(d => xScale(d.iteration)).y(d => yScale(d.value));'//&
+        achar(10)//'      contiguousRuns(defined).forEach(run => {'//achar(10)//&
+        '        zoomContent.append("path").datum(run).attr("class", "obs-line").attr("d", line);'//achar(10)//'      });'//&
+        achar(10)//'      zoomContent.selectAll("circle.obs-dot").data(defined).join("circle").attr("class", "'//'obs-dot")'//&
+        achar(10)//'        .attr("cx", d => xScale(d.iteration)).attr("cy", d => yScale(d.value)).attr("r", 3'//')'//&
+        achar(10)//'        .on("mouseenter", (event, d) => {'//achar(10)//&
+        '          const idx = raw.findIndex(h => h.iteration === d.iteration);'//achar(10)//'          let extra = "";'//&
+        achar(10)//'          if (idx > 0 && driftFormula) {'//achar(10)//&
+        '            const prev = raw[idx - 1];'//achar(10)//'            if (prev.value !== null && prev.value !== undefined && prev.value !== 0) {'//&
+        achar(10)//'              extra = `<br>drift = |log(${d.value.toFixed(4)}/${prev.value.toFixed(4)})| ='//' ${Math.abs(Math.log(d.value / prev.value)).toFixed(4)}`;'//&
+        achar(10)//'            }'//achar(10)//&
+        '          } else if (idx > 0 && !driftFormula) {'//achar(10)//'            extra = `<br>value = ${d.value.toFixed(4)}`;'//&
+        achar(10)//'          }'//achar(10)//&
+        '          showTooltip(`iteration ${d.iteration}<br>${valueKey}=${d.value.toFixed(4)}${extr'//'a}`, event);'//achar(10)//&
+        '        }).on("mousemove", moveTooltip).on("mouseleave", hideTooltip);'//achar(10)//achar(10)//&
+        '      if (svgSel.node().__reapplyZoom) svgSel.node().__reapplyZoom();'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    function boxplotSvg(values) {'//&
+        achar(10)//'      const w = 90, h = 60;'//achar(10)//&
+        '      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");'//achar(10)//'      svg.setAttribute("width", w); svg.setAttribute("height", h);'//&
+        achar(10)//'      const sorted = values.slice().sort((a, b) => a - b);'//achar(10)//&
+        '      const q1 = d3.quantile(sorted, 0.25), med = d3.quantile(sorted, 0.5), q3 = d3.quanti'//'le(sorted, 0.75);'//achar(10)//&
+        '      const lo = sorted[0], hi = sorted[sorted.length - 1];'//achar(10)//'      const yScale = d3.scaleLinear().domain([lo, hi]).range([h - 6, 6]).nice();'//&
+        achar(10)//'      const cx = w / 2, boxW = 30;'//achar(10)//&
+        '      const mkLine = (x1, y1, x2, y2) => {'//achar(10)//'        const l = document.createElementNS("http://www.w3.org/2000/svg", "line");'//&
+        achar(10)//'        l.setAttribute("x1", x1); l.setAttribute("y1", y1); l.setAttribute("x2", x2); l.se'//'tAttribute("y2", y2);'//&
+        achar(10)//'        l.setAttribute("stroke", "#fff"); l.setAttribute("stroke-width", 1.2); svg.appendC'//'hild(l);'//&
+        achar(10)//'      };'//achar(10)//&
+        '      mkLine(cx, yScale(lo), cx, yScale(hi));'//achar(10)//'      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");'//&
+        achar(10)//'      rect.setAttribute("x", cx - boxW / 2); rect.setAttribute("y", yScale(q3));'//achar(10)//&
+        '      rect.setAttribute("width", boxW); rect.setAttribute("height", Math.max(1, yScale(q1)'//' - yScale(q3)));'//achar(10)//&
+        '      rect.setAttribute("fill", "#2166ac"); rect.setAttribute("stroke", "#fff");'//achar(10)//'      svg.appendChild(rect);'//&
+        achar(10)//'      mkLine(cx - boxW / 2, yScale(med), cx + boxW / 2, yScale(med));'//achar(10)//&
+        '      return svg.outerHTML + `<div style="font-size:0.7em;text-align:center;">n=${values.l'//'ength}, min=${lo.toFixed(3)}, max=${hi.toFixed(3)}</div>`;'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function drawAllEnsembles(svgSel, valueKey) {'//achar(10)//'      const width = 320, height = 220, margin = { top: 10, right: 14, bottom: 36, left: 42'//&
+        ' };'//achar(10)//'      // Scoped to "g.obs-chart-root" only -- see drawSingleEnsemble''s own identical comme'//&
+        'nt.'//achar(10)//'      svgSel.selectAll("g.obs-chart-root").remove();'//&
+        achar(10)//'      svgSel.attr("viewBox", `0 0 ${width} ${height}`);'//achar(10)//&
+        '      const innerW = width - margin.left - margin.right, innerH = height - margin.top - ma'//'rgin.bottom;'//achar(10)//&
+        '      const g = svgSel.append("g").attr("class", "obs-chart-root")'//achar(10)//'        .attr("transform", `translate(${margin.left},${margin.top})`);'//&
+        achar(10)//achar(10)//'      const byIteration = new Map();'//&
+        achar(10)//'      historyEnsembles.forEach(e => {'//achar(10)//&
+        '        e.observable_history.forEach(h => {'//achar(10)//'          const v = h[valueKey];'//&
+        achar(10)//'          if (v === null || v === undefined) return;'//achar(10)//&
+        '          if (!byIteration.has(h.iteration)) byIteration.set(h.iteration, []);'//achar(10)//'          byIteration.get(h.iteration).push(v);'//&
+        achar(10)//'        });'//achar(10)//&
+        '      });'//achar(10)//'      const iters = [...byIteration.keys()].sort((a, b) => a - b);'//&
+        achar(10)//'      if (!iters.length) {'//achar(10)//&
+        '        g.append("text").attr("x", innerW / 2).attr("y", innerH / 2).attr("text-anchor", "'//'middle")'//achar(10)//&
+        '          .attr("font-size", 11).attr("fill", "var(--muted)").text("no data");'//achar(10)//'        if (svgSel.node().__reapplyZoom) svgSel.node().__reapplyZoom();'//&
+        achar(10)//'        return;'//achar(10)//&
+        '      }'//achar(10)//'      const agg = iters.map(it => {'//&
+        achar(10)//'        const vals = byIteration.get(it);'//achar(10)//&
+        '        const m = mean(vals), s = sd(vals);'//achar(10)//'        return { iteration: it, mean: m, sd: s, values: vals };'//&
+        achar(10)//'      });'//achar(10)//&
+        achar(10)//'      const xScale = d3.scalePoint().domain(iters).range([0, innerW]).padding(0.5);'//achar(10)//&
+        '      const yExtent = d3.extent(agg.flatMap(a => [a.mean - a.sd, a.mean + a.sd]));'//achar(10)//'      const yPad = (yExtent[1] - yExtent[0]) * 0.1 || 1;'//&
+        achar(10)//'      const yScale = d3.scaleLinear().domain([yExtent[0] - yPad, yExtent[1] + yPad]).range'//'([innerH, 0]).nice();'//&
+        achar(10)//achar(10)//'      g.append("g").attr("transform", `translate(0,${innerH})`)'//&
+        achar(10)//'        .call(d3.axisBottom(xScale).tickValues(iters.filter((v, i) => i % Math.ceil(iters.'//'length / 8 || 1) === 0)))'//&
+        achar(10)//'        .attr("font-size", 9);'//achar(10)//&
+        '      g.append("g").call(d3.axisLeft(yScale).ticks(5)).attr("font-size", 9);'//achar(10)//'      xAxisLabel(g, innerW, innerH);'//&
+        achar(10)//achar(10)//'      // Data marks (ribbon/mean-line/dots) pan/zoom together, under their own group -- sa'//&
+        'me'//achar(10)//'      // reasoning as drawSingleEnsemble''s own zoomContent above.'//&
+        achar(10)//'      const zoomContent = g.append("g").attr("class", "zoom-content");'//achar(10)//&
+        '      contiguousRuns(agg.map(a => ({ iteration: a.iteration, value: a }))).forEach(run => '//'{'//achar(10)//&
+        '        const area = d3.area().x(d => xScale(d.iteration)).y0(d => yScale(d.value.mean - d'//'.value.sd)).y1(d => yScale(d.value.mean + d.value.sd));'//achar(10)//&
+        '        zoomContent.append("path").datum(run).attr("class", "ribbon").attr("d", area);'//achar(10)//'        const line = d3.line().x(d => xScale(d.iteration)).y(d => yScale(d.value.mean));'//&
+        achar(10)//'        zoomContent.append("path").datum(run).attr("class", "mean-line").attr("d", line);'//achar(10)//&
+        '      });'//achar(10)//achar(10)//&
+        '      zoomContent.selectAll("circle.obs-dot").data(agg).join("circle").attr("class", "obs-'//'dot")'//achar(10)//&
+        '        .attr("cx", d => xScale(d.iteration)).attr("cy", d => yScale(d.mean)).attr("r", 3)'//achar(10)//'        .on("mouseenter", (event, d) => {'//&
+        achar(10)//'          showTooltip(`iteration ${d.iteration}, n=${d.values.length}<br>mean=${d.mean.toF'//'ixed(4)}, sd=${d.sd.toFixed(4)}<br>` +'//&
+        achar(10)//'            boxplotSvg(d.values), event);'//achar(10)//&
+        '        }).on("mousemove", moveTooltip).on("mouseleave", hideTooltip);'//achar(10)//achar(10)//&
+        '      if (svgSel.node().__reapplyZoom) svgSel.node().__reapplyZoom();'//achar(10)//'    }'//&
+        achar(10)//achar(10)//'    function renderObservables() {'//&
+        achar(10)//'      const val = select.property("value");'//achar(10)//&
+        '      const driftCaption = d3.select("#obs-drift-caption");'//achar(10)//'      const infoPane = d3.select("#obs-info-pane");'//&
+        achar(10)//'      if (!val) {'//achar(10)//&
+        '        infoPane.html(''<em style="color:var(--muted)">Select a specific ensemble above to '//'see its details.</em>'');'//achar(10)//&
+        '        drawAllEnsembles(d3.select("#obs-g"), "g");'//achar(10)//'        drawAllEnsembles(d3.select("#obs-rmse"), "rmse");'//&
+        achar(10)//'        drawAllEnsembles(d3.select("#obs-drift"), "drift");'//achar(10)//&
+        '        driftCaption.text("All ensembles: mean ± SD across ensembles with data at each ite'//'ration; hover a point for the distribution.");'//achar(10)//&
+        '      } else {'//achar(10)//'        const e = ensembleById.get(+val);'//&
+        achar(10)//'        const superText = (e.super_ensemble_id === null || e.super_ensemble_id === undefin'//'ed) ?'//&
+        achar(10)//'          "not in a super-ensemble" : `member of super-ensemble ${e.super_ensemble_id}`;'//achar(10)//&
+        '        const eligText = e.reconciliation_eligible ? "" :'//achar(10)//'          ` &middot; <span style="color:var(--red);">not eligible for merging (excluded by'//&
+        ': ${escapeHtml(e.excluded_by.join(", "))})</span>`;'//achar(10)//'        infoPane.html(`<b>Ensemble ${e.id}</b> &middot; size ${e.size} &middot; stop condi'//&
+        'tion: ` +'//achar(10)//'          `${escapeHtml(e.stop_reason)} &middot; seed: point ${e.seed_point_id} &middot; $'//&
+        '{superText}${eligText}`);'//achar(10)//'        drawSingleEnsemble(d3.select("#obs-g"), e, "g", true);'//&
+        achar(10)//'        drawSingleEnsemble(d3.select("#obs-rmse"), e, "rmse", true);'//achar(10)//&
+        '        drawSingleEnsemble(d3.select("#obs-drift"), e, "drift", false);'//achar(10)//'        if (e.final_chordal_distance !== null && e.final_chordal_distance !== undefined) {'//&
+        achar(10)//'          driftCaption.text(`Final accept-tested chordal distance (the value actually test'//'ed when this ensemble''s ` +'//&
+        achar(10)//'            `last growth step was accepted): ${e.final_chordal_distance.toFixed(4)}`);'//achar(10)//&
+        '        } else {'//achar(10)//'          driftCaption.text("Final accept-tested chordal distance not available (ensemble '//&
+        'has fewer than 2 retained accepted iterations).");'//achar(10)//'        }'//&
+        achar(10)//'      }'//achar(10)//&
+        '    }'//achar(10)//'    select.on("change", renderObservables);'//&
+        achar(10)//'    renderObservables();'//achar(10)//&
+        '  }'//achar(10)//achar(10)//&
+        '  // ============================================================================'//achar(10)//'  // ---- STC run info pane ---------------------------------------------------------'//&
+        achar(10)//'  // ============================================================================'//achar(10)//&
+        achar(10)//'  function buildRunInfo() {'//achar(10)//&
+        '    const p = DATA.params;'//achar(10)//'    const estimated = Object.keys(p).some(k => k.startsWith("estimated_"));'//&
+        achar(10)//achar(10)//'    const summary = d3.select("#runinfo-summary");'//&
+        achar(10)//'    const seeds = DATA.points.filter(pt => pt.seed_of.length > 0).length;'//achar(10)//&
+        '    [["Input points (N)", DATA.points.length], ["Parameters", estimated ? "estimated (with'//' overrides possible)" : "user-provided"],'//achar(10)//&
+        '     ["Seeds", seeds], ["Ensembles", DATA.ensembles.length], ["Super-ensembles", DATA.supe'//'r_ensembles.length]]'//achar(10)//&
+        '      .forEach(([label, val]) => {'//achar(10)//'        const box = summary.append("div");'//&
+        achar(10)//'        box.append("div").attr("style", "color:var(--muted);font-size:0.78em;").text(label'//');'//&
+        achar(10)//'        box.append("div").attr("style", "font-size:1.1em;font-weight:600;").text(val);'//achar(10)//&
+        '      });'//achar(10)//achar(10)//&
+        '    // Reconciliation-eligibility breakdown: an ensemble can be excluded by more than one'//achar(10)//'    // criterion at once, so per-criterion counts below can sum to more than the total exc'//&
+        'luded'//achar(10)//'    // count -- phrased as "at least" to avoid implying they''re mutually exclusive.'//&
+        achar(10)//'    const ineligible = DATA.ensembles.filter(e => !e.reconciliation_eligible);'//achar(10)//&
+        '    if (ineligible.length) {'//achar(10)//'      const byCriterion = { stop_condition: 0, dimension: 0, variance_explained: 0 };'//&
+        achar(10)//'      ineligible.forEach(e => e.excluded_by.forEach(c => { if (c in byCriterion) byCriteri'//'on[c]++; }));'//&
+        achar(10)//'      const box = summary.append("div");'//achar(10)//&
+        '      box.append("div").attr("style", "color:var(--muted);font-size:0.78em;").text("Exclud'//'ed from merging");'//achar(10)//&
+        '      box.append("div").attr("style", "font-size:1.1em;font-weight:600;").text(ineligible.'//'length);'//achar(10)//&
+        '      d3.select("#runinfo-stats").insert("p", ":first-child")'//achar(10)//'        .attr("style", "font-size:0.82em; color:var(--muted); margin: 0 0 10px;")'//&
+        achar(10)//'        .text(`${ineligible.length} of ${DATA.ensembles.length} ensemble(s) excluded from '//'reconciliation ` +'//&
+        achar(10)//'          `(still reported everywhere else) — at least ${byCriterion.stop_condition} by st'//'op condition, ` +'//&
+        achar(10)//'          `${byCriterion.dimension} by dimension, ${byCriterion.variance_explained} by var'//'iance explained ` +'//&
+        achar(10)//'          `(an ensemble excluded by more than one criterion counts in each).`);'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    function statsTable(container, caption, values) {'//achar(10)//'      const clean = values.filter(v => v !== null && v !== undefined && !Number.isNaN(v));'//&
+        achar(10)//'      const table = container.append("table").attr("class", "stats");'//achar(10)//&
+        '      table.append("caption").text(caption);'//achar(10)//'      const header = table.append("tr");'//&
+        achar(10)//'      ["", "Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max"].forEach(h => header.appen'//'d("th").text(h));'//&
+        achar(10)//'      const row = table.append("tr");'//achar(10)//&
+        '      row.append("td").text(`n=${clean.length}`);'//achar(10)//'      if (!clean.length) { row.append("td").attr("colspan", 6).text("n/a"); return; }'//&
+        achar(10)//'      [quantile(clean, 0), quantile(clean, 0.25), quantile(clean, 0.5), mean(clean), quant'//'ile(clean, 0.75), quantile(clean, 1)]'//&
+        achar(10)//'        .forEach(v => row.append("td").text(v.toFixed(4)));'//achar(10)//&
+        '    }'//achar(10)//achar(10)//&
+        '    const statsEl = d3.select("#runinfo-stats");'//achar(10)//'    statsTable(statsEl, "Ensemble sizes", DATA.ensembles.map(e => e.size));'//&
+        achar(10)//'    statsTable(statsEl, "Ensembles per point", DATA.points.map(pt => pt.n_ensembles));'//achar(10)//&
+        '    statsTable(statsEl, "Final Spectral Gap (G)", DATA.ensembles.map(e => e.G));'//achar(10)//'    statsTable(statsEl, "Final RMSE", historyEnsembles.map(e => e.observable_history[e.obs'//&
+        'ervable_history.length - 1].rmse));'//achar(10)//'    statsTable(statsEl, "Final accept-tested chordal distance", DATA.ensembles.map(e => e.'//&
+        'final_chordal_distance));'//achar(10)//'    // Pooled across the two stop reasons that reflect a completed growth trajectory --'//&
+        achar(10)//'    // rejected_immediately (a single unconfirmed step) and max_size (no ensemble returned'//' at'//&
+        achar(10)//'    // all) carry no comparable "how many iterations did this take" signal. A rough proxy '//'for'//&
+        achar(10)//'    // how difficult/well-structured the data is: many iterations before naturally stoppin'//'g or'//&
+        achar(10)//'    // being rejected after stability suggests a more gradually-varying local manifold.'//achar(10)//&
+        '    statsTable(statsEl, "Growth iterations (fixed_point / rejected_after_stable ensembles)'//'",'//achar(10)//&
+        '      DATA.ensembles.filter(e => e.stop_reason === "fixed_point" || e.stop_reason === "rej'//'ected_after_stable")'//achar(10)//&
+        '        .map(e => e.t_final));'//achar(10)//achar(10)//&
+        '    const tablesEl = d3.select("#runinfo-tables");'//achar(10)//'    const inputEntries = Object.entries(p).filter(([k]) => !k.startsWith("estimated_"));'//&
+        achar(10)//'    const estimatedEntries = Object.entries(p).filter(([k]) => k.startsWith("estimated_"))'//achar(10)//&
+        '      .map(([k, v]) => [k.replace(/^estimated_/, ""), v]);'//achar(10)//achar(10)//&
+        '    function paramsTable(caption, entries) {'//achar(10)//'      if (!entries.length) return;'//&
+        achar(10)//'      const table = tablesEl.append("table").attr("class", "params");'//achar(10)//&
+        '      table.append("caption").text(caption);'//achar(10)//'      const header = table.append("tr");'//&
+        achar(10)//'      header.append("th").text("parameter"); header.append("th").text("value"); header.app'//'end("th").text("explanation");'//&
+        achar(10)//'      entries.forEach(([k, v]) => {'//achar(10)//&
+        '        const row = table.append("tr");'//achar(10)//'        row.append("td").text(k);'//&
+        achar(10)//'        row.append("td").text(Array.isArray(v) ? (v.length ? v.join(", ") : "(none)") : v)'//';'//&
+        achar(10)//'        row.append("td").attr("class", "explain").text(PARAM_EXPLANATIONS[k] || "");'//achar(10)//&
+        '      });'//achar(10)//'    }'//&
+        achar(10)//'    paramsTable("This run''s own parameters", inputEntries);'//achar(10)//&
+        '    paramsTable("estimate_stc_parameters (informational, never auto-applied unless --estim'//'ate-parameters was used)", estimatedEntries);'//achar(10)//&
+        '  }'//achar(10)//'})();'//&
+        achar(10)//'</script>'//achar(10)//&
+        '</body>'//achar(10)//'</html>'//&
+        achar(10)
 
     character(len=*), parameter :: D3_JS = &
         '// https://d3js.org v7.9.0 Copyright 2010-2023 Mike Bostock'//achar(10)//'!function(t,n){"object"==typeof exports&&"undefined"!=typeof module?n(exports):"function"='//&

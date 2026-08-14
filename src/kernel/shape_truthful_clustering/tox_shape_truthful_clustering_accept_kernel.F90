@@ -41,6 +41,7 @@ module tox_shape_truthful_clustering_accept_kernel
     private
     public :: accept_ensemble_kernel
     public :: tox_stc_accept_ensemble_svd_workspace
+    public :: stc_chordal_distance
 
 contains
 
@@ -205,9 +206,12 @@ contains
     !> Chordal distance (Edelman, Arias & Smith 1998; related to the Davis-Kahan sinTheta
     !| theorem) between two tangent bases of matching rank, or "not applicable" when their
     !| ranks differ -- no shared dimension to compare angles over, see `accept_ensemble`'s
-    !| criterion (1). Not itself a kernel (private, no wrapper): shared scratch-reuse plumbing
-    !| for `accept_ensemble_kernel`'s reference-set loop, not part of the public contract.
-    !| `ierr` is set only on a genuine LAPACK SVD non-convergence.
+    !| criterion (1). Not itself a kernel (no generator wrapper -- callers pass their own
+    !| workspace directly): shared scratch-reuse plumbing for `accept_ensemble_kernel`'s
+    !| reference-set loop, exported `public` so `tox_stc_json`'s report-layer drift
+    !| computations (see `misc/mod_STC.md`, "Ensemble Observable Plots") can reuse the exact
+    !| same formula instead of re-deriving it. `ierr` is set only on a genuine LAPACK SVD
+    !| non-convergence.
     pure subroutine stc_chordal_distance(n_dimensions, U_a, d_a, U_b, d_b, lwork, tmp_m, tmp_s, tmp_work, &
                                          applicable, chordal_distance, ierr)
         integer(int32), intent(in)    :: n_dimensions, d_a, d_b, lwork

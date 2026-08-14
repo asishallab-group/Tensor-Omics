@@ -25,12 +25,26 @@
 !|
 !| `points`/`ensembles`/`super_ensembles` JSON keys not derivable from a single argument
 !| (`id`, `n_ensembles`, per-point/per-ensemble membership lists, `super_ensemble_id`, the
-!| full pairwise Overlap Coefficient matrix) are computed here from the raw membership masks
-!| -- `ensemble_reconciliation_kernel` itself only ever reports Overlap Coefficient along a
-!| super-ensemble's own merge chain (`super_ensembles_overlap_coefficient`), never the full
-!| N x N matrix the heatmap needs, so that matrix is recomputed directly from `ensemble_masks`
-!| with the same `|intersect| / min(|A|,|B|)` formula, once per pair with a nonempty
-!| intersection.
+!| full pairwise Overlap Coefficient matrix, per-point residual lengths, tangent line
+!| endpoints, the two report-layer drift statistics below) are computed here from the raw
+!| membership masks and history arrays -- `ensemble_reconciliation_kernel` itself only ever
+!| reports Overlap Coefficient along a super-ensemble's own merge chain
+!| (`super_ensembles_overlap_coefficient`), never the full N x N matrix the heatmap needs, so
+!| that matrix is recomputed directly from `ensemble_masks` with the same
+!| `|intersect| / min(|A|,|B|)` formula, once per pair with a nonempty intersection.
+!|
+!| Two derived statistics reuse `tox_shape_truthful_clustering_accept_kernel`'s own
+!| `stc_chordal_distance` helper directly (made `public` there for exactly this reuse) rather
+!| than re-deriving the formula: the **consecutive tangent-space drift** between each pair of
+!| adjacent retained history columns (a genuine per-iteration quantity, fully reconstructable
+!| from `ensemble_U_history` alone, unlike anything `accept_ensemble` itself tested), and the
+!| **final accept-tested chordal distance** -- the one historical `accept_ensemble` criterion
+!| (1) value that *is* exactly reconstructable after the fact, since the currently-stored
+!| window minus its own last column, plus `ensemble_U_first`, is precisely the reference set
+!| that was used to test the ensemble's actual final growth step. See `misc/mod_STC.md`,
+!| "Ensemble Observable Plots", for the full rationale; neither statistic is stored as part of
+!| `ensemble_identification`'s own output, keeping that SKG's kernels fully general and
+!| iteration-unaware.
 module tox_stc_json_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
@@ -68,7 +82,11 @@ contains
             ensemble_G_history,&
             ensemble_mu_history,&
             ensemble_k_history,&
+            ensemble_accepted_history,&
+            ensemble_member_added_at_step,&
             ensemble_low_confidence_masks,&
+            ensemble_U_first,&
+            ensemble_d_first,&
             super_ensembles,&
             k_min,&
             k_density,&
@@ -82,6 +100,14 @@ contains
             bandwidth_percentile,&
             reconciliation_mode,&
             min_overlap_coefficient,&
+            allowed_stop_reasons,&
+            filter_d_min,&
+            filter_d_max,&
+            filter_var_explained_min,&
+            ensemble_eligible,&
+            ensemble_eligible_by_stop_condition,&
+            ensemble_eligible_by_dimension,&
+            ensemble_eligible_by_var_explained,&
             estimated_k_min,&
             estimated_k_density,&
             estimated_density_quantile,&
@@ -135,8 +161,23 @@ contains
             !! Per-ensemble trailing centers
         integer(c_int), dimension(o, n_selected_seed), intent(in), target :: ensemble_k_history
             !! Per-ensemble trailing sizes
+        logical(c_bool), dimension(o, n_selected_seed), intent(in), target :: ensemble_accepted_history
+            !! Whether the growth iteration retained in each history column was itself accepted
+            !! -- `stc_push_ensemble_history` also pushes a *rejected* final candidate before
+            !! `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
+            !! `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is not always
+            !! the ensemble's actual last accepted state; this module uses this array to find
+            !! the last column that genuinely is (see `stc_last_accepted_history_index`)
+        integer(c_int), dimension(n_vectors, n_selected_seed), intent(in), target :: ensemble_member_added_at_step
+            !! Per-ensemble growth-iteration-joined bookkeeping, see `ensemble_identification`'s
+            !! `member_added_at_step`; this module only ever reads its column max (= T, the
+            !! final accepted growth iteration), not the per-vector values themselves
         logical(c_bool), dimension(n_vectors, n_selected_seed), intent(in), target :: ensemble_low_confidence_masks
             !! Per-ensemble iteration-1 fallback membership
+        real(c_double), dimension(n_dimensions, n_dimensions, n_selected_seed), intent(in), target :: ensemble_U_first
+            !! Per-ensemble tangent+normal basis at the bootstrap iteration (iteration 1)
+        integer(c_int), dimension(n_selected_seed), intent(in), target :: ensemble_d_first
+            !! Per-ensemble intrinsic dimension at the bootstrap iteration
         integer(c_int), dimension(max_group_size, n_selected_seed*(n_selected_seed-1)), intent(in), target :: super_ensembles
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(c_int), intent(in), target :: k_min
@@ -169,6 +210,33 @@ contains
             !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]                 |
         real(c_double), intent(in), target :: min_overlap_coefficient
             !! This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
+        logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
+            !! This run's per-Stop-Condition eligibility actually used by
+            !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
+            !! for transparency only; this module no longer derives eligibility from it itself,
+            !! see `ensemble_eligible` below
+        integer(c_int), intent(in), optional :: filter_d_min
+            !! This run's minimum tolerated final intrinsic dimension for reconciliation
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
+        integer(c_int), intent(in), optional :: filter_d_max
+            !! This run's maximum tolerated final intrinsic dimension for reconciliation
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
+        real(c_double), intent(in), optional :: filter_var_explained_min
+            !! This run's minimum tolerated final variance explained for reconciliation
+            !! eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! `var_explained_min`; reported for transparency only, same as
+            !! `allowed_stop_reasons` above
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible
+            !! Per-ensemble combined reconciliation eligibility actually used by
+            !! `ensemble_reconciliation`, see its own `eligible` output
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible_by_stop_condition
+            !! See `ensemble_reconciliation`'s own `eligible_by_stop_condition`
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible_by_dimension
+            !! See `ensemble_reconciliation`'s own `eligible_by_dimension`
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible_by_var_explained
+            !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(c_int), intent(in), optional :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
         integer(c_int), intent(in), optional :: estimated_k_density
@@ -188,8 +256,14 @@ contains
         character(len=:), allocatable, dimension(:) :: dim_names_f
         logical, dimension(n_vectors) :: seed_selection_mask_f
         logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
+        logical, dimension(o, n_selected_seed) :: ensemble_accepted_history_f
         logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
         integer(int32) :: reconciliation_mode_mode_f
+        logical, dimension(:), allocatable :: allowed_stop_reasons_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_by_stop_condition_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_by_dimension_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_by_var_explained_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -225,9 +299,17 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_G_history, o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_mu_history, n_dimensions * o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_k_history, o * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_accepted_history, o * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_member_added_at_step, n_vectors * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_low_confidence_masks, n_vectors * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_U_first, n_dimensions * n_dimensions * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_d_first, n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(super_ensembles, max_group_size * (n_selected_seed*(n_selected_seed-1)))
         M_CHECK_ARRAY_NON_NULL(reconciliation_mode, 25)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible, n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_stop_condition, n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_dimension, n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_var_explained, n_selected_seed)
 
         call c_char_1d_as_string(filename, filename_f, ierr)
         if (is_err(ierr)) return
@@ -235,6 +317,7 @@ contains
         if (is_err(ierr)) return
         seed_selection_mask_f = seed_selection_mask
         ensemble_masks_f = ensemble_masks
+        ensemble_accepted_history_f = ensemble_accepted_history
         ensemble_low_confidence_masks_f = ensemble_low_confidence_masks
         block
             character(len=:), allocatable :: reconciliation_mode_f
@@ -253,6 +336,11 @@ contains
                     return
             end select
         end block
+        if (present(allowed_stop_reasons)) allowed_stop_reasons_f = allowed_stop_reasons
+        ensemble_eligible_f = ensemble_eligible
+        ensemble_eligible_by_stop_condition_f = ensemble_eligible_by_stop_condition
+        ensemble_eligible_by_dimension_f = ensemble_eligible_by_dimension
+        ensemble_eligible_by_var_explained_f = ensemble_eligible_by_var_explained
 
         call serialize_stc_results_as_json(&
             filename = filename_f,&
@@ -274,7 +362,11 @@ contains
             ensemble_G_history = ensemble_G_history,&
             ensemble_mu_history = ensemble_mu_history,&
             ensemble_k_history = ensemble_k_history,&
+            ensemble_accepted_history = ensemble_accepted_history_f,&
+            ensemble_member_added_at_step = ensemble_member_added_at_step,&
             ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            ensemble_U_first = ensemble_U_first,&
+            ensemble_d_first = ensemble_d_first,&
             super_ensembles = super_ensembles,&
             k_min = k_min,&
             k_density = k_density,&
@@ -288,6 +380,14 @@ contains
             bandwidth_percentile = bandwidth_percentile,&
             reconciliation_mode = reconciliation_mode_mode_f,&
             min_overlap_coefficient = min_overlap_coefficient,&
+            allowed_stop_reasons = allowed_stop_reasons_f,&
+            filter_d_min = filter_d_min,&
+            filter_d_max = filter_d_max,&
+            filter_var_explained_min = filter_var_explained_min,&
+            ensemble_eligible = ensemble_eligible_f,&
+            ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition_f,&
+            ensemble_eligible_by_dimension = ensemble_eligible_by_dimension_f,&
+            ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained_f,&
             estimated_k_min = estimated_k_min,&
             estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
@@ -323,7 +423,11 @@ contains
             ensemble_G_history,&
             ensemble_mu_history,&
             ensemble_k_history,&
+            ensemble_accepted_history,&
+            ensemble_member_added_at_step,&
             ensemble_low_confidence_masks,&
+            ensemble_U_first,&
+            ensemble_d_first,&
             super_ensembles,&
             k_min,&
             k_density,&
@@ -337,6 +441,14 @@ contains
             bandwidth_percentile,&
             reconciliation_mode,&
             min_overlap_coefficient,&
+            allowed_stop_reasons,&
+            filter_d_min,&
+            filter_d_max,&
+            filter_var_explained_min,&
+            ensemble_eligible,&
+            ensemble_eligible_by_stop_condition,&
+            ensemble_eligible_by_dimension,&
+            ensemble_eligible_by_var_explained,&
             estimated_k_min,&
             estimated_k_density,&
             estimated_density_quantile,&
@@ -390,8 +502,23 @@ contains
             !! Per-ensemble trailing centers
         integer(c_int), dimension(o, n_selected_seed), intent(in), target :: ensemble_k_history
             !! Per-ensemble trailing sizes
+        logical(c_bool), dimension(o, n_selected_seed), intent(in), target :: ensemble_accepted_history
+            !! Whether the growth iteration retained in each history column was itself accepted
+            !! -- `stc_push_ensemble_history` also pushes a *rejected* final candidate before
+            !! `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
+            !! `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is not always
+            !! the ensemble's actual last accepted state; this module uses this array to find
+            !! the last column that genuinely is (see `stc_last_accepted_history_index`)
+        integer(c_int), dimension(n_vectors, n_selected_seed), intent(in), target :: ensemble_member_added_at_step
+            !! Per-ensemble growth-iteration-joined bookkeeping, see `ensemble_identification`'s
+            !! `member_added_at_step`; this module only ever reads its column max (= T, the
+            !! final accepted growth iteration), not the per-vector values themselves
         logical(c_bool), dimension(n_vectors, n_selected_seed), intent(in), target :: ensemble_low_confidence_masks
             !! Per-ensemble iteration-1 fallback membership
+        real(c_double), dimension(n_dimensions, n_dimensions, n_selected_seed), intent(in), target :: ensemble_U_first
+            !! Per-ensemble tangent+normal basis at the bootstrap iteration (iteration 1)
+        integer(c_int), dimension(n_selected_seed), intent(in), target :: ensemble_d_first
+            !! Per-ensemble intrinsic dimension at the bootstrap iteration
         integer(c_int), dimension(max_group_size, n_selected_seed*(n_selected_seed-1)), intent(in), target :: super_ensembles
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(c_int), intent(in), target :: k_min
@@ -424,6 +551,33 @@ contains
             !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]                 |
         real(c_double), intent(in), target :: min_overlap_coefficient
             !! This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
+        logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
+            !! This run's per-Stop-Condition eligibility actually used by
+            !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
+            !! for transparency only; this module no longer derives eligibility from it itself,
+            !! see `ensemble_eligible` below
+        integer(c_int), intent(in), optional :: filter_d_min
+            !! This run's minimum tolerated final intrinsic dimension for reconciliation
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
+        integer(c_int), intent(in), optional :: filter_d_max
+            !! This run's maximum tolerated final intrinsic dimension for reconciliation
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
+        real(c_double), intent(in), optional :: filter_var_explained_min
+            !! This run's minimum tolerated final variance explained for reconciliation
+            !! eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! `var_explained_min`; reported for transparency only, same as
+            !! `allowed_stop_reasons` above
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible
+            !! Per-ensemble combined reconciliation eligibility actually used by
+            !! `ensemble_reconciliation`, see its own `eligible` output
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible_by_stop_condition
+            !! See `ensemble_reconciliation`'s own `eligible_by_stop_condition`
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible_by_dimension
+            !! See `ensemble_reconciliation`'s own `eligible_by_dimension`
+        logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible_by_var_explained
+            !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(c_int), intent(in), optional :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
         integer(c_int), intent(in), optional :: estimated_k_density
@@ -443,8 +597,14 @@ contains
         character(len=:), allocatable, dimension(:) :: dim_names_f
         logical, dimension(n_vectors) :: seed_selection_mask_f
         logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
+        logical, dimension(o, n_selected_seed) :: ensemble_accepted_history_f
         logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
         integer(int32) :: reconciliation_mode_mode_f
+        logical, dimension(:), allocatable :: allowed_stop_reasons_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_by_stop_condition_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_by_dimension_f
+        logical, dimension(n_selected_seed) :: ensemble_eligible_by_var_explained_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -480,9 +640,17 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_G_history, o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_mu_history, n_dimensions * o * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_k_history, o * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_accepted_history, o * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_member_added_at_step, n_vectors * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_low_confidence_masks, n_vectors * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_U_first, n_dimensions * n_dimensions * n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_d_first, n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(super_ensembles, max_group_size * (n_selected_seed*(n_selected_seed-1)))
         M_CHECK_ARRAY_NON_NULL(reconciliation_mode, 25)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible, n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_stop_condition, n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_dimension, n_selected_seed)
+        M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_var_explained, n_selected_seed)
 
         call c_char_1d_as_string(filename, filename_f, ierr)
         if (is_err(ierr)) return
@@ -490,6 +658,7 @@ contains
         if (is_err(ierr)) return
         seed_selection_mask_f = seed_selection_mask
         ensemble_masks_f = ensemble_masks
+        ensemble_accepted_history_f = ensemble_accepted_history
         ensemble_low_confidence_masks_f = ensemble_low_confidence_masks
         block
             character(len=:), allocatable :: reconciliation_mode_f
@@ -508,6 +677,11 @@ contains
                     return
             end select
         end block
+        if (present(allowed_stop_reasons)) allowed_stop_reasons_f = allowed_stop_reasons
+        ensemble_eligible_f = ensemble_eligible
+        ensemble_eligible_by_stop_condition_f = ensemble_eligible_by_stop_condition
+        ensemble_eligible_by_dimension_f = ensemble_eligible_by_dimension
+        ensemble_eligible_by_var_explained_f = ensemble_eligible_by_var_explained
 
         call write_stc_interactive_html_report(&
             filename = filename_f,&
@@ -529,7 +703,11 @@ contains
             ensemble_G_history = ensemble_G_history,&
             ensemble_mu_history = ensemble_mu_history,&
             ensemble_k_history = ensemble_k_history,&
+            ensemble_accepted_history = ensemble_accepted_history_f,&
+            ensemble_member_added_at_step = ensemble_member_added_at_step,&
             ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            ensemble_U_first = ensemble_U_first,&
+            ensemble_d_first = ensemble_d_first,&
             super_ensembles = super_ensembles,&
             k_min = k_min,&
             k_density = k_density,&
@@ -543,6 +721,14 @@ contains
             bandwidth_percentile = bandwidth_percentile,&
             reconciliation_mode = reconciliation_mode_mode_f,&
             min_overlap_coefficient = min_overlap_coefficient,&
+            allowed_stop_reasons = allowed_stop_reasons_f,&
+            filter_d_min = filter_d_min,&
+            filter_d_max = filter_d_max,&
+            filter_var_explained_min = filter_var_explained_min,&
+            ensemble_eligible = ensemble_eligible_f,&
+            ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition_f,&
+            ensemble_eligible_by_dimension = ensemble_eligible_by_dimension_f,&
+            ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained_f,&
             estimated_k_min = estimated_k_min,&
             estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&

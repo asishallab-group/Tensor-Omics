@@ -98,18 +98,30 @@ Each major step gets its own kernel module under
 | `tox_shape_truthful_clustering_kernel.F90` (parent) | `ensemble_identification` (its own kernel(s), directly in the parent -- see note below) |
 | `tox_shape_truthful_clustering_seeding_kernel.F90` | `density_labels`, `seeds` |
 | `tox_shape_truthful_clustering_ensemble_growing_kernel.F90` | `calc_ensemble_growth_radius`, `grow_ensemble` |
-| `tox_shape_truthful_clustering_observable_kernel.F90` | `observable`, `normal_error`, `tangent_scales` |
+| `tox_shape_truthful_clustering_observable_kernel.F90` | `observable`, `normal_error`, `tangent_scales`, `ensemble_final_observable` |
 | `tox_shape_truthful_clustering_accept_kernel.F90` | `accept_ensemble` |
-| `tox_shape_truthful_clustering_reconciliation_kernel.F90` | `ensemble_reconciliation` |
+| `tox_shape_truthful_clustering_filter_kernel.F90` | `filter_ensembles_by_stop_condition`, `filter_ensembles_by_dimension`, `filter_ensembles_by_var_explained`, `filter_ensembles` |
+| `tox_shape_truthful_clustering_reconciliation_kernel.F90` | `ensemble_reconciliation` (a thin two-call orchestrator: `filter_ensembles` then this module's own `merge_to_super_ensembles`) |
 | `tox_shape_truthful_clustering_parameter_estimation_kernel.F90` | `sample_estimator_anchors`, `grow_estimator_anchor_clouds`, `estimate_stc_parameters` |
 
 The parent module holds `ensemble_identification`'s own kernel(s) directly,
-in addition to `use`-ing the five children -- a deliberate deviation from
+in addition to `use`-ing its siblings -- a deliberate deviation from
 section 5.15's own `tox_data_integration_kernel` example, whose parent holds
 no procedures of its own. `ensemble_identification` is this family's natural
 top-level entry point (it orchestrates every other SKG), unlike
 `data_integration`'s parent, which really is just a bag of siblings with no
 natural "top" member.
+
+`ensemble_final_observable` lives in the *observable* module, not the
+reconciliation family it was introduced to serve, and not the parent module
+either, even though it operates on `ensemble_identification`'s own history
+output: both `tox_stc_json` (report-layer "final ensemble state" extraction)
+and `filter_ensembles` (see "Ensemble Reconciliation" below) need the exact
+same computation, and the parent module already `use`s the reconciliation
+module -- which now, in turn, `use`s the filter module -- so placing this
+kernel anywhere reachable *from* the parent (including the parent itself)
+would close a cycle. The observable module has no dependency on any of its
+siblings, making it the one safe home both consumers can `use` without one.
 
 ## Seeding
 
@@ -690,7 +702,21 @@ default ensembles are not merged based on intersections, because the
 intersections are needed by our Manifold Learning algorithm to stith together
 local linear manifolds.
 
-This module first identifies ensembles that intersect. It then offers three
+The SKG `ensemble_reconciliation` is a thin, two-call orchestrator over two
+sibling SKGs, each independently testable and independently reusable: first
+`filter_ensembles` (which ensembles are even eligible to contribute a pair,
+judged purely per-ensemble -- see "Filtering ensembles before merging"
+below), then this module's own `merge_to_super_ensembles` (the actual
+pairwise-intersection/grouping decision, over eligible ensembles only).
+Conflating eligibility and merging into one procedure would mean every new
+filtering criterion has to touch the same monolithic merge logic; keeping
+them separate means a new per-ensemble criterion is *only* ever a new
+function in `filter_ensembles`, never a change to how merging itself works.
+`merge_to_super_ensembles` is described first below, since it is what most
+of this section's own algorithm description concerns; "Filtering ensembles
+before merging" covers the `filter_ensembles` half.
+
+`merge_to_super_ensembles` first identifies ensembles that intersect. It then offers three
 different modes of how to process intersections:
 * (1) just report them
 * (2) merge with a minimal set Overlap Coefficient (SOC; default 0.9)
@@ -744,6 +770,69 @@ column in `super_ensembles_overlap_coefficient` represents the
 super-ensemble in `super_ensembles` directly. Within each column $l$, each
 cell index $c_i$ indicates the Overlap Coefficient between the ensemble
 number stored in `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`.
+
+### Filtering ensembles before merging
+
+`filter_ensembles` decides which ensembles are even eligible to contribute a
+pair to `merge_to_super_ensembles`, from three independent, per-ensemble
+criteria, each its own small SKG returning its own `eligible(N_E)` mask,
+combined by `filter_ensembles` itself via a plain logical AND. A criterion
+whose own threshold/allowed-set argument is omitted contributes an
+all-`.true.` mask (no constraint from that criterion), so omitting every
+optional argument makes `filter_ensembles` itself a true no-op (every
+ensemble eligible).
+
+* **`filter_ensembles_by_stop_condition`**: an optional `allowed_stop_reasons`
+  (a 4-entry logical array, one flag per `ensemble_identification` Stop
+  Condition) excludes ensembles by Stop Condition -- e.g. excluding
+  `rejected_immediately` (a single, unconfirmed growth step, the
+  lowest-confidence outcome) keeps low-confidence ensembles from ever being
+  merged.
+* **`filter_ensembles_by_dimension`**: optional `d_min`/`d_max` (each
+  independently optional, both inclusive) bound an ensemble's *final*
+  intrinsic dimension -- see `ensemble_final_observable` below for what
+  "final" means here.
+* **`filter_ensembles_by_var_explained`**: an optional `var_explained_min`
+  bounds an ensemble's *final* classical variance explained,
+  $\sum_{j=1}^{d}\lambda_j / (\sum_{j=1}^{d}\lambda_j + \text{normal\_error})$
+  -- the familiar PCA energy-ratio (a scale/sqrt-based alternative,
+  $\sum_j s_j / (\sum_j s_j + \text{RMSE})$, was considered during this
+  criterion's own design and rejected in favor of the classical, squared-units
+  form specifically for being the measure data scientists already expect,
+  even though the scale-based alternative would likely be somewhat more
+  outlier-robust). Motivation: some ensembles "learn noise" -- grow into a
+  region where the tangent-subspace fit is technically accepted by
+  `accept_ensemble`'s own criteria but explains little of the ensemble's own
+  spread -- and this criterion lets such ensembles be excluded from merging
+  without discarding them from `ensemble_identification`'s own output.
+
+All three criteria need each ensemble's *final* accepted state (`d`, singular
+values, size) -- not simply the last *populated* history column, for the
+same reason `misc/mod_STC.md`'s own "Ensemble identification" section
+describes for `U_first`/history in general (a rejected final candidate can
+sit in the last populated column). This extraction is itself a small, shared
+SKG, `ensemble_final_observable` (see "Implementation Modules" above for
+where it lives and why) -- `filter_ensembles` calls it once, up front, rather
+than each of its three sub-filters (or, worse, some external caller)
+re-deriving it independently.
+
+An ineligible ensemble's pairs are simply never considered by
+`merge_to_super_ensembles` -- no array copying or compaction, an
+`eligible(i) .and. eligible(j)` guard ANDed into the existing per-pair
+decision, the same "logical AND of masks" shape mode
+`MODE_MERGE_OVERLAP_COEFFICIENT`'s own Overlap Coefficient threshold check
+already uses. Excluded ensembles are unaffected everywhere else -- they keep
+existing in `ensemble_identification`'s own output, in every point/CSV/JSON
+field this whole family produces, and in `tox_stc_json`'s own
+`overlap_coefficient_matrix` (computed independently of this module, see
+`tox_stc_json.F90`), which applies the identical mask for the same reason: so
+the full pairwise matrix stays consistent with whatever `ensemble_reconciliation`
+actually merged. Only `merge_to_super_ensembles`'s own pairing/grouping
+decision is affected -- an excluded ensemble simply never appears in any
+`super_ensembles` group or in that matrix. `ensemble_reconciliation` publishes
+the combined mask *and* the three individual per-criterion masks as its own
+output, so a report (see "Scientific plots / Visualization" below) can show
+*which* criterion excluded a given ensemble, not merely that one did.
 
 ## Estimate parameters from data
 
@@ -933,3 +1022,270 @@ The command line interface will require arguments:
     values but is not required to.
 * output-dir, required argument of a directory-path to which to write our
   output files, including the HTML/D3 plot.
+
+# Scientific plots / Visualization
+
+Each run of STC shall produce a scientific plot and result files into an output
+directory. The plot is implemented using HTML,CSS,JavaScript, and especially
+D3. The template for visualizatin is static and only the data is included in
+the HTML code in the form of serialized JSON strings.
+
+The required third party libraries are included as static strings in dedicated
+Fortran classes in order to ensure that compiled shared objects will have no
+trouble finding those third party sources. See @helper/embed_stc_html_assets.py
+for how to generate those static assets. The current plotting is implemented in
+@src/tox_stc_json.F90.
+
+## 2D Plot definitions
+
+This entire section focusses on two dimensional plots and is used only for STC
+applied to 2D input data.
+
+Each single STC-run will be presented in one self contained interactive
+scientific plot. The actual plot shall take approximately 80% of the window
+size to ensure it is the central object of attention. There is a hamburger menu
+on the top left corner, which by default is opened. The <space>-key toggles the
+menu. In the menu all control elements for the interactive plot are contained.
+
+The actual plot has a little export icon in the top right corner, enabling the
+user to export the current visible state to SVG and using an adecuate
+JS-library like html-to-image allows export to PNG or JPG.
+
+The control elements are listed by plot attributes — see below.
+
+### Colors
+
+In general the color grey will be used to indicate points and seeds that were
+not assigned to any ensemble.
+
+### Points
+
+#### Point color
+
+The point color can be linked to data properties. Four modes are offered:
+
+* **Intersection density (default)**: a heatmap scale from low (blue) to high
+  (red) number of ensembles a point has been assigned to. A continuous color
+  scale legend is displayed alongside the plot, mapping values to colors --
+  not just a couple of discrete example swatches.
+* **Ensemble ID**: the user can select this option to associate color with
+  ensemble ID. As points can have various associations with ensembles, the
+  largest ensemble is chosen to determine the point's color. If this option
+  is chosen, a new multi-select menu appears that allows the user to select
+  which ensembles are displayed by point-color.
+* **Super-ensemble ID**: a toggle enables the user to select point color to be
+  associated not with ensemble-IDs but with super-ensemble-IDs. The same
+  color controls (largest-wins, multi-select) apply here, too.
+* **Low-confidence fallback coverage**: colors each point by whether it
+  belongs to a retained ensemble (`final_ensemble_mask`), only to a
+  low-confidence iteration-1 fallback (`low_confidence_mask`, see "Output"
+  above) and no retained ensemble, or to neither. A short caption/title is
+  shown in this mode's own legend explaining these three categories, since
+  the distinction is not otherwise self-explanatory from the color alone.
+
+#### Point shape
+
+The default point shape are filled circles. The diameter can be adjusted, i.e.
+increased or decreased with a slide control.
+
+20% larger triangular shapes indicate seeds. This can be toggled on and off.
+The triangle color can be linked to the point color or not (toggle control
+element). If not associated with ensemble color, the triangles are shown in
+black.
+
+#### Mouse over information
+
+Upon hovering over a point a small transparent pop-up appears displaying the
+below information:
+
+* The coordinates of the data point.
+* The ensemble-IDs the point has been assigned to, and for each the point's
+  residual length and the ensemble's stop condition.
+* The super-ensemble-IDs the point has been assigned to, and for each the
+  ensemble-IDs that super-ensemble contains.
+
+### Lines - Local tangent representation
+
+Each ensemble has a final tangent space. In the case of 2D input this will be a
+line in 2D. These lines are drawn within the limitations of their respective
+ensemble's range. To infer this, the ensembles elements are projected onto the
+line and the line is drawn between the two most extreme points. The
+calculations of the start and stop points are done in Fortran within the
+visualization module and exported to JSON.
+
+Upon hovering over a line the ensemble ID and the singular value is shown.
+
+#### Line Color
+
+The line color matches the ensemble color - see point color. A multi-select
+menu allows toggling ensemble tangent lines on and off.
+
+A control element allows the user to select a single color for all lines.
+
+Line thickness can be adjusted with a slider control element.
+
+### Seed growth radii
+
+The seed growth radii are displayed as transparent circles. The default color
+is the same as the triangles'. The user can toggle, whether these circle's are
+assigned the color of their respective ensemble they grew into (toggle). The
+transparency can be adjusted with a slider control element.
+
+## Additional plots
+
+Additional plots are available to the user. They can be toggled by dedicated
+buttons in a top horizontal menu bar. By default all additional plots are
+toggled off. If switched on those plots are shown in separate `<div/>` elements
+positioned vertically below the main plot.
+
+### Ensemble Overlap Coefficient (OvC) Heatmap
+
+Ensemble IDs are sorted ascending and an upper triangular heatmap, excluding
+the diagonal, is rendered showing in a heat scale from zero (blue) to 1 (red)
+is drawn. A vertical scale at the right of the plot visually maps OvC values to
+their respective color. The ensemble IDs are used as heatmap axes labels. By
+default both axes show the ensemble IDs. Rows and Columns are surrounded by a
+thin black line to ease finding the cells of interest. Hovering over a cell
+with the mouse displays the ensemble IDs and their respective OvC value. The
+plot has its own hamburger menu. In it the user can toggle x and y axes labels
+on and off, and toggle the row and column surrounding lines.
+
+### Super-Ensemble Tree
+
+An interactive tree is rendered showing which super-ensembles contain which
+ensembles. The color of the contained ensembles is identical to the point color
+in the main plot - referring to the point color in case it is associated with
+ensemble IDs. Clicking on a super-ensemble inner node, collapses all descendent
+nodes (ensemble leaf nodes). The shape of ensemble leaf nodes indicate stop
+conditions. Hovering over a super-ensemble node shows the number of contained
+ensembles, the total number of data-points and the fraction of contained
+data-points relative to the total number of input data points (ambient
+vectors). Hovering over an ensemble leaf node shows the below information:
+
+* The ensemble-IDs
+* The ensemble's stop condition
+* The ensemble's seed
+* The ensemble's final observable vector
+* The ensemble's number of contained points and the fraction of the total input
+  data these points form.
+
+### Ensemble Observable Plots
+
+This is a combination of three standard two dimensional line-plots, including
+the data-points connected by line-segments (like R's `plot(..., type="both")`).
+
+At the top horizontal center of the plot the user has a selection-menu-item
+with which they can select the ensemble for which to plot the below observable
+plots. By default no ensemble is selected and "all ensembles" is shown.
+
+Note that these Ensemble Observable Plots are only applicable to ensembles that
+actually have a $\Omega_{\mathcal{E}}$ associated with them. This implies that
+ensembles that are rejected in the first growth step will not be eligible for
+these plots.
+
+#### Ensemble specific Observable Plots
+
+In the case the above selection-menu-item has a specific Ensemble
+$\mathcal{E}_T$ selected, the below defined plots are generated.
+
+Three observable plots are shown side by side, or, if the window has not enough
+width, automatically flow to vertical ordering.
+
+Each plot shows the development of one observable over the last $o$ iterations,
+including the first at $t=1$ -- except the Consecutive Tangent-Space Drift
+plot, which has no point at $t=1$; see below. Thus the x-axis indicates
+iteration number (time). Note that it is not in scale, as the iteration
+number are 1,...,$T-o, T-o+1, ..., T$. Three dots between 1 and $T-o$
+indicate this. Also no segment is drawn between the point at x-coordinate 1
+and the subsequent one.
+
+Such a line-plot is generated for:
+
+* the Spectral Gap $\mathcal{G}_{\mathcal{E}_{t_i}}$. Hovering over a point $i > 1$
+  here shows the Spectral-Gap drift $| log \frac{\mathcal{G}_{\mathcal{E}_{t_i}}}{\mathcal{G}_{\mathcal{E}_{t_{i-1}}}} |$
+* the RMSE, i.e. $\text{RMSE}_{\mathcal{E}_{t_i}} = \text{sqrt}(\text{normal\_error}_{\mathcal{E}_{t_i}})$. Hovering over a point $i > 1$
+  here shows the residual drift, i.e.
+  $$
+  \left|\log \frac{\text{RMSE}_{\mathcal{E}_{t_i}}}{\text{RMSE}_{\mathcal{E}_{t_{i-1}}}}\right|
+  $$
+* the **Consecutive Tangent-Space Drift**
+  $$
+  \mathcal{C}(U_{\mathcal{E}_{t_{i-1}}}, U_{\mathcal{E}_{t_i}}) = \sqrt{\sum_{k=1}^{d} \sin^2\theta_k}
+  $$
+  between each retained iteration and its immediate predecessor (principal
+  angles $\theta_k$ via `dgesvd` on $U_{\mathcal{E}_{t_{i-1}}}^\top
+  U_{\mathcal{E}_{t_i}}$, restricted to the shared rank $d = d_{t_{i-1}} =
+  d_{t_i}$ -- a pair contributes no point if $d_{t_{i-1}} \neq d_{t_i}$, the
+  same "nothing to compare" convention `accept_ensemble`'s own criterion 1
+  uses; see "SKG `accept_ensemble`" above). At $d=1$ this reduces to
+  $|\langle u_{t_i}, u_{t_{i-1}}\rangle|$'s complement, no `dgesvd` needed.
+  This plot has no point at $t=1$ (nothing precedes the bootstrap iteration
+  to compare against); it otherwise follows the same x-axis convention as
+  the other two (gap across the evicted range, continuous line across the
+  retained window), so unlike the earlier draft of this section, it
+  aggregates into the "all ensembles" summary below exactly like Spectral
+  Gap and RMSE do -- no special-casing needed.
+
+  This is a genuinely different quantity from what `accept_ensemble` itself
+  tests: `accept_ensemble`'s criterion 1 compares a candidate against the
+  *whole* reference set $\mathcal{R}$ (bootstrap plus the full trailing
+  window), specifically to catch cumulative drift that a step-to-step-only
+  check would miss (see "SKG `accept_ensemble`" above) -- and that
+  whole-reference-set value, as actually computed at each historical growth
+  step, is **not** reconstructable after the fact for any iteration except
+  the most recent one: reconstructing it for iteration $i$ needs the window
+  as it stood right before $i$ was tested, which for $i<T$ has already been
+  evicted by the time growth reaches $T$. Only for $i=T$ does the
+  currently-stored window (minus its own last column, plus `U_first`)
+  exactly equal the reference set that was actually used to test it -- so
+  that one number, the ensemble's actual accept-tested chordal distance at
+  its final growth step, is shown separately as a caption/subtitle above
+  this plot, not as another line-plot point.
+
+  Both numbers (the per-iteration consecutive drift and the final
+  accept-tested value) are computed post-hoc, once per ensemble at
+  report-generation time, directly from the already-exported
+  `ensemble_U_history`/`ensemble_d_history`/`ensemble_S_history`/
+  `ensemble_k_history` arrays (a handful of small `dgesvd` calls, cheap).
+  Neither is stored as part of `ensemble_identification`'s own output --
+  keeping that SKG's kernels fully general and iteration-unaware, the same
+  reasoning as "First growth step" above: both are visualization-layer
+  derived statistics, not pipeline outputs.
+
+#### "all ensembles" Observable Plots
+
+In case the above selection-menu-item has "all ensembles" selected, the above
+defined plots are generated but show a summary of all ensemble's plots. Because
+all ensembles $\mathcal{E}_{c}$ have at most $o$ observable vectors in their
+respective $\Omega_c$, we can generate such a plot. Observables which lack some
+$l$ entries after $t=1$ and before $T-o+l$ are excluded from contributing
+information to those $l$ iteration times (x-axis coordinates). At each
+iteration time $t_i$ calculate the point-wise mean and use it to draw a solid
+thick black curve. Around it calculate the point-wise standard-deviation and
+draw it as a shaded uncertainty ribbon. Hovering over points at a given
+iteration time $t_i$ (x coordinate) opens a small boxplot showing the
+distribution of values at $t_i$.
+
+## STC run information pane
+
+Offered as an additional pane in the top horizontal "additional plots" menu-bar
+is the "SHATTER (STC) run info" pane.
+
+This is not a plot, but an information display. For the current run, a two
+column table is shown, in which the below information is contained:
+* All input parameters and their values, including non provided parameters and
+  their default values. Importantly, under each parameter there is a short
+  explanation of the parameter, i.e. what it controls, its value range (if
+  applicable) and what increasing/decreasing values imply.
+* The number of input data points, i.e. the size of the ambient vector space so
+  to speak.
+* Wether parameters were estimated or user-provided.
+* The number of:
+  * Seeds,
+  * Ensembles, and
+  * Super-Ensembles, and furthermore:
+  * The Min., 1st Qu., Median, Mean, 3rd Qu., and Max. of Ensemble-Sizes.
+  * The Min., 1st Qu., Median, Mean, 3rd Qu., and Max. of Number of Ensembles
+    assigned to each data-point.
+  * The Min., 1st Qu., Median, Mean, 3rd Qu., and Max. of all Ensembles' final
+    observables Spectral-Gap, RMSE, and Tangent-Space Drift.

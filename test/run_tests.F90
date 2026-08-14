@@ -38,6 +38,7 @@ program main
     use mod_test_shape_truthful_clustering_merged, only: get_all_tests_shape_truthful_clustering_merged
     use mod_test_shape_truthful_clustering_reconciliation, only: get_all_tests_shape_truthful_clustering_reconciliation
     use mod_test_shape_truthful_clustering_observable, only: get_all_tests_shape_truthful_clustering_observable
+    use mod_test_shape_truthful_clustering_filter, only: get_all_tests_shape_truthful_clustering_filter
     use mod_test_shape_truthful_clustering_seeding, only: get_all_tests_shape_truthful_clustering_seeding
     use mod_test_shape_truthful_clustering_ensemble_growing, only: get_all_tests_shape_truthful_clustering_ensemble_growing
     use mod_test_shape_truthful_clustering_accept, only: get_all_tests_shape_truthful_clustering_accept
@@ -89,6 +90,7 @@ program main
     call add_suite("shape_truthful_clustering_merged", get_all_tests_shape_truthful_clustering_merged)
     call add_suite("shape_truthful_clustering_reconciliation", get_all_tests_shape_truthful_clustering_reconciliation)
     call add_suite("shape_truthful_clustering_observable", get_all_tests_shape_truthful_clustering_observable)
+    call add_suite("shape_truthful_clustering_filter", get_all_tests_shape_truthful_clustering_filter)
     call add_suite("shape_truthful_clustering_seeding", get_all_tests_shape_truthful_clustering_seeding)
     call add_suite("shape_truthful_clustering_ensemble_growing", get_all_tests_shape_truthful_clustering_ensemble_growing)
     call add_suite("shape_truthful_clustering_accept", get_all_tests_shape_truthful_clustering_accept)

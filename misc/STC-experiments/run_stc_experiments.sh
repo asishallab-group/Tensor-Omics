@@ -1,20 +1,31 @@
 #!/bin/bash
 # Orchestrates the STC experiments in this directory: builds the project, generates the
-# synthetic datasets if they are not there yet, then runs the STC pipeline
-# (seeds -> ensemble_identification_merged -> ensemble_reconciliation) and its plots over
-# every combination of the given parameter lists. The STC counterpart of branch
-# `smoothing`'s run_lomanle_tests.sh -- same "one CSV or 'all', comma-separated parameter
-# lists, nested loop" shape, adapted to STC's own parameters and driven by Python bindings
-# instead of a compiled Fortran test binary (see run_stc.py's own header for why that is
-# possible here and was not there).
+# synthetic datasets if they are not there yet, then runs `stc_cli` (see `C-layer/README.md`)
+# over every combination of the given parameter lists, one output directory per combination.
+# The STC counterpart of branch `smoothing`'s run_lomanle_tests.sh -- same "one CSV or 'all',
+# comma-separated parameter lists, nested loop" shape, now driven by the compiled CLI instead
+# of `run_stc.py`/`plot_stc.R`/`render_interactive.py` (removed -- see README.md).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
+# `stc_cli` has no default for these two -- the underlying kernels document none either, see
+# `C-layer/README.md` -- so this script fixes them at `run_stc.py`'s own former defaults
+# rather than exposing yet more sweep dimensions. Pass them by hand to `stc_cli` directly if
+# you need to vary them.
+RMSE_CHANGE_MAX=0.4054651081
+O=10
+
 # --- 1. Build -------------------------------------------------------------------------
 echo "Building tensor-omics..."
 (cd "$REPO_ROOT" && ./build.sh) || { echo "Build failed."; exit 1; }
+
+STC_CLI=$(find "$REPO_ROOT/build" -name stc_cli -type f -executable | head -1)
+if [ -z "$STC_CLI" ]; then
+    echo "Could not find the built stc_cli executable under $REPO_ROOT/build" >&2
+    exit 1
+fi
 
 # --- 2. Generate datasets, if missing --------------------------------------------------
 if [ ! -d "$SCRIPT_DIR/data" ]; then
@@ -31,7 +42,10 @@ if [ "$#" -lt 1 ]; then
     echo "Example, k_density and exclusion_radius_percentile swept independently of k_min:"
     echo "  $0 data/2d/s_curve_2d_noise_low.csv 30 0.5 1 3.0 merge_overlap_coefficient 0.9 15,30 25,50"
     echo "Note: k_density_list defaults to 30 (not k_min_list) if omitted -- these two are"
-    echo "independent SKG-level parameters, see run_stc.py's own --k-density help text."
+    echo "independent SKG-level parameters."
+    echo "Each combination's five output files (report.html, results.json, points.csv,"
+    echo "ensemble_overlap_coefficients.csv, super_ensembles.tsv) land in their own directory"
+    echo "under results/, see README.md."
     exit 1
 fi
 
@@ -42,10 +56,6 @@ d_max_list=(${4:-1}); d_max_list=(${d_max_list[@]//,/ })
 g_max_list=(${5:-3.0}); g_max_list=(${g_max_list[@]//,/ })
 mode_list=(${6:-merge_overlap_coefficient}); mode_list=(${mode_list[@]//,/ })
 min_overlap_coefficient_list=(${7:-0.9}); min_overlap_coefficient_list=(${min_overlap_coefficient_list[@]//,/ })
-# Bug fix: these two used to not be forwarded to run_stc.py at all, so every sweep silently
-# ran seeds() at its hardcoded default (k_density=30, exclusion_radius_percentile=50.0)
-# regardless of what k_min_list/the results filename's "k..." label said -- see
-# misc/STC-experiments/README.md.
 k_density_list=(${8:-30}); k_density_list=(${k_density_list[@]//,/ })
 exclusion_radius_percentile_list=(${9:-50.0}); exclusion_radius_percentile_list=(${exclusion_radius_percentile_list[@]//,/ })
 
@@ -54,6 +64,7 @@ process_file() {
     local f=$1
     local base_name
     base_name=$(basename "$f" .csv)
+    local n_records=$(( $(wc -l < "$f") - 1 ))
     for k in "${k_min_list[@]}"; do
         for chordal in "${chordal_dist_max_list[@]}"; do
             for d in "${d_max_list[@]}"; do
@@ -66,23 +77,15 @@ process_file() {
                                     echo "EXECUTING: $f"
                                     echo "Parameters: k_min=$k, k_density=$kd, chordal_dist_max_as_prcnt_of_range=$chordal, d_max=$d, g_max=$g, reconciliation_mode=$mode, min_overlap_coefficient=$min_overlap_coefficient, exclusion_radius_percentile=$erp"
 
-                                    prefix="$SCRIPT_DIR/results/data/${base_name}_k${k}_kd${kd}_cd${chordal}_d${d}_g${g}_${mode}_oc${min_overlap_coefficient}_erp${erp}"
-                                    python3 "$SCRIPT_DIR/run_stc.py" "$f" \
-                                        --k-min "$k" --k-density "$kd" --chordal-dist-max-as-prcnt-of-range "$chordal" \
-                                        --d-max "$d" --g-max "$g" \
+                                    out_dir="$SCRIPT_DIR/results/${base_name}_k${k}_kd${kd}_cd${chordal}_d${d}_g${g}_${mode}_oc${min_overlap_coefficient}_erp${erp}"
+                                    mkdir -p "$out_dir"
+                                    LD_LIBRARY_PATH="$REPO_ROOT/build" "$STC_CLI" \
+                                        --input "$f" --header --n-records "$n_records" --output-dir "$out_dir" \
+                                        --k-min "$k" --k-density "$kd" \
+                                        --chordal-dist-max-as-prcnt-of-range "$chordal" \
+                                        --d-max "$d" --g-max "$g" --rmse-change-max "$RMSE_CHANGE_MAX" --o "$O" \
                                         --reconciliation-mode "$mode" --min-overlap-coefficient "$min_overlap_coefficient" \
-                                        --exclusion-radius-percentile "$erp" --estimate-parameters \
-                                        --out-prefix "$prefix"
-
-                                    Rscript "$SCRIPT_DIR/plot_stc.R" "$prefix"
-                                    python3 "$SCRIPT_DIR/render_interactive.py" "$prefix"
-                                    mkdir -p "$SCRIPT_DIR/results/plots"
-                                    mv "${prefix}.pdf" "$SCRIPT_DIR/results/plots/$(basename "$prefix").pdf"
-                                    mv "${prefix}_interactive.html" "$SCRIPT_DIR/results/plots/$(basename "$prefix")_interactive.html"
-                                    # Only present for 3+ ambient dimensions, see plot_stc.R's own 3D report section.
-                                    if [ -f "${prefix}_3d.pdf" ]; then
-                                        mv "${prefix}_3d.pdf" "$SCRIPT_DIR/results/plots/$(basename "$prefix")_3d.pdf"
-                                    fi
+                                        --exclusion-radius-percentile "$erp"
                                 done
                             done
                         done
@@ -103,4 +106,4 @@ else
 fi
 
 echo "------------------------------------------"
-echo "Done. Check $SCRIPT_DIR/results/plots/ for PDF reports."
+echo "Done. Check $SCRIPT_DIR/results/*/report.html for interactive reports."

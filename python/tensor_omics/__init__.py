@@ -181,10 +181,17 @@ from .tox_shape_truthful_clustering_ensemble_growing import (
     calc_ensemble_growth_radius,
     grow_ensemble,
 )
+from .tox_shape_truthful_clustering_filter import (
+    filter_ensembles_by_stop_condition,
+    filter_ensembles_by_dimension,
+    filter_ensembles_by_var_explained,
+    filter_ensembles,
+)
 from .tox_shape_truthful_clustering_observable import (
     normal_error,
     tangent_scales,
     observable,
+    ensemble_final_observable,
 )
 from .tox_shape_truthful_clustering_observable_kernel import (
     tox_stc_observable_svd_workspace,
@@ -199,6 +206,7 @@ from .tox_shape_truthful_clustering_parameter_estimation_kernel import (
 )
 from .tox_shape_truthful_clustering_reconciliation import (
     ensemble_reconciliation,
+    merge_to_super_ensembles,
 )
 from .tox_shape_truthful_clustering_seeding import (
     density_labels,
@@ -291,11 +299,16 @@ __all__ = [
     "determine_shared_residual_range_expert",
     "determine_study_shared_residual_range",
     "distance_to_centroid",
+    "ensemble_final_observable",
     "ensemble_identification",
     "ensemble_identification_merged",
     "ensemble_reconciliation",
     "estimate_stc_parameters",
     "euclidean_distance",
+    "filter_ensembles",
+    "filter_ensembles_by_dimension",
+    "filter_ensembles_by_stop_condition",
+    "filter_ensembles_by_var_explained",
     "filter_paralogs_by_pattern_dosage_effect",
     "filter_paralogs_by_pattern_subfunctionalization",
     "fjct_compute_contribution_scores",
@@ -323,6 +336,7 @@ __all__ = [
     "mask_check_state",
     "mask_chunk_count",
     "mean_vector",
+    "merge_to_super_ensembles",
     "normal_error",
     "normalization_pipeline",
     "normalize_all_trajectories",

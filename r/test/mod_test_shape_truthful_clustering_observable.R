@@ -145,4 +145,132 @@ test_observable_dimension_too_small <- function() {
   assert_error(observable(vectors, mask), "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 }
 
+# =====================
+# ensemble_final_observable
+# =====================
+test_ensemble_final_observable_trailing_rejected_column <- function() {
+  # D=2, o=2, one ensemble: column 1 is the true accepted state (d=1, G=1.0, mu=[0.5,0.0]);
+  # column 2 is a rejected candidate with deliberately different values (d=0, G=99.0,
+  # mu=[9,9], accepted=FALSE). The extraction must land on column 1, never column 2.
+  U <- array(0.0, dim = c(2, 2, 2, 1))
+  d <- matrix(c(1L, 0L), nrow = 2, ncol = 1)
+  S <- array(0.0, dim = c(2, 2, 1))
+  mu <- array(0.0, dim = c(2, 2, 1))
+  G <- matrix(c(1.0, 99.0), nrow = 2, ncol = 1)
+  k <- matrix(c(2L, 3L), nrow = 2, ncol = 1)
+  accepted <- matrix(c(TRUE, FALSE), nrow = 2, ncol = 1)
+
+  S[, 1, 1] <- c(0.5, 2.0)
+  S[, 2, 1] <- c(7.0, 7.0)
+  mu[, 1, 1] <- c(0.5, 0.0)
+  mu[, 2, 1] <- c(9.0, 9.0)
+  U[, 1, 1, 1] <- c(1.0, 0.0)
+  U[, 2, 1, 1] <- c(0.0, 1.0)
+
+  result <- ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+  assert_true(result$ensemble_has_final[1])
+  assert_true(result$ensemble_final_index[1] == 1)
+  assert_true(result$ensemble_d_final[1] == 1)
+  assert_true(result$ensemble_k_final[1] == 2)
+  assert_true(abs(result$ensemble_G_final[1] - 1.0) < TOL)
+  assert_true(all(abs(result$ensemble_mu_final[, 1] - c(0.5, 0.0)) < TOL))
+  assert_true(all(abs(result$ensemble_S_final[, 1] - c(0.5, 2.0)) < TOL))
+}
+
+test_ensemble_final_observable_no_rejection <- function() {
+  # Both history columns accepted: extraction must land on the last (most recent) column.
+  U <- array(0.0, dim = c(2, 2, 2, 1))
+  d <- matrix(c(0L, 1L), nrow = 2, ncol = 1)
+  S <- array(0.0, dim = c(2, 2, 1))
+  mu <- array(0.0, dim = c(2, 2, 1))
+  G <- matrix(c(2.0, 1.5), nrow = 2, ncol = 1)
+  k <- matrix(c(2L, 3L), nrow = 2, ncol = 1)
+  accepted <- matrix(c(TRUE, TRUE), nrow = 2, ncol = 1)
+
+  S[, 1, 1] <- c(2.0, 0.0)
+  S[, 2, 1] <- c(0.5, 3.0)
+  mu[, 1, 1] <- c(0.5, 0.0)
+  mu[, 2, 1] <- c(1.0, 0.0)
+
+  result <- ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+  assert_true(result$ensemble_has_final[1])
+  assert_true(result$ensemble_final_index[1] == 2)
+  assert_true(result$ensemble_d_final[1] == 1)
+  assert_true(result$ensemble_k_final[1] == 3)
+  assert_true(abs(result$ensemble_G_final[1] - 1.5) < TOL)
+  assert_true(all(abs(result$ensemble_mu_final[, 1] - c(1.0, 0.0)) < TOL))
+}
+
+test_ensemble_final_observable_has_final_false <- function() {
+  # Every history column has k=0 (unpopulated) -- has_final must be FALSE and every _final
+  # output must come back exactly zero.
+  U <- array(0.0, dim = c(2, 2, 2, 1))
+  d <- array(0L, dim = c(2, 1))
+  S <- array(0.0, dim = c(2, 2, 1))
+  mu <- array(0.0, dim = c(2, 2, 1))
+  G <- array(0.0, dim = c(2, 1))
+  k <- array(0L, dim = c(2, 1))
+  accepted <- array(FALSE, dim = c(2, 1))
+
+  result <- ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+  assert_true(!result$ensemble_has_final[1])
+  assert_true(result$ensemble_final_index[1] == 0)
+  assert_true(result$ensemble_d_final[1] == 0)
+  assert_true(result$ensemble_k_final[1] == 0)
+  assert_true(abs(result$ensemble_G_final[1] - 0.0) < TOL)
+  assert_true(all(abs(result$ensemble_mu_final[, 1] - c(0.0, 0.0)) < TOL))
+}
+
+test_ensemble_final_observable_multi_ensemble_independence <- function() {
+  # Two ensembles with independent histories: ensemble 1 has a trailing rejected column
+  # (resolves to its own column 1), ensemble 2 has no rejection (resolves to its column 2).
+  U <- array(0.0, dim = c(2, 2, 2, 2))
+  d <- matrix(c(1L, 0L, 0L, 1L), nrow = 2, ncol = 2)
+  S <- array(0.0, dim = c(2, 2, 2))
+  mu <- array(0.0, dim = c(2, 2, 2))
+  G <- matrix(c(1.0, 99.0, 3.0, 2.5), nrow = 2, ncol = 2)
+  k <- matrix(c(2L, 3L, 4L, 5L), nrow = 2, ncol = 2)
+  accepted <- matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2, ncol = 2)
+
+  mu[, 1, 1] <- c(0.5, 0.0)
+  mu[, 2, 1] <- c(9.0, 9.0)
+  mu[, 1, 2] <- c(2.0, 2.0)
+  mu[, 2, 2] <- c(3.0, 3.0)
+
+  result <- ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+  assert_true(result$ensemble_has_final[1])
+  assert_true(result$ensemble_final_index[1] == 1)
+  assert_true(abs(result$ensemble_G_final[1] - 1.0) < TOL)
+
+  assert_true(result$ensemble_has_final[2])
+  assert_true(result$ensemble_final_index[2] == 2)
+  assert_true(abs(result$ensemble_G_final[2] - 2.5) < TOL)
+  assert_true(result$ensemble_k_final[2] == 5)
+  assert_true(all(abs(result$ensemble_mu_final[, 2] - c(3.0, 3.0)) < TOL))
+}
+
+test_ensemble_final_observable_small_o_evicts_accepted <- function() {
+  # o=1: the single available column holds a rejected candidate. No earlier accepted column
+  # exists to fall back to -- has_final must be FALSE.
+  U <- array(0.0, dim = c(2, 2, 1, 1))
+  d <- array(0L, dim = c(1, 1))
+  S <- array(0.0, dim = c(2, 1, 1))
+  mu <- array(0.0, dim = c(2, 1, 1))
+  G <- matrix(99.0, nrow = 1, ncol = 1)
+  k <- matrix(3L, nrow = 1, ncol = 1)
+  accepted <- matrix(FALSE, nrow = 1, ncol = 1)
+
+  mu[, 1, 1] <- c(9.0, 9.0)
+
+  result <- ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+  assert_true(!result$ensemble_has_final[1])
+  assert_true(result$ensemble_final_index[1] == 0)
+  assert_true(abs(result$ensemble_G_final[1] - 0.0) < TOL)
+}
+
 run_all_tests()

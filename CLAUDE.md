@@ -128,8 +128,9 @@ Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/
   step (not run automatically by `seeds`/`ensemble_identification`) that proposes starting
   values for `k_min`/`k_density`/`density_quantile`/`alpha_max`/`G_max`/`d_max` directly from
   the data -- see `misc/mod_STC.md`, "Estimate parameters from data", for the full algorithm
-  and its deliberate simplicity trade-offs. Not yet wired into
-  `misc/STC-experiments/run_stc.py`.
+  and its deliberate simplicity trade-offs. Wired into `C-layer/stc_cli`'s own
+  `--estimate-parameters` flag (see below), not into
+  `misc/STC-experiments/run_stc_experiments.sh`'s default parameter sweep.
 
 STC's own output layer, hand-written (not generated) but not kernels either:
 
@@ -142,8 +143,9 @@ STC's own output layer, hand-written (not generated) but not kernels either:
   `serialize_stc_ensemble_overlap_as_csv`, `serialize_stc_super_ensembles_as_tsv` --
   plain-text companions to the JSON/HTML report, for post-processing in Python/R/etc.
 - `C-layer/` -- the C CLI (`stc_cli`, GNU argp + libcsv), see `C-layer/README.md` and
-  `misc/mod_STC.md`'s own "Command line interface (CLI) in C" section. Intended, eventually,
-  to replace `misc/STC-experiments/run_stc.py`/`plot_stc.R`, contingent on feature parity;
+  `misc/mod_STC.md`'s own "Command line interface (CLI) in C" section. Has replaced
+  `misc/STC-experiments/run_stc.py`/`plot_stc.R`/`export_json.py`/`render_interactive.py`/
+  `run_stc_pair.py` (all removed) as the way to run STC and produce a report from a CSV;
   every individual STC function stays callable from Python/R directly regardless.
 
 `src/lomanle.F90`: existing module. Only integrate STC into LoManLe's pipeline after STC

@@ -70,12 +70,22 @@ extern void ensemble_identification_merged_c(
     unsigned char *ensemble_low_confidence_masks, double *ensemble_U_first, int *ensemble_d_first,
     int *ierr);
 
-extern void ensemble_reconciliation_c(const unsigned char *ensemble_masks, const int *n_vectors,
-                                      const int *n_ensembles, const char *mode,
+extern void ensemble_reconciliation_c(const unsigned char *ensemble_masks,
+                                      const int *ensemble_stop_reason, const int *n_dimensions,
+                                      const int *n_vectors, const int *n_ensembles,
+                                      const double *ensemble_U_history, const int *ensemble_d_history,
+                                      const double *ensemble_S_history, const double *ensemble_mu_history,
+                                      const double *ensemble_G_history, const int *ensemble_k_history,
+                                      const unsigned char *ensemble_accepted_history, const int *o,
+                                      const char *mode,
                                       const double *min_overlap_coefficient,
                                       const unsigned char *report_overlap_coefficient,
+                                      const unsigned char *allowed_stop_reasons,
+                                      const int *d_min, const int *d_max, const double *var_explained_min,
                                       const int *max_group_size, int *super_ensembles,
                                       int *n_super_ensembles, double *super_ensembles_overlap_coefficient,
+                                      unsigned char *eligible, unsigned char *eligible_by_stop_condition,
+                                      unsigned char *eligible_by_dimension, unsigned char *eligible_by_var_explained,
                                       int *ierr);
 
 extern void serialize_stc_results_as_json_c(
@@ -86,11 +96,18 @@ extern void serialize_stc_results_as_json_c(
     const int *ensemble_stop_reason, const double *ensemble_growth_radii, const double *ensemble_U_history,
     const double *ensemble_S_history, const int *ensemble_d_history, const double *ensemble_G_history,
     const double *ensemble_mu_history, const int *ensemble_k_history,
-    const unsigned char *ensemble_low_confidence_masks, const int *super_ensembles, const int *k_min,
+    const unsigned char *ensemble_accepted_history, const int *ensemble_member_added_at_step,
+    const unsigned char *ensemble_low_confidence_masks,
+    const double *ensemble_U_first, const int *ensemble_d_first,
+    const int *super_ensembles, const int *k_min,
     const int *k_density, const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
     const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a,
     const double *exclusion_radius_percentile, const double *bandwidth_percentile,
-    const char *reconciliation_mode, const double *min_overlap_coefficient, const int *estimated_k_min,
+    const char *reconciliation_mode, const double *min_overlap_coefficient,
+    const unsigned char *allowed_stop_reasons, const int *filter_d_min, const int *filter_d_max,
+    const double *filter_var_explained_min, const unsigned char *ensemble_eligible,
+    const unsigned char *ensemble_eligible_by_stop_condition, const unsigned char *ensemble_eligible_by_dimension,
+    const unsigned char *ensemble_eligible_by_var_explained, const int *estimated_k_min,
     const int *estimated_k_density, const double *estimated_density_quantile,
     const double *estimated_chordal_dist_max_as_prcnt_of_range, const double *estimated_G_max,
     const int *estimated_d_max, int *ierr);
@@ -103,11 +120,18 @@ extern void write_stc_interactive_html_report_c(
     const int *ensemble_stop_reason, const double *ensemble_growth_radii, const double *ensemble_U_history,
     const double *ensemble_S_history, const int *ensemble_d_history, const double *ensemble_G_history,
     const double *ensemble_mu_history, const int *ensemble_k_history,
-    const unsigned char *ensemble_low_confidence_masks, const int *super_ensembles, const int *k_min,
+    const unsigned char *ensemble_accepted_history, const int *ensemble_member_added_at_step,
+    const unsigned char *ensemble_low_confidence_masks,
+    const double *ensemble_U_first, const int *ensemble_d_first,
+    const int *super_ensembles, const int *k_min,
     const int *k_density, const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
     const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a,
     const double *exclusion_radius_percentile, const double *bandwidth_percentile,
-    const char *reconciliation_mode, const double *min_overlap_coefficient, const int *estimated_k_min,
+    const char *reconciliation_mode, const double *min_overlap_coefficient,
+    const unsigned char *allowed_stop_reasons, const int *filter_d_min, const int *filter_d_max,
+    const double *filter_var_explained_min, const unsigned char *ensemble_eligible,
+    const unsigned char *ensemble_eligible_by_stop_condition, const unsigned char *ensemble_eligible_by_dimension,
+    const unsigned char *ensemble_eligible_by_var_explained, const int *estimated_k_min,
     const int *estimated_k_density, const double *estimated_density_quantile,
     const double *estimated_chordal_dist_max_as_prcnt_of_range, const double *estimated_G_max,
     const int *estimated_d_max, int *ierr);
@@ -155,6 +179,38 @@ static void check_ierr(int ierr, const char *what) {
     if (ierr != 0) die("%s failed (ierr=%d)", what, ierr);
 }
 
+/* Comma-separated Stop-Condition names -> allowed_stop_reasons[4] (Fortran-array order: index
+ * 0 = STOP_REASON_MAX_SIZE, 1 = REJECTED_AFTER_STABLE, 2 = REJECTED_IMMEDIATELY,
+ * 3 = FIXED_POINT -- matching tox_stc_json's own stc_stop_reason_name strings exactly, see
+ * misc/mod_STC.md's "Ensemble Reconciliation"). Starts all-allowed, clears an entry for every
+ * name that appears; dies on an unrecognized name. `arg` is never longer than a handful of
+ * short names in practice, so a fixed stack buffer (not strdup, to avoid a POSIX feature-test
+ * macro dependency for something this small) is enough. */
+static void parse_allowed_stop_reasons(const char *arg, unsigned char out[4]) {
+    static const char *names[4] = {"max_size", "rejected_after_stable", "rejected_immediately",
+                                   "fixed_point"};
+    char buf[256];
+    out[0] = out[1] = out[2] = out[3] = 1;
+
+    if (strlen(arg) >= sizeof(buf)) die("--reconciliation-exclude-stop-reasons: value too long");
+    fill_padded_string(buf, sizeof(buf), arg);
+
+    for (char *tok = strtok(buf, ","); tok != NULL; tok = strtok(NULL, ",")) {
+        int matched = 0;
+        for (int i = 0; i < 4; i++) {
+            if (strcmp(tok, names[i]) == 0) {
+                out[i] = 0;
+                matched = 1;
+                break;
+            }
+        }
+        if (!matched) {
+            die("--reconciliation-exclude-stop-reasons: unknown Stop Condition '%s' (expected any of "
+                "max_size,rejected_after_stable,rejected_immediately,fixed_point)", tok);
+        }
+    }
+}
+
 static char *join_path(const char *dir, const char *name) {
     size_t len = strlen(dir) + 1 + strlen(name) + 1;
     char *out = malloc(len);
@@ -181,6 +237,10 @@ enum {
     OPT_EXCLUSION_RADIUS_PERCENTILE,
     OPT_BANDWIDTH_PERCENTILE,
     OPT_RECONCILIATION_MODE,
+    OPT_RECONCILIATION_EXCLUDE_STOP_REASONS,
+    OPT_FILTER_D_MIN,
+    OPT_FILTER_D_MAX,
+    OPT_FILTER_VAR_EXPLAINED_MIN,
     OPT_MIN_OVERLAP_COEFFICIENT,
     OPT_REPORT_OVERLAP_COEFFICIENT,
     OPT_MAX_GROUP_SIZE,
@@ -222,6 +282,13 @@ struct arguments {
     double f_max;
     int a;
     const char *reconciliation_mode;
+    const char *reconciliation_exclude_stop_reasons;
+    int have_filter_d_min;
+    int filter_d_min;
+    int have_filter_d_max;
+    int filter_d_max;
+    int have_filter_var_explained_min;
+    double filter_var_explained_min;
     double min_overlap_coefficient;
     int report_overlap_coefficient;
     int max_group_size;
@@ -264,6 +331,21 @@ static struct argp_option options[] = {
 
     {"reconciliation-mode", OPT_RECONCILIATION_MODE, "MODE", 0,
      "One of report|merge_overlap_coefficient|merge_any (default: merge_overlap_coefficient)", 2},
+    {"reconciliation-exclude-stop-reasons", OPT_RECONCILIATION_EXCLUDE_STOP_REASONS, "LIST", 0,
+     "Comma-separated Stop Conditions to exclude from reconciliation entirely (never merged, never "
+     "in overlap_coefficient_matrix -- still reported everywhere else): any of "
+     "max_size,rejected_after_stable,rejected_immediately,fixed_point (default: none excluded)", 2},
+    {"filter-d-min", OPT_FILTER_D_MIN, "N", 0,
+     "Minimum tolerated final intrinsic dimension for reconciliation eligibility, inclusive "
+     "(default: no lower bound) -- distinct from --d-max, which bounds dimension *drift* during "
+     "growth, not the final dimension's own value", 2},
+    {"filter-d-max", OPT_FILTER_D_MAX, "N", 0,
+     "Maximum tolerated final intrinsic dimension for reconciliation eligibility, inclusive "
+     "(default: no upper bound)", 2},
+    {"filter-var-explained-min", OPT_FILTER_VAR_EXPLAINED_MIN, "FRACTION", 0,
+     "Minimum tolerated final classical variance explained (sum(tangent eigenvalues) / "
+     "(sum(tangent eigenvalues) + normal_error)) for reconciliation eligibility (default: no "
+     "filtering)", 2},
     {"min-overlap-coefficient", OPT_MIN_OVERLAP_COEFFICIENT, "FRACTION", 0,
      "Minimum Overlap Coefficient for merge_overlap_coefficient mode (default: 0.9)", 2},
     {"report-overlap-coefficient", OPT_REPORT_OVERLAP_COEFFICIENT, 0, 0,
@@ -318,6 +400,13 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
 
         case OPT_RECONCILIATION_MODE: args->reconciliation_mode = arg; break;
+        case OPT_RECONCILIATION_EXCLUDE_STOP_REASONS: args->reconciliation_exclude_stop_reasons = arg; break;
+        case OPT_FILTER_D_MIN: args->filter_d_min = atoi(arg); args->have_filter_d_min = 1; break;
+        case OPT_FILTER_D_MAX: args->filter_d_max = atoi(arg); args->have_filter_d_max = 1; break;
+        case OPT_FILTER_VAR_EXPLAINED_MIN:
+            args->filter_var_explained_min = atof(arg);
+            args->have_filter_var_explained_min = 1;
+            break;
         case OPT_MIN_OVERLAP_COEFFICIENT: args->min_overlap_coefficient = atof(arg); break;
         case OPT_REPORT_OVERLAP_COEFFICIENT: args->report_overlap_coefficient = 1; break;
         case OPT_MAX_GROUP_SIZE: args->max_group_size = atoi(arg); args->have_max_group_size = 1; break;
@@ -526,11 +615,38 @@ int main(int argc, char **argv) {
     check_ierr(ierr, "ensemble_identification_merged");
 
     /* ---- ensemble reconciliation ------------------------------------------------- */
+    unsigned char allowed_stop_reasons_buf[4];
+    const unsigned char *allowed_stop_reasons_p = NULL;
+    if (args.reconciliation_exclude_stop_reasons != NULL) {
+        parse_allowed_stop_reasons(args.reconciliation_exclude_stop_reasons, allowed_stop_reasons_buf);
+        allowed_stop_reasons_p = allowed_stop_reasons_buf;
+    }
+    const int *filter_d_min_p = args.have_filter_d_min ? &args.filter_d_min : NULL;
+    const int *filter_d_max_p = args.have_filter_d_max ? &args.filter_d_max : NULL;
+    const double *filter_var_explained_min_p =
+        args.have_filter_var_explained_min ? &args.filter_var_explained_min : NULL;
+
     int n_super_ensembles_capacity = n_selected_seed * (n_selected_seed - 1);
     if (n_super_ensembles_capacity < 0) n_super_ensembles_capacity = 0;
     int *super_ensembles = malloc(sizeof(int) * (size_t)max_group_size * (size_t)(n_super_ensembles_capacity > 0 ? n_super_ensembles_capacity : 1));
     if (super_ensembles == NULL) die("out of memory allocating super_ensembles");
     int n_super_ensembles = 0;
+
+    /* Reported alongside every ensemble in the JSON regardless of whether reconciliation itself
+     * ran at all (it doesn't below n_selected_seed=2) -- default to "eligible", the same no-op
+     * every individual filter criterion already falls back to when its own threshold is absent. */
+    unsigned char *ensemble_eligible = malloc((size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    unsigned char *ensemble_eligible_by_stop_condition = malloc((size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    unsigned char *ensemble_eligible_by_dimension = malloc((size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    unsigned char *ensemble_eligible_by_var_explained = malloc((size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    if (ensemble_eligible == NULL || ensemble_eligible_by_stop_condition == NULL ||
+        ensemble_eligible_by_dimension == NULL || ensemble_eligible_by_var_explained == NULL) {
+        die("out of memory allocating reconciliation-eligibility buffers");
+    }
+    memset(ensemble_eligible, 1, (size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    memset(ensemble_eligible_by_stop_condition, 1, (size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    memset(ensemble_eligible_by_dimension, 1, (size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
+    memset(ensemble_eligible_by_var_explained, 1, (size_t)(n_selected_seed > 0 ? n_selected_seed : 1));
 
     if (n_selected_seed >= 2) {
         double *super_ensembles_overlap_coefficient =
@@ -541,9 +657,15 @@ int main(int argc, char **argv) {
         fill_padded_string(mode_buf, sizeof(mode_buf), args.reconciliation_mode);
         unsigned char report_oc = args.report_overlap_coefficient ? 1 : 0;
 
-        ensemble_reconciliation_c(ensemble_masks, &n_vectors, &n_selected_seed, mode_buf,
-                                  &args.min_overlap_coefficient, &report_oc, &max_group_size,
+        ensemble_reconciliation_c(ensemble_masks, ensemble_stop_reason, &n_dimensions, &n_vectors,
+                                  &n_selected_seed, ensemble_U_history, ensemble_d_history, ensemble_S_history,
+                                  ensemble_mu_history, ensemble_G_history, ensemble_k_history,
+                                  ensemble_accepted_history, &args.o, mode_buf,
+                                  &args.min_overlap_coefficient, &report_oc, allowed_stop_reasons_p,
+                                  filter_d_min_p, filter_d_max_p, filter_var_explained_min_p, &max_group_size,
                                   super_ensembles, &n_super_ensembles, super_ensembles_overlap_coefficient,
+                                  ensemble_eligible, ensemble_eligible_by_stop_condition,
+                                  ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained,
                                   &ierr);
         check_ierr(ierr, "ensemble_reconciliation");
         free(super_ensembles_overlap_coefficient);
@@ -575,10 +697,14 @@ int main(int argc, char **argv) {
         &n_super_ensembles, table.data, dim_names_buf, &dim_names_strlen, is_seed_mask, ensemble_masks,
         ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history,
         ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history,
-        ensemble_low_confidence_masks, super_ensembles, &effective_k_min, &effective_k_density,
+        ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks,
+        ensemble_U_first, ensemble_d_first,
+        super_ensembles, &effective_k_min, &effective_k_density,
         &effective_chordal, &effective_d_max, &effective_G_max, &args.RMSE_change_max, &args.f_max,
         &args.a, &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
-        &args.min_overlap_coefficient, estimated_k_min_p, estimated_k_density_p,
+        &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_d_min_p, filter_d_max_p,
+        filter_var_explained_min_p, ensemble_eligible, ensemble_eligible_by_stop_condition,
+        ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p, estimated_k_density_p,
         estimated_density_quantile_p, estimated_chordal_p, estimated_G_max_p, estimated_d_max_p, &ierr);
     check_ierr(ierr, "write_stc_interactive_html_report");
     free(html_path);
@@ -590,10 +716,14 @@ int main(int argc, char **argv) {
         &n_super_ensembles, table.data, dim_names_buf, &dim_names_strlen, is_seed_mask, ensemble_masks,
         ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history,
         ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history,
-        ensemble_low_confidence_masks, super_ensembles, &effective_k_min, &effective_k_density,
+        ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks,
+        ensemble_U_first, ensemble_d_first,
+        super_ensembles, &effective_k_min, &effective_k_density,
         &effective_chordal, &effective_d_max, &effective_G_max, &args.RMSE_change_max, &args.f_max,
         &args.a, &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
-        &args.min_overlap_coefficient, estimated_k_min_p, estimated_k_density_p,
+        &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_d_min_p, filter_d_max_p,
+        filter_var_explained_min_p, ensemble_eligible, ensemble_eligible_by_stop_condition,
+        ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p, estimated_k_density_p,
         estimated_density_quantile_p, estimated_chordal_p, estimated_G_max_p, estimated_d_max_p, &ierr);
     check_ierr(ierr, "serialize_stc_results_as_json");
     free(json_path);

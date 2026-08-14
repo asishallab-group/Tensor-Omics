@@ -65,6 +65,34 @@ _OBSERVABLE_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "member_selecti
 #: For a derived argument, the one the caller passed it in
 _OBSERVABLE_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, "member_selection_mask", None, None, None, None, None, None, None, None,)
 
+_lib.ensemble_final_observable_c.restype = None
+_lib.ensemble_final_observable_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_ENSEMBLE_FINAL_OBSERVABLE_ARGUMENTS = ("n_dimensions", "o", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_U_final", "ensemble_d_final", "ensemble_S_final", "ensemble_mu_final", "ensemble_G_final", "ensemble_k_final", "ensemble_has_final", "ensemble_final_index", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_ENSEMBLE_FINAL_OBSERVABLE_ARGUMENT_SOURCES = ("ensemble_U_history", "ensemble_U_history", "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+
 def normal_error(
         d,
         eigenvalues,
@@ -299,4 +327,250 @@ def observable(
         "G": G.value,
         "normal_error_value": normal_error_value.value,
         "tangent_scales_value": tangent_scales_value,
+    }
+
+def ensemble_final_observable(
+        ensemble_U_history,
+        ensemble_d_history,
+        ensemble_S_history,
+        ensemble_mu_history,
+        ensemble_G_history,
+        ensemble_k_history,
+        ensemble_accepted_history,
+):
+    r"""Each ensemble's final *accepted* growth-history state
+
+    Parameters
+    ----------
+    ensemble_U_history : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions, o, n_ensembles,), column-major (order='F')
+        Per-ensemble trailing tangent+normal bases, see `ensemble_identification`'s
+        merged `ensemble_U_history`
+    ensemble_d_history : np.ndarray[np.int32] of shape (o, n_ensembles,), column-major (order='F')
+        Per-ensemble trailing intrinsic dimensions
+    ensemble_S_history : np.ndarray[np.float64] of shape (n_dimensions, o, n_ensembles,), column-major (order='F')
+        Per-ensemble trailing singular values
+    ensemble_mu_history : np.ndarray[np.float64] of shape (n_dimensions, o, n_ensembles,), column-major (order='F')
+        Per-ensemble trailing centers
+    ensemble_G_history : np.ndarray[np.float64] of shape (o, n_ensembles,), column-major (order='F')
+        Per-ensemble trailing spectral gaps
+    ensemble_k_history : np.ndarray[np.int32] of shape (o, n_ensembles,), column-major (order='F')
+        Per-ensemble trailing sizes; 0 marks an unpopulated column
+    ensemble_accepted_history : np.ndarray[np.bool_] of shape (o, n_ensembles,), column-major (order='F')
+        Whether the growth iteration retained in each history column was itself
+        accepted -- see this kernel's own summary above
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        ensemble_U_final : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions, n_ensembles,), column-major (order='F'), read-only
+            Each ensemble's final accepted tangent+normal basis; zero when
+            `ensemble_has_final` is `False` for that ensemble
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_d_final : np.ndarray[np.int32] of shape (n_ensembles,), read-only
+            Each ensemble's final accepted intrinsic dimension; zero when
+            `ensemble_has_final` is `False` for that ensemble
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_S_final : np.ndarray[np.float64] of shape (n_dimensions, n_ensembles,), column-major (order='F'), read-only
+            Each ensemble's final accepted singular values; zero when
+            `ensemble_has_final` is `False` for that ensemble
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_mu_final : np.ndarray[np.float64] of shape (n_dimensions, n_ensembles,), column-major (order='F'), read-only
+            Each ensemble's final accepted center; zero when `ensemble_has_final` is
+            `False` for that ensemble
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_G_final : np.ndarray[np.float64] of shape (n_ensembles,), read-only
+            Each ensemble's final accepted spectral gap; zero when `ensemble_has_final` is
+            `False` for that ensemble
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_k_final : np.ndarray[np.int32] of shape (n_ensembles,), read-only
+            Each ensemble's final accepted size; zero when `ensemble_has_final` is
+            `False` for that ensemble
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_has_final : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
+            Whether any history column at all qualifies as this ensemble's final accepted
+            state -- see this kernel's own summary above for the (rare) `False` cases
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        ensemble_final_index : np.ndarray[np.int32] of shape (n_ensembles,), read-only
+            The history column each `_final` output was sliced from (0 when
+            `ensemble_has_final` is `False`) -- also, since every column 1..this index is
+            itself guaranteed accepted (only ever the single *last* populated column can be
+            the rejected candidate this kernel's own summary describes), this doubles as the
+            count of genuinely accepted, plottable history columns, for callers (e.g.
+            `tox_stc_json`'s own `observable_history`) that need to iterate the whole
+            trailing window, not just its final entry
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_observable::ensemble_final_observable`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        ensemble_U_history = np.asfortranarray(ensemble_U_history, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_U_history' must be an array of np.float64: {error}") from None
+    if ensemble_U_history.ndim != 4:
+        raise ValueError(f"'ensemble_U_history' must have 4 dimensions, but has {ensemble_U_history.ndim}")
+    try:
+        ensemble_d_history = np.asfortranarray(ensemble_d_history, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_d_history' must be an array of np.int32: {error}") from None
+    if ensemble_d_history.ndim != 2:
+        raise ValueError(f"'ensemble_d_history' must have 2 dimensions, but has {ensemble_d_history.ndim}")
+    try:
+        ensemble_S_history = np.asfortranarray(ensemble_S_history, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_S_history' must be an array of np.float64: {error}") from None
+    if ensemble_S_history.ndim != 3:
+        raise ValueError(f"'ensemble_S_history' must have 3 dimensions, but has {ensemble_S_history.ndim}")
+    try:
+        ensemble_mu_history = np.asfortranarray(ensemble_mu_history, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_mu_history' must be an array of np.float64: {error}") from None
+    if ensemble_mu_history.ndim != 3:
+        raise ValueError(f"'ensemble_mu_history' must have 3 dimensions, but has {ensemble_mu_history.ndim}")
+    try:
+        ensemble_G_history = np.asfortranarray(ensemble_G_history, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_G_history' must be an array of np.float64: {error}") from None
+    if ensemble_G_history.ndim != 2:
+        raise ValueError(f"'ensemble_G_history' must have 2 dimensions, but has {ensemble_G_history.ndim}")
+    try:
+        ensemble_k_history = np.asfortranarray(ensemble_k_history, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_k_history' must be an array of np.int32: {error}") from None
+    if ensemble_k_history.ndim != 2:
+        raise ValueError(f"'ensemble_k_history' must have 2 dimensions, but has {ensemble_k_history.ndim}")
+    try:
+        ensemble_accepted_history = np.asfortranarray(ensemble_accepted_history, dtype=np.bool_)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'ensemble_accepted_history' must be an array of np.bool_: {error}") from None
+    if ensemble_accepted_history.ndim != 2:
+        raise ValueError(f"'ensemble_accepted_history' must have 2 dimensions, but has {ensemble_accepted_history.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_dimensions = ensemble_U_history.shape[0]
+    o = ensemble_U_history.shape[2]
+    n_ensembles = ensemble_U_history.shape[3]
+
+    # Fortran cannot check that shared extents agree; this can
+    if ensemble_S_history.shape[0] != n_dimensions:
+        raise ValueError(f"'ensemble_S_history' has {ensemble_S_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies n_dimensions == {n_dimensions}"
+        )
+    if ensemble_mu_history.shape[0] != n_dimensions:
+        raise ValueError(f"'ensemble_mu_history' has {ensemble_mu_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies n_dimensions == {n_dimensions}"
+        )
+    if ensemble_d_history.shape[0] != o:
+        raise ValueError(f"'ensemble_d_history' has {ensemble_d_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_S_history.shape[1] != o:
+        raise ValueError(f"'ensemble_S_history' has {ensemble_S_history.shape[1]} along axis 1, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_mu_history.shape[1] != o:
+        raise ValueError(f"'ensemble_mu_history' has {ensemble_mu_history.shape[1]} along axis 1, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_G_history.shape[0] != o:
+        raise ValueError(f"'ensemble_G_history' has {ensemble_G_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_k_history.shape[0] != o:
+        raise ValueError(f"'ensemble_k_history' has {ensemble_k_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_accepted_history.shape[0] != o:
+        raise ValueError(f"'ensemble_accepted_history' has {ensemble_accepted_history.shape[0]} along axis 0, but "
+            f"'ensemble_U_history' implies o == {o}"
+        )
+    if ensemble_d_history.shape[1] != n_ensembles:
+        raise ValueError(f"'ensemble_d_history' has {ensemble_d_history.shape[1]} along axis 1, but "
+            f"'ensemble_U_history' implies n_ensembles == {n_ensembles}"
+        )
+    if ensemble_S_history.shape[2] != n_ensembles:
+        raise ValueError(f"'ensemble_S_history' has {ensemble_S_history.shape[2]} along axis 2, but "
+            f"'ensemble_U_history' implies n_ensembles == {n_ensembles}"
+        )
+    if ensemble_mu_history.shape[2] != n_ensembles:
+        raise ValueError(f"'ensemble_mu_history' has {ensemble_mu_history.shape[2]} along axis 2, but "
+            f"'ensemble_U_history' implies n_ensembles == {n_ensembles}"
+        )
+    if ensemble_G_history.shape[1] != n_ensembles:
+        raise ValueError(f"'ensemble_G_history' has {ensemble_G_history.shape[1]} along axis 1, but "
+            f"'ensemble_U_history' implies n_ensembles == {n_ensembles}"
+        )
+    if ensemble_k_history.shape[1] != n_ensembles:
+        raise ValueError(f"'ensemble_k_history' has {ensemble_k_history.shape[1]} along axis 1, but "
+            f"'ensemble_U_history' implies n_ensembles == {n_ensembles}"
+        )
+    if ensemble_accepted_history.shape[1] != n_ensembles:
+        raise ValueError(f"'ensemble_accepted_history' has {ensemble_accepted_history.shape[1]} along axis 1, but "
+            f"'ensemble_U_history' implies n_ensembles == {n_ensembles}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    ensemble_U_final = np.empty((n_dimensions, n_dimensions, n_ensembles,), dtype=np.float64, order='F')
+    ensemble_d_final = np.empty((n_ensembles,), dtype=np.int32, order='C')
+    ensemble_S_final = np.empty((n_dimensions, n_ensembles,), dtype=np.float64, order='F')
+    ensemble_mu_final = np.empty((n_dimensions, n_ensembles,), dtype=np.float64, order='F')
+    ensemble_G_final = np.empty((n_ensembles,), dtype=np.float64, order='C')
+    ensemble_k_final = np.empty((n_ensembles,), dtype=np.int32, order='C')
+    ensemble_has_final = np.empty((n_ensembles,), dtype=np.bool_, order='C')
+    ensemble_final_index = np.empty((n_ensembles,), dtype=np.int32, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.ensemble_final_observable_c(
+        ctypes.byref(ctypes.c_int(n_dimensions)),
+        ctypes.byref(ctypes.c_int(o)),
+        ctypes.byref(ctypes.c_int(n_ensembles)),
+        ensemble_U_history,
+        ensemble_d_history,
+        ensemble_S_history,
+        ensemble_mu_history,
+        ensemble_G_history,
+        ensemble_k_history,
+        ensemble_accepted_history,
+        ensemble_U_final,
+        ensemble_d_final,
+        ensemble_S_final,
+        ensemble_mu_final,
+        ensemble_G_final,
+        ensemble_k_final,
+        ensemble_has_final,
+        ensemble_final_index,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _ENSEMBLE_FINAL_OBSERVABLE_ARGUMENTS, _ENSEMBLE_FINAL_OBSERVABLE_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    ensemble_U_final.flags.writeable = False
+    ensemble_d_final.flags.writeable = False
+    ensemble_S_final.flags.writeable = False
+    ensemble_mu_final.flags.writeable = False
+    ensemble_G_final.flags.writeable = False
+    ensemble_k_final.flags.writeable = False
+    ensemble_has_final.flags.writeable = False
+    ensemble_final_index.flags.writeable = False
+
+    return {
+        "ensemble_U_final": ensemble_U_final,
+        "ensemble_d_final": ensemble_d_final,
+        "ensemble_S_final": ensemble_S_final,
+        "ensemble_mu_final": ensemble_mu_final,
+        "ensemble_G_final": ensemble_G_final,
+        "ensemble_k_final": ensemble_k_final,
+        "ensemble_has_final": ensemble_has_final,
+        "ensemble_final_index": ensemble_final_index,
     }

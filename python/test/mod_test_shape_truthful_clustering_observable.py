@@ -9,7 +9,7 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensor_omics import normal_error, tangent_scales, observable
+from tensor_omics import normal_error, tangent_scales, observable, ensemble_final_observable
 from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_INVALID_INPUT, ERR_EMPTY_INPUT
 
@@ -156,6 +156,134 @@ def test_observable_dimension_too_small():
 
     assert_error(lambda: observable(vectors, mask),
                  "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
+
+
+# =====================
+# ensemble_final_observable
+# =====================
+def test_ensemble_final_observable_trailing_rejected_column():
+    # D=2, o=2, one ensemble: column 1 is the true accepted state (d=1, G=1.0, mu=[0.5,0.0]);
+    # column 2 is a rejected candidate with deliberately different values (d=0, G=99.0,
+    # mu=[9,9], accepted=False). The extraction must land on column 1, never column 2.
+    U = np.zeros((2, 2, 2, 1), order='F')
+    d = np.array([[1], [0]], dtype=np.int32, order='F')
+    S = np.zeros((2, 2, 1), order='F')
+    mu = np.zeros((2, 2, 1), order='F')
+    G = np.array([[1.0], [99.0]], order='F')
+    k = np.array([[2], [3]], dtype=np.int32, order='F')
+    accepted = np.array([[True], [False]], dtype=np.bool_, order='F')
+
+    S[:, 0, 0] = [0.5, 2.0]
+    S[:, 1, 0] = [7.0, 7.0]
+    mu[:, 0, 0] = [0.5, 0.0]
+    mu[:, 1, 0] = [9.0, 9.0]
+    U[:, 0, 0, 0] = [1.0, 0.0]
+    U[:, 1, 0, 0] = [0.0, 1.0]
+
+    result = ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+    assert result['ensemble_has_final'][0]
+    assert result['ensemble_final_index'][0] == 1
+    assert result['ensemble_d_final'][0] == 1
+    assert result['ensemble_k_final'][0] == 2
+    assert abs(result['ensemble_G_final'][0] - 1.0) < 1e-12
+    assert np.allclose(result['ensemble_mu_final'][:, 0], [0.5, 0.0], atol=1e-12)
+    assert np.allclose(result['ensemble_S_final'][:, 0], [0.5, 2.0], atol=1e-12)
+
+
+def test_ensemble_final_observable_no_rejection():
+    # Both history columns accepted: extraction must land on the last (most recent) column.
+    U = np.zeros((2, 2, 2, 1), order='F')
+    d = np.array([[0], [1]], dtype=np.int32, order='F')
+    S = np.zeros((2, 2, 1), order='F')
+    mu = np.zeros((2, 2, 1), order='F')
+    G = np.array([[2.0], [1.5]], order='F')
+    k = np.array([[2], [3]], dtype=np.int32, order='F')
+    accepted = np.array([[True], [True]], dtype=np.bool_, order='F')
+
+    S[:, 0, 0] = [2.0, 0.0]
+    S[:, 1, 0] = [0.5, 3.0]
+    mu[:, 0, 0] = [0.5, 0.0]
+    mu[:, 1, 0] = [1.0, 0.0]
+
+    result = ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+    assert result['ensemble_has_final'][0]
+    assert result['ensemble_final_index'][0] == 2
+    assert result['ensemble_d_final'][0] == 1
+    assert result['ensemble_k_final'][0] == 3
+    assert abs(result['ensemble_G_final'][0] - 1.5) < 1e-12
+    assert np.allclose(result['ensemble_mu_final'][:, 0], [1.0, 0.0], atol=1e-12)
+
+
+def test_ensemble_final_observable_has_final_false():
+    # Every history column has k=0 (unpopulated) -- has_final must be false and every
+    # _final output must come back exactly zero.
+    U = np.zeros((2, 2, 2, 1), order='F')
+    d = np.zeros((2, 1), dtype=np.int32, order='F')
+    S = np.zeros((2, 2, 1), order='F')
+    mu = np.zeros((2, 2, 1), order='F')
+    G = np.zeros((2, 1), order='F')
+    k = np.zeros((2, 1), dtype=np.int32, order='F')
+    accepted = np.zeros((2, 1), dtype=np.bool_, order='F')
+
+    result = ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+    assert not result['ensemble_has_final'][0]
+    assert result['ensemble_final_index'][0] == 0
+    assert result['ensemble_d_final'][0] == 0
+    assert result['ensemble_k_final'][0] == 0
+    assert abs(result['ensemble_G_final'][0] - 0.0) < 1e-12
+    assert np.allclose(result['ensemble_mu_final'][:, 0], [0.0, 0.0], atol=1e-12)
+
+
+def test_ensemble_final_observable_multi_ensemble_independence():
+    # Two ensembles with independent histories: ensemble 1 has a trailing rejected column
+    # (resolves to its own column 1), ensemble 2 has no rejection (resolves to its column 2).
+    U = np.zeros((2, 2, 2, 2), order='F')
+    d = np.array([[1, 0], [0, 1]], dtype=np.int32, order='F')
+    S = np.zeros((2, 2, 2), order='F')
+    mu = np.zeros((2, 2, 2), order='F')
+    G = np.array([[1.0, 3.0], [99.0, 2.5]], order='F')
+    k = np.array([[2, 4], [3, 5]], dtype=np.int32, order='F')
+    accepted = np.array([[True, True], [False, True]], dtype=np.bool_, order='F')
+
+    mu[:, 0, 0] = [0.5, 0.0]
+    mu[:, 1, 0] = [9.0, 9.0]
+    mu[:, 0, 1] = [2.0, 2.0]
+    mu[:, 1, 1] = [3.0, 3.0]
+
+    result = ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+    assert result['ensemble_has_final'][0]
+    assert result['ensemble_final_index'][0] == 1
+    assert abs(result['ensemble_G_final'][0] - 1.0) < 1e-12
+
+    assert result['ensemble_has_final'][1]
+    assert result['ensemble_final_index'][1] == 2
+    assert abs(result['ensemble_G_final'][1] - 2.5) < 1e-12
+    assert result['ensemble_k_final'][1] == 5
+    assert np.allclose(result['ensemble_mu_final'][:, 1], [3.0, 3.0], atol=1e-12)
+
+
+def test_ensemble_final_observable_small_o_evicts_accepted():
+    # o=1: the single available column holds a rejected candidate. No earlier accepted column
+    # exists to fall back to -- has_final must be false.
+    U = np.zeros((2, 2, 1, 1), order='F')
+    d = np.zeros((1, 1), dtype=np.int32, order='F')
+    S = np.zeros((2, 1, 1), order='F')
+    mu = np.zeros((2, 1, 1), order='F')
+    G = np.array([[99.0]], order='F')
+    k = np.array([[3]], dtype=np.int32, order='F')
+    accepted = np.array([[False]], dtype=np.bool_, order='F')
+
+    mu[:, 0, 0] = [9.0, 9.0]
+
+    result = ensemble_final_observable(U, d, S, mu, G, k, accepted)
+
+    assert not result['ensemble_has_final'][0]
+    assert result['ensemble_final_index'][0] == 0
+    assert abs(result['ensemble_G_final'][0] - 0.0) < 1e-12
 
 
 if __name__ == "__main__":

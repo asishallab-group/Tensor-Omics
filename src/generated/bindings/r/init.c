@@ -142,23 +142,29 @@ SEXP accept_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, 
 SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP);
 SEXP calc_ensemble_growth_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP grow_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP filter_ensembles_by_stop_condition_call(SEXP, SEXP);
+SEXP filter_ensembles_by_dimension_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP filter_ensembles_by_var_explained_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP filter_ensembles_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP normal_error_call(SEXP, SEXP);
 SEXP tangent_scales_call(SEXP, SEXP);
 SEXP observable_call(SEXP, SEXP);
+SEXP ensemble_final_observable_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_stc_observable_svd_workspace_call(SEXP, SEXP);
 SEXP sample_estimator_anchors_call(SEXP, SEXP);
 SEXP grow_estimator_anchor_clouds_call(SEXP, SEXP, SEXP);
 SEXP estimate_stc_parameters_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_stc_estimate_parameters_svd_workspace_call(SEXP, SEXP);
-SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP ensemble_reconciliation_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP merge_to_super_ensembles_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP density_labels_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP seeds_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP serialize_stc_points_as_csv_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP serialize_stc_ensemble_overlap_as_csv_call(SEXP, SEXP);
 SEXP serialize_stc_super_ensembles_as_tsv_call(SEXP, SEXP);
-SEXP serialize_stc_results_as_json_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP write_stc_interactive_html_report_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP serialize_stc_results_as_json_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP write_stc_interactive_html_report_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_p_values_call(SEXP, SEXP, SEXP, SEXP);
@@ -275,23 +281,29 @@ static const R_CallMethodDef CallEntries[] = {
     {"tox_stc_accept_ensemble_svd_workspace_call", (DL_FUNC) &tox_stc_accept_ensemble_svd_workspace_call, 1},
     {"calc_ensemble_growth_radius_call", (DL_FUNC) &calc_ensemble_growth_radius_call, 6},
     {"grow_ensemble_call", (DL_FUNC) &grow_ensemble_call, 5},
+    {"filter_ensembles_by_stop_condition_call", (DL_FUNC) &filter_ensembles_by_stop_condition_call, 2},
+    {"filter_ensembles_by_dimension_call", (DL_FUNC) &filter_ensembles_by_dimension_call, 5},
+    {"filter_ensembles_by_var_explained_call", (DL_FUNC) &filter_ensembles_by_var_explained_call, 5},
+    {"filter_ensembles_call", (DL_FUNC) &filter_ensembles_call, 12},
     {"normal_error_call", (DL_FUNC) &normal_error_call, 2},
     {"tangent_scales_call", (DL_FUNC) &tangent_scales_call, 2},
     {"observable_call", (DL_FUNC) &observable_call, 2},
+    {"ensemble_final_observable_call", (DL_FUNC) &ensemble_final_observable_call, 7},
     {"tox_stc_observable_svd_workspace_call", (DL_FUNC) &tox_stc_observable_svd_workspace_call, 2},
     {"sample_estimator_anchors_call", (DL_FUNC) &sample_estimator_anchors_call, 2},
     {"grow_estimator_anchor_clouds_call", (DL_FUNC) &grow_estimator_anchor_clouds_call, 3},
     {"estimate_stc_parameters_call", (DL_FUNC) &estimate_stc_parameters_call, 8},
     {"tox_stc_estimate_parameters_svd_workspace_call", (DL_FUNC) &tox_stc_estimate_parameters_svd_workspace_call, 2},
-    {"ensemble_reconciliation_call", (DL_FUNC) &ensemble_reconciliation_call, 5},
+    {"ensemble_reconciliation_call", (DL_FUNC) &ensemble_reconciliation_call, 17},
+    {"merge_to_super_ensembles_call", (DL_FUNC) &merge_to_super_ensembles_call, 6},
     {"density_labels_call", (DL_FUNC) &density_labels_call, 5},
     {"seeds_call", (DL_FUNC) &seeds_call, 6},
     {"compute_shift_vector_field_call", (DL_FUNC) &compute_shift_vector_field_call, 3},
     {"serialize_stc_points_as_csv_call", (DL_FUNC) &serialize_stc_points_as_csv_call, 6},
     {"serialize_stc_ensemble_overlap_as_csv_call", (DL_FUNC) &serialize_stc_ensemble_overlap_as_csv_call, 2},
     {"serialize_stc_super_ensembles_as_tsv_call", (DL_FUNC) &serialize_stc_super_ensembles_as_tsv_call, 2},
-    {"serialize_stc_results_as_json_call", (DL_FUNC) &serialize_stc_results_as_json_call, 34},
-    {"write_stc_interactive_html_report_call", (DL_FUNC) &write_stc_interactive_html_report_call, 34},
+    {"serialize_stc_results_as_json_call", (DL_FUNC) &serialize_stc_results_as_json_call, 46},
+    {"write_stc_interactive_html_report_call", (DL_FUNC) &write_stc_interactive_html_report_call, 46},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},
     {"compute_p_values_call", (DL_FUNC) &compute_p_values_call, 4},

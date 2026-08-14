@@ -6,11 +6,10 @@ all-real-number CSV, runs STC's pipeline through the generated `_c` bindings (th
 never re-implements any of STC itself), and writes an interactive HTML/D3 report plus the
 same results in a few plain-text shapes for post-processing in Python/R/etc.
 
-Intended, eventually, to replace `misc/STC-experiments/run_stc.py`/`plot_stc.R` for real use
--- a compiled CLI over hand-run scripts -- once it has reached feature parity; those two
-remain useful for now, and every individual STC function stays callable from Python/R
-directly regardless (`python/tensor_omics`/`r/tensor_omics`, generated the same way this
-CLI's own calls are).
+Has replaced `misc/STC-experiments/run_stc.py`/`plot_stc.R`/`export_json.py`/
+`render_interactive.py`/`run_stc_pair.py` (all removed) -- a compiled CLI over hand-run
+scripts. Every individual STC function stays callable from Python/R directly regardless
+(`python/tensor_omics`/`r/tensor_omics`, generated the same way this CLI's own calls are).
 
 ## Files
 
@@ -73,6 +72,18 @@ Broadly:
   `--exclusion-radius-percentile`, `--f-max`, `--a`, `--reconciliation-mode`,
   `--min-overlap-coefficient`, `--max-group-size`) is optional, defaulting to the same value
   the underlying kernel documents.
+- `--reconciliation-exclude-stop-reasons` (comma-separated Stop Condition names, e.g.
+  `rejected_immediately`, or `rejected_immediately,rejected_after_stable`), `--filter-d-min`/
+  `--filter-d-max` (an ensemble's *final* intrinsic dimension, both inclusive -- distinct from
+  `--d-max`, which bounds dimension *drift* during growth, not the final value), and
+  `--filter-var-explained-min` (an ensemble's final classical variance explained,
+  `sum(tangent eigenvalues) / (sum(tangent eigenvalues) + normal_error)`) each independently
+  exclude ensembles from reconciliation entirely -- never merged into a super-ensemble, never a
+  pair in `ensemble_overlap_coefficients.csv`/`results.json`'s `overlap_coefficient_matrix` --
+  while leaving them fully visible everywhere else (points, the report's main plot, the
+  ensembles list, each now also carrying `reconciliation_eligible`/`excluded_by` so a report can
+  show which criterion, if any, excluded it). All four default to no filtering. See
+  `misc/mod_STC.md`'s "Filtering ensembles before merging".
 
 ### `--estimate-parameters`
 
