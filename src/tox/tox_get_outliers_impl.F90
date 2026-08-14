@@ -471,6 +471,8 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
             !! DM_DEFAULT(CM_OUTLIER_PERCENTILE_DEFAULT)
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
         real(real64), intent(out) :: quantile(n_genes)
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -616,6 +618,8 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold as a fraction in [0,1] for outlier detection.
             !! DM_DEFAULT(CM_OUTLIER_PERCENTILE_DEFAULT)
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
 
         call set_ok(ierr)
 

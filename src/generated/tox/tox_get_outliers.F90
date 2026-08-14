@@ -507,13 +507,15 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
             !! The default value is `0.95_real64`.
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=8_int32)
+        call validate_in_range_real(percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -575,6 +577,8 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold as a fraction in [0,1] for outlier detection.
             !! The default value is `0.95_real64`.
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), dimension(:), allocatable :: tmp_perm
         integer(int32), dimension(:), allocatable :: tmp_stack_left
         integer(int32), dimension(:), allocatable :: tmp_stack_right
@@ -602,7 +606,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=11_int32)
+        call validate_in_range_real(percentile, ierr, arg_pos=11_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 
@@ -796,6 +800,8 @@ contains
         real(real64), intent(in), optional :: percentile
             !! Percentile threshold as a fraction in [0,1] for outlier detection.
             !! The default value is `0.95_real64`.
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -803,7 +809,7 @@ contains
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=9_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=11_int32)
-        call validate_in_range_real(percentile, ierr, arg_pos=33_int32)
+        call validate_in_range_real(percentile, ierr, arg_pos=33_int32, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 #endif
 

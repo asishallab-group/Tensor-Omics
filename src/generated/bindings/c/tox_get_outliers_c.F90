@@ -536,6 +536,8 @@ contains
         real(c_double), intent(in), target :: percentile
             !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
             !! The default value is `0.95_real64`.
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         logical, dimension(n_genes) :: is_outlier_f
@@ -614,6 +616,8 @@ contains
         real(c_double), intent(in), target :: percentile
             !! Percentile threshold as a fraction in [0,1] for outlier detection.
             !! The default value is `0.95_real64`.
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         logical, dimension(n_genes) :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
@@ -774,6 +778,8 @@ contains
         real(c_double), intent(in), target :: percentile
             !! Percentile threshold as a fraction in [0,1] for outlier detection.
             !! The default value is `0.95_real64`.
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
         logical, dimension(n_genes) :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL

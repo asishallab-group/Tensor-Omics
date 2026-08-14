@@ -113,6 +113,8 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' @param perm a integer vector. Permutation array with sorted indices
 #' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] (top 5% for the default).
 #'   The default value is `0.95`.
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{threshold}{a numeric scalar. Output threshold value used for detection}
@@ -160,6 +162,8 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
 #' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] for outlier detection.
 #'   The default value is `0.95`.
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{loess_x}{a numeric vector. Reference x-coordinates.}

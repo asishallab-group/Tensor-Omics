@@ -372,6 +372,8 @@ def identify_outliers(
     percentile : float, optional, default 0.95
         Percentile threshold as a fraction in [0,1] (top 5% for the default).
         The default value is `0.95`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
 
     Returns
     -------
@@ -484,6 +486,8 @@ def detect_outliers(
     percentile : float, optional, default 0.95
         Percentile threshold as a fraction in [0,1] for outlier detection.
         The default value is `0.95`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
 
     Returns
     -------
