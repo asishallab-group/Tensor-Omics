@@ -10,6 +10,7 @@
 !| Generated from [[tox_gene_centroids_impl(module)]]; do not edit -- regenerate instead.
 module tox_gene_centroids
     use tox_gene_centroids_impl, only: MODE_GROUP_ALL, MODE_GROUP_ORTHOLOGS, group_centroid_impl, mean_vector_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -99,7 +100,7 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(real64), dimension(n_axes, n_families), intent(out) :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        logical, dimension(n_genes), intent(in) :: ortholog_set
+        logical(c_bool), dimension(n_genes), intent(in) :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -159,7 +160,7 @@ contains
             !! The output matrix (n_axes x n_families) to store the computed centroids.
         integer(int32), dimension(n_genes), intent(out) :: tmp_group_indices
             !! Work array for storing the indices of one family's genes.
-        logical, dimension(n_genes), intent(in) :: ortholog_set
+        logical(c_bool), dimension(n_genes), intent(in) :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.

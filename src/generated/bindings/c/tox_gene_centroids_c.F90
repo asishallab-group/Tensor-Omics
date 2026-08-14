@@ -106,7 +106,6 @@ contains
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:), allocatable :: ortholog_set_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -118,9 +117,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
 
-        M_ALLOCATE(ortholog_set_f(n_genes))
-        ortholog_set_f = ortholog_set
-
         call group_centroid_orthologs(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
@@ -128,7 +124,7 @@ contains
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
-            ortholog_set = ortholog_set_f,&
+            ortholog_set = ortholog_set,&
             ierr = ierr&
         )
     end subroutine group_centroid_orthologs_c
@@ -168,7 +164,6 @@ contains
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:), allocatable :: ortholog_set_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -181,9 +176,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_group_indices, n_genes)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
 
-        M_ALLOCATE(ortholog_set_f(n_genes))
-        ortholog_set_f = ortholog_set
-
         call group_centroid_orthologs_expert(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
@@ -192,7 +184,7 @@ contains
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
             tmp_group_indices = tmp_group_indices,&
-            ortholog_set = ortholog_set_f,&
+            ortholog_set = ortholog_set,&
             ierr = ierr&
         )
     end subroutine group_centroid_orthologs_expert_c

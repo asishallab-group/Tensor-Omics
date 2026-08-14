@@ -5,6 +5,7 @@ module mod_test_bst
     use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -31,7 +32,7 @@ contains
         real(real64) :: x(n)
         integer(int32) :: ix(n), expected_ix(n)
         integer(int32) :: i, ierr
-        logical :: is_sorted
+        logical(c_bool) :: is_sorted
 
         call set_ok(ierr)
 
@@ -249,7 +250,7 @@ contains
         real(real64) :: x(n)
         integer(int32) :: ix(n)
         integer(int32) :: i, ierr
-        logical :: is_sorted
+        logical(c_bool) :: is_sorted
 
         call set_ok(ierr)
         call random_array(x, n)

@@ -12,6 +12,7 @@
 !| callers want. The individual routines are published for a caller assembling their own.
 module tox_normalization_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
                           validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH
     use f42_math_impl, only: is_close, logx_helper, above, mean, std_dev
@@ -139,14 +140,14 @@ contains
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)
-        logical, intent(in), optional :: use_quantile
+        logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! DM_DEFAULT(.false.)
         integer(int32), intent(out) :: ierr
             !! Error code
 
         ! Local variables
-        logical :: actual_use_quantile
+        logical(c_bool) :: actual_use_quantile
 
         real(real64), dimension(:, :), pointer :: log_transformed_expr_transposed_view
         real(real64), dimension(:), pointer :: tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_yhat_global_ptr
@@ -405,7 +406,7 @@ contains
         call loess_fit_robust_impl(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
                                      tmp_loess_weights(1:n_valid), tmp_eval_points(1:n_valid, :), &
                                      actual_span, actual_degree, &
-                                     n_valid, .false., .false., CM_LOESS_ROBUST_ITERS, &
+                                     n_valid, .false._c_bool, .false._c_bool, CM_LOESS_ROBUST_ITERS, &
                                      tmp_int_workspace, int_workspace_size, &
                                      tmp_real_workspace, real_workspace_size, tmp_hat_diag(1:n_valid), &
                                      tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), &

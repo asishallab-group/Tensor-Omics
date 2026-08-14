@@ -5,6 +5,7 @@
 !| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_math_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err, validate_in_range_real
     use tox_errors, only: is_err
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite
@@ -57,7 +58,7 @@ contains
     pure real(real64) function std_dev(vec, do_bessel_correction)
         real(real64), dimension(:), intent(in) :: vec
             !! Vector to compute the standard deviation value from
-        logical, intent(in), optional :: do_bessel_correction
+        logical(c_bool), intent(in), optional :: do_bessel_correction
             !! Tells whether to apply the bessel's correction or not, default: `.false.`
             !!
             !! |    Case     |                                                Formula                                                      |
@@ -65,7 +66,7 @@ contains
             !! |  `.true.`   | \(\frac{1}{\texttt{size}(vec) - 1} \cdot \sum_{i=1}^{\texttt{size}(vec)} (vec(i) - \texttt{mean}(i))^{2}\)  |
             !! |  `.false.`  |  \(\frac{1}{\texttt{size}(vec)} \cdot \sum_{i=1}^{\texttt{size}(vec)} vec(i)^{2} - \texttt{mean}(i)^{2}\)   |
 
-        logical :: bessel
+        logical(c_bool) :: bessel
         integer(int32) :: n_elements, i_element
         real(real64) :: mean_val, squares_sum
 

@@ -273,7 +273,6 @@ contains
             !! number of genes kept
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical, dimension(:), allocatable :: mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -282,15 +281,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_gene_to_fam_elements)
         M_CHECK_ARRAY_NON_NULL(mask, (size(gene_to_fam)))
 
-        M_ALLOCATE(mask_f(size(gene_to_fam)))
-
         call get_unassigned_mask(&
             gene_to_fam = gene_to_fam,&
-            mask = mask_f,&
+            mask = mask,&
             n_genes_kept = n_genes_kept&
         )
-
-        mask = mask_f
     end subroutine get_unassigned_mask_c
 
 end module tox_data_tools_c

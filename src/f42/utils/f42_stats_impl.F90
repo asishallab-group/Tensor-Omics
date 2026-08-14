@@ -5,6 +5,7 @@
 !| One of the modules the `f42_utils` family gathers.
 module f42_stats_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_sort_impl, only: binary_search_insertion
     M_IMPLICIT_NONE
 
@@ -45,7 +46,7 @@ contains
         real(real64) :: query_x, ref_x, delta, sum_weights, weight
         real(real64) :: min_dist
         integer(int32) :: min_idx
-        logical :: exact_match_found, use_kernel
+        logical(c_bool) :: exact_match_found, use_kernel
 
         ! Check if we should use kernel smoothing
         use_kernel = (kernel_sigma > 0.0_real64)

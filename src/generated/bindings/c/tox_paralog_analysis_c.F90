@@ -73,7 +73,6 @@ contains
             !! `.true.` if neofunctionalization has been detected for the respective axes, always `.false.` for unassigned genes
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: neofunc_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -86,8 +85,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(thresholds, n_axes)
         M_CHECK_ARRAY_NON_NULL(neofunc, n_genes * n_axes)
 
-        M_ALLOCATE(neofunc_f(n_genes, n_axes))
-
         call detect_neofunctionalization(&
             ancestors = ancestors,&
             n_families = n_families,&
@@ -96,11 +93,9 @@ contains
             gene_to_fam = gene_to_fam,&
             n_genes = n_genes,&
             thresholds = thresholds,&
-            neofunc = neofunc_f,&
+            neofunc = neofunc,&
             ierr = ierr&
         )
-
-        neofunc = neofunc_f
     end subroutine detect_neofunctionalization_c
 
     !> summary: C-wrapper for [[tox_paralog_analysis(module):detect_dosage_effect(subroutine)]]

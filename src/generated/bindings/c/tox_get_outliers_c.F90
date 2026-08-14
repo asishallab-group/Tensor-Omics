@@ -540,7 +540,6 @@ contains
             !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:), allocatable :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -553,21 +552,17 @@ contains
         M_CHECK_ARRAY_NON_NULL(is_outlier, n_genes)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
-        M_ALLOCATE(is_outlier_f(n_genes))
-
         call identify_outliers(&
             n_genes = n_genes,&
             rdi = rdi,&
             sorted_rdi = sorted_rdi,&
             perm = perm,&
-            is_outlier = is_outlier_f,&
+            is_outlier = is_outlier,&
             threshold = threshold,&
             quantile = quantile,&
             percentile = percentile,&
             ierr = ierr&
         )
-
-        is_outlier = is_outlier_f
     end subroutine identify_outliers_c
 
     !> summary: C-wrapper for [[tox_get_outliers(module):detect_outliers(subroutine)]]
@@ -620,7 +615,6 @@ contains
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-        logical, dimension(:), allocatable :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -635,14 +629,12 @@ contains
         M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
-        M_ALLOCATE(is_outlier_f(n_genes))
-
         call detect_outliers(&
             n_genes = n_genes,&
             n_families = n_families,&
             distances = distances,&
             gene_to_fam = gene_to_fam,&
-            is_outlier = is_outlier_f,&
+            is_outlier = is_outlier,&
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
@@ -650,8 +642,6 @@ contains
             ierr = ierr,&
             percentile = percentile&
         )
-
-        is_outlier = is_outlier_f
     end subroutine detect_outliers_c
 
     !> summary: C-wrapper for [[tox_get_outliers(module):detect_outliers_expert(subroutine)]]
@@ -784,7 +774,6 @@ contains
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-        logical, dimension(:), allocatable :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -821,8 +810,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
 
-        M_ALLOCATE(is_outlier_f(n_genes))
-
         call detect_outliers_expert(&
             n_genes = n_genes,&
             n_families = n_families,&
@@ -850,7 +837,7 @@ contains
             tmp_rdi = tmp_rdi,&
             tmp_sorted_rdi = tmp_sorted_rdi,&
             tmp_threshold = tmp_threshold,&
-            is_outlier = is_outlier_f,&
+            is_outlier = is_outlier,&
             loess_x = loess_x,&
             loess_y = loess_y,&
             loess_n = loess_n,&
@@ -858,8 +845,6 @@ contains
             ierr = ierr,&
             percentile = percentile&
         )
-
-        is_outlier = is_outlier_f
     end subroutine detect_outliers_expert_c
 
 end module tox_get_outliers_c

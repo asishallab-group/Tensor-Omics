@@ -4,6 +4,7 @@ module mod_test_tissue_versatility
     use tox_tissue_versatility
     use tox_errors
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     use f42_math_impl, only: degrees
     implicit none
@@ -30,7 +31,7 @@ contains
     !> Test axis selection (subspace).
     subroutine test_partial_axis_selection()
         real(real64) :: expr(3, 1), tv(1), angle(1)
-        logical :: select_vec(1), select_axes(3)
+        logical(c_bool) :: select_vec(1), select_axes(3)
         integer(int32) :: ierr
         expr(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64]
         select_vec = [.true.]
@@ -45,7 +46,7 @@ contains
     !> Test mixed vectors (uniform, single axis, null) - consolidates basic cases.
     subroutine test_mixed_vectors()
         real(real64) :: expr(3, 3), tv(3), angle(3)
-        logical :: select_vec(3), select_axes(3)
+        logical(c_bool) :: select_vec(3), select_axes(3)
         integer(int32) :: ierr
         expr(:, 1) = [1.0_real64, 1.0_real64, 1.0_real64] ! uniform → TV=0
         expr(:, 2) = [0.0_real64, 0.0_real64, 2.0_real64] ! single axis → TV=1
@@ -65,7 +66,7 @@ contains
     !> Test angle output in degrees for a known case.
     subroutine test_angle_degrees()
         real(real64) :: expr(2, 1), tv(1), angle(1)
-        logical :: select_vec(1), select_axes(2)
+        logical(c_bool) :: select_vec(1), select_axes(2)
         integer(int32) :: ierr
         expr(:, 1) = [1.0_real64, 0.0_real64]
         select_vec = [.true.]
@@ -80,7 +81,7 @@ contains
     subroutine test_high_dimensional_vectors()
         real(real64) :: expr4(4, 1), tv4(1), angle4(1)
         real(real64) :: expr5(5, 1), tv5(1), angle5(1)
-        logical :: select_vec(1), select_axes4(4), select_axes5(5)
+        logical(c_bool) :: select_vec(1), select_axes4(4), select_axes5(5)
         integer(int32) :: ierr4, ierr5
         expr4(:, 1) = [1.0_real64, 1.0_real64, 1.0_real64, 1.0_real64]
         expr5(:, 1) = [2.0_real64, 2.0_real64, 2.0_real64, 2.0_real64, 2.0_real64]
@@ -101,7 +102,7 @@ contains
     subroutine test_randomized_vectors_axes()
         integer(int32), parameter :: n_axes = 5, n_vecs = 4
         real(real64) :: expr(n_axes, n_vecs), tv(n_vecs), angle(n_vecs)
-        logical :: select_vec(n_vecs), select_axes(n_axes)
+        logical(c_bool) :: select_vec(n_vecs), select_axes(n_axes)
         integer(int32) :: i, ierr
         call random_seed()
         call random_number(expr)
@@ -118,7 +119,7 @@ contains
     !> Test invalid input: no axes selected (should return error code).
     subroutine test_invalid_input_no_axes()
         real(real64) :: expr(3, 1), tv(1), angle(1)
-        logical :: select_vec(1), select_axes(3)
+        logical(c_bool) :: select_vec(1), select_axes(3)
         integer(int32) :: ierr
         expr(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64]
         select_vec = [.true.]
@@ -135,7 +136,7 @@ contains
     !| causing numerical instability in the cos_phi calculation.
     subroutine test_epsilon_threshold_stability()
         real(real64) :: expr(3, 4), tv(4), angle(4)
-        logical :: select_vec(4), select_axes(3)
+        logical(c_bool) :: select_vec(4), select_axes(3)
         integer(int32) :: ierr
         real(real64), parameter :: eps_sqrt = sqrt(epsilon(1.0_real64))  ! ~1.49e-8
         real(real64), parameter :: large_component = 1.0e-5_real64  ! Much larger than sqrt(epsilon)
@@ -194,7 +195,7 @@ contains
     !| precision errors, requiring the clamp protection.
     subroutine test_edge_case_needs_clamp()
         real(real64) :: expr(3, 1), tv(1), angle(1)
-        logical :: select_vec(1), select_axes(3)
+        logical(c_bool) :: select_vec(1), select_axes(3)
         integer(int32) :: ierr
         real(real64), parameter :: eps_sqrt = sqrt(epsilon(1.0_real64))  ! ~1.49e-8
 
@@ -227,7 +228,7 @@ contains
     !| for clamp protection even when vectors pass the sqrt(epsilon) threshold.
     subroutine test_unbalanced_components()
         real(real64) :: expr(3, 2), tv(2), angle(2)
-        logical :: select_vec(2), select_axes(3)
+        logical(c_bool) :: select_vec(2), select_axes(3)
         integer(int32) :: ierr
         real(real64), parameter :: eps_sqrt = sqrt(epsilon(1.0_real64))  ! ~1.49e-8
 
@@ -271,7 +272,7 @@ contains
     !| protection in a single comprehensive test to avoid redundancy.
     subroutine test_comprehensive_edge_cases()
         real(real64) :: expr(3, 6), tv(6), angle(6)
-        logical :: select_vec(6), select_axes(3)
+        logical(c_bool) :: select_vec(6), select_axes(3)
         integer(int32) :: i, ierr
         real(real64), parameter :: eps_sqrt = sqrt(epsilon(1.0_real64))  ! ~1.49e-8
 

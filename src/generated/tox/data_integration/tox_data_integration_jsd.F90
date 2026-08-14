@@ -11,6 +11,7 @@
 module tox_data_integration_jsd
     use tox_data_integration_jsd_impl, only: build_residual_histograms_impl, compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, determine_shared_residual_range_impl
     use tox_data_integration_jsd_impl, only: determine_study_shared_residual_range_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
@@ -58,7 +59,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=2_int32)
         call validate_in_range_real(residual_range_quantile, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
+        call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -109,7 +110,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
         call validate_in_range_real(residual_range_quantile, ierr, arg_pos=5_int32, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
+        call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(abs_residual_pool_perm, pool_size, ierr, arg_pos=2_int32, min=1_int32, max=pool_size)
         if (is_err(ierr)) return
 #endif
@@ -170,8 +171,8 @@ contains
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
         call validate_in_range_real(residual_range_quantile, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -243,8 +244,8 @@ contains
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
         call validate_in_range_real(residual_range_quantile, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -297,7 +298,7 @@ contains
             !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
         integer(int32), dimension(n_points), intent(out) :: included_n_reps
             !! Stores the count of non-NaN replicates (included ones)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
             !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -309,7 +310,7 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
         call validate_dimension_size(n_bins, ierr, arg_pos=6_int32)
-        call validate_all_in_range_real(neighborhood_residuals, n_reps * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals, n_reps * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 

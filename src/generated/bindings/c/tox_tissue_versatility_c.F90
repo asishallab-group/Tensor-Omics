@@ -60,8 +60,6 @@ contains
             !! Output, real array, length = n_selected_vectors, stores the calculated angles in degrees
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:), allocatable :: vectors_selection_mask_f
-        logical, dimension(:), allocatable :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -75,18 +73,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(tissue_versatilities, n_selected_vectors)
         M_CHECK_ARRAY_NON_NULL(tissue_angles_deg, n_selected_vectors)
 
-        M_ALLOCATE(vectors_selection_mask_f(n_vectors))
-        vectors_selection_mask_f = vectors_selection_mask
-        M_ALLOCATE(axes_selection_mask_f(n_axes))
-        axes_selection_mask_f = axes_selection_mask
-
         call compute_tissue_versatility(&
             n_axes = n_axes,&
             n_vectors = n_vectors,&
             expression_vectors = expression_vectors,&
-            vectors_selection_mask = vectors_selection_mask_f,&
+            vectors_selection_mask = vectors_selection_mask,&
             n_selected_vectors = n_selected_vectors,&
-            axes_selection_mask = axes_selection_mask_f,&
+            axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
             tissue_versatilities = tissue_versatilities,&
             tissue_angles_deg = tissue_angles_deg,&

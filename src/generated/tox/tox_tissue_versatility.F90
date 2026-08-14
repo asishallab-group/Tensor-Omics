@@ -10,6 +10,7 @@
 !| Generated from [[tox_tissue_versatility_impl(module)]]; do not edit -- regenerate instead.
 module tox_tissue_versatility
     use tox_tissue_versatility_impl, only: compute_tissue_versatility_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, set_err_once
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -46,9 +47,9 @@ contains
             !! Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)
         real(real64), dimension(n_axes, n_vectors), intent(in) :: expression_vectors
             !! 2D array (n_axes, n_vectors), each column is a gene expression vector
-        logical, dimension(n_vectors), intent(in) :: vectors_selection_mask
+        logical(c_bool), dimension(n_vectors), intent(in) :: vectors_selection_mask
             !! Logical array (n_vectors), .TRUE. for vectors to process
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! Logical array (n_axes), .TRUE. for axes to include in calculation
         integer(int32), intent(in) :: n_selected_axes
             !! Number of selected axes (count of .TRUE. in axes_selection_mask)

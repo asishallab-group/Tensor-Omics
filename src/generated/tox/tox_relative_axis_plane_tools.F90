@@ -18,6 +18,7 @@
 module tox_relative_axis_plane_tools
     use tox_relative_axis_plane_tools_impl, only: clock_hand_angle_between_vectors_impl, clock_hand_angles_for_shift_vectors_impl, compute_relative_axis_contributions_impl, omics_field_RAP_projection_impl
     use tox_relative_axis_plane_tools_impl, only: omics_vector_RAP_projection_impl, relative_axes_changes_from_shift_vector_impl, relative_axes_expression_from_expression_vector_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, clear_err_arg_pos
     use tox_errors, only: set_err_once, validate_all_in_range_real, validate_dimension_size
@@ -56,9 +57,9 @@ contains
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_axes, n_vecs), intent(in) :: vecs
             !! matrix with expression vectors
-        logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+        logical(c_bool), dimension(n_vecs), intent(in) :: vecs_selection_mask
             !! `.true.` for vectors where projection is to be computed
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(out) :: projections
             !! projected vectors
@@ -111,9 +112,9 @@ contains
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields; each field holds two vectors, the origin first and the target second
-        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+        logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! `.true.` for vectors where projection is to be computed
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         real(real64), dimension(n_selected_axes, n_selected_fields), intent(out) :: projections
             !! projected vectors
@@ -216,7 +217,7 @@ contains
             !! Count of .true. values in fields_selection_mask
         real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields; each field holds two vectors, the origin first and the target second
-        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+        logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         real(real64), dimension(n_dims), intent(in) :: orientation_reference
             !! Orients the plane the rotation happens in, so the angle can carry a sign. A

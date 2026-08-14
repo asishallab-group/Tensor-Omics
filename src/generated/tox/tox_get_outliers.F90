@@ -12,6 +12,7 @@
 !| Generated from [[tox_get_outliers_impl(module)]]; do not edit -- regenerate instead.
 module tox_get_outliers
     use tox_get_outliers_impl, only: compute_family_scaling_impl, compute_rdi_impl, detect_outliers_impl, identify_outliers_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_loess_impl, only: EPS_LOESS, MODE_PLAIN, MODE_ROBUST, tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
@@ -125,7 +126,7 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false.&
+            save_factorization = .false._c_bool&
         )
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
@@ -495,7 +496,7 @@ contains
             !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: perm
             !! Permutation array with sorted indices
-        logical, dimension(n_genes), intent(out) :: is_outlier
+        logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
@@ -559,7 +560,7 @@ contains
             !! Infinite values are permitted for this value.
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! Gene-to-family mapping (1-based indexing)
-        logical, dimension(n_genes), intent(out) :: is_outlier
+        logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
             !! Reference x-coordinates.
@@ -615,7 +616,7 @@ contains
             max_neighborhood_size = n_families,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false.&
+            save_factorization = .false._c_bool&
         )
         M_ALLOCATE(tmp_perm(n_genes))
         M_ALLOCATE(tmp_stack_left(n_genes))
@@ -782,7 +783,7 @@ contains
             !! Sorted RDI (intermediate, consumed by the outlier step)
         real(real64), intent(out) :: tmp_threshold
             !! Detection threshold (intermediate, discarded)
-        logical, dimension(n_genes), intent(out) :: is_outlier
+        logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
             !! Reference x-coordinates.

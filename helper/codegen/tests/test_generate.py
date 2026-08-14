@@ -433,8 +433,10 @@ class TestTheCLayerAllocatesNothingOnTheStack:
         return {f.path.name: f.content for f in result.files if f.path.suffix == ".F90"}
 
     def test_the_premise(self, c_wrappers):
-        # if this ever drops to nothing the rest of the class is vacuous
-        assert sum("M_ALLOCATE" in text for text in c_wrappers.values()) > 5
+        # if this ever drops to nothing the rest of the class is vacuous. It dropped from 16
+        # wrappers to 3 when logicals moved to c_bool and stopped needing a temporary at all,
+        # so the bar is where it is because character and nullable locals are what is left.
+        assert sum("M_ALLOCATE" in text for text in c_wrappers.values()) >= 3
 
     def test_no_wrapper_declares_a_runtime_sized_automatic_local(self, c_wrappers):
         offenders = []

@@ -1,6 +1,7 @@
 ! filepath: test/test_suite.f90
 !> Common definitions for all test suites.
 module test_suite
+    use, intrinsic :: iso_c_binding, only: c_bool
     implicit none
 
     !> Common interface for all test procedures.
@@ -175,7 +176,7 @@ contains
         character(len=*), intent(in) :: test_names(:)
         type(test_case), intent(in) :: all_tests(:)
         integer :: i, j
-        logical :: found, some_not_found
+        logical(c_bool) :: found, some_not_found
 
         some_not_found = .false.
         do i = 1, size(test_names)

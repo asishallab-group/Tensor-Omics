@@ -10,6 +10,7 @@
 !| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: logx_helper, above, is_close
     use f42_sort_impl, only: sort_array, init_perm
@@ -318,11 +319,11 @@ contains
             ! If you have a plain routine, call it; otherwise keep robust always.
             call loess_fit_plain_impl( &
                 n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
-                actual_span, actual_degree, n_valid, .false., .false., tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+                actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
         else
             call loess_fit_robust_impl( &
                 n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
-                actual_span, actual_degree, n_valid, .false., .false., actual_n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
+                actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, actual_n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
                 tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
         end if
 
@@ -464,7 +465,7 @@ contains
             !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: perm(n_genes)
             !! Permutation array with sorted indices
-        logical, intent(out) :: is_outlier(n_genes)
+        logical(c_bool), intent(out) :: is_outlier(n_genes)
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
@@ -600,7 +601,7 @@ contains
         real(real64), intent(out) :: tmp_threshold
             !! Detection threshold (intermediate, discarded)
 
-        logical, intent(out) :: is_outlier(n_genes)
+        logical(c_bool), intent(out) :: is_outlier(n_genes)
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: loess_x(n_families)
             !! Reference x-coordinates.

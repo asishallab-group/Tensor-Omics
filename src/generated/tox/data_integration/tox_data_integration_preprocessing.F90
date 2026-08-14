@@ -13,6 +13,7 @@
 module tox_data_integration_preprocessing
     use tox_data_integration_preprocessing_impl, only: compute_gene_means_impl, compute_residuals_impl, construct_neighborhoods_impl, pool_means_impl
     use tox_data_integration_preprocessing_impl, only: pool_study_means_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_sort_impl, only: init_perm, sort_array_heapsort
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
@@ -97,7 +98,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_reps, ierr, arg_pos=2_int32)
-        call validate_all_in_range_real(means, n_genes, ierr, arg_pos=4_int32, allow_nan=.true.)
+        call validate_all_in_range_real(means, n_genes, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -140,7 +141,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
-        call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
+        call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -190,7 +191,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
-        call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true.)
+        call validate_all_in_range_real(pooled_means, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -243,8 +244,8 @@ contains
         call validate_dimension_size(n_genes_S1, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S2, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=5_int32)
-        call validate_all_in_range_real(mean_S1, n_genes_S1, ierr, arg_pos=2_int32, allow_nan=.true.)
-        call validate_all_in_range_real(mean_S2, n_genes_S2, ierr, arg_pos=4_int32, allow_nan=.true.)
+        call validate_all_in_range_real(mean_S1, n_genes_S1, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(mean_S2, n_genes_S2, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -307,8 +308,8 @@ contains
         call validate_dimension_size(n_genes_S1, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_genes_S2, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=5_int32)
-        call validate_all_in_range_real(mean_S1, n_genes_S1, ierr, arg_pos=2_int32, allow_nan=.true.)
-        call validate_all_in_range_real(mean_S2, n_genes_S2, ierr, arg_pos=4_int32, allow_nan=.true.)
+        call validate_all_in_range_real(mean_S1, n_genes_S1, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(mean_S2, n_genes_S2, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -375,9 +376,9 @@ contains
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S, ierr, arg_pos=5_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=9_int32, min=1_int32, max=count(.not. ieee_is_nan(mean_S), kind=int32))
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
-        call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true.)
-        call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true.)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -453,9 +454,9 @@ contains
         call validate_dimension_size(n_genes_S, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_reps_S, ierr, arg_pos=5_int32)
         call validate_in_range_int(n_neighbors, ierr, arg_pos=11_int32, min=1_int32, max=count(.not. ieee_is_nan(mean_S), kind=int32))
-        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
-        call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true.)
-        call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true.)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(mean_S, n_genes_S, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(resid_S, n_reps_S * n_genes_S, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 

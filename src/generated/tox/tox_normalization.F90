@@ -15,6 +15,7 @@
 module tox_normalization
     use tox_normalization_impl, only: calc_fchange_impl, calc_tiss_avg_impl, log2_transformation_impl, normalization_pipeline_impl
     use tox_normalization_impl, only: normalize_by_std_dev_impl, normalize_unit_length_impl, quantile_normalization_impl, root_mean_sq_normalization_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_loess_impl, only: tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
@@ -100,7 +101,7 @@ contains
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
-        logical, intent(in), optional :: use_quantile
+        logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
         integer(int32), intent(out) :: ierr
@@ -135,7 +136,7 @@ contains
             max_neighborhood_size = n_genes,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false.&
+            save_factorization = .false._c_bool&
         )
         M_ALLOCATE(tmp_expr_copy(n_replicates, n_genes))
         M_ALLOCATE(tmp_loess_y(n_genes))
@@ -275,7 +276,7 @@ contains
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
-        logical, intent(in), optional :: use_quantile
+        logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
         integer(int32), intent(out) :: ierr
@@ -381,7 +382,7 @@ contains
             max_neighborhood_size = n_genes,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = .false.&
+            save_factorization = .false._c_bool&
         )
         M_ALLOCATE(tmp_loess_x(n_genes))
         M_ALLOCATE(tmp_loess_y(n_genes))

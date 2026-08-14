@@ -41,7 +41,6 @@ contains
             !! Name of the file to write to
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical, dimension(:), allocatable :: arr_f
         character(len=:), allocatable :: filename_f
 
         M_CHECK_IERR_NON_NULL
@@ -53,13 +52,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(arr, product(arr_shape))
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
 
-        M_ALLOCATE(arr_f(product(arr_shape)))
-        arr_f = arr(1:product(arr_shape))
         call c_char_1d_as_string(filename, filename_f, ierr)
         if (is_err(ierr)) return
 
         call serialize_logical_helper(&
-            arr = arr_f,&
+            arr = arr(1:product(arr_shape)),&
             n_elements = n_elements,&
             arr_shape = arr_shape,&
             filename = filename_f,&

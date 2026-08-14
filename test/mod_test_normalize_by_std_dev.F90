@@ -2,6 +2,7 @@
 module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: iso_c_binding, only: c_bool
   use tox_normalization
   ! the tox_normalization module used to re-export it; it is f42 infrastructure
   use f42_math_impl, only: std_dev
@@ -36,7 +37,7 @@ contains
 
     ! --- Compute using the user's function ---
     s_pop  = std_dev(v)                     ! default: no Bessel correction
-    s_samp = std_dev(v, do_bessel_correction=.true.)
+    s_samp = std_dev(v, do_bessel_correction=.true._c_bool)
 
     ! --- Assertions ---
     call assert_equal_real(s_pop,  sqrt(2.0_real64), 1e-12_real64, &
@@ -58,7 +59,7 @@ contains
       w = [3.14159_real64]
 
       s1  = std_dev(w)
-      s1b = std_dev(w, do_bessel_correction=.true.)
+      s1b = std_dev(w, do_bessel_correction=.true._c_bool)
 
       call assert_equal_real(s1,  0.0_real64, 1e-12_real64, "test_std_dev: std_dev length-1 (population)")
       call assert_equal_real(s1b, 0.0_real64, 1e-12_real64, "test_std_dev: std_dev length-1 (sample)")

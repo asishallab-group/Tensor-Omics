@@ -15,6 +15,7 @@
 !| level, falls on each selected axis.
 module tox_relative_axis_plane_tools_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, set_err_once, ERR_DIVISION_BY_ZERO
     use f42_math_impl, only: clamp, operator(.isclose.)
     M_IMPLICIT_NONE
@@ -34,9 +35,9 @@ contains
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_axes, n_vecs), intent(in) :: vecs
             !! matrix with expression vectors
-        logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+        logical(c_bool), dimension(n_vecs), intent(in) :: vecs_selection_mask
             !! `.true.` for vectors where projection is to be computed
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(out) :: projections
             !! projected vectors
@@ -71,11 +72,11 @@ contains
             !! number of axes
         integer(int32), intent(in) :: n_fields
             !! number of vectors per axis
-        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+        logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! `.true.` for vectors where projection is to be computed
         integer(int32), intent(in) :: n_selected_fields
             !! count of `.true.` values in `fields_selection_mask`
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         integer(int32), intent(in) :: n_selected_axes
             !! count of `.true.` values in `axes_selection_mask`
@@ -164,7 +165,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
-        logical :: undefined_sign
+        logical(c_bool) :: undefined_sign
 
         call set_ok(ierr)
         call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, &
@@ -208,7 +209,7 @@ contains
             !! as positive. The sign is that of this vector's component along the rotation.
         real(real64), intent(out) :: signed_angle
             !! Signed angle between vectors in radians [-pi, pi]
-        logical, intent(out) :: undefined_sign
+        logical(c_bool), intent(out) :: undefined_sign
             !! `.true.` when the reference orients nothing, so no sign could be given
 
         real(real64) :: dot_product, unsigned_angle, along_rotation, perpendicular
@@ -268,7 +269,7 @@ contains
             !! Dimension of each vector in RAP space
         integer(int32), intent(in) :: n_fields
             !! Number of vector pairs
-        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+        logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         integer(int32), intent(in) :: n_selected_fields
             !! Count of .true. values in fields_selection_mask
@@ -284,7 +285,7 @@ contains
             !! Error code
 
         integer(int32) :: i_field, result_idx
-        logical :: undefined_sign
+        logical(c_bool) :: undefined_sign
 
         call set_ok(ierr)
 

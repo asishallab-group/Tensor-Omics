@@ -4,6 +4,7 @@ module mod_test_gene_centroids
     use tox_gene_centroids
     use tox_errors
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -51,7 +52,7 @@ contains
         integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
         real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
         integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
-        logical :: ortholog_set(n_genes)
+        logical(c_bool) :: ortholog_set(n_genes)
         real(real64) :: expected(n_axes, n_families)
 
         vectors = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])
@@ -87,7 +88,7 @@ contains
         integer, parameter :: n_axes = 2, n_genes = 3, n_families = 1
         real(real64) :: vectors(n_axes, n_genes), centroids(n_axes, n_families)
         integer(int32) :: gene_to_family(n_genes), selected_indices(n_genes), ierr
-        logical :: ortholog_set(n_genes)
+        logical(c_bool) :: ortholog_set(n_genes)
         real(real64) :: expected(n_axes, n_families)
 
         vectors = reshape([10.0, 10.0, 20.0, 20.0, 30.0, 30.0], [n_axes, n_genes])
@@ -163,11 +164,11 @@ contains
         integer, parameter :: n_axes = 2, n_genes = 5, n_families = 2
         real(real64) :: vectors1(n_axes, n_genes), centroids1(n_axes, n_families)
         integer(int32) :: gene_to_family1(n_genes), selected_indices1(n_genes), ierr
-        logical :: ortholog_set1(n_genes)
+        logical(c_bool) :: ortholog_set1(n_genes)
 
         real(real64) :: vectors2(n_axes, n_genes), centroids2(n_axes, n_families)
         integer(int32) :: gene_to_family2(n_genes), selected_indices2(n_genes)
-        logical :: ortholog_set2(n_genes)
+        logical(c_bool) :: ortholog_set2(n_genes)
 
         ! Setup 1: Original order
         vectors1 = reshape([1.0, 1.0, 3.0, 3.0, 10.0, 10.0, 20.0, 20.0, 5.0, 5.0], [n_axes, n_genes])

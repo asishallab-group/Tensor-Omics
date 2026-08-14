@@ -9,6 +9,7 @@
 !| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
     M_IMPLICIT_NONE
 
@@ -124,7 +125,7 @@ contains
             !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
 
         integer(int32) :: label, iteration, i_point, max_iter
-        logical :: labels_changed
+        logical(c_bool) :: labels_changed
 
         M_DEFAULT_VAL(max_iterations, max_iter, DEFAULT_MAX_ITER_K_MEANS)
 

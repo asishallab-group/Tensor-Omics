@@ -8,6 +8,7 @@
 !| figure for the pair of studies.
 module tox_data_integration_jsd_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp, is_close
     use f42_sort_impl, only: sort_array_heapsort
@@ -147,12 +148,12 @@ contains
             !! `counts` normalized to `0 <= counts(:, i) <= 1` and `sum(counts(:, i)) == 1`
         integer(int32), dimension(n_points), intent(out) :: included_n_reps
             !! Stores the count of non-NaN replicates (included ones)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
             !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
 
         real(real64) :: bin_width, clamped_residual
         integer(int32) :: bin_idx, i_neighbor, i_rep, i_bin, included_reps, i_point
-        logical :: filter_neighbors
+        logical(c_bool) :: filter_neighbors
 
         ! Guard against a zero range (e.g. `determine_shared_residual_range_impl` returns 0.0 when all
         ! pooled residuals are NaN): fall back to a fixed bin width so every (clamped-to-zero) residual
@@ -341,9 +342,9 @@ contains
             !! Normalized histogram counts for study 2
         integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
             !! Working array for the histogram counts
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
             !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
 
         call build_residual_histograms_impl(neighborhood_residuals_S1, n_reps_S1, n_neighbors, n_points, shared_residual_range, n_bins, tmp_counts, pmf_S1, included_n_reps_S1, neighbor_mask_S1)

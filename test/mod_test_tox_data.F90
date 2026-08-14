@@ -2,6 +2,7 @@
 module mod_test_tox_data
     use asserts
     use iso_fortran_env, only: real64, int32
+    use iso_c_binding, only: c_bool
     use tox_data_tools
     use tox_data_validation
     use tox_data_accessors
@@ -63,7 +64,7 @@ contains
     subroutine setup_global_data()
         character(len=256), allocatable :: expr_file(:)
         integer(int32) :: ierr, i, n_genes_kept
-        logical, allocatable :: ortholog_mask(:), unassigned_mask(:)
+        logical(c_bool), allocatable :: ortholog_mask(:), unassigned_mask(:)
         integer(int32), allocatable :: selected_indices(:), value_cols(:)
 
         ! Initialize file lists
@@ -256,11 +257,11 @@ contains
         call validate_empty_strings(gene_family_ids, "Family IDs", ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Family Ids contain empty entries")
 
-        call validate_expression_data(kallisto_expr, .true., ierr)
+        call validate_expression_data(kallisto_expr, .true._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Expression data could not be validated")
 
         call validate_all_data(n_genes, n_families, total_samples, gene_ids, gene_family_ids, &
-                               gene_to_fam, kallisto_expr, family_centroids, shift_vectors, ierr, .true., .true.)
+                               gene_to_fam, kallisto_expr, family_centroids, shift_vectors, ierr, .true._c_bool, .true._c_bool)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Data could not be validated")
     end subroutine test_validate_data
 
@@ -926,7 +927,7 @@ contains
         character(len=6), allocatable :: keys(:)
         integer(int32), allocatable :: values(:)
         integer(int32) :: value, i, ierr
-        logical :: in_hashset
+        logical(c_bool) :: in_hashset
 
         allocate (keys(5))
         allocate (values(5))
@@ -1013,7 +1014,7 @@ contains
         test_expr(2, 2) = ieee_value(1.0_real64, ieee_quiet_nan)
 
         ! Test the validation routine directly
-        call validate_expression_data(test_expr, .false., ierr)
+        call validate_expression_data(test_expr, .false._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Validation should detect computational NaN")
 
         deallocate (test_expr)
@@ -1033,7 +1034,7 @@ contains
         ! Inject Inf directly
         test_expr(1, 3) = ieee_value(1.0_real64, ieee_positive_inf)
 
-        call validate_expression_data(test_expr, .false., ierr)
+        call validate_expression_data(test_expr, .false._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Validation should detect computational Inf")
 
         deallocate (test_expr)
@@ -1047,7 +1048,7 @@ contains
         allocate (test_expr(2, 2))
         test_expr = reshape([1.0_real64, -2.0_real64, 3.0_real64, 4.0_real64], [2, 2])  ! Negative value
 
-        call validate_expression_data(test_expr, .true., ierr)
+        call validate_expression_data(test_expr, .true._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Should detect negative expression values")
 
         deallocate (test_expr)

@@ -205,13 +205,40 @@ design would not have been available.
 
 C passes a real `bool`, so Python and R hand over a boolean rather than a 0/1 integer.
 
-The copy into a default `logical` stays — `c_bool` is one byte, a default `logical` is
-four — but it is one copy rather than a conversion at both ends, and it is a plain
-intrinsic assignment (`flag_f = flag`) rather than a call into `tox_conversions`. A dummy
-already declared `logical(c_bool)` needs no copy at all.
+**And since 2026-08-14 the sources are `logical(c_bool)` too**, so there is no copy at all:
+the wrapper hands the caller's buffer straight to the implementation. It used to declare an
+automatic array of default `logical` and convert elementwise, because `c_bool` is one byte and
+a default `logical` is four. 31 such array temporaries across 16 wrappers are now one — a
+scalar, and only because `mask_check_state` is a `logical function` whose *result* stays
+default-kind, where there is no memory to win and a condition accepts any kind anyway.
+
+The decision was memory, not speed: no boundary buffer, and a quarter of the bytes for every
+mask in the library. `misc/bench/RESULTS.md` has the measurements, and they point the same way
+— at the sizes where the memory argument bites, `c_bool` is *faster* for the same reason it is
+smaller.
 
 *Rejected:* passing `integer(c_int)` 0/1 and converting with `c_int_as_logical`, as the
 previous generator did. It makes every caller in every language do bool→int→logical.
+
+**The lesson the switch taught, which cost four defects to learn: "does Fortran need a copy"
+and "does R need a copy" are different questions, and the code had one flag for both.**
+`CArgument.needs_conversion` answers the first, and it goes false the moment a dummy is
+`logical(c_bool)`. The R emitter had keyed four sites on it — because while every logical was
+default-kind the two questions had the same answer. R's logical vector is `LGLSXP`, an array
+of 4-byte `int`, whatever kind the Fortran declares, so R *always* rebuilds the bytes. Three
+sites then emitted `REAL()` on a logical SEXP, which R rejects at run time, and one crashed the
+generator outright. `c_call._r_marshals` is now the single definition all of them ask.
+
+Adding `LGLSXP` to the `R_SEXPTYPE` table would have silenced the crash and been wrong: the
+pointer path would then have handed `LOGICAL(sexp)` — an `int*` — to an `unsigned char*`
+parameter, and corrupted quietly instead of failing loudly.
+
+Two smaller ones from the same change, both in the Fortran wrapper emitter: kind constants have
+to be imported from the module that owns them (`c_bool` is `iso_c_binding`, not
+`iso_fortran_env`), and a literal the *emitter itself* writes needs its kind too —
+`allow_nan=.true.` against a `logical(c_bool)` dummy is a compile error, because argument
+association does not convert kinds. The second means the import list cannot be built from the
+arguments alone; `_emitted_literal_kinds` exists for the kinds no argument carries.
 
 ---
 

@@ -5,6 +5,7 @@
 !| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_sort_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, is_err, validate_in_range_int, validate_dimension_size
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp
@@ -729,7 +730,7 @@ contains
             !! Maximum size of `idx_out`.
         integer(int32), intent(in) :: n
             !! Size of the mask.
-        logical, intent(in) :: mask(n)
+        logical(c_bool), intent(in) :: mask(n)
             !! Logical array of size n.
         integer(int32), intent(out) :: idx_out(m_max)
             !! Integer array to store the indices of true values.

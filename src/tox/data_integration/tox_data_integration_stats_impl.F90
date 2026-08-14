@@ -10,6 +10,7 @@
 !| Work copies are shuffled, never the caller's arrays.
 module tox_data_integration_stats_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_random_impl, only: init_random, shuffle_vector
     use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
     M_IMPLICIT_NONE
@@ -73,9 +74,9 @@ contains
             !! Working array for the divergence weights
         integer(int32), intent(in), optional :: random_seed
             !! Seed to use for shuffling
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
             !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
 
         integer(int32) :: n_jsd_exceeding_observed, i_permutation, n_residuals_S1, n_residuals_S2, i_point

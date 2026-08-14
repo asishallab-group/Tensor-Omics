@@ -2,6 +2,7 @@
 module mod_test_normalization_pipeline
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: iso_c_binding, only: c_bool
   use tox_normalization
   use test_suite, only: test_case
   use tox_errors
@@ -41,7 +42,7 @@ contains
     span = 0.75d0
     degree = 2
 
-    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_basic: normalization_pipeline returned error")
     call assert_no_nan_real(log_transformed_expr, n_genes * n_groups, "test_pipeline_basic: NaN in output")
     call assert_equal_int(size(log_transformed_expr), n_genes * n_groups, "test_pipeline_basic: output size incorrect")
@@ -62,7 +63,7 @@ contains
     span = 0.75d0
     degree = 2
 
-    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_edge_cases: expected error for zero-variance input")
   end subroutine test_pipeline_edge_cases
 
@@ -105,7 +106,7 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: log2_transformation (no quantile) returned error")
 
     ! Pipeline normalization
-    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true., ierr=ierr)
+    call normalization_pipeline(n_genes, n_tissues, expr, log_transformed_expr, group_sizes, n_groups, span, degree, use_quantile=.true._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: normalization_pipeline returned error")
     call assert_equal_array_real(log_transformed_expr, log2trans, size(log_transformed_expr, kind=int32), 1d-12, "test_pipeline_vs_manual: test_pipeline_vs_manual: pipeline and manual outputs differ")
 

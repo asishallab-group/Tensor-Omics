@@ -104,7 +104,6 @@ contains
             !! The default value is `.false.`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: use_quantile_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -118,8 +117,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(log_transformed_expr, n_tissues * n_genes)
         M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
 
-        use_quantile_f = use_quantile
-
         call normalization_pipeline(&
             n_genes = n_genes,&
             n_replicates = n_replicates,&
@@ -129,7 +126,7 @@ contains
             n_tissues = n_tissues,&
             span = span,&
             degree = degree,&
-            use_quantile = use_quantile_f,&
+            use_quantile = use_quantile,&
             ierr = ierr&
         )
     end subroutine normalization_pipeline_c
@@ -235,7 +232,6 @@ contains
             !! The default value is `.false.`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: use_quantile_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -264,8 +260,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_residuals, n_genes)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n_genes)
 
-        use_quantile_f = use_quantile
-
         call normalization_pipeline_expert(&
             n_genes = n_genes,&
             n_replicates = n_replicates,&
@@ -290,7 +284,7 @@ contains
             tmp_permutation_indices = tmp_permutation_indices,&
             span = span,&
             degree = degree,&
-            use_quantile = use_quantile_f,&
+            use_quantile = use_quantile,&
             ierr = ierr&
         )
     end subroutine normalization_pipeline_expert_c

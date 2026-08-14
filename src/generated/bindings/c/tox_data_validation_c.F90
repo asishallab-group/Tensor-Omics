@@ -192,7 +192,6 @@ contains
             !! Defines if non negative should be checked
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: check_non_negative_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -201,11 +200,9 @@ contains
         M_CHECK_NON_NULL(check_non_negative)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_expression_vectors_elements_dim_1 * n_expression_vectors_elements_dim_2)
 
-        check_non_negative_f = check_non_negative
-
         call validate_expression_data(&
             expression_vectors = expression_vectors,&
-            check_non_negative = check_non_negative_f,&
+            check_non_negative = check_non_negative,&
             ierr = ierr&
         )
     end subroutine validate_expression_data_c
@@ -422,8 +419,6 @@ contains
             !! The default value is `.true.`.
         character(len=:), allocatable, dimension(:) :: gene_ids_f
         character(len=:), allocatable, dimension(:) :: gene_family_ids_f
-        logical :: check_uniqueness_f
-        logical :: check_shift_consistency_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -454,8 +449,6 @@ contains
         if (is_err(ierr)) return
         call c_char_2d_as_string(gene_family_ids, gene_family_ids_f, ierr)
         if (is_err(ierr)) return
-        check_uniqueness_f = check_uniqueness
-        check_shift_consistency_f = check_shift_consistency
 
         call validate_all_data(&
             n_genes = n_genes,&
@@ -468,8 +461,8 @@ contains
             family_centroids = family_centroids,&
             shift_vectors = shift_vectors,&
             ierr = ierr,&
-            check_uniqueness = check_uniqueness_f,&
-            check_shift_consistency = check_shift_consistency_f&
+            check_uniqueness = check_uniqueness,&
+            check_shift_consistency = check_shift_consistency&
         )
     end subroutine validate_all_data_c
 

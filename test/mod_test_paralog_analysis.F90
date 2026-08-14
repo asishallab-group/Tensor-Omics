@@ -2,6 +2,7 @@
 module mod_test_paralog_analysis
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_paralog_analysis
     ! the bit-mask utilities and the work-array sizing routine stayed in the kernel module
     use tox_paralog_analysis_impl, only: mask_chunk_count, mask_set_state, mask_check_state, &
@@ -53,8 +54,8 @@ contains
         real(real64) :: genes(n_axes, n_genes)
         integer(int32) :: gene_to_fam(n_genes)
         real(real64) :: thresholds(n_axes)
-        logical :: neofunc(n_genes, n_axes)
-        logical :: expected(n_genes, n_axes)
+        logical(c_bool) :: neofunc(n_genes, n_axes)
+        logical(c_bool) :: expected(n_genes, n_axes)
         integer(int32) :: i_gene
 
         ! -------------------------------
@@ -99,7 +100,7 @@ contains
         real(real64) :: paralogs(n_dims, n_genes)
         integer(int32) :: gene_to_fam(n_genes)
         real(real64) :: thresholds(n_dims)
-        logical :: neofunc_paralogs(n_genes, n_dims)
+        logical(c_bool) :: neofunc_paralogs(n_genes, n_dims)
 
         gene_to_fam = 1
 
@@ -959,7 +960,7 @@ contains
         ! stress the detect_patterns: Exploit an edge case where the whole working array is in use at some point to ensure correct size calculation
         mask_all_active = 0
         do i_gene = 1, n_genes
-            call mask_set_state(mask_all_active, i_gene, .true., ierr)
+            call mask_set_state(mask_all_active, i_gene, .true._c_bool, ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in mask")
 
             subfunc_sorted_paralog_norms_perm(i_gene) = n_genes - i_gene + 1
@@ -990,7 +991,7 @@ contains
         end do
 
         do i_gene = 1, n_paralogs_overflow
-            call mask_set_state(mask_all_active_overflow, i_gene, .true., ierr)
+            call mask_set_state(mask_all_active_overflow, i_gene, .true._c_bool, ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in oerflow mask")
         end do
         max_subset_size_overflown = 16
@@ -1014,30 +1015,30 @@ contains
         ! set first paralog
         paralog = 1
         expected_mask(1) = ibset(expected_mask(1), paralog - 1)
-        call mask_set_state(actual_mask, paralog, .true., ierr)
+        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set first paralog")
         call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting first paralog")
 
         ! set last paralog
         paralog = n_genes
         expected_mask(2) = ibset(expected_mask(2), paralog - 32 - 1)
-        call mask_set_state(actual_mask, paralog, .true., ierr)
+        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
         call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting last paralog")
 
         ! set 32nd paralog
         paralog = 32
         expected_mask(1) = ibset(expected_mask(1), paralog - 1)
-        call mask_set_state(actual_mask, paralog, .true., ierr)
+        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
         call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting 32nd paralog")
 
         ! unset all
-        call mask_set_state(actual_mask, 1, .false., ierr)
+        call mask_set_state(actual_mask, 1, .false._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not unset first paralog")
-        call mask_set_state(actual_mask, n_genes, .false., ierr)
+        call mask_set_state(actual_mask, n_genes, .false._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
-        call mask_set_state(actual_mask, 32, .false., ierr)
+        call mask_set_state(actual_mask, 32, .false._c_bool, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
 
         call assert_true(all(actual_mask == 0), "test_tox_paralog_analysis_mask_set_state: not all unset")
@@ -1086,13 +1087,13 @@ contains
         call assert_equal_int(mask_get_first_successor_idx(mask), 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
 
         do paralog = 1, n_genes
-            call mask_set_state(mask, paralog, .true., ierr)
+            call mask_set_state(mask, paralog, .true._c_bool, ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
             call assert_equal_int(mask_get_first_successor_idx(mask), paralog + 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
         end do
 
         do paralog = 1, n_genes - 1
-            call mask_set_state(mask, paralog, .false., ierr)
+            call mask_set_state(mask, paralog, .false._c_bool, ierr)
             call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
             call assert_equal_int(mask_get_first_successor_idx(mask), n_genes + 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
         end do

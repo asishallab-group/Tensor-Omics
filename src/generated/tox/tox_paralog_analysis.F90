@@ -18,6 +18,7 @@
 module tox_paralog_analysis
     use tox_paralog_analysis_impl, only: MODE_DOSAGE_PATTERN, MODE_SUBFUNC_PATTERN, detect_neofunctionalization_impl, detect_patterns_impl
     use tox_paralog_analysis_impl, only: filter_paralogs_by_pattern_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_math_impl, only: PI, above
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
@@ -71,7 +72,7 @@ contains
             !! threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
             !! The minimum valid value is `-1.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-        logical, dimension(n_genes, n_axes), intent(out) :: neofunc
+        logical(c_bool), dimension(n_genes, n_axes), intent(out) :: neofunc
             !! `.true.` if neofunctionalization has been detected for the respective axes, always `.false.` for unassigned genes
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.

@@ -81,8 +81,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -98,9 +96,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
         call loess_fit_plain(&
             n = n,&
             x = x,&
@@ -110,8 +105,8 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
             fitted_values = fitted_values,&
             ierr = ierr&
         )
@@ -195,8 +190,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -217,9 +210,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_hat_diag, n)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
         call loess_fit_plain_expert(&
             n = n,&
             x = x,&
@@ -229,8 +219,8 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
             tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&
             tmp_real_workspace = tmp_real_workspace,&
@@ -301,8 +291,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -319,9 +307,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
         call loess_fit_robust(&
             n = n,&
             x = x,&
@@ -331,8 +316,8 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
             n_iters = n_iters,&
             fitted_values = fitted_values,&
             ierr = ierr&
@@ -438,8 +423,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -465,9 +448,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
         call loess_fit_robust_expert(&
             n = n,&
             x = x,&
@@ -477,8 +457,8 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
             n_iters = n_iters,&
             tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&

@@ -10,6 +10,7 @@
 !| expected. [[tox_data_validation(module):validate_all_data(subroutine)]] runs the full suite.
 module tox_data_validation
     use iso_fortran_env, only: real64, int32
+    use iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, is_ok, set_err_once, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
     use f42_config, only: DEBUG
     M_IMPLICIT_NONE
@@ -176,7 +177,7 @@ contains
     subroutine validate_expression_data(expression_vectors, check_non_negative, ierr)
         real(real64), intent(in) :: expression_vectors(:, :)
             !! Expression vectors
-        logical, intent(in) :: check_non_negative
+        logical(c_bool), intent(in) :: check_non_negative
             !! Defines if non negative should be checked
         integer(int32), intent(out) :: ierr
             !! Error code
@@ -449,14 +450,14 @@ contains
             !! shift vectors
         integer(int32), intent(out) :: ierr
             !! error code
-        logical, intent(in), optional :: check_uniqueness
+        logical(c_bool), intent(in), optional :: check_uniqueness
             !! Check ID arrays for uniqueness.
             !! DM_DEFAULT(.true.)
-        logical, intent(in), optional :: check_shift_consistency
+        logical(c_bool), intent(in), optional :: check_shift_consistency
             !! Check consitency of shift array.
             !! DM_DEFAULT(.true.)
 
-        logical :: do_check_uniqueness, do_check_shift_consistency
+        logical(c_bool) :: do_check_uniqueness, do_check_shift_consistency
 
         ! Set defaults for optional parameters
         do_check_uniqueness = .true.
@@ -478,7 +479,7 @@ contains
         if (.not. is_ok(ierr)) return
 
         ! 3. Check expression data
-        call validate_expression_data(expression_vectors, .true., ierr)  ! Check for non-negative
+        call validate_expression_data(expression_vectors, .true._c_bool, ierr)  ! Check for non-negative
         if (.not. is_ok(ierr)) return
 
         ! 4. Check family centroids

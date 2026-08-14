@@ -130,6 +130,19 @@ def _product(extents) -> str:
     return " * ".join(parts) if parts else "1"
 
 
+def _r_marshals(argument: CArgument) -> bool:
+    """Whether R must build the bytes rather than point into the SEXP it was handed.
+
+    `CArgument.needs_conversion` answers this for the *Fortran* side, and the two questions
+    are not the same. It is false for a `logical(c_bool)` dummy, because Fortran takes the C
+    buffer as it stands -- but R never can: its logical vector is `LGLSXP`, an array of
+    4-byte `int`, whatever kind the Fortran declares. The answers coincided only for as long
+    as every logical was default-kind, and three sites had quietly keyed on the wrong one.
+    """
+    return argument.type.is_logical or argument.needs_conversion
+
+
+
 class CCallEmitter:
     def __init__(self, marshal_header: str = "tox_marshal.h", dll_name: str = R_DLL_NAME):
         self.marshal_header = marshal_header
@@ -447,14 +460,14 @@ class CCallEmitter:
             # left null while the argument is absent.
             converts_in_place = (
                 argument.is_scalar
-                and argument.needs_conversion
+                and _r_marshals(argument)
                 and not self._converts_via_buffer(argument)
             )
             if converts_in_place:
                 local_type = self._scalar_local_type(argument)
                 lines.line(f"{local_type} {name}_v = 0;")
                 lines.line(f"const {local_type}* {name}_p = NULL;")
-            elif not argument.needs_conversion:
+            elif not _r_marshals(argument):
                 lines.line(f"const {ctype}* {name}_p = NULL;")
             lines.line(f"int {name}_size = 0;")
             if has_axes:
@@ -466,7 +479,7 @@ class CCallEmitter:
                 if converts_in_place:
                     lines.line(f"{name}_v = {self._scalar_value(argument)};")
                     lines.line(f"{name}_p = &{name}_v;")
-                elif not argument.needs_conversion:
+                elif not _r_marshals(argument):
                     lines.line(f"{name}_p = {self._c_pointer(argument, name)};")
                 if has_axes:
                     lines.line(f"SEXP {name}_d = Rf_getAttrib({name}, R_DimSymbol);")
@@ -487,7 +500,8 @@ class CCallEmitter:
 
     @staticmethod
     def _converts_via_buffer(argument: CArgument) -> bool:
-        if not argument.needs_conversion:
+        """Whether R marshals this argument through a `tox_` buffer, rather than in place."""
+        if not _r_marshals(argument):
             return False
         return argument.is_array or argument.type.is_character
 
@@ -527,7 +541,7 @@ class CCallEmitter:
 
     def _input_buffer(self, argument: CArgument) -> str:
         name = argument.name
-        if argument.conversion is Conversion.LOGICAL:
+        if argument.type.is_logical:
             return f"unsigned char* {name}_c = tox_bool_in({name});"
         length = self._extent(argument.dimension.extents[0])
         return f"char* {name}_c = tox_char_in({name}, {length});"
@@ -565,7 +579,7 @@ class CCallEmitter:
         else:
             size = _product(extents)
 
-        if argument.conversion is Conversion.LOGICAL:
+        if argument.type.is_logical:
             return [f"unsigned char* {name}_c = tox_bool_alloc({size});"]
         if argument.type.is_character:
             length = extents[0]
@@ -654,7 +668,7 @@ class CCallEmitter:
                 continue
             name = argument.name
             count = self._converted_count(argument)
-            if argument.conversion is Conversion.LOGICAL:
+            if argument.type.is_logical:
                 lines.line(f"SEXP {name} = PROTECT(tox_bool_out({name}_c, {count})); nprot++;")
             else:
                 length = self._extent(argument.dimension.extents[0])

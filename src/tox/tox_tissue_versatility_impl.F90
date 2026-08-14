@@ -8,6 +8,7 @@
 !| selected axes are comparable.
 module tox_tissue_versatility_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp, degrees
     M_IMPLICIT_NONE
 contains
@@ -33,9 +34,9 @@ contains
             !! Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)
         real(real64), dimension(n_axes, n_vectors), intent(in) :: expression_vectors
             !! 2D array (n_axes, n_vectors), each column is a gene expression vector
-        logical, dimension(n_vectors), intent(in) :: vectors_selection_mask
+        logical(c_bool), dimension(n_vectors), intent(in) :: vectors_selection_mask
             !! Logical array (n_vectors), .TRUE. for vectors to process
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! Logical array (n_axes), .TRUE. for axes to include in calculation
         real(real64), dimension(n_selected_vectors), intent(out) :: tissue_versatilities
             !! Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities

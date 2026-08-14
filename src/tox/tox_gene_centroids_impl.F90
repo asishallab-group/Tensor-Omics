@@ -8,6 +8,7 @@
 !| over is visible at the call site.
 module tox_gene_centroids_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_vector_impl, only: add_vector
     M_IMPLICIT_NONE
 
@@ -89,7 +90,7 @@ contains
             !! The output matrix (n_axes x n_families) to store the computed centroids.
         integer(int32), dimension(n_genes), intent(out) :: tmp_group_indices
             !! Work array for storing the indices of one family's genes.
-        logical, dimension(n_genes), intent(in), optional :: ortholog_set
+        logical(c_bool), dimension(n_genes), intent(in), optional :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
             !! DM_REQUIRED_IF_MODE(mode, tox_gene_centroids_impl, MODE_GROUP_ORTHOLOGS)
 

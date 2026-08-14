@@ -18,6 +18,7 @@
 !| Generated from [[tox_loess_impl(module)]]; do not edit -- regenerate instead.
 module tox_loess
     use tox_loess_impl, only: EPS_LOESS, loess_fit_plain_impl, loess_fit_robust_impl, tox_loess_required_workspace
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
     use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -71,10 +72,10 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
         real(real64), dimension(n), intent(out) :: fitted_values
@@ -86,7 +87,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_real_workspace
         integer(int32) :: real_workspace_size
         real(real64), dimension(:), allocatable :: tmp_hat_diag
-        logical :: save_factorization_value
+        logical(c_bool) :: save_factorization_value
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -195,10 +196,10 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
         integer(int32), dimension(int_workspace_size), intent(out) :: tmp_int_workspace
@@ -292,10 +293,10 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
         integer(int32), intent(in), optional :: n_iters
@@ -315,7 +316,7 @@ contains
         real(real64), dimension(:), allocatable :: tmp_combined_weights
         real(real64), dimension(:), allocatable :: tmp_residuals
         integer(int32), dimension(:), allocatable :: tmp_permutation_indices
-        logical :: save_factorization_value
+        logical(c_bool) :: save_factorization_value
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -443,10 +444,10 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
         integer(int32), intent(in), optional :: n_iters

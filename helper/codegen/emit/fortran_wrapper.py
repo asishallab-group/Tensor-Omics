@@ -199,9 +199,17 @@ class FortranWrapperEmitter:
         for chunk in _chunks(sorted(impl_names), 4):
             writer.line(f"use {impl_module}, only: {', '.join(chunk)}")
 
-        kinds = sorted({a.type.kind for p in module for a in p.arguments if a.type.kind})
-        for chunk in _chunks(kinds, 6):
-            writer.line(f"use, intrinsic :: iso_fortran_env, only: {', '.join(chunk)}")
+        kinds = {a.type.kind for p in module for a in p.arguments if a.type.kind}
+        # kinds the emitter itself writes, which no argument need carry: a module whose
+        # arguments are all real still spells `allow_nan=.true._c_bool`
+        for procedure in module:
+            kinds |= self._emitted_literal_kinds(procedure)
+        by_owner: dict[str, set[str]] = {}
+        for kind in kinds:
+            by_owner.setdefault(_kind_module(kind), set()).add(kind)
+        for owner in sorted(by_owner):
+            for chunk in _chunks(sorted(by_owner[owner]), 6):
+                writer.line(f"use, intrinsic :: {owner}, only: {', '.join(chunk)}")
 
         for other_module, names in sorted(extra.items()):
             intrinsic = ", intrinsic :: " if other_module in _INTRINSIC_MODULES else " "
@@ -781,6 +789,34 @@ class FortranWrapperEmitter:
             return "validate_all_in_range_int" if argument.is_array else "validate_in_range_int"
         return None
 
+    def _emitted_literal_kinds(self, procedure: Procedure) -> set[str]:
+        """Kinds the emitter writes as literals, which no argument need carry.
+
+        The import list is built from the arguments, so a kind that only ever appears in
+        something the emitter invents is invisible to it -- and an unimported kind is a
+        compile error in code nobody wrote. Two sources, and this has to stay in step with
+        both: the `allow_nan=`/`allow_infinite=` keywords below, and a `DM_OUTPUT_FROM`
+        producer input supplied as a constant.
+        """
+        kinds: set[str] = set()
+        for argument in procedure.arguments:
+            directives = argument.directives
+            if (argument.type.base is BaseType.REAL
+                    and self._validator_for(argument) is not None
+                    and (directives.allows_nan or directives.allows_infinite)):
+                kinds.add(_VALIDATOR_LOGICAL_KIND)
+            plan = argument.roles.computed_from if argument.roles else None
+            if plan is None:
+                continue
+            supplied = {pi.name.lower(): pi for pi in plan.inputs}
+            for dummy in plan.producer.arguments:
+                supply = supplied.get(dummy.name.lower())
+                if supply is None or supply.argument is not None:
+                    continue
+                if isinstance(supply.constant, bool) and dummy.type.kind:
+                    kinds.add(dummy.type.kind)
+        return kinds
+
     def _validation_call(self, argument: Argument, position: int) -> str:
         validator = self._validator_for(argument)
         if validator is None:
@@ -806,10 +842,12 @@ class FortranWrapperEmitter:
         if directives.sentinel is not None:
             keywords.append(f"sentinel={directives.sentinel.expression}")
         if argument.type.base is BaseType.REAL:
+            # `tox_errors` declares these two `logical(c_bool)`, and argument association
+            # does not convert kinds -- so the emitter's own literal has to carry it.
             if directives.allows_nan:
-                keywords.append("allow_nan=.true.")
+                keywords.append(f"allow_nan=.true._{_VALIDATOR_LOGICAL_KIND}")
             if directives.allows_infinite:
-                keywords.append("allow_infinite=.true.")
+                keywords.append(f"allow_infinite=.true._{_VALIDATOR_LOGICAL_KIND}")
 
         return f"call {validator}({head}, {', '.join(keywords)})"
 
@@ -984,15 +1022,41 @@ class FortranWrapperEmitter:
         writer.line(")")
 
 
+#: The kind `tox_errors` declares its logical dummies with, which is what the emitter's own
+#: `allow_nan=`/`allow_infinite=` literals must carry.
+_VALIDATOR_LOGICAL_KIND = "c_bool"
+
+#: Kind constants that live in `iso_c_binding` rather than `iso_fortran_env`. Splitting them
+#: matters from the moment any argument is `logical(c_bool)`: emitting one `only:` list from
+#: `iso_fortran_env` put `c_bool` in it, and gfortran rejects the module outright -- then
+#: reports every dummy of that kind as having no implicit type, which reads like ten separate
+#: faults rather than one bad `use`.
+_C_BINDING_KINDS = frozenset({
+    "c_bool", "c_char", "c_signed_char", "c_short", "c_int", "c_long", "c_long_long",
+    "c_float", "c_double", "c_long_double", "c_float_complex", "c_double_complex",
+    "c_size_t", "c_int8_t", "c_int16_t", "c_int32_t", "c_int64_t", "c_intptr_t",
+    "c_ptr", "c_funptr",
+})
+
+
+def _kind_module(kind: str) -> str:
+    """The intrinsic module a kind constant comes from."""
+    return "iso_c_binding" if kind in _C_BINDING_KINDS else "iso_fortran_env"
+
+
 def _fortran_literal(value: object, argument: Argument) -> str:
     """A constant producer input, rendered back as a kinded Fortran literal.
 
     The kind is the producer dummy's own, so `1` handed to an `integer(int32)` input comes
-    out `1_int32` and `.false.` for a logical.
+    out `1_int32`, and `.false.` handed to a `logical(c_bool)` one comes out
+    `.false._c_bool`. A logical was the exception until logicals stopped being default-kind:
+    argument association does not convert kinds, so an unkinded literal against a
+    `logical(c_bool)` dummy is a compile error rather than a silent widening.
     """
-    if isinstance(value, bool):
-        return ".true." if value else ".false."
     kind = argument.type.kind
+    if isinstance(value, bool):
+        literal = ".true." if value else ".false."
+        return f"{literal}_{kind}" if kind else literal
     if isinstance(value, int):
         return f"{value}_{kind}" if kind else str(value)
     if isinstance(value, float):

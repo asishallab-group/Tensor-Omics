@@ -15,6 +15,7 @@
 !| site, and each routine takes only the thresholds its own pattern needs.
 module tox_paralog_analysis_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int
     use f42_math_impl, only: PI
     use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
@@ -59,7 +60,7 @@ contains
             !! threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
             !! DM_MIN(-1.0_real64)
             !! DM_MAX(1.0_real64)
-        logical, dimension(n_genes, n_axes), intent(out) :: neofunc
+        logical(c_bool), dimension(n_genes, n_axes), intent(out) :: neofunc
             !! `.true.` if neofunctionalization has been detected for the respective axes, always `.false.` for unassigned genes
 
         integer(int32) :: i_gene, i_axis, fam_idx
@@ -178,7 +179,7 @@ contains
         do i_gene = 1, last_filtered_paralog_idx - 1
             if (mask_check_state(filtered_paralogs_mask, i_gene)) then
                 n_active_masks = n_active_masks + 1
-                call mask_set_state(work_arr_paralog_subsets(:, n_active_masks), i_gene, .true., ierr)
+                call mask_set_state(work_arr_paralog_subsets(:, n_active_masks), i_gene, .true._c_bool, ierr)
                 if (is_err(ierr)) return
             end if
         end do
@@ -281,7 +282,7 @@ contains
                 do i_gene = mask_get_first_successor_idx(candidate_mask), n_genes
                     if (mask_check_state(filtered_paralogs_mask, i_gene)) then
                         ! extend subset by current gene
-                        call mask_set_state(candidate_mask, i_gene, .true., ierr)
+                        call mask_set_state(candidate_mask, i_gene, .true._c_bool, ierr)
                         if (is_err(ierr)) return
 
                         ! compute sum vector of all subset's genes
@@ -303,7 +304,7 @@ contains
 
                         ! revert extension with current gene to efficiently reuse the variables for next gene
                         call subtract_vector(tmp_paralog_vector, genes(:, i_gene))
-                        call mask_set_state(candidate_mask, i_gene, .false., ierr)
+                        call mask_set_state(candidate_mask, i_gene, .false._c_bool, ierr)
                         if (is_err(ierr)) return
                     end if
                 end do
@@ -333,7 +334,7 @@ contains
                 do i_gene = mask_get_first_successor_idx(candidate_mask), n_genes
                     if (mask_check_state(filtered_paralogs_mask, i_gene)) then
                         ! extend subset by current gene
-                        call mask_set_state(candidate_mask, i_gene, .true., ierr)
+                        call mask_set_state(candidate_mask, i_gene, .true._c_bool, ierr)
                         if (is_err(ierr)) return
 
                         ! compute residual of current subset
@@ -353,7 +354,7 @@ contains
 
                         ! revert extension with current gene to efficiently reuse the variables for next gene
                         call add_vector(tmp_paralog_vector, genes(:, i_gene))
-                        call mask_set_state(candidate_mask, i_gene, .false., ierr)
+                        call mask_set_state(candidate_mask, i_gene, .false._c_bool, ierr)
                         if (is_err(ierr)) return
                     end if
                 end do
@@ -601,7 +602,7 @@ contains
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) <= threshold) then
                     family_idx = gene_to_fam(i_gene)
-                    call mask_set_state(masks(:, family_idx), i_gene, .true., ierr)
+                    call mask_set_state(masks(:, family_idx), i_gene, .true._c_bool, ierr)
                     if (is_err(ierr)) return
                 end if
             end do
@@ -610,7 +611,7 @@ contains
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) >= threshold) then
                     family_idx = gene_to_fam(i_gene)
-                    call mask_set_state(masks(:, family_idx), i_gene, .true., ierr)
+                    call mask_set_state(masks(:, family_idx), i_gene, .true._c_bool, ierr)
                     if (is_err(ierr)) return
                 end if
             end do
@@ -742,7 +743,7 @@ contains
             !! chunked mask to mark active paralogs
         integer(int32), intent(in) :: i_gene
             !! index of paralog to be marked active
-        logical, intent(in) :: state
+        logical(c_bool), intent(in) :: state
             !! state the bit should be set to
         integer(int32), intent(out) :: ierr
             !! Error code

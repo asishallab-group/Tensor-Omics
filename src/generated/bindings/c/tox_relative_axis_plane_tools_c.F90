@@ -64,8 +64,6 @@ contains
             !! projected vectors
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:), allocatable :: vecs_selection_mask_f
-        logical, dimension(:), allocatable :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -78,18 +76,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(axes_selection_mask, n_axes)
         M_CHECK_ARRAY_NON_NULL(projections, n_selected_axes * n_selected_vecs)
 
-        M_ALLOCATE(vecs_selection_mask_f(n_vecs))
-        vecs_selection_mask_f = vecs_selection_mask
-        M_ALLOCATE(axes_selection_mask_f(n_axes))
-        axes_selection_mask_f = axes_selection_mask
-
         call omics_vector_RAP_projection(&
             vecs = vecs,&
             n_axes = n_axes,&
             n_vecs = n_vecs,&
-            vecs_selection_mask = vecs_selection_mask_f,&
+            vecs_selection_mask = vecs_selection_mask,&
             n_selected_vecs = n_selected_vecs,&
-            axes_selection_mask = axes_selection_mask_f,&
+            axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
             projections = projections,&
             ierr = ierr&
@@ -128,8 +121,6 @@ contains
             !! projected vectors
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:), allocatable :: fields_selection_mask_f
-        logical, dimension(:), allocatable :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -142,18 +133,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(axes_selection_mask, n_axes)
         M_CHECK_ARRAY_NON_NULL(projections, n_selected_axes * n_selected_fields)
 
-        M_ALLOCATE(fields_selection_mask_f(n_fields))
-        fields_selection_mask_f = fields_selection_mask
-        M_ALLOCATE(axes_selection_mask_f(n_axes))
-        axes_selection_mask_f = axes_selection_mask
-
         call omics_field_RAP_projection(&
             fields = fields,&
             n_axes = n_axes,&
             n_fields = n_fields,&
-            fields_selection_mask = fields_selection_mask_f,&
+            fields_selection_mask = fields_selection_mask,&
             n_selected_fields = n_selected_fields,&
-            axes_selection_mask = axes_selection_mask_f,&
+            axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
             projections = projections,&
             ierr = ierr&
@@ -246,7 +232,6 @@ contains
             !! Signed rotation angles between vector pairs in radians [-π, π]
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical, dimension(:), allocatable :: fields_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -258,14 +243,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(orientation_reference, n_dims)
         M_CHECK_ARRAY_NON_NULL(signed_angles, n_selected_fields)
 
-        M_ALLOCATE(fields_selection_mask_f(n_fields))
-        fields_selection_mask_f = fields_selection_mask
-
         call clock_hand_angles_for_shift_vectors(&
             fields = fields,&
             n_dims = n_dims,&
             n_fields = n_fields,&
-            fields_selection_mask = fields_selection_mask_f,&
+            fields_selection_mask = fields_selection_mask,&
             n_selected_fields = n_selected_fields,&
             orientation_reference = orientation_reference,&
             signed_angles = signed_angles,&

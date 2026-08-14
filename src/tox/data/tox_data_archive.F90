@@ -10,7 +10,7 @@
 !| fixed TensorOmics data set schema; `create_zip_archive`/`extract_zip_archive` and the
 !| `*_manifest*` routines below are the generic key/filename building blocks they are built on.
 module tox_data_archive
-    use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr
+    use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr, c_bool
     use tox_data_read_write
     use tox_errors, only: set_ok, set_err_once, is_err, ERR_FILE_OPEN, ERR_ALLOC_FAIL, ERR_FILE_ADD, set_err
     use tox_errors, only: ERR_FILE_CLOSE, ERR_FILE_EXTRACT, ERR_INVALID_INPUT
@@ -236,7 +236,7 @@ contains
         integer(c_int) :: error
         integer(c_int64_t) :: i, num_entries
         character(len=:), allocatable :: filename
-        logical :: file_exists
+        logical(c_bool) :: file_exists
         integer(int32) :: i_fortran
         integer(c_int64_t) :: i_c
 
@@ -725,8 +725,8 @@ contains
 
         character(len=:), allocatable :: actual_gene_ids_file, actual_expression_file, actual_gene_to_family_file, &
                                          actual_family_ids_file, actual_family_centroids_file, actual_shift_vectors_file
-        logical :: gene_ids_present, expression_present, gene_to_family_present, &
-                   family_ids_present, family_centroids_present, shift_vectors_present
+        logical(c_bool) :: gene_ids_present, expression_present, gene_to_family_present, &
+                           family_ids_present, family_centroids_present, shift_vectors_present
         integer(int32) :: temp_ierr
         character(len=:), allocatable :: keys(:), filenames(:)
         integer :: count, i
@@ -861,7 +861,7 @@ contains
         !| `ierr`), since a leftover temp file does not affect whether the archive itself was
         !| written successfully.
         subroutine cleanup_temporary_files(file_present, filename, description)
-            logical, intent(in) :: file_present
+            logical(c_bool), intent(in) :: file_present
                 !! Whether this array was actually saved (and thus has a temp file to remove)
             character(len=*), intent(in) :: filename
                 !! Path of the temporary file to delete
@@ -918,8 +918,8 @@ contains
 
         character(len=:), allocatable :: keys(:), filenames(:)
         integer(int32) :: i_key, type_code
-        logical :: gene_ids_requested, expression_requested, gene_to_family_requested, &
-                   family_ids_requested, family_centroids_requested, shift_vectors_requested
+        logical(c_bool) :: gene_ids_requested, expression_requested, gene_to_family_requested, &
+                           family_ids_requested, family_centroids_requested, shift_vectors_requested
         integer(int32) :: max_dims, ndims, dims(5)
         character(len=:), allocatable :: extracted_gene_ids_file, extracted_expression_file, &
                                          extracted_gene_to_family_file, extracted_family_ids_file, &

@@ -3,6 +3,7 @@ module mod_test_get_outliers
   use asserts
   use tox_get_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite
   use tox_errors, only: get_err_code
   implicit none
@@ -191,17 +192,17 @@ contains
     integer(int32), parameter :: genes_per_fam = 6_int32
     integer(int32), parameter :: n_genes = n_families * genes_per_fam
 
-    real(real64)   :: distances(n_genes)
-    integer(int32) :: gene_to_fam(n_genes)
+    real(real64)    :: distances(n_genes)
+    integer(int32)  :: gene_to_fam(n_genes)
 
-    real(real64)   :: work_array(n_genes)
-    integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical        :: is_outlier(n_genes)
-    integer(int32) :: ierr
+    real(real64)    :: work_array(n_genes)
+    integer(int32)  :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
+    integer(int32)  :: ierr
 
-    real(real64)   :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: loess_n(n_families)
-    real(real64)   :: quantile(n_genes)
+    real(real64)    :: loess_x(n_families), loess_y(n_families)
+    integer(int32)  :: loess_n(n_families)
+    real(real64)    :: quantile(n_genes)
 
     integer(int32) :: f, j, idx
     integer(int32) :: i_out, i_norm
@@ -264,7 +265,7 @@ contains
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes), sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -314,7 +315,7 @@ contains
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes), sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -351,7 +352,7 @@ contains
     real(real64) :: rdi(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -380,7 +381,7 @@ contains
     real(real64) :: rdi(n_genes) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -418,7 +419,7 @@ contains
     real(real64) :: rdi(n_genes) = [1.0_real64, 2.0_real64, 2.0_real64, 3.0_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -453,7 +454,7 @@ contains
     real(real64) :: rdi(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -484,7 +485,7 @@ contains
     real(real64) :: rdi(n_genes) = [-0.1_real64, -0.2_real64, -0.3_real64, -0.4_real64, -0.5_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     integer(int32) :: ierr
 
@@ -516,7 +517,7 @@ contains
     integer(int32) :: gene_to_fam(n_genes) = [1,3,0]
     real(real64) :: work_array(n_genes)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: quantile(n_genes)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
@@ -537,7 +538,7 @@ contains
 
     real(real64) :: work_array(n_genes)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     integer(int32) :: ierr
 
     real(real64) :: loess_x(n_families), loess_y(n_families)
@@ -606,22 +607,22 @@ contains
 
     integer(int32), parameter :: n_genes = 1_int32, n_families = 1_int32
 
-    real(real64)   :: distances(n_genes)   = [0.0_real64]
-    integer(int32) :: gene_to_fam(n_genes) = [1_int32]
+    real(real64)    :: distances(n_genes)   = [0.0_real64]
+    integer(int32)  :: gene_to_fam(n_genes) = [1_int32]
 
-    real(real64)   :: dscale(n_families)
-    real(real64)   :: rdi(n_genes)
-    real(real64)   :: sorted_rdi(n_genes)
-    real(real64)   :: work_array(n_genes)
+    real(real64)    :: dscale(n_families)
+    real(real64)    :: rdi(n_genes)
+    real(real64)    :: sorted_rdi(n_genes)
+    real(real64)    :: work_array(n_genes)
 
-    integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical        :: is_outlier(n_genes)
-    integer(int32) :: ierr
-    integer(int32) :: i
+    integer(int32)  :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
+    integer(int32)  :: ierr
+    integer(int32)  :: i
 
-    real(real64)   :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: loess_n(n_families)  ! NOTE: used as workspace by scaling alloc in your detect_outliers
-    real(real64)   :: quantile(n_genes)
+    real(real64)    :: loess_x(n_families), loess_y(n_families)
+    integer(int32)  :: loess_n(n_families)  ! NOTE: used as workspace by scaling alloc in your detect_outliers
+    real(real64)    :: quantile(n_genes)
     ! the LOESS fit diagnostics the allocating wrapper returns alongside the scaling
     real(real64) :: low_sd_cutoff
     integer(int32) :: excluded_low_sd(n_families)
@@ -1070,7 +1071,7 @@ contains
     real(real64)    :: distances(n_genes)
     real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
     integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
-    logical         :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64)    :: quantile(n_genes)
 
     do i = 1, n_genes - 1
@@ -1109,7 +1110,7 @@ contains
     integer(int32)  :: gene_to_fam(n_genes) = [1_int32, 1_int32, 1_int32, 1_int32]
     real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
     integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
-    logical         :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64)    :: quantile(n_genes)
 
     distances = 1.0_real64

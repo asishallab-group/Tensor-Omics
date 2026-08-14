@@ -12,6 +12,7 @@
 !| Generated from [[tox_data_integration_stats_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_stats
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_real
@@ -73,9 +74,9 @@ contains
             !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
         integer(int32), intent(in), optional :: random_seed
             !! Seed to use for shuffling
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
             !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -99,8 +100,8 @@ contains
         call validate_in_range_real(global_jsd_observed, ierr, arg_pos=7_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=9_int32, min=0.0_real64)
         call validate_dimension_size(n_permutations, ierr, arg_pos=10_int32)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -224,9 +225,9 @@ contains
             !! Working array for the divergence weights
         integer(int32), intent(in), optional :: random_seed
             !! Seed to use for shuffling
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
             !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
-        logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
@@ -241,8 +242,8 @@ contains
         call validate_dimension_size(n_bins, ierr, arg_pos=8_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=9_int32, min=0.0_real64)
         call validate_dimension_size(n_permutations, ierr, arg_pos=10_int32)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 

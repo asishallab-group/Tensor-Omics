@@ -11,6 +11,14 @@
 !| type code, number of dimensions `ndim`, then `ndim` dimension sizes. The
 !| raw array payload follows immediately after the header, written as one
 !| contiguous block by the type-specific serializers.
+!|
+!| The header does NOT record the width of an element, so the payload is only
+!| readable by a build that agrees with the writer on the storage size of the
+!| type code. Logical arrays changed width once: they are now written as
+!| `logical(c_bool)`, one byte per element, where earlier builds wrote the
+!| default logical kind at four. A logical `.bin` file written before that
+!| change therefore decodes to garbage here rather than failing, and one
+!| written here does the same there. No other type code has moved.
 module f42_serde_arrays_utils
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_utils

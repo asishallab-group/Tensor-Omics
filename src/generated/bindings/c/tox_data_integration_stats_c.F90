@@ -80,8 +80,6 @@ contains
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: neighbor_mask_S1_f
-        logical, dimension(:, :), allocatable :: neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -98,15 +96,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(jsd_null, n_permutations)
 
-        if (present(neighbor_mask_S1)) then
-            M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
-        end if
-        if (present(neighbor_mask_S1)) neighbor_mask_S1_f = neighbor_mask_S1
-        if (present(neighbor_mask_S2)) then
-            M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
-        end if
-        if (present(neighbor_mask_S2)) neighbor_mask_S2_f = neighbor_mask_S2
-
         call gjct_permutation_test(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
             neighborhood_residuals_S2 = neighborhood_residuals_S2,&
@@ -121,8 +110,8 @@ contains
             jsd_null = jsd_null,&
             p_value = p_value,&
             random_seed = random_seed,&
-            neighbor_mask_S1 = neighbor_mask_S1_f,&
-            neighbor_mask_S2 = neighbor_mask_S2_f,&
+            neighbor_mask_S1 = neighbor_mask_S1,&
+            neighbor_mask_S2 = neighbor_mask_S2,&
             ierr = ierr&
         )
     end subroutine gjct_permutation_test_c
@@ -215,8 +204,6 @@ contains
             !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: neighbor_mask_S1_f
-        logical, dimension(:, :), allocatable :: neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -243,15 +230,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_js_divergences, n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_weights, n_points)
 
-        if (present(neighbor_mask_S1)) then
-            M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
-        end if
-        if (present(neighbor_mask_S1)) neighbor_mask_S1_f = neighbor_mask_S1
-        if (present(neighbor_mask_S2)) then
-            M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
-        end if
-        if (present(neighbor_mask_S2)) neighbor_mask_S2_f = neighbor_mask_S2
-
         call gjct_permutation_test_expert(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
             neighborhood_residuals_S2 = neighborhood_residuals_S2,&
@@ -276,8 +254,8 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             random_seed = random_seed,&
-            neighbor_mask_S1 = neighbor_mask_S1_f,&
-            neighbor_mask_S2 = neighbor_mask_S2_f,&
+            neighbor_mask_S1 = neighbor_mask_S1,&
+            neighbor_mask_S2 = neighbor_mask_S2,&
             ierr = ierr&
         )
     end subroutine gjct_permutation_test_expert_c

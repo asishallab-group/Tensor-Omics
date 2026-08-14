@@ -9,6 +9,7 @@
 !| Generated from [[tox_data_integration_per_family_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_per_family
     use tox_data_integration_per_family_impl, only: fjct_compute_contribution_scores_impl, fjct_compute_jsd_impl, fjct_compute_masked_jsd_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, set_err
     use tox_errors, only: validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -105,8 +106,8 @@ contains
             !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: tmp_neighbor_mask_S1
-        logical, dimension(:, :), allocatable :: tmp_neighbor_mask_S2
+        logical(c_bool), dimension(:, :), allocatable :: tmp_neighbor_mask_S1
+        logical(c_bool), dimension(:, :), allocatable :: tmp_neighbor_mask_S2
         real(real64), dimension(:, :), allocatable :: tmp_pmf_S1
         real(real64), dimension(:, :), allocatable :: tmp_pmf_S2
         integer(int32), dimension(:, :), allocatable :: tmp_counts
@@ -123,8 +124,8 @@ contains
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=15_int32, min=0.0_real64)
         call validate_all_in_range_int(gene_to_family_S1, n_genes_S1, ierr, arg_pos=2_int32, min=0_int32)
         call validate_all_in_range_int(gene_to_family_S2, n_genes_S2, ierr, arg_pos=3_int32, min=0_int32)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=6_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=7_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(neighborhood_genes_S1, n_neighbors * n_points, ierr, arg_pos=8_int32, min=1_int32, max=n_genes_S1)
         call validate_all_in_range_int(neighborhood_genes_S2, n_neighbors * n_points, ierr, arg_pos=9_int32, min=1_int32, max=n_genes_S2)
         if (is_err(ierr)) return
@@ -250,9 +251,9 @@ contains
             !! Weighted global Jensen-Shannon divergence
         real(real64), dimension(n_points), intent(out) :: weights
             !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
-        logical, dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S1
             !! Work array for the mask selecting study 1's neighbors that belong to `family_idx`
-        logical, dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S2
             !! Work array for the mask selecting study 2's neighbors that belong to `family_idx`
         real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1
             !! Work array for study 1's normalized histogram counts
@@ -276,8 +277,8 @@ contains
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=15_int32, min=0.0_real64)
         call validate_all_in_range_int(gene_to_family_S1, n_genes_S1, ierr, arg_pos=2_int32, min=0_int32)
         call validate_all_in_range_int(gene_to_family_S2, n_genes_S2, ierr, arg_pos=3_int32, min=0_int32)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=6_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=7_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=6_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=7_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(neighborhood_genes_S1, n_neighbors * n_points, ierr, arg_pos=8_int32, min=1_int32, max=n_genes_S1)
         call validate_all_in_range_int(neighborhood_genes_S2, n_neighbors * n_points, ierr, arg_pos=9_int32, min=1_int32, max=n_genes_S2)
         if (is_err(ierr)) return
@@ -355,9 +356,9 @@ contains
         real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
             !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
             !! NaN is permitted for this value.
-        logical, dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S1
             !! Mask selecting the neighbors of study 1 to include
-        logical, dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S2
             !! Mask selecting the neighbors of study 2 to include
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range for both studies
@@ -390,8 +391,8 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
         call validate_dimension_size(n_bins, ierr, arg_pos=9_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 
@@ -463,9 +464,9 @@ contains
         real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
             !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
             !! NaN is permitted for this value.
-        logical, dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S1
             !! Mask selecting the neighbors of study 1 to include
-        logical, dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S2
             !! Mask selecting the neighbors of study 2 to include
         real(real64), intent(in) :: shared_residual_range
             !! Computed residual range for both studies
@@ -499,8 +500,8 @@ contains
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
         call validate_dimension_size(n_bins, ierr, arg_pos=9_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=10_int32, min=0.0_real64)
-        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true.)
-        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true.)
+        call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
 

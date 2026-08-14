@@ -8,6 +8,7 @@
 !| layers, everything here works from delimited text rather than the library's binary array format.
 module tox_data_tools
     use iso_fortran_env, only: real64, int32, iostat_end
+    use iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, set_err, is_err, check_io_stat
     use tox_errors, only: ERR_INVALID_INPUT, ERR_FILE_OPEN, ERR_READ_DATA, ERR_SIZE_MISMATCH
     use f42_config, only: DEBUG
@@ -495,7 +496,7 @@ contains
 
         integer(int32), intent(in) :: gene_to_fam(:)
         !! gene to family mapping
-        logical, intent(out) :: mask(size(gene_to_fam))
+        logical(c_bool), intent(out) :: mask(size(gene_to_fam))
         !! mask for mapping
         integer(int32), intent(out) :: n_genes_kept
         !! number of genes kept
@@ -519,7 +520,7 @@ contains
             !! expression vectors array
         integer(int32), allocatable, intent(inout) :: gene_to_fam(:)
             !! gene to family mapping
-        logical, intent(in) :: mask(:)
+        logical(c_bool), intent(in) :: mask(:)
             !! mask for mapping
         integer(int32), intent(out) :: n_genes_kept
             !! number of genes kept

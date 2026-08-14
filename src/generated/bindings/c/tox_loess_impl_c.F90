@@ -52,7 +52,6 @@ contains
             !! Save matrix factorization flag
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -62,14 +61,12 @@ contains
         M_CHECK_NON_NULL(real_workspace_size)
         M_CHECK_NON_NULL(save_factorization)
 
-        save_factorization_f = save_factorization
-
         call tox_loess_required_workspace(&
             n_dim = n_dim,&
             max_neighborhood_size = max_neighborhood_size,&
             int_workspace_size = int_workspace_size,&
             real_workspace_size = real_workspace_size,&
-            save_factorization = save_factorization_f&
+            save_factorization = save_factorization&
         )
     end subroutine tox_loess_required_workspace_c
 

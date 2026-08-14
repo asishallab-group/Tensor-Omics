@@ -254,8 +254,6 @@ contains
             !! Work array for the histogram counts
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: tmp_neighbor_mask_S1_f
-        logical, dimension(:, :), allocatable :: tmp_neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -286,9 +284,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
 
-        M_ALLOCATE(tmp_neighbor_mask_S1_f(n_neighbors, n_points))
-        M_ALLOCATE(tmp_neighbor_mask_S2_f(n_neighbors, n_points))
-
         call fjct_compute_jsd_expert(&
             family_idx = family_idx,&
             gene_to_family_S1 = gene_to_family_S1,&
@@ -311,16 +306,13 @@ contains
             total_included_n_reps = total_included_n_reps,&
             global_js_divergence = global_js_divergence,&
             weights = weights,&
-            tmp_neighbor_mask_S1 = tmp_neighbor_mask_S1_f,&
-            tmp_neighbor_mask_S2 = tmp_neighbor_mask_S2_f,&
+            tmp_neighbor_mask_S1 = tmp_neighbor_mask_S1,&
+            tmp_neighbor_mask_S2 = tmp_neighbor_mask_S2,&
             tmp_pmf_S1 = tmp_pmf_S1,&
             tmp_pmf_S2 = tmp_pmf_S2,&
             tmp_counts = tmp_counts,&
             ierr = ierr&
         )
-
-        tmp_neighbor_mask_S1 = tmp_neighbor_mask_S1_f
-        tmp_neighbor_mask_S2 = tmp_neighbor_mask_S2_f
     end subroutine fjct_compute_jsd_expert_c
 
     !> summary: C-wrapper for [[tox_data_integration_per_family(module):fjct_compute_masked_jsd(subroutine)]]
@@ -392,8 +384,6 @@ contains
             !! Normalized histogram counts for study 2
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: neighbor_mask_S1_f
-        logical, dimension(:, :), allocatable :: neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -416,11 +406,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf_S1, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(pmf_S2, n_points * n_bins)
 
-        M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
-        neighbor_mask_S1_f = neighbor_mask_S1
-        M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
-        neighbor_mask_S2_f = neighbor_mask_S2
-
         call fjct_compute_masked_jsd(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
             neighborhood_residuals_S2 = neighborhood_residuals_S2,&
@@ -428,8 +413,8 @@ contains
             n_reps_S2 = n_reps_S2,&
             n_neighbors = n_neighbors,&
             n_points = n_points,&
-            neighbor_mask_S1 = neighbor_mask_S1_f,&
-            neighbor_mask_S2 = neighbor_mask_S2_f,&
+            neighbor_mask_S1 = neighbor_mask_S1,&
+            neighbor_mask_S2 = neighbor_mask_S2,&
             n_bins = n_bins,&
             shared_residual_range = shared_residual_range,&
             js_divergences = js_divergences,&
@@ -516,8 +501,6 @@ contains
             !! Work array for the histogram counts
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: neighbor_mask_S1_f
-        logical, dimension(:, :), allocatable :: neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -541,11 +524,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
 
-        M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
-        neighbor_mask_S1_f = neighbor_mask_S1
-        M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
-        neighbor_mask_S2_f = neighbor_mask_S2
-
         call fjct_compute_masked_jsd_expert(&
             neighborhood_residuals_S1 = neighborhood_residuals_S1,&
             neighborhood_residuals_S2 = neighborhood_residuals_S2,&
@@ -553,8 +531,8 @@ contains
             n_reps_S2 = n_reps_S2,&
             n_neighbors = n_neighbors,&
             n_points = n_points,&
-            neighbor_mask_S1 = neighbor_mask_S1_f,&
-            neighbor_mask_S2 = neighbor_mask_S2_f,&
+            neighbor_mask_S1 = neighbor_mask_S1,&
+            neighbor_mask_S2 = neighbor_mask_S2,&
             n_bins = n_bins,&
             shared_residual_range = shared_residual_range,&
             js_divergences = js_divergences,&

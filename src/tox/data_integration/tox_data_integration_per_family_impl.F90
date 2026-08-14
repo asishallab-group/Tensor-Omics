@@ -7,6 +7,7 @@
 !| compatible *for this family*, which the global figure can hide either way.
 module tox_data_integration_per_family_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: is_close
     use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
     M_IMPLICIT_NONE
@@ -74,9 +75,9 @@ contains
             !! Weighted global Jensen-Shannon divergence
         real(real64), dimension(n_points), intent(out) :: weights
             !! Weights used for calculating the global weighted Jensen-Shannon divergence `global_js_divergence`
-        logical, dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S1
             !! Work array for the mask selecting study 1's neighbors that belong to `family_idx`
-        logical, dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(out) :: tmp_neighbor_mask_S2
             !! Work array for the mask selecting study 2's neighbors that belong to `family_idx`
         real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1
             !! Work array for study 1's normalized histogram counts
@@ -119,9 +120,9 @@ contains
         real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
             !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
             !! DM_ALLOW_NAN
-        logical, dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S1
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S1
             !! Mask selecting the neighbors of study 1 to include
-        logical, dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S2
+        logical(c_bool), dimension(n_neighbors, n_points), intent(in) :: neighbor_mask_S2
             !! Mask selecting the neighbors of study 2 to include
         integer(int32), intent(in) :: n_bins
             !! Number of equally sized histogram bins used for the studies

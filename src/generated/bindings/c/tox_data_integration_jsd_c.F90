@@ -297,7 +297,6 @@ contains
             !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(:, :), allocatable :: neighbor_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -311,11 +310,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points)
 
-        if (present(neighbor_mask)) then
-            M_ALLOCATE(neighbor_mask_f(n_neighbors, n_points))
-        end if
-        if (present(neighbor_mask)) neighbor_mask_f = neighbor_mask
-
         call build_residual_histograms(&
             neighborhood_residuals = neighborhood_residuals,&
             n_reps = n_reps,&
@@ -326,7 +320,7 @@ contains
             counts = counts,&
             pmf = pmf,&
             included_n_reps = included_n_reps,&
-            neighbor_mask = neighbor_mask_f,&
+            neighbor_mask = neighbor_mask,&
             ierr = ierr&
         )
     end subroutine build_residual_histograms_c
