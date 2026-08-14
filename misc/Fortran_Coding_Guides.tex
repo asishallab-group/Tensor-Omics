@@ -150,6 +150,42 @@ integer(int32), intent(in) :: n_genes, n_axes
 For \textbf{local variables} this rule does not apply — grouping related locals on one line is acceptable. Local variables do not need FORD comments, but must still follow the naming conventions (meaningful, descriptive names).
 
 % =============================================================================
+\section{Always Use \texttt{c\_bool} for Logicals}
+% =============================================================================
+
+Every logical that occupies storage --- dummy arguments, locals, module variables, arrays ---
+is declared \texttt{logical(c\_bool)} from \texttt{iso\_c\_binding}, never the default kind.
+
+\begin{lstlisting}[language=Fortran]
+use, intrinsic :: iso_c_binding, only: c_bool
+
+logical(c_bool), intent(in) :: selection_mask(n_genes)
+logical(c_bool) :: found
+\end{lstlisting}
+
+\textbf{Why.} A default \texttt{logical} is four bytes and \texttt{c\_bool} is one, so a mask
+over genes costs a quarter as much --- and it is the kind C, Python and R already use, so a
+mask crosses the boundary with no copy at all. Before this, every generated C wrapper declared
+an automatic array of default \texttt{logical} and converted elementwise on the way in and out.
+
+\textbf{Two exceptions, both because there is no storage to save.} A \texttt{logical,
+parameter} is a named constant. A \texttt{logical function} result is a scalar, and a condition
+accepts any logical kind, so nothing forces it either way. Neither is worth the noise.
+
+\textbf{A literal needs the kind too.} \texttt{.true.} is default kind, and argument
+association does not convert kinds, so passing it to a \texttt{logical(c\_bool)} dummy is a
+compile error --- write \texttt{.true.\_c\_bool}. Assignment is fine and converts silently,
+which is why \texttt{mask = x > 0.0\_real64} needs nothing special.
+
+\textbf{Characters are not the same case.} There is no matching rule to use
+\texttt{character(kind=c\_char)} everywhere: an implementation declares an ordinary
+\texttt{character(len=*)}, and \texttt{c\_char} appears only where a buffer really is a C
+buffer, which in hand-written code is the libzip interface and the view helper in
+\texttt{tox\_conversions}. What an implementation \emph{does} need to know is that a character
+argument arrives blank-padded to the buffer width rather than trimmed --- see
+\texttt{codegen\_guide.md}.
+
+% =============================================================================
 \section{Always Use Double Precision}
 % =============================================================================
 

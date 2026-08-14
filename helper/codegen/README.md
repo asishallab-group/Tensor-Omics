@@ -306,10 +306,11 @@ The parts a source author does not need, and a generator maintainer does:
 - **Every `use ..., only:` names what the body uses, and nothing more.** An unused `only:`
   name is not a compile error in any Fortran and no compiler warns about one, so a fixed
   import list goes stale in silence -- which is what happened to the C bindings' `tox_errors`
-  list. Each conditional import now has a predicate beside the code that emits it
-  (`_converts_an_input`, `_conversion_helpers`), with tests that a module needing none asks
-  for none. When auditing this by hand, expand `src/macros.h` first: most apparent unused
-  imports are named inside `M_ALLOCATE` and `M_CHECK_NON_NULL`.
+  list, twice: once as recorded here, and again when the mode conversion stopped being able to
+  fail and left `is_err` behind. Each conditional import has a predicate beside the code that
+  emits it (`_conversion_helpers`, `_emitted_literal_kinds`), with tests that a module needing
+  none asks for none -- and those tests are what caught the second one. When auditing by hand,
+  expand `src/macros.h` first: most apparent unused imports are named inside `M_CHECK_NON_NULL`.
 - **A published pair explains itself** (`emit/doc_tiers.py`). Where both `foo` and
   `foo_expert` reach a language, each docstring says what the other does -- which permutation
   the allocating half seeds and sorts, which prologue it runs -- because the two are otherwise
@@ -377,13 +378,14 @@ dropping the fixed directory they used to be scoped to:
   module header (`Procedure.uses`), or the rule would sit one indentation level from being
   bypassed.
 
-  The list is a curated boundary, not a proof: nothing checks that a member is itself
-  allocation-free, and `tox_conversions` is not — two of its procedures return a
-  deferred-length string, which Fortran can only express as an `allocatable`. No
-  implementation imports it, so nothing is wrong today. `f42_utils` sat on the list while its
-  `f42_stats` child still had hand-written `_alloc` halves; converting that family removed the
-  entry rather than justifying it, which is the move to reach for — a module that has to be
-  whitelisted may be a module that should be an implementation
+  The list is checked, not asserted: **every whitelisted module must itself be
+  allocation-free**, and the generator verifies it. Without that the bound is only a promise —
+  whitelist a module, let it grow an allocation, and every implementation reaching it allocates
+  with nothing to say so. It went unchecked for a long time because it would have failed:
+  `f42_utils` sat on the list while its `f42_stats` child still had hand-written `_alloc`
+  halves, and `tox_conversions` until its string conversions became pointer views. Converting
+  the f42 family removed the entry rather than justifying it, which is the move to reach for —
+  a module that has to be whitelisted may be a module that should be an implementation
 
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 
@@ -455,9 +457,11 @@ the compiler or a run rejected the first attempt.
   pointer that is absent when C passes null — no descriptor, no branch.
 - **`intent(inout)`** is modified in place in Python but copied-and-returned in R, because R
   is copy-on-modify. The R side clones before Fortran touches the data.
-- **Characters** carry their length as a leading C extent. Output buffers are zero-filled
-  (Fortran fills them only partially; the nulls terminate the strings), numeric outputs are
-  not (wasteful and dishonest).
+- **Characters** carry their length as a leading C extent, and the wrapper takes a zero-copy
+  `character(len=n)` pointer view of the caller's buffer rather than converting it. Buffers are
+  **blank**-filled, which is Fortran's own convention, so `trim` and comparison work on what the
+  view yields and nothing has to scan for a NUL. Numeric outputs are left uninitialised
+  (zeroing them is wasteful and dishonest — zeros look like results).
 - **`c_bool`** logicals cross as real booleans, and since every stored logical in the library
   is `logical(c_bool)` the wrapper copies nothing — it hands the caller's buffer straight to
   the implementation. Declare yours the same way; a default-kind `logical` dummy would put the
