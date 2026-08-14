@@ -7,7 +7,7 @@ docstring unchanged, the second one contradicts the signature three lines above 
 
 import pytest
 
-from codegen.emit.doc_literals import render
+from codegen.emit.doc_literals import render, render_mode_default
 
 
 class TestKindSuffixes:
@@ -73,3 +73,45 @@ class TestInlineMaths:
 
     def test_several_on_one_line_each_convert(self):
         assert render(r"\( a \) and \( b \)", "r") == r"\eqn{a} and \eqn{b}"
+
+
+class TestModeDefaults:
+    """`DM_DEFAULT` on a mode argument quotes back the integer the author wrote, which is the
+    one value a caller of the binding must not pass -- the binding takes the mode string."""
+
+    SENTENCE = "The default value is `1`."
+
+    def test_python_gets_its_own_quotes(self):
+        assert (render_mode_default(self.SENTENCE, "robust", "python")
+                == "The default value is `'robust'`.")
+
+    def test_r_gets_its_own_quotes(self):
+        # matching the type line above it, which lists the modes as "plain", "robust"
+        assert (render_mode_default(self.SENTENCE, "robust", "r")
+                == 'The default value is `"robust"`.')
+
+    def test_the_c_wrapper_gets_a_fortran_literal(self):
+        assert (render_mode_default(self.SENTENCE, "robust", "fortran")
+                == "The default value is `'robust'`.")
+
+    def test_the_kinded_form_is_rewritten_too(self):
+        # the C wrapper keeps Fortran literals, so the sentence still carries its kind there
+        assert (render_mode_default("The default value is `1_int32`.", "plain", "fortran")
+                == "The default value is `'plain'`.")
+
+    @pytest.mark.parametrize("text", [
+        "The minimum valid value is `1`.",
+        "The maximum valid value is `1`.",
+        "Defaults to the value 1 when omitted.",
+        "The default value of the neighbour count is `1`.",
+    ])
+    def test_only_the_macro_s_own_sentence_is_touched(self, text):
+        # the wording is DM_DEFAULT's, which is what makes rewriting it the generator
+        # editing its own output rather than the author's prose
+        assert render_mode_default(text, "robust", "python") == text
+
+    def test_surrounding_prose_survives(self):
+        text = "Mode for LOESS fitting. The default value is `1`. See the table below."
+        assert render_mode_default(text, "robust", "python") == (
+            "Mode for LOESS fitting. The default value is `'robust'`. See the table below."
+        )

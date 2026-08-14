@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
 from .doc_links import render_spans as _spans
-from .doc_literals import is_ford_block_tag, render as _render
+from .doc_literals import is_ford_block_tag, render as _render, render_mode_default
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 
@@ -105,7 +105,7 @@ def _parameter(writer: Writer, argument: CArgument, emitter) -> None:
     suffix = ", " + ", ".join(annotations) if annotations else ""
     writer.line(f"{argument.name} : {python_type_of(argument)}{suffix}")
     with writer.indent():
-        _description(writer, argument.doc, emitter)
+        _description(writer, argument.doc, emitter, argument.mode_default)
 
 
 def _result(writer: Writer, argument: CArgument, emitter=None) -> None:
@@ -126,7 +126,7 @@ def _resolver(emitter):
     return getattr(emitter, "links", None)
 
 
-def _description(writer: Writer, doc: Doc, emitter=None) -> None:
+def _description(writer: Writer, doc: Doc, emitter=None, mode_default: str | None = None) -> None:
     if not doc:
         return
     for block in doc:
@@ -135,7 +135,10 @@ def _description(writer: Writer, doc: Doc, emitter=None) -> None:
             continue
         if is_ford_block_tag(block.text):
             continue
-        writer.line(_render(_spans(block, _resolver(emitter), "python"), "python"))
+        text = _render(_spans(block, _resolver(emitter), "python"), "python")
+        if mode_default is not None:
+            text = render_mode_default(text, mode_default, "python")
+        writer.line(text)
 
 
 def _raises(writer: Writer, wrapper: CWrapper) -> None:

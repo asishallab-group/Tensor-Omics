@@ -147,8 +147,9 @@ contains
             !! |------|-------|
             !! | average the values | [[fx_basics(module):MODE_MEAN(variable)]] |
             !! | take the middle value | [[fx_basics(module):MODE_MEDIAN(variable)]] |
-        integer(int32), intent(in) :: link_method
+        integer(int32), intent(in), optional :: link_method
             !! how to link clusters
+            !! DM_DEFAULT(METHOD_WARD)
             !!
             !! | Method | Value |
             !! |--------|-------|
@@ -169,8 +170,10 @@ contains
                 call set_err(ierr, ERR_INVALID_INPUT)
                 return
         end select
-        ! link_method is accepted but unused: it is here to exercise a second mode
-        summary = summary + 0.0_real64*real(link_method, real64)
+        ! link_method is accepted but unused: it is here to exercise a second mode, and an
+        ! optional one with a DM_DEFAULT, which is the only shape that shows whether the
+        ! default reaches the docs as the mode string rather than as the integer behind it
+        if (present(link_method)) summary = summary + 0.0_real64*real(link_method, real64)
     end subroutine fx_modes
 
     !> M_EXPORT_C

@@ -80,7 +80,7 @@ contains
             !! The default value is `2_int32`.
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
-            !! The default value is `1_int32`.
+            !! The default value is `'robust'`.
             !!
             !! | Mode                 | Value                                            |
             !! |----------------------|--------------------------------------------------|
@@ -261,7 +261,7 @@ contains
             !! The default value is `2_int32`.
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
-            !! The default value is `1_int32`.
+            !! The default value is `'robust'`.
             !!
             !! | Mode                 | Value                                            |
             !! |----------------------|--------------------------------------------------|

@@ -361,3 +361,48 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
         specs = [spec for spec, _ in self.wrappers(real_project)]
         assert len(specs) >= 10
         assert any(spec.mode_fix is not None for spec in specs), "no mode-split wrapper seen"
+
+
+class TestAModeDefaultSpeaksEachLayersLanguage:
+    """`DM_DEFAULT` on a mode argument quotes back the author's Fortran, and that is an
+    integer. Every layer that types the mode as a string has to say the string instead --
+    and the one layer that keeps the integer has to go on saying the integer.
+
+    `fx_modes`' `link_method` is what exercises it: optional, carrying a mode table, and
+    `DM_DEFAULT(METHOD_WARD)`. Nothing in the tree had that combination before, which is how
+    a Python docstring came to read `default 'ward'` on one line and ``The default value is
+    `METHOD_WARD`.`` on the next.
+    """
+
+    @pytest.fixture(scope="class")
+    def written(self):
+        # the fixture tree has no tox_errors, so the run is not ok; the files are still built
+        result = generate(paths(REPO_ROOT), targets=("c", "python", "r"))
+        return {file.path.name: file.content for file in result.files}
+
+    def test_python_says_the_mode_string(self, written):
+        assert "The default value is `'ward'`." in written["fx_basics.py"]
+        assert "METHOD_WARD" not in written["fx_basics.py"]
+
+    def test_r_quotes_it_the_way_r_does(self, written):
+        # matching its own type line, which lists the modes as "ward", "single"
+        assert 'The default value is `"ward"`.' in written["fx_basics.R"]
+        assert "METHOD_WARD" not in written["fx_basics.R"]
+
+    def test_the_c_wrapper_says_it_too(self, written):
+        # its dummy is character(len=1, kind=c_char), so the parameter names a value no
+        # caller of this layer can pass. Its mode table still cites the parameter by name.
+        assert "The default value is `'ward'`." in written["fx_basics_c.F90"]
+        assert "The default value is `METHOD_WARD`." not in written["fx_basics_c.F90"]
+
+    def test_the_fortran_wrapper_keeps_the_integer(self, real_project):
+        """The negative control. There the dummy really is an integer, so the author's own
+        literal is the right thing to print and rewriting it would be the same bug pointing
+        the other way."""
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("fortran",), parsed=real_project)
+        written = {file.path.name: file.content for file in result.files}
+
+        wrapper = written["tox_get_outliers.F90"]
+        assert "integer(int32), intent(in), optional :: mode" in wrapper
+        assert "The default value is `1_int32`." in wrapper
+        assert "The default value is `'robust'`." not in wrapper

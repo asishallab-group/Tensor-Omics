@@ -21,7 +21,7 @@
 #' @param degree a integer scalar. Degree of the LOESS polynomial
 #'   The default value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
-#'   The default value is `1`.
+#'   The default value is `"robust"`.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
 #'   The default value is `3`.
 #' @return a named list with elements:

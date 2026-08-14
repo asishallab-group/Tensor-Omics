@@ -135,7 +135,7 @@ def compute_family_scaling(
         The default value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
-        The default value is `1`.
+        The default value is `'robust'`.
 
     n_iters : int, optional, default 3
         Number of iterations for robust LOESS fitting

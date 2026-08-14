@@ -23,6 +23,7 @@ from ..config import CONVENTIONS, Conventions
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 from .doc_ford import render_doc
+from .doc_literals import render_mode_default
 
 #: A Fortran identifier inside an extent expression. A leading digit is required to be
 #: absent so an integer literal's kind suffix (`0_int32` -> `_int32`) is the only spurious
@@ -167,8 +168,13 @@ class FortranCEmitter:
         for argument in self._declaration_order(wrapper):
             writer.line(self._declaration(argument))
             if argument.doc:
+                # C takes the mode as a string, so the documented integer default names a
+                # value this layer's caller cannot pass. The plain Fortran wrapper keeps it.
+                text = render_doc(argument.doc, kind="argument")
+                if argument.mode_default is not None:
+                    text = render_mode_default(text, argument.mode_default, "fortran")
                 with writer.indent():
-                    writer.block(render_doc(argument.doc, kind="argument"))
+                    writer.block(text)
 
     @staticmethod
     def _declaration_order(wrapper: CWrapper) -> list[CArgument]:
