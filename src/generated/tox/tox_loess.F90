@@ -17,6 +17,7 @@
 !|
 !| Generated from [[tox_loess_impl(module)]]; do not edit -- regenerate instead.
 module tox_loess
+    use f42_safeguard
     use tox_loess_impl, only: EPS_LOESS, loess_fit_plain_impl, loess_fit_robust_impl, tox_loess_required_workspace
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64

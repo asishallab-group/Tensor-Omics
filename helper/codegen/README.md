@@ -387,6 +387,17 @@ dropping the fixed directory they used to be scoped to:
   the f42 family removed the entry rather than justifying it, which is the move to reach for —
   a module that has to be whitelisted may be a module that should be an implementation
 
+- a **C kind named without `use f42_safeguard`**. `iso_c_binding` gives a C kind the value -1
+  where the platform has no counterpart, and a negative kind is a compile error at every
+  declaration naming it. `f42_safeguard`'s guards turn that into one error saying *which* kind
+  is missing — but only if it compiles first, and a dependency is the only way to order a
+  Fortran build. Checked because it has already regressed once: before logicals moved to
+  `c_bool` the only modules naming a C kind were the generated C wrappers, every one of which
+  had the `use`, and the sweep put C kinds in 39 more compilation units without it. Reads
+  argument kinds, which is what the IR carries, so a C kind used only on a module variable is
+  still invisible. The generated wrappers are exempt — their `use` list is the emitter's, and
+  `emit/fortran_wrapper` writes it.
+
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 
 - the named procedure must exist

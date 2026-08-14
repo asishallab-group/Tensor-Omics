@@ -5,6 +5,7 @@
 !| It keeps its `tox_` name because it defines Tensor Omics' error vocabulary, but it lives in
 !| `src/f42/` because f42 itself depends on it: it sits *below* f42 in the stack, not above.
 module tox_errors
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite

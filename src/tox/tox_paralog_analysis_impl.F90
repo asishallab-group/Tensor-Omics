@@ -14,6 +14,7 @@
 !| those matching. Which criterion a result was scored against is therefore visible at the call
 !| site, and each routine takes only the thresholds its own pattern needs.
 module tox_paralog_analysis_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int

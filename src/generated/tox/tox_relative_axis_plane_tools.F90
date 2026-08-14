@@ -16,6 +16,7 @@
 !|
 !| Generated from [[tox_relative_axis_plane_tools_impl(module)]]; do not edit -- regenerate instead.
 module tox_relative_axis_plane_tools
+    use f42_safeguard
     use tox_relative_axis_plane_tools_impl, only: clock_hand_angle_between_vectors_impl, clock_hand_angles_for_shift_vectors_impl, compute_relative_axis_contributions_impl, omics_field_RAP_projection_impl
     use tox_relative_axis_plane_tools_impl, only: omics_vector_RAP_projection_impl, relative_axes_changes_from_shift_vector_impl, relative_axes_expression_from_expression_vector_impl
     use, intrinsic :: iso_c_binding, only: c_bool

@@ -16,6 +16,7 @@
 !|
 !| Generated from [[tox_paralog_analysis_impl(module)]]; do not edit -- regenerate instead.
 module tox_paralog_analysis
+    use f42_safeguard
     use tox_paralog_analysis_impl, only: MODE_DOSAGE_PATTERN, MODE_SUBFUNC_PATTERN, detect_neofunctionalization_impl, detect_patterns_impl
     use tox_paralog_analysis_impl, only: filter_paralogs_by_pattern_impl
     use, intrinsic :: iso_c_binding, only: c_bool

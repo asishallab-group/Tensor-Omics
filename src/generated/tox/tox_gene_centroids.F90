@@ -9,6 +9,7 @@
 !|
 !| Generated from [[tox_gene_centroids_impl(module)]]; do not edit -- regenerate instead.
 module tox_gene_centroids
+    use f42_safeguard
     use tox_gene_centroids_impl, only: MODE_GROUP_ALL, MODE_GROUP_ORTHOLOGS, group_centroid_impl, mean_vector_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64

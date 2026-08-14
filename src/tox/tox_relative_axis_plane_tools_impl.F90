@@ -14,6 +14,7 @@
 !| give the per-axis breakdown instead of the angle: how much of a change, or of an expression
 !| level, falls on each selected axis.
 module tox_relative_axis_plane_tools_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_INVALID_INPUT, set_ok, is_err, set_err_once, ERR_DIVISION_BY_ZERO

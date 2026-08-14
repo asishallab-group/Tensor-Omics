@@ -9,45 +9,56 @@ module f42_safeguard
     ! safeguard to guarantee identity of c kinds and fortran kinds
     ! The preprocessor directives enforce a mismatch by overriding the C kinds
     ! Thus, in the final else-block all are used from iso_c_binding
-    ! Using extra modules lowers the compilation priority of this module -> some other modules will be compiled first -> if they use c kinds but not safeguard, they fail first -> not wanted
-#ifdef TEST_KIND_MISMATCH_C_INT
-    use tox_conversions, only: c_char_as_char
-    use f42_config
-    use, intrinsic :: iso_c_binding, only: c_double, c_double_complex, c_char
-    use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_int64_t, c_signed_char
+    ! This module depends on NOTHING but the intrinsics, deliberately, and must stay that way.
+    ! A dependency lowers its compilation priority, and any module compiled before it that names
+    ! a C kind then fails first -- with the compiler's message about that kind rather than this
+    ! module's message about which kind is missing. Everything naming a C kind uses this module
+    ! instead, so it is always first. That is also what makes the guards below testable: forcing
+    ! a mismatch reaches the guard before it reaches anything that breaks for a murkier reason.
+#if defined(TEST_KIND_MISMATCH_C_INT)
+    use, intrinsic :: iso_c_binding, only: c_double, c_double_complex, c_char, c_bool
+    use, intrinsic :: iso_c_binding, only: c_size_t, c_int64_t, c_signed_char
     M_IMPLICIT_NONE
     integer(int32), parameter :: c_int = int32*2
-#else
-#ifdef TEST_KIND_MISMATCH_C_DOUBLE
-    use tox_conversions, only: c_char_as_char
-    use f42_config
-    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex, c_char
-    use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_int64_t, c_signed_char
+#elif defined(TEST_KIND_MISMATCH_C_DOUBLE)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex, c_char, c_bool
+    use, intrinsic :: iso_c_binding, only: c_size_t, c_int64_t, c_signed_char
     M_IMPLICIT_NONE
-    integer(int32), parameter ::  c_double = real64*2
-#else
-#ifdef TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX
-    use tox_conversions, only: c_char_as_char
-    use f42_config
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
-    use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_int64_t, c_signed_char
+    integer(int32), parameter :: c_double = real64*2
+#elif defined(TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char, c_bool
+    use, intrinsic :: iso_c_binding, only: c_size_t, c_int64_t, c_signed_char
     M_IMPLICIT_NONE
-    integer(int32), parameter ::  c_double_complex = real64*2
-#else
-#ifdef TEST_KIND_MISMATCH_C_CHAR
-    use tox_conversions, only: c_char_as_char
-    use f42_config
-    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex
-    use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_int64_t, c_signed_char
+    integer(int32), parameter :: c_double_complex = real64*2
+#elif defined(TEST_KIND_MISMATCH_C_CHAR)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_bool
+    use, intrinsic :: iso_c_binding, only: c_size_t, c_int64_t, c_signed_char
     M_IMPLICIT_NONE
     integer(int32), parameter :: c_char = kind("a") + 1
+#elif defined(TEST_KIND_MISMATCH_C_BOOL)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_char
+    use, intrinsic :: iso_c_binding, only: c_size_t, c_int64_t, c_signed_char
+    M_IMPLICIT_NONE
+    integer(int32), parameter :: c_bool = -1
+#elif defined(TEST_KIND_MISMATCH_C_SIZE_T)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_char
+    use, intrinsic :: iso_c_binding, only: c_bool, c_int64_t, c_signed_char
+    M_IMPLICIT_NONE
+    integer(int32), parameter :: c_size_t = -1
+#elif defined(TEST_KIND_MISMATCH_C_INT64_T)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_char
+    use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_signed_char
+    M_IMPLICIT_NONE
+    integer(int32), parameter :: c_int64_t = -1
+#elif defined(TEST_KIND_MISMATCH_C_SIGNED_CHAR)
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_char
+    use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_int64_t
+    M_IMPLICIT_NONE
+    integer(int32), parameter :: c_signed_char = -1
 #else
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_char
     use, intrinsic :: iso_c_binding, only: c_bool, c_size_t, c_int64_t, c_signed_char
     M_IMPLICIT_NONE
-#endif
-#endif
-#endif
 #endif
 
     ! type guards to guarantee kind identity between fortran and c for correct interop in the c wrapper routines
@@ -83,14 +94,11 @@ module f42_safeguard
     ! `c_bool`, in files that did nothing wrong, instead of one here that says which kind is
     ! missing.
     !
-    ! These four are NOT in the kinds test, and cannot be, which is worth knowing before
-    ! someone tries to add them. That test forces a mismatch with a preprocessor directive, and
-    ! for the three equality guards `get_directives` rewrites the declaration sites elsewhere so
-    ! that this module is still the first to fail; `c_char` needs no rewriting because almost
-    ! nothing declares with it. `c_bool` is the opposite case -- 152 declarations, and
-    ! `tox_errors` holds some of them and compiles before this module, so an override makes it
-    ! fail first with a kind error and the guard never gets the chance. The guards were
-    ! confirmed to fire by negating each condition here in turn and watching the build stop.
+    ! All four are in the kinds test, which they could not be while this module still had
+    ! dependencies: `tox_errors` holds some of the 152 `c_bool` declarations and compiled first,
+    ! so an override failed there with a kind error and the guard never got the chance. Dropping
+    ! this module's own `use`s of `tox_conversions` and `f42_config` put it back at the front of
+    ! the build and made every guard reachable.
     logical, parameter :: THIS_FAILS_IF_C_BOOL_IS_NOT_AVAILABLE = 1 == 1/merge(1, 0, c_bool > 0)
         !! Compile-time guard: fails to compile if C has no `_Bool` this platform can express.
     logical, parameter :: THIS_FAILS_IF_C_SIZE_T_IS_NOT_AVAILABLE = 1 == 1/merge(1, 0, c_size_t > 0)

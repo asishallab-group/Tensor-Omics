@@ -11,6 +11,7 @@
 !|
 !| Generated from [[tox_data_integration_preprocessing_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_preprocessing
+    use f42_safeguard
     use tox_data_integration_preprocessing_impl, only: compute_gene_means_impl, compute_residuals_impl, construct_neighborhoods_impl, pool_means_impl
     use tox_data_integration_preprocessing_impl, only: pool_study_means_impl
     use, intrinsic :: iso_c_binding, only: c_bool

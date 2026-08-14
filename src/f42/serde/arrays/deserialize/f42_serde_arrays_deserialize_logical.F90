@@ -2,6 +2,7 @@
 
 !> Module for deserializing logical arrays from files
 module f42_serde_arrays_deserialize_logical
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_serde_arrays_utils, only: check_file_header, LOGICAL_TYPE_CODE

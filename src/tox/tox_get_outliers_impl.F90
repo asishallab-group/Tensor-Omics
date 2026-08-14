@@ -9,6 +9,7 @@
 !|
 !| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan

@@ -11,6 +11,7 @@
 !|
 !| Generated from [[tox_get_outliers_impl(module)]]; do not edit -- regenerate instead.
 module tox_get_outliers
+    use f42_safeguard
     use tox_get_outliers_impl, only: compute_family_scaling_impl, compute_rdi_impl, detect_outliers_impl, identify_outliers_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64

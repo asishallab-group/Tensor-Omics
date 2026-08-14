@@ -520,7 +520,7 @@ def built(tmp_path_factory):
         shutil.copy(fixture, out / fixture.name)
 
     # the wrappers depend on these, so they have to be compiled first
-    for source in ("src/f42/tox_errors.F90", "src/f42/tox_conversions.F90", "src/f42/f42_safeguard.F90"):
+    for source in ("src/f42/f42_safeguard.F90", "src/f42/tox_errors.F90", "src/f42/tox_conversions.F90"):
         must_compile(REPO_ROOT / source, out)
     for name in ("fx_basics", "fx_edges"):
         must_compile(out / f"{name}.F90", out)

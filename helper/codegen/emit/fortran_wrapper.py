@@ -192,6 +192,19 @@ class FortranWrapperEmitter:
                 for value in roles.mode.values:
                     extra.setdefault(value.module, set()).add(value.parameter)
 
+        kinds = {a.type.kind for p in module for a in p.arguments if a.type.kind}
+        # kinds the emitter itself writes, which no argument need carry: a module whose
+        # arguments are all real still spells `allow_nan=.true._c_bool`
+        for procedure in module:
+            kinds |= self._emitted_literal_kinds(procedure)
+
+        # A module that names a C kind depends on f42_safeguard, whose compile-time guards say
+        # which kind is missing where the platform has none. The dependency is what puts
+        # safeguard at the front of the build: without it the module compiles first and fails
+        # with the compiler's message about the kind instead of the guard's about which one.
+        if any(_kind_module(kind) == "iso_c_binding" for kind in kinds):
+            writer.line("use f42_safeguard")
+
         # the implementations, plus any recommend routine / constant that lives in the
         # implementation module
         impl_names = {self._impl_name(p, module) for p in module}
@@ -199,11 +212,6 @@ class FortranWrapperEmitter:
         for chunk in _chunks(sorted(impl_names), 4):
             writer.line(f"use {impl_module}, only: {', '.join(chunk)}")
 
-        kinds = {a.type.kind for p in module for a in p.arguments if a.type.kind}
-        # kinds the emitter itself writes, which no argument need carry: a module whose
-        # arguments are all real still spells `allow_nan=.true._c_bool`
-        for procedure in module:
-            kinds |= self._emitted_literal_kinds(procedure)
         by_owner: dict[str, set[str]] = {}
         for kind in kinds:
             by_owner.setdefault(_kind_module(kind), set()).add(kind)

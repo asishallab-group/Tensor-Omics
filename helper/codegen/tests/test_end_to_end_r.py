@@ -88,9 +88,11 @@ def _build_lib(out: Path, with_r: bool = True) -> Path:
     objects = []
     fflags = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC", f"-J{lib_dir}"]
     for source in (
+        # safeguard first -- everything that names a C kind depends on it now, which is the
+        # whole point of the dependency: it is what puts it at the front of a build
+        REPO_ROOT / "src/f42/f42_safeguard.F90",
         REPO_ROOT / "src/f42/tox_errors.F90",
         REPO_ROOT / "src/f42/tox_conversions.F90",
-        REPO_ROOT / "src/f42/f42_safeguard.F90",
         out / "fx_basics.F90", out / "fx_edges.F90",
         out / "fx_basics_c.F90", out / "fx_edges_c.F90",
     ):

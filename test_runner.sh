@@ -20,12 +20,16 @@ if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   # declare with, so those declarations have to be macro-rewritten too or they fail first and
   # for the wrong reason. Overriding c_char breaks nothing before safeguard, which is compiled
   # first by design, so its own guard is what fails.
+  # These five need no get_directives. The three above override a kind that modules elsewhere
+  # declare with, so those declarations must be macro-rewritten too or they fail first and for
+  # the wrong reason. f42_safeguard depends on nothing and so compiles before any of them,
+  # which is what lets its own guard be the failure in every case below.
   c_char=("--directive=TEST_KIND_MISMATCH_C_CHAR")
-  # The existence guards in f42_safeguard (c_bool, c_size_t, c_int64_t, c_signed_char) are not
-  # here and cannot be: a directive that forces one negative also breaks every declaration
-  # naming that kind, and for c_bool tox_errors holds some and compiles first -- so it fails
-  # before the guard does. See the note beside them.
-  for d in c_int c_double c_double_complex c_char; do
+  c_bool=("--directive=TEST_KIND_MISMATCH_C_BOOL")
+  c_size_t=("--directive=TEST_KIND_MISMATCH_C_SIZE_T")
+  c_int64_t=("--directive=TEST_KIND_MISMATCH_C_INT64_T")
+  c_signed_char=("--directive=TEST_KIND_MISMATCH_C_SIGNED_CHAR")
+  for d in c_int c_double c_double_complex c_char c_bool c_size_t c_int64_t c_signed_char; do
     msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$d"
     declare -n directives="$d"
     # these builds are meant to fail in the preprocessor, so regenerating for each of them

@@ -7,6 +7,7 @@
 !| It keeps its `tox_` name for continuity, but it lives in `src/f42/` because it is C-interop
 !| glue with no exports of its own -- infrastructure the binding layer stands on.
 module tox_conversions
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_null_char, c_char, c_size_t, c_int64_t
     use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer

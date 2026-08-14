@@ -11,6 +11,7 @@
 !|
 !| Generated from [[tox_data_integration_stats_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_stats
+    use f42_safeguard
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64

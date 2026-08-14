@@ -9,6 +9,7 @@
 !|
 !| Generated from [[tox_data_integration_jsd_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_jsd
+    use f42_safeguard
     use tox_data_integration_jsd_impl, only: build_residual_histograms_impl, compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, determine_shared_residual_range_impl
     use tox_data_integration_jsd_impl, only: determine_study_shared_residual_range_impl
     use, intrinsic :: iso_c_binding, only: c_bool

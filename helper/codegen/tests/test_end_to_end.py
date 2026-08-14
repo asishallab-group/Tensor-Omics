@@ -72,9 +72,9 @@ def _build(out: Path) -> Path:
 
     flags = ["-cpp", "-I.", "-std=f2018", "-ffree-line-length-none", "-fPIC", f"-J{out}"]
     sources = [
+        REPO_ROOT / "src/f42/f42_safeguard.F90",   # first: the others depend on it
         REPO_ROOT / "src/f42/tox_errors.F90",
         REPO_ROOT / "src/f42/tox_conversions.F90",
-        REPO_ROOT / "src/f42/f42_safeguard.F90",
         out / "fx_basics.F90",
         out / "fx_edges.F90",
         out / "fx_basics_c.F90",

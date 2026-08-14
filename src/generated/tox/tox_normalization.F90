@@ -13,6 +13,7 @@
 !|
 !| Generated from [[tox_normalization_impl(module)]]; do not edit -- regenerate instead.
 module tox_normalization
+    use f42_safeguard
     use tox_normalization_impl, only: calc_fchange_impl, calc_tiss_avg_impl, log2_transformation_impl, normalization_pipeline_impl
     use tox_normalization_impl, only: normalize_by_std_dev_impl, normalize_unit_length_impl, quantile_normalization_impl, root_mean_sq_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool

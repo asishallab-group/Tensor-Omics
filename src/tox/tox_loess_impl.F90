@@ -15,6 +15,7 @@
 !| mode and iteration constants and `EPS_LOESS` are here for the same reason. The netlib
 !| routines themselves are not re-documented beyond their calling convention.
 module tox_loess_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, validate_in_range_int, validate_all_in_range_real, check_io_stat, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, ERR_SIZE_MISMATCH

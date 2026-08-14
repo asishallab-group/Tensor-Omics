@@ -9,6 +9,7 @@
 !|
 !| Generated from [[tox_tissue_versatility_impl(module)]]; do not edit -- regenerate instead.
 module tox_tissue_versatility
+    use f42_safeguard
     use tox_tissue_versatility_impl, only: compute_tissue_versatility_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64

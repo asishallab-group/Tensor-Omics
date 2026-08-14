@@ -8,6 +8,7 @@
 !|
 !| Generated from [[tox_data_integration_per_family_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration_per_family
+    use f42_safeguard
     use tox_data_integration_per_family_impl, only: fjct_compute_contribution_scores_impl, fjct_compute_jsd_impl, fjct_compute_masked_jsd_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64

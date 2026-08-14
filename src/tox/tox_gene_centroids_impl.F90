@@ -7,6 +7,7 @@
 !| every gene in it -- two routines rather than one taking a flag, so which set a result is
 !| over is visible at the call site.
 module tox_gene_centroids_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_vector_impl, only: add_vector

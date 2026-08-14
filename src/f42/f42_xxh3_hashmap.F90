@@ -6,6 +6,7 @@
 !| algorithm for hashing. Both containers rehash into a larger bucket array of their own accord
 !| once three quarters full, so a caller never sizes one twice.
 module f42_xxh3_hashmap
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_loc
     use iso_fortran_env, only: int32, int64
     use f42_math_impl, only: next_power_of_two

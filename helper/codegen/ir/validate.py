@@ -34,6 +34,7 @@ def validate_project(project: Project, diagnostics: DiagnosticBag,
         validate_module(module, diagnostics, conventions)
     check_doc_links(project, diagnostics)
     check_whitelist_is_allocation_free(project, diagnostics, conventions)
+    check_c_kinds_depend_on_the_safeguard(project, diagnostics)
 
 
 def allocations_in(procedure: Procedure) -> list[str]:
@@ -49,6 +50,69 @@ def allocations_in(procedure: Procedure) -> list[str]:
     """
     dummies = [a.name for a in procedure.arguments if "allocatable" in a.attributes]
     return list(procedure.allocatable_locals) + dummies
+
+
+#: The module whose compile-time guards say which C kind a platform is missing.
+SAFEGUARD_MODULE = "f42_safeguard"
+
+
+def check_c_kinds_depend_on_the_safeguard(project: Project, diagnostics: DiagnosticBag) -> None:
+    """A module naming a C kind `use`s `f42_safeguard`.
+
+    `iso_c_binding` gives a C kind the value -1 where the platform has no counterpart, and a
+    negative kind is a compile error at every declaration naming it. `f42_safeguard` turns that
+    into one error saying *which* kind is missing -- but only if it is compiled first, and the
+    only way to order a Fortran build is a dependency. A module that names a C kind without
+    depending on the safeguard compiles before it and fails with the compiler's message instead.
+
+    Checked because it has already regressed once. Before the `c_bool` sweep the only modules
+    naming a C kind were the generated C wrappers, every one of which had the `use`; the sweep
+    put C kinds in 39 more compilation units and left the dependency behind, silently. The rule
+    was in the safeguard's own comment the whole time.
+
+    Reads argument kinds, which is what the IR carries. A module whose only C kind is on a
+    module variable or a local is invisible here -- `f42_config` was exactly that case -- so
+    this narrows the gap rather than closing it.
+    """
+    # Nothing to depend on, nothing to require: a project parsed without the safeguard -- a
+    # unit-test fixture tree -- cannot satisfy this and is not wrong for that.
+    if not any(m.name.lower() == SAFEGUARD_MODULE for m in project):
+        return
+
+    #: a synthesized wrapper is `<impl>` beside the `<impl>_impl` it came from. Its `use` list
+    #: is the emitter's to write and is not in the IR at all, so checking it here would report
+    #: what the emitter has already done. `emit/fortran_wrapper` handles those.
+    synthesized = {
+        m.name[: -len("_impl")].lower()
+        for m in project
+        if m.name.lower().endswith("_impl")
+    }
+    for module in project:
+        if module.name.lower() == SAFEGUARD_MODULE or module.name.lower() in synthesized:
+            continue
+        offenders = sorted({
+            argument.type.kind
+            for procedure in module.procedures
+            for argument in procedure.arguments
+            if argument.type.kind and argument.type.kind.lower().startswith("c_")
+        })
+        if not offenders:
+            continue
+        reached = {u.lower() for u in module.uses}
+        reached.update(u.lower() for p in module.procedures for u in p.uses)
+        if SAFEGUARD_MODULE in reached:
+            continue
+        kinds = ", ".join(f"'{k}'" for k in offenders)
+        diagnostics.error(
+            f"module '{module.name}' names {kinds} without using '{SAFEGUARD_MODULE}'",
+            entity=module,
+            note=(
+                f"add 'use {SAFEGUARD_MODULE}'. Its guards report which C kind a platform is "
+                "missing, and they only get to speak if it is compiled first -- which a "
+                "dependency is the only way to arrange. Without it this module compiles first "
+                "and fails with the compiler's message about the kind instead"
+            ),
+        )
 
 
 def check_whitelist_is_allocation_free(project: Project, diagnostics: DiagnosticBag,

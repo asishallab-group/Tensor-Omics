@@ -4,6 +4,7 @@
 !|
 !| One of the modules [[f42_utils_impl(module)]] gathers; `use f42_utils_impl` reaches all of them.
 module f42_math_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: ERR_DIVISION_BY_ZERO, set_ok, set_err, validate_in_range_real

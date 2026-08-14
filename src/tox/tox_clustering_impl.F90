@@ -8,6 +8,7 @@
 !| `linkage_clustering` takes the distances already computed and merges under the linkage
 !| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan

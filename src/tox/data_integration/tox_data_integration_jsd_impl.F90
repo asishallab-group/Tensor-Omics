@@ -7,6 +7,7 @@
 !| compared per reference point, and the per-point divergences are weighted into one global
 !| figure for the pair of studies.
 module tox_data_integration_jsd_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan

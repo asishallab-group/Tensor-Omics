@@ -20,6 +20,7 @@
 !| change therefore decodes to garbage here rather than failing, and one
 !| written here does the same there. No other type code has moved.
 module f42_serde_arrays_utils
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_utils
     use tox_errors

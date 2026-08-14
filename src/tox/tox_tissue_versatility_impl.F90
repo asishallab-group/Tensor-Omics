@@ -7,6 +7,7 @@
 !| points along that axis and scores minimally. Normalized, so scores over different numbers of
 !| selected axes are comparable.
 module tox_tissue_versatility_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: clamp, degrees

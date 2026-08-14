@@ -6,6 +6,7 @@
 !| driving the same pipeline over a masked set of neighbors. Answers whether two studies are
 !| compatible *for this family*, which the global figure can hide either way.
 module tox_data_integration_per_family_impl
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_math_impl, only: is_close
