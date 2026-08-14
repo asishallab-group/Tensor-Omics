@@ -199,18 +199,35 @@ module header, and a rule that reads only the header would be one indentation le
 being bypassed. `Procedure.uses` exists for this; the frontend fills it from the same Ford
 attribute it already read for modules.
 
-**Every member is allocation-free — now.** It was not always: `f42_utils` sat on the list
-while its `f42_stats` child still had hand-written `_alloc` halves that allocated, so the list
-was a curated boundary rather than a proof. Converting the family removed the entry rather
-than justifying it, which is the better outcome and the one to reach for next time an entry is
-proposed: a module that has to be whitelisted may be a module that should be an
+**The list is a curated boundary, not a proof.** `f42_utils` sat on it while its `f42_stats`
+child still had hand-written `_alloc` halves that allocated. Converting the family removed the
+entry rather than justifying it, which is the better outcome and the one to reach for next time
+an entry is proposed: a module that has to be whitelisted may be a module that should be an
 implementation.
 
-**Rejected — having the generator verify each whitelisted module is allocation-free.** It
-would turn the list from an assertion into a claim the build tests, which is the better shape.
-It would also fail on `f42_stats` from the first run, so it would ship as a standing warning
-about work that is already scheduled. Worth revisiting after the f42 conversion, when it would
-pass and would then keep the list honest.
+**Deferred — having the generator verify each whitelisted module is allocation-free.** It would
+turn the list from an assertion into a claim the build tests, which is the better shape. It was
+deferred once because it would have failed on `f42_stats` while that conversion was still
+scheduled, and the note here then said it would pass afterwards.
+
+**It would not.** Checked 2026-08-14: `tox_conversions` has two procedures,
+`c_char_1d_as_string` and `c_char_2d_as_string`, whose `intent(out)` string is
+`character(len=:), allocatable` — a deferred-length result has no other spelling in Fortran —
+and the second allocates a local as well. So the module-level form of the check fails today.
+
+What it does *not* mean is that anything is wrong: **no implementation module imports
+`tox_conversions` at all.** Its only consumers are `f42_safeguard`, which takes the elemental
+`c_char_as_char` and nothing else, and `tox_data_archive`, which is hand-written and allowed to
+allocate. Of the ten whitelist entries only three are reached from an implementation today --
+`tox_errors` (12 modules), `iso_fortran_env` (23) and `ieee_arithmetic` (6).
+
+So the check has two possible shapes and the edge case decides between them. Per **module** is
+cheap and is what was originally proposed, but it fails on a module no implementation can reach,
+so it would have to be paid for by dropping the entry (nothing needs it) or by splitting the two
+string procedures out. Per **imported procedure** is what the rule actually means -- an
+implementation may not reach an allocating procedure -- and has no false positive, but it needs
+the `only:` lists in the IR, which the frontend does not carry today: `Module.uses` and
+`Procedure.uses` are module names alone.
 
 **An `allocatable` dummy is an allocation too**, and is refused with the locals. It looks like
 the caller's memory — and the caller does receive it — but whoever fills it is the one who

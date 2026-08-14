@@ -61,9 +61,14 @@ class Conventions:
     #: also fixes the direction of the dependency -- an implementation can no longer reach a
     #: generated wrapper, which would invert the layering and, within one family, be a cycle.
     #:
-    #: Every member is allocation-free. It was not always: `f42_utils` sat here while its
-    #: `f42_stats` child still had hand-written `_alloc` halves, and it left the list when
-    #: that family became `_impl` modules -- reached now by the general rule, not by name.
+    #: NOT every member is allocation-free, which the list long claimed and nothing checked:
+    #: `tox_conversions` has two procedures returning a deferred-length string, and in Fortran
+    #: that can only be `allocatable`. No implementation imports the module at all, so nothing
+    #: is wrong today -- but the list is a curated boundary, not a proof. See the design note.
+    #:
+    #: `f42_utils` sat here while its `f42_stats` child still had hand-written `_alloc` halves,
+    #: and it left the list when that family became `_impl` modules -- reached now by the
+    #: general rule, not by name. That is the move to reach for.
     #:
     #: The intrinsic modules sit here too rather than in a category of their own, so a future
     #: module re-exporting them is one more entry instead of a second rule.
