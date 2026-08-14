@@ -271,7 +271,7 @@ contains
     ! values ascending: 0.1 (idx2), 0.2 (idx4), 0.3 (idx1), 0.4 (idx3)
     perm = [2_int32, 4_int32, 1_int32, 3_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 75.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.75_real64)
 
     ! percentile 75%: idx = ceil(4*0.75)=3
     ! threshold = sorted_rdi(perm(3)) = sorted_rdi(1) = 0.3
@@ -349,7 +349,7 @@ contains
     sorted_rdi = rdi
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 1.0_real64)
 
     call assert_equal_real(threshold, 0.4_real64, 1d-12, "Percentile 100 -> threshold must be maximum")
     call assert_false(any(is_outlier(1:3)), "No outliers below maximum at 100 percentile")
@@ -389,7 +389,7 @@ contains
     call assert_equal_real(quantile(4), 2.0_real64/denom, 1d-12, "quantile(d=4)=0.4")
 
     ! Percentile 100 -> threshold = maximum (4.0)
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 1.0_real64)
     call assert_equal_real(threshold, 4.0_real64, 1d-12, "p=100 -> threshold=max")
     call assert_false(any(is_outlier(1:3)), "Values below max not outliers at percentile 100")
     call assert_true(is_outlier(4), "Max value is outlier at percentile 100")
@@ -418,7 +418,7 @@ contains
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
     ! percentile 50 -> idx = ceil(4*0.5)=2 -> threshold = second smallest = 2.0
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 50.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.5_real64)
 
     call assert_equal_real(threshold, 2.0_real64, 1d-12, "Threshold must be 2.0 at 50 percentile")
     call assert_true(is_outlier(2), "First 2.0 must be outlier")
@@ -482,7 +482,7 @@ contains
     ! All values equal (0). Any perm is fine.
     perm = [1_int32, 2_int32, 3_int32, 4_int32, 5_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 80.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.8_real64)
 
     call assert_equal_real(threshold, 0.0_real64, 1d-12, "All-negative -> clamped distribution -> threshold 0")
     call assert_true(.not. any(is_outlier), "All-negative RDI should not be outliers")
@@ -1000,12 +1000,12 @@ contains
     end do
     distances(n_genes) = 500.0_real64
 
-    ! percentile=90: threshold at the 90th percentile; with n=12, this typically isolates the largest value
+    ! percentile=0.9: threshold at the 90th percentile; with n=12, this typically isolates the largest value
     perm = [(i, i=1,n_genes)]
     call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, work_rdi, &
                          perm, sl, sr, is_outlier, lx, ly, ln, quantile, ierr, &
-                         percentile=90.0_real64)
+                         percentile=0.9_real64)
 
     call assert_equal_int(ierr, 0, "Error code 0 (test_outliers_extreme_detection)")
     call assert_true(is_outlier(12), "The extreme gene (12) should be an outlier")
