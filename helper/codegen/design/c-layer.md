@@ -264,21 +264,14 @@ to the caller instead of a crash inside a wrapper whose whole job is to report e
 bare `allocate(...)` calls this replaced had no `stat=` at all, so they aborted too.
 
 A scalar `logical` local stays automatic: four bytes, and not a size the caller chooses. A
-character local is always allocated, because even a scalar one is sized by a length C supplied.
+character local is not allocated at all — it is a pointer view of the caller's buffer, see
+*a fixed-length character view* below — so as of that change the real project's C layer
+contains no `M_ALLOCATE` at all, and `test_generate.py` asserts exactly that.
 
 *Rejected:* `-heap-arrays` in the ifx profile. It fixes the crash, but per compiler, by a flag
 anyone can drop, and it leaves the failure unchecked — an allocation that fails still aborts
 rather than returning `ERR_ALLOC_FAIL`. The allocation belongs in the emitted code, where it
 can be reasoned about, not in a build flag.
-
-Two things the emitter has to get right, both found by compiling:
-
-- **The type-spec belongs only on a deferred-length character.** Where the local's length is
-  the callee's own `len=`, the declaration already carries it and the allocation needs the
-  shape alone — naming the C strlen there reaches for a dummy the wrapper need not have.
-- **An assumed-length character read *in* is not allocated here.** The conversion helper's
-  `str_out` is `intent(out), allocatable`, so it deallocates on entry; allocating first is an
-  immediate allocate-and-free. The helper uses `M_ALLOCATE` itself, so the checked path holds.
 
 The measured cost of the copies these locals exist for is in `misc/bench/logical-kinds/RESULTS.md`; it is
 small, and the stack is the reason this changed, not the speed.
@@ -310,7 +303,7 @@ FITS headers, `sockaddr_un.sun_path`, and NumPy's own `S`/`U` dtypes are all exa
 
 ---
 
-## Finding: a fixed-length character view of that buffer is portable; a deferred-length one is not
+## Decision: a string crosses as a fixed-length pointer view, blank-padded, and is never converted
 
 ### Multibyte characters: the width is right, the encoding flag is not
 
@@ -333,14 +326,14 @@ is.
 
 **For the pointer view specifically, blank padding is safe.** No UTF-8 continuation byte is
 `0x20` — they are all `0x80`-`0xBF` — so `trim` and `len_trim` cannot split a character, and
-neither can the NUL scan they replace. What can split one is any *byte-index* slice of a
+neither could the NUL scan they replaced. What can split one is any *byte-index* slice of a
 `character(len=n)` (`s(1:k)`), but that is inherent to Fortran character handling and no worse
-under a pointer view than it is today.
+under a pointer view than it was before.
 
 
-Today the wrapper converts the matrix into `character(len=:), allocatable, dimension(:)` with
-`c_char_2d_as_string`, which scans each column for `c_null_char` and copies. That conversion
-could be replaced by a pointer remap costing nothing: `character(len=n), dimension(m)` and
+The wrapper used to convert the matrix into `character(len=:), allocatable, dimension(:)` with
+`c_char_2d_as_string`, which scanned each column for `c_null_char` and copied. That conversion
+is now a pointer remap costing nothing: `character(len=n), dimension(m)` and
 `character(len=1), dimension(n, m)` have **identical layout** -- contiguous, column-major,
 string *i* at bytes `[(i-1)n+1 .. i*n]` -- so the view is pure reinterpretation.
 
@@ -375,16 +368,58 @@ The fully conforming fallback, if that ever matters, is for the implementation t
 `character(len=1)` buffer directly -- no pointer, no remap, and no conversion either, at the
 cost of clumsier string handling inside the kernel.
 
-**What adopting it would require.** The conversion trims at the first NUL; a remap yields the
-full padded width. Fortran's own convention is *blank* padding -- `trim`, `len_trim` and string
-comparison all work on blanks, not NULs -- so the bindings would have to blank-pad instead
-(`memset(buf, ' ', total)` in `tox_char_in`/`tox_char_alloc`, and an explicit pad on the NumPy
-side). Then the view is semantically free as well as zero-copy. The trade is that a value
-genuinely ending in blanks stops round-tripping, which for gene and family IDs is no loss.
+### What adopting it required
 
-That change would delete all 53 conversion call sites and the four procedures behind them --
-`c_char_{1d,2d}_as_string` and `string_as_c_char_{1d,2d}` -- which are also the only
-allocating procedures in `tox_conversions`.
+**The wire format is blank-padded, both ways.** The conversion trimmed at the first NUL; a
+remap yields the full padded width, so whatever pads a short string *is* part of the value.
+Fortran's own convention is *blank* padding -- `trim`, `len_trim` and string comparison all
+work on blanks, not NULs -- so the bindings blank-pad instead: `memset(buf, ' ', total)` in
+`tox_char_in` and `tox_char_alloc`, `bytes.ljust(width)` on the NumPy side, and
+`tox_char_out` / `.rstrip(' ')` trimming blanks rather than scanning for a NUL. The trade is
+that a value genuinely ending in blanks stops round-tripping, which for gene and family IDs
+is no loss.
+
+**For arrays that is behaviour-preserving.** `c_char_2d_as_string` already allocated
+`character(len=strlen) :: str_out(n)` and assigned each string into it, which blank-pads to
+the full width. So implementations were already receiving blank-padded fixed-width arrays of
+exactly this width, and every consumer already trims. For *scalars* the length changes from
+trimmed to blank-padded, which is safe because 17 of the 21 boundary character arguments are
+filenames and `FILE=` removes trailing blanks (F2018 12.5.6.10) -- safer padded than
+NUL-terminated -- and because nothing in `src/` ever reads `len()` of a boundary scalar.
+
+**The published C ABI is byte-identical and its semantics are not.** The symbol set and the
+prototypes do not move, but a direct C caller must now blank-pad rather than NUL-terminate:
+`char buf[16] = "genes.tsv"` used to work and now yields a filename with embedded NULs, and a
+`method` buffer holding `"ward\0\0\0\0"` now matches no `case` and returns
+`ERR_INVALID_INPUT`. Nothing in-tree does that -- Python and R are the only callers -- but it
+is the one thing `NO_R_BINDING`'s direct-C audience has to be told.
+
+**A nullable optional needs a target and an explicit `nullify`.** `c_loc` requires TARGET,
+which an optional was deliberately not given; the eight optional characters of
+`save_tox_data_c` now carry `optional, target`, which is legal on a `bind(C)` dummy and costs
+the ABI nothing. The absent case is a *disassociated* pointer, which F2018 15.5.2.12 makes an
+absent optional dummy -- the same rule the unallocated allocatable used. It must be a
+`nullify` statement and never `=> null()`: an initialiser gives the local an implicit SAVE,
+which is both thread-unsafe and formally impossible on an automatic-length object, and both
+compilers accept the spelling silently.
+
+**Zero-size buffers are fine, and were probed rather than guarded.** `M_CHECK_ARRAY_NON_NULL`
+lets an empty array through unchecked, so the remap is the first place the wrapper takes an
+unguarded `c_loc` -- and `read_tox_data_into` on a partial archive really does reach it with
+`family_id_len == 0, n_family_ids == 0`, where R's `R_alloc(0, 1)` hands back NULL. Probed
+2026-08-14: `strlen=0, n=0` and `strlen=0, n=2`, both over a NULL buffer, give a well-behaved
+zero-size/zero-length view on gfortran 16.1 and ifx 2026.1 under `-fcheck=all` / `-check all`.
+A guard would not have helped anyway: a non-optional dummy cannot receive a disassociated
+pointer. This is the same class of formal-only objection as the `len>1` point above.
+
+**Only `Conversion.MODE` still converts.** It is a fixed-width `select case` lookup, and
+`c_char_1d_as_string` on a blank-padded buffer simply returns the full width, which
+`select case` matches because a Fortran character comparison blank-pads the shorter operand.
+So the mode path was left exactly as it was. That, and one hand-written caller, are why
+`c_char_1d_as_string` survives: `get_zip_entry_name` maps a fixed 4096-byte window over
+libzip's `zip_get_name` and has no bound to remap against, so the NUL scan is the only thing
+that can find the length. The other three -- `c_char_2d_as_string` and
+`string_as_c_char_{1d,2d}` -- are gone, with their 42 call sites.
 
 The probe, reduced to the case that decides it:
 

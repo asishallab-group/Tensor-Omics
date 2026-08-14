@@ -10,9 +10,9 @@
 !| layers, everything here works from delimited text rather than the library's binary array format.
 module tox_data_tools_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string, string_as_c_char_2d
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
+    use, intrinsic :: iso_c_binding, only: c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -77,9 +77,9 @@ contains
         character(len=1, kind=c_char), dimension(1), intent(in), target :: delimiter
             !! optional delimiter
             !! The default value is `char(9)`.
-        character(len=:), allocatable, dimension(:) :: file_list_f
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=1), allocatable :: delimiter_f
+        character(len=file_list_strlen), pointer, dimension(:) :: file_list_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        character(len=1), pointer :: delimiter_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -99,17 +99,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(value_cols, n_value_cols_elements)
         M_CHECK_ARRAY_NON_NULL(delimiter, 1)
 
-        call c_char_2d_as_string(file_list, file_list_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
-        if (is_err(ierr)) return
-        M_ALLOCATE(delimiter_f)
-        block
-            character(len=:), allocatable :: converted
-            call c_char_1d_as_string(delimiter, converted, ierr)
-            if (is_err(ierr)) return
-            delimiter_f = converted
-        end block
+        call c_f_pointer(c_loc(file_list), file_list_f, [n_file_list_elements])
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        call c_f_pointer(c_loc(delimiter), delimiter_f)
 
         call read_expression_vectors_tsv(&
             file_list = file_list_f,&
@@ -153,8 +145,8 @@ contains
             !! Index of the column containing gene ids
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: filename_f
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
+        character(len=filename_strlen), pointer :: filename_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -166,9 +158,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
         M_CHECK_ARRAY_NON_NULL(gene_ids, gene_ids_strlen * n_gene_ids_elements)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        M_ALLOCATE(character(len=gene_ids_strlen) :: gene_ids_f(n_gene_ids_elements))
+        call c_f_pointer(c_loc(filename), filename_f)
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
 
         call read_gene_ids_from_tsv_file(&
             filename = filename_f,&
@@ -177,8 +168,6 @@ contains
             gene_col = gene_col,&
             ierr = ierr&
         )
-
-        call string_as_c_char_2d(gene_ids_f, gene_ids)
     end subroutine read_gene_ids_from_tsv_file_c
 
     !> summary: C-wrapper for [[tox_data_tools(module):read_orthofinder_file(subroutine)]]
@@ -219,9 +208,9 @@ contains
             !! gene to family mapping
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: filename_f
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=:), allocatable, dimension(:) :: family_ids_f
+        character(len=filename_strlen), pointer :: filename_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        character(len=family_ids_strlen), pointer, dimension(:) :: family_ids_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -236,11 +225,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_ids, family_ids_strlen * n_family_ids_elements)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_gene_to_fam_elements)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
-        if (is_err(ierr)) return
-        M_ALLOCATE(character(len=family_ids_strlen) :: family_ids_f(n_family_ids_elements))
+        call c_f_pointer(c_loc(filename), filename_f)
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
 
         call read_orthofinder_file(&
             filename = filename_f,&
@@ -249,8 +236,6 @@ contains
             gene_to_fam = gene_to_fam,&
             ierr = ierr&
         )
-
-        call string_as_c_char_2d(family_ids_f, family_ids)
     end subroutine read_orthofinder_file_c
 
     !> summary: C-wrapper for [[tox_data_tools(module):get_unassigned_mask(subroutine)]]

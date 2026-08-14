@@ -62,10 +62,12 @@ def serialize_char_helper(
     # accept anything array-like, converting only when C needs it
     arr_shape = np.ascontiguousarray(np.shape(arr), dtype=np.int32)
     try:
-        arr = np.asarray([str(_s).encode() for _s in np.asarray(arr).ravel(order='F')], dtype="S")
+        _arr_bytes = [str(_s).encode() for _s in np.asarray(arr).ravel(order='F')]
+        _arr_width = max(map(len, _arr_bytes), default=0) or 1
+        arr = np.asarray([_b.ljust(_arr_width) for _b in _arr_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'arr' must be a sequence of strings: {error}") from None
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     arr_strlen = arr.itemsize

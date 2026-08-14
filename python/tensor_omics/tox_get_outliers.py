@@ -187,7 +187,7 @@ def compute_family_scaling(
         raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
-    mode = np.array([str(mode).lower().encode()], dtype="S6")
+    mode = np.array([str(mode).lower().encode().ljust(6)], dtype="S6")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]

@@ -249,7 +249,7 @@ def perform_permutation_test(
         raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -438,7 +438,7 @@ def compute_contributions(
         raise TypeError(f"'dependent' must be an array of np.float64: {error}") from None
     if dependent.ndim != 1:
         raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
 
     # what the inputs already say, rather than asking for it again
     n_dims = factor.shape[0]
@@ -537,7 +537,7 @@ def compute_all_contributions(
         raise TypeError(f"'dependent_indices' must be an array of np.int32: {error}") from None
     if dependent_indices.ndim != 1:
         raise ValueError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -625,7 +625,7 @@ def compute_baselines_factor_dependent(
         raise TypeError(f"'dependent' must be an array of np.float64: {error}") from None
     if dependent.ndim != 1:
         raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = factor.shape[0]
@@ -935,7 +935,7 @@ def compute_velocity_acceleration_contributions(
         raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode()], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]

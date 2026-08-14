@@ -136,13 +136,17 @@ def read_expression_vectors_tsv(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        file_list = np.asarray([str(_s).encode() for _s in file_list], dtype="S")
+        _file_list_bytes = [str(_s).encode() for _s in file_list]
+        _file_list_width = max(map(len, _file_list_bytes), default=0) or 1
+        file_list = np.asarray([_b.ljust(_file_list_width) for _b in _file_list_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'file_list' must be a sequence of strings: {error}") from None
     if file_list.ndim != 1:
         raise ValueError(f"'file_list' must have 1 dimension, but has {file_list.ndim}")
     try:
-        gene_ids = np.asarray([str(_s).encode() for _s in gene_ids], dtype="S")
+        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
+        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
     if gene_ids.ndim != 1:
@@ -159,7 +163,7 @@ def read_expression_vectors_tsv(
         raise TypeError(f"'value_cols' must be an array of np.int32: {error}") from None
     if value_cols.ndim != 1:
         raise ValueError(f"'value_cols' must have 1 dimension, but has {value_cols.ndim}")
-    delimiter = np.array([str(delimiter).encode()], dtype="S1")
+    delimiter = np.array([str(delimiter).encode().ljust(1)], dtype="S1")
 
     # what the inputs already say, rather than asking for it again
     file_list_strlen = file_list.itemsize
@@ -234,7 +238,7 @@ def read_gene_ids_from_tsv_file(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -256,7 +260,7 @@ def read_gene_ids_from_tsv_file(
 
     check_err_code(ierr.value, _READ_GENE_IDS_FROM_TSV_FILE_ARGUMENTS)
 
-    return [_s.decode() for _s in gene_ids]
+    return [_s.decode().rstrip(' ') for _s in gene_ids]
 
 def read_orthofinder_file(
         filename,
@@ -302,9 +306,11 @@ def read_orthofinder_file(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
-        gene_ids = np.asarray([str(_s).encode() for _s in gene_ids], dtype="S")
+        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
+        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
     if gene_ids.ndim != 1:
@@ -340,7 +346,7 @@ def read_orthofinder_file(
     gene_to_fam.flags.writeable = False
 
     return {
-        "family_ids": [_s.decode() for _s in family_ids],
+        "family_ids": [_s.decode().rstrip(' ') for _s in family_ids],
         "gene_to_fam": gene_to_fam,
     }
 

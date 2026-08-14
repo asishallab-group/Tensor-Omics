@@ -210,10 +210,12 @@ turn the list from an assertion into a claim the build tests, which is the bette
 deferred once because it would have failed on `f42_stats` while that conversion was still
 scheduled, and the note here then said it would pass afterwards.
 
-**It would not.** Checked 2026-08-14: `tox_conversions` has two procedures,
-`c_char_1d_as_string` and `c_char_2d_as_string`, whose `intent(out)` string is
-`character(len=:), allocatable` — a deferred-length result has no other spelling in Fortran —
-and the second allocates a local as well. So the module-level form of the check fails today.
+**It would not.** Checked 2026-08-14: `tox_conversions` has one procedure,
+`c_char_1d_as_string`, whose `intent(out)` string is `character(len=:), allocatable` — a
+deferred-length result has no other spelling in Fortran. So the module-level form of the check
+still fails today. (It was two procedures until the C layer moved strings to a pointer view;
+`c_char_2d_as_string` went with that change, and the survivor stays only because
+`get_zip_entry_name` needs a NUL scan over a libzip pointer of unknown length.)
 
 What it does *not* mean is that anything is wrong: **no implementation module imports
 `tox_conversions` at all.** Its only consumers are `f42_safeguard`, which takes the elemental
@@ -223,8 +225,8 @@ allocate. Of the ten whitelist entries only three are reached from an implementa
 
 So the check has two possible shapes and the edge case decides between them. Per **module** is
 cheap and is what was originally proposed, but it fails on a module no implementation can reach,
-so it would have to be paid for by dropping the entry (nothing needs it) or by splitting the two
-string procedures out. Per **imported procedure** is what the rule actually means -- an
+so it would have to be paid for by dropping the entry (nothing needs it) or by splitting the one
+remaining string procedure out. Per **imported procedure** is what the rule actually means -- an
 implementation may not reach an allocating procedure -- and has no false positive, but it needs
 the `only:` lists in the IR, which the frontend does not carry today: `Module.uses` and
 `Procedure.uses` are module names alone.

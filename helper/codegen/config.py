@@ -62,9 +62,12 @@ class Conventions:
     #: generated wrapper, which would invert the layering and, within one family, be a cycle.
     #:
     #: NOT every member is allocation-free, which the list long claimed and nothing checked:
-    #: `tox_conversions` has two procedures returning a deferred-length string, and in Fortran
-    #: that can only be `allocatable`. No implementation imports the module at all, so nothing
-    #: is wrong today -- but the list is a curated boundary, not a proof. See the design note.
+    #: `tox_conversions` has one procedure returning a deferred-length string, and in Fortran
+    #: that can only be `allocatable`. It was two until the C layer moved strings to a pointer
+    #: view; the survivor is `c_char_1d_as_string`, which stays because `zip_get_name` hands
+    #: back a NUL-terminated name in a fixed window with no bound to remap against. No
+    #: implementation imports the module at all, so nothing is wrong today -- but the list is a
+    #: curated boundary, not a proof. See the design note.
     #:
     #: `f42_utils` sat here while its `f42_stats` child still had hand-written `_alloc` halves,
     #: and it left the list when that family became `_impl` modules -- reached now by the

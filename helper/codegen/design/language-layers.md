@@ -149,12 +149,16 @@ part of a numeric array, zeros *look like results*, while uninitialised memory l
 the garbage it is. On the error path nothing is returned, so a caller never sees either.
 
 For a **character** output, `np.zeros` — and here the reasoning inverts, which is why the
-rule is not uniform. Fortran fills a character buffer only *partially*:
-`string_as_c_char_1d` writes the string and **one** null; `string_as_c_char_2d` fills only
-as many columns as it has strings. Whatever is read back is terminated by the first null,
-so any uninitialised byte past the written data would be read *as part of a string*. The
-zeros are the null padding that stops that. `np.empty` here would return trailing garbage
-inside the returned strings.
+rule is not uniform. Fortran writes through a pointer view of this buffer, so it blank-fills
+the whole width of every element it *assigns* — but it may assign none at all, or only the
+leading elements: an early `ierr` return, or an array it fills partly. The bindings strip
+trailing blanks on the way out, which turns an unwritten element into whatever bytes were
+already there. The zeros make that `""`, because NumPy drops the trailing nulls of an `S`
+item and R's `tox_char_alloc` blank-fills for the same reason. `np.empty` here would return
+trailing garbage inside the returned strings.
+
+Not `np.full(..., b" ")`, which looks like the obvious spelling and is not: NumPy fills each
+item with one blank and nulls the rest.
 
 So: **`empty` where Fortran fills the whole buffer, `zeros` where it fills only part.**
 Numeric is the former, character the latter.

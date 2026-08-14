@@ -171,8 +171,8 @@ other's outputs and a module-level import would be circular.
 | Type | What C sees | What your emitter must do |
 |---|---|---|
 | **logical** | `c_bool`, one byte | the host's boolean is probably an `int` (R) or an object (Python) — convert, and note the scan is free, so check for missing values while you are there |
-| **character in** | a `c_char` buffer with the length as the **leading extent** | encode; the item size *is* the string length |
-| **character out** | the same buffer | **zero-fill it** (§4.6) |
+| **character in** | a `c_char` buffer with the length as the **leading extent** | encode, then **blank-pad every slot to the full width**. The item size *is* the string length, measured in **bytes** (so UTF-8 is never truncated by the sizing). Pad the encoded bytes, not the host's string |
+| **character out** | the same buffer | **blank-fill it** (§4.6), and strip trailing blanks — not NULs — on the way back |
 | **mode argument** | an integer, but the caller passes a **string** | lower-case the string and let the C wrapper map it; an unknown mode is rejected before Fortran is entered. The accepted set is in `.mode` |
 | **missing values** | nothing — Fortran has no `NA` | check where the check is free. R checks integers (`anyNA`, ALTREP-aware so `1:n` is O(1)), logicals and characters (converted anyway), never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
 | **kinds with no mapping** | — | already an error upstream. Never guess a mapping: a wrong guess compiles and lies |
@@ -182,7 +182,7 @@ other's outputs and a module-level import would be circular.
 | Case | Handling |
 |---|---|
 | **numeric output** | allocate **uninitialised** (`np.empty`). Fortran fills it; zeroing is an O(n) write of data about to be overwritten, and where Fortran fills only part, zeros *look like results* while garbage looks like garbage |
-| **character output** | allocate **zero-filled**. Fortran fills a character buffer only partially and the nulls terminate the strings; an uninitialised byte past the written data is read back *as part of a string* |
+| **character output** | allocate **blank-filled**. Fortran fills a character buffer only partially, and an uninitialised byte past the written data is read back *as part of a string*. Blanks rather than nulls because the Fortran side is now a `character(len=n)` pointer view of this very buffer, so what it writes and what it leaves are both read with Fortran's own convention: `trim`, `len_trim` and comparison all work on blanks. Nothing scans for a NUL any more, so a zero-filled buffer would come back with the padding attached to the string |
 | **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements, where *n* is the argument named |
 | **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |

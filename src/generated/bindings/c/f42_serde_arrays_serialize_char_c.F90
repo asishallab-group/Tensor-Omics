@@ -5,9 +5,8 @@
 !| Module for serializing character arrays into files
 module f42_serde_arrays_serialize_char_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -44,8 +43,8 @@ contains
             !! Name of the file to write to
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable, dimension(:) :: arr_f
-        character(len=:), allocatable :: filename_f
+        character(len=arr_strlen), pointer, dimension(:) :: arr_f
+        character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -57,10 +56,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(arr, product(arr_shape))
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
 
-        call c_char_2d_as_string(arr(:, 1:product(arr_shape)), arr_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(arr), arr_f, [product(arr_shape)])
+        call c_f_pointer(c_loc(filename), filename_f)
 
         call serialize_char_helper(&
             arr = arr_f,&

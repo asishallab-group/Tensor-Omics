@@ -61,7 +61,7 @@ def deserialize_char_helper(
     _filename_raw = filename
 
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize
@@ -94,4 +94,4 @@ def deserialize_char_helper(
 
     check_err_code(ierr.value, _DESERIALIZE_CHAR_HELPER_ARGUMENTS, _DESERIALIZE_CHAR_HELPER_ARGUMENT_SOURCES)
 
-    return np.asarray([_s.decode() for _s in arr]).reshape(tuple(arr_shape), order='F')
+    return np.asarray([_s.decode().rstrip(' ') for _s in arr]).reshape(tuple(arr_shape), order='F')

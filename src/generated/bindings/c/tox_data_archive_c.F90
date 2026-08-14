@@ -13,9 +13,8 @@
 !| `*_manifest*` routines below are the generic key/filename building blocks they are built on.
 module tox_data_archive_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string, string_as_c_char_2d
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_f_pointer, c_int, c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -58,9 +57,9 @@ contains
             !! Array of filenames to add to zip
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: zip_filename_f
-        character(len=:), allocatable, dimension(:) :: keys_f
-        character(len=:), allocatable, dimension(:) :: filenames_f
+        character(len=zip_filename_strlen), pointer :: zip_filename_f
+        character(len=keys_strlen), pointer, dimension(:) :: keys_f
+        character(len=filenames_strlen), pointer, dimension(:) :: filenames_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -73,12 +72,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(keys, keys_strlen * n_keys_elements)
         M_CHECK_ARRAY_NON_NULL(filenames, filenames_strlen * n_filenames_elements)
 
-        call c_char_1d_as_string(zip_filename, zip_filename_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(keys, keys_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(filenames, filenames_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(zip_filename), zip_filename_f)
+        call c_f_pointer(c_loc(keys), keys_f, [n_keys_elements])
+        call c_f_pointer(c_loc(filenames), filenames_f, [n_filenames_elements])
 
         call create_zip_archive(&
             zip_filename = zip_filename_f,&
@@ -165,39 +161,39 @@ contains
             !! Zip filename
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=1, kind=c_char), dimension(gene_ids_strlen, n_gene_ids_elements), intent(in), optional :: gene_ids
+        character(len=1, kind=c_char), dimension(gene_ids_strlen, n_gene_ids_elements), intent(in), optional, target :: gene_ids
             !! Gene ids array, will be saved if provided
-        character(len=1, kind=c_char), dimension(gene_ids_file_strlen), intent(in), optional :: gene_ids_file
+        character(len=1, kind=c_char), dimension(gene_ids_file_strlen), intent(in), optional, target :: gene_ids_file
             !! Name of the gene ids file
         real(c_double), dimension(n_expression_elements_dim_1, n_expression_elements_dim_2), intent(in), optional :: expression
             !! Expression vectors array, will be saved if provided
-        character(len=1, kind=c_char), dimension(expression_file_strlen), intent(in), optional :: expression_file
+        character(len=1, kind=c_char), dimension(expression_file_strlen), intent(in), optional, target :: expression_file
             !! Name of the expression file
         integer(c_int), dimension(n_gene_to_family_elements), intent(in), optional :: gene_to_family
             !! Gene to family mapping array, will be saved if provided
-        character(len=1, kind=c_char), dimension(gene_to_family_file_strlen), intent(in), optional :: gene_to_family_file
+        character(len=1, kind=c_char), dimension(gene_to_family_file_strlen), intent(in), optional, target :: gene_to_family_file
             !! Name of the gene to family mapping file
-        character(len=1, kind=c_char), dimension(family_ids_strlen, n_family_ids_elements), intent(in), optional :: family_ids
+        character(len=1, kind=c_char), dimension(family_ids_strlen, n_family_ids_elements), intent(in), optional, target :: family_ids
             !! Family ids array, will be saved if provided
-        character(len=1, kind=c_char), dimension(family_ids_file_strlen), intent(in), optional :: family_ids_file
+        character(len=1, kind=c_char), dimension(family_ids_file_strlen), intent(in), optional, target :: family_ids_file
             !! Name of the family ids file
         real(c_double), dimension(n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2), intent(in), optional :: family_centroids
             !! Family centroids array, will be saved if provided
-        character(len=1, kind=c_char), dimension(family_centroids_file_strlen), intent(in), optional :: family_centroids_file
+        character(len=1, kind=c_char), dimension(family_centroids_file_strlen), intent(in), optional, target :: family_centroids_file
             !! Name of the family centroids file
         real(c_double), dimension(n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2), intent(in), optional :: shift_vectors
             !! Shift vectors array, will be saved if provided
-        character(len=1, kind=c_char), dimension(shift_vectors_file_strlen), intent(in), optional :: shift_vectors_file
+        character(len=1, kind=c_char), dimension(shift_vectors_file_strlen), intent(in), optional, target :: shift_vectors_file
             !! Name of the shift vectors file
-        character(len=:), allocatable :: zip_filename_f
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=:), allocatable :: gene_ids_file_f
-        character(len=:), allocatable :: expression_file_f
-        character(len=:), allocatable :: gene_to_family_file_f
-        character(len=:), allocatable, dimension(:) :: family_ids_f
-        character(len=:), allocatable :: family_ids_file_f
-        character(len=:), allocatable :: family_centroids_file_f
-        character(len=:), allocatable :: shift_vectors_file_f
+        character(len=zip_filename_strlen), pointer :: zip_filename_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        character(len=gene_ids_file_strlen), pointer :: gene_ids_file_f
+        character(len=expression_file_strlen), pointer :: expression_file_f
+        character(len=gene_to_family_file_strlen), pointer :: gene_to_family_file_f
+        character(len=family_ids_strlen), pointer, dimension(:) :: family_ids_f
+        character(len=family_ids_file_strlen), pointer :: family_ids_file_f
+        character(len=family_centroids_file_strlen), pointer :: family_centroids_file_f
+        character(len=shift_vectors_file_strlen), pointer :: shift_vectors_file_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -221,40 +217,23 @@ contains
         M_CHECK_NON_NULL(shift_vectors_file_strlen)
         M_CHECK_ARRAY_NON_NULL(zip_filename, zip_filename_strlen)
 
-        call c_char_1d_as_string(zip_filename, zip_filename_f, ierr)
-        if (is_err(ierr)) return
-        if (present(gene_ids)) then
-            call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(gene_ids_file)) then
-            call c_char_1d_as_string(gene_ids_file, gene_ids_file_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(expression_file)) then
-            call c_char_1d_as_string(expression_file, expression_file_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(gene_to_family_file)) then
-            call c_char_1d_as_string(gene_to_family_file, gene_to_family_file_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(family_ids)) then
-            call c_char_2d_as_string(family_ids, family_ids_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(family_ids_file)) then
-            call c_char_1d_as_string(family_ids_file, family_ids_file_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(family_centroids_file)) then
-            call c_char_1d_as_string(family_centroids_file, family_centroids_file_f, ierr)
-            if (is_err(ierr)) return
-        end if
-        if (present(shift_vectors_file)) then
-            call c_char_1d_as_string(shift_vectors_file, shift_vectors_file_f, ierr)
-            if (is_err(ierr)) return
-        end if
+        call c_f_pointer(c_loc(zip_filename), zip_filename_f)
+        nullify(gene_ids_f)
+        if (present(gene_ids)) call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        nullify(gene_ids_file_f)
+        if (present(gene_ids_file)) call c_f_pointer(c_loc(gene_ids_file), gene_ids_file_f)
+        nullify(expression_file_f)
+        if (present(expression_file)) call c_f_pointer(c_loc(expression_file), expression_file_f)
+        nullify(gene_to_family_file_f)
+        if (present(gene_to_family_file)) call c_f_pointer(c_loc(gene_to_family_file), gene_to_family_file_f)
+        nullify(family_ids_f)
+        if (present(family_ids)) call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
+        nullify(family_ids_file_f)
+        if (present(family_ids_file)) call c_f_pointer(c_loc(family_ids_file), family_ids_file_f)
+        nullify(family_centroids_file_f)
+        if (present(family_centroids_file)) call c_f_pointer(c_loc(family_centroids_file), family_centroids_file_f)
+        nullify(shift_vectors_file_f)
+        if (present(shift_vectors_file)) call c_f_pointer(c_loc(shift_vectors_file), shift_vectors_file_f)
 
         call save_tox_data(&
             zip_filename = zip_filename_f,&
@@ -325,7 +304,7 @@ contains
             !! Columns of the shift vectors matrix, 0 if absent
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: zip_filename_f
+        character(len=zip_filename_strlen), pointer :: zip_filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -343,8 +322,7 @@ contains
         M_CHECK_NON_NULL(n_shift_vectors_cols)
         M_CHECK_ARRAY_NON_NULL(zip_filename, zip_filename_strlen)
 
-        call c_char_1d_as_string(zip_filename, zip_filename_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(zip_filename), zip_filename_f)
 
         call get_tox_data_dims(&
             zip_filename = zip_filename_f,&
@@ -442,9 +420,9 @@ contains
             !! Shift vectors
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: zip_filename_f
-        character(len=gene_id_len), allocatable, dimension(:) :: gene_ids_f
-        character(len=family_id_len), allocatable, dimension(:) :: family_ids_f
+        character(len=zip_filename_strlen), pointer :: zip_filename_f
+        character(len=gene_id_len), pointer, dimension(:) :: gene_ids_f
+        character(len=family_id_len), pointer, dimension(:) :: family_ids_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -468,10 +446,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_centroids, n_family_centroids_rows * n_family_centroids_cols)
         M_CHECK_ARRAY_NON_NULL(shift_vectors, n_shift_vectors_rows * n_shift_vectors_cols)
 
-        call c_char_1d_as_string(zip_filename, zip_filename_f, ierr)
-        if (is_err(ierr)) return
-        M_ALLOCATE(gene_ids_f(n_gene_ids))
-        M_ALLOCATE(family_ids_f(n_family_ids))
+        call c_f_pointer(c_loc(zip_filename), zip_filename_f)
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids])
+        call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids])
 
         call read_tox_data_into(&
             zip_filename = zip_filename_f,&
@@ -494,9 +471,6 @@ contains
             shift_vectors = shift_vectors,&
             ierr = ierr&
         )
-
-        call string_as_c_char_2d(gene_ids_f, gene_ids)
-        call string_as_c_char_2d(family_ids_f, family_ids)
     end subroutine read_tox_data_into_c
 
 end module tox_data_archive_c

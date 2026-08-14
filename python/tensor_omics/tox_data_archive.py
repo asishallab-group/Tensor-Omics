@@ -159,15 +159,19 @@ def create_zip_archive(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode()], dtype="S")
+    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
     try:
-        keys = np.asarray([str(_s).encode() for _s in keys], dtype="S")
+        _keys_bytes = [str(_s).encode() for _s in keys]
+        _keys_width = max(map(len, _keys_bytes), default=0) or 1
+        keys = np.asarray([_b.ljust(_keys_width) for _b in _keys_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'keys' must be a sequence of strings: {error}") from None
     if keys.ndim != 1:
         raise ValueError(f"'keys' must have 1 dimension, but has {keys.ndim}")
     try:
-        filenames = np.asarray([str(_s).encode() for _s in filenames], dtype="S")
+        _filenames_bytes = [str(_s).encode() for _s in filenames]
+        _filenames_width = max(map(len, _filenames_bytes), default=0) or 1
+        filenames = np.asarray([_b.ljust(_filenames_width) for _b in _filenames_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'filenames' must be a sequence of strings: {error}") from None
     if filenames.ndim != 1:
@@ -260,16 +264,18 @@ def save_tox_data(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode()], dtype="S")
+    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
     if gene_ids is not None:
         try:
-            gene_ids = np.asarray([str(_s).encode() for _s in gene_ids], dtype="S")
+            _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
+            _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+            gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
         except TypeError as error:
             raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
         if gene_ids.ndim != 1:
             raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
     if gene_ids_file is not None:
-        gene_ids_file = np.array([str(gene_ids_file).encode()], dtype="S")
+        gene_ids_file = np.array([str(gene_ids_file).encode().ljust(1)], dtype="S")
     if expression is not None:
         try:
             expression = np.asfortranarray(expression, dtype=np.float64)
@@ -278,7 +284,7 @@ def save_tox_data(
         if expression.ndim != 2:
             raise ValueError(f"'expression' must have 2 dimensions, but has {expression.ndim}")
     if expression_file is not None:
-        expression_file = np.array([str(expression_file).encode()], dtype="S")
+        expression_file = np.array([str(expression_file).encode().ljust(1)], dtype="S")
     if gene_to_family is not None:
         try:
             gene_to_family = np.ascontiguousarray(gene_to_family, dtype=np.int32)
@@ -287,16 +293,18 @@ def save_tox_data(
         if gene_to_family.ndim != 1:
             raise ValueError(f"'gene_to_family' must have 1 dimension, but has {gene_to_family.ndim}")
     if gene_to_family_file is not None:
-        gene_to_family_file = np.array([str(gene_to_family_file).encode()], dtype="S")
+        gene_to_family_file = np.array([str(gene_to_family_file).encode().ljust(1)], dtype="S")
     if family_ids is not None:
         try:
-            family_ids = np.asarray([str(_s).encode() for _s in family_ids], dtype="S")
+            _family_ids_bytes = [str(_s).encode() for _s in family_ids]
+            _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
+            family_ids = np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
         except TypeError as error:
             raise TypeError(f"'family_ids' must be a sequence of strings: {error}") from None
         if family_ids.ndim != 1:
             raise ValueError(f"'family_ids' must have 1 dimension, but has {family_ids.ndim}")
     if family_ids_file is not None:
-        family_ids_file = np.array([str(family_ids_file).encode()], dtype="S")
+        family_ids_file = np.array([str(family_ids_file).encode().ljust(1)], dtype="S")
     if family_centroids is not None:
         try:
             family_centroids = np.asfortranarray(family_centroids, dtype=np.float64)
@@ -305,7 +313,7 @@ def save_tox_data(
         if family_centroids.ndim != 2:
             raise ValueError(f"'family_centroids' must have 2 dimensions, but has {family_centroids.ndim}")
     if family_centroids_file is not None:
-        family_centroids_file = np.array([str(family_centroids_file).encode()], dtype="S")
+        family_centroids_file = np.array([str(family_centroids_file).encode().ljust(1)], dtype="S")
     if shift_vectors is not None:
         try:
             shift_vectors = np.asfortranarray(shift_vectors, dtype=np.float64)
@@ -314,7 +322,7 @@ def save_tox_data(
         if shift_vectors.ndim != 2:
             raise ValueError(f"'shift_vectors' must have 2 dimensions, but has {shift_vectors.ndim}")
     if shift_vectors_file is not None:
-        shift_vectors_file = np.array([str(shift_vectors_file).encode()], dtype="S")
+        shift_vectors_file = np.array([str(shift_vectors_file).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -427,7 +435,7 @@ def get_tox_data_dims(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode()], dtype="S")
+    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -525,7 +533,7 @@ def read_tox_data_into(
     _zip_filename_raw = zip_filename
 
     # accept anything array-like, converting only when C needs it
-    zip_filename = np.array([str(zip_filename).encode()], dtype="S")
+    zip_filename = np.array([str(zip_filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     zip_filename_strlen = zip_filename.itemsize
@@ -585,10 +593,10 @@ def read_tox_data_into(
     shift_vectors.flags.writeable = False
 
     return {
-        "gene_ids": [_s.decode() for _s in gene_ids],
+        "gene_ids": [_s.decode().rstrip(' ') for _s in gene_ids],
         "expression": expression,
         "gene_to_family": gene_to_family,
-        "family_ids": [_s.decode() for _s in family_ids],
+        "family_ids": [_s.decode().rstrip(' ') for _s in family_ids],
         "family_centroids": family_centroids,
         "shift_vectors": shift_vectors,
     }

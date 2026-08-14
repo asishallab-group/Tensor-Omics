@@ -419,6 +419,11 @@ class TestTheCLayerAllocatesNothingOnTheStack:
     So the rule is a property of the whole emitted layer, not of one wrapper: every such
     local is `allocatable` and reaches the heap through `M_ALLOCATE`, whose failure path
     returns `ERR_ALLOC_FAIL` to the caller instead of crashing inside the wrapper.
+
+    Since strings became pointer views the real project reaches something stronger still:
+    no wrapper allocates anything at all, on either the stack or the heap. The two rules
+    below are what keeps that from silently becoming an automatic array again if a new
+    conversion ever needs a local.
     """
 
     #: `<type> ... dimension(<something that is not just ':'>) :: name` on a local, i.e. an
@@ -432,11 +437,13 @@ class TestTheCLayerAllocatesNothingOnTheStack:
         result = generate(paths(REPO_ROOT, REAL_SRC), targets=("c",), parsed=real_project)
         return {f.path.name: f.content for f in result.files if f.path.suffix == ".F90"}
 
-    def test_the_premise(self, c_wrappers):
-        # if this ever drops to nothing the rest of the class is vacuous. It dropped from 16
-        # wrappers to 3 when logicals moved to c_bool and stopped needing a temporary at all,
-        # so the bar is where it is because character and nullable locals are what is left.
-        assert sum("M_ALLOCATE" in text for text in c_wrappers.values()) >= 3
+    def test_no_wrapper_allocates_at_all(self, c_wrappers):
+        # It was 16 wrappers, then 3 when logicals moved to c_bool, then none when strings
+        # became pointer views of the caller's buffer. Nothing the emitter can express now
+        # needs storage of its own: this is the strongest form of the rule, and the two
+        # tests below are what will catch a new conversion reaching for the stack instead.
+        offenders = [name for name, text in c_wrappers.items() if "M_ALLOCATE" in text]
+        assert offenders == []
 
     def test_no_wrapper_declares_a_runtime_sized_automatic_local(self, c_wrappers):
         offenders = []

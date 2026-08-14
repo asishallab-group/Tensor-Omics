@@ -119,6 +119,27 @@ contains
     end subroutine fx_count_matching
 
     !> M_EXPORT_C
+    !| summary: Strings the caller may omit, which C passes as a null pointer
+    !| author: A Developer
+    subroutine fx_optional_strings(tag, extras, n_given, ierr)
+        character(len=*), intent(in), optional :: tag
+            !! a scalar string the caller may leave out
+        character(len=*), dimension(:), intent(in), optional :: extras
+            !! a vector of strings the caller may leave out
+        integer(int32), intent(out) :: n_given
+            !! `tag`, if given and not blank, plus one per element of `extras`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+        n_given = 0
+        if (present(tag)) then
+            if (len_trim(tag) > 0) n_given = n_given + 1
+        end if
+        if (present(extras)) n_given = n_given + int(size(extras), int32)
+    end subroutine fx_optional_strings
+
+    !> M_EXPORT_C
     !| summary: An already interoperable logical, which needs no conversion
     !| author: A Developer
     subroutine fx_c_bool_flag(flag, ierr)

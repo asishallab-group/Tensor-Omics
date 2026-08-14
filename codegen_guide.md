@@ -62,7 +62,8 @@ Related reading, once this is not enough:
   - [6.4 What works exactly as in Part I](#64-what-works-exactly-as-in-part-i)
   - [6.5 An `_alloc` pair by hand — gone](#65-an-_alloc-pair-by-hand--gone)
   - [6.6 An array of any rank through one signature](#66-an-array-of-any-rank-through-one-signature)
-  - [6.7 Never export an implementation](#67-never-export-an-implementation)
+  - [6.7 A character argument arrives blank-padded to its full width](#67-a-character-argument-arrives-blank-padded-to-its-full-width)
+  - [6.8 Never export an implementation](#68-never-export-an-implementation)
 
 **Both paths**
 
@@ -1047,7 +1048,35 @@ serialize_int_helper(np.arange(12).reshape(3, 4), path)   # shape derived, flatt
 
 Characters work the same way, with the length carried as a leading extent.
 
-### 6.7 Never export an implementation
+### 6.7 A character argument arrives blank-padded to its full width
+
+Worth knowing before you read one, because it is the one place the boundary is visible inside
+an implementation. The bindings pack strings into a fixed-width buffer — the width is the
+longest element, in **bytes**, so UTF-8 is never truncated — and the wrapper hands your dummy a
+zero-copy view of that buffer. So a `character(len=*)` argument is **the full buffer width,
+blank-padded**, not the caller's string trimmed to length:
+
+```fortran
+character(len=*), intent(in) :: gene_ids(:)     ! caller passed ['BRCA1', 'TP53']
+! len(gene_ids(1)) is 5, not 5 and 4 -- both elements are width 5
+! gene_ids(2) is 'TP53 ', with a trailing blank
+```
+
+What that means for you:
+
+- **Use `trim` / `len_trim`, never bare `len`.** `len` gives the buffer width; `len_trim` gives
+  the string. Anything that hashes, concatenates, or writes a name needs `trim` —
+  `hashmap_put(map, trim(gene_ids(i)), i)`, not `hashmap_put(map, gene_ids(i), i)`.
+- **Comparison is already safe.** Fortran blank-pads the shorter operand, so
+  `gene_ids(i) == 'TP53'` is true regardless of the width, and `select case` works too.
+- **A filename is safe.** Fortran's `FILE=` specifier removes trailing blanks.
+- **Writing an output string?** Fill the whole width. Assigning a shorter value blank-pads
+  automatically, which is what the caller decodes; leaving the tail untouched returns whatever
+  the caller's buffer held.
+- **A value that genuinely ends in a blank will not round-trip.** That is the accepted price of
+  the padding convention.
+
+### 6.8 Never export an implementation
 
 `M_EXPORT_C` on an `_impl` procedure does **not** replace wrapper generation — it would add to it.
 The implementation still gets its wrappers, *and* the raw implementation is exported alongside, so
@@ -1132,7 +1161,7 @@ source and carries a note saying what to write instead.
 | Refused | Why |
 |---|---|
 | a deferred-length character (`len=:`) | implies allocatable/pointer; not interoperable |
-| a character array of rank > 1 | `tox_conversions` converts up to a vector |
+| a character array of rank > 1 | a character carries its length as a leading C extent, so rank 2 would need a rank-3 buffer |
 | an `allocatable` or `pointer` dummy | no C-interoperable form |
 | a derived type | not mapped |
 | a missing `intent` | constness and direction are undecidable |

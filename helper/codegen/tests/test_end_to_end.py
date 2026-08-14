@@ -294,8 +294,9 @@ class TestCharacters:
         assert all(isinstance(label, str) for label in result["labels"])
 
     def test_a_short_string_in_a_long_buffer_is_not_read_past(self, tox, np):
-        # 'pos' is three characters in an eight-character buffer; the null padding is
-        # what stops the trailing bytes being read back as part of the string
+        # 'pos' is three characters in an eight-character buffer. Fortran blank-pads what
+        # it assigns into a character(len=8), and this layer strips the blanks on the way
+        # out -- there is no null anywhere in the round trip to stop at.
         labels = tox.fx_labels(np.array([1.0]))["labels"]
 
         assert labels == ["pos"]
@@ -311,6 +312,20 @@ class TestCharacters:
         # len=* : numpy sizes the S dtype from the string, and the wrapper reads it back
         assert tox.fx_count_matching(["ab", "abc", "ab"], "ab") == 2
         assert tox.fx_count_matching(["ab", "abc", "ab"], "abc") == 1
+
+    def test_an_omitted_string_reaches_the_callee_as_absent(self, tox):
+        # C passes null, the wrapper leaves the view disassociated, and F2018 15.5.2.12
+        # makes a disassociated pointer actual an absent optional dummy
+        assert tox.fx_optional_strings() == 0
+        assert tox.fx_optional_strings(tag="x") == 1
+        assert tox.fx_optional_strings(extras=["a", "b", "c"]) == 3
+        assert tox.fx_optional_strings(tag="x", extras=["a", "b"]) == 3
+
+    def test_an_omitted_string_is_absent_not_blank(self, tox):
+        # a present-but-blank tag counts zero, so this distinguishes "absent" from
+        # "a buffer of blanks", which is what the padding change could have confused
+        assert tox.fx_optional_strings(tag="   ") == 0
+        assert tox.fx_optional_strings(tag="") == 0
 
     def test_a_non_iterable_for_a_string_vector_names_the_argument(self, tox):
         # str() of anything succeeds, so the failure is a non-iterable, not a bad element

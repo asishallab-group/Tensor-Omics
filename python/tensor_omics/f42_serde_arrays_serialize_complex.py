@@ -64,7 +64,7 @@ def serialize_complex_helper(
         arr = np.asfortranarray(arr, dtype=np.complex128)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'arr' must be an array of np.complex128: {error}") from None
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     n_elements = arr.size

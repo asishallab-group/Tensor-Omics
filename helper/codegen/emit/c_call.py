@@ -13,6 +13,11 @@ internal: the user-facing `<name>` is the R wrapper on top of it, which calls
 Only R's C API is used -- no Rcpp, no cpp11. The two conversions C cannot avoid (logical
 arrays, strings) go through `tox_marshal.h`, whose buffers come from `R_alloc` and so are
 freed automatically when the call returns; there is nothing to leak on an error longjmp.
+
+Strings cross fixed-width, column-major and **blank**-padded, in both directions. The
+Fortran wrapper does not convert that buffer -- it takes a `character(len=strlen)` pointer
+view of it -- so the padding byte is part of the value, and blanks are what Fortran's
+`trim`, `len_trim` and string comparison are defined on. See `design/c-layer.md`.
 """
 
 from __future__ import annotations
@@ -738,6 +743,10 @@ _MARSHAL_HEADER = r'''// Generated. Do not edit.
 // couple of small shape helpers. Transient buffers come from R_alloc and are freed when the
 // .Call returns, so there is nothing to free by hand and nothing to leak on an error
 // longjmp. The R layer has already validated and rejected NA, so these are straight copies.
+//
+// Strings cross fixed-width, column-major and blank-padded, both ways: the Fortran wrapper
+// takes a character(len=strlen) pointer view of the buffer rather than converting it, so
+// the padding is part of the value and it has to be the padding Fortran trims.
 #ifndef TOX_MARSHAL_H
 #define TOX_MARSHAL_H
 
@@ -765,13 +774,16 @@ static inline int tox_max_strlen(SEXP x) {
 }
 
 // Fortran carries a string's length as the leading extent: n strings of length len are
-// char[len * n], column-major, each zero-padded. Reading stops at the first null, so a
-// zero-filled buffer yields empty strings. Anything longer than len is truncated.
+// char[len * n], column-major, each **blank**-padded. The Fortran wrapper does not convert
+// this buffer, it takes a `character(len=len)` pointer view of it -- so the padding byte
+// becomes part of the value, and blanks are the padding Fortran's own `trim`, `len_trim`
+// and string comparison understand. A NUL would survive into the string instead. Anything
+// longer than len is truncated.
 static inline char* tox_char_in(SEXP x, int len) {
     int n = (x == R_NilValue) ? 0 : (int) XLENGTH(x);
     size_t total = (size_t) len * (n > 0 ? n : 1);
     char* buf = (char*) R_alloc(total, 1);
-    memset(buf, 0, total);
+    memset(buf, ' ', total);
     for (int i = 0; i < n; ++i) {
         SEXP e = STRING_ELT(x, i);
         if (e == NA_STRING) continue;
@@ -782,22 +794,28 @@ static inline char* tox_char_in(SEXP x, int len) {
     return buf;
 }
 
-// A zero-filled c_char output buffer of len * n bytes.
+// A blank-filled c_char output buffer of len * n bytes. Blank and not zero, deliberately:
+// the callee may leave an element untouched (an early error return, a partly filled array),
+// and tox_char_out reads it back by trimming trailing blanks. A zero fill would leave NULs
+// there, which Rf_mkCharLen rejects outright with an embedded-nul error.
 static inline char* tox_char_alloc(int len, int n) {
     size_t total = (size_t) len * (n > 0 ? n : 1);
     char* buf = (char*) R_alloc(total, 1);
-    memset(buf, 0, total);
+    memset(buf, ' ', total);
     return buf;
 }
 
-// char[len * n] fixed-width -> STRSXP, each slot read up to the first null. Returned
-// unprotected: the caller protects it straight into a result slot.
+// char[len * n] fixed-width -> STRSXP, each slot with its trailing blanks removed: Fortran
+// blank-pads whatever it assigns into a character(len=n), and the wrapper hands that buffer
+// straight through. Trailing NULs are deliberately not stripped -- nothing writes them any
+// more, and Rf_mkCharLen turning a stray one into a loud R error is the right answer.
+// Returned unprotected: the caller protects it straight into a result slot.
 static inline SEXP tox_char_out(const char* buf, int len, int n) {
     SEXP out = Rf_allocVector(STRSXP, n);
     for (int i = 0; i < n; ++i) {
         const char* p = buf + (size_t) i * len;
-        int m = 0;
-        while (m < len && p[m] != '\0') ++m;
+        int m = len;
+        while (m > 0 && p[m - 1] == ' ') --m;
         SET_STRING_ELT(out, i, Rf_mkCharLen(p, m));
     }
     return out;

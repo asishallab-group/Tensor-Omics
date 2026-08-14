@@ -21,9 +21,10 @@ from .types import BaseType, Intent
 #: Attributes on a dummy argument that have no C interoperable form
 NON_INTEROPERABLE_ATTRIBUTES = ("allocatable", "pointer")
 
-#: The greatest character rank tox_conversions can convert. A scalar character maps to a
-#: 1-D c_char buffer and a character vector to a 2-D one, which is where
-#: c_char_1d_as_string / c_char_2d_as_string stop.
+#: The greatest character rank the C layer can carry. A character's length is a leading C
+#: extent, so a scalar character is a 1-D c_char buffer and a character vector a 2-D one.
+#: A rank-2 character array would need a rank-3 buffer, and the wrapper's pointer view of
+#: it would have to be rank 2 -- which is a wire format, not a limit of one helper.
 MAX_CHARACTER_RANK = 1
 
 
@@ -456,11 +457,11 @@ class _Validator:
         if argument.rank > MAX_CHARACTER_RANK:
             self.error(
                 f"argument '{argument.name}' is a rank-{argument.rank} character array, "
-                f"and tox_conversions can convert up to rank {MAX_CHARACTER_RANK}",
+                f"and the C layer carries up to rank {MAX_CHARACTER_RANK}",
                 argument,
                 note=(
                     "a character carries its length as a leading C extent, so a rank-2 "
-                    "character array would need a rank-3 c_char conversion"
+                    "character array would need a rank-3 c_char buffer"
                 ),
             )
 

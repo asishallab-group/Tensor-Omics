@@ -8,7 +8,7 @@
 !| glue with no exports of its own -- infrastructure the binding layer stands on.
 module tox_conversions
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_ok, set_err
+    use tox_errors, only: ERR_ALLOC_FAIL, set_ok, set_err
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_null_char, c_char, c_size_t, c_int64_t
 
 contains
@@ -93,77 +93,6 @@ contains
             call c_char_as_char(c_char_array(i), str_out(i:i))
         end do
     end subroutine c_char_1d_as_string
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a string to 1D c_char array
-    pure subroutine string_as_c_char_1d(str, c_char_array)
-        character(len=*), intent(in) :: str
-            !! Fortran string to be converted
-        character(kind=c_char, len=1), dimension(:), intent(out) :: c_char_array
-            !! c int array, representing chars of `str`, will always end with null char. If array too small, it will hold fitting trimmed `str`.
-
-        integer(int32) :: i_str, str_len
-
-        ! determine string length to be converted
-        str_len = min(len_trim(str), size(c_char_array, 1))
-
-        do concurrent (i_str = 1:str_len) shared(str, c_char_array)
-            call c_char_as_char(str(i_str:i_str), c_char_array(i_str))
-        end do
-
-        if (size(c_char_array, 1) > str_len) then
-            c_char_array(str_len + 1) = c_null_char
-        end if
-    end subroutine string_as_c_char_1d
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a 2D c_char array to 1D string array
-    pure subroutine c_char_2d_as_string(c_char_array, str_out, ierr)
-        character(kind=c_char, len=1), dimension(:, :), intent(in) :: c_char_array
-            !! c int array, columns as ascii arrays
-        character(len=:), dimension(:), allocatable, intent(out) :: str_out
-            !! Fortran array of resulting strings
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        integer(int32) :: i_str, n_rows, n_strings, tmp_ierr
-        character(len=:), allocatable :: string
-
-        call set_ok(ierr)
-
-        n_rows = size(c_char_array, 1)
-        n_strings = size(c_char_array, 2)
-
-        M_ALLOCATE(character(len=n_rows) :: str_out(n_strings))
-
-        ! create strings
-        ! GFORTRAN BUG: do concurrent (i_str = 1:n_strings) local(tmp_ierr) shared(c_char_array, string, ierr, str_out)
-        do i_str = 1, n_strings
-            call c_char_1d_as_string(c_char_array(:, i_str), string, tmp_ierr)
-            if (is_err(tmp_ierr)) ierr = tmp_ierr
-
-            str_out(i_str) = string
-        end do
-    end subroutine c_char_2d_as_string
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a 1D string array to 2D c_char array
-    pure subroutine string_as_c_char_2d(strings, c_char_array)
-        character(len=*), dimension(:), intent(in) :: strings
-            !! Fortran array of strings
-        character(kind=c_char, len=1), dimension(:, :), intent(out) :: c_char_array
-            !! c int array, columns as ascii arrays
-
-        integer(int32) :: i_str
-
-        ! Guard against a caller-provided c_char_array with fewer columns than there are strings:
-        ! only convert as many strings as fit, instead of writing out of bounds on
-        ! `c_char_array(:, i_str)` for i_str beyond its column count.
-        ! GFORTRAN BUG: do concurrent (i_str = 1:min(size(strings, 1), size(c_char_array, 2))) shared(strings, c_char_array)
-        do i_str = 1, min(size(strings, 1), size(c_char_array, 2))
-            call string_as_c_char_1d(strings(i_str), c_char_array(:, i_str))
-        end do
-    end subroutine string_as_c_char_2d
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Converts int32 to c_int64_t, elemental -> any shape

@@ -64,7 +64,7 @@ def serialize_int_helper(
         arr = np.asfortranarray(arr, dtype=np.int32)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'arr' must be an array of np.int32: {error}") from None
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     n_elements = arr.size

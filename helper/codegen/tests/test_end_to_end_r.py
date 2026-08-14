@@ -195,9 +195,30 @@ class TestCharacters:
         out = run_r(built, 'cat(fx_labels(c(1, -2, 3))$label)')
         assert out.strip() == "summary"
 
+    def test_the_padding_is_trimmed_rather_than_returned(self, built):
+        # 'pos' arrives in an eight-wide blank-padded buffer and 'summary' in a sixteen-wide
+        # one. `identical` does not trim, so this is the assertion `cat` cannot make.
+        out = run_r(built, """
+            r <- fx_labels(c(1, -2, 3))
+            cat(identical(r$labels, c("pos", "nonpos", "pos")),
+                identical(r$label, "summary"))
+        """)
+        assert out.split() == ["TRUE", "TRUE"]
+
     def test_a_string_vector_goes_in(self, built):
         out = run_r(built, 'cat(fx_count_matching(c("a", "b", "a"), "a"))')
         assert int(out) == 2
+
+    def test_an_omitted_string_reaches_the_callee_as_absent(self, built):
+        # C passes null, the wrapper leaves the view disassociated, and F2018 15.5.2.12
+        # makes a disassociated pointer actual an absent optional dummy
+        out = run_r(built, """
+            cat(fx_optional_strings(),
+                fx_optional_strings(tag = "x"),
+                fx_optional_strings(extras = c("a", "b", "c")),
+                fx_optional_strings(tag = "   "))
+        """)
+        assert out.split() == ["0", "1", "3", "0"]
 
 
 class TestOptionals:
