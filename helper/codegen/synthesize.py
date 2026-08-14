@@ -48,12 +48,17 @@ def generated_path_for(
     None where `source` is not an implementation at all, or lies outside the source tree
     (a hand-built test project, whose modules have no file). A file already under
     `generated_dir` is never claimed: that is the generator's own output.
+
+    `source` may be either spelling. The IR carries paths relative to the root, so that a
+    diagnostic can quote one; a caller holding an absolute path should not have to know
+    that, so both are accepted and joined the one way `Paths` joins anything.
     """
     src = paths.resolve(paths.src_dir)
     out = paths.resolve(paths.generated_dir)
     suffix = conventions.impl_suffix
     if not source.stem.lower().endswith(suffix):
         return None
+    source = paths.resolve(source)
     try:
         # both sides resolved: the frontend hands back paths from Ford's own resolution,
         # while `paths.resolve` only joins -- so on a checkout reached through a symlink (or

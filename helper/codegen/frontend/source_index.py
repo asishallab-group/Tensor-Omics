@@ -141,11 +141,15 @@ class SourceIndex:
 
     @lru_cache(maxsize=None)
     def file(self, path: Path) -> SourceFile | None:
-        resolved = path if path.is_absolute() else self.root / path
         try:
-            return SourceFile(path, resolved.read_text(errors="replace"))
+            return SourceFile(path, self._absolute(path).read_text(errors="replace"))
         except OSError:
             return None
+
+    def _absolute(self, path: Path) -> Path:
+        """Where `path` is on disk. A relative one is relative to the root, not the cwd."""
+        path = Path(path)
+        return path if path.is_absolute() else self.root / path
 
     def module(self, path: Path, name: str) -> SourceLocation:
         return self._locate(path, lambda f: f.module_line(name))
@@ -170,5 +174,18 @@ class SourceIndex:
     def _locate(self, path: Path, find) -> SourceLocation:
         source = self.file(path)
         if source is None:
-            return SourceLocation(Path(path))
-        return SourceLocation(Path(path), find(source))
+            return SourceLocation(self._relative(path))
+        return SourceLocation(self._relative(path), find(source))
+
+    def _relative(self, path: Path) -> Path:
+        """`path` as the author would write it, relative to the repository root.
+
+        Ford is handed absolute source directories -- it has to be, since the generator
+        chdirs -- so every path it reports back is absolute, and a diagnostic quoting one
+        in full is both unreadable and different on every machine. A path outside the root
+        is left alone rather than turned into a chain of `..`.
+        """
+        try:
+            return self._absolute(path).resolve().relative_to(self.root.resolve())
+        except (ValueError, OSError):
+            return Path(path)

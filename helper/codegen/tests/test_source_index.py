@@ -196,6 +196,33 @@ class TestSourceIndex:
         assert location.file == Path("m.F90")
         assert location.line == line_of("pure subroutine normalize_unit_length")
 
+    def test_an_absolute_path_is_reported_relative_to_the_root(self, tmp_path):
+        """Ford reports absolute paths, and a diagnostic must not quote one.
+
+        It is unreadable, and it differs on every machine -- which would also make any
+        expected-output test of a diagnostic unwritable.
+        """
+        (tmp_path / "src").mkdir()
+        path = tmp_path / "src" / "m.F90"
+        path.write_text(SOURCE)
+        index = SourceIndex(tmp_path)
+
+        location = index.procedure(path, "normalize_unit_length")
+
+        assert location.file == Path("src/m.F90")
+        assert location.line == line_of("pure subroutine normalize_unit_length")
+
+    def test_a_path_outside_the_root_is_left_alone(self, tmp_path):
+        """Rather than turned into a chain of `..`, which is worse than the absolute path."""
+        outside = tmp_path / "outside.F90"
+        outside.write_text(SOURCE)
+        root = tmp_path / "root"
+        root.mkdir()
+
+        location = SourceIndex(root).procedure(outside, "normalize_unit_length")
+
+        assert location.file == outside
+
     def test_a_missing_file_yields_a_location_without_a_line(self, tmp_path):
         index = SourceIndex(tmp_path)
 
