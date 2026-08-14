@@ -21,6 +21,10 @@ if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   # for the wrong reason. Overriding c_char breaks nothing before safeguard, which is compiled
   # first by design, so its own guard is what fails.
   c_char=("--directive=TEST_KIND_MISMATCH_C_CHAR")
+  # The existence guards in f42_safeguard (c_bool, c_size_t, c_int64_t, c_signed_char) are not
+  # here and cannot be: a directive that forces one negative also breaks every declaration
+  # naming that kind, and for c_bool tox_errors holds some and compiles first -- so it fails
+  # before the guard does. See the note beside them.
   for d in c_int c_double c_double_complex c_char; do
     msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$d"
     declare -n directives="$d"
