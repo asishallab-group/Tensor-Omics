@@ -2,7 +2,6 @@
 #define CM_KD_STACK_ENTRY_SIZE 3
 #define CM_KD_TRAVERSAL_STACK_DEPTH 64
 #define CM_OBSERVABLE_COUNT 5
-#define CM_SEEDING_COVERAGE_PERCENTILE 50.0_real64
 
 !> Module for managing data structures and geometric calculations.
 !! For shatter clustering operations within Tensor Omics.
@@ -14,7 +13,7 @@ module tox_shatter_cluster_data
                           ERR_DIM_MISMATCH, ERR_INVALID_INPUT, validate_all_in_range_real
     use tox_gene_centroids, only: mean_vector
     use tox_euclidean_distance, only: euclidean_distance
-    use f42_utils, only: sort_real_heapsort, calc_percentile, calc_percentile_helper, init_perm
+    use f42_utils, only: sort_real_heapsort, calc_percentile
     use f42_kd_tree, only: vicinity_vectors, vicinity_vectors_count
     implicit none
     private
@@ -299,233 +298,131 @@ contains
 
     end subroutine calculate_labels_as_density_helper
 
-    !> Allocating wrapper for greedy, density-ranked, coverage-based seed selection.
-    subroutine identify_ensemble_seeds_alloc(vectors, n_dimensions, n_vectors, density_labels, &
-                                             dimension_order, kd_indices, k_seeding, &
+    !> Allocating Wrapper to detect initial high-density seed coordinates.
+    subroutine identify_ensemble_seeds_alloc(density_labels, n_vectors, t_percentile, &
                                              sorted_perm, n_seeds, seed_mask, ierr)
 
-        integer(int32), intent(in) :: n_dimensions
-        !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Density labels for all vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
-        integer(int32), intent(in) :: dimension_order(n_dimensions)
-        !! Dimension split order array tracking the K-D tree structure
-        integer(int32), intent(in) :: kd_indices(n_vectors)
-        !! K-D tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(in) :: k_seeding
-        !! Number of nearest neighbors used to estimate each seed's local coverage radius
+        real(real64), intent(in), optional :: t_percentile
+        !! Quantile fraction (0.0 to 1.0; defaults to 0.15)
         integer(int32), intent(out) :: sorted_perm(n_vectors)
         !! Vector indices sorted by density descending
         integer(int32), intent(out) :: n_seeds
-        !! Number of selected seed vectors
+        !! Number of vectors in the top t-percentile
         logical, intent(out) :: seed_mask(n_vectors)
-        !! Output logical mask; .true. marks vectors selected as seeds
+        !! Output logical mask tracking eligible seed vectors
         integer(int32), intent(out) :: ierr
         !! Error code
 
         integer(int32), allocatable :: tmp_perm(:)
-        real(real64), allocatable :: tmp_distances(:)
-        integer(int32), allocatable :: tmp_stack(:, :)
-        logical, allocatable :: tmp_visited_mask(:)
-        logical, allocatable :: tmp_newly_covered_mask(:)
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_dimensions, ierr)
+        ! Validate all input structural dimensions and data arrays
         call validate_dimension_size(n_vectors, ierr)
-        call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
         call validate_all_in_range_real(density_labels, n_vectors, ierr, min=0.0_real64)
-        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
-        call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
-        if (n_vectors < 2_int32) call set_err(ierr, ERR_INVALID_INPUT)
-        if (is_err(ierr)) return
 
-        call validate_in_range_int(k_seeding, ierr, min=1_int32, max=n_vectors - 1_int32)
+        ! Array and value range validation check
+        call validate_in_range_real(t_percentile, ierr, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 
         M_ALLOCATE(tmp_perm(n_vectors))
-        M_ALLOCATE(tmp_distances(n_vectors))
-        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH))
-        M_ALLOCATE(tmp_visited_mask(n_vectors))
-        M_ALLOCATE(tmp_newly_covered_mask(n_vectors))
 
-        call identify_ensemble_seeds(vectors, n_dimensions, n_vectors, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds(density_labels, n_vectors, t_percentile, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
 
     end subroutine identify_ensemble_seeds_alloc
 
-    !> Validated entry point for greedy, density-ranked, coverage-based seed selection.
-    subroutine identify_ensemble_seeds(vectors, n_dimensions, n_vectors, density_labels, &
-                                       dimension_order, kd_indices, k_seeding, &
-                                       tmp_perm, tmp_distances, tmp_stack, &
-                                       tmp_visited_mask, tmp_newly_covered_mask, &
-                                       sorted_perm, n_seeds, seed_mask, ierr)
+    !> Validated Entry Point to detect initial high-density seed coordinates.
+    subroutine identify_ensemble_seeds(density_labels, n_vectors, t_percentile, &
+                                       tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
 
-        integer(int32), intent(in) :: n_dimensions
-        !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Density labels for all vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
-        integer(int32), intent(in) :: dimension_order(n_dimensions)
-        !! Dimension split order array tracking the K-D tree structure
-        integer(int32), intent(in) :: kd_indices(n_vectors)
-        !! K-D tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(in) :: k_seeding
-        !! Number of nearest neighbors used to estimate each seed's local coverage radius
-        integer(int32), intent(out) :: tmp_perm(n_vectors)
-        !! Preallocated workspace for indirect sorting
-        real(real64), intent(out) :: tmp_distances(n_vectors)
-        !! Preallocated workspace for candidate-to-vector distances
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
-        !! Preallocated K-D tree traversal stack
-        logical, intent(out) :: tmp_visited_mask(n_vectors)
-        !! Preallocated workspace tracking points already covered by seeding
-        logical, intent(out) :: tmp_newly_covered_mask(n_vectors)
-        !! Preallocated workspace for the current seed's coverage query
+        real(real64), intent(in), optional :: t_percentile
+        !! Quantile fraction (0.0 to 1.0; defaults to 0.15)
+        integer(int32), intent(inout) :: tmp_perm(n_vectors)
+        !! Preallocated workspace for permutation indexing
         integer(int32), intent(out) :: sorted_perm(n_vectors)
         !! Vector indices sorted by density descending
         integer(int32), intent(out) :: n_seeds
-        !! Number of selected seed vectors
+        !! Number of vectors in the top t-percentile
         logical, intent(out) :: seed_mask(n_vectors)
-        !! Output logical mask; .true. marks vectors selected as seeds
+        !! Output logical mask tracking eligible seed vectors
         integer(int32), intent(out) :: ierr
         !! Error code
 
         call set_ok(ierr)
 
-        call validate_dimension_size(n_dimensions, ierr)
+        ! Validate all input structural dimensions and data arrays
         call validate_dimension_size(n_vectors, ierr)
-        call validate_all_in_range_real(vectors, size(vectors, kind=int32), ierr)
         call validate_all_in_range_real(density_labels, n_vectors, ierr, min=0.0_real64)
-        call validate_all_in_range_int(dimension_order, n_dimensions, ierr, min=1_int32, max=n_dimensions)
-        call validate_all_in_range_int(kd_indices, n_vectors, ierr, min=1_int32, max=n_vectors)
-        if (n_vectors < 2_int32) call set_err(ierr, ERR_INVALID_INPUT)
+
+        ! Array and value range validation checks
+        call validate_in_range_real(t_percentile, ierr, min=0.0_real64, max=1.0_real64)
         if (is_err(ierr)) return
 
-        call validate_in_range_int(k_seeding, ierr, min=1_int32, max=n_vectors - 1_int32)
-        if (is_err(ierr)) return
-
-        call identify_ensemble_seeds_helper(vectors, n_dimensions, n_vectors, density_labels, &
-                                            dimension_order, kd_indices, k_seeding, &
-                                            tmp_perm, tmp_distances, tmp_stack, &
-                                            tmp_visited_mask, tmp_newly_covered_mask, &
-                                            sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds_helper(density_labels, n_vectors, t_percentile, &
+                                            tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
 
     end subroutine identify_ensemble_seeds
 
-    !> Core implementation for greedy, density-ranked, coverage-based seed selection.
-    !| Starts from the highest-density unvisited vector, marks it as a seed, estimates a
-    !| local coverage radius from the median distance to its `k_seeding` nearest neighbors,
-    !| marks all vectors inside that radius as visited, and continues in density order.
-    pure subroutine identify_ensemble_seeds_helper(vectors, n_dimensions, n_vectors, density_labels, &
-                                                   dimension_order, kd_indices, k_seeding, &
-                                                   tmp_perm, tmp_distances, tmp_stack, &
-                                                   tmp_visited_mask, tmp_newly_covered_mask, &
-                                                   sorted_perm, n_seeds, seed_mask, ierr)
+    !> Core Implementation to detect initial high-density seed coordinates (pure, no alloc).
+    pure subroutine identify_ensemble_seeds_helper(density_labels, n_vectors, t_percentile, &
+                                                   tmp_perm, sorted_perm, &
+                                                   n_seeds, seed_mask, ierr)
 
-        integer(int32), intent(in) :: n_dimensions
-        !! Number of dimensions
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
-        real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
-        !! Input data matrix (n_dimensions x n_vectors)
         real(real64), intent(in) :: density_labels(n_vectors)
         !! Density labels for all vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
-        integer(int32), intent(in) :: dimension_order(n_dimensions)
-        !! Dimension split order array tracking the K-D tree structure
-        integer(int32), intent(in) :: kd_indices(n_vectors)
-        !! K-D tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(in) :: k_seeding
-        !! Number of nearest neighbors used to estimate each seed's local coverage radius
-        integer(int32), intent(out) :: tmp_perm(n_vectors)
-        !! Preallocated workspace for indirect sorting
-        real(real64), intent(out) :: tmp_distances(n_vectors)
-        !! Preallocated workspace for candidate-to-vector distances
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH)
-        !! Preallocated K-D tree traversal stack
-        logical, intent(out) :: tmp_visited_mask(n_vectors)
-        !! Preallocated workspace tracking points already covered by seeding
-        logical, intent(out) :: tmp_newly_covered_mask(n_vectors)
-        !! Preallocated workspace for the current seed's coverage query
+        real(real64), intent(in), optional :: t_percentile
+        !! Quantile fraction (0.0 to 1.0; defaults to 0.15)
+        integer(int32), intent(inout) :: tmp_perm(n_vectors)
+        !! Preallocated workspace for permutation indexing
         integer(int32), intent(out) :: sorted_perm(n_vectors)
         !! Vector indices sorted by density descending
         integer(int32), intent(out) :: n_seeds
-        !! Number of selected seed vectors
+        !! Number of vectors in the top t-percentile
         logical, intent(out) :: seed_mask(n_vectors)
-        !! Output logical mask; .true. marks vectors selected as seeds
+        !! Output logical mask tracking eligible seed vectors
         integer(int32), intent(out) :: ierr
         !! Error code
 
-        integer(int32) :: i, rank, candidate, self_pos
-        real(real64) :: coverage_radius
+        integer(int32) :: i
+        real(real64) :: actual_t_percentile, target_percentile, threshold_val
 
         call set_ok(ierr)
 
-        ! Rank vectors by density, descending.
-        call init_perm(tmp_perm)
+        M_DEFAULT_VAL(t_percentile, actual_t_percentile, 0.15_real64)
+
+        ! Initialize identity permutation
+        do concurrent(i=1:n_vectors) shared(tmp_perm)
+            tmp_perm(i) = i
+        end do
+
         call sort_real_heapsort(density_labels, tmp_perm)
 
+        ! Reverse tmp_perm into sorted_perm
         do concurrent(i=1:n_vectors) shared(sorted_perm, tmp_perm, n_vectors)
             sorted_perm(i) = tmp_perm(n_vectors - i + 1_int32)
         end do
 
-        seed_mask = .false.
-        tmp_visited_mask = .false.
-        n_seeds = 0_int32
+        target_percentile = 100.0_real64 - (actual_t_percentile*100.0_real64)
+        call calc_percentile(density_labels, tmp_perm, target_percentile, threshold_val, ierr)
+        if (is_err(ierr)) return
 
-        do rank = 1, n_vectors
-            candidate = sorted_perm(rank)
-            if (tmp_visited_mask(candidate)) cycle
-
-            seed_mask(candidate) = .true.
-            tmp_visited_mask(candidate) = .true.
-            n_seeds = n_seeds + 1_int32
-
-            ! Compute all candidate distances.
-            do concurrent(i=1:n_vectors) shared(vectors, n_dimensions, candidate, tmp_distances)
-                call euclidean_distance(vectors(:, candidate), vectors(:, i), &
-                                        n_dimensions, tmp_distances(i))
-            end do
-
-            call init_perm(tmp_perm)
-            call sort_real_heapsort(tmp_distances, tmp_perm)
-
-            ! Exclude the seed itself while preserving ascending distance order.
-            self_pos = 0_int32
-            do i = 1, n_vectors
-                if (tmp_perm(i) == candidate) then
-                    self_pos = i
-                    exit
-                end if
-            end do
-
-            if (self_pos >= 1_int32 .and. self_pos <= k_seeding) then
-                do i = self_pos, k_seeding
-                    tmp_perm(i) = tmp_perm(i + 1_int32)
-                end do
-            end if
-
-            call calc_percentile_helper(tmp_distances, tmp_perm(1:k_seeding), &
-                                        CM_SEEDING_COVERAGE_PERCENTILE, coverage_radius)
-
-            call vicinity_vectors(vectors(:, candidate), vectors, n_dimensions, n_vectors, &
-                                  coverage_radius, dimension_order, kd_indices, tmp_stack, &
-                                  tmp_newly_covered_mask)
-
-            do concurrent(i=1:n_vectors) shared(tmp_visited_mask, tmp_newly_covered_mask)
-                if (tmp_newly_covered_mask(i)) tmp_visited_mask(i) = .true.
-            end do
+        ! Mark seeds in parallel and record total count
+        do concurrent(i=1:n_vectors) shared(density_labels, threshold_val, seed_mask)
+            seed_mask(i) = (density_labels(i) >= threshold_val)
         end do
+
+        n_seeds = count(seed_mask)
 
     end subroutine identify_ensemble_seeds_helper
 

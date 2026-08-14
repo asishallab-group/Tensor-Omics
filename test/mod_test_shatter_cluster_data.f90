@@ -12,7 +12,6 @@ module mod_test_shatter_cluster_data
                                         calculate_labels_as_density_alloc, &
                                         identify_ensemble_seeds, &
                                         identify_ensemble_seeds_alloc, &
-                                        identify_ensemble_seeds_helper, &
                                         grow_ensemble, &
                                         grow_ensemble_alloc, &
                                         compute_ensemble_observable, &
@@ -31,7 +30,7 @@ contains
 
     function get_all_tests_shatter_cluster_data() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(52))
+        allocate (all_tests(46))
         all_tests(1) = test_case("test_density_radius_basic", test_density_radius_basic)
         all_tests(2) = test_case("test_density_labels_basic", test_density_labels_basic)
         all_tests(3) = test_case("test_density_radius_invalid_quantile", test_density_radius_invalid_quantile)
@@ -43,13 +42,13 @@ contains
         all_tests(9) = test_case("test_density_labels_identical_vectors", test_density_labels_identical_vectors)
         all_tests(10) = test_case("test_density_radius_alloc", test_density_radius_alloc)
         all_tests(11) = test_case("test_density_labels_alloc", test_density_labels_alloc)
-        all_tests(12) = test_case("test_identify_ensemble_seeds_basic_coverage", test_identify_ensemble_seeds_basic_coverage)
-        all_tests(13) = test_case("test_identify_ensemble_seeds_skips_visited", test_identify_ensemble_seeds_skips_visited)
-        all_tests(14) = test_case("test_identify_ensemble_seeds_invalid_k_seeding", test_identify_ensemble_seeds_invalid_k_seeding)
+        all_tests(12) = test_case("test_identify_ensemble_seeds_basic", test_identify_ensemble_seeds_basic)
+        all_tests(13) = test_case("test_identify_ensemble_seeds_edge", test_identify_ensemble_seeds_edge)
+        all_tests(14) = test_case("test_identify_ensemble_seeds_invalid_percentile", test_identify_ensemble_seeds_invalid_percentile)
         all_tests(15) = test_case("test_identify_ensemble_seeds_alloc", test_identify_ensemble_seeds_alloc)
-        all_tests(16) = test_case("test_identify_ensemble_seeds_single_vector_invalid", test_identify_ensemble_seeds_single_vector_invalid)
-        all_tests(17) = test_case("test_identify_ensemble_seeds_invalid_inputs", test_identify_ensemble_seeds_invalid_inputs)
-        all_tests(18) = test_case("test_identify_ensemble_seeds_helper", test_identify_ensemble_seeds_helper)
+        all_tests(16) = test_case("test_identify_ensemble_seeds_single", test_identify_ensemble_seeds_single)
+        all_tests(17) = test_case("test_identify_ensemble_seeds_invalid_n", test_identify_ensemble_seeds_invalid_n)
+        all_tests(18) = test_case("test_identify_ensemble_seeds_default_percentile", test_identify_ensemble_seeds_default_percentile)
         all_tests(19) = test_case("test_grow_ensemble_basic", test_grow_ensemble_basic)
         all_tests(20) = test_case("test_grow_ensemble_no_growth", test_grow_ensemble_no_growth)
         all_tests(21) = test_case("test_grow_ensemble_invalid_inputs", test_grow_ensemble_invalid_inputs)
@@ -78,12 +77,6 @@ contains
         all_tests(44) = test_case("test_merge_ensembles_zero_seeds", test_merge_ensembles_zero_seeds)
         all_tests(45) = test_case("test_merge_ensembles_no_overlap", test_merge_ensembles_no_overlap)
         all_tests(46) = test_case("test_merge_ensembles_invalid_inputs", test_merge_ensembles_invalid_inputs)
-        all_tests(47) = test_case("test_identify_ensemble_seeds_k_seeding_effect", test_identify_ensemble_seeds_k_seeding_effect)
-        all_tests(48) = test_case("test_identify_ensemble_seeds_identical_vectors", test_identify_ensemble_seeds_identical_vectors)
-        all_tests(49) = test_case("test_identify_ensemble_seeds_k_seeding_boundary", test_identify_ensemble_seeds_k_seeding_boundary)
-        all_tests(50) = test_case("test_identify_ensemble_seeds_experiment_values", test_identify_ensemble_seeds_experiment_values)
-        all_tests(51) = test_case("test_identify_ensemble_seeds_alloc_matches_nonalloc", test_identify_ensemble_seeds_alloc_matches_nonalloc)
-        all_tests(52) = test_case("test_identify_ensemble_seeds_tied_densities", test_identify_ensemble_seeds_tied_densities)
     end function get_all_tests_shatter_cluster_data
 
     subroutine test_density_radius_basic()
@@ -393,528 +386,154 @@ contains
         end do
     end subroutine test_density_labels_alloc
 
-    subroutine test_identify_ensemble_seeds_basic_coverage()
-        integer(int32), parameter :: n_dims = 2_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-        integer(int32), parameter :: k_seeding = 3_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
+    subroutine test_identify_ensemble_seeds_basic()
+        integer(int32), parameter :: n_vecs = 5_int32
+        real(real64) :: density_labels(n_vecs)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        logical :: seed_mask(n_vecs)
 
-        vectors(:, 1) = [0.0_real64, 0.0_real64]
-        vectors(:, 2) = [0.1_real64, 0.0_real64]
-        vectors(:, 3) = [0.2_real64, 0.0_real64]
-        vectors(:, 4) = [10.0_real64, 0.0_real64]
-        vectors(:, 5) = [10.1_real64, 0.0_real64]
-        vectors(:, 6) = [10.2_real64, 0.0_real64]
-        density_labels = [100.0_real64, 90.0_real64, 80.0_real64, &
-                          70.0_real64, 60.0_real64, 50.0_real64]
-        dimension_order = [1_int32, 2_int32]
+        density_labels = [1.0_real64, 5.0_real64, 3.0_real64, 4.0_real64, 2.0_real64]
 
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_basic_coverage: tree build")
+        call identify_ensemble_seeds(density_labels, n_vecs, 0.40_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_basic: error code control")
 
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_basic_coverage: execution")
-        call assert_true(all(sorted_perm == [1_int32, 2_int32, 3_int32, 4_int32, 5_int32, 6_int32]), &
-                         "test_identify_ensemble_seeds_basic_coverage: density order")
-        call assert_equal_int(n_seeds, 2_int32, &
-                              "test_identify_ensemble_seeds_basic_coverage: one seed per separated region")
-        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_basic_coverage: first density centre is seed")
-        call assert_false(seed_mask(2), "test_identify_ensemble_seeds_basic_coverage: covered dense point skipped")
-        call assert_false(seed_mask(3), "test_identify_ensemble_seeds_basic_coverage: covered point skipped")
-        call assert_true(seed_mask(4), "test_identify_ensemble_seeds_basic_coverage: second region gets seed")
-        call assert_false(seed_mask(5), "test_identify_ensemble_seeds_basic_coverage: second region covered point skipped")
-        call assert_false(seed_mask(6), "test_identify_ensemble_seeds_basic_coverage: second region covered point skipped")
-        call assert_true(all(tmp_visited_mask), &
-                         "test_identify_ensemble_seeds_basic_coverage: complete seeding coverage")
-        call assert_equal_int(count(seed_mask, kind=int32), n_seeds, &
-                              "test_identify_ensemble_seeds_basic_coverage: seed count matches mask")
-    end subroutine test_identify_ensemble_seeds_basic_coverage
+        call assert_equal_int(sorted_perm(1), 2_int32, "test_identify_ensemble_seeds_basic: 1st densest (5.0) at idx 2")
+        call assert_equal_int(sorted_perm(2), 4_int32, "test_identify_ensemble_seeds_basic: 2nd densest (4.0) at idx 4")
+        call assert_equal_int(sorted_perm(3), 3_int32, "test_identify_ensemble_seeds_basic: 3rd densest (3.0) at idx 3")
+        call assert_equal_int(sorted_perm(4), 5_int32, "test_identify_ensemble_seeds_basic: 4th densest (2.0) at idx 5")
+        call assert_equal_int(sorted_perm(5), 1_int32, "test_identify_ensemble_seeds_basic: 5th densest (1.0) at idx 1")
 
-    subroutine test_identify_ensemble_seeds_skips_visited()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-        integer(int32), parameter :: k_seeding = 2_int32
+        call assert_equal_int(n_seeds, 2_int32, "test_identify_ensemble_seeds_basic: expected 2 seeds for top 40%")
 
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
+        call assert_false(seed_mask(1), "test_identify_ensemble_seeds_basic: index 1 (1.0) excluded")
+        call assert_true(seed_mask(2), "test_identify_ensemble_seeds_basic: index 2 (5.0) included")
+        call assert_false(seed_mask(3), "test_identify_ensemble_seeds_basic: index 3 (3.0) excluded")
+        call assert_true(seed_mask(4), "test_identify_ensemble_seeds_basic: index 4 (4.0) included")
+        call assert_false(seed_mask(5), "test_identify_ensemble_seeds_basic: index 5 (2.0) excluded")
+    end subroutine test_identify_ensemble_seeds_basic
+
+    subroutine test_identify_ensemble_seeds_edge()
+        integer(int32), parameter :: n_vecs = 3_int32
+        real(real64) :: density_labels(n_vecs)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        logical :: seed_mask(n_vecs)
 
-        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 10.0_real64, 11.0_real64, 12.0_real64]
-        density_labels = [10.0_real64, 9.0_real64, 8.0_real64, 7.0_real64, 6.0_real64, 5.0_real64]
-        dimension_order = [1_int32]
+        density_labels = [10.0_real64, 20.0_real64, 30.0_real64]
 
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_skips_visited: tree build")
+        call identify_ensemble_seeds(density_labels, n_vecs, 0.0_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_edge: 0 percent execution")
+        call assert_equal_int(n_seeds, 1_int32, "test_identify_ensemble_seeds_edge: 0 percent seed count")
+        call assert_false(seed_mask(1), "test_identify_ensemble_seeds_edge: idx 1 excluded")
+        call assert_false(seed_mask(2), "test_identify_ensemble_seeds_edge: idx 2 excluded")
+        call assert_true(seed_mask(3), "test_identify_ensemble_seeds_edge: idx 3 included (max element)")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds(density_labels, n_vecs, 1.0_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_edge: 100 percent execution")
+        call assert_equal_int(n_seeds, 3_int32, "test_identify_ensemble_seeds_edge: 100 percent seed count")
+        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_edge: idx 1 included")
+        call assert_true(seed_mask(2), "test_identify_ensemble_seeds_edge: idx 2 included")
+        call assert_true(seed_mask(3), "test_identify_ensemble_seeds_edge: idx 3 included")
+    end subroutine test_identify_ensemble_seeds_edge
 
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_skips_visited: execution")
-        call assert_equal_int(n_seeds, 4_int32, "test_identify_ensemble_seeds_skips_visited: expected seed count")
-        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_skips_visited: highest density is seed")
-        call assert_false(seed_mask(2), "test_identify_ensemble_seeds_skips_visited: second highest was covered")
-        call assert_true(seed_mask(3), "test_identify_ensemble_seeds_skips_visited: next uncovered point becomes seed")
-        call assert_true(seed_mask(4), "test_identify_ensemble_seeds_skips_visited: distant region becomes seed")
-        call assert_false(seed_mask(5), "test_identify_ensemble_seeds_skips_visited: covered point is skipped")
-        call assert_true(seed_mask(6), "test_identify_ensemble_seeds_skips_visited: uncovered tail becomes seed")
-        call assert_true(all(tmp_visited_mask), "test_identify_ensemble_seeds_skips_visited: all points visited")
-    end subroutine test_identify_ensemble_seeds_skips_visited
-
-    subroutine test_identify_ensemble_seeds_invalid_k_seeding()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 4_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
+    subroutine test_identify_ensemble_seeds_invalid_percentile()
+        integer(int32), parameter :: n_vecs = 3_int32
+        real(real64) :: density_labels(n_vecs)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
+        logical :: seed_mask(n_vecs)
 
-        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64]
-        density_labels = [4.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
-        dimension_order = [1_int32]
-        kd_indices = [1_int32, 2_int32, 3_int32, 4_int32]
+        density_labels = [1.0_real64, 2.0_real64, 3.0_real64]
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 0_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "test_identify_ensemble_seeds_invalid_k_seeding: zero k_seeding must fail")
+        call identify_ensemble_seeds(density_labels, n_vecs, -0.01_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
+        call assert_true(ierr /= ERR_OK, "test_identify_ensemble_seeds_invalid_percentile: negative percentile must fail")
 
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, n_vecs, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "test_identify_ensemble_seeds_invalid_k_seeding: k_seeding >= n_vectors must fail")
-    end subroutine test_identify_ensemble_seeds_invalid_k_seeding
+        call identify_ensemble_seeds(density_labels, n_vecs, 1.01_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
+        call assert_true(ierr /= ERR_OK, "test_identify_ensemble_seeds_invalid_percentile: percentile > 1.0 must fail")
+    end subroutine test_identify_ensemble_seeds_invalid_percentile
 
     subroutine test_identify_ensemble_seeds_alloc()
-        integer(int32), parameter :: n_dims = 2_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-        integer(int32), parameter :: k_seeding = 3_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), sorted_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), n_seeds, ierr
+        integer(int32), parameter :: n_vecs = 4_int32
+        real(real64) :: density_labels(n_vecs)
+        integer(int32) :: sorted_perm(n_vecs), n_seeds, ierr
         logical :: seed_mask(n_vecs)
 
-        vectors(:, 1) = [0.0_real64, 0.0_real64]
-        vectors(:, 2) = [0.1_real64, 0.0_real64]
-        vectors(:, 3) = [0.2_real64, 0.0_real64]
-        vectors(:, 4) = [10.0_real64, 0.0_real64]
-        vectors(:, 5) = [10.1_real64, 0.0_real64]
-        vectors(:, 6) = [10.2_real64, 0.0_real64]
-        density_labels = [100.0_real64, 90.0_real64, 80.0_real64, &
-                          70.0_real64, 60.0_real64, 50.0_real64]
-        dimension_order = [1_int32, 2_int32]
+        density_labels = [10.0_real64, 40.0_real64, 20.0_real64, 30.0_real64]
 
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc: tree build")
-
-        call identify_ensemble_seeds_alloc(vectors, n_dims, n_vecs, density_labels, &
-                                           dimension_order, kd_indices, k_seeding, &
+        call identify_ensemble_seeds_alloc(density_labels, n_vecs, 0.50_real64, &
                                            sorted_perm, n_seeds, seed_mask, ierr)
 
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc: execution")
-        call assert_equal_int(n_seeds, 2_int32, "test_identify_ensemble_seeds_alloc: expected two seeds")
-        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_alloc: first region seed")
-        call assert_true(seed_mask(4), "test_identify_ensemble_seeds_alloc: second region seed")
-        call assert_equal_int(count(seed_mask, kind=int32), n_seeds, &
-                              "test_identify_ensemble_seeds_alloc: seed count matches mask")
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc: allocation wrapper check")
+        call assert_equal_int(n_seeds, 2_int32, "test_identify_ensemble_seeds_alloc: expected 2 seeds for top 50%")
+
+        call assert_equal_int(sorted_perm(1), 2_int32, "test_identify_ensemble_seeds_alloc: idx 2 is densest (40.0)")
+        call assert_equal_int(sorted_perm(2), 4_int32, "test_identify_ensemble_seeds_alloc: idx 4 is 2nd (30.0)")
+
+        call assert_false(seed_mask(1), "test_identify_ensemble_seeds_alloc: idx 1 excluded")
+        call assert_true(seed_mask(2), "test_identify_ensemble_seeds_alloc: idx 2 included")
+        call assert_false(seed_mask(3), "test_identify_ensemble_seeds_alloc: idx 3 excluded")
+        call assert_true(seed_mask(4), "test_identify_ensemble_seeds_alloc: idx 4 included")
     end subroutine test_identify_ensemble_seeds_alloc
 
-    subroutine test_identify_ensemble_seeds_single_vector_invalid()
-        integer(int32), parameter :: n_dims = 1_int32
+    subroutine test_identify_ensemble_seeds_single()
         integer(int32), parameter :: n_vecs = 1_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
+        real(real64) :: density_labels(n_vecs)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors(1, 1) = 0.0_real64
-        density_labels = [1.0_real64]
-        dimension_order = [1_int32]
-        kd_indices = [1_int32]
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 1_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-
-        call assert_true(ierr /= ERR_OK, &
-                         "test_identify_ensemble_seeds_single_vector_invalid: one vector cannot define neighbors")
-    end subroutine test_identify_ensemble_seeds_single_vector_invalid
-
-    subroutine test_identify_ensemble_seeds_invalid_inputs()
-        integer(int32), parameter :: n_dims = 2_int32
-        integer(int32), parameter :: n_vecs = 4_int32
-        integer(int32), parameter :: k_seeding = 2_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors(:, 1) = [0.0_real64, 0.0_real64]
-        vectors(:, 2) = [1.0_real64, 0.0_real64]
-        vectors(:, 3) = [2.0_real64, 0.0_real64]
-        vectors(:, 4) = [3.0_real64, 0.0_real64]
-        density_labels = [4.0_real64, 3.0_real64, 2.0_real64, -1.0_real64]
-        dimension_order = [1_int32, 2_int32]
-        kd_indices = [1_int32, 2_int32, 3_int32, 4_int32]
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "test_identify_ensemble_seeds_invalid_inputs: negative density must fail")
-
-        density_labels = [4.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
-        kd_indices = [0_int32, 2_int32, 3_int32, 4_int32]
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "test_identify_ensemble_seeds_invalid_inputs: invalid kd index must fail")
-
-        kd_indices = [1_int32, 2_int32, 3_int32, 4_int32]
-        dimension_order = [0_int32, 2_int32]
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-        call assert_true(ierr /= ERR_OK, &
-                         "test_identify_ensemble_seeds_invalid_inputs: invalid dimension order must fail")
-    end subroutine test_identify_ensemble_seeds_invalid_inputs
-
-    subroutine test_identify_ensemble_seeds_helper()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-        integer(int32), parameter :: k_seeding = 3_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 10.0_real64, 11.0_real64, 12.0_real64]
-        density_labels = [10.0_real64, 9.0_real64, 8.0_real64, 7.0_real64, 6.0_real64, 5.0_real64]
-        dimension_order = [1_int32]
-
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_helper: tree build")
-
-        call identify_ensemble_seeds_helper(vectors, n_dims, n_vecs, density_labels, &
-                                            dimension_order, kd_indices, k_seeding, &
-                                            tmp_perm, tmp_distances, tmp_stack, &
-                                            tmp_visited_mask, tmp_newly_covered_mask, &
-                                            sorted_perm, n_seeds, seed_mask, ierr)
-
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_helper: execution")
-        call assert_equal_int(n_seeds, 2_int32, "test_identify_ensemble_seeds_helper: expected two seeds")
-        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_helper: first region seed")
-        call assert_true(seed_mask(4), "test_identify_ensemble_seeds_helper: second region seed")
-        call assert_false(seed_mask(2), "test_identify_ensemble_seeds_helper: covered point skipped")
-        call assert_false(seed_mask(3), "test_identify_ensemble_seeds_helper: covered point skipped")
-        call assert_false(seed_mask(5), "test_identify_ensemble_seeds_helper: covered point skipped")
-        call assert_false(seed_mask(6), "test_identify_ensemble_seeds_helper: covered point skipped")
-        call assert_true(all(tmp_visited_mask), "test_identify_ensemble_seeds_helper: all points visited")
-    end subroutine test_identify_ensemble_seeds_helper
-
-    subroutine test_identify_ensemble_seeds_k_seeding_effect()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds_small, n_seeds_large, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 10.0_real64, 11.0_real64, 12.0_real64]
-        density_labels = [10.0_real64, 9.0_real64, 8.0_real64, 7.0_real64, 6.0_real64, 5.0_real64]
-        dimension_order = [1_int32]
-
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_effect: tree build")
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 1_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds_small, seed_mask, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_effect: k=1 execution")
-        call assert_equal_int(n_seeds_small, 4_int32, &
-                              "test_identify_ensemble_seeds_k_seeding_effect: k=1 expected seed count")
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, 3_int32, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds_large, seed_mask, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_effect: k=3 execution")
-        call assert_equal_int(n_seeds_large, 2_int32, &
-                              "test_identify_ensemble_seeds_k_seeding_effect: k=3 expected seed count")
-        call assert_true(n_seeds_large < n_seeds_small, &
-                         "test_identify_ensemble_seeds_k_seeding_effect: larger neighborhood increases coverage")
-    end subroutine test_identify_ensemble_seeds_k_seeding_effect
-
-    subroutine test_identify_ensemble_seeds_identical_vectors()
-        integer(int32), parameter :: n_dims = 2_int32
-        integer(int32), parameter :: n_vecs = 4_int32
-        integer(int32), parameter :: k_seeding = 2_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors = 0.0_real64
-        density_labels = [4.0_real64, 3.0_real64, 2.0_real64, 1.0_real64]
-        dimension_order = [1_int32, 2_int32]
-
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_identical_vectors: tree build")
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_identical_vectors: execution")
-        call assert_equal_int(n_seeds, 1_int32, &
-                              "test_identify_ensemble_seeds_identical_vectors: zero-radius coverage selects one seed")
-        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_identical_vectors: densest duplicate is seed")
-        call assert_true(all(tmp_visited_mask), &
-                         "test_identify_ensemble_seeds_identical_vectors: zero-radius query covers duplicates")
-    end subroutine test_identify_ensemble_seeds_identical_vectors
-
-    subroutine test_identify_ensemble_seeds_tied_densities()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-        integer(int32), parameter :: k_seeding = 3_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors(1, :) = [0.0_real64, 0.1_real64, 0.2_real64, 10.0_real64, 10.1_real64, 10.2_real64]
-        density_labels = 5.0_real64
-        dimension_order = [1_int32]
-
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_tied_densities: tree build")
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_tied_densities: execution")
-        call assert_equal_int(n_seeds, 2_int32, &
-                              "test_identify_ensemble_seeds_tied_densities: ties still yield one seed per region")
-        call assert_equal_int(count(seed_mask(1:3), kind=int32), 1_int32, &
-                              "test_identify_ensemble_seeds_tied_densities: first region has exactly one seed")
-        call assert_equal_int(count(seed_mask(4:6), kind=int32), 1_int32, &
-                              "test_identify_ensemble_seeds_tied_densities: second region has exactly one seed")
-        call assert_true(all(tmp_visited_mask), &
-                         "test_identify_ensemble_seeds_tied_densities: all tied-density points are covered")
-    end subroutine test_identify_ensemble_seeds_tied_densities
-
-    subroutine test_identify_ensemble_seeds_k_seeding_boundary()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 5_int32
-        integer(int32), parameter :: k_seeding = n_vecs - 1_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
-
-        vectors(1, :) = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
-        density_labels = [1.0_real64, 2.0_real64, 5.0_real64, 4.0_real64, 3.0_real64]
-        dimension_order = [1_int32]
-
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_boundary: tree build")
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm, n_seeds, seed_mask, ierr)
-
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_boundary: max legal k executes")
-        call assert_true(all(sorted_perm == [3_int32, 4_int32, 5_int32, 2_int32, 1_int32]), &
-                         "test_identify_ensemble_seeds_k_seeding_boundary: density ranking preserved")
-        call assert_equal_int(n_seeds, 3_int32, &
-                              "test_identify_ensemble_seeds_k_seeding_boundary: expected boundary seed count")
-        call assert_true(seed_mask(3), "test_identify_ensemble_seeds_k_seeding_boundary: densest centre is seed")
-        call assert_true(seed_mask(5), "test_identify_ensemble_seeds_k_seeding_boundary: uncovered right edge is seed")
-        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_k_seeding_boundary: uncovered left edge is seed")
-        call assert_true(all(tmp_visited_mask), "test_identify_ensemble_seeds_k_seeding_boundary: all points visited")
-    end subroutine test_identify_ensemble_seeds_k_seeding_boundary
-
-    subroutine test_identify_ensemble_seeds_experiment_values()
-        integer(int32), parameter :: n_dims = 1_int32
-        integer(int32), parameter :: n_vecs = 60_int32
-        integer(int32), parameter :: n_k_values = 5_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), sorted_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        integer(int32) :: k_values(n_k_values), n_seeds, ierr, i_vec, i_k
         logical :: seed_mask(n_vecs)
-        character(len=160) :: assert_msg
 
-        do i_vec = 1, n_vecs
-            vectors(1, i_vec) = real(i_vec, real64)
-            density_labels(i_vec) = real(n_vecs - i_vec + 1_int32, real64)
+        density_labels = [42.0_real64]
+
+        call identify_ensemble_seeds(density_labels, n_vecs, 0.50_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
+
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_single: error check")
+        call assert_equal_int(n_seeds, 1_int32, "test_identify_ensemble_seeds_single: single vector must be selected")
+        call assert_equal_int(sorted_perm(1), 1_int32, "test_identify_ensemble_seeds_single: sorted_perm idx 1")
+        call assert_true(seed_mask(1), "test_identify_ensemble_seeds_single: seed_mask idx 1")
+    end subroutine test_identify_ensemble_seeds_single
+
+    subroutine test_identify_ensemble_seeds_invalid_n()
+        integer(int32), parameter :: n_vecs = 3_int32
+        real(real64) :: density_labels(n_vecs)
+        integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
+        logical :: seed_mask(n_vecs)
+
+        density_labels = [1.0_real64, 2.0_real64, 3.0_real64]
+
+        call identify_ensemble_seeds(density_labels, 0_int32, 0.50_real64, &
+                                     tmp_perm, sorted_perm, n_seeds, seed_mask, ierr)
+        call assert_true(ierr /= ERR_OK, "test_identify_ensemble_seeds_invalid_n: n_vectors=0 must fail")
+    end subroutine test_identify_ensemble_seeds_invalid_n
+
+    subroutine test_identify_ensemble_seeds_default_percentile()
+        integer(int32), parameter :: n_vecs = 20_int32
+        real(real64) :: density_labels(n_vecs)
+        integer(int32) :: tmp_perm1(n_vecs), sorted_perm1(n_vecs), n_seeds1
+        integer(int32) :: tmp_perm2(n_vecs), sorted_perm2(n_vecs), n_seeds2
+        logical :: seed_mask1(n_vecs), seed_mask2(n_vecs)
+        integer(int32) :: ierr, i
+
+        do i = 1, n_vecs
+            density_labels(i) = real(i, real64)
         end do
-        dimension_order = [1_int32]
-        k_values = [15_int32, 25_int32, 35_int32, 45_int32, 55_int32]
 
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_experiment_values: tree build")
+        call identify_ensemble_seeds(density_labels, n_vecs, &
+                                     tmp_perm=tmp_perm1, sorted_perm=sorted_perm1, &
+                                     n_seeds=n_seeds1, seed_mask=seed_mask1, ierr=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_default_percentile: default call check")
 
-        do i_k = 1, n_k_values
-            call identify_ensemble_seeds_alloc(vectors, n_dims, n_vecs, density_labels, &
-                                               dimension_order, kd_indices, k_values(i_k), &
-                                               sorted_perm, n_seeds, seed_mask, ierr)
+        call identify_ensemble_seeds(density_labels, n_vecs, t_percentile=0.15_real64, &
+                                     tmp_perm=tmp_perm2, sorted_perm=sorted_perm2, &
+                                     n_seeds=n_seeds2, seed_mask=seed_mask2, ierr=ierr)
+        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_default_percentile: explicit call check")
 
-            write (assert_msg, '(A,I0)') &
-                "test_identify_ensemble_seeds_experiment_values: execution for k_seeding=", k_values(i_k)
-            call assert_equal_int(ierr, ERR_OK, assert_msg)
-
-            write (assert_msg, '(A,I0)') &
-                "test_identify_ensemble_seeds_experiment_values: at least one seed for k_seeding=", k_values(i_k)
-            call assert_true(n_seeds >= 1_int32, assert_msg)
-
-            write (assert_msg, '(A,I0)') &
-                "test_identify_ensemble_seeds_experiment_values: seed count matches mask for k_seeding=", k_values(i_k)
-            call assert_equal_int(count(seed_mask, kind=int32), n_seeds, assert_msg)
-            call assert_equal_int(sorted_perm(1), 1_int32, &
-                                  "test_identify_ensemble_seeds_experiment_values: densest point remains first")
-        end do
-    end subroutine test_identify_ensemble_seeds_experiment_values
-
-    subroutine test_identify_ensemble_seeds_alloc_matches_nonalloc()
-        integer(int32), parameter :: n_dims = 2_int32
-        integer(int32), parameter :: n_vecs = 6_int32
-        integer(int32), parameter :: k_seeding = 3_int32
-
-        real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_distances(n_vecs)
-        real(real64) :: tmp_val_buf(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
-        integer(int32) :: tmp_perm(n_vecs), sorted_perm_direct(n_vecs), sorted_perm_alloc(n_vecs)
-        integer(int32) :: n_seeds_direct, n_seeds_alloc, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
-        logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs)
-        logical :: seed_mask_direct(n_vecs), seed_mask_alloc(n_vecs)
-
-        vectors(:, 1) = [0.0_real64, 0.0_real64]
-        vectors(:, 2) = [0.1_real64, 0.0_real64]
-        vectors(:, 3) = [0.2_real64, 0.0_real64]
-        vectors(:, 4) = [10.0_real64, 0.0_real64]
-        vectors(:, 5) = [10.1_real64, 0.0_real64]
-        vectors(:, 6) = [10.2_real64, 0.0_real64]
-        density_labels = [100.0_real64, 90.0_real64, 80.0_real64, &
-                          70.0_real64, 60.0_real64, 50.0_real64]
-        dimension_order = [1_int32, 2_int32]
-
-        call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc_matches_nonalloc: tree build")
-
-        call identify_ensemble_seeds(vectors, n_dims, n_vecs, density_labels, &
-                                     dimension_order, kd_indices, k_seeding, &
-                                     tmp_perm, tmp_distances, tmp_stack, &
-                                     tmp_visited_mask, tmp_newly_covered_mask, &
-                                     sorted_perm_direct, n_seeds_direct, seed_mask_direct, ierr)
-        call assert_equal_int(ierr, ERR_OK, &
-                              "test_identify_ensemble_seeds_alloc_matches_nonalloc: direct execution")
-
-        call identify_ensemble_seeds_alloc(vectors, n_dims, n_vecs, density_labels, &
-                                           dimension_order, kd_indices, k_seeding, &
-                                           sorted_perm_alloc, n_seeds_alloc, seed_mask_alloc, ierr)
-        call assert_equal_int(ierr, ERR_OK, &
-                              "test_identify_ensemble_seeds_alloc_matches_nonalloc: alloc execution")
-
-        call assert_equal_int(n_seeds_direct, n_seeds_alloc, &
-                              "test_identify_ensemble_seeds_alloc_matches_nonalloc: seed counts agree")
-        call assert_true(all(sorted_perm_direct == sorted_perm_alloc), &
-                         "test_identify_ensemble_seeds_alloc_matches_nonalloc: sorted permutations agree")
-        call assert_true(all(seed_mask_direct .eqv. seed_mask_alloc), &
-                         "test_identify_ensemble_seeds_alloc_matches_nonalloc: seed masks agree")
-    end subroutine test_identify_ensemble_seeds_alloc_matches_nonalloc
+        call assert_equal_int(n_seeds1, n_seeds2, "default n_seeds matches explicit 0.15")
+        call assert_true(all(seed_mask1 .eqv. seed_mask2), "default seed_mask matches explicit 0.15")
+    end subroutine test_identify_ensemble_seeds_default_percentile
 
     subroutine test_grow_ensemble_basic()
         integer(int32), parameter :: n_dims = 2_int32
@@ -1456,8 +1075,8 @@ contains
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
         integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, n_raw, n_merged
-        integer(int32), parameter :: n_seed_vectors = 2_int32
-        integer(int32) :: seed_indices(n_seed_vectors)
+        integer(int32) :: sorted_perm(n_vecs), n_seeds
+        logical :: seed_mask(n_vecs)
         logical, allocatable :: raw_matrix(:, :), merged_matrix(:, :)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -1474,10 +1093,11 @@ contains
                             tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
                             tmp_rec_stack, ierr)
 
-        seed_indices = [1_int32, 3_int32]
+        call identify_ensemble_seeds_alloc(density_labels, n_vecs, 0.70_real64, &
+                                           sorted_perm, n_seeds, seed_mask, ierr)
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seed_vectors, &
+                                    density_labels, sorted_perm(1:n_seeds), n_seeds, &
                                     r=0.5_real64, ensemble_matrix=raw_matrix, &
                                     n_ensembles=n_raw, ierr=ierr)
 
@@ -1592,8 +1212,8 @@ contains
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
         integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
         integer(int32) :: ierr, n_raw, n_merged, i_vec
-        integer(int32), parameter :: n_seed_vectors = 3_int32
-        integer(int32) :: seed_indices(n_seed_vectors)
+        integer(int32) :: sorted_perm(n_vecs), n_seeds
+        logical :: seed_mask(n_vecs)
         real(real64) :: angle, radius
         character(len=128) :: assert_msg
         logical, allocatable :: raw_matrix(:, :), merged_matrix(:, :)
@@ -1633,10 +1253,11 @@ contains
         call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, 0.5_real64, &
                                                dimension_order, kd_indices, density_labels, ierr)
 
-        seed_indices = [15_int32, 165_int32, 315_int32]
+        call identify_ensemble_seeds_alloc(density_labels, n_vecs, 0.15_real64, &
+                                           sorted_perm, n_seeds, seed_mask, ierr)
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, n_seed_vectors, &
+                                    density_labels, sorted_perm(1:n_seeds), n_seeds, &
                                     r=0.5_real64, ensemble_matrix=raw_matrix, &
                                     n_ensembles=n_raw, ierr=ierr)
 
