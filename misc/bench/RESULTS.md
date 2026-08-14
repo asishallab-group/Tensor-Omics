@@ -83,24 +83,34 @@ This is reachable from the published API: `serialize_logical`/`deserialize_logic
 same shape. Demonstrated for the exact construct the wrappers use; not yet reproduced end to
 end through a real ifx-built binding.
 
-## Recommendation
+## Outcome
 
-Two separable actions, and they are not the same size.
+**The stack finding was fixed directly, not with a flag.** Adding `-heap-arrays` to the ifx
+profile was rejected: it fixes the crash per compiler, by a flag anyone can drop, and leaves
+the failure unchecked. The generated locals became `allocatable` through `M_ALLOCATE` instead,
+which is heap on every compiler and returns `ERR_ALLOC_FAIL` rather than aborting. Landed on
+`131-codegen-new` as *Allocate the C layer's converted locals instead of declaring them
+automatic*.
 
-**Add `-heap-arrays` to the ifx profile.** One line in `fpm.toml`, fixes a crash that is
-reachable from Python and R, and is worth doing whatever else is decided.
+**`logical(c_bool)` was adopted, on memory rather than speed.** The decision (FES) rests on
+removing the copy buffer entirely and on three bytes saved per logical throughout, with the
+benchmark asked only whether computation would get significantly *slower*. It does not — and
+at the sizes where the memory argument bites, `c_bool` is faster for the same reason it is
+smaller: 29% at 10M elements under gfortran `-O3`, 26% under ifx. The two arguments are one
+argument. The only measured cost is below ~100 000 elements, where computing a mask into
+`c_bool` runs ~50% dearer per element — 1.1 µs on a 10 000-element mask, which is not a
+decision input.
 
-**Hold off on the `logical(c_bool)` sweep on performance grounds.** The measured copy is 13 µs
-on a realistic mask. It is an all-or-nothing change across 205 logical declarations — a
-`logical(c_bool)` actual against a default-`logical` dummy is a compile error — and it buys
-microseconds. It becomes worth doing if it comes along with the character work, which removes
-the conversions for a different and better reason, or if profiling finds a caller where it
-matters.
+The "all-or-nothing sweep" objection raised against it does not survive either: a
+`logical(c_bool)` actual against a default-`logical` dummy is a compile error, which is
+ordinary kind discipline exactly as for `int32` and `real64`, and the errors are the sweep's
+to-do list rather than a risk.
 
-**The one place that might.** `tox_data_integration_per_family` has six 2-D mask temporaries of
-`n_neighbors x n_points`. At 50 x 1000 that is 300 000 element-copies per call, ~210 µs, and if
-the wrapper is entered per family across thousands of families it is the only site measured
-here where the copy could reach seconds. Worth profiling before dismissing.
+**Still worth profiling if masks ever look hot.**
+`tox_data_integration_per_family` has six 2-D mask temporaries of `n_neighbors x n_points`. At
+50 x 1000 that is 300 000 element-copies per call, ~210 µs, and if the wrapper is entered per
+family across thousands of families it is the only site measured here where the copy could
+reach seconds.
 
 ## Notes on the benchmark itself
 
