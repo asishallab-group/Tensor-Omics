@@ -206,11 +206,13 @@ family_idx = gene_to_fam(i_gene)
 
 \subsection{Boolean / Selection Arrays}
 
-Use the \texttt{\_mask} or \texttt{\_selection} suffix for logical index arrays:
+Use the \texttt{\_mask} or \texttt{\_selection} suffix for logical index arrays. Every logical
+that occupies storage is declared \texttt{logical(c\_bool)} --- one byte rather than four, and
+the kind the bindings already use, so a mask crosses to C, Python and R without being copied:
 
 \begin{lstlisting}[language=Fortran]
-logical, intent(in) :: vecs_selection_mask(n_vecs)
-logical, intent(in) :: axes_selection(n_axes)
+logical(c_bool), intent(in) :: vecs_selection_mask(n_vecs)
+logical(c_bool), intent(in) :: axes_selection(n_axes)
 \end{lstlisting}
 
 % =============================================================================

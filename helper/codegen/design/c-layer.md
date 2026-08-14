@@ -312,6 +312,32 @@ FITS headers, `sockaddr_un.sun_path`, and NumPy's own `S`/`U` dtypes are all exa
 
 ## Finding: a fixed-length character view of that buffer is portable; a deferred-length one is not
 
+### Multibyte characters: the width is right, the encoding flag is not
+
+Checked 2026-08-14, because a fixed-width format truncates the moment the width is measured in
+different units from the payload.
+
+**It is not.** Both bindings measure bytes, which is the same unit the buffer is filled in, so a
+UTF-8 string is never truncated by the sizing. R's `tox_max_strlen` uses `LENGTH()` on a
+`CHARSXP`, which is the byte length and not the character count (`nchar()` would have been the
+bug). Python builds the buffer with `.encode()` — UTF-8 bytes — into a NumPy `S` dtype whose
+`itemsize` is likewise bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
+
+**What is lost is the encoding flag, not the content.** `tox_char_out` rebuilds R strings with
+`Rf_mkCharLen`, which marks the result native/unknown. A UTF-8 string handed in comes back
+byte-identical but with its `Encoding()` reset, which is harmless in a UTF-8 locale and wrong
+outside one. `Rf_mkCharLenCE(p, m, CE_UTF8)` is the fix, and it needs a decision rather than a
+patch: the shim would be asserting an encoding for bytes Fortran may have built itself, so the
+honest version marks UTF-8 only where the input was UTF-8, or the API declares that it always
+is.
+
+**For the pointer view specifically, blank padding is safe.** No UTF-8 continuation byte is
+`0x20` — they are all `0x80`-`0xBF` — so `trim` and `len_trim` cannot split a character, and
+neither can the NUL scan they replace. What can split one is any *byte-index* slice of a
+`character(len=n)` (`s(1:k)`), but that is inherent to Fortran character handling and no worse
+under a pointer view than it is today.
+
+
 Today the wrapper converts the matrix into `character(len=:), allocatable, dimension(:)` with
 `c_char_2d_as_string`, which scans each column for `c_null_char` and copies. That conversion
 could be replaced by a pointer remap costing nothing: `character(len=n), dimension(m)` and

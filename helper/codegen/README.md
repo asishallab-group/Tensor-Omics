@@ -388,7 +388,7 @@ dropping the fixed directory they used to be scoped to:
 A `DM_PROLOGUE` is checked too, having had no analysis or validation at all before:
 
 - the named procedure must exist
-- it must declare a scalar `logical, intent(out) :: handled` — the wrapper returns early on it
+- it must declare a scalar `logical(c_bool), intent(out) :: handled` — the wrapper returns early on it
   regardless, so without it that branch reads an undefined value
 - a dummy naming an implementation argument is supplied from it; one naming nothing becomes an
   argument of `foo`, which is what the prologue derives *from*. A name **one edit** from an
@@ -458,8 +458,10 @@ the compiler or a run rejected the first attempt.
 - **Characters** carry their length as a leading C extent. Output buffers are zero-filled
   (Fortran fills them only partially; the nulls terminate the strings), numeric outputs are
   not (wasteful and dishonest).
-- **`c_bool`** logicals cross as real booleans; a dummy already `logical(c_bool)` needs no
-  copy.
+- **`c_bool`** logicals cross as real booleans, and since every stored logical in the library
+  is `logical(c_bool)` the wrapper copies nothing — it hands the caller's buffer straight to
+  the implementation. Declare yours the same way; a default-kind `logical` dummy would put the
+  elementwise copy back.
 - **Shape cross-checks** the binding language makes but Fortran cannot: two arguments
   sharing an extent must agree, or a wrong answer / segfault results.
 - **Argument-named errors**: `ierr` encodes the offending argument's position, so an error

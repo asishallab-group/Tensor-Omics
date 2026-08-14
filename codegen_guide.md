@@ -423,7 +423,7 @@ round: the common case (must be finite) is free, and the rare, dangerous case is
 | `n_selected_<arg>` | the count of `.true.` in that mask |
 
 ```fortran
-logical, dimension(n_axes), intent(in) :: axes_selection_mask
+logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
     !! Logical array (n_axes), .TRUE. for axes to include in calculation
 integer(int32), intent(in) :: n_selected_axes
     !! Number of selected axes (count of .TRUE. in axes_selection_mask)
@@ -770,7 +770,7 @@ implementation working from different numbers.
 ```
 ```fortran
 pure subroutine prepare_ranking(z_scores, n_genes, tmp_valid_perm, threshold, handled, ierr)
-    logical, intent(out) :: handled
+    logical(c_bool), intent(out) :: handled
         !! `.true.` when the data was degenerate and the outputs already hold the answer
 ```
 
@@ -808,7 +808,7 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
 **What is refused**, all of it silent before:
 
 - a `DM_PROLOGUE` naming a procedure that does not exist
-- a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` — the wrapper
+- a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` — the wrapper
   returns early on it regardless, so without it that branch reads an undefined value
 - a dummy that is one edit from an implementation argument — a misspelling, not a new argument
 - a dummy that is the mode argument, or one scoped to a mode, of an implementation that splits per
@@ -840,7 +840,7 @@ has no answer.
 documentation:
 
 ```fortran
-logical :: undefined_sign
+logical(c_bool) :: undefined_sign
 call set_ok(ierr)
 call clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, &
                                              signed_angle, undefined_sign)
@@ -1151,7 +1151,7 @@ source and carries a note saying what to write instead.
 | an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (§4, §5.7) |
 | a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (§4) |
 | a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
-| a prologue with no `handled`, or one that is not a scalar `logical, intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
+| a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
 | a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (§5.13) |
 | a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (§5.13) |
 | a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (§5.13) |
