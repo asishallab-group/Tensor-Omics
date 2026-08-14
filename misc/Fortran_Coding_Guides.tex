@@ -295,13 +295,18 @@ subroutine quantile_normalization_alloc(expr, n_genes, n_replicates, &
   integer(int32), intent(in) :: n_genes
   real(real64), intent(in)  :: expr(n_replicates, n_genes)
   real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
-  real(real64), intent(in)  :: rank_means(n_replicates)
+  real(real64), intent(out)  :: rank_means(n_replicates)
   integer(int32), intent(out) :: ierr
 
   real(real64), allocatable :: tmp_col(:)
   integer(int32), allocatable :: tmp_perm(:)
 
   call set_ok(ierr)
+  call validate_dimension_size(n_replicates, ierr)
+  call validate_dimension_size(n_genes, ierr)
+  call validate_all_in_range_real(expr)  ! without bounds it validates NaN/Inf only
+  if (is_err(ierr)) return
+
   M_ALLOCATE(tmp_col(n_genes))
   M_ALLOCATE(tmp_perm(n_genes))
 
