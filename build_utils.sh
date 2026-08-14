@@ -94,6 +94,20 @@ function get_flags_and_features() {
   if [[ $TOX_MAX_PERFORMANCE ]]; then
     FEATURES="$FEATURES,optimization"
     FLAGS="-DMAX_PERFORMANCE -O3"
+    if [[ $TOX_DEBUG ]]; then
+      declare ans=y
+      if [[ -z $TOX_YES ]]; then
+        read -n 1 -p "--debug doesn't work well with --max-performance, continue anyway? (y/n) " ans
+        echo
+      fi
+      if [[ $ans == y ]]; then
+        cecho "${COLOR_DARK_COPPER}Continuing"
+        export TOX_YES=1  # test_runner.sh re-invokes build.sh as a subprocess (possibly several times, e.g. the kinds test); avoid re-prompting there
+      else
+        cecho "${COLOR_RED}Cancelled"
+        exit 1
+      fi
+    fi
   elif [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
     FLAGS="-O0"
   fi
