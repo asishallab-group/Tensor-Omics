@@ -103,9 +103,9 @@ src/
   f42/                infrastructure, library-agnostic
     utils/              f42_utils_impl re-exports f42_{math,sort,random,vector,stats}_impl
     serde/              likewise, per element type
-  tox/                the tox implementations -- the API's source of truth, hand-written
+  tox/                the tox application code -- the API's source of truth, hand-written
+    data/               the data-set API (tox_data_*), incl. the zip archive; not implementations
     data_integration/   a family split over several files (§5.15)
-  data/               the hand-written data-set API (tox_data_*), incl. the zip archive
   generated/          NOTHING here is hand-written
     tox/                the wrappers, mirroring src/tox/ sub-directories and all
     f42/                likewise for src/f42/
@@ -216,7 +216,7 @@ their Fortran.
 | Your procedure | Path | Where | Marker |
 |---|---|---|---|
 | a numeric procedure of the TOX pipeline | **Part I — implementation** | `src/tox/` | the `_impl` name |
-| the data-set API: archive, CSV/TSV, validation, accessors | **Part II — export** | `src/data/` | `M_EXPORT_C` |
+| the data-set API: archive, CSV/TSV, validation, accessors | **Part II — export** | `src/tox/data/` | `M_EXPORT_C` |
 | library-agnostic infrastructure | **Part II — export** | `src/f42/` | `M_EXPORT_C` |
 | a sizing / utility routine an implementation or a caller needs | **Part II — export** | the implementation module, `public` | `M_EXPORT_C` |
 
@@ -907,10 +907,12 @@ free is, here, your own procedure's job.
 
 Because the procedure is not a numeric procedure of the pipeline:
 
-- **`src/data/`** — the `tox_data_*` family: the zip archive (`libzip`), the CSV/TSV and
+- **`src/tox/data/`** — the `tox_data_*` family: the zip archive (`libzip`), the CSV/TSV and
   OrthoFinder readers, the data-set validation and the accessors. One family, one directory,
   named for what the modules are rather than for the one mechanism only `tox_data_archive`
-  performs.
+  performs. It sits under `src/tox/` because it is tox application code, exactly like its
+  sibling `data_integration/`; what makes it Part II is that it exports by hand, not where it
+  lives.
 - **`src/f42/`** — library-agnostic infrastructure: the serde family, whose procedures open files.
   Whether an f42 procedure is exported at all is a per-case judgement, which is exactly why the
   marker stays explicit here. It is not a licence: `f42_stats`, `f42_binary_search_tree` and

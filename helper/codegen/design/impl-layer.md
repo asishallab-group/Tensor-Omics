@@ -397,9 +397,9 @@ src/
   f42/                infrastructure, library-agnostic
     utils/              f42_utils_impl re-exports f42_{math,sort,random,vector,stats}_impl
     serde/              likewise, per element type
-  tox/                the tox implementations -- the API's source of truth, hand-written
+  tox/                the tox application code -- the API's source of truth, hand-written
+    data/               the data-set API (tox_data_*), hand-written and hand-exported
     data_integration/   a family too big for one file
-  data/               the hand-written data-set API (tox_data_*)
   generated/          NOTHING here is hand-written
     tox/                the wrappers, mirroring src/tox
     f42/                likewise for src/f42
@@ -423,7 +423,7 @@ directory, which meant relocating what used to sit in `src/tox` beside them:
 |---|---|---|
 | `tox_errors` | `src/f42/` | no exports; `use`d by f42 itself (72 sites) — it always sat *below* f42 in the dependency stack, so it was never tox application code |
 | `tox_conversions` | `src/f42/` | no exports; C-interop glue for the binding layer (27 sites) |
-| the `tox_data_*` family | `src/data/` | hand-written, exported, but not numeric implementations: the data-set API — archive, readers, validation, accessors. Their bindings still auto-generate from `M_EXPORT_C` wherever they live |
+| the `tox_data_*` family | `src/tox/data/` | hand-written, exported, but not numeric implementations: the data-set API — archive, readers, validation, accessors. Their bindings still auto-generate from `M_EXPORT_C` wherever they live |
 | recommend routines (`*_required_workspace`, `calc_*_size`, `calc_neighborhood_size`) | `src/tox/` (public in the implementation module) | called by the generated allocating wrappers and by the `_expert` bindings |
 | mode/enum params (`MODE_*`, `METHOD_*`, `*_PATTERN`) | `src/tox/` (the implementation module) | referenced by implementation signatures and `DM_REQUIRED_IF_MODE` |
 
@@ -448,8 +448,19 @@ but it buys a level of nesting for two directories and pushes the tree the autho
 one step further down. What the relocation did instead was reuse the freed `src/tox` for the
 implementations themselves — the objection that `src/tox` would come to mean hand-written code
 "after years of meaning the opposite" expired the moment the wrappers moved to
-`src/generated/tox`, and the name was then the obvious one for what is left. `src/data` stayed
-a sibling.
+`src/generated/tox`, and the name was then the obvious one for what is left.
+
+**`src/data` moved back under `src/tox/` (2026-08-14).** It had been evicted for one reason:
+the original plan made `src/tox/` generated-only and had `clean` `rmtree` it wholesale, so
+nothing hand-written could stay. That plan is gone — generation triggers on the `_impl` module
+name, the output mirrors into `src/generated/`, and `config.py` names no path under `src/tox`
+at all. With the reason expired, a top-level `src/data` was the only entry in `src/` that was a
+*family* rather than a *layer* (`f42` infrastructure, `tox` application, `generated` output),
+and `tox_data_*` is tox application code with a tox prefix. It is now `src/tox/data/`, a
+sibling of `src/tox/data_integration/`, which is the same shape: a family of several modules
+in a directory named for the family. The move touched no `use` statement and changed not one
+byte of generated output — the C bindings are keyed by module name into a flat
+`src/generated/bindings/c/`, so the source path never reached them.
 
 **Rejected — deleting `src/generated` wholesale in `clean`, now that it is generated-only.**
 `clean` runs per target, and the generated tree holds three targets' output; the Fortran
