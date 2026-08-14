@@ -15,7 +15,7 @@ module tox_data_archive_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string, string_as_c_char_2d
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -443,8 +443,8 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         character(len=:), allocatable :: zip_filename_f
-        character(len=gene_id_len), dimension(n_gene_ids) :: gene_ids_f
-        character(len=family_id_len), dimension(n_family_ids) :: family_ids_f
+        character(len=gene_id_len), allocatable, dimension(:) :: gene_ids_f
+        character(len=family_id_len), allocatable, dimension(:) :: family_ids_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -470,6 +470,8 @@ contains
 
         call c_char_1d_as_string(zip_filename, zip_filename_f, ierr)
         if (is_err(ierr)) return
+        M_ALLOCATE(gene_ids_f(n_gene_ids))
+        M_ALLOCATE(family_ids_f(n_family_ids))
 
         call read_tox_data_into(&
             zip_filename = zip_filename_f,&

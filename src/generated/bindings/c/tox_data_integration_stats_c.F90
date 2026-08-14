@@ -13,7 +13,7 @@
 module tox_data_integration_stats_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -98,7 +98,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points)
         M_CHECK_ARRAY_NON_NULL(jsd_null, n_permutations)
 
+        if (present(neighbor_mask_S1)) then
+            M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
+        end if
         if (present(neighbor_mask_S1)) neighbor_mask_S1_f = neighbor_mask_S1
+        if (present(neighbor_mask_S2)) then
+            M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
+        end if
         if (present(neighbor_mask_S2)) neighbor_mask_S2_f = neighbor_mask_S2
 
         call gjct_permutation_test(&
@@ -237,7 +243,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_js_divergences, n_points)
         M_CHECK_ARRAY_NON_NULL(tmp_weights, n_points)
 
+        if (present(neighbor_mask_S1)) then
+            M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
+        end if
         if (present(neighbor_mask_S1)) neighbor_mask_S1_f = neighbor_mask_S1
+        if (present(neighbor_mask_S2)) then
+            M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
+        end if
         if (present(neighbor_mask_S2)) neighbor_mask_S2_f = neighbor_mask_S2
 
         call gjct_permutation_test_expert(&

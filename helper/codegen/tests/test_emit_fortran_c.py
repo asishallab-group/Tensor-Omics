@@ -218,6 +218,33 @@ class TestLogicals:
 
         assert text.index("flag = flag_f") > text.index("call p(&")
 
+    def test_a_logical_array_local_is_allocated_not_automatic(self, bag, emitter):
+        """An automatic array is stack storage sized by whatever C passed. A 10-million
+        element mask is 40 MB, which overflows a default stack -- ifx segfaults on exactly
+        this construct, and gfortran escapes only by quietly rehousing large automatics.
+        `M_ALLOCATE` is the heap on every compiler, and turns the failure into
+        `ERR_ALLOC_FAIL` returned to the caller rather than a crash inside the wrapper."""
+        procedure = b.procedure(
+            "p", b.integer("n"), b.logical("mask", Intent.IN, dimension="n"), b.ierr()
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert "logical, dimension(:), allocatable :: mask_f" in text
+        assert "M_ALLOCATE(mask_f(n))" in text
+        assert "logical, dimension(n) :: mask_f" not in text
+        # allocated before anything converts into it
+        assert text.index("M_ALLOCATE(mask_f(n))") < text.index("mask_f = mask")
+
+    def test_a_scalar_logical_local_stays_automatic(self, bag, emitter):
+        # four bytes, and not a size the caller chooses -- allocating it would be noise
+        procedure = b.procedure("p", b.logical("flag", Intent.IN), b.ierr())
+
+        text = emit(procedure, bag, emitter)
+
+        assert "logical :: flag_f" in text
+        assert "M_ALLOCATE(flag_f" not in text
+
 
 class TestOptionals:
     def test_a_nullable_optional_is_declared_optional_not_target(self, bag, emitter):

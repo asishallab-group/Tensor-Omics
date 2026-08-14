@@ -10,7 +10,7 @@
 module tox_data_integration_per_family_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -254,8 +254,8 @@ contains
             !! Work array for the histogram counts
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_neighbors, n_points) :: tmp_neighbor_mask_S1_f
-        logical, dimension(n_neighbors, n_points) :: tmp_neighbor_mask_S2_f
+        logical, dimension(:, :), allocatable :: tmp_neighbor_mask_S1_f
+        logical, dimension(:, :), allocatable :: tmp_neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -285,6 +285,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S1, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
+
+        M_ALLOCATE(tmp_neighbor_mask_S1_f(n_neighbors, n_points))
+        M_ALLOCATE(tmp_neighbor_mask_S2_f(n_neighbors, n_points))
 
         call fjct_compute_jsd_expert(&
             family_idx = family_idx,&
@@ -389,8 +392,8 @@ contains
             !! Normalized histogram counts for study 2
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_neighbors, n_points) :: neighbor_mask_S1_f
-        logical, dimension(n_neighbors, n_points) :: neighbor_mask_S2_f
+        logical, dimension(:, :), allocatable :: neighbor_mask_S1_f
+        logical, dimension(:, :), allocatable :: neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -413,7 +416,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf_S1, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(pmf_S2, n_points * n_bins)
 
+        M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
         neighbor_mask_S1_f = neighbor_mask_S1
+        M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
         neighbor_mask_S2_f = neighbor_mask_S2
 
         call fjct_compute_masked_jsd(&
@@ -511,8 +516,8 @@ contains
             !! Work array for the histogram counts
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_neighbors, n_points) :: neighbor_mask_S1_f
-        logical, dimension(n_neighbors, n_points) :: neighbor_mask_S2_f
+        logical, dimension(:, :), allocatable :: neighbor_mask_S1_f
+        logical, dimension(:, :), allocatable :: neighbor_mask_S2_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -536,7 +541,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf_S2, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(tmp_counts, n_points * n_bins)
 
+        M_ALLOCATE(neighbor_mask_S1_f(n_neighbors, n_points))
         neighbor_mask_S1_f = neighbor_mask_S1
+        M_ALLOCATE(neighbor_mask_S2_f(n_neighbors, n_points))
         neighbor_mask_S2_f = neighbor_mask_S2
 
         call fjct_compute_masked_jsd_expert(&

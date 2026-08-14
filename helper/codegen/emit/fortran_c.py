@@ -116,6 +116,8 @@ class FortranCEmitter:
         errors.append("ERR_POINTER_NULL")
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
+        if any(self._allocate_local(a, w) for w in module for a in w):
+            errors.append("ERR_ALLOC_FAIL")  # M_ALLOCATE names it on the failure path
         writer.line(f"use tox_errors, only: {', '.join(errors)}")
 
     # -- wrapper ----------------------------------------------------------------
@@ -227,12 +229,19 @@ class FortranCEmitter:
         if argument.conversion is Conversion.MODE:
             return [f"integer(int32) :: {argument.name}{MODE_SUFFIX}"]
 
-        # A nullable optional that needs a converted local cannot use an automatic one:
-        # when C passes null the argument is absent, and the local must then be *absent*
-        # to the callee too. An unallocated allocatable actual is an absent optional dummy
-        # (F2018), so the converted local is allocatable and simply left unallocated. Its
-        # shape is deferred -- one `:` per rank of the source, so a rank-2 mask does not
-        # come out declared rank-1.
+        # Every converted local whose size the *caller* chooses is allocatable, and is
+        # allocated through `M_ALLOCATE`. An automatic array is the obvious spelling and was
+        # the original one, but it is stack storage sized at run time: a 10-million-element
+        # mask is 40 MB, which overflows a default stack -- ifx segfaults on it, and gfortran
+        # only escapes by quietly moving large automatics to the heap. `M_ALLOCATE` puts it
+        # on the heap on every compiler and turns a failure into `ERR_ALLOC_FAIL` returned to
+        # the caller, which is the whole point of a wrapper that owns memory.
+        #
+        # A nullable optional needs it for a second reason: when C passes null the argument
+        # is absent, and the local must be *absent* to the callee too. An unallocated
+        # allocatable actual is an absent optional dummy (F2018), so it is simply left
+        # unallocated. Its shape is deferred -- one `:` per rank of the source, so a rank-2
+        # mask does not come out declared rank-1.
         nullable = argument.optional
         deferred = (
             ", ".join(":" for _ in source.dimension.extents)
@@ -240,11 +249,12 @@ class FortranCEmitter:
         )
 
         if argument.conversion is Conversion.LOGICAL:
+            # A scalar stays automatic: four bytes, and its size is not the caller's to pick.
             base = "logical"
-            if nullable:
-                base += f", dimension({deferred}), allocatable" if deferred else ", allocatable"
-            elif source.dimension:
-                base += f", dimension({', '.join(source.dimension.extents)})"
+            if deferred:
+                base += f", dimension({deferred}), allocatable"
+            elif nullable:
+                base += ", allocatable"
             return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
 
         if argument.conversion is Conversion.CHARACTER:
@@ -253,15 +263,13 @@ class FortranCEmitter:
             # allocatable local -- and allocatable requires a deferred shape too, so the
             # explicit extents give way to `:` per rank (an explicit-shape allocatable is
             # rejected). An assumed-length *output* array is then allocated before the call.
+            # Always allocatable: a character local is sized by a length C supplied, so
+            # even a scalar one is storage the caller sizes.
             length = source.type.length
-            allocatable = length.is_assumed or nullable
             declared = "len=:" if length.is_assumed else f"len={length}"
-            base = f"character({declared})"
-            if allocatable:
-                base += ", allocatable"
+            base = f"character({declared}), allocatable"
             if source.dimension:
-                base += f", dimension({deferred})" if allocatable else \
-                    f", dimension({', '.join(source.dimension.extents)})"
+                base += f", dimension({deferred})"
             return [f"{base} :: {argument.name}{CONVERTED_SUFFIX}"]
 
         return []
@@ -296,15 +304,14 @@ class FortranCEmitter:
         for argument in wrapper:
             if not argument.needs_conversion:
                 continue
+            # Allocation comes first in either direction: an intent(out) callee needs
+            # something to write into, and an input conversion needs somewhere to convert
+            # into. Nothing below may run before the local exists.
+            block = self._allocate_local(argument, wrapper)
+            if block:
+                writer.block(block)
+                wrote = True
             if argument.intent is Intent.OUT and argument.conversion is not Conversion.MODE:
-                # No value flows in, but an allocatable local still has to be allocated
-                # before the call so the intent(out) callee has something to write into:
-                # a nullable optional (allocated only when present), or an assumed-length
-                # character array (allocated at the C-supplied string length).
-                block = self._allocate_output_local(argument, wrapper)
-                if block:
-                    writer.block(block)
-                    wrote = True
                 continue
             block = self._input_conversion(argument, wrapper)
             if block:
@@ -313,14 +320,31 @@ class FortranCEmitter:
         if wrote:
             writer.blank()
 
-    def _allocate_output_local(self, argument: CArgument, wrapper: CWrapper) -> str:
+    def _allocate_local(self, argument: CArgument, wrapper: CWrapper) -> str:
+        """`M_ALLOCATE` for a converted local, or empty where the local is not allocatable.
+
+        Every local sized by something C supplied is allocated here rather than declared as
+        an automatic array, so the storage is on the heap on every compiler and a failure
+        comes back as `ERR_ALLOC_FAIL` instead of a stack overflow. Only a scalar logical
+        stays automatic -- four bytes, and not the caller's size to choose.
+        """
         source = argument.source
-        assumed_char = (
-            argument.conversion is Conversion.CHARACTER and source.type.length.is_assumed
+        if argument.conversion is Conversion.MODE:
+            return ""
+        # An assumed-length character read *in* is allocated by the conversion helper, whose
+        # `str_out` is `intent(out), allocatable` -- so allocating here would be undone on
+        # the first statement of that call. The helper uses `M_ALLOCATE` itself, so the
+        # checked failure path is not lost.
+        if (argument.conversion is Conversion.CHARACTER
+                and source is not None and source.type.length.is_assumed
+                and argument.intent is not Intent.OUT):
+            return ""
+        allocatable = (
+            argument.conversion is Conversion.CHARACTER
+            or (source is not None and bool(source.dimension))
+            or argument.optional
         )
-        # An automatic local (fixed-length character, or a non-optional logical) is sized by
-        # its declaration; only an allocatable one needs allocating here.
-        if not argument.optional and not assumed_char:
+        if not allocatable:
             return ""
         # The C-visible extents (real names, synthesised for an assumed-shape source rather
         # than the source's own `:`). For a character the leading extent is the string
@@ -335,13 +359,18 @@ class FortranCEmitter:
         target = f"{argument.name}{CONVERTED_SUFFIX}"
         if extents:
             target += f"({', '.join(extents)})"
-        if argument.conversion is Conversion.CHARACTER:
-            allocate = f"allocate(character(len={self._strlen_name(argument, wrapper)}) :: {target})"
-        else:
-            allocate = f"allocate({target})"
-        if argument.optional:
-            return f"if (present({argument.name})) {allocate}"
-        return allocate
+        # A type-spec only where the declaration left the length deferred. Where it is fixed
+        # -- the callee's own `len=` -- the declaration already carries it, and naming the C
+        # strlen here would reach for a dummy this wrapper need not even have.
+        if (argument.conversion is Conversion.CHARACTER
+                and source is not None and source.type.length.is_assumed):
+            target = f"character(len={self._strlen_name(argument, wrapper)}) :: {target}"
+        allocate = f"M_ALLOCATE({target})"
+        if not argument.optional:
+            return allocate
+        # M_ALLOCATE expands to several statements, so the guard has to be a block rather
+        # than the one-line `if (present(x)) allocate(...)` this replaced.
+        return f"if (present({argument.name})) then\n    {allocate}\nend if"
 
     @staticmethod
     def _strlen_name(argument: CArgument, wrapper: CWrapper) -> str:

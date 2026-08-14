@@ -12,7 +12,7 @@ module tox_data_tools_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string, string_as_c_char_2d
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -79,7 +79,7 @@ contains
             !! The default value is `char(9)`.
         character(len=:), allocatable, dimension(:) :: file_list_f
         character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=1) :: delimiter_f
+        character(len=1), allocatable :: delimiter_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -103,6 +103,7 @@ contains
         if (is_err(ierr)) return
         call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
         if (is_err(ierr)) return
+        M_ALLOCATE(delimiter_f)
         block
             character(len=:), allocatable :: converted
             call c_char_1d_as_string(delimiter, converted, ierr)
@@ -167,7 +168,7 @@ contains
 
         call c_char_1d_as_string(filename, filename_f, ierr)
         if (is_err(ierr)) return
-        allocate(character(len=gene_ids_strlen) :: gene_ids_f(n_gene_ids_elements))
+        M_ALLOCATE(character(len=gene_ids_strlen) :: gene_ids_f(n_gene_ids_elements))
 
         call read_gene_ids_from_tsv_file(&
             filename = filename_f,&
@@ -239,7 +240,7 @@ contains
         if (is_err(ierr)) return
         call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
         if (is_err(ierr)) return
-        allocate(character(len=family_ids_strlen) :: family_ids_f(n_family_ids_elements))
+        M_ALLOCATE(character(len=family_ids_strlen) :: family_ids_f(n_family_ids_elements))
 
         call read_orthofinder_file(&
             filename = filename_f,&
@@ -272,7 +273,7 @@ contains
             !! number of genes kept
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical, dimension(size(gene_to_fam)) :: mask_f
+        logical, dimension(:), allocatable :: mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -280,6 +281,8 @@ contains
         M_CHECK_NON_NULL(n_genes_kept)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_gene_to_fam_elements)
         M_CHECK_ARRAY_NON_NULL(mask, (size(gene_to_fam)))
+
+        M_ALLOCATE(mask_f(size(gene_to_fam)))
 
         call get_unassigned_mask(&
             gene_to_fam = gene_to_fam,&

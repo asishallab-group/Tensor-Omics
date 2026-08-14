@@ -10,7 +10,7 @@
 module tox_trajectory_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 

@@ -18,7 +18,7 @@
 module tox_paralog_analysis_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -73,7 +73,7 @@ contains
             !! `.true.` if neofunctionalization has been detected for the respective axes, always `.false.` for unassigned genes
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_genes, n_axes) :: neofunc_f
+        logical, dimension(:, :), allocatable :: neofunc_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -85,6 +85,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_genes)
         M_CHECK_ARRAY_NON_NULL(thresholds, n_axes)
         M_CHECK_ARRAY_NON_NULL(neofunc, n_genes * n_axes)
+
+        M_ALLOCATE(neofunc_f(n_genes, n_axes))
 
         call detect_neofunctionalization(&
             ancestors = ancestors,&

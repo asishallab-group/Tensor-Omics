@@ -5,6 +5,7 @@ dirty one does not, that `--check` reports without writing. The emitters themsel
 tested elsewhere; here the question is only that they are wired together correctly.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -406,3 +407,49 @@ class TestAModeDefaultSpeaksEachLayersLanguage:
         assert "integer(int32), intent(in), optional :: mode" in wrapper
         assert "The default value is `1_int32`." in wrapper
         assert "The default value is `'robust'`." not in wrapper
+
+
+class TestTheCLayerAllocatesNothingOnTheStack:
+    """A converted local sized by something C supplied is an automatic array unless the
+    emitter is careful, and an automatic array is stack storage. At 10 million elements a
+    logical mask is 40 MB: ifx segfaults on it against a default 8 MB stack, and gfortran
+    escapes only by quietly rehousing large automatics. It is reachable from the published
+    API -- `serialize_logical` takes `arr(n_elements)` of the caller's choosing.
+
+    So the rule is a property of the whole emitted layer, not of one wrapper: every such
+    local is `allocatable` and reaches the heap through `M_ALLOCATE`, whose failure path
+    returns `ERR_ALLOC_FAIL` to the caller instead of crashing inside the wrapper.
+    """
+
+    #: `<type> ... dimension(<something that is not just ':'>) :: name` on a local, i.e. an
+    #: automatic array. Dummies are excluded by the `intent(` they all carry.
+    AUTOMATIC = re.compile(
+        r"^\s+(?:logical|character|integer|real|complex)[^:\n]*dimension\([^:)]", re.M
+    )
+
+    @pytest.fixture(scope="class")
+    def c_wrappers(self, real_project):
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("c",), parsed=real_project)
+        return {f.path.name: f.content for f in result.files if f.path.suffix == ".F90"}
+
+    def test_the_premise(self, c_wrappers):
+        # if this ever drops to nothing the rest of the class is vacuous
+        assert sum("M_ALLOCATE" in text for text in c_wrappers.values()) > 5
+
+    def test_no_wrapper_declares_a_runtime_sized_automatic_local(self, c_wrappers):
+        offenders = []
+        for name, text in c_wrappers.items():
+            for line in text.splitlines():
+                if "intent(" in line or "allocatable" in line:
+                    continue
+                if self.AUTOMATIC.match(line):
+                    offenders.append(f"{name}: {line.strip()}")
+        assert offenders == []
+
+    def test_every_allocation_goes_through_the_checked_macro(self, c_wrappers):
+        # a bare `allocate(` has no stat=, so a failure aborts instead of returning ierr
+        bare = [f"{name}: {line.strip()}"
+                for name, text in c_wrappers.items()
+                for line in text.splitlines()
+                if line.strip().startswith("allocate(")]
+        assert bare == []

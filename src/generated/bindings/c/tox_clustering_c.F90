@@ -13,7 +13,7 @@ module tox_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 

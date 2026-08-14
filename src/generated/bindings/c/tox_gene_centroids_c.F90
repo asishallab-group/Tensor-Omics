@@ -11,7 +11,7 @@
 module tox_gene_centroids_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -106,7 +106,7 @@ contains
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_genes) :: ortholog_set_f
+        logical, dimension(:), allocatable :: ortholog_set_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -118,6 +118,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
 
+        M_ALLOCATE(ortholog_set_f(n_genes))
         ortholog_set_f = ortholog_set
 
         call group_centroid_orthologs(&
@@ -167,7 +168,7 @@ contains
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_genes) :: ortholog_set_f
+        logical, dimension(:), allocatable :: ortholog_set_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -180,6 +181,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_group_indices, n_genes)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
 
+        M_ALLOCATE(ortholog_set_f(n_genes))
         ortholog_set_f = ortholog_set
 
         call group_centroid_orthologs_expert(&

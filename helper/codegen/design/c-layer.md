@@ -215,6 +215,49 @@ previous generator did. It makes every caller in every language do bool→int→
 
 ---
 
+## Decision: a converted local is allocated, never automatic
+
+A wrapper that converts an argument needs somewhere to convert into, and the obvious spelling
+is an automatic array:
+
+```fortran
+logical, dimension(n_vectors) :: vectors_selection_mask_f   ! what this used to emit
+```
+
+That is stack storage sized by whatever C passed. At 10 000 000 elements a logical mask is
+40 MB, and **ifx segfaults on exactly this construct** against a default 8 MB stack; gfortran
+survives only because it quietly rehouses large automatics on the heap. It is reachable from
+the published API, not a theoretical size: `serialize_logical` takes `arr(n_elements)` of the
+caller's choosing, and `is_outlier(n_genes)` is an output copy of the same shape.
+
+Every such local is now `allocatable` and reaches the heap through `M_ALLOCATE`, which is the
+same macro the generated Fortran wrappers already use for their work arrays. That fixes the
+storage on every compiler, and it turns an allocation failure into `ERR_ALLOC_FAIL` returned
+to the caller instead of a crash inside a wrapper whose whole job is to report errors. The
+bare `allocate(...)` calls this replaced had no `stat=` at all, so they aborted too.
+
+A scalar `logical` local stays automatic: four bytes, and not a size the caller chooses. A
+character local is always allocated, because even a scalar one is sized by a length C supplied.
+
+*Rejected:* `-heap-arrays` in the ifx profile. It fixes the crash, but per compiler, by a flag
+anyone can drop, and it leaves the failure unchecked — an allocation that fails still aborts
+rather than returning `ERR_ALLOC_FAIL`. The allocation belongs in the emitted code, where it
+can be reasoned about, not in a build flag.
+
+Two things the emitter has to get right, both found by compiling:
+
+- **The type-spec belongs only on a deferred-length character.** Where the local's length is
+  the callee's own `len=`, the declaration already carries it and the allocation needs the
+  shape alone — naming the C strlen there reaches for a dummy the wrapper need not have.
+- **An assumed-length character read *in* is not allocated here.** The conversion helper's
+  `str_out` is `intent(out), allocatable`, so it deallocates on entry; allocating first is an
+  immediate allocate-and-free. The helper uses `M_ALLOCATE` itself, so the checked path holds.
+
+The measured cost of the copies these locals exist for is in `misc/bench/RESULTS.md`; it is
+small, and the stack is the reason this changed, not the speed.
+
+---
+
 ## Decision: a string array crosses as a fixed-width char matrix, not `char**`
 
 A Fortran `character(len=n), dimension(m)` is **one contiguous block** of `n*m` bytes. C's

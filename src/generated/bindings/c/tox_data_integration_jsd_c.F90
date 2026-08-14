@@ -11,7 +11,7 @@
 module tox_data_integration_jsd_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -311,6 +311,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(pmf, n_points * n_bins)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points)
 
+        if (present(neighbor_mask)) then
+            M_ALLOCATE(neighbor_mask_f(n_neighbors, n_points))
+        end if
         if (present(neighbor_mask)) neighbor_mask_f = neighbor_mask
 
         call build_residual_histograms(&

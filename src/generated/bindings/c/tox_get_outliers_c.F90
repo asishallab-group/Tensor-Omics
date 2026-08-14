@@ -14,7 +14,7 @@ module tox_get_outliers_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -540,7 +540,7 @@ contains
             !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_genes) :: is_outlier_f
+        logical, dimension(:), allocatable :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -552,6 +552,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(perm, n_genes)
         M_CHECK_ARRAY_NON_NULL(is_outlier, n_genes)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
+
+        M_ALLOCATE(is_outlier_f(n_genes))
 
         call identify_outliers(&
             n_genes = n_genes,&
@@ -618,7 +620,7 @@ contains
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-        logical, dimension(n_genes) :: is_outlier_f
+        logical, dimension(:), allocatable :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -632,6 +634,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
         M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
+
+        M_ALLOCATE(is_outlier_f(n_genes))
 
         call detect_outliers(&
             n_genes = n_genes,&
@@ -780,7 +784,7 @@ contains
             !! The default value is `0.95_real64`.
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-        logical, dimension(n_genes) :: is_outlier_f
+        logical, dimension(:), allocatable :: is_outlier_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -816,6 +820,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(loess_y, n_families)
         M_CHECK_ARRAY_NON_NULL(loess_n, n_families)
         M_CHECK_ARRAY_NON_NULL(quantile, n_genes)
+
+        M_ALLOCATE(is_outlier_f(n_genes))
 
         call detect_outliers_expert(&
             n_genes = n_genes,&

@@ -7,7 +7,7 @@ module f42_serde_arrays_deserialize_logical_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_int, c_loc
     use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -46,7 +46,7 @@ contains
             !! Name of the file
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical, dimension(n_elements) :: arr_f
+        logical, dimension(:), allocatable :: arr_f
         character(len=:), allocatable :: filename_f
 
         M_CHECK_IERR_NON_NULL
@@ -58,6 +58,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(arr, product(arr_shape))
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
 
+        M_ALLOCATE(arr_f(product(arr_shape)))
         call c_char_1d_as_string(filename, filename_f, ierr)
         if (is_err(ierr)) return
 
