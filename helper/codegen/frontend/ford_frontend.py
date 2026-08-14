@@ -98,7 +98,10 @@ class FordFrontend:
         ford_project = self._parse_with_ford()
         modules = [self._module(module) for module in ford_project.modules]
         return ParsedProject(
-            project=Project(modules),
+            # `[extra.ford] project` in fpm.toml -- "TensorOmics". Ford has already read it,
+            # so taking it from there keeps one spelling of the name in the repository. Left
+            # unset, every diagnostic reported against a module ended with `in project ''`.
+            project=Project(modules, name=ford_project.name),
             macros=self.macros,
             arg_pos_factor=error_arg_pos_factor(self.macros),
         )

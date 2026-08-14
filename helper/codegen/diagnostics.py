@@ -53,6 +53,11 @@ class Context:
     Each element is a (kind, name) pair, e.g. ("argument", "vector"). Built from an IR
     entity by `Context.of`, which follows `parent` links -- the same chain the old
     generator printed, but kept as data so it can be asserted on in tests.
+
+    A link with no name is skipped rather than rendered as `in project ''`. The Ford
+    frontend names the project, but IR assembled by hand -- every fixture, and every test
+    that builds a `Project` to get the parent links -- has no name to give and should not
+    have to invent one to keep diagnostics readable.
     """
 
     entities: tuple[tuple[str, str], ...] = ()
@@ -64,7 +69,7 @@ class Context:
         while current is not None:
             kind = getattr(current, "entity_kind", None)
             name = getattr(current, "name", None)
-            if kind is not None and name is not None:
+            if kind is not None and name:
                 chain.append((kind, str(name)))
             current = getattr(current, "parent", None)
         return cls(tuple(chain))
