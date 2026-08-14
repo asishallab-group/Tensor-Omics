@@ -13,26 +13,34 @@ module f42_safeguard
 #ifdef TEST_KIND_MISMATCH_C_INT
     use tox_conversions, only: c_char_as_char
     use f42_config
-    use, intrinsic :: iso_c_binding, only: c_double, c_double_complex
+    use, intrinsic :: iso_c_binding, only: c_double, c_double_complex, c_char
     M_IMPLICIT_NONE
     integer(int32), parameter :: c_int = int32*2
 #else
 #ifdef TEST_KIND_MISMATCH_C_DOUBLE
     use tox_conversions, only: c_char_as_char
     use f42_config
-    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex
+    use, intrinsic :: iso_c_binding, only: c_int, c_double_complex, c_char
     M_IMPLICIT_NONE
     integer(int32), parameter ::  c_double = real64*2
 #else
 #ifdef TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX
     use tox_conversions, only: c_char_as_char
     use f42_config
-    use, intrinsic :: iso_c_binding, only: c_int, c_double
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_char
     M_IMPLICIT_NONE
     integer(int32), parameter ::  c_double_complex = real64*2
 #else
+#ifdef TEST_KIND_MISMATCH_C_CHAR
+    use tox_conversions, only: c_char_as_char
+    use f42_config
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex
     M_IMPLICIT_NONE
+    integer(int32), parameter :: c_char = kind("a") + 1
+#else
+    use, intrinsic :: iso_c_binding, only: c_int, c_double, c_double_complex, c_char
+    M_IMPLICIT_NONE
+#endif
 #endif
 #endif
 #endif
@@ -48,4 +56,17 @@ module f42_safeguard
         !! Compile-time guard: fails to compile if `c_double` is not kind-identical to `real64`.
     logical, parameter :: THIS_FAILS_IF_C_DOUBLE_COMPLEX_DOES_NOT_MATCH_REAL64 = 1 == 1/merge(1, 0, c_double_complex == real64)
         !! Compile-time guard: fails to compile if the real component kind of `c_double_complex` is not kind-identical to `real64`.
+    logical, parameter :: THIS_FAILS_IF_C_CHAR_DOES_NOT_MATCH_DEFAULT = 1 == 1/merge(1, 0, c_char == kind("a"))
+        !! Compile-time guard: fails to compile if `c_char` is not the default character kind.
+        !|
+        !| This one earns its place differently from the three above. Those assert an equality the
+        !| framework would otherwise have to convert across. This one asserts the equality that lets
+        !| the framework say nothing at all: an implementation writes a plain `character(len=*)`, and
+        !| the C layer takes a `character(len=n)` pointer view of a `character(kind=c_char, len=1)`
+        !| buffer -- the same storage only if the two kinds are the same. They are on every platform
+        !| we build for, and the standard does not promise it; `c_char` is defined as the kind for
+        !| C's `char`, or -1 where there is none. A distinct character kind really does exist
+        !| (`selected_char_kind("ISO_10646")` is 4 on gfortran), so this is a real property rather
+        !| than a tautology. Asserting it is what makes writing `character(kind=c_char)` throughout
+        !| the framework unnecessary rather than merely unusual.
 end module f42_safeguard

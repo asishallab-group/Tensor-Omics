@@ -177,13 +177,24 @@ association does not convert kinds, so passing it to a \texttt{logical(c\_bool)}
 compile error --- write \texttt{.true.\_c\_bool}. Assignment is fine and converts silently,
 which is why \texttt{mask = x > 0.0\_real64} needs nothing special.
 
-\textbf{Characters are not the same case.} There is no matching rule to use
-\texttt{character(kind=c\_char)} everywhere: an implementation declares an ordinary
-\texttt{character(len=*)}, and \texttt{c\_char} appears only where a buffer really is a C
-buffer, which in hand-written code is the libzip interface and the view helper in
-\texttt{tox\_conversions}. What an implementation \emph{does} need to know is that a character
-argument arrives blank-padded to the buffer width rather than trimmed --- see
-\texttt{codegen\_guide.md}.
+\textbf{Characters are not the same case, and the reason is worth knowing.} There is no
+matching rule to write \texttt{character(kind=c\_char)} everywhere. \texttt{c\_bool} is a
+different kind from the default logical --- one byte against four --- so declaring it is what
+buys the memory and removes the copy. \texttt{c\_char} \emph{is} the default character kind, so
+writing it out would change nothing generated and cost an \texttt{iso\_c\_binding} import in
+every module. An implementation declares an ordinary \texttt{character(len=*)}, and
+\texttt{c\_char} appears only where a buffer really is a C buffer: the libzip interface and the
+view helper in \texttt{tox\_conversions}.
+
+That equality is asserted rather than assumed. The standard defines \texttt{c\_char} as the kind
+for C's \texttt{char}, or \texttt{-1} where there is none; it does not promise the default kind,
+and a distinct character kind genuinely exists (\texttt{selected\_char\_kind("ISO\_10646")}).
+So \texttt{f42\_safeguard} carries a fourth compile-time guard beside the three for
+\texttt{c\_int}, \texttt{c\_double} and \texttt{c\_double\_complex}, and the kinds test proves it
+fires. Writing the plain spelling is safe \emph{because} the guard is there.
+
+What an implementation \emph{does} need to know about characters is that an argument arrives
+blank-padded to the buffer width rather than trimmed --- see \texttt{codegen\_guide.md}.
 
 % =============================================================================
 \section{Always Use Double Precision}

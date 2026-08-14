@@ -16,7 +16,12 @@ if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   c_int=("--directive=TEST_KIND_MISMATCH_C_INT" $(get_directives integer int32 c_int) "--directive='c_int64_t(KIND)=integer OPEN_PAREN KIND CLOSE_PAREN'" "--directive='c_size_t(KIND)=integer OPEN_PAREN KIND CLOSE_PAREN'")
   c_double=("--directive=TEST_KIND_MISMATCH_C_DOUBLE" $(get_directives real real64 c_double))
   c_double_complex=("--directive=TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX" "$(get_directives complex real64 c_double_complex)")
-  for d in c_int c_double c_double_complex; do
+  # c_char needs no get_directives: the other three override a kind that modules elsewhere
+  # declare with, so those declarations have to be macro-rewritten too or they fail first and
+  # for the wrong reason. Overriding c_char breaks nothing before safeguard, which is compiled
+  # first by design, so its own guard is what fails.
+  c_char=("--directive=TEST_KIND_MISMATCH_C_CHAR")
+  for d in c_int c_double c_double_complex c_char; do
     msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$d"
     declare -n directives="$d"
     # these builds are meant to fail in the preprocessor, so regenerating for each of them
