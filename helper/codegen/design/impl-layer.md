@@ -225,6 +225,17 @@ a pointer's non-deferred length must be a specification expression — hence the
 **So every whitelisted module is allocation-free, and the check is unblocked.** The cheap
 module-level form is the one to write; the per-imported-procedure form is no longer needed.
 
+**Written, same day** — `check_whitelist_is_allocation_free` in `ir/validate.py`, running once
+per project rather than per module. It asks `allocations_in`, which `_check_impl_allocates`
+now asks too: one definition, because the second rule exists precisely to close the gap the
+first leaves, and two spellings of "what counts as allocating" would eventually disagree about
+it. Only what the project parsed is checked — the intrinsics are on the list and have no
+source here, and an entry naming nothing is not an error, because the import rule already
+refuses an implementation that reaches for a module that does not exist.
+
+Confirmed firing by planting each shape in `tox_conversions` in turn — an `allocatable` local
+and an `allocatable` dummy — and watching the run stop with nothing written.
+
 What it does *not* mean is that anything is wrong: **no implementation module imports
 `tox_conversions` at all.** Its only consumers are `f42_safeguard`, which takes the elemental
 `c_char_as_char` and nothing else, and `tox_data_archive`, which is hand-written and allowed to

@@ -33,6 +33,65 @@ def validate_project(project: Project, diagnostics: DiagnosticBag,
     for module in project:
         validate_module(module, diagnostics, conventions)
     check_doc_links(project, diagnostics)
+    check_whitelist_is_allocation_free(project, diagnostics, conventions)
+
+
+def allocations_in(procedure: Procedure) -> list[str]:
+    """What a procedure allocates: its `allocatable` locals and its `allocatable` dummies.
+
+    One definition, because two rules ask it -- `_check_impl_allocates` of an implementation,
+    and `check_whitelist_is_allocation_free` of the infrastructure an implementation may
+    reach. Asking it twice in two spellings is how the two would come to disagree about what
+    counts, and the second rule exists precisely to close the gap the first leaves.
+
+    A `pointer` local does not count; only `allocatable` does, which is a complete proxy here
+    because `M_ALLOCATE` needs one.
+    """
+    dummies = [a.name for a in procedure.arguments if "allocatable" in a.attributes]
+    return list(procedure.allocatable_locals) + dummies
+
+
+def check_whitelist_is_allocation_free(project: Project, diagnostics: DiagnosticBag,
+                                       conventions: Conventions = CONVENTIONS) -> None:
+    """Every module an implementation may `use` allocates nothing.
+
+    `_check_impl_allocates` reads declarations, so it sees a procedure allocating for itself
+    and nothing else. What makes it hold *across* modules is `_check_impl_imports`, which
+    bounds an implementation to other implementations and `impl_import_whitelist` -- the first
+    are held to the same rule, and the second was a curated list nothing verified. This is the
+    verification. Without it the bound is an assertion: whitelist a module, let it grow an
+    allocation, and every implementation reaching it allocates with nothing to say so.
+
+    It is checkable now and was not before. The list carried `f42_utils` while its `f42_stats`
+    child still had hand-written `_alloc` halves, and `tox_conversions` until its string
+    conversions became pointer views -- so this shipped as a standing failure twice over, and
+    was twice deferred. Both are resolved, so the cheap module-level form is enough.
+
+    Only what the project parsed is checked. The intrinsic modules are on the list too and
+    have no source here; an entry that names nothing is not an error, because the import rule
+    already refuses an implementation that reaches for a module that does not exist.
+    """
+    whitelisted = {name.lower() for name in conventions.impl_import_whitelist}
+    for module in project:
+        if module.name.lower() not in whitelisted:
+            continue
+        for procedure in module.procedures:
+            offenders = allocations_in(procedure)
+            if not offenders:
+                continue
+            names = ", ".join(f"'{name}'" for name in offenders)
+            diagnostics.error(
+                f"whitelisted module '{module.name}' allocates in '{procedure.name}': {names}",
+                entity=procedure,
+                note=(
+                    "an implementation may use this module, and an implementation allocates "
+                    "nothing -- a rule that only reaches one file unless everything it may "
+                    "reach is allocation-free too. Either take the allocation out (a pointer "
+                    "view into the caller's memory is usually what was wanted), or drop the "
+                    f"module from 'impl_import_whitelist' -- a module that has to be "
+                    "whitelisted may be one that should be an implementation"
+                ),
+            )
 
 
 def check_doc_links(project: Project, diagnostics: DiagnosticBag) -> None:
@@ -205,8 +264,7 @@ def _check_impl_allocates(procedure: Procedure, diagnostics: DiagnosticBag) -> N
     Where its size is not an expression over the other arguments, `DM_OUTPUT_FROM(..., AUTO)`
     names the routine that computes it.
     """
-    dummies = [a.name for a in procedure.arguments if "allocatable" in a.attributes]
-    offenders = list(procedure.allocatable_locals) + dummies
+    offenders = allocations_in(procedure)
     if not offenders:
         return
     names = ", ".join(f"'{name}'" for name in offenders)

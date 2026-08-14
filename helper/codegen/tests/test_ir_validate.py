@@ -1197,3 +1197,64 @@ def replace_location(argument, location):
     clone = copy.deepcopy(argument)
     clone.location = location
     return clone
+
+
+class TestTheWhitelistIsAllocationFree:
+    """`_check_impl_allocates` reads declarations, so it sees a procedure allocating for
+    itself and nothing else. What makes the rule hold *across* modules is the import bound --
+    an implementation may reach another implementation, held to the same rule, or a member of
+    `impl_import_whitelist`, which nothing verified. This is the verification.
+
+    It was deferred twice because it would have shipped as a standing failure: `f42_utils`
+    while its `f42_stats` child still had hand-written `_alloc` halves, and `tox_conversions`
+    until its string conversions became pointer views.
+    """
+
+    def whitelisted(self, procedure):
+        # tox_errors is on impl_import_whitelist and is the shortest real name to borrow
+        return b.project(b.module("tox_errors", procedure, doc="infrastructure"))
+
+    def test_an_allocatable_local_is_rejected(self, bag):
+        procedure = b.procedure("helper", b.ierr(), allocatable_locals=("scratch",))
+
+        validate_project(self.whitelisted(procedure), bag)
+
+        error = only_error(bag)
+        assert "whitelisted module 'tox_errors' allocates in 'helper': 'scratch'" == error.message
+        assert "impl_import_whitelist" in error.note
+
+    def test_an_allocatable_dummy_is_rejected_too(self, bag):
+        # the subtler half: it looks like the caller's memory, but whoever fills it allocated.
+        # Not exported, or the C-interop rule fires on the same argument as well -- both are
+        # right, and this test is about the whitelist one.
+        out = b.character("out", Intent.OUT, attributes=("allocatable",))
+        procedure = b.procedure("helper", out, b.ierr(), meta=Meta(summary="s", author="A"))
+
+        validate_project(self.whitelisted(procedure), bag)
+
+        assert "allocates in 'helper': 'out'" in only_error(bag).message
+
+    def test_a_clean_whitelisted_module_passes(self, bag):
+        procedure = b.procedure("helper", b.real("x", Intent.IN), b.ierr())
+
+        validate_project(self.whitelisted(procedure), bag)
+
+        assert bag.errors == ()
+
+    def test_a_module_that_is_not_whitelisted_may_allocate(self, bag):
+        """The rule is about what an implementation can *reach*. Everything else -- the
+        hand-written data layer, the generated wrappers -- allocates as it likes."""
+        procedure = b.procedure("helper", b.ierr(), allocatable_locals=("scratch",))
+        project = b.project(b.module("tox_data_archive", procedure, doc="not whitelisted"))
+
+        validate_project(project, bag)
+
+        assert bag.errors == ()
+
+    def test_an_entry_the_project_never_parsed_is_not_an_error(self, bag):
+        """The intrinsic modules are on the list and have no source here. An entry naming
+        nothing is fine: the import rule already refuses an implementation that reaches for a
+        module that does not exist."""
+        validate_project(b.project(), bag)
+
+        assert bag.errors == ()
