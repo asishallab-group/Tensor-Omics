@@ -214,80 +214,136 @@ logical, intent(in) :: axes_selection(n_axes)
 \end{lstlisting}
 
 % =============================================================================
-\section{Routine Organisation: the Implementation / Entry Point / Expert Tiers}
+\section{Writing for the Code Generator}
 % =============================================================================
 
-Every non-trivial computation is split into three tiers. This separation keeps the core logic
-pure and testable while giving callers a convenient entry point --- and \textbf{you write only
-the first tier}. The other two are generated from it, so they cannot drift out of step with the
-algorithm or with each other.
+You write \textbf{one} procedure per computation: the implementation. The code generator reads it
+and writes everything around it — the validating and allocating entry points, the \texttt{bind(C)}
+wrapper, the Python and R bindings, their documentation, and the VS~Code snippets. None of those
+may be edited by hand; a change belongs in the implementation or in its annotations. This section
+is the whole contract. \texttt{codegen\_guide.md} in the repository root works through it case by
+case, with an example for each.
 
-\subsection{Tier 1: \texttt{foo\_impl} --- Core Implementation (hand-written)}
+\subsection{The Implementation}
 
 \begin{itemize}
-  \item Contains the actual algorithm, in a module whose name ends \texttt{\_impl}.
-  \item Accepts \emph{everything} as explicit arguments: input arrays, output arrays, and any
-        pre-allocated work arrays (\texttt{tmp\_*}).
-  \item Never allocates memory --- not in the procedure, and not anywhere in an \texttt{\_impl} module.
-  \item Never validates input, and takes no \texttt{ierr} for it. It may still report a genuine
-        \emph{runtime} error (a division by zero, a failed external fit).
-  \item \textbf{Must be} \texttt{pure} unless the algorithm genuinely cannot be. Purity is not
-        annotated: the generator derives it, and emits pure wrappers wherever everything they call
-        is pure.
-  \item Every constraint the tiers above need is stated as an annotation on the argument it
-        constrains --- valid ranges (\texttt{DM\_MIN}, \texttt{DM\_MAX}), defaults
-        (\texttt{DM\_DEFAULT}), sizing (\texttt{DM\_OUTPUT\_FROM}). Finiteness is the default
-        contract for every real argument; opt out with \texttt{DM\_ALLOW\_NAN} /
-        \texttt{DM\_ALLOW\_INFINITE}.
+  \item Name it \texttt{foo\_impl}, in a module whose name ends \texttt{\_impl}. That module name
+        is what triggers generation, and the generated module is written to
+        \texttt{src/generated/} mirroring the implementation's own path.
+  \item It contains the algorithm and nothing else: it \textbf{never validates input} and
+        \textbf{never allocates} — nor may anything else in an \texttt{\_impl} module. It may
+        still report a genuine \emph{runtime} error through \texttt{ierr} (a division by zero, a
+        failed external fit); validation is not its job.
+  \item Accept \emph{everything} as explicit arguments: inputs, outputs, and any work arrays.
+        Declare it \texttt{pure} unless the algorithm genuinely cannot be. Purity is derived, not
+        declared, for everything above it.
+  \item An argument named \texttt{tmp\_<name>} is a \textbf{work array}: the allocating entry point
+        allocates it and drops it from the signature the caller sees.
+  \item An argument named \texttt{<base>\_perm} is a \textbf{sorting permutation} for \texttt{<base>}:
+        the allocating entry point initialises and heapsorts it for you.
 \end{itemize}
+
+\subsection{Documentation Macros (\texttt{DM\_} prefix)}
+
+Every constraint the generated layers need is written as a \texttt{DM\_} macro in the argument's own
+\texttt{!!} comment. They are documentation macros: they expand to the English sentence that ends up
+in the Fortran, C, Python and R documentation, \emph{and} the generator reads them to emit the
+matching validation. One statement, one place, no way for the check and the prose to disagree.
+
+\begin{tabular}{ll}
+\toprule
+Macro & Purpose \\
+\midrule
+\texttt{DM\_MIN(EXPR)} & Lower bound for this argument \\
+\texttt{DM\_MAX(EXPR)} & Upper bound for this argument \\
+\texttt{DM\_SENTINEL(EXPR)} & One extra value accepted outside the bounds \\
+\texttt{DM\_ALLOW\_NAN} & Permit NaN (rejected by default for every real argument) \\
+\texttt{DM\_ALLOW\_INFINITE} & Permit $\pm\infty$ (rejected by default for every real argument) \\
+\texttt{DM\_DEFAULT(VAL)} & Default for an \texttt{optional} argument \\
+\texttt{DM\_RESULT\_SIZE\_IS(ARG)} & Only the first \texttt{ARG} elements of this output are filled \\
+\texttt{DM\_OUTPUT\_FROM(...)} & Compute this argument by calling a sizing routine \\
+\texttt{DM\_REQUIRED\_IF\_MODE(...)} & This optional argument is required in one mode \\
+\texttt{DM\_PROLOGUE(PROC, MOD)} & Run \texttt{PROC} before the implementation, and let it short-circuit \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\noindent\textbf{Finiteness is the default contract}: every real argument is checked for NaN and
+infinity unless it opts out. A bound may be an expression, including another argument
+(\texttt{DM\_MAX(n\_array)}) or an exclusive bound (\texttt{DM\_MIN(above(0.0\_real64))}).
 
 \begin{lstlisting}[language=Fortran]
 pure subroutine quantile_normalization_impl(expr, n_genes, n_replicates, &
     normalized_expr, rank_means, tmp_col, tmp_perm)
   integer(int32), intent(in) :: n_genes
+    !! Number of genes (rows)
   integer(int32), intent(in) :: n_replicates
+    !! Number of replicates per gene
   real(real64), intent(in)  :: expr(n_replicates, n_genes)
+    !! Gene expression matrix
+    !! DM_ALLOW_NAN
+    !! DM_ALLOW_INFINITE
   real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
+    !! Normalized `expr`
   real(real64), intent(in)  :: rank_means(n_replicates)
+    !! The mean of each rank across tissues
   real(real64), intent(out) :: tmp_col(n_genes)      ! work array
   integer(int32), intent(out) :: tmp_perm(n_genes)   ! permutation work array
-  ! ... pure implementation, no ierr, no validation, no allocation ...
+  ! ... pure implementation: no ierr, no validation, no allocation ...
 end subroutine
 \end{lstlisting}
 
-\subsection{Tier 2: \texttt{foo} --- Validated Entry Point (generated)}
+\subsection{What Comes Out}
+
+Two Fortran entry points, and the bindings around them:
 
 \begin{itemize}
-  \item Validates every input, using the \texttt{tox\_errors} validators, from the annotations on
-        the implementation's arguments; returns early on failure with \texttt{ierr} set.
-  \item Allocates the \texttt{tmp\_*} work arrays with \texttt{M\_ALLOCATE}, so they disappear from
-        the signature the caller sees.
-  \item Prepares whatever the algorithm assumes: builds and sorts a \texttt{<base>\_perm}
-        permutation, runs a \texttt{DM\_PROLOGUE} if the implementation declares one.
-  \item Takes \texttt{ierr} \textbf{last}, after the optional arguments.
-  \item \textbf{This is the entry point to reach for first}, and the one the Python and R bindings
-        publish.
+  \item \texttt{foo} — validates, allocates the work arrays, sorts the permutations, and calls the
+        implementation. \textbf{The entry point a caller reaches for first}, and it takes
+        \texttt{ierr} last, after the optional arguments.
+  \item \texttt{foo\_expert} — validates and calls the implementation with what you supply,
+        allocating and preparing nothing. Emitted only where there is something to take over; where
+        there is not, there is a single wrapper and it is called \texttt{foo}.
+  \item \texttt{foo\_c}, the Python \texttt{ctypes} module, the R wrapper and its C \texttt{.Call}
+        shim, and the snippets — all from the same source, with the documentation rendered per
+        language.
 \end{itemize}
 
-\subsection{Tier 3: \texttt{foo\_expert} --- Full Control (generated, when warranted)}
+\textbf{Your doc comments are the published API.} An implementation's \texttt{!>} and \texttt{!!}
+blocks become the Fortran, C, Python and R documentation verbatim, so write them for a reader of
+those languages rather than as notes to yourself. A \texttt{[[link]]} that names nothing is a build
+error.
+
+\subsection{The Workflow}
+
+When implementing new scientific functionality, complete these steps \emph{in order} and include all
+of them in the same Merge Request:
+
+\begin{enumerate}
+  \item \textbf{Implementation.} Write the annotated \texttt{foo\_impl} as above. This is the only
+        layer you write.
+  \item \textbf{Generate.} Run \texttt{python helper/generate\_code.py}; every \texttt{./build.sh}
+        does it for you unless \texttt{--skip-code-generation} is passed. Commit the regenerated
+        files with your change. If a published procedure was renamed, also run
+        \texttt{--target snippets}, which is not one of the default targets.
+  \item \textbf{Tests.} Fortran unit tests for numerical correctness, plus Python and R tests — see
+        the Testing section. These stay hand-written.
+\end{enumerate}
+
+\subsection{When Not to Write a Procedure At All}
+
+Only add functionality that is genuinely absent in Python and R. Do not wrap:
 
 \begin{itemize}
-  \item Validates exactly as \texttt{foo} does, then calls the implementation with what you supply:
-        it allocates nothing and prepares nothing.
-  \item Exists only where there is something to take over --- your own permutation order, or a
-        prologue you want to skip. Where \texttt{foo} does nothing beyond allocating, there is one
-        wrapper and it is called \texttt{foo}. Roughly half the procedures are in that case.
-  \item Published to Python and R only where the two tiers genuinely differ for those callers;
-        Fortran and C always get both.
+  \item Sorting routines (Python \texttt{numpy.sort}, R \texttt{order()} already exist).
+  \item Generic I/O or string utilities.
 \end{itemize}
 
-\subsection{Why This Is Generated}
+\subsection{If the Generator Cannot Express It}
 
-The two wrapper tiers are almost entirely derivable from the implementation's signature and its
-argument documentation, and writing them by hand meant maintaining the same contract in three
-places at once. It also means the code generator now enforces the API: if a procedure's contract
-cannot be expressed in the annotation vocabulary, that is a sign the procedure is wrong rather
-than the generator. See \texttt{codegen\_guide.md} for the annotation vocabulary, case by case.
+The annotation vocabulary is deliberately about language structure, never about domain concepts. If
+a procedure's contract cannot be expressed in it, that is a sign the \emph{procedure} needs
+rethinking rather than the generator needing a special case. Raise it rather than working around it.
 
 % =============================================================================
 \section{Error Handling}
@@ -332,25 +388,23 @@ if (is_err(ierr)) return
 
 \subsection{Reporting the Failing Argument (\texttt{arg\_pos})}\label{sec:argpos}
 
-Every \texttt{validate\_*} routine, as well as \texttt{set\_err}, accepts an optional \texttt{arg\_pos} argument: the 1-based position of the offending argument in the public subroutine's own signature. Passing it lets callers across the language boundary (C, Python, R) report exactly which argument failed, instead of only an error code:
+The generated entry points do all input validation, and number the argument positions for you. On
+the rare occasion that something has to be validated by hand, use the \texttt{tox\_errors}
+validators rather than an ad-hoc check, and pass \texttt{arg\_pos}:
 
 \begin{lstlisting}[language=Fortran]
-call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
-call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
-call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
-if (n_clusters > n_points) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
-
+call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+call validate_in_range_real(span, ierr, min=0.0_real64, max=1.0_real64, arg_pos=6_int32)
 call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
-call validate_all_in_range_real(centroids, size(centroids, kind=int32), ierr, arg_pos=5_int32)
 \end{lstlisting}
 
-\texttt{arg\_pos} must always match the argument's position in the public (non-\texttt{\_impl}) subroutine that callers actually invoke, never its position in whichever internal implementation happens to run the validation. The generated wrappers get this right by construction, and clear any position an \texttt{ierr} carries out of an implementation, since that one numbers a different dummy list.
+\texttt{arg\_pos} must match the argument's position in the public (non-\texttt{\_impl}) subroutine
+that callers actually invoke, never its position in whichever internal routine happens to run the
+check — Python and R index their argument-name tuple with it.
 
-When the valid range of an argument is itself defined by \texttt{CM\_} macros (Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the validated range can never disagree:
-
-\begin{lstlisting}[language=Fortran]
-call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
-\end{lstlisting}
+When the valid range of an argument is itself defined by \texttt{CM\_} macros
+(Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the
+validated range can never disagree.
 
 \subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
 
@@ -426,7 +480,7 @@ All \emph{helper} and core subroutines must be declared \texttt{pure}. A \texttt
   \item Allows the compiler to schedule calls more aggressively.
 \end{itemize}
 
-Remove \texttt{pure} only when truly necessary (e.g.\ I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure, so the allocating tier is as eligible for \texttt{pure} as any other, and the generator marks a wrapper \texttt{pure} whenever everything it calls is.
+Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure.
 
 \subsection{Optional Arguments}
 
@@ -508,7 +562,7 @@ end do
 
 \subsection{No Allocations in Core Routines}
 
-\textbf{Nothing in an \texttt{\_impl} module may allocate memory} --- not the implementation, not its private helpers. Allocation happens exclusively in the generated entry point, and the generator enforces the rule (it also bounds what an \texttt{\_impl} module may \texttt{use}, so the rule cannot be side-stepped by calling out to another module). This:
+\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point, and the generator enforces this. This rule:
 \begin{itemize}
   \item Keeps core routines \texttt{pure} and deterministic.
   \item Allows callers to reuse pre-allocated work arrays across multiple calls, avoiding repeated \texttt{malloc}/\texttt{free} cycles over large datasets.
@@ -594,18 +648,20 @@ tmp_col_ptr => work_view(:, 1)
 
 Only reuse a buffer as scratch when its final output value is not needed until after the scratch use has finished — otherwise the scratch writes corrupt the output.
 
-\subsection{Always Use Pointers, Never Value-Copy Scalars in C Wrappers}
-
-See Section~\ref{sec:cwrappers}.
-
 % =============================================================================
 \section{Macro Usage (\texttt{src/macros.h})}
 % =============================================================================
 
 All source files that use macros must start with:
 \begin{lstlisting}[language=Fortran]
-#include "macros.h"
+#include <src/macros.h>
 \end{lstlisting}
+
+\textbf{Never write a bare \texttt{implicit none}}: every module uses \texttt{M\_IMPLICIT\_NONE}
+instead. It expands to \texttt{implicit none (type, external)}, the F2018 form, which additionally
+requires an explicit interface for every external procedure — so calling one that the compiler has
+never seen becomes a compile error at the call site rather than a link-time surprise or, worse, a
+silently wrong ABI.
 
 \subsection{Available Macros}
 
@@ -613,6 +669,7 @@ All source files that use macros must start with:
 \toprule
 Macro & Purpose \\
 \midrule
+\texttt{M\_IMPLICIT\_NONE} & \texttt{implicit none (type, external)}; use it in every module \\
 \texttt{M\_USE\_NULL\_VALIDATION} & Imports modules needed for \texttt{c\_loc}/null checks in C wrappers \\
 \texttt{M\_CHECK\_IERR\_NON\_NULL} & Silently returns if \texttt{ierr} pointer is null (always first check) \\
 \texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ierr} to \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
@@ -675,400 +732,40 @@ If you need a compound structure that must cross the language boundary, decompos
 \section{The \texttt{f42\_utils} Utility Module}
 % =============================================================================
 
-The file \texttt{src/f42\_utils.F90} contains general-purpose helper functions shared across the project:
-\texttt{mean}, \texttt{std\_dev}, \texttt{norm}, \texttt{clamp\_real}/\texttt{clamp\_int}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close}, \texttt{logx}, \texttt{compute\_edf}, etc.
+\texttt{src/f42/utils/} contains general-purpose helper functions shared across the project, split
+by topic into \texttt{f42\_math\_impl}, \texttt{f42\_sort\_impl}, \texttt{f42\_random\_impl},
+\texttt{f42\_vector\_impl} and \texttt{f42\_stats\_impl}: \texttt{mean}, \texttt{std\_dev},
+\texttt{norm}, \texttt{clamp}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close},
+\texttt{logx}, \texttt{compute\_edf}, etc. \texttt{f42\_utils\_impl} re-exports all five, so one
+\texttt{use} reaches everything.
 
-\textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether \texttt{f42\_utils} already provides it. If you write a function that is genuinely reusable across modules, add it to \texttt{f42\_utils} rather than creating a module-local copy. This prevents duplication and keeps utility logic in one place.
+\textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether
+the family already provides it. If you write a function that is genuinely reusable across modules,
+add it there rather than creating a module-local copy. This prevents duplication and keeps utility
+logic in one place. Import from the module that \emph{defines} the helper where you know it, and
+from the parent where you do not:
 
 \begin{lstlisting}[language=Fortran]
-use f42_utils, only: norm, is_close, logx, mean, std_dev, sort_array
+use f42_math_impl, only: norm, is_close, logx, mean, std_dev
+use f42_sort_impl, only: sort_array
 \end{lstlisting}
 
 % =============================================================================
-\section{The \texttt{safeguard} Module}
+\section{The \texttt{f42\_safeguard} Module}
 % =============================================================================
 
-Every module that defines C wrappers must \texttt{use safeguard}. This module contains compile-time assertions that verify the C and Fortran kind constants are equivalent on the target platform:
+Any module that crosses the C boundary and treats \texttt{c\_int} as \texttt{int32} or
+\texttt{c\_double} as \texttt{real64} must \texttt{use f42\_safeguard}. It contains compile-time
+assertions that those kind constants really are equivalent on the target platform:
 
 \begin{lstlisting}[language=Fortran]
-use safeguard   ! guarantees c_int == int32, c_double == real64, c_double_complex == real64
+use f42_safeguard   ! guarantees c_int == int32, c_double == real64, c_double_complex == real64
 \end{lstlisting}
+
+The generated \texttt{bind(C)} wrappers carry this themselves, so in practice the rule bites only
+where a module declares a \texttt{bind(C)} interface by hand.
 
 If these kinds do not match, the module fails to compile with a descriptive error, preventing silent ABI (Application Binary Interface) mismatch bugs. The ABI is the low-level contract between compiled code: it specifies how function arguments are laid out in memory, what sizes the types occupy, and how values are returned. When the Fortran kind for \texttt{real64} (8 bytes) does not match the C kind for \texttt{c\_double} on a given platform, data passed through a C wrapper would be misinterpreted silently, producing incorrect results without any runtime error.
-
-% =============================================================================
-\section{C Wrapper Conventions}
-\label{sec:cwrappers}
-% =============================================================================
-
-C wrappers expose Fortran routines to C, Python, and R. They must follow a strict template to ensure ABI stability, null safety, and zero-copy operation.
-
-\subsection{Naming Conventions}
-
-\begin{itemize}
-  \item A standard wrapper for function \texttt{foo} is named \texttt{foo\_c}.
-  \item A wrapper that exposes all work arrays for fine-grained control is named \texttt{foo\_expert\_c}.
-  \item The \texttt{bind(C, name="...")} string must match exactly the function name used in Python and R.
-\end{itemize}
-
-\subsection{Complete Wrapper Template}
-
-\begin{lstlisting}[language=Fortran]
-#include "macros.h"
-
-pure subroutine compute_tissue_versatility_c( &
-    n_axes, n_vectors, expression_vectors,    &
-    exp_vecs_selection_index,                 &
-    n_selected_vectors, axes_selection,       &
-    n_selected_axes,                          &
-    tissue_versatilities, tissue_angles_deg,  &
-    ierr) bind(C, name="compute_tissue_versatility_c")
-
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  use tox_tissue_versatility, only: compute_tissue_versatility
-  M_USE_NULL_VALIDATION
-  implicit none
-
-  ! All scalars and arrays must have the target attribute
-  integer(c_int), intent(in),  target :: n_axes
-    !! Number of axes (dimensions) - same doc as core routine
-  integer(c_int), intent(in),  target :: n_vectors
-    !! Total number of expression vectors
-  integer(c_int), intent(in),  target :: n_selected_axes
-    !! Number of selected axes (count of non-zero entries in axes_selection)
-  integer(c_int), intent(in),  target :: n_selected_vectors
-    !! Number of selected vectors (count of non-zero entries in exp_vecs_selection_index)
-  real(c_double), intent(in),  target :: expression_vectors(n_axes, n_vectors)
-    !! Gene expression matrix (n_axes x n_vectors), column-major
-  integer(c_int), intent(in),  target :: exp_vecs_selection_index(n_vectors)
-    !! Selection mask for vectors: 1 = include, 0 = skip (logical converted to int)
-  integer(c_int), intent(in),  target :: axes_selection(n_axes)
-    !! Selection mask for axes: 1 = include, 0 = skip (logical converted to int)
-  real(c_double), intent(out), target :: tissue_versatilities(n_selected_vectors)
-    !! Output: tissue versatility score for each selected vector
-  real(c_double), intent(out), target :: tissue_angles_deg(n_selected_vectors)
-    !! Output: angle in degrees for each selected vector
-  integer(c_int), intent(out), target :: ierr
-    !! Error code: 0 = success
-
-  ! 1. Always check ierr pointer first (silent return if null)
-  M_CHECK_IERR_NON_NULL
-  ! 2. Check all other pointers
-  M_CHECK_NON_NULL(n_axes)
-  M_CHECK_NON_NULL(n_vectors)
-  M_CHECK_NON_NULL(n_selected_axes)
-  M_CHECK_NON_NULL(n_selected_vectors)
-  M_CHECK_NON_NULL(expression_vectors)
-  M_CHECK_NON_NULL(exp_vecs_selection_index)
-  M_CHECK_NON_NULL(axes_selection)
-  M_CHECK_NON_NULL(tissue_versatilities)
-  M_CHECK_NON_NULL(tissue_angles_deg)
-
-  ! 3. Delegate to the core routine
-  call compute_tissue_versatility(n_axes, n_vectors, expression_vectors, &
-      exp_vecs_selection_index, n_selected_vectors, axes_selection,       &
-      n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)
-
-end subroutine compute_tissue_versatility_c
-\end{lstlisting}
-
-\subsection{Key Rules}
-
-\begin{enumerate}
-  \item \textbf{Use \texttt{iso\_c\_binding} types exclusively}: \texttt{real(c\_double)}, \texttt{integer(c\_int)}, \texttt{character(kind=c\_char)}.
-  \item \textbf{All arguments must have \texttt{target}}: Required for \texttt{c\_loc()} used by the null-check macros.
-  \item \textbf{Never use \texttt{value}}: All arguments are passed by reference. This is both the Fortran default and a requirement for zero-copy operation across the boundary.
-  \item \textbf{Always explicit array dimensions}: Do not use assumed-shape \texttt{(:)} in \texttt{bind(C)} routines.
-  \item \textbf{No computation in wrappers}: The wrapper only validates pointers and delegates to the core.
-  \item \textbf{No optional arguments}: \texttt{bind(C)} and optional arguments are incompatible. Override via the \texttt{\_expert\_c} variant.
-  \item \textbf{No derived types}: Pass components as flat scalars and arrays.
-  \item \textbf{Stable symbol names}: The \texttt{bind(C, name="...")} string is the ABI surface. Never rename it after publication.
-  
-  \item \textbf{No aliasing}: Never pass the same memory region under two different argument names.
-  \item \textbf{Copy FORD comments from the core routine}: Every argument declaration in the C wrapper must carry the same \texttt{!!} documentation comment as the corresponding argument in the original core subroutine. 
-\end{enumerate}
-
-\subsection{Character / String Arguments}
-
-When the Fortran core uses \texttt{character(len=*)}, the C wrapper receives a fixed-length character array plus an explicit length integer. Always use \textbf{named type parameters} for character declarations to avoid ambiguity between \texttt{len} and \texttt{kind}:
-
-\begin{lstlisting}[language=Fortran]
-! CORRECT: named parameters, unambiguous
-integer(c_int), intent(in), target :: filename_len
-character(len=1, kind=c_char), dimension(filename_len), intent(in), target :: filename
-
-! CORRECT: multi-dimensional string arrays (len=1 per character element, kind=c_char)
-! One dummy argument per line (see Section 3); each can carry its own FORD comment
-integer(c_int), intent(in), target :: max_str_len
-integer(c_int), intent(in), target :: d1
-integer(c_int), intent(in), target :: d2
-integer(c_int), intent(in), target :: d3
-character(len=1, kind=c_char), dimension(max_str_len, d1, d2, d3), intent(in), target :: strings_nd
-
-! WRONG: positional parameter character(c_char) means len=c_char=1, kind=default
-! This happens to work because c_char==1, but is semantically incorrect.
-character(c_char), dimension(str_len) :: label   ! avoid this
-\end{lstlisting}
-
-The string length must always be passed as a separate integer argument; there is no mechanism to infer it from the C side. After receiving the array, convert it to a Fortran string before calling the core:
-
-\begin{lstlisting}[language=Fortran]
-character(len=:), allocatable :: fortran_str
-call c_char_1d_as_string(filename, filename_len, fortran_str, ierr)
-if (is_err(ierr)) return
-\end{lstlisting}
-
-\subsection{Logical Arguments}
-
-Fortran's \texttt{logical} type is \textbf{not interoperable with C} and must never appear in a \texttt{bind(C)} wrapper. Replace every \texttt{logical} argument with \texttt{integer(c\_int)}.
-The convention is \texttt{0 = .false.}, \textbf{any non-zero = .true.}
-
-The wrapper declares a local \texttt{logical} variable and converts via the project utility
-\texttt{c\_int\_as\_logical} (from \texttt{tox\_conversions}):
-
-\begin{lstlisting}[language=Fortran]
-! Core routine uses logical
-pure subroutine compute_tissue_versatility(..., axes_selection, ...)
-  logical, intent(in) :: axes_selection(n_axes)
-    !! Selection mask for axes: .true. = include, .false. = skip
-  ...
-end subroutine
-
-! C wrapper receives integer(c_int), converts to logical before calling core
-pure subroutine compute_tissue_versatility_c(..., axes_selection, ...) &
-    bind(C, name="compute_tissue_versatility_c")
-  use tox_conversions, only: c_int_as_logical
-  integer(c_int), intent(in), target :: axes_selection(n_axes)
-    !! Selection mask for axes: 1 = include, 0 = skip (any non-zero is .true.)
-  logical :: axes_selection_f(n_axes)
-  ...
-  call c_int_as_logical(axes_selection, axes_selection_f)
-  call compute_tissue_versatility(..., axes_selection_f, ...)
-end subroutine
-\end{lstlisting}
-
-The reverse conversion (for \texttt{intent(out)} logical arguments) uses \texttt{logical\_as\_c\_int},
-also from \texttt{tox\_conversions}: \texttt{0} for \texttt{.false.}, \texttt{1} for \texttt{.true.}
-
-The generated bindings do this conversion for you: the Python wrapper passes a \texttt{numpy} \texttt{int32} array and the R wrapper an \texttt{as.integer()} vector.
-
-\subsection{When Not to Write a Wrapper}
-
-Only create C wrappers for functionality that is genuinely absent in Python and R. Do not wrap:
-\begin{itemize}
-  \item Sorting routines (Python \texttt{numpy.sort}, R \texttt{order()} already exist).
-  \item Generic I/O or string utilities.
-\end{itemize}
-
-\subsection{Mandatory Development Workflow}
-
-When implementing new scientific functionality, complete these steps \emph{in order} and include all of them in the same Merge Request:
-
-\begin{enumerate}
-  \item \textbf{Core Fortran implementation.} Write the \texttt{foo\_impl} pure subroutine, in a module whose name ends \texttt{\_impl}. It takes no \texttt{ierr}, validates nothing and allocates nothing — it is the algorithm only. Everything the layers above it need, it states as annotations on its own arguments: valid ranges via \texttt{DM\_MIN}/\texttt{DM\_MAX}, work arrays via the \texttt{tmp\_} prefix, sizing via \texttt{DM\_OUTPUT\_FROM}, and so on. See \texttt{codegen\_guide.md} for the full vocabulary, case by case.
-  \item \textbf{Generate the layers.} Run \texttt{python helper/generate\_code.py} (every \texttt{./build.sh} does this for you unless \texttt{--skip-code-generation} is passed). From the annotated implementation it writes, into \texttt{src/generated/}: the validating entry point \texttt{foo} — and \texttt{foo\_expert} beside it where there is something for a caller to take over — the \texttt{bind(C)} wrapper, the Python \texttt{ctypes} module, the R wrapper with its pure-C \texttt{.Call} shim, and the VS Code snippets. \textbf{None of these is hand-written and none of them may be edited}; a change belongs in the implementation's source or its annotations.
-  \item \textbf{FORD documentation.} Ensure all public procedures have \texttt{!>} and \texttt{!!} comments. Documentation is built by CI, but verify the output locally for non-trivial API changes.
-  \item \textbf{Tests.} Write Fortran unit tests that cover numerical correctness. Add Python/R tests that verify the function is callable and returns the expected type and shape. AI-generated language-wrapper tests are acceptable when they avoid duplicating work at no loss of correctness coverage.
-\end{enumerate}
-
-% =============================================================================
-\section{R / C \texttt{.Call} / Fortran Interface}
-% =============================================================================
-
-The R interface is a four-layer stack, and the top two layers are \textbf{generated} --- this
-section describes what comes out, so that you can read it, not so that you can write it.
-
-\begin{enumerate}
-  \item \textbf{Fortran core} --- pure computation, no language knowledge.
-  \item \textbf{C wrapper (\texttt{bind(C)})} --- type-safe bridge, pointer validation.
-  \item \textbf{C \texttt{.Call} shim} --- allocates the R vectors, calls the \texttt{bind(C)} wrapper,
-        and returns a named list. It is plain C against R's own API; the project does \textbf{not}
-        use Rcpp, so no C++ toolchain is needed. The shims compile into
-        \texttt{build/libtensor-omics.so} along with the rest of the library.
-  \item \textbf{R layer} --- input validation and the user-facing API; reaches the shim by name
-        through \texttt{.Call}.
-\end{enumerate}
-
-\subsection{What the Generated Shim Looks Like}
-
-\begin{lstlisting}[language=C]
-/* generated; resolved by dynamic lookup and called from R as
-   .Call("compute_tissue_versatility_call", ...) */
-SEXP compute_tissue_versatility_call(SEXP expression_vectors,
-                                     SEXP vectors_selection_mask,
-                                     SEXP axes_selection_mask) {
-    int n_axes    = Rf_nrows(expression_vectors);
-    int n_vectors = Rf_ncols(expression_vectors);
-    /* ... allocate the outputs, call compute_tissue_versatility_c, ... */
-    /* ... assemble a named list of the outputs plus ierr ... */
-}
-\end{lstlisting}
-
-\subsection{What the Generated R Wrapper Looks Like}
-
-Input validation belongs to the R layer, not to the C shim. The generated wrapper calls the
-shared validators in \texttt{r/tensor\_omics/tox\_validate.R}, which the generator also writes:
-
-\begin{lstlisting}[language=R]
-compute_tissue_versatility <- function(expression_vectors,
-                                       vectors_selection_mask,
-                                       axes_selection_mask) {
-  # validation derived from the implementation's argument annotations
-  # ...
-  result <- .Call("compute_tissue_versatility_call",
-                  expression_vectors, vectors_selection_mask, axes_selection_mask)
-  check_err_code(result$ierr)
-  # ... return the outputs
-}
-\end{lstlisting}
-
-\subsection{Key Points}
-
-\begin{itemize}
-  \item \textbf{Do not edit \texttt{r/tensor\_omics/}.} The whole directory is generated. The one
-        hand-written file is \texttt{r/load\_tensor\_omics.R}, which loads the shared library and
-        sources the generated wrappers.
-  \item Roxygen documentation is generated too, from the Fortran doc comments. An implementation's
-        \texttt{!>} and \texttt{!!} blocks \emph{are} the R (and Python, and C) documentation, so
-        write them as API prose for a reader of that language rather than as notes to yourself.
-  \item \texttt{ierr} is always returned alongside the outputs and checked by the R wrapper via
-        \texttt{check\_err\_code}. The argument position it carries names the argument the caller
-        actually passed, not the derived one it was detected on.
-  \item Column-major memory layout is the natural Fortran storage order; R matrices are column-major
-        by default --- no transposition is needed.
-  \item \textbf{Memory ownership.} While R generally prevents external mutation of objects, some
-        in-place data manipulation libraries (e.g.\ \texttt{data.table}) can modify underlying
-        buffers. Do not pass aliases of live R objects to Fortran wrappers if those objects may be
-        mutated elsewhere during the same analysis session.
-\end{itemize}
-
-% =============================================================================
-\section{Python / ctypes / Fortran Interface}
-% =============================================================================
-
-The Python package \texttt{python/tensor\_omics/} is \textbf{generated}, exactly as the R one is.
-What follows is the contract it implements --- worth knowing because it is what your annotations
-buy, and because a caller has to respect it.
-
-\subsection{Loading the Shared Library}
-
-\begin{lstlisting}[language=Python]
-import ctypes, numpy as np, os
-from error_handling import check_err_code
-
-dll_path = os.path.abspath("build/libtensor-omics.so")
-ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-lib = ctypes.CDLL(dll_path)
-\end{lstlisting}
-
-\subsection{Python Wrapper Pattern}
-
-\begin{lstlisting}[language=Python]
-#> tox_tissue_versatility:compute_tissue_versatility_c: Computes normalized tissue versatility for selected expression vectors
-def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_selection):
-    """
-    Calculate Tissue Versatility
-
-    Args:
-        expression_vectors: Matrix where each column is a gene expression vector (n_axes x n_vectors).
-        vector_selection: Boolean or integer array indicating which vectors to process (length n_vectors).
-        axis_selection: Boolean or integer array indicating which axes to include in calculation (length n_axes).
-
-    Returns:
-        dict: {
-            'tissue_versatilities' (np.ndarray): Normalized tissue versatility values in [0,1] for selected vectors,
-            'tissue_angles_deg' (np.ndarray): Angles in degrees [0,90] for selected vectors
-        }
-    """
-    # Input validation
-    if not isinstance(expression_vectors, np.ndarray):
-        raise ValueError("expression_vectors must be a numpy array")
-
-    if expression_vectors.ndim != 2:
-        raise ValueError("expression_vectors must be a 2D array")
-
-    # Convert inputs to numpy arrays
-    expr_f = np.asfortranarray(expression_vectors, dtype=np.float64)
-    select_vec = np.ascontiguousarray(vector_selection, dtype=bool).astype(np.int32)
-    select_axes = np.ascontiguousarray(axis_selection, dtype=bool).astype(np.int32)
-
-    # Get dimensions
-    n_axes, n_vectors = expr_f.shape
-
-    # Validate dimensions
-    if len(select_vec) != n_vectors:
-        raise ValueError("vector_selection length must match number of columns in expression_vectors")
-    if len(select_axes) != n_axes:
-        raise ValueError("axis_selection length must match number of rows in expression_vectors")
-
-    # Calculate counts
-    n_selected_vectors = np.sum(vector_selection)
-    n_selected_axes = np.sum(axis_selection)
-
-    # Convert scalar parameters
-    n_axes_c = ctypes.c_int(n_axes)
-    n_vectors_c = ctypes.c_int(n_vectors)
-    n_selected_vectors_c = ctypes.c_int(n_selected_vectors)
-    n_selected_axes_c = ctypes.c_int(n_selected_axes)
-
-    # Prepare output arrays
-    tissue_versatilities = np.empty(n_selected_vectors, dtype=np.float64)
-    tissue_angles_deg = np.empty(n_selected_vectors, dtype=np.float64)
-    ierr = ctypes.c_int(0)
-
-    # Setup C/Fortran wrapper with proper type annotations
-    tv = lib.compute_tissue_versatility_c
-    tv.argtypes = [
-        ctypes.POINTER(ctypes.c_int),  # n_axes
-        ctypes.POINTER(ctypes.c_int),  # n_vectors
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"),  # expression_vectors (Fortran order)
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # exp_vecs_selection_index
-        ctypes.POINTER(ctypes.c_int),  # n_selected_vectors
-        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),    # axes_selection
-        ctypes.POINTER(ctypes.c_int),  # n_selected_axes
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # tissue_versatilities
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # tissue_angles_deg
-        ctypes.POINTER(ctypes.c_int),  # ierr
-    ]
-    tv.restype = None
-
-    # Call the C/Fortran wrapper
-    tv(
-        ctypes.byref(n_axes_c),
-        ctypes.byref(n_vectors_c),
-        expr_f,
-        select_vec,
-        ctypes.byref(n_selected_vectors_c),
-        select_axes,
-        ctypes.byref(n_selected_axes_c),
-        tissue_versatilities,
-        tissue_angles_deg,
-        ctypes.byref(ierr)
-    )
-
-    # Check for errors and throw informative messages
-    check_err_code(ierr.value)
-
-    # Mark outputs as read-only
-    _readonly(tissue_versatilities, tissue_angles_deg)
-
-    # Return structured result (no ierr since we checked for errors)
-    return {
-        'tissue_versatilities': tissue_versatilities,
-        'tissue_angles_deg': tissue_angles_deg
-    }
-\end{lstlisting}
-
-\subsection{Key Points}
-
-\begin{itemize}
-  \item Arrays with more than one dimension passed to Fortran must be \textbf{Fortran-contiguous}. Always create new arrays with \texttt{order='F'} (e.g.\ \texttt{np.empty(shape, order='F')}) so they are Fortran-contiguous from the start and no conversion copy is ever needed. Arrays coming from the caller must still be passed through \texttt{np.asfortranarray}: it only copies when the layout isn't already correct, so it stays cheap while guaranteeing the right layout for input we don't control.
-  \item Scalar parameters must be passed \textbf{by reference} using \texttt{ctypes.byref(c\_int(value))}.
-  \item All output arrays must be marked \textbf{read-only} after the call with \texttt{\_readonly(...)}. This prevents accidental mutation of the output buffer by any subsequent Python operation or third-party library (e.g.\ \texttt{matplotlib}, \texttt{scipy}) while the memory logically belongs to the Fortran result. Never pass a live, mutable NumPy array as an input to a wrapper if another thread or library could modify it during the same call.
-  \item Check \texttt{ierr} immediately after every call via \texttt{check\_err\_code}.
-  \item Functions that return more than one value must return a \textbf{dictionary} keyed by output name (e.g.\ \texttt{return \{'tissue\_versatilities': ..., 'tissue\_angles\_deg': ...\}}). A function with a single output value returns it directly.
-  \item \textbf{Do not edit \texttt{python/tensor\_omics/}.} The whole package is generated, docstrings included --- they are rendered from the Fortran doc comments. A change belongs in the implementation's source or its annotations.
-\end{itemize}
 
 % =============================================================================
 \section{FORD Documentation}
@@ -1094,7 +791,7 @@ def tox_calculate_tissue_versatility(expression_vectors, vector_selection, axis_
 !| outside the module for compatibility.
 module tox_gene_centroids
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  implicit none
+  M_IMPLICIT_NONE
 contains
 
   !> Computes the element-wise mean for a given set of gene expression vectors.
@@ -1146,6 +843,10 @@ The project provides a structured test suite framework. See the \href{https://gi
   \item \textbf{Python / R wrappers}: Test only that the function can be called, that the return value is of the correct type and shape, and that reasonable input produces a non-error result.
 \end{itemize}
 
+The wrappers themselves are generated, but \textbf{their tests are not} — a generated binding is
+exactly the place where a mistake is uniform and invisible, so every published procedure needs a
+Python and an R test that actually calls it. Run everything with \texttt{./run\_all\_tests.sh}.
+
 \subsection{Test Naming Convention}
 
 Each test file is named \texttt{mod\_test\_<module\_name>.\{f90|F90|py|R\}}.
@@ -1182,37 +883,6 @@ For \emph{technical problems} (especially compilation errors), do not spend more
 \end{enumerate}
 
 Many gfortran errors for \texttt{bind(C)}, \texttt{pure}, or kind-mismatch issues are non-obvious; the team has likely encountered the same problem before.
-
-% =============================================================================
-\section{Code Snippets}
-% =============================================================================
-
-Snippets for Fortran, Python, and R are \textbf{auto-generated} by the code generator and written to the \texttt{snippets/} directory. You should never edit them by hand. Note that \texttt{snippets} is not one of the default targets, so an ordinary \texttt{python helper/generate\_code.py} run leaves them alone --- regenerate them explicitly with \texttt{python helper/generate\_code.py --target snippets} whenever a published procedure is renamed or its signature changes.
-
-\subsection{How Snippet Generation Works}
-
-The generator reads the same annotated Fortran source that produces the bindings, so a snippet
-cannot name a procedure that does not exist or carry a signature that has drifted --- both come
-from the parsed source rather than from a header comment a human keeps in step. It emits, per
-language:
-
-\begin{itemize}
-  \item \textbf{Fortran} --- a call snippet for each published subroutine, keyed
-        \texttt{tox:<name>} or \texttt{f42:<name>} by which library the module belongs to.
-  \item \textbf{Python and R} --- a call snippet for each generated wrapper function.
-  \item \textbf{\texttt{toxdev:*}} --- development conveniences (parallel loop templates, argument
-        declarations) that are not tied to any one procedure.
-\end{itemize}
-
-\subsection{Running It}
-
-\begin{lstlisting}[language=bash]
-python helper/generate_code.py --target snippets
-\end{lstlisting}
-
-There is nothing to keep in step by hand: no \texttt{\#>} header to write, no naming rule to
-observe. Give the procedure a good \texttt{!> summary:} line and it becomes the snippet's
-description.
 
 % =============================================================================
 \section{Integrating External Fortran Code from Netlib}
@@ -1285,6 +955,28 @@ gfortran -o program_name file1.o file2.o file3.o
 If \texttt{undefined reference} errors appear at link time, a dependency is missing. Classic culprits in Netlib packages are additional routines from \textbf{BLAS}, \textbf{LINPACK}, or utility functions such as \texttt{d1mach} — fetch and compile those as well.
 
 % =============================================================================
+\section{Further Reading}
+% =============================================================================
+
+This guide states the conventions. Four documents in the repository go deeper, and each is kept in
+step with the code:
+
+\begin{itemize}
+  \item \textbf{\texttt{codegen\_guide.md}} (repository root) — the author's guide to the code
+        generator, case by case: ranges, masks, work arrays, permutations, sizing routines, modes
+        and mode splits, prologues, runtime errors, split families. Every case has a real snippet
+        and shows what comes out. \textbf{Read this before adding a procedure.}
+  \item \textbf{\texttt{helper/codegen/README.md}} — what the generator produces and how to run it,
+        including what it refuses and why.
+  \item \textbf{\texttt{helper/codegen/emit/README.md}} — the language layers: every question the
+        Python and R bindings had to answer (array layout, ownership of \texttt{intent(inout)},
+        null-as-absent, missing values, derived arguments, decoding \texttt{ierr}) and what each
+        chose. Written so a third language decides rows instead of rediscovering them.
+  \item \textbf{\texttt{helper/codegen/design/}} — the design of record, including every rejected
+        alternative.
+\end{itemize}
+
+% =============================================================================
 \section{Quick-Reference Checklist}
 % =============================================================================
 
@@ -1292,23 +984,19 @@ Use this checklist when reviewing or submitting any Fortran code contribution:
 
 \begin{itemize}[label=$\square$]
   \item File extension is \texttt{.F90} (macros used) or \texttt{.f90} (no macros).
-  \item \texttt{\#include "macros.h"} is present if any \texttt{M\_*} macro is used.
+  \item \texttt{\#include <src/macros.h>} is present, and the module declares \texttt{M\_IMPLICIT\_NONE} rather than a bare \texttt{implicit none}.
   \item All \texttt{real} variables use \texttt{real(real64)}; all constants carry \texttt{\_real64}.
   \item Every argument has \texttt{intent(in|out|inout)}.
-  \item Core (helper) routines are declared \texttt{pure}.
+  \item The implementation is named \texttt{foo\_impl}, in a module ending \texttt{\_impl}, and is declared \texttt{pure}.
   \item \texttt{do concurrent} is used for independent loops.
   \item No \texttt{GOTO} anywhere.
-  \item \texttt{ierr} is the last (or only output) argument and is initialised with \texttt{set\_ok(ierr)}.
-  \item Every \texttt{set\_err} / allocation failure path returns immediately.
-  \item Core routines do not allocate; allocation lives in the generated entry point.
+  \item The implementation validates nothing and allocates nothing; where it does report a runtime error, \texttt{ierr} is initialised with \texttt{set\_ok(ierr)} and every failure path returns immediately.
+  \item Every constraint is stated as a \texttt{DM\_} macro on the argument it constrains, and every work array is named \texttt{tmp\_}.
   \item No unexplained copies of large arrays.
-  \item C wrappers follow the \texttt{\_c} / \texttt{\_expert\_c} naming convention.
-  \item All C wrapper arguments carry \texttt{target} and are passed by reference.
-  \item Null checks use \texttt{M\_CHECK\_IERR\_NON\_NULL} first, then \texttt{M\_CHECK\_NON\_NULL} for all others.
-  \item No derived types in C-interfaced code.
-  \item \texttt{use safeguard} is present in every module with C wrappers.
-  \item All utility functions are in \texttt{f42\_utils} (or re-use existing ones).
-  \item FORD comments (\texttt{!>}, \texttt{!|}) are present for all public procedures.
+  \item No derived types in anything that reaches C, Python or R.
+  \item All utility functions are in the \texttt{f42\_utils} family (or re-use existing ones).
+  \item FORD comments (\texttt{!>}, \texttt{!|}, \texttt{!!}) are present for the module and every public procedure, written as API prose — they are what Python and R users read.
+  \item The generator was run and its output committed (\texttt{./build.sh}, plus \texttt{--target snippets} if a published name changed).
   \item Fortran tests cover the new logic.
   \item Python/R tests verify call-ability and return type.
   \item MR does not self-merge and review threads are not self-closed.
