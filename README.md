@@ -195,9 +195,26 @@ Beyond the profiles above, `build.sh` accepts several options (which `test_runne
 * `--max-performance` — enable the `optimization` profile (`-O3` and performance-oriented code paths).
 * `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
 * `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect.
-* `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`.
+* `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=NO_R_BINDING --directive=NO_INPUT_VALIDATION`. The directives the sources actually read are listed below.
 * `--clean-build` — force `fpm` to rebuild `src/` from scratch (enabled automatically when switching git branches). Useful when `fpm` misses changes that do not alter the module structure.
 * `--skip-code-generation` — every build first regenerates the C, Python and R bindings and the generated Fortran wrappers from `src/` (see [`helper/codegen`](./helper/codegen/README.md)), so a source change and its generated layers cannot drift apart. This option skips that. The generated sources are committed, so a build without Python or [`ford`](https://forddocs.readthedocs.io) installed works anyway -- it warns and compiles what is in the tree.
+
+### Preprocessor directives
+
+What `--directive=<NAME>` can usefully define. A name the sources do not read is accepted and
+does nothing, so these are the ones that have an effect:
+
+| Directive | Effect |
+|---|---|
+| `NO_C_BINDING` | Omit the generated `bind(C)` wrappers. The R `.Call` shims sit inside them, so this drops the R binding with it, and neither Python nor R can load the library. The Fortran library itself is unaffected. |
+| `NO_R_BINDING` | Omit the R `.Call` shims only. The C wrappers and the Python binding stay, and the build no longer needs R's headers. |
+| `NO_INPUT_VALIDATION` | Compile out the validation the generated entry points perform, for a caller who has already established that their inputs are good. `call set_ok(ierr)` stays outside the guard — it is what leaves `ierr` defined, not a check — and so do the C layer's null checks, which guard against a segfault rather than a bad value. |
+| `NO_COLORS` | Drop ANSI colour from the test runner's output. Set automatically when stdout or stderr is not a terminal, so it is rarely worth passing by hand. |
+| `TEST_KIND_MISMATCH_C_INT`<br>`TEST_KIND_MISMATCH_C_DOUBLE`<br>`TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX`<br>`TEST_KIND_MISMATCH_C_CHAR` | Force a kind mismatch so the matching compile-time guard in `f42_safeguard` fires. A build with one of these is **meant to fail**, with `Error: Division by zero`; `test_runner.sh` uses them to prove each guard still works. Not useful outside that test. |
+
+`--max-performance` also defines `MAX_PERFORMANCE`, but no source reads it — the switch earns
+its keep through the compiler flags it selects (`-O3` plus the per-compiler optimisation
+profile in `fpm.toml`), so pass the switch rather than the directive.
 
 > **Note:** Each `--<option>` maps to an uppercased, `TOX_`-prefixed variable with non-alphanumeric characters replaced by underscores — e.g. `--override-flags` becomes `TOX_OVERRIDE_FLAGS`. Passing `--<option>=<value>` sets that value (a bare flag sets `1`), so any option can equivalently be supplied as an environment variable. An explicit `--<option>` always overrides the corresponding variable.
 
@@ -362,7 +379,7 @@ If `gdb` is not installed on your system, install it first. For command referenc
 
 `test_runner.sh` accepts all of the [build options](#build-options) above, plus a few test-specific ones:
 
-* `--skip-kinds-test` — skip the compile-time check that C types match the Fortran kinds. Handy to avoid the extra clean build it otherwise triggers, since the check always passes on an unchanged platform.
+* `--skip-kinds-test` — skip the runs that *prove* `f42_safeguard`'s kind guards still fire, each of which forces a mismatch with a `TEST_KIND_MISMATCH_*` directive and expects the build to fail. Handy to avoid the extra clean builds they trigger, and safe on an unchanged platform. It does not disable the guards themselves — those are compiled into `f42_safeguard` on every build, whatever options are passed.
 * `--reuse-mod-files` — keep `fpm`'s test module files instead of removing them before each run. Speeds up test recompilation; use when debugging tests.
 * `--test-target=<target>` — select the test target from `fpm.toml` (currently only `run_tests`, which is the default).
 * `--keep-files` — keep the temporary files the runner creates in the repo root (removed by default).
