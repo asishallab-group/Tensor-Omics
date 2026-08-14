@@ -215,6 +215,101 @@ previous generator did. It makes every caller in every language do bool→int→
 
 ---
 
+## Decision: a string array crosses as a fixed-width char matrix, not `char**`
+
+A Fortran `character(len=n), dimension(m)` is **one contiguous block** of `n*m` bytes. C's
+idiomatic `char*[]` is an array of *pointers* to scattered blocks. There is no zero-copy
+bridge between those two memory models, so the wire format is the shape both languages can
+express contiguously: a column-major `strlen x n_strings` matrix of
+`character(len=1, kind=c_char)`, one column per string, plus `strlen` as its own argument
+because a `char*` carries no length.
+
+Each binding pays a different price for that, and neither pays much. NumPy's fixed-width `S`
+dtype *is* the layout, byte for byte, so Python passes `arr.itemsize` as the `strlen` and
+copies nothing. R's `STRSXP` is an array of pointers to scattered `CHARSXP`s, so `tox_char_in`
+genuinely packs it into a `len x n` buffer.
+
+The cost is padding to the longest string, which is why a ragged array of mostly-short IDs
+carries the longest one's width throughout. That is inherent to the format; the alternative is
+an offsets array, which is a different and much larger design.
+
+**Fixed-width padded blocks are the normal C representation for bulk string data**, not an
+oddity of this project: HDF5 fixed-length string datatypes, Arrow's `FixedSizeBinary`, tar and
+FITS headers, `sockaddr_un.sun_path`, and NumPy's own `S`/`U` dtypes are all exactly this. For
+*arrays* of strings it is essentially the only zero-copy option in C too.
+
+---
+
+## Finding: a fixed-length character view of that buffer is portable; a deferred-length one is not
+
+Today the wrapper converts the matrix into `character(len=:), allocatable, dimension(:)` with
+`c_char_2d_as_string`, which scans each column for `c_null_char` and copies. That conversion
+could be replaced by a pointer remap costing nothing: `character(len=n), dimension(m)` and
+`character(len=1), dimension(n, m)` have **identical layout** -- contiguous, column-major,
+string *i* at bytes `[(i-1)n+1 .. i*n]` -- so the view is pure reinterpretation.
+
+Probed on 2026-08-14 against gfortran 16.1 and ifx 2026.1, at default, `-std=f2018`/`-stand
+f18` and `-std=f2023`/`-stand f23`:
+
+| form | gfortran | ifx |
+|---|---|---|
+| `c_f_pointer` to `character(len=n), pointer` (scalar) | OK, no diagnostics | OK, no diagnostics |
+| `c_f_pointer` to `character(len=n), pointer :: v(:)` from an assumed-size `dimension(strlen,*)` dummy, `intent(in)` and `intent(out)` | OK, no diagnostics | OK, no diagnostics |
+| `c_f_pointer` to `character(len=:), pointer` (deferred) | compiles, **empty string** | compiles, **SIGSEGV** |
+| `c_f_strpointer` (F2023) | **absent from `iso_c_binding`** | works, but warns #8893 even at `-stand f23` |
+
+**Never remap onto a deferred-length pointer.** It compiles clean on both compilers at every
+standard level, with no warning, and then produces two different wrong answers. If this shape
+is ever written it must be caught by review, because no compiler will catch it.
+
+`c_f_strpointer` is the route F2023 added for exactly this, and it is not usable: the current
+gfortran release does not have it at all, and ifx does not consider it standard even under its
+own F2023 flag.
+
+**On conformance.** By the letter of F2018 a `character(len=n)` scalar with `n > 1` is not an
+interoperable *type*, so `c_f_pointer` onto one is arguably outside the standard. The reason is
+not NUL-termination -- C has no string type at all, and `char[n]` and `character(len=n)` have
+exactly the same layout. It is that C's type system has no length parameter, so the
+correspondence is one Fortran object to *n* C objects, and interoperability is defined between
+types. That is why the len>1 allowance exists only as a **dummy-argument** rule for `bind(C)`
+procedures, which `c_f_pointer` cannot reach. There is no ABI question here, only a formal one,
+which is why every compiler does the obvious thing.
+
+The fully conforming fallback, if that ever matters, is for the implementation to take the 2-D
+`character(len=1)` buffer directly -- no pointer, no remap, and no conversion either, at the
+cost of clumsier string handling inside the kernel.
+
+**What adopting it would require.** The conversion trims at the first NUL; a remap yields the
+full padded width. Fortran's own convention is *blank* padding -- `trim`, `len_trim` and string
+comparison all work on blanks, not NULs -- so the bindings would have to blank-pad instead
+(`memset(buf, ' ', total)` in `tox_char_in`/`tox_char_alloc`, and an explicit pad on the NumPy
+side). Then the view is semantically free as well as zero-copy. The trade is that a value
+genuinely ending in blanks stops round-tripping, which for gene and family IDs is no loss.
+
+That change would delete all 53 conversion call sites and the four procedures behind them --
+`c_char_{1d,2d}_as_string` and `string_as_c_char_{1d,2d}` -- which are also the only
+allocating procedures in `tox_conversions`.
+
+The probe, reduced to the case that decides it:
+
+```fortran
+subroutine take_in(strlen, n_strings, arr)
+    integer(c_int), intent(in) :: strlen, n_strings
+    character(kind=c_char, len=1), dimension(strlen, *), intent(in), target :: arr
+    character(len=strlen), pointer :: view(:)
+    integer :: i
+
+    call c_f_pointer(c_loc(arr), view, [n_strings])
+    do i = 1, n_strings
+        print '(a,i0,3a)', 'in', i, '=[', trim(view(i)), ']'
+    end do
+end subroutine take_in
+```
+
+Re-run it against any new compiler before relying on this.
+
+---
+
 ## Decision: kinds map through an explicit table
 
 A kind with no entry in the table is an **error**, not a guess. Guessing produces a
