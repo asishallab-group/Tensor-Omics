@@ -39,3 +39,6 @@
 *.smod
 *.o
 *.a
+*.so
+*.dll
+*.dylib

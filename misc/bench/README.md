@@ -7,14 +7,17 @@ machine rather than re-argued.
 | directory | question |
 |---|---|
 | [`logical-kinds/`](logical-kinds/) | What does the `c_bool` marshalling copy at the C boundary cost, and does computing a mask in `c_bool` cost more than in the default kind? |
+| [`r-binding-backend/`](r-binding-backend/) | Should the R binding go through Rcpp, cpp11, pure C `.Call`, or `.C`? |
 
 ## Layout of a benchmark
 
 ```
 <question>/
     RESULTS.md          the numbers, when they were taken, on what, and what they meant
-    run_bench.sh        builds and runs every configuration; the whole entry point
+    run_bench.sh        one entry point that builds and runs every configuration,
+      (or bench.R)      named for whatever language drives it
     bench_*.f90         the sources
+    ...
 ```
 
 `RESULTS.md` is the point of the directory. A benchmark whose numbers live only in a terminal
