@@ -88,7 +88,7 @@ The generator always emits all of it; these decide what the *build* keeps. Pass 
 
 | Directive | Drops | Notes |
 |---|---|---|
-| `NO_C_BINDING` | the `bind(C)` wrappers, and the R shims with them | they call the `bind(C)` symbols; takes the `f42_safeguard` dependency with it |
+| `NO_C_BINDING` | the `bind(C)` wrappers, and the R shims with them | they call the `bind(C)` symbols. It does not disarm the kind guards: `f42_safeguard` compiles unconditionally, and the hand-written sources still name C kinds without it |
 | `NO_R_BINDING` | the R `.Call` shims alone | keeps the C ABI for Python and direct C use; the build auto-disables this one with a warning when R is not installed |
 | `NO_INPUT_VALIDATION` | the generated wrappers' input checks | see below |
 

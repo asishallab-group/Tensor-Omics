@@ -803,18 +803,52 @@ use f42_sort_impl, only: sort_array
 \section{The \texttt{f42\_safeguard} Module}
 % =============================================================================
 
-Any module that crosses the C boundary and treats \texttt{c\_int} as \texttt{int32} or
-\texttt{c\_double} as \texttt{real64} must \texttt{use f42\_safeguard}. It contains compile-time
-assertions that those kind constants really are equivalent on the target platform:
+\textbf{Any module that names a C kind must \texttt{use f42\_safeguard}} --- any
+\texttt{c\_bool}, \texttt{c\_int}, \texttt{c\_char} or the rest, whether or not the module has a
+\texttt{bind(C)} interface of its own. The code generator enforces this; a module that names one
+without the \texttt{use} is a build error.
 
 \begin{lstlisting}[language=Fortran]
-use f42_safeguard   ! guarantees c_int == int32, c_double == real64, c_double_complex == real64
+module tox_thing_impl
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
 \end{lstlisting}
 
-The generated \texttt{bind(C)} wrappers carry this themselves, so in practice the rule bites only
-where a module declares a \texttt{bind(C)} interface by hand.
+\subsection{What it guards, and against what}
 
-If these kinds do not match, the module fails to compile with a descriptive error, preventing silent ABI (Application Binary Interface) mismatch bugs. The ABI is the low-level contract between compiled code: it specifies how function arguments are laid out in memory, what sizes the types occupy, and how values are returned. When the Fortran kind for \texttt{real64} (8 bytes) does not match the C kind for \texttt{c\_double} on a given platform, data passed through a C wrapper would be misinterpreted silently, producing incorrect results without any runtime error.
+Eight compile-time assertions, of two kinds, because there are two ways a platform can let us
+down.
+
+\textbf{Four equalities} --- \texttt{c\_int == int32}, \texttt{c\_double == real64},
+\texttt{c\_double\_complex == real64}, \texttt{c\_char ==} the default character kind. This is
+the dangerous case: the kind exists, so every declaration compiles, and data crossing a wrapper
+is silently misinterpreted. Nothing else in the build would say a word. These assertions are
+also what let the framework write \texttt{real64} and plain \texttt{character(len=*)} rather than
+converting at the boundary --- the equality is the licence for the cheap spelling.
+
+\textbf{Four existence checks} --- \texttt{c\_bool}, \texttt{c\_size\_t}, \texttt{c\_int64\_t},
+\texttt{c\_signed\_char} are each asserted positive. \texttt{iso\_c\_binding} gives a C kind the
+value \texttt{-1} where the platform has no counterpart, and a negative kind is a compile error
+at every single declaration naming it. For \texttt{c\_bool} that is 152 errors in files that did
+nothing wrong, instead of one here naming the kind that is missing.
+
+\subsection{Why the \texttt{use} is not optional}
+
+The guards fire when \emph{this} module compiles, not when yours does --- so the \texttt{use} is
+not what makes them run. It is what makes them run \emph{first}. A dependency is the only way to
+order a Fortran build, and a module compiled before the safeguard that names a missing kind
+fails with the compiler's message about that kind rather than the guard's message about which
+kind is missing.
+
+That is also why \texttt{f42\_safeguard} depends on nothing but the intrinsic modules, and must
+stay that way. It is a load-bearing property, not tidiness: it is what puts the module at the
+front of every build, and what makes each of the eight guards reachable by the kinds test, which
+forces each mismatch in turn and requires the build to fail.
+
+The rule was learned the hard way. Before logicals moved to \texttt{c\_bool}, the only modules
+naming a C kind were the generated wrappers, every one of which had the \texttt{use}; the sweep
+put C kinds into 39 more compilation units and left the dependency behind. Nothing noticed,
+because on this platform every kind is present and correct.
 
 % =============================================================================
 \section{FORD Documentation}
