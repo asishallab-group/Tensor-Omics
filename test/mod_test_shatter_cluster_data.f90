@@ -1042,32 +1042,33 @@ contains
     end subroutine test_accept_ensemble_invalid_inputs
 
     subroutine test_accept_ensemble_helper_basic()
+
         real(real64) :: observables(5, 4)
         logical :: is_accepted
-        integer(int32) :: ierr
 
         observables = 0.0_real64
 
         call accept_ensemble_helper(observables, 1_int32, alpha_accept=0.5_real64, &
-                                    is_accepted=is_accepted, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "helper iter 1 ierr control")
+                                    is_accepted=is_accepted)
         call assert_true(is_accepted, "helper iter 1 must always accept")
 
         observables(3, 1) = 1.0_real64
         observables(3, 2) = 1.2_real64
+
         call accept_ensemble_helper(observables, 2_int32, alpha_accept=0.5_real64, &
-                                    is_accepted=is_accepted, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "helper iter 2 ierr control")
+                                    is_accepted=is_accepted)
         call assert_true(is_accepted, "helper accepts smooth fold change")
 
         observables(3, 3) = 2.0_real64
+
         call accept_ensemble_helper(observables, 3_int32, alpha_accept=0.5_real64, &
-                                    is_accepted=is_accepted, ierr=ierr)
-        call assert_equal_int(ierr, ERR_OK, "helper iter 3 ierr control")
+                                    is_accepted=is_accepted)
         call assert_false(is_accepted, "helper rejects sharp heterogeneity jump")
+
     end subroutine test_accept_ensemble_helper_basic
 
     subroutine test_obtain_ensembles_basic()
+
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 6_int32
 
@@ -1086,15 +1087,18 @@ contains
         vectors(:, 5) = [100.0_real64, 100.0_real64]
         vectors(:, 6) = [200.0_real64, 200.0_real64]
 
-        density_labels = [10.0_real64, 10.0_real64, 10.0_real64, 10.0_real64, 1.0_real64, 1.0_real64]
+        density_labels = [10.0_real64, 10.0_real64, 10.0_real64, 10.0_real64, &
+                          1.0_real64, 1.0_real64]
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, &
+                            tmp_r_stack, tmp_rec_stack, ierr)
 
         call identify_ensemble_seeds_alloc(density_labels, n_vecs, 0.70_real64, &
                                            sorted_perm, n_seeds, seed_mask, ierr)
+
+        allocate (raw_matrix(n_vecs, n_seeds))
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
                                     density_labels, sorted_perm(1:n_seeds), n_seeds, &
@@ -1111,18 +1115,21 @@ contains
 
         call assert_false(any(merged_matrix(5, :)), "vector 5 is background noise")
         call assert_false(any(merged_matrix(6, :)), "vector 6 is background noise")
+
     end subroutine test_obtain_ensembles_basic
 
     subroutine test_obtain_ensembles_unmerged()
+
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 4_int32
+        integer(int32), parameter :: n_seeds = 4_int32
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, n_ensembles
-        integer(int32) :: seed_indices(4)
-        logical, allocatable :: ensemble_matrix(:, :)
+        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: seed_indices(n_seeds), ierr, n_ensembles
+        logical :: ensemble_matrix(n_vecs, n_seeds)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
         vectors(:, 2) = [0.0_real64, 0.1_real64]
@@ -1134,28 +1141,34 @@ contains
         seed_indices = [1_int32, 2_int32, 3_int32, 4_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, &
+                            tmp_r_stack, tmp_rec_stack, ierr)
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, 4_int32, &
+                                    density_labels, seed_indices, n_seeds, &
                                     r=0.5_real64, ensemble_matrix=ensemble_matrix, &
                                     n_ensembles=n_ensembles, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "unmerged obtain_ensembles execution check")
-        call assert_true(allocated(ensemble_matrix), "ensemble matrix should be allocated")
-        call assert_equal_int(n_ensembles, 4_int32, "unmerged run keeps all grown seed ensembles")
-        call assert_equal_int(size(ensemble_matrix, 1), n_vecs, "row dimension matches n_vectors")
-        call assert_equal_int(size(ensemble_matrix, 2), 4_int32, "column dimension matches n_ensembles")
+        call assert_equal_int(n_ensembles, n_seeds, &
+                              "unmerged run keeps all grown seed ensembles")
+        call assert_equal_int(size(ensemble_matrix, 1), n_vecs, &
+                              "row dimension matches n_vectors")
+        call assert_equal_int(size(ensemble_matrix, 2), n_seeds, &
+                              "column dimension matches n_seeds")
+
     end subroutine test_obtain_ensembles_unmerged
 
     subroutine test_obtain_ensembles_zero_seeds()
+
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 3_int32
+        integer(int32), parameter :: n_seeds = 0_int32
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), seed_indices(1), ierr, n_ensembles
-        logical, allocatable :: ensemble_matrix(:, :)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
+        integer(int32) :: seed_indices(1), ierr, n_ensembles
+        logical :: ensemble_matrix(n_vecs, n_seeds)
 
         vectors = 0.0_real64
         density_labels = 1.0_real64
@@ -1164,23 +1177,29 @@ contains
         seed_indices = [1_int32]
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, 0_int32, &
+                                    density_labels, seed_indices, n_seeds, &
                                     r=0.5_real64, ensemble_matrix=ensemble_matrix, &
                                     n_ensembles=n_ensembles, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "zero seeds execution check")
-        call assert_true(allocated(ensemble_matrix), "ensemble_matrix allocated for 0 seeds")
         call assert_equal_int(n_ensembles, 0_int32, "n_ensembles must equal 0")
-        call assert_equal_int(size(ensemble_matrix, 2), 0_int32, "column count must be 0")
+        call assert_equal_int(size(ensemble_matrix, 1), n_vecs, &
+                              "row count must equal n_vectors")
+        call assert_equal_int(size(ensemble_matrix, 2), 0_int32, &
+                              "column count must be 0")
+
     end subroutine test_obtain_ensembles_zero_seeds
 
     subroutine test_obtain_ensembles_invalid_inputs()
+
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 3_int32
+        integer(int32), parameter :: n_seeds = 1_int32
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs)
-        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), seed_indices(1), ierr, n_ensembles
-        logical, allocatable :: ensemble_matrix(:, :)
+        integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
+        integer(int32) :: seed_indices(n_seeds), ierr, n_ensembles
+        logical :: ensemble_matrix(n_vecs, n_seeds)
 
         vectors = 0.0_real64
         density_labels = 1.0_real64
@@ -1189,40 +1208,46 @@ contains
         seed_indices = [1_int32]
 
         seed_indices(1) = 4_int32
+
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, 1_int32, &
+                                    density_labels, seed_indices, n_seeds, &
                                     r=0.5_real64, ensemble_matrix=ensemble_matrix, &
                                     n_ensembles=n_ensembles, ierr=ierr)
+
         call assert_true(ierr /= ERR_OK, "seed_indices out of bounds must fail")
 
         seed_indices(1) = 1_int32
+
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
-                                    density_labels, seed_indices, 1_int32, &
+                                    density_labels, seed_indices, n_seeds, &
                                     r=-0.5_real64, ensemble_matrix=ensemble_matrix, &
                                     n_ensembles=n_ensembles, ierr=ierr)
+
         call assert_true(ierr /= ERR_OK, "negative r must fail")
+
     end subroutine test_obtain_ensembles_invalid_inputs
 
     subroutine test_obtain_ensembles_500_vectors()
+
         integer(int32), parameter :: n_dims = 2_int32
         integer(int32), parameter :: n_vecs = 500_int32
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
+        real(real64) :: angle, radius
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
         integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
         integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
         integer(int32) :: ierr, n_raw, n_merged, i_vec
         integer(int32) :: sorted_perm(n_vecs), n_seeds
         logical :: seed_mask(n_vecs)
-        real(real64) :: angle, radius
-        character(len=128) :: assert_msg
         logical, allocatable :: raw_matrix(:, :), merged_matrix(:, :)
+        character(len=128) :: assert_msg
 
         do i_vec = 1, 150
             angle = real(i_vec, real64)*0.15_real64
             radius = real(mod(i_vec, 15_int32) + 1_int32, real64)*0.1_real64
-            vectors(1, i_vec) = 0.0_real64 + radius*cos(angle)
-            vectors(2, i_vec) = 0.0_real64 + radius*sin(angle)
+            vectors(1, i_vec) = radius*cos(angle)
+            vectors(2, i_vec) = radius*sin(angle)
         end do
 
         do i_vec = 151, 300
@@ -1240,21 +1265,26 @@ contains
         end do
 
         do i_vec = 451, 500
-            vectors(1, i_vec) = 200.0_real64 + real(i_vec - 450_int32, real64)*10.0_real64
-            vectors(2, i_vec) = 200.0_real64 + real(i_vec - 450_int32, real64)*10.0_real64
+            vectors(1, i_vec) = 200.0_real64 + &
+                                real(i_vec - 450_int32, real64)*10.0_real64
+            vectors(2, i_vec) = 200.0_real64 + &
+                                real(i_vec - 450_int32, real64)*10.0_real64
         end do
 
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
-                            tmp_rec_stack, ierr)
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, &
+                            tmp_r_stack, tmp_rec_stack, ierr)
 
         call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, 0.5_real64, &
-                                               dimension_order, kd_indices, density_labels, ierr)
+                                               dimension_order, kd_indices, &
+                                               density_labels, ierr)
 
         call identify_ensemble_seeds_alloc(density_labels, n_vecs, 0.15_real64, &
                                            sorted_perm, n_seeds, seed_mask, ierr)
+
+        allocate (raw_matrix(n_vecs, n_seeds))
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
                                     density_labels, sorted_perm(1:n_seeds), n_seeds, &
@@ -1263,16 +1293,22 @@ contains
 
         call assert_equal_int(ierr, ERR_OK, "obtain_ensembles 500 execution check")
 
-        call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, min_intersection=1_int32, &
-                                   merged_matrix=merged_matrix, n_ensembles=n_merged, ierr=ierr)
+        call merge_ensembles_alloc(raw_matrix, n_vecs, n_raw, &
+                                   min_intersection=1_int32, &
+                                   merged_matrix=merged_matrix, &
+                                   n_ensembles=n_merged, ierr=ierr)
 
         call assert_equal_int(ierr, ERR_OK, "merge_ensembles 500 execution check")
-        call assert_equal_int(n_merged, 3_int32, "expected 3 distinct merged clusters")
+        call assert_equal_int(n_merged, 3_int32, &
+                              "expected 3 distinct merged clusters")
 
         do i_vec = 451, 500
-            write (assert_msg, '(A,I0)') "test_obtain_ensembles_500_vectors: background noise verification at index: ", i_vec
+            write (assert_msg, '(A,I0)') &
+                "test_obtain_ensembles_500_vectors: background noise verification at index: ", &
+                i_vec
             call assert_false(any(merged_matrix(i_vec, :)), assert_msg)
         end do
+
     end subroutine test_obtain_ensembles_500_vectors
 
     subroutine test_merge_ensembles_basic()

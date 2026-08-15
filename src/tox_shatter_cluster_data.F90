@@ -1,6 +1,4 @@
 #include "macros.h"
-#define CM_KD_STACK_ENTRY_SIZE 3
-#define CM_KD_TRAVERSAL_STACK_DEPTH 64
 #define CM_OBSERVABLE_COUNT 5
 
 !> Module for managing data structures and geometric calculations.
@@ -9,12 +7,13 @@ module tox_shatter_cluster_data
 
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err, is_err, validate_dimension_size, validate_in_range_real, &
-                          validate_all_in_range_int, validate_in_range_int, ERR_OK, ERR_ALLOC_FAIL, &
+                          validate_all_in_range_int, validate_in_range_int, ERR_ALLOC_FAIL, &
                           ERR_DIM_MISMATCH, ERR_INVALID_INPUT, validate_all_in_range_real
     use tox_gene_centroids, only: mean_vector
     use tox_euclidean_distance, only: euclidean_distance
-    use f42_utils, only: sort_real_heapsort, calc_percentile
-    use f42_kd_tree, only: vicinity_vectors, vicinity_vectors_count
+    use f42_utils, only: sort_real_heapsort, calc_percentile, calc_percentile_helper
+    use f42_kd_tree, only: vicinity_vectors_helper, vicinity_vectors_count_helper, &
+                           KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
     implicit none
     private
     public :: calculate_density_radius_alloc, calculate_density_radius, calculate_density_radius_helper
@@ -136,7 +135,7 @@ contains
         integer(int32), intent(out) :: ierr
         !! Error code
 
-        real(real64)   :: actual_quant, percentile
+        real(real64)   :: actual_quant
         integer(int32) :: i_vec
 
         call set_ok(ierr)
@@ -162,10 +161,8 @@ contains
         !Sorting perm according to distance
         call sort_real_heapsort(tmp_distances, tmp_perm)
 
-        percentile = actual_quant*100.0_real64
-
         ! Extract the adaptive search radius corresponding to the specified distance percentile.
-        call calc_percentile(tmp_distances, tmp_perm, percentile, radius, ierr)
+        call calc_percentile(tmp_distances, tmp_perm, actual_quant, radius, ierr)
 
     end subroutine calculate_density_radius_helper
 
@@ -205,7 +202,7 @@ contains
         call validate_in_range_real(r, ierr, min=0.0_real64)
         if (is_err(ierr)) return
 
-        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors))
+        M_ALLOCATE(tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors))
 
         call calculate_labels_as_density(vectors, n_dimensions, n_vectors, r, &
                                          dimension_order, kd_indices, tmp_stack, &
@@ -230,7 +227,7 @@ contains
         !! Dimension split order array tracking the tree structure
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for tree traversal
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output density tracker matching individual vector slots
@@ -273,7 +270,7 @@ contains
         !! Sequence array tracking tree split axes by variance
         integer(int32), intent(in) :: kd_indices(n_vectors)
         !! KD-tree index sequence array computed via [[f42_kd_tree(module):build_kd_index(subroutine)]].
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for tree traversal
         real(real64), intent(out) :: label_densities(n_vectors)
         !! Output array storing generated density scalars
@@ -289,9 +286,9 @@ contains
             local(neighbor_count)
 
             ! Query point count directly into thread-local scalar
-            call vicinity_vectors_count(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
-                                        dimension_order, kd_indices, tmp_stack(:, :, i_vec), &
-                                        neighbor_count)
+            call vicinity_vectors_count_helper(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
+                                               dimension_order, kd_indices, tmp_stack(:, :, i_vec), &
+                                               neighbor_count)
 
             label_densities(i_vec) = real(neighbor_count, real64)
         end do
@@ -413,7 +410,7 @@ contains
             sorted_perm(i) = tmp_perm(n_vectors - i + 1_int32)
         end do
 
-        target_percentile = 100.0_real64 - (actual_t_percentile*100.0_real64)
+        target_percentile = 1.0_real64 - actual_t_percentile
         call calc_percentile(density_labels, tmp_perm, target_percentile, threshold_val, ierr)
         if (is_err(ierr)) return
 
@@ -500,7 +497,7 @@ contains
         end if
 
         ! Allocate preallocated workspaces
-        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors))
+        M_ALLOCATE(tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors))
         M_ALLOCATE(tmp_vicinity_mask(n_vectors, n_vectors))
         M_ALLOCATE(tmp_perm(n_vectors))
         M_ALLOCATE(tmp_abs_diff(n_vectors))
@@ -536,7 +533,7 @@ contains
         !! Density labels for all vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
         real(real64), intent(in) :: alpha_mad
         !! Multiplier factor for MAD density compatibility threshold
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for parallel tree traversal
         logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors)
         !! Preallocated logical matrix tracking neighbor mappings
@@ -565,7 +562,7 @@ contains
         call grow_ensemble_helper(vectors, n_dimensions, n_vectors, ensemble_mask, &
                                   r, dimension_order, kd_indices, density_labels, &
                                   alpha_mad, tmp_stack, tmp_vicinity_mask, &
-                                  tmp_perm, tmp_abs_diff, ierr)
+                                  tmp_perm, tmp_abs_diff)
 
     end subroutine grow_ensemble
 
@@ -573,7 +570,7 @@ contains
     pure subroutine grow_ensemble_helper(vectors, n_dimensions, n_vectors, ensemble_mask, &
                                          r, dimension_order, kd_indices, density_labels, &
                                          alpha_mad, tmp_stack, tmp_vicinity_mask, &
-                                         tmp_perm, tmp_abs_diff, ierr)
+                                         tmp_perm, tmp_abs_diff)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -593,7 +590,7 @@ contains
         !! Density labels for all vectors [[tox_shatter_cluster_data(module):calculate_labels_as_density_alloc(subroutine)]].
         real(real64), intent(in) :: alpha_mad
         !! Multiplier factor for MAD density compatibility threshold
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Preallocated workspace stack for parallel tree traversal
         logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors)
         !! Preallocated logical matrix tracking neighbor mappings
@@ -601,22 +598,17 @@ contains
         !! Preallocated workspace array for sorting and percentiles
         real(real64), intent(inout) :: tmp_abs_diff(n_vectors)
         !! Preallocated workspace array for MAD calculation
-        integer(int32), intent(out) :: ierr
-        !! Error code
 
         integer(int32) :: i_vec, j, i_member, k, n_active
         logical :: is_neighbor
         real(real64) :: median_ambient, mad_ambient, ensemble_center_density, max_allowed_dev
-
-        call set_ok(ierr)
 
         ! 1. Calculate ambient median density: median_{i=1..N}(rho_i)
         do concurrent(i_vec=1:n_vectors) shared(tmp_perm)
             tmp_perm(i_vec) = i_vec
         end do
         call sort_real_heapsort(density_labels, tmp_perm)
-        call calc_percentile(density_labels, tmp_perm, 50.0_real64, median_ambient, ierr)
-        if (is_err(ierr)) return
+        call calc_percentile_helper(density_labels, tmp_perm, 0.5_real64, median_ambient)
 
         ! 2. Compute absolute deviation from ambient median for all vectors
         do concurrent(i_vec=1:n_vectors) shared(tmp_abs_diff, density_labels, median_ambient)
@@ -626,8 +618,7 @@ contains
 
         ! 3. Compute MAD_ambient = median_{i=1..N}(|rho_i - median_ambient|)
         call sort_real_heapsort(tmp_abs_diff, tmp_perm)
-        call calc_percentile(tmp_abs_diff, tmp_perm, 50.0_real64, mad_ambient, ierr)
-        if (is_err(ierr)) return
+        call calc_percentile_helper(tmp_abs_diff, tmp_perm, 0.5_real64, mad_ambient)
 
         ! Max absolute deviation allowed from ensemble central density
         max_allowed_dev = alpha_mad*mad_ambient
@@ -645,17 +636,17 @@ contains
             end if
         end do
         call sort_real_heapsort(tmp_abs_diff(1:k), tmp_perm(1:k))
-        call calc_percentile(tmp_abs_diff(1:k), tmp_perm(1:k), 50.0_real64, ensemble_center_density, ierr)
-        if (is_err(ierr)) return
+        call calc_percentile_helper(tmp_abs_diff(1:k), tmp_perm(1:k), 0.5_real64, &
+                                    ensemble_center_density)
 
         ! 5. Parallel Neighborhood Discovery across active members using vicinity_vectors
         do concurrent(i_vec=1:n_vectors) &
             shared(ensemble_mask, vectors, n_dimensions, n_vectors, r, dimension_order, kd_indices, tmp_stack, tmp_vicinity_mask)
 
             if (ensemble_mask(i_vec)) then
-                call vicinity_vectors(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
-                                      dimension_order, kd_indices, tmp_stack(:, :, i_vec), &
-                                      tmp_vicinity_mask(:, i_vec))
+                call vicinity_vectors_helper(vectors(:, i_vec), vectors, n_dimensions, n_vectors, r, &
+                                             dimension_order, kd_indices, tmp_stack(:, :, i_vec), &
+                                             tmp_vicinity_mask(:, i_vec))
             else
                 tmp_vicinity_mask(:, i_vec) = .false.
             end if
@@ -730,9 +721,9 @@ contains
             observables = 0.0_real64
         end if
 
-        call compute_ensemble_observable(ensemble_mask, density_labels, n_vectors, &
-                                         candidate_count, current_iter, observables, &
-                                         actual_t_obs, ierr)
+        call compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
+                                                candidate_count, current_iter, observables, &
+                                                t_observables)
 
     end subroutine compute_ensemble_observable_alloc
 
@@ -769,14 +760,14 @@ contains
 
         call compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
                                                 candidate_count, current_iter, observables, &
-                                                t_observables, ierr)
+                                                t_observables)
 
     end subroutine compute_ensemble_observable
 
     !> Core Implementation for calculating 5-component observables into a 2D history matrix.
     pure subroutine compute_ensemble_observable_helper(ensemble_mask, density_labels, n_vectors, &
                                                        candidate_count, current_iter, observables, &
-                                                       t_observables, ierr)
+                                                       t_observables)
 
         integer(int32), intent(in) :: n_vectors
         !! Number of vectors
@@ -792,14 +783,10 @@ contains
         !! 2D observable trajectory matrix where columns match iteration indices
         integer(int32), intent(in), optional :: t_observables
         !! History tracking depth (defaults to 10; <= 0 represents infinity / all)
-        integer(int32), intent(out) :: ierr
-        !! Error code
 
         integer(int32) :: i_vec, active_count, actual_t_obs, max_cols, zero_count
         real(real64)   :: sum_arithmetic, sum_reciprocal, rho_arith, rho_harm
         real(real64)   :: obs_1, obs_2, obs_3, obs_4, obs_5
-
-        call set_ok(ierr)
 
         max_cols = size(observables, dim=2, kind=int32)
 
@@ -906,14 +893,13 @@ contains
         call validate_in_range_real(alpha_accept, ierr, min=0.0_real64)
         if (is_err(ierr)) return
 
-        call accept_ensemble_helper(observables, current_iter, alpha_accept, &
-                                    is_accepted, ierr)
+        call accept_ensemble_helper(observables, current_iter, alpha_accept, is_accepted)
 
     end subroutine accept_ensemble
 
     !> Core Implementation for decision rule evaluating step acceptance.
     pure subroutine accept_ensemble_helper(observables, current_iter, alpha_accept, &
-                                           is_accepted, ierr)
+                                           is_accepted)
 
         integer(int32), intent(in) :: current_iter
         !! Current growth iteration index (1-based)
@@ -923,13 +909,9 @@ contains
         !! Optional log2 fold change acceptance threshold (defaults to 0.5)
         logical, intent(out) :: is_accepted
         !! Output flag indicating step acceptance decision
-        integer(int32), intent(out) :: ierr
-        !! Error code
 
         real(real64)   :: actual_alpha, h_prev, h_curr, log2_fold_change
         integer(int32) :: max_cols, col_curr, col_prev
-
-        call set_ok(ierr)
 
         M_DEFAULT_VAL(alpha_accept, actual_alpha, 0.5_real64)
 
@@ -1007,8 +989,8 @@ contains
         !! Acceptance log2 fold-change threshold (defaults to 0.5)
         integer(int32), intent(in), optional :: t_observables
         !! Observable history depth window (defaults to 10)
-        logical, allocatable, intent(out) :: ensemble_matrix(:, :)
-        !! Output 2D logical matrix [n_vectors x n_seeds] tracking grown raw ensembles
+        logical, intent(out) :: ensemble_matrix(n_vectors, n_seeds)
+        !! Preallocated output matrix [n_vectors x n_seeds] tracking grown raw ensembles
         integer(int32), intent(out) :: n_ensembles
         !! Total count of extracted raw ensembles (equals n_seeds)
         integer(int32), intent(out) :: ierr
@@ -1038,7 +1020,6 @@ contains
 
         ! Handle zero seeds edge-case cleanly up-front
         if (n_seeds == 0_int32) then
-            M_ALLOCATE(ensemble_matrix(n_vectors, 0_int32))
             n_ensembles = 0_int32
             return
         end if
@@ -1085,14 +1066,13 @@ contains
         end if
 
         ! Allocate per-seed parallel growth workspaces
-        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors, n_seeds))
+        M_ALLOCATE(tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors, n_seeds))
         M_ALLOCATE(tmp_vicinity_mask(n_vectors, n_vectors, n_seeds))
         M_ALLOCATE(tmp_perm(n_vectors, n_seeds))
         M_ALLOCATE(tmp_abs_diff(n_vectors, n_seeds))
         M_ALLOCATE(tmp_observables(CM_OBSERVABLE_COUNT, required_cols, n_seeds))
         M_ALLOCATE(tmp_current_mask(n_vectors, n_seeds))
         M_ALLOCATE(tmp_backup_mask(n_vectors, n_seeds))
-        M_ALLOCATE(ensemble_matrix(n_vectors, n_seeds))
 
         call obtain_ensembles(vectors, n_dimensions, n_vectors, dimension_order, &
                               kd_indices, density_labels, seed_indices, n_seeds, &
@@ -1136,7 +1116,7 @@ contains
         !! Acceptance log2 fold-change threshold
         integer(int32), intent(in) :: t_observables
         !! History tracking depth for observables
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors, n_seeds)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors, n_seeds)
         !! Workspace stack for tree traversal per seed thread
         logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors, n_seeds)
         !! Workspace matrix for neighborhood mapping per seed thread
@@ -1184,7 +1164,7 @@ contains
                                      r, alpha_mad, alpha_accept, t_observables, &
                                      tmp_stack, tmp_vicinity_mask, tmp_perm, &
                                      tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                     tmp_backup_mask, ensemble_matrix, n_ensembles, ierr)
+                                     tmp_backup_mask, ensemble_matrix, n_ensembles)
 
     end subroutine obtain_ensembles
 
@@ -1194,7 +1174,7 @@ contains
                                             r, alpha_mad, alpha_accept, t_observables, &
                                             tmp_stack, tmp_vicinity_mask, tmp_perm, &
                                             tmp_abs_diff, tmp_observables, tmp_current_mask, &
-                                            tmp_backup_mask, ensemble_matrix, n_ensembles, ierr)
+                                            tmp_backup_mask, ensemble_matrix, n_ensembles)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -1220,7 +1200,7 @@ contains
         !! Acceptance log2 fold-change threshold
         integer(int32), intent(in) :: t_observables
         !! History tracking depth for observables
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors, n_seeds)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors, n_seeds)
         !! Workspace stack for tree traversal per seed thread
         logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors, n_seeds)
         !! Workspace matrix for neighborhood mapping per seed thread
@@ -1238,12 +1218,8 @@ contains
         !! Output matrix storing unmerged grown ensemble masks
         integer(int32), intent(out) :: n_ensembles
         !! Total count of extracted raw ensembles (equals n_seeds)
-        integer(int32), intent(out) :: ierr
-        !! Error status flag
 
-        integer(int32) :: i_seed, local_ierr
-
-        call set_ok(ierr)
+        integer(int32) :: i_seed
 
         ensemble_matrix = .false.
 
@@ -1252,11 +1228,7 @@ contains
             shared(vectors, n_dimensions, n_vectors, dimension_order, kd_indices, &
                    density_labels, seed_indices, r, alpha_mad, alpha_accept, &
                    t_observables, tmp_stack, tmp_vicinity_mask, tmp_perm, &
-                   tmp_abs_diff, tmp_observables, tmp_current_mask, tmp_backup_mask, ensemble_matrix) &
-            local(local_ierr) &
-            reduce(max:ierr)
-
-            local_ierr = ERR_OK
+                   tmp_abs_diff, tmp_observables, tmp_current_mask, tmp_backup_mask, ensemble_matrix)
 
             call grow_single_seed_helper(vectors, n_dimensions, n_vectors, dimension_order, &
                                          kd_indices, density_labels, seed_indices(i_seed), &
@@ -1264,9 +1236,8 @@ contains
                                          tmp_stack(:, :, :, i_seed), tmp_vicinity_mask(:, :, i_seed), &
                                          tmp_perm(:, i_seed), tmp_abs_diff(:, i_seed), &
                                          tmp_observables(:, :, i_seed), tmp_current_mask(:, i_seed), &
-                                         tmp_backup_mask(:, i_seed), ensemble_matrix(:, i_seed), local_ierr)
+                                         tmp_backup_mask(:, i_seed), ensemble_matrix(:, i_seed))
 
-            ierr = max(ierr, local_ierr)
         end do
 
         n_ensembles = n_seeds
@@ -1279,7 +1250,7 @@ contains
                                             r, alpha_mad, alpha_accept, t_observables, &
                                             tmp_stack, tmp_vicinity_mask, &
                                             tmp_perm, tmp_abs_diff, tmp_observables, &
-                                            current_mask, backup_mask, out_mask, ierr)
+                                            current_mask, backup_mask, out_mask)
 
         integer(int32), intent(in) :: n_dimensions
         !! Number of dimensions
@@ -1303,7 +1274,7 @@ contains
         !! Acceptance log2 fold-change threshold
         integer(int32), intent(in) :: t_observables
         !! History tracking depth for observables
-        integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH, n_vectors)
+        integer(int32), intent(inout) :: tmp_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH, n_vectors)
         !! Workspace stack for tree traversal
         logical, intent(inout) :: tmp_vicinity_mask(n_vectors, n_vectors)
         !! Workspace matrix for neighborhood mapping
@@ -1319,13 +1290,9 @@ contains
         !! Workspace array backing up prior iteration state
         logical, intent(out) :: out_mask(n_vectors)
         !! Output boolean mask for grown single-seed ensemble
-        integer(int32), intent(out) :: ierr
-        !! Error status flag
 
         integer(int32) :: iter, prev_count, curr_count, candidate_count
         logical :: is_growing, is_accepted
-
-        call set_ok(ierr)
 
         current_mask = .false.
         current_mask(seed_idx) = .true.
@@ -1335,7 +1302,7 @@ contains
         call compute_ensemble_observable_helper(current_mask, density_labels, &
                                                 n_vectors, 0_int32, iter, &
                                                 tmp_observables, &
-                                                t_observables, ierr)
+                                                t_observables)
 
         is_growing = .true.
         do while (is_growing)
@@ -1346,7 +1313,7 @@ contains
                                       r, dimension_order, kd_indices, density_labels, &
                                       alpha_mad, tmp_stack, &
                                       tmp_vicinity_mask, &
-                                      tmp_perm, tmp_abs_diff, ierr)
+                                      tmp_perm, tmp_abs_diff)
 
             curr_count = count(current_mask)
             candidate_count = curr_count - prev_count
@@ -1361,10 +1328,10 @@ contains
             call compute_ensemble_observable_helper(current_mask, density_labels, &
                                                     n_vectors, candidate_count, iter, &
                                                     tmp_observables, &
-                                                    t_observables, ierr)
+                                                    t_observables)
 
             call accept_ensemble_helper(tmp_observables, iter, &
-                                        alpha_accept, is_accepted, ierr)
+                                        alpha_accept, is_accepted)
 
             if (.not. is_accepted) then
                 current_mask = backup_mask

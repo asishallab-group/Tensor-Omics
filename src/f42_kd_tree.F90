@@ -7,10 +7,16 @@ module f42_kd_tree
     use f42_utils, only: sort_array
     use tox_euclidean_distance, only: euclidean_distance
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: ERR_INVALID_INPUT, ERR_DIM_MISMATCH, set_ok, set_err_once, is_ok, validate_dimension_size
+    use tox_errors, only: ERR_INVALID_INPUT, ERR_DIM_MISMATCH, ERR_ALLOC_FAIL, &
+                          set_ok, set_err, set_err_once, is_ok, is_err, &
+                          validate_dimension_size, validate_all_in_range_int, &
+                          validate_in_range_real
     implicit none
     private
-    public :: build_kd_index, build_spherical_kd, get_kd_point, vicinity_vectors, vicinity_vectors_count
+    public :: build_kd_index, build_spherical_kd, get_kd_point
+    public :: vicinity_vectors_alloc, vicinity_vectors_helper, vicinity_vectors_count_alloc, vicinity_vectors_count_helper
+    integer(int32), parameter, public :: KD_STACK_ENTRY_SIZE = CM_KD_STACK_ENTRY_SIZE
+    integer(int32), parameter, public :: KD_TRAVERSAL_STACK_DEPTH = CM_KD_TRAVERSAL_STACK_DEPTH
 
 contains
 
@@ -257,10 +263,54 @@ contains
         point_values = points(:, kd_indices(position))
     end subroutine get_kd_point
 
+    !> Allocating wrapper for finding reference points within a given radius.
+    subroutine vicinity_vectors_alloc(query_point, points, num_dimensions, num_points, r, &
+                                      dimension_order, kd_indices, vicinity_mask, ierr)
+
+        integer(int32), intent(in) :: num_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: num_points
+        !! Total number of points organized in the K-D tree
+        real(real64), intent(in) :: query_point(num_dimensions)
+        !! The coordinate vector used as the center point of the search window
+        real(real64), intent(in) :: points(num_dimensions, num_points)
+        !! Ambient data points matrix used to construct the tree layout
+        real(real64), intent(in) :: r
+        !! Spatial neighborhood search radius threshold
+        integer(int32), intent(in) :: dimension_order(num_dimensions)
+        !! Sequence array tracking tree split axes by variance
+        integer(int32), intent(in) :: kd_indices(num_points)
+        !! K-D tree index sequence
+        logical, intent(out) :: vicinity_mask(num_points)
+        !! Output logical mask flagging points within the search radius boundary
+        integer(int32), intent(out) :: ierr
+        !! Error code
+
+        integer(int32), allocatable :: tmp_stack(:, :)
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(num_dimensions, ierr)
+        call validate_dimension_size(num_points, ierr)
+        call validate_in_range_real(r, ierr, min=0.0_real64)
+        call validate_all_in_range_int(dimension_order, num_dimensions, ierr, &
+                                       min=1_int32, max=num_dimensions)
+        call validate_all_in_range_int(kd_indices, num_points, ierr, &
+                                       min=1_int32, max=num_points)
+
+        if (is_err(ierr)) return
+
+        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH))
+
+        call vicinity_vectors_helper(query_point, points, num_dimensions, num_points, r, &
+                                     dimension_order, kd_indices, tmp_stack, vicinity_mask)
+
+    end subroutine vicinity_vectors_alloc
+
     !> Finds reference points within a given radius around a query coordinate vector.
     !! Sets elements in a logical mask to .true. for points inside the search sphere.
-    pure subroutine vicinity_vectors(query_point, points, num_dimensions, num_points, r, &
-                                     dimension_order, kd_indices, tmp_stack, vicinity_mask)
+    pure subroutine vicinity_vectors_helper(query_point, points, num_dimensions, num_points, r, &
+                                            dimension_order, kd_indices, tmp_stack, vicinity_mask)
 
         integer(int32), intent(in) :: num_dimensions
         !! Number of dimensions
@@ -335,12 +385,56 @@ contains
             end if
         end do
 
-    end subroutine vicinity_vectors
+    end subroutine vicinity_vectors_helper
+
+    !> Allocating wrapper for counting reference points within a given radius.
+    subroutine vicinity_vectors_count_alloc(query_point, points, num_dimensions, num_points, r, &
+                                            dimension_order, kd_indices, neighbor_count, ierr)
+
+        integer(int32), intent(in) :: num_dimensions
+        !! Number of dimensions
+        integer(int32), intent(in) :: num_points
+        !! Total number of points organized in the K-D tree
+        real(real64), intent(in) :: query_point(num_dimensions)
+        !! The coordinate vector used as the center point of the search window
+        real(real64), intent(in) :: points(num_dimensions, num_points)
+        !! Ambient data points matrix used to construct the tree layout
+        real(real64), intent(in) :: r
+        !! Spatial neighborhood search radius threshold
+        integer(int32), intent(in) :: dimension_order(num_dimensions)
+        !! Sequence array tracking tree split axes by variance
+        integer(int32), intent(in) :: kd_indices(num_points)
+        !! K-D tree index sequence
+        integer(int32), intent(out) :: neighbor_count
+        !! Output scalar count of points within the search radius boundary
+        integer(int32), intent(out) :: ierr
+        !! Error code
+
+        integer(int32), allocatable :: tmp_stack(:, :)
+
+        call set_ok(ierr)
+
+        call validate_dimension_size(num_dimensions, ierr)
+        call validate_dimension_size(num_points, ierr)
+        call validate_in_range_real(r, ierr, min=0.0_real64)
+        call validate_all_in_range_int(dimension_order, num_dimensions, ierr, &
+                                       min=1_int32, max=num_dimensions)
+        call validate_all_in_range_int(kd_indices, num_points, ierr, &
+                                       min=1_int32, max=num_points)
+
+        if (is_err(ierr)) return
+
+        M_ALLOCATE(tmp_stack(CM_KD_STACK_ENTRY_SIZE, CM_KD_TRAVERSAL_STACK_DEPTH))
+
+        call vicinity_vectors_count_helper(query_point, points, num_dimensions, num_points, r, &
+                                           dimension_order, kd_indices, tmp_stack, neighbor_count)
+
+    end subroutine vicinity_vectors_count_alloc
 
     !> Finds the number of reference points within a given radius around a query coordinate vector.
     !! Returns a scalar count of matching points inside the sphere.
-    pure subroutine vicinity_vectors_count(query_point, points, num_dimensions, num_points, r, &
-                                           dimension_order, kd_indices, tmp_stack, neighbor_count)
+    pure subroutine vicinity_vectors_count_helper(query_point, points, num_dimensions, num_points, r, &
+                                                  dimension_order, kd_indices, tmp_stack, neighbor_count)
 
         integer(int32), intent(in) :: num_dimensions
         !! Number of dimensions
@@ -415,7 +509,7 @@ contains
             end if
         end do
 
-    end subroutine vicinity_vectors_count
+    end subroutine vicinity_vectors_count_helper
 
 end module f42_kd_tree
 
