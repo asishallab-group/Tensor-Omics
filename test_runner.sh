@@ -4,6 +4,8 @@ source build_utils.sh
 
 init "$@"
 
+generate_code
+
 if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   bash -s -- "$@" <<'EOF'
   source build_utils.sh
@@ -48,10 +50,10 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   stderr "Compiling src/"
-  bash build.sh --clean-build "$@" --compiler="$COMPILER"
+  bash build.sh --clean-build "$@" --skip-code-generation --compiler="$COMPILER"
   check_exit_code "Build failed"
 else
-  bash build.sh "$@" --compiler="$COMPILER"
+  bash build.sh "$@" --compiler="$COMPILER" --skip-code-generation
   check_exit_code "Build failed"
 fi
 

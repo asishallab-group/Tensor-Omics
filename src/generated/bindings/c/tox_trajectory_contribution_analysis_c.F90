@@ -50,7 +50,7 @@ contains
             ierr&
         ) bind(C, name="perform_permutation_test_c")
         use tox_trajectory_contribution_analysis, only: perform_permutation_test
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
@@ -74,12 +74,12 @@ contains
             !! index of sample to compute the permutation contributions for
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_samples`.
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_timepoints, n_permutations), intent(out), target :: local_contributions
             !! Per-timepoint contributions per permutation
         real(c_double), dimension(n_permutations), intent(out), target :: total_contributions
@@ -100,7 +100,7 @@ contains
         M_CHECK_NON_NULL(sample_idx)
         M_CHECK_NON_NULL(n_permutations)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(local_contributions, n_timepoints * n_permutations)
         M_CHECK_ARRAY_NON_NULL(total_contributions, n_permutations)
 
@@ -109,12 +109,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -157,7 +157,7 @@ contains
             ierr&
         ) bind(C, name="perform_permutation_test_expert_c")
         use tox_trajectory_contribution_analysis, only: perform_permutation_test_expert
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
@@ -181,12 +181,12 @@ contains
             !! index of sample to compute the permutation contributions for
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_samples`.
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_timepoints, n_permutations), intent(out), target :: local_contributions
             !! Per-timepoint contributions per permutation
         real(c_double), dimension(n_permutations), intent(out), target :: total_contributions
@@ -211,7 +211,7 @@ contains
         M_CHECK_NON_NULL(sample_idx)
         M_CHECK_NON_NULL(n_permutations)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(local_contributions, n_timepoints * n_permutations)
         M_CHECK_ARRAY_NON_NULL(total_contributions, n_permutations)
         M_CHECK_ARRAY_NON_NULL(tmp_factor, n_timepoints)
@@ -222,12 +222,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -323,7 +323,7 @@ contains
             ierr&
         ) bind(C, name="compute_contributions_c")
         use tox_trajectory_contribution_analysis, only: compute_contributions
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_dims
             !! Number of elements in `factor` and `dependent`
@@ -331,12 +331,12 @@ contains
             !! Factor time series, length n_timepoints
         real(c_double), dimension(n_dims), intent(in), target :: dependent
             !! Dependent variable time series, length n_timepoints
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_dims), intent(out), target :: local_contributions
             !! Per-element contributions
         real(c_double), intent(out), target :: total_contribution
@@ -351,7 +351,7 @@ contains
         M_CHECK_NON_NULL(total_contribution)
         M_CHECK_ARRAY_NON_NULL(factor, n_dims)
         M_CHECK_ARRAY_NON_NULL(dependent, n_dims)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(local_contributions, n_dims)
 
         block
@@ -359,12 +359,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -398,7 +398,7 @@ contains
             ierr&
         ) bind(C, name="compute_all_contributions_c")
         use tox_trajectory_contribution_analysis, only: compute_all_contributions
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
@@ -420,12 +420,12 @@ contains
             !! indices of dependents to compute the contributions for
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_factors`.
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: local_contributions
             !! Per-timepoint contributions per sample-dependent-factor combination
         real(c_double), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: total_contributions
@@ -444,7 +444,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
         M_CHECK_ARRAY_NON_NULL(factor_indices, n_selected_factors)
         M_CHECK_ARRAY_NON_NULL(dependent_indices, n_selected_dependents)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(local_contributions, n_timepoints * n_selected_factors * n_selected_dependents * n_samples)
         M_CHECK_ARRAY_NON_NULL(total_contributions, n_selected_factors * n_selected_dependents * n_samples)
 
@@ -453,12 +453,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -499,7 +499,7 @@ contains
             ierr&
         ) bind(C, name="compute_all_contributions_expert_c")
         use tox_trajectory_contribution_analysis, only: compute_all_contributions_expert
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
@@ -521,12 +521,12 @@ contains
             !! indices of dependents to compute the contributions for
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_factors`.
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: local_contributions
             !! Per-timepoint contributions per sample-dependent-factor combination
         real(c_double), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out), target :: total_contributions
@@ -549,7 +549,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
         M_CHECK_ARRAY_NON_NULL(factor_indices, n_selected_factors)
         M_CHECK_ARRAY_NON_NULL(dependent_indices, n_selected_dependents)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(local_contributions, n_timepoints * n_selected_factors * n_selected_dependents * n_samples)
         M_CHECK_ARRAY_NON_NULL(total_contributions, n_selected_factors * n_selected_dependents * n_samples)
         M_CHECK_ARRAY_NON_NULL(tmp_factors, n_timepoints * n_selected_factors)
@@ -560,12 +560,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -601,7 +601,7 @@ contains
             ierr&
         ) bind(C, name="compute_baselines_factor_dependent_c")
         use tox_trajectory_contribution_analysis, only: compute_baselines_factor_dependent
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_timepoints
             !! Number of timepoints in both factor and dependent arrays
@@ -609,12 +609,12 @@ contains
             !! Factor time series, length n_timepoints
         real(c_double), dimension(n_timepoints), intent(in), target :: dependent
             !! Dependent variable time series, length n_timepoints
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), intent(out), target :: factor_baseline
             !! Computed baseline for factor
         real(c_double), intent(out), target :: dependent_baseline
@@ -630,19 +630,19 @@ contains
         M_CHECK_NON_NULL(dependent_baseline)
         M_CHECK_ARRAY_NON_NULL(factor, n_timepoints)
         M_CHECK_ARRAY_NON_NULL(dependent, n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
 
         block
             character(len=:), pointer :: baseline_mode_f
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -834,7 +834,7 @@ contains
             ierr&
         ) bind(C, name="compute_velocity_acceleration_contributions_c")
         use tox_trajectory_contribution_analysis, only: compute_velocity_acceleration_contributions
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
@@ -844,12 +844,12 @@ contains
             !! number of timepoints
         real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
             !! input position trajectories
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_factors, n_factors, n_samples), intent(out), target :: contrib_velocity
             !! output velocity contributions
         real(c_double), dimension(n_timepoints, n_factors, n_factors, n_samples), intent(out), target :: velocity_contribution_series
@@ -868,7 +868,7 @@ contains
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(contrib_velocity, n_factors * n_factors * n_samples)
         M_CHECK_ARRAY_NON_NULL(velocity_contribution_series, n_timepoints * n_factors * n_factors * n_samples)
         M_CHECK_ARRAY_NON_NULL(contrib_acceleration, n_factors * n_factors * n_samples)
@@ -879,12 +879,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return
@@ -934,7 +934,7 @@ contains
             ierr&
         ) bind(C, name="compute_velocity_acceleration_contributions_expert_c")
         use tox_trajectory_contribution_analysis, only: compute_velocity_acceleration_contributions_expert
-        use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW
+        use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW
 
         integer(c_int), intent(in), target :: n_factors
             !! number of factors
@@ -944,12 +944,12 @@ contains
             !! number of timepoints
         real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
             !! input position trajectories
-        character(len=1, kind=c_char), dimension(4), intent(in), target :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+        character(len=1, kind=c_char), dimension(13), intent(in), target :: baseline_mode
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(c_double), dimension(n_timepoints - 1, n_factors), intent(out), target :: tmp_factors
             !! workspace for factor data (used for velocity and acceleration)
         real(c_double), dimension(n_timepoints - 1), intent(out), target :: tmp_dependent
@@ -974,7 +974,7 @@ contains
         M_CHECK_NON_NULL(n_samples)
         M_CHECK_NON_NULL(n_timepoints)
         M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(baseline_mode, 4)
+        M_CHECK_ARRAY_NON_NULL(baseline_mode, 13)
         M_CHECK_ARRAY_NON_NULL(tmp_factors, (n_timepoints - 1) * n_factors)
         M_CHECK_ARRAY_NON_NULL(tmp_dependent, (n_timepoints - 1))
         M_CHECK_ARRAY_NON_NULL(tmp_contributions, (n_timepoints - 1))
@@ -988,12 +988,12 @@ contains
             baseline_mode_f => c_char_as_view(baseline_mode)
 
             select case (baseline_mode_f)
-                case ("raw")
-                    baseline_mode_mode_f = MODE_RAW
-                case ("mean")
-                    baseline_mode_mode_f = MODE_MEAN
-                case ("min")
-                    baseline_mode_mode_f = MODE_MIN
+                case ("baseline_raw")
+                    baseline_mode_mode_f = MODE_BASELINE_RAW
+                case ("baseline_mean")
+                    baseline_mode_mode_f = MODE_BASELINE_MEAN
+                case ("baseline_min")
+                    baseline_mode_mode_f = MODE_BASELINE_MIN
                 case default
                     call set_err(ierr, ERR_INVALID_INPUT)
                     return

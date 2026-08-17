@@ -48,7 +48,7 @@ contains
             ierr&
         ) bind(C, name="compute_family_scaling_c")
         use tox_get_outliers, only: compute_family_scaling
-        use tox_loess_impl, only: MODE_PLAIN, MODE_ROBUST
+        use tox_get_outliers_impl, only: MODE_PLAIN, MODE_ROBUST
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
@@ -82,10 +82,10 @@ contains
             !! Mode for LOESS fitting
             !! The default value is `'robust'`.
             !!
-            !! | Mode                 | Value                                            |
-            !! |----------------------|--------------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+            !! | Mode                 | Value                                                   |
+            !! |----------------------|---------------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_get_outliers_impl(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_get_outliers_impl(module):MODE_ROBUST(variable)]] |
         integer(c_int), intent(in), target :: n_iters
             !! Number of iterations for robust LOESS fitting
             !! The default value is `3_int32`.
@@ -184,7 +184,7 @@ contains
             ierr&
         ) bind(C, name="compute_family_scaling_expert_c")
         use tox_get_outliers, only: compute_family_scaling_expert
-        use tox_loess_impl, only: MODE_PLAIN, MODE_ROBUST
+        use tox_get_outliers_impl, only: MODE_PLAIN, MODE_ROBUST
 
         integer(c_int), intent(in), target :: n_genes
             !! Total number of genes
@@ -262,10 +262,10 @@ contains
             !! Mode for LOESS fitting
             !! The default value is `'robust'`.
             !!
-            !! | Mode                 | Value                                            |
-            !! |----------------------|--------------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+            !! | Mode                 | Value                                                   |
+            !! |----------------------|---------------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_get_outliers_impl(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_get_outliers_impl(module):MODE_ROBUST(variable)]] |
         integer(c_int), intent(in), target :: n_iters
             !! Number of iterations for robust LOESS fitting
             !! The default value is `3_int32`.

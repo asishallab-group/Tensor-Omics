@@ -177,20 +177,16 @@ contains
             !! Input points
         integer(int32), dimension(:), intent(in) :: kd_indices
             !! KD index array
+            !! DM_MIN(1_int32)
+            !! DM_MAX(size(points, dim=2, kind=int32))
         integer(int32), intent(in) :: position
             !! Position in index
-        real(real64), dimension(:), intent(out) :: point_values
+            !! DM_MIN(1_int32)
+            !! DM_MAX(size(kd_indices, kind=int32))
+        real(real64), dimension(size(points, dim=1, kind=int32)), intent(out) :: point_values
             !! Output point values
         integer(int32), intent(out) :: ierr
             !! Error code
-
-        call set_ok(ierr)
-
-        call validate_in_range_int(position, ierr, min=1_int32, max=size(kd_indices, kind=int32), arg_pos=3_int32)
-        call validate_in_range_int(kd_indices(position), ierr, min=1_int32, max=size(points, dim=2, kind=int32), arg_pos=2_int32)
-        call validate_in_range_int(size(point_values), ierr, min=size(points, dim=1, kind=int32), arg_pos=4_int32)
-
-        if (is_err(ierr)) return
 
         point_values = points(:, kd_indices(position))
     end subroutine get_kd_point

@@ -27,6 +27,11 @@ module tox_get_outliers_impl
 #define CM_FAMILY_N_ITERS_DEFAULT 3_int32
 #define CM_OUTLIER_PERCENTILE_DEFAULT 0.95_real64
 
+    integer(int32), parameter, public :: MODE_PLAIN = 0_int32
+        !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
+    integer(int32), parameter, public :: MODE_ROBUST = 1_int32
+        !! Mode code selecting a robust LOESS fit, for callers that carry the choice as a value
+
 contains
 
     !> summary: Compute family scaling factors (dscale) to normalize distances
@@ -127,8 +132,8 @@ contains
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Plain LOESS fitting | [[tox_loess_impl(module):MODE_PLAIN(variable)]] |
-            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+            !! | Plain LOESS fitting | [[tox_get_outliers_impl(module):MODE_PLAIN(variable)]] |
+            !! | Robust LOESS fitting | [[tox_get_outliers_impl(module):MODE_ROBUST(variable)]] |
         integer(int32), intent(in), optional   :: n_iters
             !! Number of iterations for robust LOESS fitting
             !! DM_DEFAULT(CM_FAMILY_N_ITERS_DEFAULT)

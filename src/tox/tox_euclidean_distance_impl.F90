@@ -9,7 +9,7 @@ module tox_euclidean_distance_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     M_IMPLICIT_NONE
 
-#define DISTANCE_SENTINEL -1.0_real64
+#define CM_DISTANCE_SENTINEL -1.0_real64
 
 contains
 
@@ -51,7 +51,7 @@ contains
         real(real64), dimension(n_tissues, n_genes), intent(in) :: genes
             !! Gene expression matrix (n_tissues × n_genes), column-major
         real(real64), dimension(n_tissues, n_families), intent(in) :: centroids
-            !! Family centroid matrix (n_tissues × n_families), column-major, `DISTANCE_SENTINEL` for unassigned genes
+            !! Family centroid matrix (n_tissues × n_families), column-major, `CM_DISTANCE_SENTINEL` for unassigned genes
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! M_GENE_TO_FAM_DOC(genes)
             !! DM_MIN(1_int32)
@@ -65,7 +65,7 @@ contains
         do concurrent (i_gene = 1:n_genes) local(family_idx) shared(gene_to_fam, n_families, distances, genes, centroids, n_tissues)
             family_idx = gene_to_fam(i_gene)
             if (family_idx < 1 .or. family_idx > n_families) then
-                distances(i_gene) = DISTANCE_SENTINEL  ! Error indicator
+                distances(i_gene) = CM_DISTANCE_SENTINEL  ! Error indicator
                 cycle
             end if
             call euclidean_distance_impl(genes(:, i_gene), centroids(:, family_idx), n_tissues, distances(i_gene))

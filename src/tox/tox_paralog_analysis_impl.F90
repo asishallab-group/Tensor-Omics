@@ -22,12 +22,9 @@ module tox_paralog_analysis_impl
     use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
     M_IMPLICIT_NONE
 
-#define CM_MODE_DOSAGE_PATTERN 0_int32
-#define CM_MODE_SUBFUNC_PATTERN 1_int32
-
-    integer(int32), parameter :: MODE_DOSAGE_PATTERN = CM_MODE_DOSAGE_PATTERN
+    integer(int32), parameter :: MODE_DOSAGE_PATTERN = 0_int32
         !! Code for detecting dosage effect in [[tox_paralog_analysis_impl(module):detect_patterns_impl(subroutine)]]
-    integer(int32), parameter :: MODE_SUBFUNC_PATTERN = CM_MODE_SUBFUNC_PATTERN
+    integer(int32), parameter :: MODE_SUBFUNC_PATTERN = 1_int32
         !! Code for detecting subfunctionalization in [[tox_paralog_analysis_impl(module):detect_patterns_impl(subroutine)]]
 
 #define CM_MASK_CHUNK_COUNT (n_genes + 31) / 32
@@ -95,8 +92,8 @@ contains
         integer(int32), intent(in) :: pattern_mode
             !! used pattern for detection
             !!
-            !! |         Mode         |                                Value                                |          Procedure           |
-            !! |----------------------|---------------------------------------------------------------------|------------------------------|
+            !! |         Mode         |                                 Value                                  |          Procedure           |
+            !! |----------------------|------------------------------------------------------------------------|------------------------------|
             !! |    Dosage Effect     |  [[tox_paralog_analysis_impl(module):MODE_DOSAGE_PATTERN(variable)]]   | detect_dosage_effect         |
             !! | Subfunctionalization |  [[tox_paralog_analysis_impl(module):MODE_SUBFUNC_PATTERN(variable)]]  | detect_subfunctionalization  |
             !!
@@ -223,10 +220,10 @@ contains
         integer(int32), intent(in) :: pattern
             !! used pattern for detection
             !!
-            !! |         Mode         |            Value            |
-            !! |----------------------|-----------------------------|
-            !! |    Dosage Effect     |   CM_MODE_DOSAGE_PATTERN    |
-            !! | Subfunctionalization |   CM_MODE_SUBFUNC_PATTERN   |
+            !! |         Mode         |                                  Value                                   |
+            !! |----------------------|--------------------------------------------------------------------------|
+            !! |    Dosage Effect     |   [[tox_paralog_analysis_impl(module):MODE_DOSAGE_PATTERN(variable)]]    |
+            !! | Subfunctionalization |   [[tox_paralog_analysis_impl(module):MODE_SUBFUNC_PATTERN(variable)]]   |
             !!
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***

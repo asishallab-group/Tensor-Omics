@@ -13,16 +13,13 @@ module tox_gene_centroids_impl
     use f42_vector_impl, only: add_vector
     M_IMPLICIT_NONE
 
-#define CM_MODE_GROUP_ORTHOLOGS 0_int32
-#define CM_MODE_GROUP_ALL 1_int32
-
     private
     public :: mean_vector_impl, group_centroid_impl
     public :: MODE_GROUP_ORTHOLOGS, MODE_GROUP_ALL
 
-    integer(int32), parameter :: MODE_GROUP_ORTHOLOGS = CM_MODE_GROUP_ORTHOLOGS
+    integer(int32), parameter :: MODE_GROUP_ORTHOLOGS = 0_int32
         !! Mode code for grouping by orthologs
-    integer(int32), parameter :: MODE_GROUP_ALL = CM_MODE_GROUP_ALL
+    integer(int32), parameter :: MODE_GROUP_ALL = 1_int32
         !! Mode code for taking all genes as a group
 
 contains

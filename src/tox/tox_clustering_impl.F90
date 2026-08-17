@@ -14,15 +14,11 @@ module tox_clustering_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf, ieee_is_nan
     M_IMPLICIT_NONE
 
-#define CM_METHOD_AVERAGE 0
-#define CM_METHOD_WEIGHTED 1
-#define CM_METHOD_WARD 2
-
-    integer(int32), parameter :: METHOD_AVERAGE = CM_METHOD_AVERAGE
+    integer(int32), parameter :: METHOD_AVERAGE = 0_int32
         !! Method code for average linkage clustering in [[tox_clustering(module):linkage_clustering(subroutine)]]
-    integer(int32), parameter :: METHOD_WEIGHTED = CM_METHOD_WEIGHTED
+    integer(int32), parameter :: METHOD_WEIGHTED = 1_int32
         !! Method code for weighted linkage clustering in [[tox_clustering(module):linkage_clustering(subroutine)]]
-    integer(int32), parameter :: METHOD_WARD = CM_METHOD_WARD
+    integer(int32), parameter :: METHOD_WARD = 2_int32
         !! Method code for ward linkage clustering in [[tox_clustering(module):linkage_clustering(subroutine)]]
 
 #define DEFAULT_MAX_ITER_K_MEANS 300_int32
@@ -57,7 +53,7 @@ contains
         integer(int32), intent(in) :: max_iterations
             !! number of maximum iterations of the clustering
 
-        call k_means_clustering_helper(n_clusters, trajectories, n_samples*n_timepoints, n_factors, centroids, labels, label_counts, max_iterations)
+        call k_means_clustering_impl(n_clusters, trajectories, n_samples*n_timepoints, n_factors, centroids, labels, label_counts, max_iterations)
     end subroutine cluster_factor_trajectories_k_means_impl
 
     !> summary: k-means clustering algorithm
@@ -71,39 +67,6 @@ contains
             !! number (`k`) of clusters
             !! DM_MIN(1_int32)
             !! DM_MAX(n_points)
-        integer(int32), intent(in) :: n_points
-            !! number of points to cluster
-        integer(int32), intent(in) :: n_dims
-            !! number of elements a point has
-        real(real64), dimension(n_dims, n_points), intent(in) :: data_points
-            !! matrix with data points to cluster
-        real(real64), dimension(n_dims, n_clusters), intent(inout) :: centroids
-            !! matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-            !! The centroids should be unique. This is not checked in this routine.
-            !!
-            !! The final values will be the final centroids of the clusters
-        integer(int32), dimension(n_points), intent(out) :: labels
-            !! array of labels, each index corresponds to the respective point's index, so first label is first point's label.
-            !!
-            !! each label is the index of its related cluster -> `1<=label<=n_clusters=k`
-        integer(int32), dimension(n_clusters), intent(out) :: label_counts
-            !! holds the number of points having the respective label assigned
-        integer(int32), intent(in), optional :: max_iterations
-            !! number of maximum iterations of the clustering.
-            !! DM_DEFAULT(DEFAULT_MAX_ITER_K_MEANS)
-
-        call k_means_clustering_helper(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
-    end subroutine k_means_clustering_impl
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| (no input validation) k-means clustering algorithm:
-    !|
-    !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
-    !| 2. Recalculates the centroids using the mean of its assigned points
-    !| 3. repeat 1-2 until assignment remains unchanged
-    pure subroutine k_means_clustering_helper(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)
-        integer(int32), intent(in) :: n_clusters
-            !! number (`k`) of clusters
         integer(int32), intent(in) :: n_points
             !! number of points to cluster
         integer(int32), intent(in) :: n_dims
@@ -157,8 +120,7 @@ contains
 
             call k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
         end do
-    end subroutine k_means_clustering_helper
-
+    end subroutine k_means_clustering_impl
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper to recompute the centroids in k-means by taking the mean of assigned points
     pure subroutine k_means_recompute_cluster_centroids_helper(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)
@@ -282,46 +244,6 @@ contains
             !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
             !! | Ward | [[tox_clustering_impl(module):METHOD_WARD(variable)]] |
 
-        call linkage_clustering_helper(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
-    end subroutine linkage_clustering_impl
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Perform linkage clustering on a distance matrix.
-    !|
-    !| @note
-    !| The bottom triangle is used as scratch and restored from the top triangle before
-    !| returning, on success or on error, so the matrix comes back unchanged. There is no
-    !| need to copy it before calling.
-    !| @endnote
-    pure subroutine linkage_clustering_helper(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)
-        integer(int32), intent(in) :: n_points
-            !! number of points to cluster
-        real(real64), dimension(n_points, n_points), intent(inout) :: distances
-            !! symmetric distance matrix, holding the positive distances between points. Distance of X->X is always zero.
-            !!
-            !! @note
-            !! The bottom triangle is used as scratch and restored from the top triangle before
-            !! returning, on success or on error, so the matrix comes back unchanged. There is no
-            !! need to copy it before calling.
-            !! @endnote
-        integer(int32), dimension(n_points - 1), intent(out) :: merge_i
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
-        integer(int32), dimension(n_points - 1), intent(out) :: merge_j
-            !! holds cluster labels of the merged node pair at iteration k -> positives relate to leafs/data point indices, negatives to inner nodes
-        real(real64), dimension(n_points - 1), intent(out) :: heights
-            !! height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter
-        integer(int32), dimension(n_points - 1), intent(out) :: cluster_sizes
-            !! size of cluster at iteration k
-        integer(int32), intent(in) :: method
-            !! used algorithm
-            !!
-            !! |      Method      |          Value         |
-            !! |------------------|------------------------|
-            !! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
-            !! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
-            !! |      Ward        |   CM_METHOD_WARD       |
-            !!
-
         integer(int32) :: i, idx_A, idx_B, size_B, size_A, cluster_label
         real(real64) :: dist_AB
 
@@ -353,7 +275,7 @@ contains
         end do
 
         call recover_distance_matrix_helper(distances, n_points)
-    end subroutine linkage_clustering_helper
+    end subroutine linkage_clustering_impl
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Helper to recover a distance matrix from its top triangle.

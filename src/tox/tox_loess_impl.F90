@@ -22,17 +22,7 @@ module tox_loess_impl
     use f42_math_impl, only: is_close
     M_IMPLICIT_NONE
 
-#define CM_MODE_PLAIN 0_int32
-#define CM_MODE_ROBUST 1_int32
 #define CM_DEFAULT_LOESS_ITERS 3_int32
-
-    integer(int32), parameter, public :: DEFAULT_LOESS_ITERS = CM_DEFAULT_LOESS_ITERS
-        !! Robust iterations used when the caller does not say, matching the count
-        !! [[tox_get_outliers(module)]] and [[tox_normalization(module)]] use
-    integer(int32), parameter, public :: MODE_PLAIN = CM_MODE_PLAIN
-        !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
-    integer(int32), parameter, public :: MODE_ROBUST = CM_MODE_ROBUST
-        !! Mode code selecting a robust LOESS fit, for callers that carry the choice as a value
 
     ! ---- LOESS netlib externals ----
     ! ============================================================

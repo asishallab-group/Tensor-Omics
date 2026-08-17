@@ -214,7 +214,7 @@ def perform_permutation_test(
         index of sample to compute the permutation contributions for
         The minimum valid value is `1`.
         The maximum valid value is `n_samples`.
-    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+    baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
     n_permutations : int
         number of permutations to perform
     random_seed : int, optional
@@ -249,7 +249,7 @@ def perform_permutation_test(
         raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -402,7 +402,7 @@ def compute_contributions(
         Factor time series, length n_timepoints
     dependent : np.ndarray[np.float64] of shape (n_dims,)
         Dependent variable time series, length n_timepoints
-    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+    baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
 
     Returns
     -------
@@ -438,7 +438,7 @@ def compute_contributions(
         raise TypeError(f"'dependent' must be an array of np.float64: {error}") from None
     if dependent.ndim != 1:
         raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_dims = factor.shape[0]
@@ -494,7 +494,7 @@ def compute_all_contributions(
         indices of dependents to compute the contributions for
         The minimum valid value is `1`.
         The maximum valid value is `n_factors`.
-    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+    baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
 
     Returns
     -------
@@ -537,7 +537,7 @@ def compute_all_contributions(
         raise TypeError(f"'dependent_indices' must be an array of np.int32: {error}") from None
     if dependent_indices.ndim != 1:
         raise ValueError(f"'dependent_indices' must have 1 dimension, but has {dependent_indices.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]
@@ -590,7 +590,7 @@ def compute_baselines_factor_dependent(
         Factor time series, length n_timepoints
     dependent : np.ndarray[np.float64] of shape (n_timepoints,)
         Dependent variable time series, length n_timepoints
-    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+    baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
 
     Returns
     -------
@@ -625,7 +625,7 @@ def compute_baselines_factor_dependent(
         raise TypeError(f"'dependent' must be an array of np.float64: {error}") from None
     if dependent.ndim != 1:
         raise ValueError(f"'dependent' must have 1 dimension, but has {dependent.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_timepoints = factor.shape[0]
@@ -898,7 +898,7 @@ def compute_velocity_acceleration_contributions(
     ----------
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
         input position trajectories
-    baseline_mode : str, one of 'raw' | 'mean' | 'min'
+    baseline_mode : str, one of 'baseline_raw' | 'baseline_mean' | 'baseline_min'
 
     Returns
     -------
@@ -935,7 +935,7 @@ def compute_velocity_acceleration_contributions(
         raise TypeError(f"'trajectories' must be an array of np.float64: {error}") from None
     if trajectories.ndim != 3:
         raise ValueError(f"'trajectories' must have 3 dimensions, but has {trajectories.ndim}")
-    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(4)], dtype="S4")
+    baseline_mode = np.array([str(baseline_mode).lower().encode().ljust(13)], dtype="S13")
 
     # what the inputs already say, rather than asking for it again
     n_factors = trajectories.shape[0]

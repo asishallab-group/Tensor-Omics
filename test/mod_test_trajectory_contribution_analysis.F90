@@ -7,7 +7,7 @@ module mod_test_trajectory_contribution_analysis
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_trajectory_contribution_analysis
     ! the baseline-mode parameters stayed in the kernel module
-    use tox_trajectory_contribution_analysis_impl, only: BASELINE_RAW, BASELINE_MIN, BASELINE_MEAN, select_random_sample
+    use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_RAW, MODE_BASELINE_MIN, MODE_BASELINE_MEAN, select_random_sample
     use tox_errors
     use f42_random_impl, only: init_random, rand_range
     use tox_trajectory_normalization
@@ -173,7 +173,7 @@ contains
                                1.0_real64, 1.0_real64, 3.0_real64, 2.0_real64, 6.0_real64, 2.0_real64, 10.0_real64, 1.0_real64], &
                                shape=[2, 1, 4])
 
-        mode = BASELINE_RAW
+        mode = MODE_BASELINE_RAW
 
         call compute_velocity_acceleration_contributions_expert(trajectories, 2, 1, 4, mode, &
                                                          factor_velocity, dependent_velocity, raw_velocity_contrib, &
@@ -240,7 +240,7 @@ contains
                                1.0_real64, 1.0_real64, 3.0_real64, 2.0_real64, 6.0_real64, 2.0_real64, 10.0_real64, 1.0_real64], &
                                shape=[2, 1, 4])
 
-        mode = BASELINE_RAW
+        mode = MODE_BASELINE_RAW
 
         call compute_velocity_acceleration_contributions_expert(trajectories, 2, 1, 4, mode, &
                                                          factor_velocity, dependent_velocity, velocity_contrib, &
@@ -361,7 +361,7 @@ contains
 
         ! Case 1: test functionality without randomness, as all data unlike current_sample is same
         sample_idx = 1
-        mode = BASELINE_MEAN
+        mode = MODE_BASELINE_MEAN
         factor_idx = 1
         dependent_idx = 1 ! will be different for the permutations
         trajectories(1, 1, :) = [1.0_real64, 2.0_real64, 3.0_real64]
@@ -488,27 +488,27 @@ contains
         dependent_indices = [2, 1]
 
         call compute_all_contributions_expert(trajectories, 0_int32, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_factors=0")
 
         call compute_all_contributions_expert(trajectories, n_factors, 0_int32, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_samples=0")
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, 0_int32, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_timepoints=0")
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), 0_int32, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), 0_int32, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_selected_factors=0")
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), 0_int32, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), 0_int32, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_compute_all_contributions: Case 1 expected error for n_selected_dependents=0")
 
@@ -517,7 +517,7 @@ contains
         ! -------------------------------
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MEAN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MEAN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_all_contributions: Case 2 ierr")
@@ -540,7 +540,7 @@ contains
         trajectories(2, 1, :) = [1.0_real64, 3.0_real64, 5.0_real64]
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_all_contributions: Case 3 ierr")
@@ -560,7 +560,7 @@ contains
         trajectories(1, 1, :) = 1.0_real64
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_all_contributions: Case 4 ierr zero factor")
@@ -575,7 +575,7 @@ contains
         trajectories(2, 1, :) = 1.0_real64
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, BASELINE_MIN, &
+                                       factor_indices(:n_selected_factors), n_selected_factors, dependent_indices(:n_selected_dependents), n_selected_dependents, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_all_contributions: Case 4 ierr zero dependent")
@@ -595,7 +595,7 @@ contains
         dependent_indices = [2, 2]
 
         call compute_all_contributions_expert(trajectories, n_factors, n_samples, n_timepoints, &
-                                       factor_indices, n_factors, dependent_indices, n_factors, BASELINE_MIN, &
+                                       factor_indices, n_factors, dependent_indices, n_factors, MODE_BASELINE_MIN, &
                                        local_contributions, total_contributions, temp_factors, temp_dependent, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_all_contributions: Case 5 ierr")
@@ -687,37 +687,37 @@ contains
         real(real64) :: factor_baseline, dependent_baseline, expected_factor_baseline, expected_dependent_baseline
         integer(int32) :: ierr
 
-        ! Case 1: BASELINE_RAW (no centering)
+        ! Case 1: MODE_BASELINE_RAW (no centering)
         factor = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
         dependent(1:n_timepoints) = [5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64]
-        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), BASELINE_RAW, &
+        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), MODE_BASELINE_RAW, &
                                                 factor_baseline, dependent_baseline, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: BASELINE_RAW: expected OK status")
-        call assert_equal_real(factor_baseline, 0.0_real64, TOL, "test_compute_baselines_factor_dependent: BASELINE_RAW factor_baseline")
-        call assert_equal_real(dependent_baseline, 0.0_real64, TOL, "test_compute_baselines_factor_dependent: BASELINE_RAW dependent_baseline")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: MODE_BASELINE_RAW: expected OK status")
+        call assert_equal_real(factor_baseline, 0.0_real64, TOL, "test_compute_baselines_factor_dependent: MODE_BASELINE_RAW factor_baseline")
+        call assert_equal_real(dependent_baseline, 0.0_real64, TOL, "test_compute_baselines_factor_dependent: MODE_BASELINE_RAW dependent_baseline")
 
-        ! Case 2: BASELINE_MIN (minimum-centered)
-        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), BASELINE_MIN, &
+        ! Case 2: MODE_BASELINE_MIN (minimum-centered)
+        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), MODE_BASELINE_MIN, &
                                                 factor_baseline, dependent_baseline, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: BASELINE_MIN: expected OK status")
-        call assert_equal_real(factor_baseline, minval(factor), TOL, "test_compute_baselines_factor_dependent: BASELINE_MIN factor_baseline")
-        call assert_equal_real(dependent_baseline, minval(dependent(1:n_timepoints)), TOL, "test_compute_baselines_factor_dependent: BASELINE_MIN dependent_baseline")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: MODE_BASELINE_MIN: expected OK status")
+        call assert_equal_real(factor_baseline, minval(factor), TOL, "test_compute_baselines_factor_dependent: MODE_BASELINE_MIN factor_baseline")
+        call assert_equal_real(dependent_baseline, minval(dependent(1:n_timepoints)), TOL, "test_compute_baselines_factor_dependent: MODE_BASELINE_MIN dependent_baseline")
 
-        ! Case 3: BASELINE_MEAN (mean-centered)
+        ! Case 3: MODE_BASELINE_MEAN (mean-centered)
         expected_factor_baseline = sum(factor)/real(n_timepoints, kind=real64)
         expected_dependent_baseline = sum(dependent(1:n_timepoints))/real(n_timepoints, kind=real64)
-        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), BASELINE_MEAN, &
+        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), MODE_BASELINE_MEAN, &
                                                 factor_baseline, dependent_baseline, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: BASELINE_MEAN: expected OK status")
-        call assert_equal_real(factor_baseline, expected_factor_baseline, TOL, "test_compute_baselines_factor_dependent: BASELINE_MEAN factor_baseline")
-        call assert_equal_real(dependent_baseline, expected_dependent_baseline, TOL, "test_compute_baselines_factor_dependent: BASELINE_MEAN dependent_baseline")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: MODE_BASELINE_MEAN: expected OK status")
+        call assert_equal_real(factor_baseline, expected_factor_baseline, TOL, "test_compute_baselines_factor_dependent: MODE_BASELINE_MEAN factor_baseline")
+        call assert_equal_real(dependent_baseline, expected_dependent_baseline, TOL, "test_compute_baselines_factor_dependent: MODE_BASELINE_MEAN dependent_baseline")
 
         ! Case 4: mismatched input lengths
         dependent = [5.0_real64, 6.0_real64, 7.0_real64, 8.0_real64, 9.0_real64]  ! length 5
-        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), BASELINE_RAW, &
+        call compute_baselines_factor_dependent(n_timepoints, factor, dependent(1:n_timepoints), MODE_BASELINE_RAW, &
                                                 factor_baseline, dependent_baseline, ierr)  ! valid
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_baselines_factor_dependent: valid lengths")
-        call compute_baselines_factor_dependent(4_int32, factor(1:4), dependent(1:5), BASELINE_RAW, &
+        call compute_baselines_factor_dependent(4_int32, factor(1:4), dependent(1:5), MODE_BASELINE_RAW, &
                                                 factor_baseline, dependent_baseline, ierr)  ! invalid: mismatch
         ! Note: This test may not trigger length mismatch since we now validate in C wrapper only
 

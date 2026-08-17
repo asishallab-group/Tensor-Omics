@@ -12,10 +12,11 @@
 !| Generated from [[tox_get_outliers_impl(module)]]; do not edit -- regenerate instead.
 module tox_get_outliers
     use f42_safeguard
-    use tox_get_outliers_impl, only: compute_family_scaling_impl, compute_rdi_impl, detect_outliers_impl, identify_outliers_impl
+    use tox_get_outliers_impl, only: MODE_PLAIN, MODE_ROBUST, compute_family_scaling_impl, compute_rdi_impl
+    use tox_get_outliers_impl, only: detect_outliers_impl, identify_outliers_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: EPS_LOESS, MODE_PLAIN, MODE_ROBUST, tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
     use tox_errors, only: validate_dimension_size, validate_in_range_real
@@ -83,10 +84,10 @@ contains
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
             !!
-            !! | Mode                 | Value                                            |
-            !! |----------------------|--------------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+            !! | Mode                 | Value                                                   |
+            !! |----------------------|---------------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_get_outliers_impl(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_get_outliers_impl(module):MODE_ROBUST(variable)]] |
         integer(int32), intent(in), optional :: n_iters
             !! Number of iterations for robust LOESS fitting
             !! The default value is `3_int32`.
@@ -291,10 +292,10 @@ contains
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
             !!
-            !! | Mode                 | Value                                            |
-            !! |----------------------|--------------------------------------------------|
-            !! | Plain LOESS fitting  | [[tox_loess_impl(module):MODE_PLAIN(variable)]]  |
-            !! | Robust LOESS fitting | [[tox_loess_impl(module):MODE_ROBUST(variable)]] |
+            !! | Mode                 | Value                                                   |
+            !! |----------------------|---------------------------------------------------------|
+            !! | Plain LOESS fitting  | [[tox_get_outliers_impl(module):MODE_PLAIN(variable)]]  |
+            !! | Robust LOESS fitting | [[tox_get_outliers_impl(module):MODE_ROBUST(variable)]] |
         integer(int32), intent(in), optional :: n_iters
             !! Number of iterations for robust LOESS fitting
             !! The default value is `3_int32`.

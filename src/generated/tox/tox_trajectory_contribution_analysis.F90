@@ -10,7 +10,7 @@
 !|
 !| Generated from [[tox_trajectory_contribution_analysis_impl(module)]]; do not edit -- regenerate instead.
 module tox_trajectory_contribution_analysis
-    use tox_trajectory_contribution_analysis_impl, only: MODE_MEAN, MODE_MIN, MODE_RAW, compute_acceleration_from_velocity_impl
+    use tox_trajectory_contribution_analysis_impl, only: MODE_BASELINE_MEAN, MODE_BASELINE_MIN, MODE_BASELINE_RAW, compute_acceleration_from_velocity_impl
     use tox_trajectory_contribution_analysis_impl, only: compute_acceleration_from_velocity_trajectory_impl, compute_all_contributions_impl, compute_baselines_factor_dependent_impl, compute_contributions_impl
     use tox_trajectory_contribution_analysis_impl, only: compute_p_values_impl, compute_velocity_acceleration_contributions_impl, compute_velocity_trajectories_impl, compute_velocity_trajectory_impl
     use tox_trajectory_contribution_analysis_impl, only: perform_permutation_test_impl
@@ -76,11 +76,11 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_samples`.
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_timepoints, n_permutations), intent(out) :: local_contributions
             !! Per-timepoint contributions per permutation
         real(real64), dimension(n_permutations), intent(out) :: total_contributions
@@ -102,7 +102,7 @@ contains
         call validate_in_range_int(sample_idx, ierr, arg_pos=7_int32, min=1_int32, max=n_samples)
         call validate_dimension_size(n_permutations, ierr, arg_pos=9_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -170,11 +170,11 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_samples`.
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_timepoints, n_permutations), intent(out) :: local_contributions
             !! Per-timepoint contributions per permutation
         real(real64), dimension(n_permutations), intent(out) :: total_contributions
@@ -198,7 +198,7 @@ contains
         call validate_in_range_int(sample_idx, ierr, arg_pos=7_int32, min=1_int32, max=n_samples)
         call validate_dimension_size(n_permutations, ierr, arg_pos=9_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -295,11 +295,11 @@ contains
         real(real64), dimension(n_dims), intent(in) :: dependent
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_dims), intent(out) :: local_contributions
             !! Per-element contributions
         real(real64), intent(out) :: total_contribution
@@ -312,7 +312,7 @@ contains
         call validate_dimension_size(n_dims, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(factor, n_dims, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(dependent, n_dims, ierr, arg_pos=2_int32)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -364,11 +364,11 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_factors`.
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out) :: local_contributions
             !! Per-timepoint contributions per sample-dependent-factor combination
         real(real64), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out) :: total_contributions
@@ -388,7 +388,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(factor_indices, n_selected_factors, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, arg_pos=7_int32, min=1_int32, max=n_factors)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -452,11 +452,11 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_factors`.
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_timepoints, n_selected_factors, n_selected_dependents, n_samples), intent(out) :: local_contributions
             !! Per-timepoint contributions per sample-dependent-factor combination
         real(real64), dimension(n_selected_factors, n_selected_dependents, n_samples), intent(out) :: total_contributions
@@ -478,7 +478,7 @@ contains
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(factor_indices, n_selected_factors, ierr, arg_pos=5_int32, min=1_int32, max=n_factors)
         call validate_all_in_range_int(dependent_indices, n_selected_dependents, ierr, arg_pos=7_int32, min=1_int32, max=n_factors)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=9_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -518,11 +518,11 @@ contains
         real(real64), dimension(n_timepoints), intent(in) :: dependent
             !! Dependent variable time series, length n_timepoints
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), intent(out) :: factor_baseline
             !! Computed baseline for factor
         real(real64), intent(out) :: dependent_baseline
@@ -535,7 +535,7 @@ contains
         call validate_dimension_size(n_timepoints, ierr, arg_pos=1_int32)
         call validate_all_in_range_real(factor, n_timepoints, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(dependent, n_timepoints, ierr, arg_pos=3_int32)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=4_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -723,11 +723,11 @@ contains
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
             !! input position trajectories
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_factors, n_factors, n_samples), intent(out) :: contrib_velocity
             !! output velocity contributions
         real(real64), dimension(n_timepoints, n_factors, n_factors, n_samples), intent(out) :: velocity_contribution_series
@@ -748,7 +748,7 @@ contains
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -811,11 +811,11 @@ contains
         real(real64), dimension(n_factors, n_samples, n_timepoints), intent(in) :: trajectories
             !! input position trajectories
         integer(int32), intent(in) :: baseline_mode
-            !! | Mode              | Value                                                                     |
-            !! |-------------------|---------------------------------------------------------------------------|
-            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_RAW(variable)]]  |
-            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_MEAN(variable)]] |
-            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_MIN(variable)]]  |
+            !! | Mode              | Value                                                                              |
+            !! |-------------------|------------------------------------------------------------------------------------|
+            !! | Raw/zero baseline | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_RAW(variable)]]  |
+            !! | arithmetic mean   | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MEAN(variable)]] |
+            !! | minimum value     | [[tox_trajectory_contribution_analysis_impl(module):MODE_BASELINE_MIN(variable)]]  |
         real(real64), dimension(n_timepoints - 1, n_factors), intent(out) :: tmp_factors
             !! workspace for factor data (used for velocity and acceleration)
         real(real64), dimension(n_timepoints - 1), intent(out) :: tmp_dependent
@@ -839,7 +839,7 @@ contains
         call validate_dimension_size(n_samples, ierr, arg_pos=3_int32)
         call validate_dimension_size(n_timepoints, ierr, arg_pos=4_int32)
         call validate_all_in_range_real(trajectories, n_factors * n_samples * n_timepoints, ierr, arg_pos=1_int32)
-        if (baseline_mode /= MODE_RAW .and. baseline_mode /= MODE_MEAN .and. baseline_mode /= MODE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
+        if (baseline_mode /= MODE_BASELINE_RAW .and. baseline_mode /= MODE_BASELINE_MEAN .and. baseline_mode /= MODE_BASELINE_MIN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=5_int32)
         if (is_err(ierr)) return
 #endif
 
