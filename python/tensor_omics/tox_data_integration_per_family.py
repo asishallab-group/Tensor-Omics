@@ -1,6 +1,10 @@
-"""tox_data_integration_per_family
+r"""tox_data_integration_per_family
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation per family
+
+The JSD value for a sub-neighborhood -- typically the genes of one family -- obtained by
+driving the same pipeline over a masked set of neighbors. Answers whether two studies are
+compatible *for this family*, which the global figure can hide either way.
 
 Python binding, generated from tox_data_integration_per_family. Do not edit.
 """
@@ -162,7 +166,7 @@ def fjct_compute_jsd(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_jsd_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_jsd`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -351,7 +355,7 @@ def fjct_compute_masked_jsd(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_masked_jsd_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_per_family::fjct_compute_masked_jsd`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

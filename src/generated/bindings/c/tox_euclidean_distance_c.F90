@@ -2,7 +2,11 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_euclidean_distance(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Euclidean distances in gene expression space.
+!|
+!| `euclidean_distance` between two expression vectors, and `distance_to_centroid` from every
+!| gene of a family to that family's centroid -- the distance the outlier detection and the
+!| relative-distance index are built on.
 module tox_euclidean_distance_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc

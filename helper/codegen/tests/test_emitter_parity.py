@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from codegen.abi.c_abi import build_project
-from codegen.config import Paths
+from codegen.config import CONVENTIONS, Paths
 from codegen.diagnostics import DiagnosticBag
 from codegen.emit.python_ctypes import PythonEmitter
 from codegen.emit.c_call import CCallEmitter
@@ -25,17 +25,27 @@ from codegen.emit.r_wrapper import RWrapperEmitter
 from codegen.frontend.ford_frontend import FordFrontend
 from codegen.ir.roles import analyse_project
 from codegen.ir.validate import validate_project
+from codegen.synthesize import synthesize_wrappers
 from conftest import REPO_ROOT
 
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 
 
 def _build(src: Path):
+    """Parse, synthesise, then run the pipeline -- the order `generate.py` uses.
+
+    Synthesis is not optional here, and skipping it was quietly halving what these tests
+    covered: without it the project holds only the *hand-written* exports, so every generated
+    wrapper -- which is most of the published API -- went unchecked for the very disagreement
+    this file exists to catch. It also made `validate` see a project with no generated
+    modules in it, so a documentation link into one resolved to nothing.
+    """
     bag = DiagnosticBag()
     parsed = FordFrontend(Paths(root=REPO_ROOT, src_dir=src), bag).parse()
-    analyse_project(parsed.project, bag)
-    validate_project(parsed.project, bag)
-    built = build_project(parsed.project, bag)
+    project = synthesize_wrappers(parsed.project, CONVENTIONS, bag).project
+    analyse_project(project, bag)
+    validate_project(project, bag)
+    built = build_project(project, bag)
     assert bag.errors == (), bag.render()
     return built
 
@@ -126,6 +136,19 @@ class TestTheTargetsAgree:
 
 
 class TestTheTargetsAgreeOnTheRealProject:
+    def test_the_generated_wrappers_are_in_scope(self, project_binding):
+        """Assert the premise, or the rest of this class silently stops meaning much.
+
+        Skipping synthesis left 31 of the 132 wrappers here -- the hand-written exports only --
+        and every test below still passed, over a quarter of the API.
+        """
+        published = {w.stripped_name for w in _wrappers(project_binding)}
+
+        assert len(published) > 100
+        assert "loess_fit_plain" in published, "a generated wrapper"
+        assert "loess_fit_plain_expert" in published, "a generated expert tier"
+        assert "tox_loess_required_workspace" in published, "a hand-written export"
+
     def test_every_wrapper_asks_for_the_same_arguments(self, project_binding):
         python, r = PythonEmitter(), RWrapperEmitter()
 
@@ -229,12 +252,12 @@ class TestTierNotes:
         binding, synthesis = _real_published()
         notes = build(binding, synthesis.specs, CONVENTIONS)
         published = {w.stripped_name for m in binding for w in m}
-        experts = {name for name in published if name.endswith(CONVENTIONS.expert_infix)}
+        experts = {name for name in published if name.endswith(CONVENTIONS.expert_suffix)}
         assert experts, "no expert tier survived, so this asserts nothing"
         for expert in experts:
             assert expert in notes, expert
-            assert expert[: -len(CONVENTIONS.expert_infix)] in notes, expert
-        assert set(notes) == experts | {e[: -len(CONVENTIONS.expert_infix)] for e in experts}
+            assert expert[: -len(CONVENTIONS.expert_suffix)] in notes, expert
+        assert set(notes) == experts | {e[: -len(CONVENTIONS.expert_suffix)] for e in experts}
 
 
 def _real_published():

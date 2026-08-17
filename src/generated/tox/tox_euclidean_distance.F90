@@ -1,9 +1,14 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_euclidean_distance_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> Euclidean distances in gene expression space.
+!|
+!| `euclidean_distance` between two expression vectors, and `distance_to_centroid` from every
+!| gene of a family to that family's centroid -- the distance the outlier detection and the
+!| relative-distance index are built on.
+!|
+!| Generated from [[tox_euclidean_distance_impl(module)]]; do not edit -- regenerate instead.
 module tox_euclidean_distance
-    use tox_euclidean_distance_kernel, only: distance_to_centroid_kernel, euclidean_distance_kernel
+    use tox_euclidean_distance_impl, only: distance_to_centroid_impl, euclidean_distance_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, validate_all_in_range_int, validate_all_in_range_real
     use tox_errors, only: validate_dimension_size
@@ -15,9 +20,9 @@ module tox_euclidean_distance
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_euclidean_distance_kernel(module):euclidean_distance_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_euclidean_distance_impl(module):euclidean_distance_impl]].
     !| Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
-    subroutine euclidean_distance(&
+    pure subroutine euclidean_distance(&
             vec1,&
             vec2,&
             n_elements,&
@@ -43,7 +48,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call euclidean_distance_kernel(&
+        call euclidean_distance_impl(&
             vec1 = vec1,&
             vec2 = vec2,&
             n_elements = n_elements,&
@@ -51,9 +56,9 @@ contains
         )
     end subroutine euclidean_distance
 
-    !> summary: Validates its inputs, then calls [[tox_euclidean_distance_kernel(module):distance_to_centroid_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_euclidean_distance_impl(module):distance_to_centroid_impl]].
     !| For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
-    subroutine distance_to_centroid(&
+    pure subroutine distance_to_centroid(&
             n_genes,&
             n_families,&
             genes,&
@@ -94,7 +99,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call distance_to_centroid_kernel(&
+        call distance_to_centroid_impl(&
             n_genes = n_genes,&
             n_families = n_families,&
             genes = genes,&

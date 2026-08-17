@@ -1,6 +1,11 @@
-"""tox_data_integration_jsd
+r"""tox_data_integration_jsd
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation
+
+The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+a JSD value: residuals are binned into histograms per study, the two distributions are
+compared per reference point, and the per-point divergences are weighted into one global
+figure for the pair of studies.
 
 Python binding, generated from tox_data_integration_jsd. Do not edit.
 """
@@ -14,6 +19,20 @@ from .error_handling import check_err_code
 from .library import load_library, nullable
 
 _lib = load_library()
+
+_lib.determine_shared_residual_range_c.restype = None
+_lib.determine_shared_residual_range_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", None, None, None,)
 
 _lib.determine_shared_residual_range_expert_c.restype = None
 _lib.determine_shared_residual_range_expert_c.argtypes = (
@@ -29,20 +48,6 @@ _lib.determine_shared_residual_range_expert_c.argtypes = (
 _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS = ("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "abs_residual_pool", None, None, None,)
-
-_lib.determine_shared_residual_range_c.restype = None
-_lib.determine_shared_residual_range_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", None, None, None,)
 
 _lib.determine_study_shared_residual_range_c.restype = None
 _lib.determine_study_shared_residual_range_c.argtypes = (
@@ -113,10 +118,9 @@ _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENTS = ("js_divergences", "n_points", "
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES = (None, "js_divergences", None, None, None, None, None,)
 
-def determine_shared_residual_range_expert(
+def determine_shared_residual_range(
         abs_residual_pool,
-        abs_residual_pool_perm,
-        residual_range_quantile=95.0,
+        residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
 
@@ -125,15 +129,11 @@ def determine_shared_residual_range_expert(
     abs_residual_pool : np.ndarray[np.float64] of shape (pool_size,)
         The absolute residual values of the concatenated S1,S2 residuals
         NaN is permitted for this value.
-    abs_residual_pool_perm : np.ndarray[np.int32] of shape (pool_size,)
-        The permutation vector that sorts `abs_residual_pool`
-        The minimum valid value is `1`.
-        The maximum valid value is `pool_size`.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -148,6 +148,73 @@ def determine_shared_residual_range_expert(
     Notes
     -----
     Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range`, whose argument names are
+    the ones an error message reports.
+
+    This entry point seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
+    Call `determine_shared_residual_range_expert` to do that yourself.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        abs_residual_pool = np.ascontiguousarray(abs_residual_pool, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {error}") from None
+    if abs_residual_pool.ndim != 1:
+        raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    pool_size = abs_residual_pool.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    shared_residual_range = ctypes.c_double(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.determine_shared_residual_range_c(
+        abs_residual_pool,
+        ctypes.byref(ctypes.c_int(pool_size)),
+        ctypes.byref(shared_residual_range),
+        ctypes.byref(ctypes.c_double(residual_range_quantile)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
+
+    return shared_residual_range.value
+
+def determine_shared_residual_range_expert(
+        abs_residual_pool,
+        abs_residual_pool_perm,
+        residual_range_quantile=0.95,
+):
+    r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
+
+    Parameters
+    ----------
+    abs_residual_pool : np.ndarray[np.float64] of shape (pool_size,)
+        The absolute residual values of the concatenated S1,S2 residuals
+        NaN is permitted for this value.
+    abs_residual_pool_perm : np.ndarray[np.int32] of shape (pool_size,)
+        The permutation vector that sorts `abs_residual_pool`
+        The minimum valid value is `1`.
+        The maximum valid value is `pool_size`.
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
+
+    Returns
+    -------
+    shared_residual_range : float
+        Computed residual range (R)
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range_expert`, whose argument names are
     the ones an error message reports.
 
     The expert entry point: you supply `abs_residual_pool_perm` yourself.
@@ -193,72 +260,10 @@ def determine_shared_residual_range_expert(
 
     return shared_residual_range.value
 
-def determine_shared_residual_range(
-        abs_residual_pool,
-        residual_range_quantile=95.0,
-):
-    r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
-
-    Parameters
-    ----------
-    abs_residual_pool : np.ndarray[np.float64] of shape (pool_size,)
-        The absolute residual values of the concatenated S1,S2 residuals
-        NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
-        The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
-
-    Returns
-    -------
-    shared_residual_range : float
-        Computed residual range (R)
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_data_integration_jsd::determine_shared_residual_range_alloc`, whose argument names are
-    the ones an error message reports.
-
-    This entry point seeds `abs_residual_pool_perm` and sorts it by `abs_residual_pool`.
-    Call `determine_shared_residual_range_expert` to do that yourself.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        abs_residual_pool = np.ascontiguousarray(abs_residual_pool, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'abs_residual_pool' must be an array of np.float64: {error}") from None
-    if abs_residual_pool.ndim != 1:
-        raise ValueError(f"'abs_residual_pool' must have 1 dimension, but has {abs_residual_pool.ndim}")
-
-    # what the inputs already say, rather than asking for it again
-    pool_size = abs_residual_pool.shape[0]
-
-    # outputs and work arrays, which the caller never sees
-    shared_residual_range = ctypes.c_double(0)
-    ierr = ctypes.c_int(0)
-
-    _lib.determine_shared_residual_range_c(
-        abs_residual_pool,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile)),
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
-
-    return shared_residual_range.value
-
 def determine_study_shared_residual_range(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        residual_range_quantile=95.0,
+        residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
 
@@ -270,11 +275,11 @@ def determine_study_shared_residual_range(
     neighborhood_residuals_S2 : np.ndarray[np.float64] of shape (n_reps_S2, n_neighbors, n_points,), column-major (order='F')
         Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 95.0
-        Quantile for determining the residual range
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
-        The maximum valid value is `100.0`.
-        The default value is `95.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
 
     Returns
     -------
@@ -288,7 +293,7 @@ def determine_study_shared_residual_range(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_study_shared_residual_range`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

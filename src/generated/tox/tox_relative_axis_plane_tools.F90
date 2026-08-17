@@ -1,10 +1,25 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_relative_axis_plane_tools_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
+!| what can be read off a vector once it is projected onto one.
+!|
+!| A RAP is picked by selecting axes (tissues) from the full expression space.
+!| `vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+!| field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
+!| between two vectors -- signed by an orientation reference, so the sign means the same thing in
+!| every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
+!| vector field at once.
+!|
+!| `relative_axes_changes_from_shift_vector` and `relative_axes_expression_from_expression_vector`
+!| give the per-axis breakdown instead of the angle: how much of a change, or of an expression
+!| level, falls on each selected axis.
+!|
+!| Generated from [[tox_relative_axis_plane_tools_impl(module)]]; do not edit -- regenerate instead.
 module tox_relative_axis_plane_tools
-    use tox_relative_axis_plane_tools_kernel, only: clock_hand_angle_between_vectors_kernel, clock_hand_angles_for_shift_vectors_kernel, compute_relative_axis_contributions_kernel, omics_field_RAP_projection_kernel
-    use tox_relative_axis_plane_tools_kernel, only: omics_vector_RAP_projection_kernel, relative_axes_changes_from_shift_vector_kernel, relative_axes_expression_from_expression_vector_kernel
+    use f42_safeguard
+    use tox_relative_axis_plane_tools_impl, only: clock_hand_angle_between_vectors_impl, clock_hand_angles_for_shift_vectors_impl, compute_relative_axis_contributions_impl, omics_field_RAP_projection_impl
+    use tox_relative_axis_plane_tools_impl, only: omics_vector_RAP_projection_impl, relative_axes_changes_from_shift_vector_impl, relative_axes_expression_from_expression_vector_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, clear_err_arg_pos
     use tox_errors, only: set_err_once, validate_all_in_range_real, validate_dimension_size
@@ -21,8 +36,8 @@ module tox_relative_axis_plane_tools
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):omics_vector_RAP_projection_kernel]].
-    subroutine omics_vector_RAP_projection(&
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):omics_vector_RAP_projection_impl]].
+    pure subroutine omics_vector_RAP_projection(&
             vecs,&
             n_axes,&
             n_vecs,&
@@ -43,9 +58,9 @@ contains
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_axes, n_vecs), intent(in) :: vecs
             !! matrix with expression vectors
-        logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+        logical(c_bool), dimension(n_vecs), intent(in) :: vecs_selection_mask
             !! `.true.` for vectors where projection is to be computed
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(out) :: projections
             !! projected vectors
@@ -64,7 +79,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call omics_vector_RAP_projection_kernel(&
+        call omics_vector_RAP_projection_impl(&
             vecs = vecs,&
             n_axes = n_axes,&
             n_vecs = n_vecs,&
@@ -76,8 +91,8 @@ contains
         )
     end subroutine omics_vector_RAP_projection
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):omics_field_RAP_projection_kernel]].
-    subroutine omics_field_RAP_projection(&
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):omics_field_RAP_projection_impl]].
+    pure subroutine omics_field_RAP_projection(&
             fields,&
             n_axes,&
             n_fields,&
@@ -98,9 +113,9 @@ contains
             !! count of `.true.` values in `axes_selection_mask`
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields; each field holds two vectors, the origin first and the target second
-        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+        logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! `.true.` for vectors where projection is to be computed
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! `.true.` for axes to be included in RAP
         real(real64), dimension(n_selected_axes, n_selected_fields), intent(out) :: projections
             !! projected vectors
@@ -119,7 +134,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call omics_field_RAP_projection_kernel(&
+        call omics_field_RAP_projection_impl(&
             fields = fields,&
             n_axes = n_axes,&
             n_fields = n_fields,&
@@ -131,11 +146,11 @@ contains
         )
     end subroutine omics_field_RAP_projection
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angle_between_vectors_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl]].
     !| The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
     !| which way round the plane the two vectors span counts as positive. Reports
     !| `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
-    subroutine clock_hand_angle_between_vectors(&
+    pure subroutine clock_hand_angle_between_vectors(&
             v1,&
             v2,&
             n_dims,&
@@ -169,7 +184,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call clock_hand_angle_between_vectors_kernel(&
+        call clock_hand_angle_between_vectors_impl(&
             v1 = v1,&
             v2 = v2,&
             n_dims = n_dims,&
@@ -180,12 +195,12 @@ contains
         call clear_err_arg_pos(ierr)
     end subroutine clock_hand_angle_between_vectors
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angles_for_shift_vectors_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):clock_hand_angles_for_shift_vectors_impl]].
     !| Each selected field is angled by the rule of
-    !| [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angle_between_vectors_kernel(subroutine)]],
+    !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
     !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
     !| the reference fails to orient fails the call.
-    subroutine clock_hand_angles_for_shift_vectors(&
+    pure subroutine clock_hand_angles_for_shift_vectors(&
             fields,&
             n_dims,&
             n_fields,&
@@ -203,7 +218,7 @@ contains
             !! Count of .true. values in fields_selection_mask
         real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields; each field holds two vectors, the origin first and the target second
-        logical, dimension(n_fields), intent(in) :: fields_selection_mask
+        logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         real(real64), dimension(n_dims), intent(in) :: orientation_reference
             !! Orients the plane the rotation happens in, so the angle can carry a sign. A
@@ -227,7 +242,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call clock_hand_angles_for_shift_vectors_kernel(&
+        call clock_hand_angles_for_shift_vectors_impl(&
             fields = fields,&
             n_dims = n_dims,&
             n_fields = n_fields,&
@@ -240,9 +255,9 @@ contains
         call clear_err_arg_pos(ierr)
     end subroutine clock_hand_angles_for_shift_vectors
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):compute_relative_axis_contributions_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):compute_relative_axis_contributions_impl]].
     !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
-    subroutine compute_relative_axis_contributions(&
+    pure subroutine compute_relative_axis_contributions(&
             vec,&
             n_axes,&
             contributions,&
@@ -264,7 +279,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call compute_relative_axis_contributions_kernel(&
+        call compute_relative_axis_contributions_impl(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
@@ -273,9 +288,9 @@ contains
         call clear_err_arg_pos(ierr)
     end subroutine compute_relative_axis_contributions
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):relative_axes_changes_from_shift_vector_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):relative_axes_changes_from_shift_vector_impl]].
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
-    subroutine relative_axes_changes_from_shift_vector(&
+    pure subroutine relative_axes_changes_from_shift_vector(&
             vec,&
             n_axes,&
             contributions,&
@@ -297,7 +312,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call relative_axes_changes_from_shift_vector_kernel(&
+        call relative_axes_changes_from_shift_vector_impl(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&
@@ -306,9 +321,9 @@ contains
         call clear_err_arg_pos(ierr)
     end subroutine relative_axes_changes_from_shift_vector
 
-    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_kernel(module):relative_axes_expression_from_expression_vector_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_relative_axis_plane_tools_impl(module):relative_axes_expression_from_expression_vector_impl]].
     !| Wrapper for single RAP-projected expression vectors
-    subroutine relative_axes_expression_from_expression_vector(&
+    pure subroutine relative_axes_expression_from_expression_vector(&
             vec,&
             n_axes,&
             contributions,&
@@ -330,7 +345,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call relative_axes_expression_from_expression_vector_kernel(&
+        call relative_axes_expression_from_expression_vector_impl(&
             vec = vec,&
             n_axes = n_axes,&
             contributions = contributions,&

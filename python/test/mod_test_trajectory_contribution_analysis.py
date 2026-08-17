@@ -101,7 +101,7 @@ def test_tox_compute_velocity_acceleration_contributions():
         dtype=np.float64,
     )
     n_factors, n_samples, n_timepoints = trajectories.shape
-    mode = "raw"
+    mode = "baseline_raw"
 
     result = compute_velocity_acceleration_contributions(trajectories, mode)
 
@@ -152,8 +152,8 @@ def test_tox_compute_velocity_acceleration_contributions_alt():
          [2.0, 4.0, 6.0, 8.0]]
     ], dtype=np.float64)
 
-    result_base = compute_velocity_acceleration_contributions(trajectories, "raw")
-    result_expert = compute_velocity_acceleration_contributions(trajectories, "raw")
+    result_base = compute_velocity_acceleration_contributions(trajectories, "baseline_raw")
+    result_expert = compute_velocity_acceleration_contributions(trajectories, "baseline_raw")
 
     for key in result_base:
         assert key in result_expert, f"Missing key {key} in expert result"
@@ -168,25 +168,25 @@ def test_tox_compute_baselines_factor_dependent():
     dependent = np.array([5.0, 7.0, 6.0, 8.0], dtype=np.float64)
 
     # RAW mode => zero baselines
-    res_raw = compute_baselines_factor_dependent(factor, dependent, baseline_mode="raw")
+    res_raw = compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_raw")
     assert np.isclose(res_raw['factor_baseline'], 0.0, atol=TOL)
     assert np.isclose(res_raw['dependent_baseline'], 0.0, atol=TOL)
 
     # MIN mode => min values
-    res_min = compute_baselines_factor_dependent(factor, dependent, baseline_mode="min")
+    res_min = compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_min")
     assert np.isclose(res_min['factor_baseline'], np.min(factor), atol=TOL)
     assert np.isclose(res_min['dependent_baseline'], np.min(dependent), atol=TOL)
 
     # MEAN mode => arithmetic mean
-    res_mean = compute_baselines_factor_dependent(factor, dependent, baseline_mode="mean")
+    res_mean = compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_mean")
     assert np.isclose(res_mean['factor_baseline'], np.mean(factor), atol=TOL)
     assert np.isclose(res_mean['dependent_baseline'], np.mean(dependent), atol=TOL)
 
     # Mismatched lengths should raise ValueError
-    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent[:-1], baseline_mode=1), "Expected ValueError for mismatched lengths")
+    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent[:-1], baseline_mode="baseline_raw"), "Expected ValueError for mismatched lengths")
 
     # Invalid mode should bubble up as RuntimeError from Fortran layer
-    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="unknown_mode"), "Expected RuntimeError for invalid mode", ERR_INVALID_INPUT)
+    assert_error(lambda: compute_baselines_factor_dependent(factor, dependent, baseline_mode="baseline_unknown_mode"), "Expected RuntimeError for invalid mode", ERR_INVALID_INPUT)
 
 
 def test_compute_contributions():
@@ -195,7 +195,7 @@ def test_compute_contributions():
     # -------------------------------
     factor = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
     dependent = np.array([2.0, 1.0, 0.0, -1.0], dtype=np.float64)
-    local, total = compute_contributions(factor, dependent, baseline_mode="raw").values()
+    local, total = compute_contributions(factor, dependent, baseline_mode="baseline_raw").values()
 
     expected_local = factor * dependent
     expected_total = sum(expected_local)
@@ -207,7 +207,7 @@ def test_compute_contributions():
     # -------------------------------
     factor = np.array([3.0, 5.0, 2.0, 4.0], dtype=np.float64)
     dependent = np.array([1.0, 2.0, 0.0, -1.0], dtype=np.float64)
-    local, total = compute_contributions(factor, dependent, baseline_mode="min").values()
+    local, total = compute_contributions(factor, dependent, baseline_mode="baseline_min").values()
 
     expected_local = (factor - factor.min()) * (dependent - dependent.min())
     expected_total = sum(expected_local)
@@ -219,7 +219,7 @@ def test_compute_contributions():
     # -------------------------------
     factor = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
     dependent = np.array([4.0, 3.0, 2.0, 1.0], dtype=np.float64)
-    local, total = compute_contributions(factor, dependent, baseline_mode="mean").values()
+    local, total = compute_contributions(factor, dependent, baseline_mode="baseline_mean").values()
 
     expected_local = (factor - factor.mean()) * (dependent - dependent.mean())
     expected_total = sum(expected_local)
@@ -240,7 +240,7 @@ def test_compute_all_contributions():
     factor_indices = np.array([1], dtype=np.int32, order="F")
     dependent_indices = np.array([2], dtype=np.int32, order="F")
 
-    local, total = compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode="mean").values()
+    local, total = compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode="baseline_mean").values()
 
     # Baselines: mean(factor)=2.0, mean(dependent)=5.0
     expected_local = np.array([1.0, 0.0, 1.0], dtype=np.float64, order="F")
@@ -260,7 +260,7 @@ def test_compute_all_contributions():
     factor_indices = np.array([1], dtype=np.int32, order="F")
     dependent_indices = np.array([2], dtype=np.int32, order="F")
 
-    local, total = compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode="min").values()
+    local, total = compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode="baseline_min").values()
 
     # Baselines: min(factor)=2.0, min(dependent)=1.0
     expected_local = np.array([0.0, 0.0, 8.0], dtype=np.float64, order="F")
@@ -292,7 +292,7 @@ def test_perform_permutation_test():
     factor_idx    = 1   # Fortran-style 1-based
     dependent_idx = 2
     sample_idx    = 1
-    mode          = "mean"   # MEAN baseline
+    mode          = "baseline_mean"   # MEAN baseline
 
     # -------------------------------
     # Call wrapper with fixed seed

@@ -1,7 +1,8 @@
 !> Unit test suite for EDF (Empirical Distribution Function)
 module mod_test_compute_edf
     use asserts
-    use f42_utils
+    use f42_utils_impl
+    use f42_stats, only: compute_edf, compute_edf_expert
     use tox_errors
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
@@ -22,7 +23,7 @@ contains
         all_tests(6) = test_case("test_compute_edf_empty_input", test_compute_edf_empty_input)
         all_tests(7) = test_case("test_compute_edf_large_dataset", test_compute_edf_large_dataset)
         all_tests(8) = test_case("test_compute_edf_negative_values", test_compute_edf_negative_values)
-        all_tests(9) = test_case("test_compute_edf_alloc", test_compute_edf_alloc)
+        all_tests(9) = test_case("test_compute_edf_sorts_internally", test_compute_edf_sorts_internally)
         all_tests(10) = test_case("test_compute_edf_with_perm", test_compute_edf_with_perm)
     end function get_all_tests_compute_edf
 
@@ -38,7 +39,7 @@ contains
         expected_unique = [1.0_real64, 2.0_real64, 3.0_real64]
         expected_cdf = [2.0_real64/6.0_real64, 3.0_real64/6.0_real64, 6.0_real64/6.0_real64]
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_simple: error code should be ERR_OK")
         call assert_equal_array_real(unique_values(1:3), expected_unique, 3, &
@@ -61,7 +62,7 @@ contains
             expected_cdf(i) = real(i, real64)/5.0_real64
         end do
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_all_unique: error code should be ERR_OK")
         call assert_equal_array_real(unique_values(1:3), expected_unique, 3, &
@@ -77,7 +78,7 @@ contains
         real(real64) :: unique_values(7), cdf_values(7)
         integer(int32) :: ierr, n_unique
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_all_same: error code should be ERR_OK")
         call assert_equal_real(unique_values(1), 2.5_real64, 1d-12, "test_compute_edf_all_same: unique value should be 2.5")
@@ -96,7 +97,7 @@ contains
         expected_cdf = [2.0_real64/6.0_real64, 5.0_real64/6.0_real64, 1.0_real64]
 
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_duplicates: error code should be ERR_OK")
         call assert_equal_array_real(cdf_values(1:3), expected_cdf, 3, &
@@ -110,7 +111,7 @@ contains
         real(real64) :: unique_values(1), cdf_values(1)
         integer(int32) :: ierr, n_unique
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_single_value: error code should be ERR_OK")
         call assert_equal_real(unique_values(1), 42.0_real64, 1d-12, "test_compute_edf_single_value: unique value should be 42.0")
@@ -124,7 +125,7 @@ contains
         real(real64) :: unique_values(5), cdf_values(5)
         integer(int32) :: ierr, n_unique
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=2_int32), "test_compute_edf_empty_input: should return ERR_EMPTY_INPUT")
     end subroutine
@@ -141,7 +142,7 @@ contains
             values(i) = real((i + 1)/2, real64)
         end do
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_large_dataset: error code should be ERR_OK")
         call assert_equal_real(cdf_values(50), 1.0_real64, 1d-12, &
@@ -163,7 +164,7 @@ contains
 
         expected_unique = [-2.0_real64, -1.0_real64, 0.0_real64, 1.0_real64, 2.0_real64]
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_negative_values: error code should be ERR_OK")
         call assert_equal_array_real(unique_values(1:5), expected_unique, 5, &
@@ -172,8 +173,8 @@ contains
                                "test_compute_edf_negative_values: final CDF should be 1.0")
     end subroutine
 
-    !> Test compute_edf_alloc helper (automatic workspace allocation).
-    subroutine test_compute_edf_alloc()
+    !> Test the plain entry point, which sorts internally instead of taking a permutation.
+    subroutine test_compute_edf_sorts_internally()
         real(real64) :: values(5) = [3.0_real64, 1.0_real64, 2.0_real64, 1.0_real64, 2.0_real64]
         integer(int32) :: n_values = 5
         real(real64) :: unique_values(5), cdf_values(5)
@@ -185,13 +186,13 @@ contains
         expected_cdf = [0.4_real64, 0.8_real64, 1.0_real64]
 
         ! Compute EDF (convenience wrapper) - sorts internally and computes EDF
-        call compute_edf_alloc(values, n_values, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)
 
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_alloc: error code should be ERR_OK")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_sorts_internally: error code should be ERR_OK")
         call assert_equal_array_real(unique_values(1:3), expected_unique, 3, &
-                                     1d-12, "test_compute_edf_alloc: unique values mismatch")
+                                     1d-12, "test_compute_edf_sorts_internally: unique values mismatch")
         call assert_equal_array_real(cdf_values(1:3), expected_cdf, 3, &
-                                     1d-12, "test_compute_edf_alloc: CDF values mismatch")
+                                     1d-12, "test_compute_edf_sorts_internally: CDF values mismatch")
     end subroutine
 
     !> Test compute_edf using an explicitly assigned and sorted perm vector.
@@ -214,7 +215,7 @@ contains
         end do
         call sort_array(values, perm, stack_left, stack_right)
         ! Now call the expert compute_edf that expects perm to be sorted
-        call compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
+        call compute_edf_expert(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_edf_with_perm: error code should be ERR_OK")
         call assert_equal_array_real(unique_values(1:3), expected_unique, 3, &
                                      1d-12, "test_compute_edf_with_perm: unique values mismatch")

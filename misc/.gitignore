@@ -1,0 +1,44 @@
+# The repository takes a whitelist approach (see /.gitignore): nothing is tracked
+# until a rule allows it. /misc is the exception -- it is allowed wholesale, and
+# blacklists from here instead.
+#
+# Why: everywhere else the set of legitimate file types is small and fixed, so a
+# whitelist is short and stays short. Here it is open-ended (.tex, .sty, .bib,
+# .pdf, Makefile, latexmkrc, images, ...) and grows with every document added,
+# while the set of *junk* is finite and known -- LaTeX writes its build files
+# next to the sources, and misc/ is the only tree where any tool does that. So
+# the short list is the one below, and it is the one worth maintaining.
+#
+# Keep in step with clean.sh, which deletes exactly this set.
+*.acn
+*.aux
+*.bbl
+*-blx.bib
+*.bcf
+*.blg
+*.dvi
+*.fdb_latexmk
+*.fls
+*.glo
+*.ist
+*.loa
+*.lof
+*.log
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+
+# Fortran build artifacts. misc/bench/ compiles here; the runners target /tmp and clean up
+# after themselves, but an interrupted run leaves these behind.
+*.mod
+*.smod
+*.o
+*.a
+*.so
+*.dll
+*.dylib

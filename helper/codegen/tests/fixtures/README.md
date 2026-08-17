@@ -39,10 +39,10 @@ generated from it, and it must produce no diagnostics either.
 | File | Covers |
 |---|---|
 | `src/fx_basics.F90` | the ordinary cases: extents, a shared extent, optionals with defaults, temporaries, mode and method arguments, a function, an internal procedure |
-| `src/fx_edges.F90` | the awkward ones: every character length form, a separately-travelling shape, a mask and its count, `c_bool`, an alloc/expert pair, `DM_OUTPUT_FROM`, a nullable optional, a procedure with no `ierr` |
-| `kernel/fx_ranks_kernel.F90` | a kernel with a documented minimum, a work array and a permutation, so both generated wrappers are meaningful -- compiled and run by `test_end_to_end_fortran.py` |
+| `src/fx_edges.F90` | the awkward ones: every character length form, a separately-travelling shape, a mask and its count, `c_bool`, a hand-written `foo` / `foo_alloc` pair (the shape f42 still uses), `DM_OUTPUT_FROM`, a nullable optional, a procedure with no `ierr` |
+| `impl/fx_ranks_impl.F90` | an implementation with a documented minimum, a work array and a permutation, so both generated wrappers are meaningful -- compiled and run by `test_end_to_end_fortran.py` |
 
-The kernel fixture sits in `kernel/`, not beside the other two in `src/`, because `src/` is
+The implementation fixture sits in `impl/`, not beside the other two in `src/`, because `src/` is
 parsed as one project whose module list is asserted exactly (`test_frontend.py`) and globbed
 whole (`test_emit_fortran_c.py`). A third module there would break both for no gain.
 

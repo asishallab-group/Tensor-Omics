@@ -1,1142 +1,2719 @@
 {
-  "Fortran Call of subroutine 'omics_vector_rap_projection'": {
-    "prefix": "tox:omics_vector_rap_projection",
-    "body": "call omics_vector_rap_projection(${1:vecs}, ${2:n_axes}, ${3:n_vecs}, ${4:vecs_selection_mask}, ${5:n_selected_vecs}, ${6:axes_selection_mask}, ${7:n_selected_axes}, ${8:projections}, ${9:ierr})",
-    "description": "Call of Fortran subroutine 'omics_vector_rap_projection' from module 'tox_relative_axis_plane_tools'"
+  "tox_clustering (use)": {
+    "prefix": "tox:clustering.use",
+    "description": "use tox_clustering, only: ...",
+    "body": [
+      "use tox_clustering, only: ${1|cluster_factor_trajectories_k_means,k_means_clustering,linkage_clustering|}"
+    ]
   },
-  "Fortran Call of subroutine 'omics_vector_rap_projection_helper'": {
-    "prefix": "tox:omics_vector_rap_projection_helper",
-    "body": "call omics_vector_rap_projection_helper(${1:vecs}, ${2:n_axes}, ${3:n_vecs}, ${4:vecs_selection_mask}, ${5:n_selected_vecs}, ${6:axes_selection_mask}, ${7:n_selected_axes}, ${8:projections})",
-    "description": "Call of Fortran subroutine 'omics_vector_rap_projection_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'omics_field_rap_projection'": {
-    "prefix": "tox:omics_field_rap_projection",
-    "body": "call omics_field_rap_projection(${1:fields}, ${2:n_axes}, ${3:n_fields}, ${4:fields_selection_mask}, ${5:n_selected_fields}, ${6:axes_selection_mask}, ${7:n_selected_axes}, ${8:projections}, ${9:ierr})",
-    "description": "Call of Fortran subroutine 'omics_field_rap_projection' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'omics_field_rap_projection_helper'": {
-    "prefix": "tox:omics_field_rap_projection_helper",
-    "body": "call omics_field_rap_projection_helper(${1:fields}, ${2:n_axes}, ${3:n_fields}, ${4:fields_selection_mask}, ${5:n_selected_fields}, ${6:axes_selection_mask}, ${7:n_selected_axes}, ${8:projections})",
-    "description": "Call of Fortran subroutine 'omics_field_rap_projection_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'project_selected_vecs_onto_rap_helper'": {
-    "prefix": "tox:project_selected_vecs_onto_rap_helper",
-    "body": "call project_selected_vecs_onto_rap_helper(${1:selected_vecs}, ${2:n_selected_axes}, ${3:n_selected_vecs})",
-    "description": "Call of Fortran subroutine 'project_selected_vecs_onto_rap_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'validate_selected_axes_for_signed_helper'": {
-    "prefix": "tox:validate_selected_axes_for_signed_helper",
-    "body": "call validate_selected_axes_for_signed_helper(${1:selected_axes_for_signed}, ${2:ierr}, ${3:n_dims}, ${4:arg_pos})",
-    "description": "Call of Fortran subroutine 'validate_selected_axes_for_signed_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'clock_hand_angle_between_vectors'": {
-    "prefix": "tox:clock_hand_angle_between_vectors",
-    "body": "call clock_hand_angle_between_vectors(${1:v1}, ${2:v2}, ${3:n_dims}, ${4:signed_angle}, ${5:selected_axes_for_signed}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'clock_hand_angle_between_vectors' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'clock_hand_angle_between_vectors_helper'": {
-    "prefix": "tox:clock_hand_angle_between_vectors_helper",
-    "body": "call clock_hand_angle_between_vectors_helper(${1:v1}, ${2:v2}, ${3:n_dims}, ${4:signed_angle}, ${5:selected_axes_for_signed})",
-    "description": "Call of Fortran subroutine 'clock_hand_angle_between_vectors_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'clock_hand_angles_for_shift_vectors'": {
-    "prefix": "tox:clock_hand_angles_for_shift_vectors",
-    "body": "call clock_hand_angles_for_shift_vectors(${1:fields}, ${2:n_dims}, ${3:n_fields}, ${4:fields_selection_mask}, ${5:n_selected_fields}, ${6:selected_axes_for_signed}, ${7:signed_angles}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'clock_hand_angles_for_shift_vectors' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'clock_hand_angles_for_shift_vectors_helper'": {
-    "prefix": "tox:clock_hand_angles_for_shift_vectors_helper",
-    "body": "call clock_hand_angles_for_shift_vectors_helper(${1:fields}, ${2:n_dims}, ${3:n_fields}, ${4:fields_selection_mask}, ${5:n_selected_fields}, ${6:selected_axes_for_signed}, ${7:signed_angles})",
-    "description": "Call of Fortran subroutine 'clock_hand_angles_for_shift_vectors_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'compute_relative_axis_contributions'": {
-    "prefix": "tox:compute_relative_axis_contributions",
-    "body": "call compute_relative_axis_contributions(${1:vec}, ${2:n_axes}, ${3:contributions}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'compute_relative_axis_contributions' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'compute_relative_axis_contributions_helper'": {
-    "prefix": "tox:compute_relative_axis_contributions_helper",
-    "body": "call compute_relative_axis_contributions_helper(${1:vec}, ${2:n_axes}, ${3:contributions}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'compute_relative_axis_contributions_helper' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'relative_axes_changes_from_shift_vector'": {
-    "prefix": "tox:relative_axes_changes_from_shift_vector",
-    "body": "call relative_axes_changes_from_shift_vector(${1:vec}, ${2:n_axes}, ${3:contributions}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'relative_axes_changes_from_shift_vector' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'relative_axes_expression_from_expression_vector'": {
-    "prefix": "tox:relative_axes_expression_from_expression_vector",
-    "body": "call relative_axes_expression_from_expression_vector(${1:vec}, ${2:n_axes}, ${3:contributions}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'relative_axes_expression_from_expression_vector' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of function 'cross_product_orientation_sign'": {
-    "prefix": "tox:cross_product_orientation_sign",
-    "body": "${{1:result}} = cross_product_orientation_sign(${2:a}, ${3:b}, ${4:n_dims}, ${5:selected_axes})",
-    "description": "Call of Fortran function 'cross_product_orientation_sign' from module 'tox_relative_axis_plane_tools'"
-  },
-  "Fortran Call of subroutine 'cluster_factor_trajectories_k_means'": {
+  "cluster_factor_trajectories_k_means (call)": {
     "prefix": "tox:cluster_factor_trajectories_k_means",
-    "body": "call cluster_factor_trajectories_k_means(${1:n_clusters}, ${2:trajectories}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:centroids}, ${7:labels}, ${8:label_counts}, ${9:ierr}, ${10:max_iterations})",
-    "description": "Call of Fortran subroutine 'cluster_factor_trajectories_k_means' from module 'tox_clustering'"
+    "description": "cluster_factor_trajectories_k_means",
+    "body": [
+      "call cluster_factor_trajectories_k_means( &",
+      "    n_clusters=${1:n_clusters}, &",
+      "    trajectories=${2:trajectories}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    centroids=${6:centroids}, &",
+      "    labels=${7:labels}, &",
+      "    label_counts=${8:label_counts}, &",
+      "    max_iterations=${9:max_iterations}, &",
+      "    ierr=${10:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'k_means_clustering'": {
+  "cluster_factor_trajectories_k_means (call, checked)": {
+    "prefix": "tox:cluster_factor_trajectories_k_means.checked",
+    "description": "cluster_factor_trajectories_k_means (with error check)",
+    "body": [
+      "call cluster_factor_trajectories_k_means( &",
+      "    n_clusters=${1:n_clusters}, &",
+      "    trajectories=${2:trajectories}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    centroids=${6:centroids}, &",
+      "    labels=${7:labels}, &",
+      "    label_counts=${8:label_counts}, &",
+      "    max_iterations=${9:max_iterations}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "k_means_clustering (call)": {
     "prefix": "tox:k_means_clustering",
-    "body": "call k_means_clustering(${1:n_clusters}, ${2:data_points}, ${3:n_points}, ${4:n_dims}, ${5:centroids}, ${6:labels}, ${7:label_counts}, ${8:ierr}, ${9:max_iterations})",
-    "description": "Call of Fortran subroutine 'k_means_clustering' from module 'tox_clustering'"
+    "description": "1. Assigns each data point to one of `k` clusters whose centroid is clostest",
+    "body": [
+      "call k_means_clustering( &",
+      "    n_clusters=${1:n_clusters}, &",
+      "    data_points=${2:data_points}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    centroids=${5:centroids}, &",
+      "    labels=${6:labels}, &",
+      "    label_counts=${7:label_counts}, &",
+      "    max_iterations=${8:max_iterations}, &",
+      "    ierr=${9:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'k_means_clustering_helper'": {
-    "prefix": "tox:k_means_clustering_helper",
-    "body": "call k_means_clustering_helper(${1:n_clusters}, ${2:data_points}, ${3:n_points}, ${4:n_dims}, ${5:centroids}, ${6:labels}, ${7:label_counts}, ${8:max_iterations})",
-    "description": "Call of Fortran subroutine 'k_means_clustering_helper' from module 'tox_clustering'"
+  "k_means_clustering (call, checked)": {
+    "prefix": "tox:k_means_clustering.checked",
+    "description": "1. Assigns each data point to one of `k` clusters whose centroid is clostest (with error check)",
+    "body": [
+      "call k_means_clustering( &",
+      "    n_clusters=${1:n_clusters}, &",
+      "    data_points=${2:data_points}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    centroids=${5:centroids}, &",
+      "    labels=${6:labels}, &",
+      "    label_counts=${7:label_counts}, &",
+      "    max_iterations=${8:max_iterations}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'k_means_recompute_cluster_centroids_helper'": {
-    "prefix": "tox:k_means_recompute_cluster_centroids_helper",
-    "body": "call k_means_recompute_cluster_centroids_helper(${1:data_points}, ${2:n_points}, ${3:n_dims}, ${4:centroids}, ${5:n_clusters}, ${6:labels}, ${7:label_counts})",
-    "description": "Call of Fortran subroutine 'k_means_recompute_cluster_centroids_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'k_means_assign_cluster_helper'": {
-    "prefix": "tox:k_means_assign_cluster_helper",
-    "body": "call k_means_assign_cluster_helper(${1:i_point}, ${2:n_clusters}, ${3:data_points}, ${4:n_points}, ${5:n_dims}, ${6:centroids}, ${7:label})",
-    "description": "Call of Fortran subroutine 'k_means_assign_cluster_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'linkage_clustering'": {
+  "linkage_clustering (call)": {
     "prefix": "tox:linkage_clustering",
-    "body": "call linkage_clustering(${1:distances}, ${2:n_points}, ${3:merge_i}, ${4:merge_j}, ${5:heights}, ${6:cluster_sizes}, ${7:method}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'linkage_clustering' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'linkage_clustering_helper'": {
-    "prefix": "tox:linkage_clustering_helper",
-    "body": "call linkage_clustering_helper(${1:distances}, ${2:n_points}, ${3:merge_i}, ${4:merge_j}, ${5:heights}, ${6:cluster_sizes}, ${7:method})",
-    "description": "Call of Fortran subroutine 'linkage_clustering_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'recover_distance_matrix_helper'": {
-    "prefix": "tox:recover_distance_matrix_helper",
-    "body": "call recover_distance_matrix_helper(${1:distances}, ${2:n_points})",
-    "description": "Call of Fortran subroutine 'recover_distance_matrix_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'get_cluster_data_linkage_helper'": {
-    "prefix": "tox:get_cluster_data_linkage_helper",
-    "body": "call get_cluster_data_linkage_helper(${1:distances}, ${2:n_points}, ${3:cluster_sizes}, ${4:idx}, ${5:weight}, ${6:cluster_label})",
-    "description": "Call of Fortran subroutine 'get_cluster_data_linkage_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'merge_distances_xpgma_linkage_helper'": {
-    "prefix": "tox:merge_distances_xpgma_linkage_helper",
-    "body": "call merge_distances_xpgma_linkage_helper(${1:distances}, ${2:n_points}, ${3:idx_a}, ${4:idx_b}, ${5:size_a}, ${6:size_b}, ${7:iteration_k})",
-    "description": "Call of Fortran subroutine 'merge_distances_xpgma_linkage_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'merge_distances_ward_linkage_helper'": {
-    "prefix": "tox:merge_distances_ward_linkage_helper",
-    "body": "call merge_distances_ward_linkage_helper(${1:distances}, ${2:n_points}, ${3:idx_a}, ${4:idx_b}, ${5:size_a}, ${6:size_b}, ${7:iteration_k}, ${8:cluster_sizes}, ${9:dist_ab})",
-    "description": "Call of Fortran subroutine 'merge_distances_ward_linkage_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'post_merge_distances_helper'": {
-    "prefix": "tox:post_merge_distances_helper",
-    "body": "call post_merge_distances_helper(${1:distances}, ${2:n_points}, ${3:idx_a}, ${4:idx_b}, ${5:iteration_k})",
-    "description": "Call of Fortran subroutine 'post_merge_distances_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'get_min_distance_indices_helper'": {
-    "prefix": "tox:get_min_distance_indices_helper",
-    "body": "call get_min_distance_indices_helper(${1:distances}, ${2:n}, ${3:row_idx}, ${4:col_idx}, ${5:min_dist})",
-    "description": "Call of Fortran subroutine 'get_min_distance_indices_helper' from module 'tox_clustering'"
-  },
-  "Fortran Call of subroutine 'lowesd'": {
-    "prefix": "tox:lowesd",
-    "body": "call lowesd(${1:iv19_code}, ${2:int_workspace}, ${3:int_workspace_size}, ${4:real_workspace_size}, ${5:real_workspace}, ${6:n_dim}, ${7:n}, ${8:span}, ${9:degree}, ${10:max_neighborhood_size}, ${11:save_factorization})",
-    "description": "Call of Fortran subroutine 'lowesd' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'lowesb'": {
-    "prefix": "tox:lowesb",
-    "body": "call lowesb(${1:x}, ${2:y}, ${3:weights}, ${4:hat_diag}, ${5:compute_influence}, ${6:int_workspace}, ${7:int_workspace_size}, ${8:real_workspace_size}, ${9:real_workspace})",
-    "description": "Call of Fortran subroutine 'lowesb' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'lowese'": {
-    "prefix": "tox:lowese",
-    "body": "call lowese(${1:int_workspace}, ${2:int_workspace_size}, ${3:real_workspace_size}, ${4:real_workspace}, ${5:n}, ${6:eval_points}, ${7:fitted_values})",
-    "description": "Call of Fortran subroutine 'lowese' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'lowesw'": {
-    "prefix": "tox:lowesw",
-    "body": "call lowesw(${1:residuals}, ${2:n}, ${3:robust_weights}, ${4:permutation_indices})",
-    "description": "Call of Fortran subroutine 'lowesw' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'tox_loess_required_workspace'": {
-    "prefix": "tox:tox_loess_required_workspace",
-    "body": "call tox_loess_required_workspace(${1:n_dim}, ${2:max_neighborhood_size}, ${3:int_workspace_size}, ${4:real_workspace_size}, ${5:save_factorization})",
-    "description": "Call of Fortran subroutine 'tox_loess_required_workspace' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'loess_fit_plain'": {
-    "prefix": "tox:loess_fit_plain",
-    "body": "call loess_fit_plain(${1:n}, ${2:x}, ${3:y}, ${4:weights}, ${5:eval_points}, ${6:span}, ${7:degree}, ${8:max_neighborhood_size}, ${9:compute_influence}, ${10:save_factorization}, ${11:int_workspace}, ${12:int_workspace_size}, ${13:real_workspace}, ${14:real_workspace_size}, ${15:hat_diag}, ${16:fitted_values}, ${17:ierr})",
-    "description": "Call of Fortran subroutine 'loess_fit_plain' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'loess_fit_robust'": {
-    "prefix": "tox:loess_fit_robust",
-    "body": "call loess_fit_robust(${1:n}, ${2:x}, ${3:y}, ${4:weights}, ${5:eval_points}, ${6:span}, ${7:degree}, ${8:max_neighborhood_size}, ${9:compute_influence}, ${10:save_factorization}, ${11:n_iters}, ${12:int_workspace}, ${13:int_workspace_size}, ${14:real_workspace}, ${15:real_workspace_size}, ${16:hat_diag}, ${17:robust_weights}, ${18:combined_weights}, ${19:residuals}, ${20:permutation_indices}, ${21:fitted_values}, ${22:ierr})",
-    "description": "Call of Fortran subroutine 'loess_fit_robust' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'loess_alloc'": {
-    "prefix": "tox:loess_alloc",
-    "body": "call loess_alloc(${1:x}, ${2:y}, ${3:span}, ${4:degree}, ${5:fitted_values}, ${6:mode}, ${7:n_iters}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'loess_alloc' from module 'tox_loess'"
-  },
-  "Fortran Call of subroutine 'detect_neofunctionalization'": {
-    "prefix": "tox:detect_neofunctionalization",
-    "body": "call detect_neofunctionalization(${1:ancestors}, ${2:n_families}, ${3:genes}, ${4:n_axes}, ${5:gene_to_fam}, ${6:n_genes}, ${7:thresholds}, ${8:neofunc}, ${9:ierr})",
-    "description": "Call of Fortran subroutine 'detect_neofunctionalization' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'detect_dosage_effect'": {
-    "prefix": "tox:detect_dosage_effect",
-    "body": "call detect_dosage_effect(${1:ancestor}, ${2:genes}, ${3:n_genes}, ${4:n_dims}, ${5:filtered_paralogs_mask}, ${6:n_mask_chunks}, ${7:n_results}, ${8:max_subset_size}, ${9:work_arr_paralog_subsets}, ${10:n_paralog_subsets}, ${11:tmp_active_mask}, ${12:tmp_paralog_vector}, ${13:ierr}, ${14:max_angle}, ${15:gain_gamma})",
-    "description": "Call of Fortran subroutine 'detect_dosage_effect' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'detect_subfunctionalization'": {
-    "prefix": "tox:detect_subfunctionalization",
-    "body": "call detect_subfunctionalization(${1:ancestor}, ${2:genes}, ${3:n_genes}, ${4:n_dims}, ${5:rdi_threshold}, ${6:filtered_paralogs_mask}, ${7:n_mask_chunks}, ${8:n_results}, ${9:max_subset_size}, ${10:work_arr_paralog_subsets}, ${11:n_paralog_subsets}, ${12:tmp_active_mask}, ${13:tmp_paralog_vector}, ${14:paralog_norms}, ${15:sorted_paralog_norms_perm}, ${16:tmp_work_array}, ${17:ierr})",
-    "description": "Call of Fortran subroutine 'detect_subfunctionalization' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'detect_patterns'": {
-    "prefix": "tox:detect_patterns",
-    "body": "call detect_patterns(${1:ancestor}, ${2:genes}, ${3:n_genes}, ${4:n_dims}, ${5:pattern}, ${6:filtered_paralogs_mask}, ${7:n_mask_chunks}, ${8:n_results}, ${9:max_subset_size}, ${10:work_arr_paralog_subsets}, ${11:n_paralog_subsets}, ${12:tmp_active_mask}, ${13:tmp_paralog_vector}, ${14:dosage_max_angle}, ${15:dosage_gain_gamma}, ${16:subfunc_rdi_threshold}, ${17:subfunc_paralog_norms}, ${18:subfunc_sorted_paralog_norms_perm}, ${19:tmp_subfunc_work_array}, ${20:ierr})",
-    "description": "Call of Fortran subroutine 'detect_patterns' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'generate_subsets_helper'": {
-    "prefix": "tox:generate_subsets_helper",
-    "body": "call generate_subsets_helper(${1:candidate_mask}, ${2:filtered_paralogs_mask}, ${3:n_mask_chunks}, ${4:pattern}, ${5:ancestor}, ${6:genes}, ${7:n_genes}, ${8:n_dims}, ${9:tmp_paralog_vector}, ${10:work_arr_paralog_subsets}, ${11:n_paralog_subsets}, ${12:n_results}, ${13:n_active_masks}, ${14:n_new_active_masks}, ${15:dosage_max_angle}, ${16:dosage_gain_gamma}, ${17:subfunc_rdi_threshold}, ${18:subfunc_paralog_norms}, ${19:subfunc_sorted_paralog_norms_perm}, ${20:tmp_subfunc_work_array}, ${21:ierr})",
-    "description": "Call of Fortran subroutine 'generate_subsets_helper' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'fill_array_with_minvals_for_each_idx'": {
-    "prefix": "tox:fill_array_with_minvals_for_each_idx",
-    "body": "call fill_array_with_minvals_for_each_idx(${1:out_arr}, ${2:src_arr}, ${3:sorted_src_arr_perm}, ${4:src_arr_len}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'fill_array_with_minvals_for_each_idx' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'take_active_mask_helper'": {
-    "prefix": "tox:take_active_mask_helper",
-    "body": "call take_active_mask_helper(${1:subsets}, ${2:n_mask_chunks}, ${3:n_subsets}, ${4:n_results}, ${5:n_active_masks}, ${6:n_new_active_masks}, ${7:active_mask}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'take_active_mask_helper' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'add_to_results_helper'": {
-    "prefix": "tox:add_to_results_helper",
-    "body": "call add_to_results_helper(${1:subsets}, ${2:n_mask_chunks}, ${3:n_subsets}, ${4:n_results}, ${5:n_active_masks}, ${6:n_new_active_masks}, ${7:result}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'add_to_results_helper' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'add_new_active_mask_helper'": {
-    "prefix": "tox:add_new_active_mask_helper",
-    "body": "call add_new_active_mask_helper(${1:subsets}, ${2:n_mask_chunks}, ${3:n_subsets}, ${4:n_results}, ${5:n_active_masks}, ${6:n_new_active_masks}, ${7:new_active_mask}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'add_new_active_mask_helper' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'mask_chunk_count'": {
-    "prefix": "tox:mask_chunk_count",
-    "body": "call mask_chunk_count(${1:n_genes}, ${2:count})",
-    "description": "Call of Fortran subroutine 'mask_chunk_count' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'filter_paralogs_by_pattern_subfunctionalization'": {
-    "prefix": "tox:filter_paralogs_by_pattern_subfunctionalization",
-    "body": "call filter_paralogs_by_pattern_subfunctionalization(${1:gene_angles}, ${2:threshold}, ${3:n_genes}, ${4:n_families}, ${5:gene_to_fam}, ${6:masks}, ${7:n_mask_chunks}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'filter_paralogs_by_pattern_subfunctionalization' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'filter_paralogs_by_pattern_dosage_effect'": {
-    "prefix": "tox:filter_paralogs_by_pattern_dosage_effect",
-    "body": "call filter_paralogs_by_pattern_dosage_effect(${1:gene_angles}, ${2:threshold}, ${3:n_genes}, ${4:n_families}, ${5:gene_to_fam}, ${6:masks}, ${7:n_mask_chunks}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'filter_paralogs_by_pattern_dosage_effect' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'filter_paralogs_by_pattern'": {
-    "prefix": "tox:filter_paralogs_by_pattern",
-    "body": "call filter_paralogs_by_pattern(${1:pattern}, ${2:gene_angles}, ${3:threshold}, ${4:n_genes}, ${5:n_families}, ${6:gene_to_fam}, ${7:masks}, ${8:n_mask_chunks}, ${9:ierr})",
-    "description": "Call of Fortran subroutine 'filter_paralogs_by_pattern' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'calc_work_arr_paralog_subsets_size'": {
-    "prefix": "tox:calc_work_arr_paralog_subsets_size",
-    "body": "call calc_work_arr_paralog_subsets_size(${1:max_subset_size}, ${2:n_genes}, ${3:work_array_size}, ${4:filtered_paralogs_mask}, ${5:n_mask_chunks}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'calc_work_arr_paralog_subsets_size' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of function 'mask_get_first_successor_idx'": {
-    "prefix": "tox:mask_get_first_successor_idx",
-    "body": "${{1:result}} = mask_get_first_successor_idx(${2:bit_mask})",
-    "description": "Call of Fortran function 'mask_get_first_successor_idx' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'mask_set_state'": {
-    "prefix": "tox:mask_set_state",
-    "body": "call mask_set_state(${1:bit_mask}, ${2:i_gene}, ${3:state}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'mask_set_state' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of function 'mask_check_state'": {
-    "prefix": "tox:mask_check_state",
-    "body": "${{1:result}} = mask_check_state(${2:bit_mask}, ${3:i_gene})",
-    "description": "Call of Fortran function 'mask_check_state' from module 'tox_paralog_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_tissue_versatility'": {
-    "prefix": "tox:compute_tissue_versatility",
-    "body": "call compute_tissue_versatility(${1:n_axes}, ${2:n_vectors}, ${3:expression_vectors}, ${4:exp_vecs_selection_index}, ${5:n_selected_vectors}, ${6:axes_selection}, ${7:n_selected_axes}, ${8:tissue_versatilities}, ${9:tissue_angles_deg}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'compute_tissue_versatility' from module 'tox_tissue_versatility'"
-  },
-  "Fortran Call of subroutine 'compute_tissue_versatility_helper'": {
-    "prefix": "tox:compute_tissue_versatility_helper",
-    "body": "call compute_tissue_versatility_helper(${1:n_axes}, ${2:n_vectors}, ${3:expression_vectors}, ${4:exp_vecs_selection_index}, ${5:n_selected_vectors}, ${6:axes_selection}, ${7:n_selected_axes}, ${8:tissue_versatilities}, ${9:tissue_angles_deg})",
-    "description": "Call of Fortran subroutine 'compute_tissue_versatility_helper' from module 'tox_tissue_versatility'"
-  },
-  "Fortran Call of function 'create_err_code'": {
-    "prefix": "tox:create_err_code",
-    "body": "${{1:result}} = create_err_code(${2:error}, ${3:arg_pos})",
-    "description": "Call of Fortran function 'create_err_code' from module 'tox_errors'"
-  },
-  "Fortran Call of function 'get_err_code'": {
-    "prefix": "tox:get_err_code",
-    "body": "${{1:result}} = get_err_code(${2:ierr})",
-    "description": "Call of Fortran function 'get_err_code' from module 'tox_errors'"
-  },
-  "Fortran Call of function 'get_err_arg_pos'": {
-    "prefix": "tox:get_err_arg_pos",
-    "body": "${{1:result}} = get_err_arg_pos(${2:ierr})",
-    "description": "Call of Fortran function 'get_err_arg_pos' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'map_err_arg_pos'": {
-    "prefix": "tox:map_err_arg_pos",
-    "body": "call map_err_arg_pos(${1:ierr}, ${2:old}, ${3:new})",
-    "description": "Call of Fortran subroutine 'map_err_arg_pos' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'set_ok'": {
-    "prefix": "tox:set_ok",
-    "body": "call set_ok(${1:ierr})",
-    "description": "Call of Fortran subroutine 'set_ok' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'set_err'": {
-    "prefix": "tox:set_err",
-    "body": "call set_err(${1:ierr}, ${2:error}, ${3:arg_pos})",
-    "description": "Call of Fortran subroutine 'set_err' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'set_err_once'": {
-    "prefix": "tox:set_err_once",
-    "body": "call set_err_once(${1:ierr}, ${2:error}, ${3:arg_pos})",
-    "description": "Call of Fortran subroutine 'set_err_once' from module 'tox_errors'"
-  },
-  "Fortran Call of function 'is_err'": {
-    "prefix": "tox:is_err",
-    "body": "${{1:result}} = is_err(${2:ierr})",
-    "description": "Call of Fortran function 'is_err' from module 'tox_errors'"
-  },
-  "Fortran Call of function 'is_ok'": {
-    "prefix": "tox:is_ok",
-    "body": "${{1:result}} = is_ok(${2:ierr})",
-    "description": "Call of Fortran function 'is_ok' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'check_io_stat'": {
-    "prefix": "tox:check_io_stat",
-    "body": "call check_io_stat(${1:ios}, ${2:ierr})",
-    "description": "Call of Fortran subroutine 'check_io_stat' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_dimension_size'": {
-    "prefix": "tox:validate_dimension_size",
-    "body": "call validate_dimension_size(${1:n}, ${2:ierr}, ${3:arg_pos})",
-    "description": "Call of Fortran subroutine 'validate_dimension_size' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_type_code'": {
-    "prefix": "tox:validate_type_code",
-    "body": "call validate_type_code(${1:actual}, ${2:expected}, ${3:unit}, ${4:ierr}, ${5:arg_pos})",
-    "description": "Call of Fortran subroutine 'validate_type_code' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_in_range_int'": {
-    "prefix": "tox:validate_in_range_int",
-    "body": "call validate_in_range_int(${1:val}, ${2:ierr}, ${3:arg_pos}, ${4:min}, ${5:max}, ${6:sentinel})",
-    "description": "Call of Fortran subroutine 'validate_in_range_int' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_all_in_range_int'": {
-    "prefix": "tox:validate_all_in_range_int",
-    "body": "call validate_all_in_range_int(${1:array}, ${2:n_elements}, ${3:ierr}, ${4:arg_pos}, ${5:min}, ${6:max}, ${7:sentinel})",
-    "description": "Call of Fortran subroutine 'validate_all_in_range_int' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_in_range_real'": {
-    "prefix": "tox:validate_in_range_real",
-    "body": "call validate_in_range_real(${1:val}, ${2:ierr}, ${3:arg_pos}, ${4:min}, ${5:max}, ${6:sentinel})",
-    "description": "Call of Fortran subroutine 'validate_in_range_real' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_all_in_range_real'": {
-    "prefix": "tox:validate_all_in_range_real",
-    "body": "call validate_all_in_range_real(${1:array}, ${2:n_elements}, ${3:ierr}, ${4:arg_pos}, ${5:min}, ${6:max}, ${7:sentinel})",
-    "description": "Call of Fortran subroutine 'validate_all_in_range_real' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'validate_distance_matrix'": {
-    "prefix": "tox:validate_distance_matrix",
-    "body": "call validate_distance_matrix(${1:distances}, ${2:n}, ${3:ierr}, ${4:arg_pos}, ${5:min}, ${6:max})",
-    "description": "Call of Fortran subroutine 'validate_distance_matrix' from module 'tox_errors'"
-  },
-  "Fortran Call of subroutine 'select_random_sample'": {
-    "prefix": "tox:select_random_sample",
-    "body": "call select_random_sample(${1:n_samples}, ${2:current_sample}, ${3:random_sample}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'select_random_sample' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'select_random_sample_helper'": {
-    "prefix": "tox:select_random_sample_helper",
-    "body": "call select_random_sample_helper(${1:n_samples}, ${2:current_sample}, ${3:random_sample})",
-    "description": "Call of Fortran subroutine 'select_random_sample_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'perform_permutation_test'": {
-    "prefix": "tox:perform_permutation_test",
-    "body": "call perform_permutation_test(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:factor_idx}, ${6:dependent_idx}, ${7:sample_idx}, ${8:baseline_mode}, ${9:n_permutations}, ${10:local_contributions}, ${11:total_contributions}, ${12:tmp_factor}, ${13:tmp_dependent}, ${14:ierr}, ${15:random_seed})",
-    "description": "Call of Fortran subroutine 'perform_permutation_test' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'perform_permutation_test_helper'": {
-    "prefix": "tox:perform_permutation_test_helper",
-    "body": "call perform_permutation_test_helper(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:factor_idx}, ${6:dependent_idx}, ${7:sample_idx}, ${8:baseline_mode}, ${9:n_permutations}, ${10:local_contributions}, ${11:total_contributions}, ${12:tmp_factor}, ${13:tmp_dependent}, ${14:random_seed}, ${15:ierr})",
-    "description": "Call of Fortran subroutine 'perform_permutation_test_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_p_values'": {
-    "prefix": "tox:compute_p_values",
-    "body": "call compute_p_values(${1:local_contributions_observed}, ${2:total_contribution_observed}, ${3:local_contributions_perm_test}, ${4:total_contributions_perm_test}, ${5:n_timepoints}, ${6:n_permutations}, ${7:local_p_values}, ${8:total_p_value}, ${9:ierr})",
-    "description": "Call of Fortran subroutine 'compute_p_values' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_p_values_helper'": {
-    "prefix": "tox:compute_p_values_helper",
-    "body": "call compute_p_values_helper(${1:local_contributions_observed}, ${2:total_contribution_observed}, ${3:local_contributions_perm_test}, ${4:total_contributions_perm_test}, ${5:n_timepoints}, ${6:n_permutations}, ${7:local_p_values}, ${8:total_p_value})",
-    "description": "Call of Fortran subroutine 'compute_p_values_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_contributions'": {
-    "prefix": "tox:compute_contributions",
-    "body": "call compute_contributions(${1:factor}, ${2:dependent}, ${3:n_dims}, ${4:baseline_mode}, ${5:local_contributions}, ${6:total_contribution}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'compute_contributions' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_contributions_helper'": {
-    "prefix": "tox:compute_contributions_helper",
-    "body": "call compute_contributions_helper(${1:factor}, ${2:dependent}, ${3:n_dims}, ${4:baseline_mode}, ${5:local_contributions}, ${6:total_contribution}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'compute_contributions_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_all_contributions'": {
-    "prefix": "tox:compute_all_contributions",
-    "body": "call compute_all_contributions(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:factor_indices}, ${6:n_selected_factors}, ${7:dependent_indices}, ${8:n_selected_dependents}, ${9:baseline_mode}, ${10:local_contributions}, ${11:total_contributions}, ${12:tmp_factors}, ${13:tmp_dependent}, ${14:ierr})",
-    "description": "Call of Fortran subroutine 'compute_all_contributions' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_baselines_factor_dependent'": {
-    "prefix": "tox:compute_baselines_factor_dependent",
-    "body": "call compute_baselines_factor_dependent(${1:n_timepoints}, ${2:factor}, ${3:dependent}, ${4:baseline_mode}, ${5:factor_baseline}, ${6:dependent_baseline}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'compute_baselines_factor_dependent' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'get_baseline_mode'": {
-    "prefix": "tox:get_baseline_mode",
-    "body": "call get_baseline_mode(${1:c_mode_str}, ${2:baseline_mode}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'get_baseline_mode' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_velocity_trajectory_helper'": {
-    "prefix": "tox:compute_velocity_trajectory_helper",
-    "body": "call compute_velocity_trajectory_helper(${1:trajectory}, ${2:velocity}, ${3:n_timepoints})",
-    "description": "Call of Fortran subroutine 'compute_velocity_trajectory_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_factor_velocity_from_trajectories_helper'": {
-    "prefix": "tox:compute_factor_velocity_from_trajectories_helper",
-    "body": "call compute_factor_velocity_from_trajectories_helper(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:factor_idx}, ${6:sample_idx}, ${7:velocity})",
-    "description": "Call of Fortran subroutine 'compute_factor_velocity_from_trajectories_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_velocity_trajectory'": {
-    "prefix": "tox:compute_velocity_trajectory",
-    "body": "call compute_velocity_trajectory(${1:trajectory}, ${2:velocity}, ${3:n_timepoints}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'compute_velocity_trajectory' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_acceleration_from_velocity_trajectory'": {
-    "prefix": "tox:compute_acceleration_from_velocity_trajectory",
-    "body": "call compute_acceleration_from_velocity_trajectory(${1:velocity}, ${2:acceleration}, ${3:n_timepoints}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'compute_acceleration_from_velocity_trajectory' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_velocity_trajectories_helper'": {
-    "prefix": "tox:compute_velocity_trajectories_helper",
-    "body": "call compute_velocity_trajectories_helper(${1:trajectories}, ${2:velocity}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints})",
-    "description": "Call of Fortran subroutine 'compute_velocity_trajectories_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_velocity_trajectories'": {
-    "prefix": "tox:compute_velocity_trajectories",
-    "body": "call compute_velocity_trajectories(${1:trajectories}, ${2:velocity}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'compute_velocity_trajectories' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_acceleration_from_velocity_helper'": {
-    "prefix": "tox:compute_acceleration_from_velocity_helper",
-    "body": "call compute_acceleration_from_velocity_helper(${1:velocity}, ${2:acceleration}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints})",
-    "description": "Call of Fortran subroutine 'compute_acceleration_from_velocity_helper' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_acceleration_from_velocity'": {
-    "prefix": "tox:compute_acceleration_from_velocity",
-    "body": "call compute_acceleration_from_velocity(${1:velocity}, ${2:acceleration}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'compute_acceleration_from_velocity' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_velocity_acceleration_contributions'": {
-    "prefix": "tox:compute_velocity_acceleration_contributions",
-    "body": "call compute_velocity_acceleration_contributions(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:baseline_mode}, ${6:tmp_factors}, ${7:tmp_dependent}, ${8:tmp_contributions}, ${9:contrib_velocity}, ${10:velocity_contribution_series}, ${11:contrib_acceleration}, ${12:acceleration_contribution_series}, ${13:ierr})",
-    "description": "Call of Fortran subroutine 'compute_velocity_acceleration_contributions' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'compute_velocity_acceleration_contributions_alloc'": {
-    "prefix": "tox:compute_velocity_acceleration_contributions_alloc",
-    "body": "call compute_velocity_acceleration_contributions_alloc(${1:trajectories}, ${2:n_factors}, ${3:n_samples}, ${4:n_timepoints}, ${5:baseline_mode}, ${6:contrib_velocity}, ${7:velocity_contribution_series}, ${8:contrib_acceleration}, ${9:acceleration_contribution_series}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'compute_velocity_acceleration_contributions_alloc' from module 'tox_trajectory_contribution_analysis'"
-  },
-  "Fortran Call of subroutine 'normalize_unit_length'": {
-    "prefix": "tox:normalize_unit_length",
-    "body": "call normalize_unit_length(${1:vector}, ${2:n_dims}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'normalize_unit_length' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'normalization_pipeline_alloc'": {
-    "prefix": "tox:normalization_pipeline_alloc",
-    "body": "call normalization_pipeline_alloc(${1:n_genes}, ${2:n_replicates}, ${3:expr}, ${4:log_transformed_expr}, ${5:reps_per_tissue}, ${6:n_tissues}, ${7:span}, ${8:degree}, ${9:use_quantile}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'normalization_pipeline_alloc' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'normalize_by_std_dev_alloc'": {
-    "prefix": "tox:normalize_by_std_dev_alloc",
-    "body": "call normalize_by_std_dev_alloc(${1:n_genes}, ${2:n_replicates}, ${3:expr}, ${4:normalized_expr}, ${5:span}, ${6:degree}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'normalize_by_std_dev_alloc' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'normalize_by_std_dev_inplace_helper'": {
-    "prefix": "tox:normalize_by_std_dev_inplace_helper",
-    "body": "call normalize_by_std_dev_inplace_helper(${1:n_genes}, ${2:n_replicates}, ${3:expr}, ${4:tmp_loess_x}, ${5:tmp_loess_y}, ${6:tmp_indices_used}, ${7:tmp_yhat_global}, ${8:span}, ${9:degree}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'normalize_by_std_dev_inplace_helper' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'root_mean_sq_normalization'": {
-    "prefix": "tox:root_mean_sq_normalization",
-    "body": "call root_mean_sq_normalization(${1:n_genes}, ${2:n_replicates}, ${3:expr}, ${4:normalized_expr}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'root_mean_sq_normalization' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'root_mean_sq_normalization_inplace_helper'": {
-    "prefix": "tox:root_mean_sq_normalization_inplace_helper",
-    "body": "call root_mean_sq_normalization_inplace_helper(${1:n_genes}, ${2:n_replicates}, ${3:expr})",
-    "description": "Call of Fortran subroutine 'root_mean_sq_normalization_inplace_helper' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'quantile_normalization'": {
-    "prefix": "tox:quantile_normalization",
-    "body": "call quantile_normalization(${1:n_genes}, ${2:n_replicates}, ${3:expr}, ${4:normalized_expr}, ${5:rank_means}, ${6:tmp_genes_row}, ${7:tmp_perm}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'quantile_normalization' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'quantile_normalization_inplace_helper'": {
-    "prefix": "tox:quantile_normalization_inplace_helper",
-    "body": "call quantile_normalization_inplace_helper(${1:n_genes}, ${2:n_replicates}, ${3:expr}, ${4:rank_means}, ${5:tmp_genes_row}, ${6:tmp_perm})",
-    "description": "Call of Fortran subroutine 'quantile_normalization_inplace_helper' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'log2_transformation'": {
-    "prefix": "tox:log2_transformation",
-    "body": "call log2_transformation(${1:n_genes}, ${2:n_tissues}, ${3:expr}, ${4:transformed_expr}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'log2_transformation' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'log2_transformation_inplace_helper'": {
-    "prefix": "tox:log2_transformation_inplace_helper",
-    "body": "call log2_transformation_inplace_helper(${1:n_genes}, ${2:n_tissues}, ${3:expr}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'log2_transformation_inplace_helper' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'calc_tiss_avg'": {
-    "prefix": "tox:calc_tiss_avg",
-    "body": "call calc_tiss_avg(${1:n_genes}, ${2:n_tissues}, ${3:reps_per_tissue}, ${4:expr}, ${5:tissue_averages}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'calc_tiss_avg' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'calc_tiss_avg_helper'": {
-    "prefix": "tox:calc_tiss_avg_helper",
-    "body": "call calc_tiss_avg_helper(${1:n_genes}, ${2:n_tissues}, ${3:reps_per_tissue}, ${4:expr}, ${5:tissue_averages})",
-    "description": "Call of Fortran subroutine 'calc_tiss_avg_helper' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'calc_fchange'": {
-    "prefix": "tox:calc_fchange",
-    "body": "call calc_fchange(${1:n_genes}, ${2:n_tissues}, ${3:n_pairs}, ${4:control_tissues}, ${5:condition_tissues}, ${6:expr}, ${7:fold_changes}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'calc_fchange' from module 'tox_normalization'"
-  },
-  "Fortran Call of subroutine 'compute_shift_vector_field'": {
-    "prefix": "tox:compute_shift_vector_field",
-    "body": "call compute_shift_vector_field(${1:n_tissues}, ${2:n_genes}, ${3:n_families}, ${4:expression_vectors}, ${5:family_centroids}, ${6:gene_to_fam}, ${7:shift_vectors}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'compute_shift_vector_field' from module 'tox_shift_vectors'"
-  },
-  "Fortran Call of subroutine 'compute_shift_vector_field_helper'": {
-    "prefix": "tox:compute_shift_vector_field_helper",
-    "body": "call compute_shift_vector_field_helper(${1:n_tissues}, ${2:n_genes}, ${3:n_families}, ${4:expression_vectors}, ${5:family_centroids}, ${6:gene_to_fam}, ${7:shift_vectors})",
-    "description": "Call of Fortran subroutine 'compute_shift_vector_field_helper' from module 'tox_shift_vectors'"
-  },
-  "Fortran Call of subroutine 'euclidean_distance'": {
-    "prefix": "tox:euclidean_distance",
-    "body": "call euclidean_distance(${1:vec1}, ${2:vec2}, ${3:n_elements}, ${4:result}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'euclidean_distance' from module 'tox_euclidean_distance'"
-  },
-  "Fortran Call of subroutine 'euclidean_distance_helper'": {
-    "prefix": "tox:euclidean_distance_helper",
-    "body": "call euclidean_distance_helper(${1:vec1}, ${2:vec2}, ${3:n_elements}, ${4:result})",
-    "description": "Call of Fortran subroutine 'euclidean_distance_helper' from module 'tox_euclidean_distance'"
-  },
-  "Fortran Call of subroutine 'distance_to_centroid'": {
-    "prefix": "tox:distance_to_centroid",
-    "body": "call distance_to_centroid(${1:n_genes}, ${2:n_families}, ${3:genes}, ${4:centroids}, ${5:gene_to_fam}, ${6:distances}, ${7:n_tissues}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'distance_to_centroid' from module 'tox_euclidean_distance'"
-  },
-  "Fortran Call of subroutine 'distance_to_centroid_helper'": {
-    "prefix": "tox:distance_to_centroid_helper",
-    "body": "call distance_to_centroid_helper(${1:n_genes}, ${2:n_families}, ${3:genes}, ${4:centroids}, ${5:gene_to_fam}, ${6:distances}, ${7:n_tissues})",
-    "description": "Call of Fortran subroutine 'distance_to_centroid_helper' from module 'tox_euclidean_distance'"
-  },
-  "Fortran Call of subroutine 'c_int_as_logical'": {
-    "prefix": "tox:c_int_as_logical",
-    "body": "call c_int_as_logical(${1:c_val}, ${2:f_val})",
-    "description": "Call of Fortran subroutine 'c_int_as_logical' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'logical_as_c_int'": {
-    "prefix": "tox:logical_as_c_int",
-    "body": "call logical_as_c_int(${1:f_val}, ${2:c_val})",
-    "description": "Call of Fortran subroutine 'logical_as_c_int' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_char_as_char'": {
-    "prefix": "tox:c_char_as_char",
-    "body": "call c_char_as_char(${1:c_val}, ${2:f_val})",
-    "description": "Call of Fortran subroutine 'c_char_as_char' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'char_as_c_char'": {
-    "prefix": "tox:char_as_c_char",
-    "body": "call char_as_c_char(${1:f_val}, ${2:c_val})",
-    "description": "Call of Fortran subroutine 'char_as_c_char' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_char_1d_as_string'": {
-    "prefix": "tox:c_char_1d_as_string",
-    "body": "call c_char_1d_as_string(${1:c_char_array}, ${2:str_out}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'c_char_1d_as_string' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'string_as_c_char_1d'": {
-    "prefix": "tox:string_as_c_char_1d",
-    "body": "call string_as_c_char_1d(${1:str}, ${2:c_char_array})",
-    "description": "Call of Fortran subroutine 'string_as_c_char_1d' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_char_2d_as_string'": {
-    "prefix": "tox:c_char_2d_as_string",
-    "body": "call c_char_2d_as_string(${1:c_char_array}, ${2:str_out}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'c_char_2d_as_string' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'string_as_c_char_2d'": {
-    "prefix": "tox:string_as_c_char_2d",
-    "body": "call string_as_c_char_2d(${1:strings}, ${2:c_char_array})",
-    "description": "Call of Fortran subroutine 'string_as_c_char_2d' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'int32_as_c_int64'": {
-    "prefix": "tox:int32_as_c_int64",
-    "body": "call int32_as_c_int64(${1:f_val}, ${2:c_val})",
-    "description": "Call of Fortran subroutine 'int32_as_c_int64' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_int64_as_int32'": {
-    "prefix": "tox:c_int64_as_int32",
-    "body": "call c_int64_as_int32(${1:c_val}, ${2:f_val})",
-    "description": "Call of Fortran subroutine 'c_int64_as_int32' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'int32_as_c_size'": {
-    "prefix": "tox:int32_as_c_size",
-    "body": "call int32_as_c_size(${1:f_val}, ${2:c_val})",
-    "description": "Call of Fortran subroutine 'int32_as_c_size' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_size_as_int32'": {
-    "prefix": "tox:c_size_as_int32",
-    "body": "call c_size_as_int32(${1:c_val}, ${2:f_val})",
-    "description": "Call of Fortran subroutine 'c_size_as_int32' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_int64_as_c_size'": {
-    "prefix": "tox:c_int64_as_c_size",
-    "body": "call c_int64_as_c_size(${1:c64_val}, ${2:csize_val})",
-    "description": "Call of Fortran subroutine 'c_int64_as_c_size' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'c_size_as_c_int64'": {
-    "prefix": "tox:c_size_as_c_int64",
-    "body": "call c_size_as_c_int64(${1:csize_val}, ${2:c64_val})",
-    "description": "Call of Fortran subroutine 'c_size_as_c_int64' from module 'tox_conversions'"
-  },
-  "Fortran Call of subroutine 'normalize_variable_timeseries'": {
-    "prefix": "tox:normalize_variable_timeseries",
-    "body": "call normalize_variable_timeseries(${1:v}, ${2:v_norm}, ${3:n_points}, ${4:ierr}, ${5:status})",
-    "description": "Call of Fortran subroutine 'normalize_variable_timeseries' from module 'tox_trajectory_normalization'"
-  },
-  "Fortran Call of subroutine 'normalize_single_trajectory'": {
-    "prefix": "tox:normalize_single_trajectory",
-    "body": "call normalize_single_trajectory(${1:trajectory}, ${2:trajectory_norm}, ${3:n_factors}, ${4:n_timepoints}, ${5:ierr}, ${6:status})",
-    "description": "Call of Fortran subroutine 'normalize_single_trajectory' from module 'tox_trajectory_normalization'"
-  },
-  "Fortran Call of subroutine 'normalize_all_trajectories_alloc'": {
-    "prefix": "tox:normalize_all_trajectories_alloc",
-    "body": "call normalize_all_trajectories_alloc(${1:trajectories}, ${2:trajectories_norm}, ${3:n_factors}, ${4:n_samples}, ${5:n_timepoints}, ${6:ierr}, ${7:status})",
-    "description": "Call of Fortran subroutine 'normalize_all_trajectories_alloc' from module 'tox_trajectory_normalization'"
-  },
-  "Fortran Call of subroutine 'compute_family_scaling'": {
-    "prefix": "tox:compute_family_scaling",
-    "body": "call compute_family_scaling(${1:n_genes}, ${2:n_families}, ${3:distances}, ${4:gene_to_fam}, ${5:dscale}, ${6:loess_x}, ${7:loess_y}, ${8:indices_used}, ${9:tmp_perm}, ${10:tmp_stack_left}, ${11:tmp_stack_right}, ${12:tmp_iv}, ${13:liv}, ${14:tmp_wv}, ${15:lv}, ${16:tmp_diagl}, ${17:tmp_w_init}, ${18:tmp_z_mat}, ${19:tmp_rw}, ${20:tmp_ww}, ${21:tmp_res}, ${22:tmp_pi}, ${23:tmp_yhat}, ${24:span}, ${25:degree}, ${26:mode}, ${27:n_iters}, ${28:low_sd_cutoff}, ${29:excluded_low_sd}, ${30:tmp_means_aux}, ${31:ierr})",
-    "description": "Call of Fortran subroutine 'compute_family_scaling' from module 'tox_get_outliers'"
-  },
-  "Fortran Call of subroutine 'compute_family_scaling_alloc'": {
-    "prefix": "tox:compute_family_scaling_alloc",
-    "body": "call compute_family_scaling_alloc(${1:n_genes}, ${2:n_families}, ${3:distances}, ${4:gene_to_fam}, ${5:dscale}, ${6:loess_x}, ${7:loess_y}, ${8:indices_used}, ${9:ierr})",
-    "description": "Call of Fortran subroutine 'compute_family_scaling_alloc' from module 'tox_get_outliers'"
-  },
-  "Fortran Call of subroutine 'compute_rdi'": {
-    "prefix": "tox:compute_rdi",
-    "body": "call compute_rdi(${1:n_genes}, ${2:distances}, ${3:gene_to_fam}, ${4:dscale}, ${5:rdi}, ${6:sorted_rdi}, ${7:perm}, ${8:stack_left}, ${9:stack_right})",
-    "description": "Call of Fortran subroutine 'compute_rdi' from module 'tox_get_outliers'"
-  },
-  "Fortran Call of subroutine 'identify_outliers'": {
-    "prefix": "tox:identify_outliers",
-    "body": "call identify_outliers(${1:n_genes}, ${2:rdi}, ${3:sorted_rdi}, ${4:perm}, ${5:is_outlier}, ${6:threshold}, ${7:quantile}, ${8:percentile})",
-    "description": "Call of Fortran subroutine 'identify_outliers' from module 'tox_get_outliers'"
-  },
-  "Fortran Call of subroutine 'detect_outliers'": {
-    "prefix": "tox:detect_outliers",
-    "body": "call detect_outliers(${1:n_genes}, ${2:n_families}, ${3:distances}, ${4:gene_to_fam}, ${5:tmp_work_array}, ${6:tmp_perm}, ${7:tmp_stack_left}, ${8:tmp_stack_right}, ${9:is_outlier}, ${10:loess_x}, ${11:loess_y}, ${12:loess_n}, ${13:quantile}, ${14:ierr}, ${15:percentile})",
-    "description": "Call of Fortran subroutine 'detect_outliers' from module 'tox_get_outliers'"
-  },
-  "Fortran Call of subroutine 'mean_vector'": {
-    "prefix": "tox:mean_vector",
-    "body": "call mean_vector(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_indices}, ${5:n_selected_genes}, ${6:centroid}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'mean_vector' from module 'tox_gene_centroids'"
-  },
-  "Fortran Call of subroutine 'mean_vector_helper'": {
-    "prefix": "tox:mean_vector_helper",
-    "body": "call mean_vector_helper(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_indices}, ${5:n_selected_genes}, ${6:centroid})",
-    "description": "Call of Fortran subroutine 'mean_vector_helper' from module 'tox_gene_centroids'"
-  },
-  "Fortran Call of subroutine 'group_centroid'": {
-    "prefix": "tox:group_centroid",
-    "body": "call group_centroid(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_to_family}, ${5:n_families}, ${6:centroid_matrix}, ${7:mode}, ${8:tmp_group_indices}, ${9:ierr}, ${10:ortholog_set})",
-    "description": "Call of Fortran subroutine 'group_centroid' from module 'tox_gene_centroids'"
-  },
-  "Fortran Call of subroutine 'group_centroid_helper'": {
-    "prefix": "tox:group_centroid_helper",
-    "body": "call group_centroid_helper(${1:expression_vectors}, ${2:n_axes}, ${3:n_genes}, ${4:gene_to_family}, ${5:n_families}, ${6:centroid_matrix}, ${7:mode}, ${8:tmp_group_indices}, ${9:ortholog_set})",
-    "description": "Call of Fortran subroutine 'group_centroid_helper' from module 'tox_gene_centroids'"
-  },
-  "Fortran Call of subroutine 'get_family_for_gene_index'": {
-    "prefix": "tox:get_family_for_gene_index",
-    "body": "call get_family_for_gene_index(${1:gene_idx}, ${2:gene_to_fam}, ${3:out_family_idx}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'get_family_for_gene_index' from module 'tox_data_accessors'"
-  },
-  "Fortran Call of subroutine 'get_expression_vector'": {
-    "prefix": "tox:get_expression_vector",
-    "body": "call get_expression_vector(${1:gene_idx}, ${2:expression_vectors}, ${3:out_vector}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'get_expression_vector' from module 'tox_data_accessors'"
-  },
-  "Fortran Call of subroutine 'get_family_centroid'": {
-    "prefix": "tox:get_family_centroid",
-    "body": "call get_family_centroid(${1:family_idx}, ${2:family_centroids}, ${3:out_centroid}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'get_family_centroid' from module 'tox_data_accessors'"
-  },
-  "Fortran Call of subroutine 'get_shift_components'": {
-    "prefix": "tox:get_shift_components",
-    "body": "call get_shift_components(${1:gene_idx}, ${2:shift_vectors}, ${3:d}, ${4:out_start}, ${5:out_shift}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'get_shift_components' from module 'tox_data_accessors'"
-  },
-  "Fortran Call of function 'get_gene_index'": {
-    "prefix": "tox:get_gene_index",
-    "body": "${{1:result}} = get_gene_index(${2:gene_ids}, ${3:gene})",
-    "description": "Call of Fortran function 'get_gene_index' from module 'tox_data_accessors'"
-  },
-  "Fortran Call of function 'get_family_index'": {
-    "prefix": "tox:get_family_index",
-    "body": "${{1:result}} = get_family_index(${2:family_ids}, ${3:family})",
-    "description": "Call of Fortran function 'get_family_index' from module 'tox_data_accessors'"
-  },
-  "Fortran Call of subroutine 'save_gene_ids'": {
-    "prefix": "tox:save_gene_ids",
-    "body": "call save_gene_ids(${1:gene_ids}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'save_gene_ids' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'save_expression_vectors'": {
-    "prefix": "tox:save_expression_vectors",
-    "body": "call save_expression_vectors(${1:expression_vectors}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'save_expression_vectors' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'save_gene_to_family'": {
-    "prefix": "tox:save_gene_to_family",
-    "body": "call save_gene_to_family(${1:gene_to_fam}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'save_gene_to_family' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'save_family_ids'": {
-    "prefix": "tox:save_family_ids",
-    "body": "call save_family_ids(${1:family_ids}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'save_family_ids' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'save_family_centroids'": {
-    "prefix": "tox:save_family_centroids",
-    "body": "call save_family_centroids(${1:family_centroids}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'save_family_centroids' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'save_shift_vectors'": {
-    "prefix": "tox:save_shift_vectors",
-    "body": "call save_shift_vectors(${1:shift_vectors}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'save_shift_vectors' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'load_gene_ids'": {
-    "prefix": "tox:load_gene_ids",
-    "body": "call load_gene_ids(${1:gene_ids}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'load_gene_ids' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'load_expression_vectors'": {
-    "prefix": "tox:load_expression_vectors",
-    "body": "call load_expression_vectors(${1:expression_vectors}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'load_expression_vectors' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'load_gene_to_family'": {
-    "prefix": "tox:load_gene_to_family",
-    "body": "call load_gene_to_family(${1:gene_to_fam}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'load_gene_to_family' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'load_family_ids'": {
-    "prefix": "tox:load_family_ids",
-    "body": "call load_family_ids(${1:family_ids}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'load_family_ids' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'load_family_centroids'": {
-    "prefix": "tox:load_family_centroids",
-    "body": "call load_family_centroids(${1:family_centroids}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'load_family_centroids' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'load_shift_vectors'": {
-    "prefix": "tox:load_shift_vectors",
-    "body": "call load_shift_vectors(${1:shift_vectors}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'load_shift_vectors' from module 'tox_data_read_write'"
-  },
-  "Fortran Call of subroutine 'validate_data_structure'": {
-    "prefix": "tox:validate_data_structure",
-    "body": "call validate_data_structure(${1:n_genes}, ${2:n_families}, ${3:n_samples}, ${4:gene_ids}, ${5:gene_family_ids}, ${6:gene_to_fam}, ${7:expression_vectors}, ${8:family_centroids}, ${9:shift_vectors}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'validate_data_structure' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_gene_to_family_mapping'": {
-    "prefix": "tox:validate_gene_to_family_mapping",
-    "body": "call validate_gene_to_family_mapping(${1:gene_to_fam}, ${2:n_families}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'validate_gene_to_family_mapping' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_expression_data'": {
-    "prefix": "tox:validate_expression_data",
-    "body": "call validate_expression_data(${1:expression_vectors}, ${2:check_non_negative}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'validate_expression_data' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_family_centroids'": {
-    "prefix": "tox:validate_family_centroids",
-    "body": "call validate_family_centroids(${1:family_centroids}, ${2:ierr})",
-    "description": "Call of Fortran subroutine 'validate_family_centroids' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_shift_vectors'": {
-    "prefix": "tox:validate_shift_vectors",
-    "body": "call validate_shift_vectors(${1:shift_vectors}, ${2:expression_vectors}, ${3:family_centroids}, ${4:gene_to_fam}, ${5:n_samples}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'validate_shift_vectors' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'check_for_nan_inf'": {
-    "prefix": "tox:check_for_nan_inf",
-    "body": "call check_for_nan_inf(${1:array}, ${2:ierr})",
-    "description": "Call of Fortran subroutine 'check_for_nan_inf' from module 'tox_data_validation'"
-  },
-  "Fortran Call of function 'is_nan'": {
-    "prefix": "tox:is_nan",
-    "body": "${{1:result}} = is_nan(${2:x})",
-    "description": "Call of Fortran function 'is_nan' from module 'tox_data_validation'"
-  },
-  "Fortran Call of function 'is_inf'": {
-    "prefix": "tox:is_inf",
-    "body": "${{1:result}} = is_inf(${2:x})",
-    "description": "Call of Fortran function 'is_inf' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_string_array_uniqueness'": {
-    "prefix": "tox:validate_string_array_uniqueness",
-    "body": "call validate_string_array_uniqueness(${1:str_arr}, ${2:ierr})",
-    "description": "Call of Fortran subroutine 'validate_string_array_uniqueness' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_empty_strings'": {
-    "prefix": "tox:validate_empty_strings",
-    "body": "call validate_empty_strings(${1:string_array}, ${2:array_name}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'validate_empty_strings' from module 'tox_data_validation'"
-  },
-  "Fortran Call of subroutine 'validate_all_data'": {
-    "prefix": "tox:validate_all_data",
-    "body": "call validate_all_data(${1:n_genes}, ${2:n_families}, ${3:n_samples}, ${4:gene_ids}, ${5:gene_family_ids}, ${6:gene_to_fam}, ${7:expression_vectors}, ${8:family_centroids}, ${9:shift_vectors}, ${10:ierr}, ${11:check_uniqueness}, ${12:check_shift_consistency})",
-    "description": "Call of Fortran subroutine 'validate_all_data' from module 'tox_data_validation'"
-  },
-  "Fortran Call of function 'malloc'": {
-    "prefix": "tox:malloc",
-    "body": "${{1:result}} = malloc(${2:size})",
-    "description": "Call of Fortran function 'malloc' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'free'": {
-    "prefix": "tox:free",
-    "body": "call free(${1:ptr})",
-    "description": "Call of Fortran subroutine 'free' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_open'": {
-    "prefix": "tox:zip_open",
-    "body": "${{1:result}} = zip_open(${2:path}, ${3:flags}, ${4:errorp})",
-    "description": "Call of Fortran function 'zip_open' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_close'": {
-    "prefix": "tox:zip_close",
-    "body": "${{1:result}} = zip_close(${2:archive})",
-    "description": "Call of Fortran function 'zip_close' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_file_add'": {
-    "prefix": "tox:zip_file_add",
-    "body": "${{1:result}} = zip_file_add(${2:archive}, ${3:name}, ${4:source}, ${5:flags})",
-    "description": "Call of Fortran function 'zip_file_add' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_source_buffer'": {
-    "prefix": "tox:zip_source_buffer",
-    "body": "${{1:result}} = zip_source_buffer(${2:archive}, ${3:data}, ${4:len}, ${5:freep})",
-    "description": "Call of Fortran function 'zip_source_buffer' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_set_file_compression'": {
-    "prefix": "tox:zip_set_file_compression",
-    "body": "${{1:result}} = zip_set_file_compression(${2:archive}, ${3:index}, ${4:comp}, ${5:flags})",
-    "description": "Call of Fortran function 'zip_set_file_compression' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_fopen'": {
-    "prefix": "tox:zip_fopen",
-    "body": "${{1:result}} = zip_fopen(${2:archive}, ${3:fname}, ${4:flags})",
-    "description": "Call of Fortran function 'zip_fopen' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_fread'": {
-    "prefix": "tox:zip_fread",
-    "body": "${{1:result}} = zip_fread(${2:file}, ${3:buf}, ${4:nbytes})",
-    "description": "Call of Fortran function 'zip_fread' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_fclose'": {
-    "prefix": "tox:zip_fclose",
-    "body": "${{1:result}} = zip_fclose(${2:file})",
-    "description": "Call of Fortran function 'zip_fclose' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_get_num_entries'": {
-    "prefix": "tox:zip_get_num_entries",
-    "body": "${{1:result}} = zip_get_num_entries(${2:archive}, ${3:flags})",
-    "description": "Call of Fortran function 'zip_get_num_entries' from module 'tox_data_archive'"
-  },
-  "Fortran Call of function 'zip_get_name'": {
-    "prefix": "tox:zip_get_name",
-    "body": "${{1:result}} = zip_get_name(${2:archive}, ${3:index}, ${4:flags})",
-    "description": "Call of Fortran function 'zip_get_name' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'zip_source_free'": {
-    "prefix": "tox:zip_source_free",
-    "body": "call zip_source_free(${1:source})",
-    "description": "Call of Fortran subroutine 'zip_source_free' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'create_zip_archive'": {
+    "description": "@note",
+    "body": [
+      "call linkage_clustering( &",
+      "    distances=${1:distances}, &",
+      "    n_points=${2:n_points}, &",
+      "    merge_i=${3:merge_i}, &",
+      "    merge_j=${4:merge_j}, &",
+      "    heights=${5:heights}, &",
+      "    cluster_sizes=${6:cluster_sizes}, &",
+      "    method=${7|METHOD_AVERAGE,METHOD_WEIGHTED,METHOD_WARD|}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "linkage_clustering (call, checked)": {
+    "prefix": "tox:linkage_clustering.checked",
+    "description": "@note (with error check)",
+    "body": [
+      "call linkage_clustering( &",
+      "    distances=${1:distances}, &",
+      "    n_points=${2:n_points}, &",
+      "    merge_i=${3:merge_i}, &",
+      "    merge_j=${4:merge_j}, &",
+      "    heights=${5:heights}, &",
+      "    cluster_sizes=${6:cluster_sizes}, &",
+      "    method=${7|METHOD_AVERAGE,METHOD_WEIGHTED,METHOD_WARD|}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_data_archive (use)": {
+    "prefix": "tox:data_archive.use",
+    "description": "use tox_data_archive, only: ...",
+    "body": [
+      "use tox_data_archive, only: ${1|create_zip_archive,save_tox_data,get_tox_data_dims,read_tox_data_into|}"
+    ]
+  },
+  "create_zip_archive (call)": {
     "prefix": "tox:create_zip_archive",
-    "body": "call create_zip_archive(${1:zip_filename}, ${2:keys}, ${3:filenames}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'create_zip_archive' from module 'tox_data_archive'"
+    "description": "create_zip_archive",
+    "body": [
+      "call create_zip_archive( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    keys=${2:keys}, &",
+      "    filenames=${3:filenames}, &",
+      "    ierr=${4:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'extract_zip_archive'": {
-    "prefix": "tox:extract_zip_archive",
-    "body": "call extract_zip_archive(${1:zip_filename}, ${2:keys}, ${3:filenames}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'extract_zip_archive' from module 'tox_data_archive'"
+  "create_zip_archive (call, checked)": {
+    "prefix": "tox:create_zip_archive.checked",
+    "description": "create_zip_archive (with error check)",
+    "body": [
+      "call create_zip_archive( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    keys=${2:keys}, &",
+      "    filenames=${3:filenames}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'delete_file'": {
-    "prefix": "tox:delete_file",
-    "body": "call delete_file(${1:filename}, ${2:ierr})",
-    "description": "Call of Fortran subroutine 'delete_file' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'get_zip_entry_name'": {
-    "prefix": "tox:get_zip_entry_name",
-    "body": "call get_zip_entry_name(${1:zip_handle}, ${2:entry_index}, ${3:entry_name}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'get_zip_entry_name' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'extract_file_from_zip'": {
-    "prefix": "tox:extract_file_from_zip",
-    "body": "call extract_file_from_zip(${1:zip_handle}, ${2:filename}, ${3:ierr})",
-    "description": "Call of Fortran subroutine 'extract_file_from_zip' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'add_data_to_zip'": {
-    "prefix": "tox:add_data_to_zip",
-    "body": "call add_data_to_zip(${1:zip_handle}, ${2:filename}, ${3:data_source}, ${4:data_type}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'add_data_to_zip' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'write_manifest'": {
-    "prefix": "tox:write_manifest",
-    "body": "call write_manifest(${1:keys}, ${2:filenames}, ${3:manifest_filename}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'write_manifest' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'read_manifest_generic'": {
-    "prefix": "tox:read_manifest_generic",
-    "body": "call read_manifest_generic(${1:manifest_filename}, ${2:keys}, ${3:values}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'read_manifest_generic' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'extract_and_parse_manifest'": {
-    "prefix": "tox:extract_and_parse_manifest",
-    "body": "call extract_and_parse_manifest(${1:zip_handle}, ${2:keys}, ${3:filenames}, ${4:ierr})",
-    "description": "Call of Fortran subroutine 'extract_and_parse_manifest' from module 'tox_data_archive'"
-  },
-  "Fortran Call of subroutine 'save_tox_data'": {
+  "save_tox_data (call)": {
     "prefix": "tox:save_tox_data",
-    "body": "call save_tox_data(${1:zip_filename}, ${2:ierr}, ${3:gene_ids}, ${4:gene_ids_file}, ${5:expression}, ${6:expression_file}, ${7:gene_to_family}, ${8:gene_to_family_file}, ${9:family_ids}, ${10:family_ids_file}, ${11:family_centroids}, ${12:family_centroids_file}, ${13:shift_vectors}, ${14:shift_vectors_file})",
-    "description": "Call of Fortran subroutine 'save_tox_data' from module 'tox_data_archive'"
+    "description": "save_tox_data",
+    "body": [
+      "call save_tox_data( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    ierr=${2:ierr}, &",
+      "    gene_ids=${3:gene_ids}, &",
+      "    gene_ids_file=${4:gene_ids_file}, &",
+      "    expression=${5:expression}, &",
+      "    expression_file=${6:expression_file}, &",
+      "    gene_to_family=${7:gene_to_family}, &",
+      "    gene_to_family_file=${8:gene_to_family_file}, &",
+      "    family_ids=${9:family_ids}, &",
+      "    family_ids_file=${10:family_ids_file}, &",
+      "    family_centroids=${11:family_centroids}, &",
+      "    family_centroids_file=${12:family_centroids_file}, &",
+      "    shift_vectors=${13:shift_vectors}, &",
+      "    shift_vectors_file=${14:shift_vectors_file})"
+    ]
   },
-  "Fortran Call of subroutine 'cleanup_temporary_files'": {
-    "prefix": "tox:cleanup_temporary_files",
-    "body": "call cleanup_temporary_files(${1:file_present}, ${2:filename}, ${3:description})",
-    "description": "Call of Fortran subroutine 'cleanup_temporary_files' from module 'tox_data_archive'"
+  "save_tox_data (call, checked)": {
+    "prefix": "tox:save_tox_data.checked",
+    "description": "save_tox_data (with error check)",
+    "body": [
+      "call save_tox_data( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    ierr=${2:ierr}, &",
+      "    gene_ids=${3:gene_ids}, &",
+      "    gene_ids_file=${4:gene_ids_file}, &",
+      "    expression=${5:expression}, &",
+      "    expression_file=${6:expression_file}, &",
+      "    gene_to_family=${7:gene_to_family}, &",
+      "    gene_to_family_file=${8:gene_to_family_file}, &",
+      "    family_ids=${9:family_ids}, &",
+      "    family_ids_file=${10:family_ids_file}, &",
+      "    family_centroids=${11:family_centroids}, &",
+      "    family_centroids_file=${12:family_centroids_file}, &",
+      "    shift_vectors=${13:shift_vectors}, &",
+      "    shift_vectors_file=${14:shift_vectors_file})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'read_tox_data'": {
-    "prefix": "tox:read_tox_data",
-    "body": "call read_tox_data(${1:zip_filename}, ${2:ierr}, ${3:gene_ids}, ${4:gene_ids_file}, ${5:expression}, ${6:expression_file}, ${7:gene_to_family}, ${8:gene_to_family_file}, ${9:family_ids}, ${10:family_ids_file}, ${11:family_centroids}, ${12:family_centroids_file}, ${13:shift_vectors}, ${14:shift_vectors_file})",
-    "description": "Call of Fortran subroutine 'read_tox_data' from module 'tox_data_archive'"
+  "get_tox_data_dims (call)": {
+    "prefix": "tox:get_tox_data_dims",
+    "description": "Each count (and each string length) is 0 when the corresponding member is absent, so a",
+    "body": [
+      "call get_tox_data_dims( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    n_gene_ids=${2:n_gene_ids}, &",
+      "    gene_id_len=${3:gene_id_len}, &",
+      "    n_expression_rows=${4:n_expression_rows}, &",
+      "    n_expression_cols=${5:n_expression_cols}, &",
+      "    n_gene_to_family=${6:n_gene_to_family}, &",
+      "    n_family_ids=${7:n_family_ids}, &",
+      "    family_id_len=${8:family_id_len}, &",
+      "    n_family_centroids_rows=${9:n_family_centroids_rows}, &",
+      "    n_family_centroids_cols=${10:n_family_centroids_cols}, &",
+      "    n_shift_vectors_rows=${11:n_shift_vectors_rows}, &",
+      "    n_shift_vectors_cols=${12:n_shift_vectors_cols}, &",
+      "    ierr=${13:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'check_okay_ioerror'": {
-    "prefix": "tox:check_okay_ioerror",
-    "body": "call check_okay_ioerror(${1:ioerror}, ${2:ierr}, ${3:msg}, ${4:unit})",
-    "description": "Call of Fortran subroutine 'check_okay_ioerror' from module 'tox_data_tools'"
+  "get_tox_data_dims (call, checked)": {
+    "prefix": "tox:get_tox_data_dims.checked",
+    "description": "Each count (and each string length) is 0 when the corresponding member is absent, so a (with error check)",
+    "body": [
+      "call get_tox_data_dims( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    n_gene_ids=${2:n_gene_ids}, &",
+      "    gene_id_len=${3:gene_id_len}, &",
+      "    n_expression_rows=${4:n_expression_rows}, &",
+      "    n_expression_cols=${5:n_expression_cols}, &",
+      "    n_gene_to_family=${6:n_gene_to_family}, &",
+      "    n_family_ids=${7:n_family_ids}, &",
+      "    family_id_len=${8:family_id_len}, &",
+      "    n_family_centroids_rows=${9:n_family_centroids_rows}, &",
+      "    n_family_centroids_cols=${10:n_family_centroids_cols}, &",
+      "    n_shift_vectors_rows=${11:n_shift_vectors_rows}, &",
+      "    n_shift_vectors_cols=${12:n_shift_vectors_cols}, &",
+      "    ierr=${13:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'read_expression_vectors_tsv'": {
-    "prefix": "tox:read_expression_vectors_tsv",
-    "body": "call read_expression_vectors_tsv(${1:file_list}, ${2:gene_ids}, ${3:expression_vectors}, ${4:n_header_rows}, ${5:gene_col}, ${6:value_cols}, ${7:start_row}, ${8:ierr}, ${9:delimiter})",
-    "description": "Call of Fortran subroutine 'read_expression_vectors_tsv' from module 'tox_data_tools'"
+  "read_tox_data_into (call)": {
+    "prefix": "tox:read_tox_data_into",
+    "description": "Fills every buffer from the archive; size them from",
+    "body": [
+      "call read_tox_data_into( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    n_gene_ids=${2:n_gene_ids}, &",
+      "    gene_id_len=${3:gene_id_len}, &",
+      "    gene_ids=${4:gene_ids}, &",
+      "    n_expression_rows=${5:n_expression_rows}, &",
+      "    n_expression_cols=${6:n_expression_cols}, &",
+      "    expression=${7:expression}, &",
+      "    n_gene_to_family=${8:n_gene_to_family}, &",
+      "    gene_to_family=${9:gene_to_family}, &",
+      "    n_family_ids=${10:n_family_ids}, &",
+      "    family_id_len=${11:family_id_len}, &",
+      "    family_ids=${12:family_ids}, &",
+      "    n_family_centroids_rows=${13:n_family_centroids_rows}, &",
+      "    n_family_centroids_cols=${14:n_family_centroids_cols}, &",
+      "    family_centroids=${15:family_centroids}, &",
+      "    n_shift_vectors_rows=${16:n_shift_vectors_rows}, &",
+      "    n_shift_vectors_cols=${17:n_shift_vectors_cols}, &",
+      "    shift_vectors=${18:shift_vectors}, &",
+      "    ierr=${19:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'read_gene_ids_from_tsv_file'": {
-    "prefix": "tox:read_gene_ids_from_tsv_file",
-    "body": "call read_gene_ids_from_tsv_file(${1:filename}, ${2:gene_ids}, ${3:n_header_rows}, ${4:gene_col}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'read_gene_ids_from_tsv_file' from module 'tox_data_tools'"
+  "read_tox_data_into (call, checked)": {
+    "prefix": "tox:read_tox_data_into.checked",
+    "description": "Fills every buffer from the archive; size them from (with error check)",
+    "body": [
+      "call read_tox_data_into( &",
+      "    zip_filename=${1:zip_filename}, &",
+      "    n_gene_ids=${2:n_gene_ids}, &",
+      "    gene_id_len=${3:gene_id_len}, &",
+      "    gene_ids=${4:gene_ids}, &",
+      "    n_expression_rows=${5:n_expression_rows}, &",
+      "    n_expression_cols=${6:n_expression_cols}, &",
+      "    expression=${7:expression}, &",
+      "    n_gene_to_family=${8:n_gene_to_family}, &",
+      "    gene_to_family=${9:gene_to_family}, &",
+      "    n_family_ids=${10:n_family_ids}, &",
+      "    family_id_len=${11:family_id_len}, &",
+      "    family_ids=${12:family_ids}, &",
+      "    n_family_centroids_rows=${13:n_family_centroids_rows}, &",
+      "    n_family_centroids_cols=${14:n_family_centroids_cols}, &",
+      "    family_centroids=${15:family_centroids}, &",
+      "    n_shift_vectors_rows=${16:n_shift_vectors_rows}, &",
+      "    n_shift_vectors_cols=${17:n_shift_vectors_cols}, &",
+      "    shift_vectors=${18:shift_vectors}, &",
+      "    ierr=${19:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'read_orthofinder_file'": {
-    "prefix": "tox:read_orthofinder_file",
-    "body": "call read_orthofinder_file(${1:filename}, ${2:gene_ids}, ${3:family_ids}, ${4:gene_to_fam}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'read_orthofinder_file' from module 'tox_data_tools'"
+  "tox_data_integration_jsd (use)": {
+    "prefix": "tox:data_integration_jsd.use",
+    "description": "use tox_data_integration_jsd, only: ...",
+    "body": [
+      "use tox_data_integration_jsd, only: ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,compute_divergence_per_reference_point,compute_weighted_global_divergence|}"
+    ]
   },
-  "Fortran Call of subroutine 'split_string'": {
-    "prefix": "tox:split_string",
-    "body": "call split_string(${1:input}, ${2:output}, ${3:ierr}, ${4:delimiter})",
-    "description": "Call of Fortran subroutine 'split_string' from module 'tox_data_tools'"
-  },
-  "Fortran Call of subroutine 'get_unassigned_mask'": {
-    "prefix": "tox:get_unassigned_mask",
-    "body": "call get_unassigned_mask(${1:gene_to_fam}, ${2:mask}, ${3:n_genes_kept})",
-    "description": "Call of Fortran subroutine 'get_unassigned_mask' from module 'tox_data_tools'"
-  },
-  "Fortran Call of subroutine 'apply_unassigned_mask'": {
-    "prefix": "tox:apply_unassigned_mask",
-    "body": "call apply_unassigned_mask(${1:gene_ids}, ${2:expression_vectors}, ${3:gene_to_fam}, ${4:mask}, ${5:n_genes_kept}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'apply_unassigned_mask' from module 'tox_data_tools'"
-  },
-  "Fortran Call of subroutine 'compute_gene_means'": {
-    "prefix": "tox:compute_gene_means",
-    "body": "call compute_gene_means(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means}, ${5:ierr})",
-    "description": "Call of Fortran subroutine 'compute_gene_means' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'compute_gene_means_helper'": {
-    "prefix": "tox:compute_gene_means_helper",
-    "body": "call compute_gene_means_helper(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means})",
-    "description": "Call of Fortran subroutine 'compute_gene_means_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'compute_residuals'": {
-    "prefix": "tox:compute_residuals",
-    "body": "call compute_residuals(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means}, ${5:resid}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'compute_residuals' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'compute_residuals_helper'": {
-    "prefix": "tox:compute_residuals_helper",
-    "body": "call compute_residuals_helper(${1:n_genes}, ${2:n_reps}, ${3:expr}, ${4:means}, ${5:resid})",
-    "description": "Call of Fortran subroutine 'compute_residuals_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'pool_means_alloc'": {
-    "prefix": "tox:pool_means_alloc",
-    "body": "call pool_means_alloc(${1:n_genes_s1}, ${2:mean_s1}, ${3:n_genes_s2}, ${4:mean_s2}, ${5:n_points}, ${6:n_pool}, ${7:x_star}, ${8:ierr})",
-    "description": "Call of Fortran subroutine 'pool_means_alloc' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'pool_means'": {
-    "prefix": "tox:pool_means",
-    "body": "call pool_means(${1:pooled_means}, ${2:pooled_means_perm}, ${3:pool_size}, ${4:n_points}, ${5:n_pool}, ${6:x_star}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'pool_means' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'pool_means_helper'": {
-    "prefix": "tox:pool_means_helper",
-    "body": "call pool_means_helper(${1:pooled_means}, ${2:pooled_means_perm}, ${3:pool_size}, ${4:n_points}, ${5:n_pool}, ${6:x_star})",
-    "description": "Call of Fortran subroutine 'pool_means_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of function 'calc_neighborhood_size'": {
-    "prefix": "tox:calc_neighborhood_size",
-    "body": "${{1:result}} = calc_neighborhood_size(${2:n_pool}, ${3:n_points}, ${4:n_genes_s}, ${5:mean_s}, ${6:desired_size})",
-    "description": "Call of Fortran function 'calc_neighborhood_size' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'construct_neighborhoods_alloc'": {
-    "prefix": "tox:construct_neighborhoods_alloc",
-    "body": "call construct_neighborhoods_alloc(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:neighborhood_residuals}, ${8:neighborhood_indices}, ${9:n_neighbors}, ${10:ierr})",
-    "description": "Call of Fortran subroutine 'construct_neighborhoods_alloc' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'construct_neighborhoods'": {
-    "prefix": "tox:construct_neighborhoods",
-    "body": "call construct_neighborhoods(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:tmp_distances}, ${8:tmp_distances_perm}, ${9:neighborhood_residuals}, ${10:neighborhood_indices}, ${11:n_neighbors}, ${12:ierr})",
-    "description": "Call of Fortran subroutine 'construct_neighborhoods' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'construct_neighborhoods_helper'": {
-    "prefix": "tox:construct_neighborhoods_helper",
-    "body": "call construct_neighborhoods_helper(${1:n_points}, ${2:x_star}, ${3:n_genes_s}, ${4:mean_s}, ${5:n_reps_s}, ${6:resid_s}, ${7:tmp_distances}, ${8:tmp_distances_perm}, ${9:neighborhood_residuals}, ${10:neighborhood_indices}, ${11:n_neighbors})",
-    "description": "Call of Fortran subroutine 'construct_neighborhoods_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'gjct_permutation_test_alloc'": {
-    "prefix": "tox:gjct_permutation_test_alloc",
-    "body": "call gjct_permutation_test_alloc(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:global_jsd_observed}, ${8:n_bins}, ${9:shared_residual_range}, ${10:n_permutations}, ${11:jsd_null}, ${12:p_value}, ${13:ierr}, ${14:random_seed}, ${15:neighbor_mask_s1}, ${16:neighbor_mask_s2})",
-    "description": "Call of Fortran subroutine 'gjct_permutation_test_alloc' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'gjct_permutation_test'": {
-    "prefix": "tox:gjct_permutation_test",
-    "body": "call gjct_permutation_test(${1:neighborhood_residuals_s1_copy}, ${2:neighborhood_residuals_s2_copy}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:global_jsd_observed}, ${8:n_bins}, ${9:shared_residual_range}, ${10:n_permutations}, ${11:jsd_null}, ${12:p_value}, ${13:tmp_pool}, ${14:tmp_pmf_s1}, ${15:tmp_pmf_s2}, ${16:tmp_counts}, ${17:tmp_included_n_reps_s1}, ${18:tmp_included_n_reps_s2}, ${19:tmp_js_divergences}, ${20:tmp_weights}, ${21:ierr}, ${22:random_seed}, ${23:neighbor_mask_s1}, ${24:neighbor_mask_s2})",
-    "description": "Call of Fortran subroutine 'gjct_permutation_test' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'gjct_permutation_test_helper'": {
-    "prefix": "tox:gjct_permutation_test_helper",
-    "body": "call gjct_permutation_test_helper(${1:neighborhood_residuals_s1_copy}, ${2:neighborhood_residuals_s2_copy}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:global_jsd_observed}, ${8:n_bins}, ${9:shared_residual_range}, ${10:n_permutations}, ${11:jsd_null}, ${12:p_value}, ${13:tmp_pool}, ${14:tmp_pmf_s1}, ${15:tmp_pmf_s2}, ${16:tmp_counts}, ${17:tmp_included_n_reps_s1}, ${18:tmp_included_n_reps_s2}, ${19:tmp_js_divergences}, ${20:tmp_weights}, ${21:random_seed}, ${22:neighbor_mask_s1}, ${23:neighbor_mask_s2})",
-    "description": "Call of Fortran subroutine 'gjct_permutation_test_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'shuffle_reference_point_helper'": {
-    "prefix": "tox:shuffle_reference_point_helper",
-    "body": "call shuffle_reference_point_helper(${1:reference_point_s1}, ${2:reference_point_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:pool_flat})",
-    "description": "Call of Fortran subroutine 'shuffle_reference_point_helper' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'determine_shared_residual_range'": {
+  "determine_shared_residual_range (call)": {
     "prefix": "tox:determine_shared_residual_range",
-    "body": "call determine_shared_residual_range(${1:abs_residual_pool}, ${2:abs_residual_pool_perm}, ${3:pool_size}, ${4:shared_residual_range}, ${5:ierr}, ${6:residual_range_quantile})",
-    "description": "Call of Fortran subroutine 'determine_shared_residual_range' from module 'tox_data_integration'"
+    "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from",
+    "body": [
+      "call determine_shared_residual_range( &",
+      "    abs_residual_pool=${1:abs_residual_pool}, &",
+      "    pool_size=${2:pool_size}, &",
+      "    shared_residual_range=${3:shared_residual_range}, &",
+      "    residual_range_quantile=${4:residual_range_quantile}, &",
+      "    ierr=${5:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'determine_shared_residual_range_helper'": {
-    "prefix": "tox:determine_shared_residual_range_helper",
-    "body": "call determine_shared_residual_range_helper(${1:abs_residual_pool}, ${2:abs_residual_pool_perm}, ${3:pool_size}, ${4:shared_residual_range}, ${5:residual_range_quantile})",
-    "description": "Call of Fortran subroutine 'determine_shared_residual_range_helper' from module 'tox_data_integration'"
+  "determine_shared_residual_range (call, checked)": {
+    "prefix": "tox:determine_shared_residual_range.checked",
+    "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from (with error check)",
+    "body": [
+      "call determine_shared_residual_range( &",
+      "    abs_residual_pool=${1:abs_residual_pool}, &",
+      "    pool_size=${2:pool_size}, &",
+      "    shared_residual_range=${3:shared_residual_range}, &",
+      "    residual_range_quantile=${4:residual_range_quantile}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'determine_shared_residual_range_alloc'": {
-    "prefix": "tox:determine_shared_residual_range_alloc",
-    "body": "call determine_shared_residual_range_alloc(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:shared_residual_range}, ${8:ierr}, ${9:residual_range_quantile})",
-    "description": "Call of Fortran subroutine 'determine_shared_residual_range_alloc' from module 'tox_data_integration'"
+  "determine_shared_residual_range_expert (call)": {
+    "prefix": "tox:determine_shared_residual_range_expert",
+    "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from",
+    "body": [
+      "call determine_shared_residual_range_expert( &",
+      "    abs_residual_pool=${1:abs_residual_pool}, &",
+      "    abs_residual_pool_perm=${2:abs_residual_pool_perm}, &",
+      "    pool_size=${3:pool_size}, &",
+      "    shared_residual_range=${4:shared_residual_range}, &",
+      "    residual_range_quantile=${5:residual_range_quantile}, &",
+      "    ierr=${6:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'build_residual_histograms'": {
+  "determine_shared_residual_range_expert (call, checked)": {
+    "prefix": "tox:determine_shared_residual_range_expert.checked",
+    "description": "This takes the pool already built; `determine_study_shared_residual_range` builds it from (with error check)",
+    "body": [
+      "call determine_shared_residual_range_expert( &",
+      "    abs_residual_pool=${1:abs_residual_pool}, &",
+      "    abs_residual_pool_perm=${2:abs_residual_pool_perm}, &",
+      "    pool_size=${3:pool_size}, &",
+      "    shared_residual_range=${4:shared_residual_range}, &",
+      "    residual_range_quantile=${5:residual_range_quantile}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "determine_study_shared_residual_range (call)": {
+    "prefix": "tox:determine_study_shared_residual_range",
+    "description": "Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly",
+    "body": [
+      "call determine_study_shared_residual_range( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    shared_residual_range=${7:shared_residual_range}, &",
+      "    residual_range_quantile=${8:residual_range_quantile}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "determine_study_shared_residual_range (call, checked)": {
+    "prefix": "tox:determine_study_shared_residual_range.checked",
+    "description": "Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly (with error check)",
+    "body": [
+      "call determine_study_shared_residual_range( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    shared_residual_range=${7:shared_residual_range}, &",
+      "    residual_range_quantile=${8:residual_range_quantile}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "build_residual_histograms (call)": {
     "prefix": "tox:build_residual_histograms",
-    "body": "call build_residual_histograms(${1:neighborhood_residuals}, ${2:n_reps}, ${3:n_neighbors}, ${4:n_points}, ${5:shared_residual_range}, ${6:n_bins}, ${7:counts}, ${8:pmf}, ${9:included_n_reps}, ${10:ierr}, ${11:neighbor_mask})",
-    "description": "Call of Fortran subroutine 'build_residual_histograms' from module 'tox_data_integration'"
+    "description": "The probability mass function `pmf(residual, bin)` is actually a matrix.",
+    "body": [
+      "call build_residual_histograms( &",
+      "    neighborhood_residuals=${1:neighborhood_residuals}, &",
+      "    n_reps=${2:n_reps}, &",
+      "    n_neighbors=${3:n_neighbors}, &",
+      "    n_points=${4:n_points}, &",
+      "    shared_residual_range=${5:shared_residual_range}, &",
+      "    n_bins=${6:n_bins}, &",
+      "    counts=${7:counts}, &",
+      "    pmf=${8:pmf}, &",
+      "    included_n_reps=${9:included_n_reps}, &",
+      "    neighbor_mask=${10:neighbor_mask}, &",
+      "    ierr=${11:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'build_residual_histograms_helper'": {
-    "prefix": "tox:build_residual_histograms_helper",
-    "body": "call build_residual_histograms_helper(${1:neighborhood_residuals}, ${2:n_reps}, ${3:n_neighbors}, ${4:n_points}, ${5:shared_residual_range}, ${6:n_bins}, ${7:counts}, ${8:pmf}, ${9:included_n_reps}, ${10:neighbor_mask})",
-    "description": "Call of Fortran subroutine 'build_residual_histograms_helper' from module 'tox_data_integration'"
+  "build_residual_histograms (call, checked)": {
+    "prefix": "tox:build_residual_histograms.checked",
+    "description": "The probability mass function `pmf(residual, bin)` is actually a matrix. (with error check)",
+    "body": [
+      "call build_residual_histograms( &",
+      "    neighborhood_residuals=${1:neighborhood_residuals}, &",
+      "    n_reps=${2:n_reps}, &",
+      "    n_neighbors=${3:n_neighbors}, &",
+      "    n_points=${4:n_points}, &",
+      "    shared_residual_range=${5:shared_residual_range}, &",
+      "    n_bins=${6:n_bins}, &",
+      "    counts=${7:counts}, &",
+      "    pmf=${8:pmf}, &",
+      "    included_n_reps=${9:included_n_reps}, &",
+      "    neighbor_mask=${10:neighbor_mask}, &",
+      "    ierr=${11:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'compute_divergence_per_reference_point'": {
+  "compute_divergence_per_reference_point (call)": {
     "prefix": "tox:compute_divergence_per_reference_point",
-    "body": "call compute_divergence_per_reference_point(${1:pmf_s1}, ${2:pmf_s2}, ${3:n_points}, ${4:n_bins}, ${5:js_divergences}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'compute_divergence_per_reference_point' from module 'tox_data_integration'"
+    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`.",
+    "body": [
+      "call compute_divergence_per_reference_point( &",
+      "    pmf_S1=${1:pmf_S1}, &",
+      "    pmf_S2=${2:pmf_S2}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_bins=${4:n_bins}, &",
+      "    js_divergences=${5:js_divergences}, &",
+      "    ierr=${6:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'compute_divergence_per_reference_point_helper'": {
-    "prefix": "tox:compute_divergence_per_reference_point_helper",
-    "body": "call compute_divergence_per_reference_point_helper(${1:pmf_s1}, ${2:pmf_s2}, ${3:n_points}, ${4:n_bins}, ${5:js_divergences})",
-    "description": "Call of Fortran subroutine 'compute_divergence_per_reference_point_helper' from module 'tox_data_integration'"
+  "compute_divergence_per_reference_point (call, checked)": {
+    "prefix": "tox:compute_divergence_per_reference_point.checked",
+    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`. (with error check)",
+    "body": [
+      "call compute_divergence_per_reference_point( &",
+      "    pmf_S1=${1:pmf_S1}, &",
+      "    pmf_S2=${2:pmf_S2}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_bins=${4:n_bins}, &",
+      "    js_divergences=${5:js_divergences}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'compute_weighted_global_divergence'": {
+  "compute_weighted_global_divergence (call)": {
     "prefix": "tox:compute_weighted_global_divergence",
-    "body": "call compute_weighted_global_divergence(${1:js_divergences}, ${2:n_points}, ${3:included_n_reps_s1}, ${4:included_n_reps_s2}, ${5:global_js_divergence}, ${6:weights}, ${7:ierr})",
-    "description": "Call of Fortran subroutine 'compute_weighted_global_divergence' from module 'tox_data_integration'"
+    "description": "Takes the divergences produced by `compute_divergence_per_reference_point`.",
+    "body": [
+      "call compute_weighted_global_divergence( &",
+      "    js_divergences=${1:js_divergences}, &",
+      "    n_points=${2:n_points}, &",
+      "    included_n_reps_S1=${3:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${4:included_n_reps_S2}, &",
+      "    global_js_divergence=${5:global_js_divergence}, &",
+      "    weights=${6:weights}, &",
+      "    ierr=${7:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'compute_weighted_global_divergence_helper'": {
-    "prefix": "tox:compute_weighted_global_divergence_helper",
-    "body": "call compute_weighted_global_divergence_helper(${1:js_divergences}, ${2:n_points}, ${3:included_n_reps_s1}, ${4:included_n_reps_s2}, ${5:global_js_divergence}, ${6:weights})",
-    "description": "Call of Fortran subroutine 'compute_weighted_global_divergence_helper' from module 'tox_data_integration'"
+  "compute_weighted_global_divergence (call, checked)": {
+    "prefix": "tox:compute_weighted_global_divergence.checked",
+    "description": "Takes the divergences produced by `compute_divergence_per_reference_point`. (with error check)",
+    "body": [
+      "call compute_weighted_global_divergence( &",
+      "    js_divergences=${1:js_divergences}, &",
+      "    n_points=${2:n_points}, &",
+      "    included_n_reps_S1=${3:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${4:included_n_reps_S2}, &",
+      "    global_js_divergence=${5:global_js_divergence}, &",
+      "    weights=${6:weights}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
   },
-  "Fortran Call of subroutine 'jct_compute_jsd_pipeline_helper'": {
-    "prefix": "tox:jct_compute_jsd_pipeline_helper",
-    "body": "call jct_compute_jsd_pipeline_helper(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:n_bins}, ${8:shared_residual_range}, ${9:js_divergences}, ${10:included_n_reps_s1}, ${11:included_n_reps_s2}, ${12:global_js_divergence}, ${13:weights}, ${14:pmf_s1}, ${15:pmf_s2}, ${16:tmp_counts}, ${17:neighbor_mask_s1}, ${18:neighbor_mask_s2})",
-    "description": "Call of Fortran subroutine 'jct_compute_jsd_pipeline_helper' from module 'tox_data_integration'"
+  "tox_data_integration_per_family (use)": {
+    "prefix": "tox:data_integration_per_family.use",
+    "description": "use tox_data_integration_per_family, only: ...",
+    "body": [
+      "use tox_data_integration_per_family, only: ${1|fjct_compute_jsd,fjct_compute_masked_jsd,fjct_compute_contribution_scores|}"
+    ]
   },
-  "Fortran Call of subroutine 'fjct_compute_jsd_alloc'": {
-    "prefix": "tox:fjct_compute_jsd_alloc",
-    "body": "call fjct_compute_jsd_alloc(${1:family_idx}, ${2:gene_to_family_s1}, ${3:gene_to_family_s2}, ${4:n_genes_s1}, ${5:n_genes_s2}, ${6:neighborhood_residuals_s1}, ${7:neighborhood_residuals_s2}, ${8:neighborhood_genes_s1}, ${9:neighborhood_genes_s2}, ${10:n_reps_s1}, ${11:n_reps_s2}, ${12:n_neighbors}, ${13:n_points}, ${14:n_bins}, ${15:shared_residual_range}, ${16:js_divergences}, ${17:included_n_reps_s1}, ${18:included_n_reps_s2}, ${19:total_included_n_reps}, ${20:global_js_divergence}, ${21:weights}, ${22:ierr})",
-    "description": "Call of Fortran subroutine 'fjct_compute_jsd_alloc' from module 'tox_data_integration'"
-  },
-  "Fortran Call of subroutine 'fjct_compute_jsd'": {
+  "fjct_compute_jsd (call)": {
     "prefix": "tox:fjct_compute_jsd",
-    "body": "call fjct_compute_jsd(${1:neighborhood_residuals_s1}, ${2:neighborhood_residuals_s2}, ${3:n_reps_s1}, ${4:n_reps_s2}, ${5:n_neighbors}, ${6:n_points}, ${7:neighbor_mask_s1}, ${8:neighbor_mask_s2}, ${9:n_bins}, ${10:shared_residual_range}, ${11:js_divergences}, ${12:included_n_reps_s1}, ${13:included_n_reps_s2}, ${14:total_included_n_reps}, ${15:global_js_divergence}, ${16:weights}, ${17:pmf_s1}, ${18:pmf_s2}, ${19:tmp_counts}, ${20:ierr})",
-    "description": "Call of Fortran subroutine 'fjct_compute_jsd' from module 'tox_data_integration'"
+    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts",
+    "body": [
+      "call fjct_compute_jsd( &",
+      "    family_idx=${1:family_idx}, &",
+      "    gene_to_family_S1=${2:gene_to_family_S1}, &",
+      "    gene_to_family_S2=${3:gene_to_family_S2}, &",
+      "    n_genes_S1=${4:n_genes_S1}, &",
+      "    n_genes_S2=${5:n_genes_S2}, &",
+      "    neighborhood_residuals_S1=${6:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${7:neighborhood_residuals_S2}, &",
+      "    neighborhood_genes_S1=${8:neighborhood_genes_S1}, &",
+      "    neighborhood_genes_S2=${9:neighborhood_genes_S2}, &",
+      "    n_reps_S1=${10:n_reps_S1}, &",
+      "    n_reps_S2=${11:n_reps_S2}, &",
+      "    n_neighbors=${12:n_neighbors}, &",
+      "    n_points=${13:n_points}, &",
+      "    n_bins=${14:n_bins}, &",
+      "    shared_residual_range=${15:shared_residual_range}, &",
+      "    js_divergences=${16:js_divergences}, &",
+      "    included_n_reps_S1=${17:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${18:included_n_reps_S2}, &",
+      "    total_included_n_reps=${19:total_included_n_reps}, &",
+      "    global_js_divergence=${20:global_js_divergence}, &",
+      "    weights=${21:weights}, &",
+      "    ierr=${22:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'fjct_compute_contribution_scores'": {
+  "fjct_compute_jsd (call, checked)": {
+    "prefix": "tox:fjct_compute_jsd.checked",
+    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts (with error check)",
+    "body": [
+      "call fjct_compute_jsd( &",
+      "    family_idx=${1:family_idx}, &",
+      "    gene_to_family_S1=${2:gene_to_family_S1}, &",
+      "    gene_to_family_S2=${3:gene_to_family_S2}, &",
+      "    n_genes_S1=${4:n_genes_S1}, &",
+      "    n_genes_S2=${5:n_genes_S2}, &",
+      "    neighborhood_residuals_S1=${6:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${7:neighborhood_residuals_S2}, &",
+      "    neighborhood_genes_S1=${8:neighborhood_genes_S1}, &",
+      "    neighborhood_genes_S2=${9:neighborhood_genes_S2}, &",
+      "    n_reps_S1=${10:n_reps_S1}, &",
+      "    n_reps_S2=${11:n_reps_S2}, &",
+      "    n_neighbors=${12:n_neighbors}, &",
+      "    n_points=${13:n_points}, &",
+      "    n_bins=${14:n_bins}, &",
+      "    shared_residual_range=${15:shared_residual_range}, &",
+      "    js_divergences=${16:js_divergences}, &",
+      "    included_n_reps_S1=${17:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${18:included_n_reps_S2}, &",
+      "    total_included_n_reps=${19:total_included_n_reps}, &",
+      "    global_js_divergence=${20:global_js_divergence}, &",
+      "    weights=${21:weights}, &",
+      "    ierr=${22:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "fjct_compute_masked_jsd (call)": {
+    "prefix": "tox:fjct_compute_masked_jsd",
+    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts the",
+    "body": [
+      "call fjct_compute_masked_jsd( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    neighbor_mask_S1=${7:neighbor_mask_S1}, &",
+      "    neighbor_mask_S2=${8:neighbor_mask_S2}, &",
+      "    n_bins=${9:n_bins}, &",
+      "    shared_residual_range=${10:shared_residual_range}, &",
+      "    js_divergences=${11:js_divergences}, &",
+      "    included_n_reps_S1=${12:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${13:included_n_reps_S2}, &",
+      "    total_included_n_reps=${14:total_included_n_reps}, &",
+      "    global_js_divergence=${15:global_js_divergence}, &",
+      "    weights=${16:weights}, &",
+      "    pmf_S1=${17:pmf_S1}, &",
+      "    pmf_S2=${18:pmf_S2}, &",
+      "    ierr=${19:ierr})"
+    ]
+  },
+  "fjct_compute_masked_jsd (call, checked)": {
+    "prefix": "tox:fjct_compute_masked_jsd.checked",
+    "description": "Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts the (with error check)",
+    "body": [
+      "call fjct_compute_masked_jsd( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    neighbor_mask_S1=${7:neighbor_mask_S1}, &",
+      "    neighbor_mask_S2=${8:neighbor_mask_S2}, &",
+      "    n_bins=${9:n_bins}, &",
+      "    shared_residual_range=${10:shared_residual_range}, &",
+      "    js_divergences=${11:js_divergences}, &",
+      "    included_n_reps_S1=${12:included_n_reps_S1}, &",
+      "    included_n_reps_S2=${13:included_n_reps_S2}, &",
+      "    total_included_n_reps=${14:total_included_n_reps}, &",
+      "    global_js_divergence=${15:global_js_divergence}, &",
+      "    weights=${16:weights}, &",
+      "    pmf_S1=${17:pmf_S1}, &",
+      "    pmf_S2=${18:pmf_S2}, &",
+      "    ierr=${19:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "fjct_compute_contribution_scores (call)": {
     "prefix": "tox:fjct_compute_contribution_scores",
-    "body": "call fjct_compute_contribution_scores(${1:global_js_divergences}, ${2:total_included_n_reps_per_f}, ${3:k_families}, ${4:support_weights}, ${5:contribution_scores}, ${6:ierr})",
-    "description": "Call of Fortran subroutine 'fjct_compute_contribution_scores' from module 'tox_data_integration'"
+    "description": "Combines",
+    "body": [
+      "call fjct_compute_contribution_scores( &",
+      "    global_js_divergences=${1:global_js_divergences}, &",
+      "    total_included_n_reps_per_f=${2:total_included_n_reps_per_f}, &",
+      "    k_families=${3:k_families}, &",
+      "    support_weights=${4:support_weights}, &",
+      "    contribution_scores=${5:contribution_scores}, &",
+      "    ierr=${6:ierr})"
+    ]
   },
-  "Fortran Call of subroutine 'fjct_compute_contribution_scores_helper'": {
-    "prefix": "tox:fjct_compute_contribution_scores_helper",
-    "body": "call fjct_compute_contribution_scores_helper(${1:global_js_divergences}, ${2:total_included_n_reps_per_f}, ${3:k_families}, ${4:support_weights}, ${5:contribution_scores})",
-    "description": "Call of Fortran subroutine 'fjct_compute_contribution_scores_helper' from module 'tox_data_integration'"
+  "fjct_compute_contribution_scores (call, checked)": {
+    "prefix": "tox:fjct_compute_contribution_scores.checked",
+    "description": "Combines (with error check)",
+    "body": [
+      "call fjct_compute_contribution_scores( &",
+      "    global_js_divergences=${1:global_js_divergences}, &",
+      "    total_included_n_reps_per_f=${2:total_included_n_reps_per_f}, &",
+      "    k_families=${3:k_families}, &",
+      "    support_weights=${4:support_weights}, &",
+      "    contribution_scores=${5:contribution_scores}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_data_integration_preprocessing (use)": {
+    "prefix": "tox:data_integration_preprocessing.use",
+    "description": "use tox_data_integration_preprocessing, only: ...",
+    "body": [
+      "use tox_data_integration_preprocessing, only: ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods|}"
+    ]
+  },
+  "compute_gene_means (call)": {
+    "prefix": "tox:compute_gene_means",
+    "description": "compute_gene_means",
+    "body": [
+      "call compute_gene_means( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_reps=${2:n_reps}, &",
+      "    expr=${3:expr}, &",
+      "    means=${4:means}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "compute_gene_means (call, checked)": {
+    "prefix": "tox:compute_gene_means.checked",
+    "description": "compute_gene_means (with error check)",
+    "body": [
+      "call compute_gene_means( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_reps=${2:n_reps}, &",
+      "    expr=${3:expr}, &",
+      "    means=${4:means}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_residuals (call)": {
+    "prefix": "tox:compute_residuals",
+    "description": "compute_residuals",
+    "body": [
+      "call compute_residuals( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_reps=${2:n_reps}, &",
+      "    expr=${3:expr}, &",
+      "    means=${4:means}, &",
+      "    resid=${5:resid}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "compute_residuals (call, checked)": {
+    "prefix": "tox:compute_residuals.checked",
+    "description": "compute_residuals (with error check)",
+    "body": [
+      "call compute_residuals( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_reps=${2:n_reps}, &",
+      "    expr=${3:expr}, &",
+      "    means=${4:means}, &",
+      "    resid=${5:resid}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "pool_means (call)": {
+    "prefix": "tox:pool_means",
+    "description": "This takes the pool already built; `pool_study_means` pools the means of two studies",
+    "body": [
+      "call pool_means( &",
+      "    pooled_means=${1:pooled_means}, &",
+      "    pool_size=${2:pool_size}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_pool=${4:n_pool}, &",
+      "    x_star=${5:x_star}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "pool_means (call, checked)": {
+    "prefix": "tox:pool_means.checked",
+    "description": "This takes the pool already built; `pool_study_means` pools the means of two studies (with error check)",
+    "body": [
+      "call pool_means( &",
+      "    pooled_means=${1:pooled_means}, &",
+      "    pool_size=${2:pool_size}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_pool=${4:n_pool}, &",
+      "    x_star=${5:x_star}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "pool_means_expert (call)": {
+    "prefix": "tox:pool_means_expert",
+    "description": "This takes the pool already built; `pool_study_means` pools the means of two studies",
+    "body": [
+      "call pool_means_expert( &",
+      "    pooled_means=${1:pooled_means}, &",
+      "    pooled_means_perm=${2:pooled_means_perm}, &",
+      "    pool_size=${3:pool_size}, &",
+      "    n_points=${4:n_points}, &",
+      "    n_pool=${5:n_pool}, &",
+      "    x_star=${6:x_star}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "pool_means_expert (call, checked)": {
+    "prefix": "tox:pool_means_expert.checked",
+    "description": "This takes the pool already built; `pool_study_means` pools the means of two studies (with error check)",
+    "body": [
+      "call pool_means_expert( &",
+      "    pooled_means=${1:pooled_means}, &",
+      "    pooled_means_perm=${2:pooled_means_perm}, &",
+      "    pool_size=${3:pool_size}, &",
+      "    n_points=${4:n_points}, &",
+      "    n_pool=${5:n_pool}, &",
+      "    x_star=${6:x_star}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "pool_study_means (call)": {
+    "prefix": "tox:pool_study_means",
+    "description": "Concatenates the two studies' means, sorts the pool, and turns it into reference",
+    "body": [
+      "call pool_study_means( &",
+      "    n_genes_S1=${1:n_genes_S1}, &",
+      "    mean_S1=${2:mean_S1}, &",
+      "    n_genes_S2=${3:n_genes_S2}, &",
+      "    mean_S2=${4:mean_S2}, &",
+      "    n_points=${5:n_points}, &",
+      "    n_pool=${6:n_pool}, &",
+      "    x_star=${7:x_star}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "pool_study_means (call, checked)": {
+    "prefix": "tox:pool_study_means.checked",
+    "description": "Concatenates the two studies' means, sorts the pool, and turns it into reference (with error check)",
+    "body": [
+      "call pool_study_means( &",
+      "    n_genes_S1=${1:n_genes_S1}, &",
+      "    mean_S1=${2:mean_S1}, &",
+      "    n_genes_S2=${3:n_genes_S2}, &",
+      "    mean_S2=${4:mean_S2}, &",
+      "    n_points=${5:n_points}, &",
+      "    n_pool=${6:n_pool}, &",
+      "    x_star=${7:x_star}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "construct_neighborhoods (call)": {
+    "prefix": "tox:construct_neighborhoods",
+    "description": "construct_neighborhoods",
+    "body": [
+      "call construct_neighborhoods( &",
+      "    n_points=${1:n_points}, &",
+      "    x_star=${2:x_star}, &",
+      "    n_genes_S=${3:n_genes_S}, &",
+      "    mean_S=${4:mean_S}, &",
+      "    n_reps_S=${5:n_reps_S}, &",
+      "    resid_S=${6:resid_S}, &",
+      "    neighborhood_residuals=${7:neighborhood_residuals}, &",
+      "    neighborhood_indices=${8:neighborhood_indices}, &",
+      "    n_neighbors=${9:n_neighbors}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "construct_neighborhoods (call, checked)": {
+    "prefix": "tox:construct_neighborhoods.checked",
+    "description": "construct_neighborhoods (with error check)",
+    "body": [
+      "call construct_neighborhoods( &",
+      "    n_points=${1:n_points}, &",
+      "    x_star=${2:x_star}, &",
+      "    n_genes_S=${3:n_genes_S}, &",
+      "    mean_S=${4:mean_S}, &",
+      "    n_reps_S=${5:n_reps_S}, &",
+      "    resid_S=${6:resid_S}, &",
+      "    neighborhood_residuals=${7:neighborhood_residuals}, &",
+      "    neighborhood_indices=${8:neighborhood_indices}, &",
+      "    n_neighbors=${9:n_neighbors}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_data_integration_preprocessing_impl (use)": {
+    "prefix": "tox:data_integration_preprocessing_impl.use",
+    "description": "use tox_data_integration_preprocessing_impl, only: ...",
+    "body": [
+      "use tox_data_integration_preprocessing_impl, only: ${1|calc_neighborhood_size|}"
+    ]
+  },
+  "calc_neighborhood_size (call)": {
+    "prefix": "tox:calc_neighborhood_size",
+    "description": "The `desired_size` works as upper limit, as the actual neighborhood size might be lower",
+    "body": [
+      "${1:result} = calc_neighborhood_size( &",
+      "    n_pool=${2:n_pool}, &",
+      "    n_points=${3:n_points}, &",
+      "    n_genes_S=${4:n_genes_S}, &",
+      "    mean_S=${5:mean_S}, &",
+      "    desired_size=${6:desired_size})"
+    ]
+  },
+  "tox_data_integration_stats (use)": {
+    "prefix": "tox:data_integration_stats.use",
+    "description": "use tox_data_integration_stats, only: ...",
+    "body": [
+      "use tox_data_integration_stats, only: ${1|gjct_permutation_test|}"
+    ]
+  },
+  "gjct_permutation_test (call)": {
+    "prefix": "tox:gjct_permutation_test",
+    "description": "Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in",
+    "body": [
+      "call gjct_permutation_test( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    global_jsd_observed=${7:global_jsd_observed}, &",
+      "    n_bins=${8:n_bins}, &",
+      "    shared_residual_range=${9:shared_residual_range}, &",
+      "    n_permutations=${10:n_permutations}, &",
+      "    jsd_null=${11:jsd_null}, &",
+      "    p_value=${12:p_value}, &",
+      "    random_seed=${13:random_seed}, &",
+      "    neighbor_mask_S1=${14:neighbor_mask_S1}, &",
+      "    neighbor_mask_S2=${15:neighbor_mask_S2}, &",
+      "    ierr=${16:ierr})"
+    ]
+  },
+  "gjct_permutation_test (call, checked)": {
+    "prefix": "tox:gjct_permutation_test.checked",
+    "description": "Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in (with error check)",
+    "body": [
+      "call gjct_permutation_test( &",
+      "    neighborhood_residuals_S1=${1:neighborhood_residuals_S1}, &",
+      "    neighborhood_residuals_S2=${2:neighborhood_residuals_S2}, &",
+      "    n_reps_S1=${3:n_reps_S1}, &",
+      "    n_reps_S2=${4:n_reps_S2}, &",
+      "    n_neighbors=${5:n_neighbors}, &",
+      "    n_points=${6:n_points}, &",
+      "    global_jsd_observed=${7:global_jsd_observed}, &",
+      "    n_bins=${8:n_bins}, &",
+      "    shared_residual_range=${9:shared_residual_range}, &",
+      "    n_permutations=${10:n_permutations}, &",
+      "    jsd_null=${11:jsd_null}, &",
+      "    p_value=${12:p_value}, &",
+      "    random_seed=${13:random_seed}, &",
+      "    neighbor_mask_S1=${14:neighbor_mask_S1}, &",
+      "    neighbor_mask_S2=${15:neighbor_mask_S2}, &",
+      "    ierr=${16:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_data_tools (use)": {
+    "prefix": "tox:data_tools.use",
+    "description": "use tox_data_tools, only: ...",
+    "body": [
+      "use tox_data_tools, only: ${1|read_expression_vectors_tsv,read_gene_ids_from_tsv_file,read_orthofinder_file,get_unassigned_mask|}"
+    ]
+  },
+  "read_expression_vectors_tsv (call)": {
+    "prefix": "tox:read_expression_vectors_tsv",
+    "description": "read_expression_vectors_tsv",
+    "body": [
+      "call read_expression_vectors_tsv( &",
+      "    file_list=${1:file_list}, &",
+      "    gene_ids=${2:gene_ids}, &",
+      "    expression_vectors=${3:expression_vectors}, &",
+      "    n_header_rows=${4:n_header_rows}, &",
+      "    gene_col=${5:gene_col}, &",
+      "    value_cols=${6:value_cols}, &",
+      "    start_row=${7:start_row}, &",
+      "    ierr=${8:ierr}, &",
+      "    delimiter=${9:delimiter})"
+    ]
+  },
+  "read_expression_vectors_tsv (call, checked)": {
+    "prefix": "tox:read_expression_vectors_tsv.checked",
+    "description": "read_expression_vectors_tsv (with error check)",
+    "body": [
+      "call read_expression_vectors_tsv( &",
+      "    file_list=${1:file_list}, &",
+      "    gene_ids=${2:gene_ids}, &",
+      "    expression_vectors=${3:expression_vectors}, &",
+      "    n_header_rows=${4:n_header_rows}, &",
+      "    gene_col=${5:gene_col}, &",
+      "    value_cols=${6:value_cols}, &",
+      "    start_row=${7:start_row}, &",
+      "    ierr=${8:ierr}, &",
+      "    delimiter=${9:delimiter})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "read_gene_ids_from_tsv_file (call)": {
+    "prefix": "tox:read_gene_ids_from_tsv_file",
+    "description": "read_gene_ids_from_tsv_file",
+    "body": [
+      "call read_gene_ids_from_tsv_file( &",
+      "    filename=${1:filename}, &",
+      "    gene_ids=${2:gene_ids}, &",
+      "    n_header_rows=${3:n_header_rows}, &",
+      "    gene_col=${4:gene_col}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "read_gene_ids_from_tsv_file (call, checked)": {
+    "prefix": "tox:read_gene_ids_from_tsv_file.checked",
+    "description": "read_gene_ids_from_tsv_file (with error check)",
+    "body": [
+      "call read_gene_ids_from_tsv_file( &",
+      "    filename=${1:filename}, &",
+      "    gene_ids=${2:gene_ids}, &",
+      "    n_header_rows=${3:n_header_rows}, &",
+      "    gene_col=${4:gene_col}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "read_orthofinder_file (call)": {
+    "prefix": "tox:read_orthofinder_file",
+    "description": "read_orthofinder_file",
+    "body": [
+      "call read_orthofinder_file( &",
+      "    filename=${1:filename}, &",
+      "    gene_ids=${2:gene_ids}, &",
+      "    family_ids=${3:family_ids}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "read_orthofinder_file (call, checked)": {
+    "prefix": "tox:read_orthofinder_file.checked",
+    "description": "read_orthofinder_file (with error check)",
+    "body": [
+      "call read_orthofinder_file( &",
+      "    filename=${1:filename}, &",
+      "    gene_ids=${2:gene_ids}, &",
+      "    family_ids=${3:family_ids}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "get_unassigned_mask (call)": {
+    "prefix": "tox:get_unassigned_mask",
+    "description": "get_unassigned_mask",
+    "body": [
+      "call get_unassigned_mask( &",
+      "    gene_to_fam=${1:gene_to_fam}, &",
+      "    mask=${2:mask}, &",
+      "    n_genes_kept=${3:n_genes_kept})"
+    ]
+  },
+  "tox_data_validation (use)": {
+    "prefix": "tox:data_validation.use",
+    "description": "use tox_data_validation, only: ...",
+    "body": [
+      "use tox_data_validation, only: ${1|validate_data_structure,validate_gene_to_family_mapping,validate_expression_data,validate_family_centroids,validate_shift_vectors,validate_string_array_uniqueness,validate_all_data|}"
+    ]
+  },
+  "validate_data_structure (call)": {
+    "prefix": "tox:validate_data_structure",
+    "description": "validate_data_structure",
+    "body": [
+      "call validate_data_structure( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    gene_ids=${4:gene_ids}, &",
+      "    gene_family_ids=${5:gene_family_ids}, &",
+      "    gene_to_fam=${6:gene_to_fam}, &",
+      "    expression_vectors=${7:expression_vectors}, &",
+      "    family_centroids=${8:family_centroids}, &",
+      "    shift_vectors=${9:shift_vectors}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "validate_data_structure (call, checked)": {
+    "prefix": "tox:validate_data_structure.checked",
+    "description": "validate_data_structure (with error check)",
+    "body": [
+      "call validate_data_structure( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    gene_ids=${4:gene_ids}, &",
+      "    gene_family_ids=${5:gene_family_ids}, &",
+      "    gene_to_fam=${6:gene_to_fam}, &",
+      "    expression_vectors=${7:expression_vectors}, &",
+      "    family_centroids=${8:family_centroids}, &",
+      "    shift_vectors=${9:shift_vectors}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "validate_gene_to_family_mapping (call)": {
+    "prefix": "tox:validate_gene_to_family_mapping",
+    "description": "validate_gene_to_family_mapping",
+    "body": [
+      "call validate_gene_to_family_mapping( &",
+      "    gene_to_fam=${1:gene_to_fam}, &",
+      "    n_families=${2:n_families}, &",
+      "    ierr=${3:ierr})"
+    ]
+  },
+  "validate_gene_to_family_mapping (call, checked)": {
+    "prefix": "tox:validate_gene_to_family_mapping.checked",
+    "description": "validate_gene_to_family_mapping (with error check)",
+    "body": [
+      "call validate_gene_to_family_mapping( &",
+      "    gene_to_fam=${1:gene_to_fam}, &",
+      "    n_families=${2:n_families}, &",
+      "    ierr=${3:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "validate_expression_data (call)": {
+    "prefix": "tox:validate_expression_data",
+    "description": "validate_expression_data",
+    "body": [
+      "call validate_expression_data( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    check_non_negative=${2:check_non_negative}, &",
+      "    ierr=${3:ierr})"
+    ]
+  },
+  "validate_expression_data (call, checked)": {
+    "prefix": "tox:validate_expression_data.checked",
+    "description": "validate_expression_data (with error check)",
+    "body": [
+      "call validate_expression_data( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    check_non_negative=${2:check_non_negative}, &",
+      "    ierr=${3:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "validate_family_centroids (call)": {
+    "prefix": "tox:validate_family_centroids",
+    "description": "validate_family_centroids",
+    "body": [
+      "call validate_family_centroids( &",
+      "    family_centroids=${1:family_centroids}, &",
+      "    ierr=${2:ierr})"
+    ]
+  },
+  "validate_family_centroids (call, checked)": {
+    "prefix": "tox:validate_family_centroids.checked",
+    "description": "validate_family_centroids (with error check)",
+    "body": [
+      "call validate_family_centroids( &",
+      "    family_centroids=${1:family_centroids}, &",
+      "    ierr=${2:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "validate_shift_vectors (call)": {
+    "prefix": "tox:validate_shift_vectors",
+    "description": "validate_shift_vectors",
+    "body": [
+      "call validate_shift_vectors( &",
+      "    shift_vectors=${1:shift_vectors}, &",
+      "    expression_vectors=${2:expression_vectors}, &",
+      "    family_centroids=${3:family_centroids}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    n_samples=${5:n_samples}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "validate_shift_vectors (call, checked)": {
+    "prefix": "tox:validate_shift_vectors.checked",
+    "description": "validate_shift_vectors (with error check)",
+    "body": [
+      "call validate_shift_vectors( &",
+      "    shift_vectors=${1:shift_vectors}, &",
+      "    expression_vectors=${2:expression_vectors}, &",
+      "    family_centroids=${3:family_centroids}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    n_samples=${5:n_samples}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "validate_string_array_uniqueness (call)": {
+    "prefix": "tox:validate_string_array_uniqueness",
+    "description": "validate_string_array_uniqueness",
+    "body": [
+      "call validate_string_array_uniqueness( &",
+      "    str_arr=${1:str_arr}, &",
+      "    ierr=${2:ierr})"
+    ]
+  },
+  "validate_string_array_uniqueness (call, checked)": {
+    "prefix": "tox:validate_string_array_uniqueness.checked",
+    "description": "validate_string_array_uniqueness (with error check)",
+    "body": [
+      "call validate_string_array_uniqueness( &",
+      "    str_arr=${1:str_arr}, &",
+      "    ierr=${2:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "validate_all_data (call)": {
+    "prefix": "tox:validate_all_data",
+    "description": "validate_all_data",
+    "body": [
+      "call validate_all_data( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    gene_ids=${4:gene_ids}, &",
+      "    gene_family_ids=${5:gene_family_ids}, &",
+      "    gene_to_fam=${6:gene_to_fam}, &",
+      "    expression_vectors=${7:expression_vectors}, &",
+      "    family_centroids=${8:family_centroids}, &",
+      "    shift_vectors=${9:shift_vectors}, &",
+      "    ierr=${10:ierr}, &",
+      "    check_uniqueness=${11:check_uniqueness}, &",
+      "    check_shift_consistency=${12:check_shift_consistency})"
+    ]
+  },
+  "validate_all_data (call, checked)": {
+    "prefix": "tox:validate_all_data.checked",
+    "description": "validate_all_data (with error check)",
+    "body": [
+      "call validate_all_data( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    gene_ids=${4:gene_ids}, &",
+      "    gene_family_ids=${5:gene_family_ids}, &",
+      "    gene_to_fam=${6:gene_to_fam}, &",
+      "    expression_vectors=${7:expression_vectors}, &",
+      "    family_centroids=${8:family_centroids}, &",
+      "    shift_vectors=${9:shift_vectors}, &",
+      "    ierr=${10:ierr}, &",
+      "    check_uniqueness=${11:check_uniqueness}, &",
+      "    check_shift_consistency=${12:check_shift_consistency})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_euclidean_distance (use)": {
+    "prefix": "tox:euclidean_distance.use",
+    "description": "use tox_euclidean_distance, only: ...",
+    "body": [
+      "use tox_euclidean_distance, only: ${1|euclidean_distance,distance_to_centroid|}"
+    ]
+  },
+  "euclidean_distance (call)": {
+    "prefix": "tox:euclidean_distance",
+    "description": "Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`",
+    "body": [
+      "call euclidean_distance( &",
+      "    vec1=${1:vec1}, &",
+      "    vec2=${2:vec2}, &",
+      "    n_elements=${3:n_elements}, &",
+      "    result=${4:result}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "euclidean_distance (call, checked)": {
+    "prefix": "tox:euclidean_distance.checked",
+    "description": "Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))` (with error check)",
+    "body": [
+      "call euclidean_distance( &",
+      "    vec1=${1:vec1}, &",
+      "    vec2=${2:vec2}, &",
+      "    n_elements=${3:n_elements}, &",
+      "    result=${4:result}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "distance_to_centroid (call)": {
+    "prefix": "tox:distance_to_centroid",
+    "description": "For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.",
+    "body": [
+      "call distance_to_centroid( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    genes=${3:genes}, &",
+      "    centroids=${4:centroids}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    distances=${6:distances}, &",
+      "    n_tissues=${7:n_tissues}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "distance_to_centroid (call, checked)": {
+    "prefix": "tox:distance_to_centroid.checked",
+    "description": "For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them. (with error check)",
+    "body": [
+      "call distance_to_centroid( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    genes=${3:genes}, &",
+      "    centroids=${4:centroids}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    distances=${6:distances}, &",
+      "    n_tissues=${7:n_tissues}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_gene_centroids (use)": {
+    "prefix": "tox:gene_centroids.use",
+    "description": "use tox_gene_centroids, only: ...",
+    "body": [
+      "use tox_gene_centroids, only: ${1|mean_vector,group_centroid_orthologs,group_centroid_all|}"
+    ]
+  },
+  "mean_vector (call)": {
+    "prefix": "tox:mean_vector",
+    "description": "mean_vector",
+    "body": [
+      "call mean_vector( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    gene_indices=${4:gene_indices}, &",
+      "    n_selected_genes=${5:n_selected_genes}, &",
+      "    centroid=${6:centroid}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "mean_vector (call, checked)": {
+    "prefix": "tox:mean_vector.checked",
+    "description": "mean_vector (with error check)",
+    "body": [
+      "call mean_vector( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    gene_indices=${4:gene_indices}, &",
+      "    n_selected_genes=${5:n_selected_genes}, &",
+      "    centroid=${6:centroid}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "group_centroid_orthologs (call)": {
+    "prefix": "tox:group_centroid_orthologs",
+    "description": "group_centroid_orthologs",
+    "body": [
+      "call group_centroid_orthologs( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    gene_to_family=${4:gene_to_family}, &",
+      "    n_families=${5:n_families}, &",
+      "    centroid_matrix=${6:centroid_matrix}, &",
+      "    ortholog_set=${7:ortholog_set}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "group_centroid_orthologs (call, checked)": {
+    "prefix": "tox:group_centroid_orthologs.checked",
+    "description": "group_centroid_orthologs (with error check)",
+    "body": [
+      "call group_centroid_orthologs( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    gene_to_family=${4:gene_to_family}, &",
+      "    n_families=${5:n_families}, &",
+      "    centroid_matrix=${6:centroid_matrix}, &",
+      "    ortholog_set=${7:ortholog_set}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "group_centroid_all (call)": {
+    "prefix": "tox:group_centroid_all",
+    "description": "group_centroid_all",
+    "body": [
+      "call group_centroid_all( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    gene_to_family=${4:gene_to_family}, &",
+      "    n_families=${5:n_families}, &",
+      "    centroid_matrix=${6:centroid_matrix}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "group_centroid_all (call, checked)": {
+    "prefix": "tox:group_centroid_all.checked",
+    "description": "group_centroid_all (with error check)",
+    "body": [
+      "call group_centroid_all( &",
+      "    expression_vectors=${1:expression_vectors}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    gene_to_family=${4:gene_to_family}, &",
+      "    n_families=${5:n_families}, &",
+      "    centroid_matrix=${6:centroid_matrix}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_get_outliers (use)": {
+    "prefix": "tox:get_outliers.use",
+    "description": "use tox_get_outliers, only: ...",
+    "body": [
+      "use tox_get_outliers, only: ${1|compute_family_scaling,compute_rdi,identify_outliers,detect_outliers|}"
+    ]
+  },
+  "compute_family_scaling (call)": {
+    "prefix": "tox:compute_family_scaling",
+    "description": "Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.",
+    "body": [
+      "call compute_family_scaling( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    distances=${3:distances}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    dscale=${5:dscale}, &",
+      "    loess_x=${6:loess_x}, &",
+      "    loess_y=${7:loess_y}, &",
+      "    indices_used=${8:indices_used}, &",
+      "    span=${9:span}, &",
+      "    degree=${10:degree}, &",
+      "    mode=${11|MODE_PLAIN,MODE_ROBUST|}, &",
+      "    n_iters=${12:n_iters}, &",
+      "    low_sd_cutoff=${13:low_sd_cutoff}, &",
+      "    excluded_low_sd=${14:excluded_low_sd}, &",
+      "    ierr=${15:ierr})"
+    ]
+  },
+  "compute_family_scaling (call, checked)": {
+    "prefix": "tox:compute_family_scaling.checked",
+    "description": "Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs. (with error check)",
+    "body": [
+      "call compute_family_scaling( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    distances=${3:distances}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    dscale=${5:dscale}, &",
+      "    loess_x=${6:loess_x}, &",
+      "    loess_y=${7:loess_y}, &",
+      "    indices_used=${8:indices_used}, &",
+      "    span=${9:span}, &",
+      "    degree=${10:degree}, &",
+      "    mode=${11|MODE_PLAIN,MODE_ROBUST|}, &",
+      "    n_iters=${12:n_iters}, &",
+      "    low_sd_cutoff=${13:low_sd_cutoff}, &",
+      "    excluded_low_sd=${14:excluded_low_sd}, &",
+      "    ierr=${15:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_rdi (call)": {
+    "prefix": "tox:compute_rdi",
+    "description": "RDI = Euclidean distance / family scaling factor",
+    "body": [
+      "call compute_rdi( &",
+      "    n_genes=${1:n_genes}, &",
+      "    distances=${2:distances}, &",
+      "    gene_to_fam=${3:gene_to_fam}, &",
+      "    dscale=${4:dscale}, &",
+      "    rdi=${5:rdi}, &",
+      "    sorted_rdi=${6:sorted_rdi}, &",
+      "    perm=${7:perm}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "compute_rdi (call, checked)": {
+    "prefix": "tox:compute_rdi.checked",
+    "description": "RDI = Euclidean distance / family scaling factor (with error check)",
+    "body": [
+      "call compute_rdi( &",
+      "    n_genes=${1:n_genes}, &",
+      "    distances=${2:distances}, &",
+      "    gene_to_fam=${3:gene_to_fam}, &",
+      "    dscale=${4:dscale}, &",
+      "    rdi=${5:rdi}, &",
+      "    sorted_rdi=${6:sorted_rdi}, &",
+      "    perm=${7:perm}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "identify_outliers (call)": {
+    "prefix": "tox:identify_outliers",
+    "description": "Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.",
+    "body": [
+      "call identify_outliers( &",
+      "    n_genes=${1:n_genes}, &",
+      "    rdi=${2:rdi}, &",
+      "    sorted_rdi=${3:sorted_rdi}, &",
+      "    perm=${4:perm}, &",
+      "    is_outlier=${5:is_outlier}, &",
+      "    threshold=${6:threshold}, &",
+      "    quantile=${7:quantile}, &",
+      "    percentile=${8:percentile}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "identify_outliers (call, checked)": {
+    "prefix": "tox:identify_outliers.checked",
+    "description": "Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling. (with error check)",
+    "body": [
+      "call identify_outliers( &",
+      "    n_genes=${1:n_genes}, &",
+      "    rdi=${2:rdi}, &",
+      "    sorted_rdi=${3:sorted_rdi}, &",
+      "    perm=${4:perm}, &",
+      "    is_outlier=${5:is_outlier}, &",
+      "    threshold=${6:threshold}, &",
+      "    quantile=${7:quantile}, &",
+      "    percentile=${8:percentile}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "detect_outliers (call)": {
+    "prefix": "tox:detect_outliers",
+    "description": "Orchestrates the full pipeline: per-family scaling via",
+    "body": [
+      "call detect_outliers( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    distances=${3:distances}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    is_outlier=${5:is_outlier}, &",
+      "    loess_x=${6:loess_x}, &",
+      "    loess_y=${7:loess_y}, &",
+      "    loess_n=${8:loess_n}, &",
+      "    quantile=${9:quantile}, &",
+      "    ierr=${10:ierr}, &",
+      "    percentile=${11:percentile})"
+    ]
+  },
+  "detect_outliers (call, checked)": {
+    "prefix": "tox:detect_outliers.checked",
+    "description": "Orchestrates the full pipeline: per-family scaling via (with error check)",
+    "body": [
+      "call detect_outliers( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_families=${2:n_families}, &",
+      "    distances=${3:distances}, &",
+      "    gene_to_fam=${4:gene_to_fam}, &",
+      "    is_outlier=${5:is_outlier}, &",
+      "    loess_x=${6:loess_x}, &",
+      "    loess_y=${7:loess_y}, &",
+      "    loess_n=${8:loess_n}, &",
+      "    quantile=${9:quantile}, &",
+      "    ierr=${10:ierr}, &",
+      "    percentile=${11:percentile})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_loess (use)": {
+    "prefix": "tox:loess.use",
+    "description": "use tox_loess, only: ...",
+    "body": [
+      "use tox_loess, only: ${1|loess_fit_plain,loess_fit_robust|}"
+    ]
+  },
+  "loess_fit_plain (call)": {
+    "prefix": "tox:loess_fit_plain",
+    "description": "Data too degenerate to fit is answered directly, by the observations themselves; see",
+    "body": [
+      "call loess_fit_plain( &",
+      "    n=${1:n}, &",
+      "    x=${2:x}, &",
+      "    y=${3:y}, &",
+      "    weights=${4:weights}, &",
+      "    eval_points=${5:eval_points}, &",
+      "    span=${6:span}, &",
+      "    degree=${7:degree}, &",
+      "    max_neighborhood_size=${8:max_neighborhood_size}, &",
+      "    compute_influence=${9:compute_influence}, &",
+      "    save_factorization=${10:save_factorization}, &",
+      "    fitted_values=${11:fitted_values}, &",
+      "    ierr=${12:ierr})"
+    ]
+  },
+  "loess_fit_plain (call, checked)": {
+    "prefix": "tox:loess_fit_plain.checked",
+    "description": "Data too degenerate to fit is answered directly, by the observations themselves; see (with error check)",
+    "body": [
+      "call loess_fit_plain( &",
+      "    n=${1:n}, &",
+      "    x=${2:x}, &",
+      "    y=${3:y}, &",
+      "    weights=${4:weights}, &",
+      "    eval_points=${5:eval_points}, &",
+      "    span=${6:span}, &",
+      "    degree=${7:degree}, &",
+      "    max_neighborhood_size=${8:max_neighborhood_size}, &",
+      "    compute_influence=${9:compute_influence}, &",
+      "    save_factorization=${10:save_factorization}, &",
+      "    fitted_values=${11:fitted_values}, &",
+      "    ierr=${12:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "loess_fit_robust (call)": {
+    "prefix": "tox:loess_fit_robust",
+    "description": "Data too degenerate to fit is answered directly, by the observations themselves; see",
+    "body": [
+      "call loess_fit_robust( &",
+      "    n=${1:n}, &",
+      "    x=${2:x}, &",
+      "    y=${3:y}, &",
+      "    weights=${4:weights}, &",
+      "    eval_points=${5:eval_points}, &",
+      "    span=${6:span}, &",
+      "    degree=${7:degree}, &",
+      "    max_neighborhood_size=${8:max_neighborhood_size}, &",
+      "    compute_influence=${9:compute_influence}, &",
+      "    save_factorization=${10:save_factorization}, &",
+      "    n_iters=${11:n_iters}, &",
+      "    fitted_values=${12:fitted_values}, &",
+      "    ierr=${13:ierr})"
+    ]
+  },
+  "loess_fit_robust (call, checked)": {
+    "prefix": "tox:loess_fit_robust.checked",
+    "description": "Data too degenerate to fit is answered directly, by the observations themselves; see (with error check)",
+    "body": [
+      "call loess_fit_robust( &",
+      "    n=${1:n}, &",
+      "    x=${2:x}, &",
+      "    y=${3:y}, &",
+      "    weights=${4:weights}, &",
+      "    eval_points=${5:eval_points}, &",
+      "    span=${6:span}, &",
+      "    degree=${7:degree}, &",
+      "    max_neighborhood_size=${8:max_neighborhood_size}, &",
+      "    compute_influence=${9:compute_influence}, &",
+      "    save_factorization=${10:save_factorization}, &",
+      "    n_iters=${11:n_iters}, &",
+      "    fitted_values=${12:fitted_values}, &",
+      "    ierr=${13:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_loess_impl (use)": {
+    "prefix": "tox:loess_impl.use",
+    "description": "use tox_loess_impl, only: ...",
+    "body": [
+      "use tox_loess_impl, only: ${1|tox_loess_required_workspace|}"
+    ]
+  },
+  "tox_loess_required_workspace (call)": {
+    "prefix": "tox:tox_loess_required_workspace",
+    "description": "Computes the required sizes for integer and real workspace arrays.",
+    "body": [
+      "call tox_loess_required_workspace( &",
+      "    n_dim=${1:n_dim}, &",
+      "    max_neighborhood_size=${2:max_neighborhood_size}, &",
+      "    int_workspace_size=${3:int_workspace_size}, &",
+      "    real_workspace_size=${4:real_workspace_size}, &",
+      "    save_factorization=${5:save_factorization})"
+    ]
+  },
+  "tox_normalization (use)": {
+    "prefix": "tox:normalization.use",
+    "description": "use tox_normalization, only: ...",
+    "body": [
+      "use tox_normalization, only: ${1|normalize_unit_length,normalization_pipeline,normalize_by_std_dev,root_mean_sq_normalization,quantile_normalization,log2_transformation,calc_tiss_avg,calc_fchange|}"
+    ]
+  },
+  "normalize_unit_length (call)": {
+    "prefix": "tox:normalize_unit_length",
+    "description": "normalize_unit_length",
+    "body": [
+      "call normalize_unit_length( &",
+      "    vector=${1:vector}, &",
+      "    n_dims=${2:n_dims}, &",
+      "    ierr=${3:ierr})"
+    ]
+  },
+  "normalize_unit_length (call, checked)": {
+    "prefix": "tox:normalize_unit_length.checked",
+    "description": "normalize_unit_length (with error check)",
+    "body": [
+      "call normalize_unit_length( &",
+      "    vector=${1:vector}, &",
+      "    n_dims=${2:n_dims}, &",
+      "    ierr=${3:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "normalization_pipeline (call)": {
+    "prefix": "tox:normalization_pipeline",
+    "description": "Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.",
+    "body": [
+      "call normalization_pipeline( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    log_transformed_expr=${4:log_transformed_expr}, &",
+      "    reps_per_tissue=${5:reps_per_tissue}, &",
+      "    n_tissues=${6:n_tissues}, &",
+      "    span=${7:span}, &",
+      "    degree=${8:degree}, &",
+      "    use_quantile=${9:use_quantile}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "normalization_pipeline (call, checked)": {
+    "prefix": "tox:normalization_pipeline.checked",
+    "description": "Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately. (with error check)",
+    "body": [
+      "call normalization_pipeline( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    log_transformed_expr=${4:log_transformed_expr}, &",
+      "    reps_per_tissue=${5:reps_per_tissue}, &",
+      "    n_tissues=${6:n_tissues}, &",
+      "    span=${7:span}, &",
+      "    degree=${8:degree}, &",
+      "    use_quantile=${9:use_quantile}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "normalize_by_std_dev (call)": {
+    "prefix": "tox:normalize_by_std_dev",
+    "description": "This procedure applies a global stabilization based on the relationship between",
+    "body": [
+      "call normalize_by_std_dev( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    normalized_expr=${4:normalized_expr}, &",
+      "    span=${5:span}, &",
+      "    degree=${6:degree}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "normalize_by_std_dev (call, checked)": {
+    "prefix": "tox:normalize_by_std_dev.checked",
+    "description": "This procedure applies a global stabilization based on the relationship between (with error check)",
+    "body": [
+      "call normalize_by_std_dev( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    normalized_expr=${4:normalized_expr}, &",
+      "    span=${5:span}, &",
+      "    degree=${6:degree}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "root_mean_sq_normalization (call)": {
+    "prefix": "tox:root_mean_sq_normalization",
+    "description": "across tissues (not classical standard deviation).",
+    "body": [
+      "call root_mean_sq_normalization( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    normalized_expr=${4:normalized_expr}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "root_mean_sq_normalization (call, checked)": {
+    "prefix": "tox:root_mean_sq_normalization.checked",
+    "description": "across tissues (not classical standard deviation). (with error check)",
+    "body": [
+      "call root_mean_sq_normalization( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    normalized_expr=${4:normalized_expr}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "quantile_normalization (call)": {
+    "prefix": "tox:quantile_normalization",
+    "description": "Computes average expression per rank across tissues.",
+    "body": [
+      "call quantile_normalization( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    normalized_expr=${4:normalized_expr}, &",
+      "    rank_means=${5:rank_means}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "quantile_normalization (call, checked)": {
+    "prefix": "tox:quantile_normalization.checked",
+    "description": "Computes average expression per rank across tissues. (with error check)",
+    "body": [
+      "call quantile_normalization( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_replicates=${2:n_replicates}, &",
+      "    expr=${3:expr}, &",
+      "    normalized_expr=${4:normalized_expr}, &",
+      "    rank_means=${5:rank_means}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "log2_transformation (call)": {
+    "prefix": "tox:log2_transformation",
+    "description": "This subroutine performs element-wise `log2(x + 1)` transformation on a",
+    "body": [
+      "call log2_transformation( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_tissues=${2:n_tissues}, &",
+      "    expr=${3:expr}, &",
+      "    transformed_expr=${4:transformed_expr}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "log2_transformation (call, checked)": {
+    "prefix": "tox:log2_transformation.checked",
+    "description": "This subroutine performs element-wise `log2(x + 1)` transformation on a (with error check)",
+    "body": [
+      "call log2_transformation( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_tissues=${2:n_tissues}, &",
+      "    expr=${3:expr}, &",
+      "    transformed_expr=${4:transformed_expr}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "calc_tiss_avg (call)": {
+    "prefix": "tox:calc_tiss_avg",
+    "description": "For each tissue of tissue replicates, this subroutine computes the average",
+    "body": [
+      "call calc_tiss_avg( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_tissues=${2:n_tissues}, &",
+      "    reps_per_tissue=${3:reps_per_tissue}, &",
+      "    expr=${4:expr}, &",
+      "    tissue_averages=${5:tissue_averages}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "calc_tiss_avg (call, checked)": {
+    "prefix": "tox:calc_tiss_avg.checked",
+    "description": "For each tissue of tissue replicates, this subroutine computes the average (with error check)",
+    "body": [
+      "call calc_tiss_avg( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_tissues=${2:n_tissues}, &",
+      "    reps_per_tissue=${3:reps_per_tissue}, &",
+      "    expr=${4:expr}, &",
+      "    tissue_averages=${5:tissue_averages}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "calc_fchange (call)": {
+    "prefix": "tox:calc_fchange",
+    "description": "For each control-condition pair, this subroutine computes the `log2 fold change`",
+    "body": [
+      "call calc_fchange( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_tissues=${2:n_tissues}, &",
+      "    n_pairs=${3:n_pairs}, &",
+      "    control_tissues=${4:control_tissues}, &",
+      "    condition_tissues=${5:condition_tissues}, &",
+      "    expr=${6:expr}, &",
+      "    fold_changes=${7:fold_changes}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "calc_fchange (call, checked)": {
+    "prefix": "tox:calc_fchange.checked",
+    "description": "For each control-condition pair, this subroutine computes the `log2 fold change` (with error check)",
+    "body": [
+      "call calc_fchange( &",
+      "    n_genes=${1:n_genes}, &",
+      "    n_tissues=${2:n_tissues}, &",
+      "    n_pairs=${3:n_pairs}, &",
+      "    control_tissues=${4:control_tissues}, &",
+      "    condition_tissues=${5:condition_tissues}, &",
+      "    expr=${6:expr}, &",
+      "    fold_changes=${7:fold_changes}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_paralog_analysis (use)": {
+    "prefix": "tox:paralog_analysis.use",
+    "description": "use tox_paralog_analysis, only: ...",
+    "body": [
+      "use tox_paralog_analysis, only: ${1|detect_neofunctionalization,detect_dosage_effect,detect_subfunctionalization,filter_paralogs_by_pattern_dosage_effect,filter_paralogs_by_pattern_subfunctionalization|}"
+    ]
+  },
+  "detect_neofunctionalization (call)": {
+    "prefix": "tox:detect_neofunctionalization",
+    "description": "detect_neofunctionalization",
+    "body": [
+      "call detect_neofunctionalization( &",
+      "    ancestors=${1:ancestors}, &",
+      "    n_families=${2:n_families}, &",
+      "    genes=${3:genes}, &",
+      "    n_axes=${4:n_axes}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    n_genes=${6:n_genes}, &",
+      "    thresholds=${7:thresholds}, &",
+      "    neofunc=${8:neofunc}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "detect_neofunctionalization (call, checked)": {
+    "prefix": "tox:detect_neofunctionalization.checked",
+    "description": "detect_neofunctionalization (with error check)",
+    "body": [
+      "call detect_neofunctionalization( &",
+      "    ancestors=${1:ancestors}, &",
+      "    n_families=${2:n_families}, &",
+      "    genes=${3:genes}, &",
+      "    n_axes=${4:n_axes}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    n_genes=${6:n_genes}, &",
+      "    thresholds=${7:thresholds}, &",
+      "    neofunc=${8:neofunc}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "detect_dosage_effect (call)": {
+    "prefix": "tox:detect_dosage_effect",
+    "description": "detect_dosage_effect",
+    "body": [
+      "call detect_dosage_effect( &",
+      "    ancestor=${1:ancestor}, &",
+      "    genes=${2:genes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    n_mask_chunks=${6:n_mask_chunks}, &",
+      "    n_results=${7:n_results}, &",
+      "    max_subset_size=${8:max_subset_size}, &",
+      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    n_paralog_subsets=${10:n_paralog_subsets}, &",
+      "    max_angle=${11:max_angle}, &",
+      "    gain_gamma=${12:gain_gamma}, &",
+      "    ierr=${13:ierr})"
+    ]
+  },
+  "detect_dosage_effect (call, checked)": {
+    "prefix": "tox:detect_dosage_effect.checked",
+    "description": "detect_dosage_effect (with error check)",
+    "body": [
+      "call detect_dosage_effect( &",
+      "    ancestor=${1:ancestor}, &",
+      "    genes=${2:genes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    n_mask_chunks=${6:n_mask_chunks}, &",
+      "    n_results=${7:n_results}, &",
+      "    max_subset_size=${8:max_subset_size}, &",
+      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    n_paralog_subsets=${10:n_paralog_subsets}, &",
+      "    max_angle=${11:max_angle}, &",
+      "    gain_gamma=${12:gain_gamma}, &",
+      "    ierr=${13:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "detect_subfunctionalization (call)": {
+    "prefix": "tox:detect_subfunctionalization",
+    "description": "detect_subfunctionalization",
+    "body": [
+      "call detect_subfunctionalization( &",
+      "    ancestor=${1:ancestor}, &",
+      "    genes=${2:genes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    n_mask_chunks=${6:n_mask_chunks}, &",
+      "    n_results=${7:n_results}, &",
+      "    max_subset_size=${8:max_subset_size}, &",
+      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    n_paralog_subsets=${10:n_paralog_subsets}, &",
+      "    rdi_threshold=${11:rdi_threshold}, &",
+      "    paralog_norms=${12:paralog_norms}, &",
+      "    sorted_paralog_norms_perm=${13:sorted_paralog_norms_perm}, &",
+      "    ierr=${14:ierr})"
+    ]
+  },
+  "detect_subfunctionalization (call, checked)": {
+    "prefix": "tox:detect_subfunctionalization.checked",
+    "description": "detect_subfunctionalization (with error check)",
+    "body": [
+      "call detect_subfunctionalization( &",
+      "    ancestor=${1:ancestor}, &",
+      "    genes=${2:genes}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_dims=${4:n_dims}, &",
+      "    filtered_paralogs_mask=${5:filtered_paralogs_mask}, &",
+      "    n_mask_chunks=${6:n_mask_chunks}, &",
+      "    n_results=${7:n_results}, &",
+      "    max_subset_size=${8:max_subset_size}, &",
+      "    work_arr_paralog_subsets=${9:work_arr_paralog_subsets}, &",
+      "    n_paralog_subsets=${10:n_paralog_subsets}, &",
+      "    rdi_threshold=${11:rdi_threshold}, &",
+      "    paralog_norms=${12:paralog_norms}, &",
+      "    sorted_paralog_norms_perm=${13:sorted_paralog_norms_perm}, &",
+      "    ierr=${14:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "filter_paralogs_by_pattern_dosage_effect (call)": {
+    "prefix": "tox:filter_paralogs_by_pattern_dosage_effect",
+    "description": "This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.",
+    "body": [
+      "call filter_paralogs_by_pattern_dosage_effect( &",
+      "    gene_angles=${1:gene_angles}, &",
+      "    threshold=${2:threshold}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_families=${4:n_families}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    masks=${6:masks}, &",
+      "    n_mask_chunks=${7:n_mask_chunks}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "filter_paralogs_by_pattern_dosage_effect (call, checked)": {
+    "prefix": "tox:filter_paralogs_by_pattern_dosage_effect.checked",
+    "description": "This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried. (with error check)",
+    "body": [
+      "call filter_paralogs_by_pattern_dosage_effect( &",
+      "    gene_angles=${1:gene_angles}, &",
+      "    threshold=${2:threshold}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_families=${4:n_families}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    masks=${6:masks}, &",
+      "    n_mask_chunks=${7:n_mask_chunks}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "filter_paralogs_by_pattern_subfunctionalization (call)": {
+    "prefix": "tox:filter_paralogs_by_pattern_subfunctionalization",
+    "description": "This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.",
+    "body": [
+      "call filter_paralogs_by_pattern_subfunctionalization( &",
+      "    gene_angles=${1:gene_angles}, &",
+      "    threshold=${2:threshold}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_families=${4:n_families}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    masks=${6:masks}, &",
+      "    n_mask_chunks=${7:n_mask_chunks}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "filter_paralogs_by_pattern_subfunctionalization (call, checked)": {
+    "prefix": "tox:filter_paralogs_by_pattern_subfunctionalization.checked",
+    "description": "This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried. (with error check)",
+    "body": [
+      "call filter_paralogs_by_pattern_subfunctionalization( &",
+      "    gene_angles=${1:gene_angles}, &",
+      "    threshold=${2:threshold}, &",
+      "    n_genes=${3:n_genes}, &",
+      "    n_families=${4:n_families}, &",
+      "    gene_to_fam=${5:gene_to_fam}, &",
+      "    masks=${6:masks}, &",
+      "    n_mask_chunks=${7:n_mask_chunks}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_paralog_analysis_impl (use)": {
+    "prefix": "tox:paralog_analysis_impl.use",
+    "description": "use tox_paralog_analysis_impl, only: ...",
+    "body": [
+      "use tox_paralog_analysis_impl, only: ${1|mask_check_state,mask_chunk_count,calc_work_arr_paralog_subsets_size|}"
+    ]
+  },
+  "mask_check_state (call)": {
+    "prefix": "tox:mask_check_state",
+    "description": "mask_check_state",
+    "body": [
+      "${1:result} = mask_check_state( &",
+      "    bit_mask=${2:bit_mask}, &",
+      "    i_gene=${3:i_gene})"
+    ]
+  },
+  "mask_chunk_count (call)": {
+    "prefix": "tox:mask_chunk_count",
+    "description": "mask_chunk_count",
+    "body": [
+      "call mask_chunk_count( &",
+      "    n_genes=${1:n_genes}, &",
+      "    count=${2:count})"
+    ]
+  },
+  "calc_work_arr_paralog_subsets_size (call)": {
+    "prefix": "tox:calc_work_arr_paralog_subsets_size",
+    "description": "The `detect_*` subroutines need a work array for the to be tested subsets.",
+    "body": [
+      "call calc_work_arr_paralog_subsets_size( &",
+      "    max_subset_size=${1:max_subset_size}, &",
+      "    n_genes=${2:n_genes}, &",
+      "    work_array_size=${3:work_array_size}, &",
+      "    filtered_paralogs_mask=${4:filtered_paralogs_mask}, &",
+      "    n_mask_chunks=${5:n_mask_chunks}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "calc_work_arr_paralog_subsets_size (call, checked)": {
+    "prefix": "tox:calc_work_arr_paralog_subsets_size.checked",
+    "description": "The `detect_*` subroutines need a work array for the to be tested subsets. (with error check)",
+    "body": [
+      "call calc_work_arr_paralog_subsets_size( &",
+      "    max_subset_size=${1:max_subset_size}, &",
+      "    n_genes=${2:n_genes}, &",
+      "    work_array_size=${3:work_array_size}, &",
+      "    filtered_paralogs_mask=${4:filtered_paralogs_mask}, &",
+      "    n_mask_chunks=${5:n_mask_chunks}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_relative_axis_plane_tools (use)": {
+    "prefix": "tox:relative_axis_plane_tools.use",
+    "description": "use tox_relative_axis_plane_tools, only: ...",
+    "body": [
+      "use tox_relative_axis_plane_tools, only: ${1|omics_vector_RAP_projection,omics_field_RAP_projection,clock_hand_angle_between_vectors,clock_hand_angles_for_shift_vectors,compute_relative_axis_contributions,relative_axes_changes_from_shift_vector,relative_axes_expression_from_expression_vector|}"
+    ]
+  },
+  "omics_vector_RAP_projection (call)": {
+    "prefix": "tox:omics_vector_RAP_projection",
+    "description": "omics_vector_RAP_projection",
+    "body": [
+      "call omics_vector_RAP_projection( &",
+      "    vecs=${1:vecs}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_vecs=${3:n_vecs}, &",
+      "    vecs_selection_mask=${4:vecs_selection_mask}, &",
+      "    n_selected_vecs=${5:n_selected_vecs}, &",
+      "    axes_selection_mask=${6:axes_selection_mask}, &",
+      "    n_selected_axes=${7:n_selected_axes}, &",
+      "    projections=${8:projections}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "omics_vector_RAP_projection (call, checked)": {
+    "prefix": "tox:omics_vector_RAP_projection.checked",
+    "description": "omics_vector_RAP_projection (with error check)",
+    "body": [
+      "call omics_vector_RAP_projection( &",
+      "    vecs=${1:vecs}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_vecs=${3:n_vecs}, &",
+      "    vecs_selection_mask=${4:vecs_selection_mask}, &",
+      "    n_selected_vecs=${5:n_selected_vecs}, &",
+      "    axes_selection_mask=${6:axes_selection_mask}, &",
+      "    n_selected_axes=${7:n_selected_axes}, &",
+      "    projections=${8:projections}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "omics_field_RAP_projection (call)": {
+    "prefix": "tox:omics_field_RAP_projection",
+    "description": "omics_field_RAP_projection",
+    "body": [
+      "call omics_field_RAP_projection( &",
+      "    fields=${1:fields}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_fields=${3:n_fields}, &",
+      "    fields_selection_mask=${4:fields_selection_mask}, &",
+      "    n_selected_fields=${5:n_selected_fields}, &",
+      "    axes_selection_mask=${6:axes_selection_mask}, &",
+      "    n_selected_axes=${7:n_selected_axes}, &",
+      "    projections=${8:projections}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "omics_field_RAP_projection (call, checked)": {
+    "prefix": "tox:omics_field_RAP_projection.checked",
+    "description": "omics_field_RAP_projection (with error check)",
+    "body": [
+      "call omics_field_RAP_projection( &",
+      "    fields=${1:fields}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    n_fields=${3:n_fields}, &",
+      "    fields_selection_mask=${4:fields_selection_mask}, &",
+      "    n_selected_fields=${5:n_selected_fields}, &",
+      "    axes_selection_mask=${6:axes_selection_mask}, &",
+      "    n_selected_axes=${7:n_selected_axes}, &",
+      "    projections=${8:projections}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "clock_hand_angle_between_vectors (call)": {
+    "prefix": "tox:clock_hand_angle_between_vectors",
+    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying",
+    "body": [
+      "call clock_hand_angle_between_vectors( &",
+      "    v1=${1:v1}, &",
+      "    v2=${2:v2}, &",
+      "    n_dims=${3:n_dims}, &",
+      "    orientation_reference=${4:orientation_reference}, &",
+      "    signed_angle=${5:signed_angle}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "clock_hand_angle_between_vectors (call, checked)": {
+    "prefix": "tox:clock_hand_angle_between_vectors.checked",
+    "description": "The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying (with error check)",
+    "body": [
+      "call clock_hand_angle_between_vectors( &",
+      "    v1=${1:v1}, &",
+      "    v2=${2:v2}, &",
+      "    n_dims=${3:n_dims}, &",
+      "    orientation_reference=${4:orientation_reference}, &",
+      "    signed_angle=${5:signed_angle}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "clock_hand_angles_for_shift_vectors (call)": {
+    "prefix": "tox:clock_hand_angles_for_shift_vectors",
+    "description": "Each selected field is angled by the rule of",
+    "body": [
+      "call clock_hand_angles_for_shift_vectors( &",
+      "    fields=${1:fields}, &",
+      "    n_dims=${2:n_dims}, &",
+      "    n_fields=${3:n_fields}, &",
+      "    fields_selection_mask=${4:fields_selection_mask}, &",
+      "    n_selected_fields=${5:n_selected_fields}, &",
+      "    orientation_reference=${6:orientation_reference}, &",
+      "    signed_angles=${7:signed_angles}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "clock_hand_angles_for_shift_vectors (call, checked)": {
+    "prefix": "tox:clock_hand_angles_for_shift_vectors.checked",
+    "description": "Each selected field is angled by the rule of (with error check)",
+    "body": [
+      "call clock_hand_angles_for_shift_vectors( &",
+      "    fields=${1:fields}, &",
+      "    n_dims=${2:n_dims}, &",
+      "    n_fields=${3:n_fields}, &",
+      "    fields_selection_mask=${4:fields_selection_mask}, &",
+      "    n_selected_fields=${5:n_selected_fields}, &",
+      "    orientation_reference=${6:orientation_reference}, &",
+      "    signed_angles=${7:signed_angles}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_relative_axis_contributions (call)": {
+    "prefix": "tox:compute_relative_axis_contributions",
+    "description": "Shared utility: the shift-vector and expression-vector entry points below both drive it.",
+    "body": [
+      "call compute_relative_axis_contributions( &",
+      "    vec=${1:vec}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    contributions=${3:contributions}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "compute_relative_axis_contributions (call, checked)": {
+    "prefix": "tox:compute_relative_axis_contributions.checked",
+    "description": "Shared utility: the shift-vector and expression-vector entry points below both drive it. (with error check)",
+    "body": [
+      "call compute_relative_axis_contributions( &",
+      "    vec=${1:vec}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    contributions=${3:contributions}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "relative_axes_changes_from_shift_vector (call)": {
+    "prefix": "tox:relative_axes_changes_from_shift_vector",
+    "description": "Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)",
+    "body": [
+      "call relative_axes_changes_from_shift_vector( &",
+      "    vec=${1:vec}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    contributions=${3:contributions}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "relative_axes_changes_from_shift_vector (call, checked)": {
+    "prefix": "tox:relative_axes_changes_from_shift_vector.checked",
+    "description": "Wrapper for shift vectors (e.g. difference between two RAP-projected vectors) (with error check)",
+    "body": [
+      "call relative_axes_changes_from_shift_vector( &",
+      "    vec=${1:vec}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    contributions=${3:contributions}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "relative_axes_expression_from_expression_vector (call)": {
+    "prefix": "tox:relative_axes_expression_from_expression_vector",
+    "description": "Wrapper for single RAP-projected expression vectors",
+    "body": [
+      "call relative_axes_expression_from_expression_vector( &",
+      "    vec=${1:vec}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    contributions=${3:contributions}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "relative_axes_expression_from_expression_vector (call, checked)": {
+    "prefix": "tox:relative_axes_expression_from_expression_vector.checked",
+    "description": "Wrapper for single RAP-projected expression vectors (with error check)",
+    "body": [
+      "call relative_axes_expression_from_expression_vector( &",
+      "    vec=${1:vec}, &",
+      "    n_axes=${2:n_axes}, &",
+      "    contributions=${3:contributions}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_shift_vectors (use)": {
+    "prefix": "tox:shift_vectors.use",
+    "description": "use tox_shift_vectors, only: ...",
+    "body": [
+      "use tox_shift_vectors, only: ${1|compute_shift_vector_field|}"
+    ]
+  },
+  "compute_shift_vector_field (call)": {
+    "prefix": "tox:compute_shift_vector_field",
+    "description": "Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.",
+    "body": [
+      "call compute_shift_vector_field( &",
+      "    n_tissues=${1:n_tissues}, &",
+      "    n_genes=${2:n_genes}, &",
+      "    n_families=${3:n_families}, &",
+      "    expression_vectors=${4:expression_vectors}, &",
+      "    family_centroids=${5:family_centroids}, &",
+      "    gene_to_fam=${6:gene_to_fam}, &",
+      "    shift_vectors=${7:shift_vectors}, &",
+      "    ierr=${8:ierr})"
+    ]
+  },
+  "compute_shift_vector_field (call, checked)": {
+    "prefix": "tox:compute_shift_vector_field.checked",
+    "description": "Computes the shift vectors by subtracting the corresponding family centroid from the expression vector. (with error check)",
+    "body": [
+      "call compute_shift_vector_field( &",
+      "    n_tissues=${1:n_tissues}, &",
+      "    n_genes=${2:n_genes}, &",
+      "    n_families=${3:n_families}, &",
+      "    expression_vectors=${4:expression_vectors}, &",
+      "    family_centroids=${5:family_centroids}, &",
+      "    gene_to_fam=${6:gene_to_fam}, &",
+      "    shift_vectors=${7:shift_vectors}, &",
+      "    ierr=${8:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_tissue_versatility (use)": {
+    "prefix": "tox:tissue_versatility.use",
+    "description": "use tox_tissue_versatility, only: ...",
+    "body": [
+      "use tox_tissue_versatility, only: ${1|compute_tissue_versatility|}"
+    ]
+  },
+  "compute_tissue_versatility (call)": {
+    "prefix": "tox:compute_tissue_versatility",
+    "description": "The metric is based on the angle between each gene expression vector and the space diagonal.",
+    "body": [
+      "call compute_tissue_versatility( &",
+      "    n_axes=${1:n_axes}, &",
+      "    n_vectors=${2:n_vectors}, &",
+      "    expression_vectors=${3:expression_vectors}, &",
+      "    vectors_selection_mask=${4:vectors_selection_mask}, &",
+      "    n_selected_vectors=${5:n_selected_vectors}, &",
+      "    axes_selection_mask=${6:axes_selection_mask}, &",
+      "    n_selected_axes=${7:n_selected_axes}, &",
+      "    tissue_versatilities=${8:tissue_versatilities}, &",
+      "    tissue_angles_deg=${9:tissue_angles_deg}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "compute_tissue_versatility (call, checked)": {
+    "prefix": "tox:compute_tissue_versatility.checked",
+    "description": "The metric is based on the angle between each gene expression vector and the space diagonal. (with error check)",
+    "body": [
+      "call compute_tissue_versatility( &",
+      "    n_axes=${1:n_axes}, &",
+      "    n_vectors=${2:n_vectors}, &",
+      "    expression_vectors=${3:expression_vectors}, &",
+      "    vectors_selection_mask=${4:vectors_selection_mask}, &",
+      "    n_selected_vectors=${5:n_selected_vectors}, &",
+      "    axes_selection_mask=${6:axes_selection_mask}, &",
+      "    n_selected_axes=${7:n_selected_axes}, &",
+      "    tissue_versatilities=${8:tissue_versatilities}, &",
+      "    tissue_angles_deg=${9:tissue_angles_deg}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_trajectory_contribution_analysis (use)": {
+    "prefix": "tox:trajectory_contribution_analysis.use",
+    "description": "use tox_trajectory_contribution_analysis, only: ...",
+    "body": [
+      "use tox_trajectory_contribution_analysis, only: ${1|perform_permutation_test,compute_p_values,compute_contributions,compute_all_contributions,compute_baselines_factor_dependent,compute_velocity_trajectory,compute_acceleration_from_velocity_trajectory,compute_velocity_trajectories,compute_acceleration_from_velocity,compute_velocity_acceleration_contributions|}"
+    ]
+  },
+  "perform_permutation_test (call)": {
+    "prefix": "tox:perform_permutation_test",
+    "description": "perform_permutation_test",
+    "body": [
+      "call perform_permutation_test( &",
+      "    trajectories=${1:trajectories}, &",
+      "    n_factors=${2:n_factors}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    factor_idx=${5:factor_idx}, &",
+      "    dependent_idx=${6:dependent_idx}, &",
+      "    sample_idx=${7:sample_idx}, &",
+      "    baseline_mode=${8|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    n_permutations=${9:n_permutations}, &",
+      "    local_contributions=${10:local_contributions}, &",
+      "    total_contributions=${11:total_contributions}, &",
+      "    random_seed=${12:random_seed}, &",
+      "    ierr=${13:ierr})"
+    ]
+  },
+  "perform_permutation_test (call, checked)": {
+    "prefix": "tox:perform_permutation_test.checked",
+    "description": "perform_permutation_test (with error check)",
+    "body": [
+      "call perform_permutation_test( &",
+      "    trajectories=${1:trajectories}, &",
+      "    n_factors=${2:n_factors}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    factor_idx=${5:factor_idx}, &",
+      "    dependent_idx=${6:dependent_idx}, &",
+      "    sample_idx=${7:sample_idx}, &",
+      "    baseline_mode=${8|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    n_permutations=${9:n_permutations}, &",
+      "    local_contributions=${10:local_contributions}, &",
+      "    total_contributions=${11:total_contributions}, &",
+      "    random_seed=${12:random_seed}, &",
+      "    ierr=${13:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_p_values (call)": {
+    "prefix": "tox:compute_p_values",
+    "description": "Given the permutation tests ([[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(subroutine)]]),",
+    "body": [
+      "call compute_p_values( &",
+      "    local_contributions_observed=${1:local_contributions_observed}, &",
+      "    total_contribution_observed=${2:total_contribution_observed}, &",
+      "    local_contributions_perm_test=${3:local_contributions_perm_test}, &",
+      "    total_contributions_perm_test=${4:total_contributions_perm_test}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    n_permutations=${6:n_permutations}, &",
+      "    local_p_values=${7:local_p_values}, &",
+      "    total_p_value=${8:total_p_value}, &",
+      "    ierr=${9:ierr})"
+    ]
+  },
+  "compute_p_values (call, checked)": {
+    "prefix": "tox:compute_p_values.checked",
+    "description": "Given the permutation tests ([[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(subroutine)]]), (with error check)",
+    "body": [
+      "call compute_p_values( &",
+      "    local_contributions_observed=${1:local_contributions_observed}, &",
+      "    total_contribution_observed=${2:total_contribution_observed}, &",
+      "    local_contributions_perm_test=${3:local_contributions_perm_test}, &",
+      "    total_contributions_perm_test=${4:total_contributions_perm_test}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    n_permutations=${6:n_permutations}, &",
+      "    local_p_values=${7:local_p_values}, &",
+      "    total_p_value=${8:total_p_value}, &",
+      "    ierr=${9:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_contributions (call)": {
+    "prefix": "tox:compute_contributions",
+    "description": "compute_contributions",
+    "body": [
+      "call compute_contributions( &",
+      "    factor=${1:factor}, &",
+      "    dependent=${2:dependent}, &",
+      "    n_dims=${3:n_dims}, &",
+      "    baseline_mode=${4|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    local_contributions=${5:local_contributions}, &",
+      "    total_contribution=${6:total_contribution}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "compute_contributions (call, checked)": {
+    "prefix": "tox:compute_contributions.checked",
+    "description": "compute_contributions (with error check)",
+    "body": [
+      "call compute_contributions( &",
+      "    factor=${1:factor}, &",
+      "    dependent=${2:dependent}, &",
+      "    n_dims=${3:n_dims}, &",
+      "    baseline_mode=${4|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    local_contributions=${5:local_contributions}, &",
+      "    total_contribution=${6:total_contribution}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_all_contributions (call)": {
+    "prefix": "tox:compute_all_contributions",
+    "description": "compute_all_contributions",
+    "body": [
+      "call compute_all_contributions( &",
+      "    trajectories=${1:trajectories}, &",
+      "    n_factors=${2:n_factors}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    factor_indices=${5:factor_indices}, &",
+      "    n_selected_factors=${6:n_selected_factors}, &",
+      "    dependent_indices=${7:dependent_indices}, &",
+      "    n_selected_dependents=${8:n_selected_dependents}, &",
+      "    baseline_mode=${9|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    local_contributions=${10:local_contributions}, &",
+      "    total_contributions=${11:total_contributions}, &",
+      "    ierr=${12:ierr})"
+    ]
+  },
+  "compute_all_contributions (call, checked)": {
+    "prefix": "tox:compute_all_contributions.checked",
+    "description": "compute_all_contributions (with error check)",
+    "body": [
+      "call compute_all_contributions( &",
+      "    trajectories=${1:trajectories}, &",
+      "    n_factors=${2:n_factors}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    factor_indices=${5:factor_indices}, &",
+      "    n_selected_factors=${6:n_selected_factors}, &",
+      "    dependent_indices=${7:dependent_indices}, &",
+      "    n_selected_dependents=${8:n_selected_dependents}, &",
+      "    baseline_mode=${9|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    local_contributions=${10:local_contributions}, &",
+      "    total_contributions=${11:total_contributions}, &",
+      "    ierr=${12:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_baselines_factor_dependent (call)": {
+    "prefix": "tox:compute_baselines_factor_dependent",
+    "description": "compute_baselines_factor_dependent",
+    "body": [
+      "call compute_baselines_factor_dependent( &",
+      "    n_timepoints=${1:n_timepoints}, &",
+      "    factor=${2:factor}, &",
+      "    dependent=${3:dependent}, &",
+      "    baseline_mode=${4|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    factor_baseline=${5:factor_baseline}, &",
+      "    dependent_baseline=${6:dependent_baseline}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "compute_baselines_factor_dependent (call, checked)": {
+    "prefix": "tox:compute_baselines_factor_dependent.checked",
+    "description": "compute_baselines_factor_dependent (with error check)",
+    "body": [
+      "call compute_baselines_factor_dependent( &",
+      "    n_timepoints=${1:n_timepoints}, &",
+      "    factor=${2:factor}, &",
+      "    dependent=${3:dependent}, &",
+      "    baseline_mode=${4|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    factor_baseline=${5:factor_baseline}, &",
+      "    dependent_baseline=${6:dependent_baseline}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_velocity_trajectory (call)": {
+    "prefix": "tox:compute_velocity_trajectory",
+    "description": "compute_velocity_trajectory",
+    "body": [
+      "call compute_velocity_trajectory( &",
+      "    trajectory=${1:trajectory}, &",
+      "    velocity=${2:velocity}, &",
+      "    n_timepoints=${3:n_timepoints}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "compute_velocity_trajectory (call, checked)": {
+    "prefix": "tox:compute_velocity_trajectory.checked",
+    "description": "compute_velocity_trajectory (with error check)",
+    "body": [
+      "call compute_velocity_trajectory( &",
+      "    trajectory=${1:trajectory}, &",
+      "    velocity=${2:velocity}, &",
+      "    n_timepoints=${3:n_timepoints}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_acceleration_from_velocity_trajectory (call)": {
+    "prefix": "tox:compute_acceleration_from_velocity_trajectory",
+    "description": "compute_acceleration_from_velocity_trajectory",
+    "body": [
+      "call compute_acceleration_from_velocity_trajectory( &",
+      "    velocity=${1:velocity}, &",
+      "    acceleration=${2:acceleration}, &",
+      "    n_timepoints=${3:n_timepoints}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "compute_acceleration_from_velocity_trajectory (call, checked)": {
+    "prefix": "tox:compute_acceleration_from_velocity_trajectory.checked",
+    "description": "compute_acceleration_from_velocity_trajectory (with error check)",
+    "body": [
+      "call compute_acceleration_from_velocity_trajectory( &",
+      "    velocity=${1:velocity}, &",
+      "    acceleration=${2:acceleration}, &",
+      "    n_timepoints=${3:n_timepoints}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_velocity_trajectories (call)": {
+    "prefix": "tox:compute_velocity_trajectories",
+    "description": "compute_velocity_trajectories",
+    "body": [
+      "call compute_velocity_trajectories( &",
+      "    trajectories=${1:trajectories}, &",
+      "    velocity=${2:velocity}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "compute_velocity_trajectories (call, checked)": {
+    "prefix": "tox:compute_velocity_trajectories.checked",
+    "description": "compute_velocity_trajectories (with error check)",
+    "body": [
+      "call compute_velocity_trajectories( &",
+      "    trajectories=${1:trajectories}, &",
+      "    velocity=${2:velocity}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_acceleration_from_velocity (call)": {
+    "prefix": "tox:compute_acceleration_from_velocity",
+    "description": "compute_acceleration_from_velocity",
+    "body": [
+      "call compute_acceleration_from_velocity( &",
+      "    velocity=${1:velocity}, &",
+      "    acceleration=${2:acceleration}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "compute_acceleration_from_velocity (call, checked)": {
+    "prefix": "tox:compute_acceleration_from_velocity.checked",
+    "description": "compute_acceleration_from_velocity (with error check)",
+    "body": [
+      "call compute_acceleration_from_velocity( &",
+      "    velocity=${1:velocity}, &",
+      "    acceleration=${2:acceleration}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "compute_velocity_acceleration_contributions (call)": {
+    "prefix": "tox:compute_velocity_acceleration_contributions",
+    "description": "@note",
+    "body": [
+      "call compute_velocity_acceleration_contributions( &",
+      "    trajectories=${1:trajectories}, &",
+      "    n_factors=${2:n_factors}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    baseline_mode=${5|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    contrib_velocity=${6:contrib_velocity}, &",
+      "    velocity_contribution_series=${7:velocity_contribution_series}, &",
+      "    contrib_acceleration=${8:contrib_acceleration}, &",
+      "    acceleration_contribution_series=${9:acceleration_contribution_series}, &",
+      "    ierr=${10:ierr})"
+    ]
+  },
+  "compute_velocity_acceleration_contributions (call, checked)": {
+    "prefix": "tox:compute_velocity_acceleration_contributions.checked",
+    "description": "@note (with error check)",
+    "body": [
+      "call compute_velocity_acceleration_contributions( &",
+      "    trajectories=${1:trajectories}, &",
+      "    n_factors=${2:n_factors}, &",
+      "    n_samples=${3:n_samples}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    baseline_mode=${5|MODE_RAW,MODE_MEAN,MODE_MIN|}, &",
+      "    contrib_velocity=${6:contrib_velocity}, &",
+      "    velocity_contribution_series=${7:velocity_contribution_series}, &",
+      "    contrib_acceleration=${8:contrib_acceleration}, &",
+      "    acceleration_contribution_series=${9:acceleration_contribution_series}, &",
+      "    ierr=${10:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_trajectory_normalization (use)": {
+    "prefix": "tox:trajectory_normalization.use",
+    "description": "use tox_trajectory_normalization, only: ...",
+    "body": [
+      "use tox_trajectory_normalization, only: ${1|normalize_variable_timeseries,normalize_single_trajectory,normalize_all_trajectories|}"
+    ]
+  },
+  "normalize_variable_timeseries (call)": {
+    "prefix": "tox:normalize_variable_timeseries",
+    "description": "normalize_variable_timeseries",
+    "body": [
+      "call normalize_variable_timeseries( &",
+      "    v=${1:v}, &",
+      "    v_norm=${2:v_norm}, &",
+      "    n_points=${3:n_points}, &",
+      "    status=${4:status}, &",
+      "    ierr=${5:ierr})"
+    ]
+  },
+  "normalize_variable_timeseries (call, checked)": {
+    "prefix": "tox:normalize_variable_timeseries.checked",
+    "description": "normalize_variable_timeseries (with error check)",
+    "body": [
+      "call normalize_variable_timeseries( &",
+      "    v=${1:v}, &",
+      "    v_norm=${2:v_norm}, &",
+      "    n_points=${3:n_points}, &",
+      "    status=${4:status}, &",
+      "    ierr=${5:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "normalize_single_trajectory (call)": {
+    "prefix": "tox:normalize_single_trajectory",
+    "description": "normalize_single_trajectory",
+    "body": [
+      "call normalize_single_trajectory( &",
+      "    trajectory=${1:trajectory}, &",
+      "    trajectory_norm=${2:trajectory_norm}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    status=${5:status}, &",
+      "    ierr=${6:ierr})"
+    ]
+  },
+  "normalize_single_trajectory (call, checked)": {
+    "prefix": "tox:normalize_single_trajectory.checked",
+    "description": "normalize_single_trajectory (with error check)",
+    "body": [
+      "call normalize_single_trajectory( &",
+      "    trajectory=${1:trajectory}, &",
+      "    trajectory_norm=${2:trajectory_norm}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_timepoints=${4:n_timepoints}, &",
+      "    status=${5:status}, &",
+      "    ierr=${6:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "normalize_all_trajectories (call)": {
+    "prefix": "tox:normalize_all_trajectories",
+    "description": "independently across time for each sample.",
+    "body": [
+      "call normalize_all_trajectories( &",
+      "    trajectories=${1:trajectories}, &",
+      "    trajectories_norm=${2:trajectories_norm}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    status=${6:status}, &",
+      "    ierr=${7:ierr})"
+    ]
+  },
+  "normalize_all_trajectories (call, checked)": {
+    "prefix": "tox:normalize_all_trajectories.checked",
+    "description": "independently across time for each sample. (with error check)",
+    "body": [
+      "call normalize_all_trajectories( &",
+      "    trajectories=${1:trajectories}, &",
+      "    trajectories_norm=${2:trajectories_norm}, &",
+      "    n_factors=${3:n_factors}, &",
+      "    n_samples=${4:n_samples}, &",
+      "    n_timepoints=${5:n_timepoints}, &",
+      "    status=${6:status}, &",
+      "    ierr=${7:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
+  "tox_errors code": {
+    "prefix": "tox:err",
+    "description": "Pick a tox_errors code",
+    "body": [
+      "${1|ERR_OK,ERR_FILE_OPEN,ERR_READ_MAGIC,ERR_READ_TYPE,ERR_READ_NDIMS,ERR_READ_DIMS,ERR_READ_CHARLEN,ERR_READ_DATA,ERR_WRITE_MAGIC,ERR_WRITE_TYPE,ERR_WRITE_NDIMS,ERR_WRITE_DIMS,ERR_WRITE_CHARLEN,ERR_WRITE_DATA,ERR_FILE_ADD,ERR_FILE_EXTRACT,ERR_FILE_CLOSE,ERR_INVALID_FORMAT,ERR_INVALID_INPUT,ERR_EMPTY_INPUT,ERR_DIM_MISMATCH,ERR_NAN_INF,ERR_UNSUPPORTED_TYPE,ERR_SIZE_MISMATCH,ERR_TYPE_MISMATCH,ERR_STRING_TOO_LONG,ERR_IDX_OUT_OF_BOUNDS,ERR_DIVISION_BY_ZERO,ERR_ALLOC_FAIL,ERR_POINTER_NULL,ERR_UNIT_NOT_CONNECTED,ERR_INTERNAL,ERR_UNKNOWN|}"
+    ]
   }
 }

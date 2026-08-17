@@ -12,11 +12,18 @@
 !| type code, number of dimensions `ndim`, then `ndim` dimension sizes. The
 !| raw array payload follows immediately after the header, written as one
 !| contiguous block by the type-specific serializers.
+!|
+!| The header does NOT record the width of an element, so the payload is only
+!| readable by a build that agrees with the writer on the storage size of the
+!| type code. Logical arrays changed width once: they are now written as
+!| `logical(c_bool)`, one byte per element, where earlier builds wrote the
+!| default logical kind at four. A logical `.bin` file written before that
+!| change therefore decodes to garbage here rather than failing, and one
+!| written here does the same there. No other type code has moved.
 module f42_serde_arrays_utils_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -60,7 +67,7 @@ contains
             !! | character | string length |
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: filename_f
+        character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -71,8 +78,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
         M_CHECK_ARRAY_NON_NULL(dims_out, dims_out_capacity)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(filename), filename_f)
 
         call get_array_metadata(&
             filename = filename_f,&

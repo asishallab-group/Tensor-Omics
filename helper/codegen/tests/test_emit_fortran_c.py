@@ -218,6 +218,149 @@ class TestLogicals:
 
         assert text.index("flag = flag_f") > text.index("call p(&")
 
+    def test_a_logical_array_local_is_allocated_not_automatic(self, bag, emitter):
+        """An automatic array is stack storage sized by whatever C passed. A 10-million
+        element mask is 40 MB, which overflows a default stack -- ifx segfaults on exactly
+        this construct, and gfortran escapes only by quietly rehousing large automatics.
+        `M_ALLOCATE` is the heap on every compiler, and turns the failure into
+        `ERR_ALLOC_FAIL` returned to the caller rather than a crash inside the wrapper."""
+        procedure = b.procedure(
+            "p", b.integer("n"), b.logical("mask", Intent.IN, dimension="n"), b.ierr()
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert "logical, dimension(:), allocatable :: mask_f" in text
+        assert "M_ALLOCATE(mask_f(n))" in text
+        assert "logical, dimension(n) :: mask_f" not in text
+        # allocated before anything converts into it
+        assert text.index("M_ALLOCATE(mask_f(n))") < text.index("mask_f = mask")
+
+    def test_a_scalar_logical_local_stays_automatic(self, bag, emitter):
+        # four bytes, and not a size the caller chooses -- allocating it would be noise
+        procedure = b.procedure("p", b.logical("flag", Intent.IN), b.ierr())
+
+        text = emit(procedure, bag, emitter)
+
+        assert "logical :: flag_f" in text
+        assert "M_ALLOCATE(flag_f" not in text
+
+
+class TestCharacters:
+    """A string is never converted: the local is a pointer view of the caller's buffer.
+
+    `character(len=n), dimension(m)` and `character(len=1), dimension(n, m)` have identical
+    layout, so `c_f_pointer` reinterprets the bytes and copies none of them.
+    """
+
+    def test_an_assumed_length_scalar_becomes_a_view_of_its_buffer(self, bag, emitter):
+        procedure = b.procedure("p", b.character("s", Intent.IN, length="*"), b.ierr())
+
+        text = emit(procedure, bag, emitter)
+
+        assert "character(len=s_strlen), pointer :: s_f" in text
+        assert "call c_f_pointer(c_loc(s), s_f)" in text
+        assert "s = s_f,&" in text
+
+    def test_the_view_is_never_deferred_length(self, bag, emitter):
+        """The one shape no compiler catches: a `character(len=:), pointer` remap compiles
+        clean on gfortran and ifx and then gives an empty string on one and a segfault on
+        the other. See the probe table in design/c-layer.md."""
+        procedure = b.procedure("p", b.character("s", Intent.IN, length="*"), b.ierr())
+
+        assert "len=:" not in emit(procedure, bag, emitter)
+
+    def test_a_fixed_length_takes_the_callees_own_length(self, bag, emitter):
+        procedure = b.procedure("p", b.character("s", Intent.IN, length="8"), b.ierr())
+
+        text = emit(procedure, bag, emitter)
+
+        assert "character(len=8), pointer :: s_f" in text
+        assert "call c_f_pointer(c_loc(s), s_f)" in text
+
+    def test_an_array_view_is_shaped_by_the_element_count(self, bag, emitter):
+        # the leading C extent is the string length, which `character(len=...)` carries,
+        # so only the extents after it are a shape
+        procedure = b.procedure(
+            "p", b.character("names", Intent.IN, "(:)", length="*"), b.ierr()
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert "character(len=names_strlen), pointer, dimension(:) :: names_f" in text
+        assert "call c_f_pointer(c_loc(names), names_f, [n_names_elements])" in text
+
+    def test_a_separate_shape_gives_the_view_its_product(self, bag, emitter):
+        procedure = b.procedure(
+            "p",
+            b.character("arr", Intent.IN, "(:)", length="*"),
+            b.integer("arr_shape", Intent.IN, "(:)"),
+            b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert "call c_f_pointer(c_loc(arr), arr_f, [product(arr_shape)])" in text
+
+    def test_an_output_is_remapped_before_the_call_and_not_copied_after(self, bag, emitter):
+        # the callee writes through the view, which *is* the caller's buffer, so there is
+        # nothing left to write back
+        procedure = b.procedure(
+            "p", b.character("labels", Intent.OUT, "(:)", length="8"), b.ierr()
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert text.index("call c_f_pointer(c_loc(labels)") < text.index("call p(&")
+        assert "string_as_c_char" not in text
+
+    def test_nothing_is_allocated_and_no_helper_is_called(self, bag, emitter):
+        procedure = b.procedure(
+            "p",
+            b.character("s", Intent.IN, length="*"),
+            b.character("out", Intent.OUT, "(:)", length="*"),
+            b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert "M_ALLOCATE" not in text
+        assert "tox_conversions" not in text
+        assert "is_err" not in text
+
+    def test_a_nullable_optional_gets_a_target_and_a_guarded_remap(self, bag, emitter):
+        """`c_loc` needs a TARGET, which an optional is otherwise not given -- and the
+        absent case has to be an explicitly disassociated pointer, because F2018 15.5.2.12
+        is what makes it reach the callee as an absent optional."""
+        procedure = b.procedure(
+            "p",
+            b.character("tag", Intent.IN, length="*", optional=True),
+            b.character("extras", Intent.IN, "(:)", length="*", optional=True),
+            b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert "intent(in), optional, target :: tag" in text
+        assert "nullify(tag_f)" in text
+        assert "if (present(tag)) call c_f_pointer(c_loc(tag), tag_f)" in text
+        assert "nullify(extras_f)" in text
+        assert (
+            "if (present(extras)) call c_f_pointer(c_loc(extras), extras_f, "
+            "[n_extras_elements])"
+        ) in text
+        # never an initialiser: that would give an automatic-length local an implicit SAVE
+        assert "=> null()" not in text
+
+    def test_c_f_pointer_is_imported(self, bag, emitter):
+        # M_IMPLICIT_NONE is `implicit none (type, external)`, so an unimported intrinsic
+        # is a compile error rather than a silent implicit external
+        module = b.module(
+            "fx_x", b.procedure("p", b.character("s", Intent.IN, length="*"), b.ierr())
+        )
+
+        assert "c_f_pointer" in emit_module(module, bag, emitter)
+
 
 class TestOptionals:
     def test_a_nullable_optional_is_declared_optional_not_target(self, bag, emitter):
@@ -377,7 +520,7 @@ def built(tmp_path_factory):
         shutil.copy(fixture, out / fixture.name)
 
     # the wrappers depend on these, so they have to be compiled first
-    for source in ("src/f42/tox_errors.F90", "src/f42/tox_conversions.F90", "src/f42/f42_safeguard.F90"):
+    for source in ("src/f42/f42_safeguard.F90", "src/f42/tox_errors.F90", "src/f42/tox_conversions.F90"):
         must_compile(REPO_ROOT / source, out)
     for name in ("fx_basics", "fx_edges"):
         must_compile(out / f"{name}.F90", out)
@@ -402,31 +545,57 @@ class TestItCompiles:
         # to a non-existent procedure compile as an implicit external
         source = (built / "fx_basics_c.F90").read_text()
         probe = tmp_path / "probe.F90"
-        probe.write_text(source.replace("c_char_1d_as_string(", "c_char_1d_as_string_typo(", 1))
+        probe.write_text(source.replace("c_char_as_view(", "c_char_as_view_typo(", 1))
 
         result = compile_fortran(probe, built)
 
         assert result.returncode != 0
-        assert "not explicitly declared" in result.stderr
+        # gfortran words it differently for a function reference ("has no IMPLICIT type") than
+        # for a call ("not explicitly declared"), so pin the symbol rather than the phrasing
+        assert "c_char_as_view_typo" in result.stderr
 
 
 class TestImportsMatchTheBody:
     """An unused `only:` name is not a compile error in any Fortran, so a fixed import list
     goes stale in silence. These pin each conditional import to what the body actually names."""
 
-    def module_of(self, *arguments, bag=None, emitter=None):
+    def module_of(self, *arguments, bag=None, emitter=None, parameters=()):
         bag = bag if bag is not None else DiagnosticBag()
         emitter = emitter if emitter is not None else FortranCEmitter()
-        module = b.module("fx_x", b.procedure("fx_p", *arguments, b.ierr()))
+        module = b.module(
+            "fx_x", b.procedure("fx_p", *arguments, b.ierr()), parameters=parameters
+        )
         return emit_module(module, bag, emitter)
 
-    def test_is_err_is_imported_where_an_input_is_converted(self):
-        # a character read in can fail (a buffer that is not a valid string), so the body
-        # bails on its own error and therefore names is_err
-        text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
+    def mode_module(self):
+        """A wrapper whose one argument is a mode string -- the last failing conversion."""
+        return self.module_of(
+            b.integer("mode", Intent.IN, doc=[
+                "how to summarise",
+                "",
+                "| Mode | Value |",
+                "|------|-------|",
+                "| average the values | [[fx_x(module):MODE_MEAN(variable)]] |",
+                "| take the middle value | [[fx_x(module):MODE_MEDIAN(variable)]] |",
+            ]),
+            parameters=[b.parameter("MODE_MEAN", "1"), b.parameter("MODE_MEDIAN", "2")],
+        )
 
-        assert "is_err" in _errors_imported(text)
-        assert "if (is_err(ierr)) return" in text
+    def test_is_err_is_imported_nowhere_now_that_no_conversion_can_fail(self):
+        """A mode string was the last input conversion that could fail, because it allocated.
+        It takes a pointer view now, which cannot -- so no wrapper reads its own `ierr` after
+        a conversion, and none should name `is_err`.
+
+        An unused `only:` name is not a compile error in any Fortran, so this is the only
+        thing standing between the import list and silent rot. It earned that when the view
+        replaced the allocation and left the import behind."""
+        text = self.mode_module()
+
+        assert "is_err" not in _errors_imported(text)
+        assert "is_err" not in text
+        # and the mode still rejects an unknown value -- the error path is intact, it is
+        # only the conversion that stopped being able to fail
+        assert "ERR_INVALID_INPUT" in text
 
     def test_is_err_is_not_imported_where_nothing_is_converted(self):
         text = self.module_of(b.real("x", Intent.IN, doc="a plain input"))
@@ -434,19 +603,30 @@ class TestImportsMatchTheBody:
         assert "is_err" not in _errors_imported(text)
         assert "is_err" not in text
 
+    def test_a_character_alone_makes_the_body_name_no_error_helper(self):
+        # a character is remapped onto the caller's buffer, not converted: the remap cannot
+        # fail, so nothing after it tests ierr
+        text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
+
+        assert "is_err" not in _errors_imported(text)
+        assert "is_err" not in text
+
     def test_no_allocation_constant_is_imported(self):
-        # nothing in a C wrapper allocates: a deferred-length local is filled by assignment,
-        # which allocates on its own and cannot report through ierr
+        # nothing in a C wrapper allocates for a character: the local is a pointer view
         text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
 
         assert "ERR_ALLOC_FAIL" not in text
         assert "allocate(" not in text
 
-    def test_a_write_only_character_asks_for_no_read_in_helper(self):
-        text = self.module_of(b.character("s", Intent.OUT, length="*", doc="written back"))
+    def test_a_character_module_imports_nothing_from_tox_conversions(self):
+        # in either direction: a view is the caller's own bytes, so neither reading it in
+        # nor writing it back calls anything
+        for intent in (Intent.IN, Intent.OUT):
+            text = self.module_of(b.character("s", intent, length="*", doc="a string"))
 
-        assert "string_as_c_char_1d" in text
-        assert "c_char_1d_as_string" not in text
+            assert "use tox_conversions" not in text
+            assert "_as_string" not in text
+            assert "string_as_c_char" not in text
 
 
 def _errors_imported(text: str) -> str:

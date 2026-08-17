@@ -3,6 +3,7 @@
 !! expected behavior in tests of any kind (numeric, string, array, etc).
 module asserts
     use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use test_suite, only: record_assertion_failure
     use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET, COLOR_GREEN, COLOR_YELLOW, COLOR_LIGHT_GRAY
@@ -20,6 +21,18 @@ module asserts
     public :: assert_equal_array_char, assert_equal_array_logical
     public :: assert_equal_complex, assert_not_equal_complex, assert_equal_array_complex
 
+    !| `assert_true` and `assert_false` are generic over the logical kind on purpose: most
+    !| callers pass a comparison expression, which is default kind, while a caller testing an
+    !| element of a `logical(c_bool)` array (or `any`/`all` of one) passes `c_bool`. Accepting
+    !| both keeps the kind change out of every call site.
+    interface assert_true
+        module procedure assert_true_default, assert_true_c_bool
+    end interface assert_true
+
+    interface assert_false
+        module procedure assert_false_default, assert_false_c_bool
+    end interface assert_false
+
     public :: operator(//)
     interface operator(//)
         module procedure str_concat_int, int_concat_str
@@ -33,7 +46,7 @@ contains
         character(*), intent(in) :: msg
         character(*), intent(in), optional :: additional_msg, got, expected, tol, at
 
-        logical :: comma
+        logical(c_bool) :: comma
 
         write (error_unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
         if (present(additional_msg)) then
@@ -116,7 +129,7 @@ contains
 
     !> Assert that two logical arrays are equal within a tolerance.
     subroutine assert_equal_array_logical(a, b, n, msg, n_rows)
-        logical, intent(in) :: a(n), b(n)
+        logical(c_bool), intent(in) :: a(n), b(n)
         integer(int32), intent(in) :: n
         character(*), intent(in) :: msg
         integer(int32), intent(in), optional :: n_rows
@@ -135,7 +148,7 @@ contains
     end subroutine
 
     !> Assert that a logical condition is true.
-    subroutine assert_true(cond, msg)
+    subroutine assert_true_default(cond, msg)
         logical, intent(in) :: cond
         character(*), intent(in) :: msg
         if (.not. cond) then
@@ -143,9 +156,27 @@ contains
         end if
     end subroutine
 
+    !> Assert that a `logical(c_bool)` condition is true.
+    subroutine assert_true_c_bool(cond, msg)
+        logical(c_bool), intent(in) :: cond
+        character(*), intent(in) :: msg
+        if (.not. cond) then
+            call assertion_error(msg, got=".false.", expected=".true.")
+        end if
+    end subroutine
+
     !> Assert that a logical condition is false.
-    subroutine assert_false(cond, msg)
+    subroutine assert_false_default(cond, msg)
         logical, intent(in) :: cond
+        character(*), intent(in) :: msg
+        if (cond) then
+            call assertion_error(msg, got=".true.", expected=".false.")
+        end if
+    end subroutine
+
+    !> Assert that a `logical(c_bool)` condition is false.
+    subroutine assert_false_c_bool(cond, msg)
+        logical(c_bool), intent(in) :: cond
         character(*), intent(in) :: msg
         if (cond) then
             call assertion_error(msg, got=".true.", expected=".false.")
@@ -444,7 +475,7 @@ contains
         integer(int32), intent(in) :: arr(n), n
         character(*), intent(in) :: msg
         integer :: i
-        logical :: found(n)
+        logical(c_bool) :: found(n)
         found = .false.
         do i = 1, n
             if (arr(i) < 1 .or. arr(i) > n) then
@@ -478,7 +509,7 @@ contains
 
     !> Renders a logical as ".true."/".false." for use in assertion diagnostics.
     pure function logical_to_str(l) result(str_out)
-        logical, intent(in) :: l
+        logical(c_bool), intent(in) :: l
         character(len=:), allocatable :: str_out
         if (l) then
             str_out = ".true."

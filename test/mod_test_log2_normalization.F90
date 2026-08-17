@@ -14,7 +14,7 @@ contains
     function get_all_tests_log2_transformation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(13))
+        allocate (all_tests(14))
         all_tests(1) = test_case("test_log2_basic_values", test_log2_basic_values)
         all_tests(2) = test_case("test_log2_zeros_handling", test_log2_zeros_handling)
         all_tests(3) = test_case("test_log2_preserves_dimensions", test_log2_preserves_dimensions)
@@ -28,6 +28,7 @@ contains
         all_tests(11) = test_case("test_log2_monotonic_property", test_log2_monotonic_property)
         all_tests(12) = test_case("test_log2_mathematical_properties", test_log2_mathematical_properties)
         all_tests(13) = test_case("test_log2_empty_matrix", test_log2_empty_matrix)
+        all_tests(14) = test_case("test_log2_below_minus_one_errors", test_log2_below_minus_one_errors)
     end function get_all_tests_log2_transformation
 
     !> Test log2(x+1) transformation with basic known values (from R test).
@@ -282,5 +283,26 @@ contains
         call assert_equal_int(get_err_code(ierr), 202, "log2_transformation_r should return error for empty input")
         ! No further assertion needed: just check no crash
     end subroutine test_log2_empty_matrix
+
+    !> Test that inputs at or below -1 (where log2(x+1) is undefined) are rejected.
+    !| Guards the up-front validation that lets the transformation loop run as a
+    !| race-free `do concurrent`: `x <= -1` means `x + 1 <= 0`, which must error
+    !| rather than silently produce a NaN/Inf.
+    subroutine test_log2_below_minus_one_errors()
+        integer(int32) :: n_genes, n_tissues, ierr
+        real(real64), dimension(4) :: input_flat, output_flat
+
+        n_genes = 2; n_tissues = 2
+
+        ! Exactly -1 -> log2(0) is undefined
+        input_flat = [0.0d0, 1.0d0, -1.0d0, 3.0d0]
+        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
+        call assert_equal_int(ierr, 201, "test_log2_below_minus_one_errors: x = -1 should return ERR_INVALID_INPUT")
+
+        ! Below -1 -> log2 of a negative number
+        input_flat = [0.0d0, 1.0d0, 3.0d0, -2.5d0]
+        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
+        call assert_equal_int(ierr, 201, "test_log2_below_minus_one_errors: x < -1 should return ERR_INVALID_INPUT")
+    end subroutine test_log2_below_minus_one_errors
 
 end module mod_test_log2_transformation

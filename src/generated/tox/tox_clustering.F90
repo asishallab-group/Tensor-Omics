@@ -1,10 +1,17 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_clustering_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+!| (agglomerative) linkage clustering over a precomputed distance matrix.
+!|
+!| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
+!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| `linkage_clustering` takes the distances already computed and merges under the linkage
+!| criterion asked for, so the same matrix can be re-clustered without recomputing it.
+!|
+!| Generated from [[tox_clustering_impl(module)]]; do not edit -- regenerate instead.
 module tox_clustering
-    use tox_clustering_kernel, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED, cluster_factor_trajectories_k_means_kernel
-    use tox_clustering_kernel, only: k_means_clustering_kernel, linkage_clustering_kernel
+    use tox_clustering_impl, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED, cluster_factor_trajectories_k_means_impl
+    use tox_clustering_impl, only: k_means_clustering_impl, linkage_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, set_err_once
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_distance_matrix, validate_in_range_int
@@ -17,8 +24,8 @@ module tox_clustering
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_clustering_kernel(module):cluster_factor_trajectories_k_means_kernel]].
-    subroutine cluster_factor_trajectories_k_means(&
+    !> summary: Validates its inputs, then calls [[tox_clustering_impl(module):cluster_factor_trajectories_k_means_impl]].
+    pure subroutine cluster_factor_trajectories_k_means(&
             n_clusters,&
             trajectories,&
             n_factors,&
@@ -69,7 +76,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call cluster_factor_trajectories_k_means_kernel(&
+        call cluster_factor_trajectories_k_means_impl(&
             n_clusters = n_clusters,&
             trajectories = trajectories,&
             n_factors = n_factors,&
@@ -82,11 +89,11 @@ contains
         )
     end subroutine cluster_factor_trajectories_k_means
 
-    !> summary: Validates its inputs, then calls [[tox_clustering_kernel(module):k_means_clustering_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_clustering_impl(module):k_means_clustering_impl]].
     !| 1. Assigns each data point to one of `k` clusters whose centroid is clostest
     !| 2. Recalculates the centroids using the mean of its assigned points
     !| 3. repeat 1-2 until assignment remains unchanged
-    subroutine k_means_clustering(&
+    pure subroutine k_means_clustering(&
             n_clusters,&
             data_points,&
             n_points,&
@@ -134,7 +141,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call k_means_clustering_kernel(&
+        call k_means_clustering_impl(&
             n_clusters = n_clusters,&
             data_points = data_points,&
             n_points = n_points,&
@@ -146,13 +153,13 @@ contains
         )
     end subroutine k_means_clustering
 
-    !> summary: Validates its inputs, then calls [[tox_clustering_kernel(module):linkage_clustering_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_clustering_impl(module):linkage_clustering_impl]].
     !| @note
     !| The bottom triangle is used as scratch and restored from the top triangle before
     !| returning, on success or on error, so the matrix comes back unchanged. There is no
     !| need to copy it before calling.
     !| @endnote
-    subroutine linkage_clustering(&
+    pure subroutine linkage_clustering(&
             distances,&
             n_points,&
             merge_i,&
@@ -188,11 +195,11 @@ contains
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `2_int32`.
             !!
-            !! | Method           | Value                                                       |
-            !! |------------------|-------------------------------------------------------------|
-            !! | Average / UPGMA  | [[tox_clustering_kernel(module):METHOD_AVERAGE(variable)]]  |
-            !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
-            !! | Ward             | [[tox_clustering_kernel(module):METHOD_WARD(variable)]]     |
+            !! | Method           | Value                                                     |
+            !! |------------------|-----------------------------------------------------------|
+            !! | Average / UPGMA  | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]]  |
+            !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
+            !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -205,7 +212,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call linkage_clustering_kernel(&
+        call linkage_clustering_impl(&
             distances = distances,&
             n_points = n_points,&
             merge_i = merge_i,&

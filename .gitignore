@@ -4,6 +4,7 @@
 # Adding new files not being tracked need to be allowed as well
 # Always start the rule with !/, so it applies from repository root (!foo matches any entity named foo in any dir in the repo, while !/foo only applies to root dir)
 # This way we don't add garbage accidently.
+# One exception: /misc is whitelisted wholesale and carries its own blacklist in misc/.gitignore -- see there for why.
 
 *
 
@@ -61,6 +62,7 @@
 !/r/*.R
 
 # misc
+# Whitelisted wholesale, and blacklisted from within by misc/.gitignore.
 !/misc
 !/misc/**/*
 

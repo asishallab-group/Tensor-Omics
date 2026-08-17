@@ -1,9 +1,11 @@
 !> Unit test suite for binary_search_tree module.
 module mod_test_bst
     use f42_binary_search_tree
+    use f42_binary_search_tree_impl, only: get_sorted_value
     use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -30,7 +32,7 @@ contains
         real(real64) :: x(n)
         integer(int32) :: ix(n), expected_ix(n)
         integer(int32) :: i, ierr
-        logical :: is_sorted
+        logical(c_bool) :: is_sorted
 
         call set_ok(ierr)
 
@@ -181,15 +183,23 @@ contains
         real(real64) :: x(n) = [3.0d0, 1.0d0, 4.0d0, 2.0d0, 5.0d0, 7.0d0, 6.0d0, 9.0d0, 8.0d0, 10.0d0]
         integer(int32) :: ix(n)
         integer(int32) :: res_ix(n), res_n, ierr
+        integer(int32) :: own_ix(n), own_n
 
         call set_ok(ierr)
 
         call build_bst_index(x, n, ix, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, 'Build bst index failed')
-        call bst_range_query(x, ix, n, 2.5d0, 7.5d0, res_ix, res_n, ierr)
+        call bst_range_query_expert(x, ix, n, 2.5d0, 7.5d0, res_ix, res_n, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, 'Bst range query failed')
 
         call assert_true(res_n == 5, "BST range query returned incorrect count")
+
+        ! the allocating entry point builds the same index for itself
+        call bst_range_query(x, n, 2.5d0, 7.5d0, own_ix, own_n, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Allocating bst range query failed')
+        call assert_true(own_n == res_n, "Allocating BST range query returned a different count")
+        call assert_true(all(own_ix(1:own_n) == res_ix(1:res_n)), &
+                         "Allocating BST range query returned different indices")
     end subroutine test_bst_range_query
 
     !> Test BST with empty array.
@@ -240,7 +250,7 @@ contains
         real(real64) :: x(n)
         integer(int32) :: ix(n)
         integer(int32) :: i, ierr
-        logical :: is_sorted
+        logical(c_bool) :: is_sorted
 
         call set_ok(ierr)
         call random_array(x, n)

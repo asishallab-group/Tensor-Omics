@@ -2,7 +2,7 @@
 
 #' For a factor-dependent pair, calculates the contributions against the same dependent taken from a random different sample
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::perform_permutation_test}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
@@ -15,7 +15,7 @@
 #' @param sample_idx a integer scalar. index of sample to compute the permutation contributions for
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_samples`.
-#' @param baseline_mode a string, one of "raw", "mean", "min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
 #' @param n_permutations a integer scalar. number of permutations to perform
 #' @param random_seed a integer scalar. Seed to use for random number generation.
 #' @return a named list with elements:
@@ -27,7 +27,7 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
     factor_idx <- .tox_as_integer_scalar(factor_idx, "factor_idx")
     dependent_idx <- .tox_as_integer_scalar(dependent_idx, "dependent_idx")
     sample_idx <- .tox_as_integer_scalar(sample_idx, "sample_idx")
-    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
+    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
     if (!is.null(random_seed))
         random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
@@ -52,8 +52,8 @@ perform_permutation_test <- function(trajectories, factor_idx, dependent_idx, sa
 #'
 #' @param local_contributions_observed a numeric vector. Per-timepoint contributions for the observed factor-dependent-sample combination
 #' @param total_contribution_observed a numeric scalar. Total contribution (`sum(local_contributions)`) for the observed factor-dependent-sample combination
-#' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from \code{perform_permutation_test}
-#' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from \code{perform_permutation_test}
+#' @param local_contributions_perm_test a numeric matrix. Per-timepoint contributions for the factor-dependent-random_sample combinations from \code{\link{perform_permutation_test}}
+#' @param total_contributions_perm_test a numeric vector. Total contribution (`sum(local_contributions)`) for the factor-dependent-random_sample combinations from \code{\link{perform_permutation_test}}
 #' @return a named list with elements:
 #'   \item{local_p_values}{a numeric vector. calculated p values for local contributions, like: `(local_contributions_perm_test >= local_contributions_observed)/n_permutations`}
 #'   \item{total_p_value}{a numeric scalar. calculated p values for total contributions, like: `(total_contributions_perm_test >= total_contribution_observed)/n_permutations`}
@@ -86,7 +86,7 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
-#' @param baseline_mode a string, one of "raw", "mean", "min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric vector. Per-element contributions}
 #'   \item{total_contribution}{a numeric scalar. Total contribution (`sum(local_contributions)`)}
@@ -94,7 +94,7 @@ compute_p_values <- function(local_contributions_observed, total_contribution_ob
 compute_contributions <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
     dependent <- .tox_as_double_vector(dependent, "dependent")
-    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
+    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     if (length(dependent) != length(factor))
         .tox_shape_error("dependent", length(dependent), "factor", length(factor))
 
@@ -111,7 +111,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 
 #' Contribution analysis for every selected factor-dependent pair
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_all_contributions}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. expression vectors across different samples over time
@@ -121,7 +121,7 @@ compute_contributions <- function(factor, dependent, baseline_mode) {
 #' @param dependent_indices a integer vector. indices of dependents to compute the contributions for
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_factors`.
-#' @param baseline_mode a string, one of "raw", "mean", "min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
 #' @return a named list with elements:
 #'   \item{local_contributions}{a numeric array of rank 4. Per-timepoint contributions per sample-dependent-factor combination}
 #'   \item{total_contributions}{a numeric array of rank 3. Total contribution (`sum(local_contributions)`) per sample-dependent-factor combination}
@@ -130,7 +130,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
     factor_indices <- .tox_as_integer_vector(factor_indices, "factor_indices")
     dependent_indices <- .tox_as_integer_vector(dependent_indices, "dependent_indices")
-    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
+    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     .result <- .Call("compute_all_contributions_call", trajectories, factor_indices, dependent_indices, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "factor_indices", "n_selected_factors", "dependent_indices", "n_selected_dependents", "baseline_mode", "local_contributions", "total_contributions", "ierr")
     .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, "factor_indices", NA_character_, "dependent_indices", NA_character_, NA_character_, NA_character_, NA_character_)
@@ -149,7 +149,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 #'
 #' @param factor a numeric vector. Factor time series, length n_timepoints
 #' @param dependent a numeric vector. Dependent variable time series, length n_timepoints
-#' @param baseline_mode a string, one of "raw", "mean", "min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
 #' @return a named list with elements:
 #'   \item{factor_baseline}{a numeric scalar. Computed baseline for factor}
 #'   \item{dependent_baseline}{a numeric scalar. Computed baseline for dependent variable}
@@ -157,7 +157,7 @@ compute_all_contributions <- function(trajectories, factor_indices, dependent_in
 compute_baselines_factor_dependent <- function(factor, dependent, baseline_mode) {
     factor <- .tox_as_double_vector(factor, "factor")
     dependent <- .tox_as_double_vector(dependent, "dependent")
-    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
+    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     if (length(dependent) != length(factor))
         .tox_shape_error("dependent", length(dependent), "factor", length(factor))
 
@@ -260,11 +260,11 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' This keeps slices like `velocity(:, factor, sample)` contiguous,
 #' avoids expensive tmporaries, and improves cache efficiency.
 #'
-#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_trajectory_contribution_analysis::compute_velocity_acceleration_contributions}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param trajectories a numeric array of rank 3. input position trajectories
-#' @param baseline_mode a string, one of "raw", "mean", "min"
+#' @param baseline_mode a string, one of "baseline_raw", "baseline_mean", "baseline_min"
 #' @return a named list with elements:
 #'   \item{contrib_velocity}{a numeric array of rank 3. output velocity contributions}
 #'   \item{velocity_contribution_series}{a numeric array of rank 4. output velocity contribution series}
@@ -273,7 +273,7 @@ compute_acceleration_from_velocity <- function(velocity, n_timepoints) {
 #' @export
 compute_velocity_acceleration_contributions <- function(trajectories, baseline_mode) {
     trajectories <- .tox_as_double_array(trajectories, "trajectories", 3L)
-    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("raw", "mean", "min"))
+    baseline_mode <- .tox_as_mode(baseline_mode, "baseline_mode", c("baseline_raw", "baseline_mean", "baseline_min"))
     .result <- .Call("compute_velocity_acceleration_contributions_call", trajectories, baseline_mode)
     .arguments <- c("trajectories", "n_factors", "n_samples", "n_timepoints", "baseline_mode", "contrib_velocity", "velocity_contribution_series", "contrib_acceleration", "acceleration_contribution_series", "ierr")
     .sources <- c(NA_character_, "trajectories", "trajectories", "trajectories", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)

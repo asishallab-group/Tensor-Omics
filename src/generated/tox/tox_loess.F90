@@ -1,9 +1,25 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_loess_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.
+!|
+!| Two fits: `loess_fit_plain` and `loess_fit_robust`, the latter reweighting against outliers over
+!| a number of iterations. There is deliberately no combined entry point dispatching on a mode --
+!| a caller chooses the routine, and supplies the weights and the evaluation points it wants.
+!|
+!| A sample too degenerate to fit (fewer distinct points than the degree needs) is answered
+!| directly from the observations rather than handed to netlib, which cannot fit one and dies
+!| inside its decomposition instead of reporting. Nothing about that is visible to a caller
+!| beyond the result.
+!|
+!| `tox_loess_required_workspace` sizes the workspace for a caller that wants to own it; the
+!| mode and iteration constants and `EPS_LOESS` are here for the same reason. The netlib
+!| routines themselves are not re-documented beyond their calling convention.
+!|
+!| Generated from [[tox_loess_impl(module)]]; do not edit -- regenerate instead.
 module tox_loess
-    use tox_loess_kernel, only: EPS_LOESS, loess_fit_plain_kernel, loess_fit_robust_kernel, tox_loess_required_workspace
+    use f42_safeguard
+    use tox_loess_impl, only: EPS_LOESS, loess_fit_plain_impl, loess_fit_robust_impl, tox_loess_required_workspace
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
     use tox_errors, only: set_err, validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -12,18 +28,121 @@ module tox_loess
     private
 
     public :: loess_fit_plain
-    public :: loess_fit_plain_alloc
+    public :: loess_fit_plain_expert
     public :: loess_fit_robust
-    public :: loess_fit_robust_alloc
+    public :: loess_fit_robust_expert
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
+    !> summary: Validates its inputs, prepares what [[tox_loess_impl(module):loess_fit_plain_impl]] needs, then calls it. The entry point to reach for first; see [[tox_loess(module):loess_fit_plain_expert]] to prepare it yourself.
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain(&
+            n,&
+            x,&
+            y,&
+            weights,&
+            eval_points,&
+            span,&
+            degree,&
+            max_neighborhood_size,&
+            compute_influence,&
+            save_factorization,&
+            fitted_values,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n
+            !! Total number of data points
+        real(real64), dimension(n), intent(in) :: x
+            !! Predictor variable array
+        real(real64), dimension(n), intent(in) :: y
+            !! Response variable array
+        real(real64), dimension(n), intent(in) :: weights
+            !! Weight array for data points
+        real(real64), dimension(n, 1), intent(in) :: eval_points
+            !! Evaluation points (x values at which the fitted curve is computed)
+        real(real64), intent(in) :: span
+            !! Smoothing parameter for LOESS
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
+        integer(int32), intent(in) :: degree
+            !! Degree of the LOESS polynomial
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
+        integer(int32), intent(in) :: max_neighborhood_size
+            !! Maximum neighborhood size
+        logical(c_bool), intent(in), optional :: compute_influence
+            !! Influence calculation flag
+            !! The default value is `.false.`.
+        logical(c_bool), intent(in), optional :: save_factorization
+            !! Save matrix factorization flag
+            !! The default value is `.false.`.
+        real(real64), dimension(n), intent(out) :: fitted_values
+            !! Fitted (smoothed) values of y at the evaluation points
+        integer(int32), intent(out) :: ierr
+            !! Error code
+        integer(int32), dimension(:), allocatable :: tmp_int_workspace
+        integer(int32) :: int_workspace_size
+        real(real64), dimension(:), allocatable :: tmp_real_workspace
+        integer(int32) :: real_workspace_size
+        real(real64), dimension(:), allocatable :: tmp_hat_diag
+        logical(c_bool) :: save_factorization_value
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n, ierr, arg_pos=1_int32)
+        call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
+        call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
+        call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
+        if (is_err(ierr)) return
+#endif
+
+        M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
+
+        call tox_loess_required_workspace(&
+            n_dim = 1_int32,&
+            max_neighborhood_size = max_neighborhood_size,&
+            int_workspace_size = int_workspace_size,&
+            real_workspace_size = real_workspace_size,&
+            save_factorization = save_factorization_value&
+        )
+        M_ALLOCATE(tmp_int_workspace(int_workspace_size))
+        M_ALLOCATE(tmp_real_workspace(real_workspace_size))
+        M_ALLOCATE(tmp_hat_diag(n))
+
+        call loess_fit_plain_impl(&
+            n = n,&
+            x = x,&
+            y = y,&
+            weights = weights,&
+            eval_points = eval_points,&
+            span = span,&
+            degree = degree,&
+            max_neighborhood_size = max_neighborhood_size,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
+            tmp_int_workspace = tmp_int_workspace,&
+            int_workspace_size = int_workspace_size,&
+            tmp_real_workspace = tmp_real_workspace,&
+            real_workspace_size = real_workspace_size,&
+            tmp_hat_diag = tmp_hat_diag,&
+            fitted_values = fitted_values,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine loess_fit_plain
+
+    !> summary: Validates its inputs, then calls [[tox_loess_impl(module):loess_fit_plain_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_loess(module):loess_fit_plain]] does both.
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
+    !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
+    !| response array.
+    subroutine loess_fit_plain_expert(&
             n,&
             x,&
             y,&
@@ -46,7 +165,7 @@ contains
             !! Total number of data points
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -54,7 +173,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -78,10 +197,10 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
         integer(int32), dimension(int_workspace_size), intent(out) :: tmp_int_workspace
@@ -109,7 +228,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call loess_fit_plain_kernel(&
+        call loess_fit_plain_impl(&
             n = n,&
             x = x,&
             y = y,&
@@ -129,14 +248,18 @@ contains
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
-    end subroutine loess_fit_plain
+    end subroutine loess_fit_plain_expert
 
-    !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_plain_kernel]].
+    !> summary: Validates its inputs, prepares what [[tox_loess_impl(module):loess_fit_robust_impl]] needs, then calls it. The entry point to reach for first; see [[tox_loess(module):loess_fit_robust_expert]] to prepare it yourself.
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
-    !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array.
-    subroutine loess_fit_plain_alloc(&
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
+    !| Fits a LOESS model to the data using robust iterations to handle outliers.
+    !| The robust fitting process iterates n_iters times, each iteration:
+    !| - Combines original weights with robust weights (down-weights from previous iteration)
+    !| - Runs LOESS fitting with combined weights
+    !| - Computes residuals (y - fitted values)
+    !| - Updates robust weights using bisquare function (suppresses large residuals)
+    subroutine loess_fit_robust(&
             n,&
             x,&
             y,&
@@ -147,6 +270,7 @@ contains
             max_neighborhood_size,&
             compute_influence,&
             save_factorization,&
+            n_iters,&
             fitted_values,&
             ierr&
         )
@@ -170,12 +294,16 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
+        integer(int32), intent(in), optional :: n_iters
+            !! Number of robust iterations
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `3_int32`.
         real(real64), dimension(n), intent(out) :: fitted_values
             !! Fitted (smoothed) values of y at the evaluation points
         integer(int32), intent(out) :: ierr
@@ -185,13 +313,18 @@ contains
         real(real64), dimension(:), allocatable :: tmp_real_workspace
         integer(int32) :: real_workspace_size
         real(real64), dimension(:), allocatable :: tmp_hat_diag
-        logical :: save_factorization_value
+        real(real64), dimension(:), allocatable :: tmp_robust_weights
+        real(real64), dimension(:), allocatable :: tmp_combined_weights
+        real(real64), dimension(:), allocatable :: tmp_residuals
+        integer(int32), dimension(:), allocatable :: tmp_permutation_indices
+        logical(c_bool) :: save_factorization_value
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n, ierr, arg_pos=1_int32)
         call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
+        call validate_in_range_int(n_iters, ierr, arg_pos=11_int32, min=1_int32)
         call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
         call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
         call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
@@ -211,8 +344,12 @@ contains
         M_ALLOCATE(tmp_int_workspace(int_workspace_size))
         M_ALLOCATE(tmp_real_workspace(real_workspace_size))
         M_ALLOCATE(tmp_hat_diag(n))
+        M_ALLOCATE(tmp_robust_weights(n))
+        M_ALLOCATE(tmp_combined_weights(n))
+        M_ALLOCATE(tmp_residuals(n))
+        M_ALLOCATE(tmp_permutation_indices(n))
 
-        call loess_fit_plain_kernel(&
+        call loess_fit_robust_impl(&
             n = n,&
             x = x,&
             y = y,&
@@ -223,27 +360,32 @@ contains
             max_neighborhood_size = max_neighborhood_size,&
             compute_influence = compute_influence,&
             save_factorization = save_factorization,&
+            n_iters = n_iters,&
             tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&
             tmp_real_workspace = tmp_real_workspace,&
             real_workspace_size = real_workspace_size,&
             tmp_hat_diag = tmp_hat_diag,&
+            tmp_robust_weights = tmp_robust_weights,&
+            tmp_combined_weights = tmp_combined_weights,&
+            tmp_residuals = tmp_residuals,&
+            tmp_permutation_indices = tmp_permutation_indices,&
             fitted_values = fitted_values,&
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
-    end subroutine loess_fit_plain_alloc
+    end subroutine loess_fit_robust
 
-    !> summary: Validates its inputs, then calls [[tox_loess_kernel(module):loess_fit_robust_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_loess_impl(module):loess_fit_robust_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_loess(module):loess_fit_robust]] does both.
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !| - Combines original weights with robust weights (down-weights from previous iteration)
     !| - Runs LOESS fitting with combined weights
     !| - Computes residuals (y - fitted values)
     !| - Updates robust weights using bisquare function (suppresses large residuals)
-    subroutine loess_fit_robust(&
+    subroutine loess_fit_robust_expert(&
             n,&
             x,&
             y,&
@@ -271,7 +413,7 @@ contains
             !! Total number of data points
         integer(int32), intent(in) :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -279,7 +421,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(int32), intent(in) :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -303,10 +445,10 @@ contains
             !! The maximum valid value is `2_int32`.
         integer(int32), intent(in) :: max_neighborhood_size
             !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
+        logical(c_bool), intent(in), optional :: compute_influence
             !! Influence calculation flag
             !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
+        logical(c_bool), intent(in), optional :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
         integer(int32), intent(in), optional :: n_iters
@@ -347,7 +489,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call loess_fit_robust_kernel(&
+        call loess_fit_robust_impl(&
             n = n,&
             x = x,&
             y = y,&
@@ -372,132 +514,6 @@ contains
             ierr = ierr&
         )
         call clear_err_arg_pos(ierr)
-    end subroutine loess_fit_robust
-
-    !> summary: Allocates its work arrays, then calls [[tox_loess_kernel(module):loess_fit_robust_kernel]].
-    !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
-    !| Fits a LOESS model to the data using robust iterations to handle outliers.
-    !| The robust fitting process iterates n_iters times, each iteration:
-    !| - Combines original weights with robust weights (down-weights from previous iteration)
-    !| - Runs LOESS fitting with combined weights
-    !| - Computes residuals (y - fitted values)
-    !| - Updates robust weights using bisquare function (suppresses large residuals)
-    subroutine loess_fit_robust_alloc(&
-            n,&
-            x,&
-            y,&
-            weights,&
-            eval_points,&
-            span,&
-            degree,&
-            max_neighborhood_size,&
-            compute_influence,&
-            save_factorization,&
-            n_iters,&
-            fitted_values,&
-            ierr&
-        )
-        integer(int32), intent(in) :: n
-            !! Total number of data points
-        real(real64), dimension(n), intent(in) :: x
-            !! Predictor variable array
-        real(real64), dimension(n), intent(in) :: y
-            !! Response variable array
-        real(real64), dimension(n), intent(in) :: weights
-            !! Weight array for data points
-        real(real64), dimension(n, 1), intent(in) :: eval_points
-            !! Evaluation points (x values at which the fitted curve is computed)
-        real(real64), intent(in) :: span
-            !! Smoothing parameter for LOESS
-            !! The minimum valid value is `EPS_LOESS`.
-            !! The maximum valid value is `1.0_real64`.
-        integer(int32), intent(in) :: degree
-            !! Degree of the LOESS polynomial
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `2_int32`.
-        integer(int32), intent(in) :: max_neighborhood_size
-            !! Maximum neighborhood size
-        logical, intent(in), optional :: compute_influence
-            !! Influence calculation flag
-            !! The default value is `.false.`.
-        logical, intent(in), optional :: save_factorization
-            !! Save matrix factorization flag
-            !! The default value is `.false.`.
-        integer(int32), intent(in), optional :: n_iters
-            !! Number of robust iterations
-            !! The minimum valid value is `1_int32`.
-            !! The default value is `3_int32`.
-        real(real64), dimension(n), intent(out) :: fitted_values
-            !! Fitted (smoothed) values of y at the evaluation points
-        integer(int32), intent(out) :: ierr
-            !! Error code
-        integer(int32), dimension(:), allocatable :: tmp_int_workspace
-        integer(int32) :: int_workspace_size
-        real(real64), dimension(:), allocatable :: tmp_real_workspace
-        integer(int32) :: real_workspace_size
-        real(real64), dimension(:), allocatable :: tmp_hat_diag
-        real(real64), dimension(:), allocatable :: tmp_robust_weights
-        real(real64), dimension(:), allocatable :: tmp_combined_weights
-        real(real64), dimension(:), allocatable :: tmp_residuals
-        integer(int32), dimension(:), allocatable :: tmp_permutation_indices
-        logical :: save_factorization_value
-
-        call set_ok(ierr)
-#ifndef NO_INPUT_VALIDATION
-        call validate_dimension_size(n, ierr, arg_pos=1_int32)
-        call validate_in_range_real(span, ierr, arg_pos=6_int32, min=EPS_LOESS, max=1.0_real64)
-        call validate_in_range_int(degree, ierr, arg_pos=7_int32, min=0_int32, max=2_int32)
-        call validate_in_range_int(n_iters, ierr, arg_pos=11_int32, min=1_int32)
-        call validate_all_in_range_real(x, n, ierr, arg_pos=2_int32)
-        call validate_all_in_range_real(y, n, ierr, arg_pos=3_int32)
-        call validate_all_in_range_real(weights, n, ierr, arg_pos=4_int32)
-        call validate_all_in_range_real(eval_points, n * 1, ierr, arg_pos=5_int32)
-        if (is_err(ierr)) return
-#endif
-
-        M_DEFAULT_VAL(save_factorization, save_factorization_value, .false.)
-
-        call tox_loess_required_workspace(&
-            n_dim = 1_int32,&
-            max_neighborhood_size = max_neighborhood_size,&
-            int_workspace_size = int_workspace_size,&
-            real_workspace_size = real_workspace_size,&
-            save_factorization = save_factorization_value&
-        )
-        M_ALLOCATE(tmp_int_workspace(int_workspace_size))
-        M_ALLOCATE(tmp_real_workspace(real_workspace_size))
-        M_ALLOCATE(tmp_hat_diag(n))
-        M_ALLOCATE(tmp_robust_weights(n))
-        M_ALLOCATE(tmp_combined_weights(n))
-        M_ALLOCATE(tmp_residuals(n))
-        M_ALLOCATE(tmp_permutation_indices(n))
-
-        call loess_fit_robust_kernel(&
-            n = n,&
-            x = x,&
-            y = y,&
-            weights = weights,&
-            eval_points = eval_points,&
-            span = span,&
-            degree = degree,&
-            max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence,&
-            save_factorization = save_factorization,&
-            n_iters = n_iters,&
-            tmp_int_workspace = tmp_int_workspace,&
-            int_workspace_size = int_workspace_size,&
-            tmp_real_workspace = tmp_real_workspace,&
-            real_workspace_size = real_workspace_size,&
-            tmp_hat_diag = tmp_hat_diag,&
-            tmp_robust_weights = tmp_robust_weights,&
-            tmp_combined_weights = tmp_combined_weights,&
-            tmp_residuals = tmp_residuals,&
-            tmp_permutation_indices = tmp_permutation_indices,&
-            fitted_values = fitted_values,&
-            ierr = ierr&
-        )
-        call clear_err_arg_pos(ierr)
-    end subroutine loess_fit_robust_alloc
+    end subroutine loess_fit_robust_expert
 
 end module tox_loess

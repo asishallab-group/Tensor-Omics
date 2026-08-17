@@ -2,7 +2,12 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_tissue_versatility(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.
+!|
+!| An angle-based metric. A gene expressed equally across every selected axis points along the
+!| diagonal of that subspace and scores maximally versatile; one confined to a single tissue
+!| points along that axis and scores minimally. Normalized, so scores over different numbers of
+!| selected axes are comparable.
 module tox_tissue_versatility_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -55,8 +60,6 @@ contains
             !! Output, real array, length = n_selected_vectors, stores the calculated angles in degrees
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_vectors) :: vectors_selection_mask_f
-        logical, dimension(n_axes) :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -70,16 +73,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(tissue_versatilities, n_selected_vectors)
         M_CHECK_ARRAY_NON_NULL(tissue_angles_deg, n_selected_vectors)
 
-        vectors_selection_mask_f = vectors_selection_mask
-        axes_selection_mask_f = axes_selection_mask
-
         call compute_tissue_versatility(&
             n_axes = n_axes,&
             n_vectors = n_vectors,&
             expression_vectors = expression_vectors,&
-            vectors_selection_mask = vectors_selection_mask_f,&
+            vectors_selection_mask = vectors_selection_mask,&
             n_selected_vectors = n_selected_vectors,&
-            axes_selection_mask = axes_selection_mask_f,&
+            axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
             tissue_versatilities = tissue_versatilities,&
             tissue_angles_deg = tissue_angles_deg,&

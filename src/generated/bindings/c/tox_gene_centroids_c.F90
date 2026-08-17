@@ -2,7 +2,12 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_gene_centroids(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Expression centroids of gene families.
+!|
+!| `mean_vector` is the centroid of a set of expression vectors. `group_centroid_orthologs`
+!| and `group_centroid_all` take the centroid of a family: over its orthologs only, or over
+!| every gene in it -- two routines rather than one taking a flag, so which set a result is
+!| over is visible at the call site.
 module tox_gene_centroids_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -11,10 +16,10 @@ module tox_gene_centroids_c
     private
 
     public :: mean_vector_c
-    public :: group_centroid_orthologs_expert_c
     public :: group_centroid_orthologs_c
-    public :: group_centroid_all_expert_c
+    public :: group_centroid_orthologs_expert_c
     public :: group_centroid_all_c
+    public :: group_centroid_all_expert_c
 
 contains
 
@@ -70,17 +75,16 @@ contains
     end subroutine mean_vector_c
 
     !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid_orthologs(subroutine)]]
-    subroutine group_centroid_orthologs_expert_c(&
+    subroutine group_centroid_orthologs_c(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
-            tmp_group_indices,&
             ortholog_set,&
             ierr&
-        ) bind(C, name="group_centroid_orthologs_expert_c")
+        ) bind(C, name="group_centroid_orthologs_c")
         use tox_gene_centroids, only: group_centroid_orthologs
 
         integer(c_int), intent(in), target :: n_axes
@@ -98,13 +102,10 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        integer(c_int), dimension(n_genes), intent(out), target :: tmp_group_indices
-            !! Work array for storing the indices of one family's genes.
         logical(c_bool), dimension(n_genes), intent(in), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_genes) :: ortholog_set_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -114,10 +115,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_group_indices, n_genes)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
-
-        ortholog_set_f = ortholog_set
 
         call group_centroid_orthologs(&
             expression_vectors = expression_vectors,&
@@ -126,24 +124,24 @@ contains
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
-            tmp_group_indices = tmp_group_indices,&
-            ortholog_set = ortholog_set_f,&
+            ortholog_set = ortholog_set,&
             ierr = ierr&
         )
-    end subroutine group_centroid_orthologs_expert_c
+    end subroutine group_centroid_orthologs_c
 
-    !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid_orthologs_alloc(subroutine)]]
-    subroutine group_centroid_orthologs_c(&
+    !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid_orthologs_expert(subroutine)]]
+    subroutine group_centroid_orthologs_expert_c(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            tmp_group_indices,&
             ortholog_set,&
             ierr&
-        ) bind(C, name="group_centroid_orthologs_c")
-        use tox_gene_centroids, only: group_centroid_orthologs_alloc
+        ) bind(C, name="group_centroid_orthologs_expert_c")
+        use tox_gene_centroids, only: group_centroid_orthologs_expert
 
         integer(c_int), intent(in), target :: n_axes
             !! Number of axes (tissues/dimensions).
@@ -160,11 +158,12 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_group_indices
+            !! Work array for storing the indices of one family's genes.
         logical(c_bool), dimension(n_genes), intent(in), target :: ortholog_set
             !! A logical array indicating if a gene is part of a specific subset (e.g., orthologs).
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_genes) :: ortholog_set_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -174,33 +173,32 @@ contains
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_group_indices, n_genes)
         M_CHECK_ARRAY_NON_NULL(ortholog_set, n_genes)
 
-        ortholog_set_f = ortholog_set
-
-        call group_centroid_orthologs_alloc(&
+        call group_centroid_orthologs_expert(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
-            ortholog_set = ortholog_set_f,&
+            tmp_group_indices = tmp_group_indices,&
+            ortholog_set = ortholog_set,&
             ierr = ierr&
         )
-    end subroutine group_centroid_orthologs_c
+    end subroutine group_centroid_orthologs_expert_c
 
     !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid_all(subroutine)]]
-    subroutine group_centroid_all_expert_c(&
+    subroutine group_centroid_all_c(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
-            tmp_group_indices,&
             ierr&
-        ) bind(C, name="group_centroid_all_expert_c")
+        ) bind(C, name="group_centroid_all_c")
         use tox_gene_centroids, only: group_centroid_all
 
         integer(c_int), intent(in), target :: n_axes
@@ -218,8 +216,6 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
-        integer(c_int), dimension(n_genes), intent(out), target :: tmp_group_indices
-            !! Work array for storing the indices of one family's genes.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -231,7 +227,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
-        M_CHECK_ARRAY_NON_NULL(tmp_group_indices, n_genes)
 
         call group_centroid_all(&
             expression_vectors = expression_vectors,&
@@ -240,22 +235,22 @@ contains
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
-            tmp_group_indices = tmp_group_indices,&
             ierr = ierr&
         )
-    end subroutine group_centroid_all_expert_c
+    end subroutine group_centroid_all_c
 
-    !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid_all_alloc(subroutine)]]
-    subroutine group_centroid_all_c(&
+    !> summary: C-wrapper for [[tox_gene_centroids(module):group_centroid_all_expert(subroutine)]]
+    subroutine group_centroid_all_expert_c(&
             expression_vectors,&
             n_axes,&
             n_genes,&
             gene_to_family,&
             n_families,&
             centroid_matrix,&
+            tmp_group_indices,&
             ierr&
-        ) bind(C, name="group_centroid_all_c")
-        use tox_gene_centroids, only: group_centroid_all_alloc
+        ) bind(C, name="group_centroid_all_expert_c")
+        use tox_gene_centroids, only: group_centroid_all_expert
 
         integer(c_int), intent(in), target :: n_axes
             !! Number of axes (tissues/dimensions).
@@ -272,6 +267,8 @@ contains
             !! The value `0_int32` is additionally accepted.
         real(c_double), dimension(n_axes, n_families), intent(out), target :: centroid_matrix
             !! The output matrix (n_axes x n_families) to store the computed centroids.
+        integer(c_int), dimension(n_genes), intent(out), target :: tmp_group_indices
+            !! Work array for storing the indices of one family's genes.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -283,17 +280,19 @@ contains
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_axes * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_to_family, n_genes)
         M_CHECK_ARRAY_NON_NULL(centroid_matrix, n_axes * n_families)
+        M_CHECK_ARRAY_NON_NULL(tmp_group_indices, n_genes)
 
-        call group_centroid_all_alloc(&
+        call group_centroid_all_expert(&
             expression_vectors = expression_vectors,&
             n_axes = n_axes,&
             n_genes = n_genes,&
             gene_to_family = gene_to_family,&
             n_families = n_families,&
             centroid_matrix = centroid_matrix,&
+            tmp_group_indices = tmp_group_indices,&
             ierr = ierr&
         )
-    end subroutine group_centroid_all_c
+    end subroutine group_centroid_all_expert_c
 
 end module tox_gene_centroids_c
 #endif

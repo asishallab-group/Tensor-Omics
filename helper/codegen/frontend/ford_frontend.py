@@ -23,8 +23,7 @@ from ..config import CONVENTIONS, Conventions, Paths
 from ..diagnostics import DiagnosticBag, SourceLocation
 from ..ir.directives import DirectiveError, DirectiveParser, Directives
 from ..ir.doc import Doc, DocParseError
-from ..ir.entities import Argument, Meta, Module, Parameter, Procedure, Project
-from ..synthesize import generated_wrapper_paths
+from ..ir.entities import Argument, Declaration, Meta, Module, Parameter, Procedure, Project
 from ..ir.types import (
     BaseType,
     CharacterLength,
@@ -99,7 +98,10 @@ class FordFrontend:
         ford_project = self._parse_with_ford()
         modules = [self._module(module) for module in ford_project.modules]
         return ParsedProject(
-            project=Project(modules),
+            # `[extra.ford] project` in fpm.toml -- "TensorOmics". Ford has already read it,
+            # so taking it from there keeps one spelling of the name in the repository. Left
+            # unset, every diagnostic reported against a module ended with `in project ''`.
+            project=Project(modules, name=ford_project.name),
             macros=self.macros,
             arg_pos_factor=error_arg_pos_factor(self.macros),
         )
@@ -132,20 +134,24 @@ class FordFrontend:
 
         # Absolute, so they do not depend on the working directory below
         settings.src_dir = [self.paths.resolve(self.paths.src_dir).resolve()]
+        # The whole generated tree, by directory. Ford must not re-read the generator's own
+        # output and define `tox_<name>` twice (once parsed, once synthesised), and the one
+        # rule "everything generated lives under `generated_dir`" covers every target at
+        # once -- including a stale wrapper left behind by a deleted implementation, which
+        # a list derived from the implementations that still exist would not name.
+        #
+        # By directory rather than by file name, which is what this used to be: Ford matches
+        # a bare exclude as `**/<name>`, so once an implementation under `src/f42` generates
+        # `f42_stats.F90`, excluding that name would also drop the hand-written
+        # `src/f42/utils/f42_stats.F90` from the parse -- and every binding generated from
+        # it would vanish with no error at all.
         settings.exclude_dir = list(settings.exclude_dir) + [
-            str(self.paths.resolve(self.paths.c_binding_dir).resolve())
-        ]
-        # Excluding the generated wrappers by name keeps Ford from re-reading the
-        # generator's own output and defining `tox_<name>` twice (once parsed, once
-        # synthesised). By name rather than by directory because the same list is what
-        # `clean` deletes, so the two cannot drift apart. Ford matches `**/<name>`.
-        settings.exclude = list(getattr(settings, "exclude", None) or []) + [
-            path.name for path in generated_wrapper_paths(self.paths, self.conventions)
+            str(self.paths.resolve(self.paths.generated_dir).resolve())
         ]
 
         # Ford's default drops a procedure's own variables, which is right for published
         # documentation and wrong here: a local declared `allocatable` is how the generator
-        # sees that a procedure allocates (`validate._check_kernel_allocates`), and it never
+        # sees that a procedure allocates (`validate._check_impl_allocates`), and it never
         # reads a body. Nothing is published from this parse, so keeping them costs a list.
         settings.proc_internals = True
 
@@ -187,23 +193,54 @@ class FordFrontend:
                 for variable in ford_module.variables
                 if getattr(variable, "parameter", False)
             ],
+            declarations=list(self._declarations(ford_module, path)),
             doc=doc,
             meta=self._meta(ford_module),
             location=location,
-            uses=self._module_uses(ford_module),
+            uses=self._uses_of(ford_module),
         )
 
+    def _declarations(self, ford_module, path: Path):
+        """The public generic interfaces and derived types, by name and documentation.
+
+        Nothing is generated from either, so nothing more of them is modelled. They are read
+        because documentation names them -- `[[f42_math_impl(module):is_close(interface)]]` --
+        and because their own doc comments hold links, which live nowhere else in the IR:
+        an interface block's `!>` comment is attached to no procedure and no module.
+
+        Only *generic* interfaces. An interface block also declares the module procedures of a
+        submodule, which `_module_routines` already takes as procedures, and the `bind(C)`
+        externals of libzip, which are nobody's public API.
+        """
+        for interface in getattr(ford_module, "interfaces", ()) or ():
+            name = getattr(interface, "name", None)
+            if not name or not getattr(interface, "generic", False):
+                continue
+            location = self.index.module(path, ford_module.name)
+            doc, _ = self._documentation(getattr(interface, "doc_list", []) or [], location)
+            yield Declaration(name=name, kind="interface", doc=doc, location=location)
+        for derived in getattr(ford_module, "types", ()) or ():
+            name = getattr(derived, "name", None)
+            if not name:
+                continue
+            location = self.index.module(path, ford_module.name)
+            doc, _ = self._documentation(getattr(derived, "doc_list", []) or [], location)
+            yield Declaration(name=name, kind="type", doc=doc, location=location)
+
     @staticmethod
-    def _module_uses(ford_module) -> list[str]:
-        """The names of the modules a module `use`s.
+    def _uses_of(entity) -> list[str]:
+        """The names of the modules `entity` -- a module or a procedure -- `use`s.
 
         Ford turns `uses` into a set once it has correlated the project, holding the module
         object where it resolved one and the bare name where it did not (the intrinsic
         modules, anything outside the source tree). Sorted, so a re-export module generated
         from these comes out the same on every run.
+
+        A procedure carries its own list: Fortran lets a `use` sit inside a procedure as well
+        as at module level, and a rule about what a module may reach has to see both.
         """
         return sorted(
-            getattr(used, "name", used) for used in getattr(ford_module, "uses", ()) or ()
+            getattr(used, "name", used) for used in getattr(entity, "uses", ()) or ()
         )
 
     @staticmethod
@@ -253,7 +290,18 @@ class FordFrontend:
             location=location,
             conventions=self.conventions,
             allocatable_locals=self._allocatable_locals(ford_procedure),
+            uses=self._uses_of(ford_procedure),
+            is_pure=self._is_pure(ford_procedure),
         )
+
+    @staticmethod
+    def _is_pure(ford_procedure) -> bool:
+        """Whether the procedure is `pure`. `elemental` implies it, and Ford lists both."""
+        attributes = {
+            attribute.strip().lower()
+            for attribute in (getattr(ford_procedure, "attribs", ()) or ())
+        }
+        return bool(attributes & {"pure", "elemental"})
 
     @staticmethod
     def _allocatable_locals(ford_procedure) -> tuple[str, ...]:
@@ -261,7 +309,7 @@ class FordFrontend:
 
         Ford splits a procedure's declarations into `args` and `variables` once the project
         is correlated, so what is left here is local. Only the `allocatable` attribute is
-        collected: `pointer` locals are how a kernel aliases a buffer it was handed, which
+        collected: `pointer` locals are how an implementation aliases a buffer it was handed, which
         allocates nothing and stays allowed.
         """
         return tuple(

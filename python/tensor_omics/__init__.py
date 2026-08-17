@@ -10,6 +10,7 @@ from .error_handling import (
 from .f42_binary_search_tree import (
     build_bst_index,
     bst_range_query,
+    bst_range_query_expert,
 )
 from .f42_kd_tree import (
     build_kd_index,
@@ -54,9 +55,12 @@ from .f42_serde_arrays_utils import (
 )
 from .f42_stats import (
     loess_smooth_2d,
-    compute_edf_expert,
     compute_edf,
+    compute_edf_expert,
+    calc_percentile,
+    calc_percentile_expert,
     compute_scaled_distance_quantile,
+    compute_scaled_distance_quantile_expert,
 )
 from .tox_clustering import (
     cluster_factor_trajectories_k_means,
@@ -70,8 +74,8 @@ from .tox_data_archive import (
     read_tox_data_into,
 )
 from .tox_data_integration_jsd import (
-    determine_shared_residual_range_expert,
     determine_shared_residual_range,
+    determine_shared_residual_range_expert,
     determine_study_shared_residual_range,
     build_residual_histograms,
     compute_divergence_per_reference_point,
@@ -85,12 +89,12 @@ from .tox_data_integration_per_family import (
 from .tox_data_integration_preprocessing import (
     compute_gene_means,
     compute_residuals,
-    pool_means_expert,
     pool_means,
+    pool_means_expert,
     pool_study_means,
     construct_neighborhoods,
 )
-from .tox_data_integration_preprocessing_kernel import (
+from .tox_data_integration_preprocessing_impl import (
     calc_neighborhood_size,
 )
 from .tox_data_integration_stats import (
@@ -133,7 +137,7 @@ from .tox_loess import (
     loess_fit_plain,
     loess_fit_robust,
 )
-from .tox_loess_kernel import (
+from .tox_loess_impl import (
     tox_loess_required_workspace,
 )
 from .tox_normalization import (
@@ -153,7 +157,7 @@ from .tox_paralog_analysis import (
     filter_paralogs_by_pattern_dosage_effect,
     filter_paralogs_by_pattern_subfunctionalization,
 )
-from .tox_paralog_analysis_kernel import (
+from .tox_paralog_analysis_impl import (
     mask_check_state,
     mask_chunk_count,
     calc_work_arr_paralog_subsets_size,
@@ -250,6 +254,7 @@ __all__ = [
     "check_err_code",
     "accept_ensemble",
     "bst_range_query",
+    "bst_range_query_expert",
     "build_bst_index",
     "build_kd_index",
     "build_residual_histograms",
@@ -257,6 +262,8 @@ __all__ = [
     "calc_ensemble_growth_radius",
     "calc_fchange",
     "calc_neighborhood_size",
+    "calc_percentile",
+    "calc_percentile_expert",
     "calc_tiss_avg",
     "calc_work_arr_paralog_subsets_size",
     "clock_hand_angle_between_vectors",
@@ -277,6 +284,7 @@ __all__ = [
     "compute_relative_axis_contributions",
     "compute_residuals",
     "compute_scaled_distance_quantile",
+    "compute_scaled_distance_quantile_expert",
     "compute_shift_vector_field",
     "compute_tissue_versatility",
     "compute_velocity_acceleration_contributions",

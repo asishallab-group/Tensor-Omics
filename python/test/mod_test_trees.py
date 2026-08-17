@@ -4,7 +4,9 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensor_omics import build_bst_index, build_kd_index, bst_range_query, build_spherical_kd
+from tensor_omics import (
+    build_bst_index, build_kd_index, bst_range_query, bst_range_query_expert, build_spherical_kd
+)
 from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_EMPTY_INPUT
 
@@ -18,10 +20,13 @@ def test_bst():
 
     assert all(x[ix - 1] == sorted(x)), "expected x to be sorted"
 
-    # Range query using the wrapper function
-    matching_indices = bst_range_query(x, ix, 1.5, 3.5)
+    # Range query against the index we already hold
+    matching_indices = bst_range_query_expert(x, ix, 1.5, 3.5)
 
     assert all(x[matching_indices - 1] == [2.0, 3.0]), "expected range values are wrong"
+
+    # The allocating entry point builds the index itself
+    assert all(bst_range_query(x, 1.5, 3.5) == matching_indices), "allocating query disagrees"
 
 
 def test_kdtree():

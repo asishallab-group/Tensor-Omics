@@ -7,9 +7,10 @@
 !| It keeps its `tox_` name for continuity, but it lives in `src/f42/` because it is C-interop
 !| glue with no exports of its own -- infrastructure the binding layer stands on.
 module tox_conversions
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_ok, set_err
     use, intrinsic :: iso_c_binding, only: c_int, c_double, c_null_char, c_char, c_size_t, c_int64_t
+    use, intrinsic :: iso_c_binding, only: c_loc, c_f_pointer
 
 contains
 
@@ -62,108 +63,40 @@ contains
     end subroutine char_as_c_char
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a 1D c_char array to string
-    pure subroutine c_char_1d_as_string(c_char_array, str_out, ierr)
-        character(kind=c_char, len=1), dimension(:), intent(in) :: c_char_array
-            !! c int array, representing characters
-        character(len=:), allocatable, intent(out) :: str_out
-            !! Fortran string, length determined by occuring null char in `c_char_array`
-        integer(int32), intent(out) :: ierr
-            !! Error code
+    !| A zero-copy Fortran view of a `c_char` buffer, ending at the first NUL if there is one.
+    !|
+    !| Accepts both conventions a caller might use, which is the point of it: a C caller
+    !| NUL-terminates (`ward` then four NULs), the generated bindings blank-pad (`ward    `),
+    !| and both must select the same mode. A NUL is honoured where there is one, and where
+    !| there is none the whole buffer is the string -- which compares equal to the shorter
+    !| literal anyway, because Fortran blank-pads the shorter operand.
+    !|
+    !| The result is a **view**, not a copy: it is valid only while `buffer` is, and writing
+    !| through `buffer` changes it. `buffer` must be contiguous, or `c_loc` takes the address
+    !| of a compiler temporary and the view dangles on return. Every caller here passes an
+    !| explicit-shape dummy or a `c_f_pointer`-mapped array, both of which are contiguous.
+    !|
+    !| Replaced an allocating version. Nothing here allocates now, which is what lets the
+    !| module sit on `Conventions.impl_import_whitelist` and be provably allocation-free.
+    function c_char_as_view(buffer) result(view)
+        character(kind=c_char, len=1), dimension(:), intent(in), target, contiguous :: buffer
+            !! the C buffer, NUL-terminated or blank-padded
+        character(len=:), pointer :: view
+            !! the buffer read as one Fortran string, up to the first NUL
 
-        integer(int32) :: i, str_len, array_len
+        ! `size` of a dummy is a specification expression, so this length is legal even though
+        ! it is not known until the call. What is NOT legal is a length computed inside the
+        ! procedure -- hence the substring pointer assignment below rather than a second view.
+        character(len=size(buffer)), pointer :: whole
+        integer(int32) :: n
 
-        call set_ok(ierr)
-
-        array_len = size(c_char_array, 1)
-
-        ! identify string length
-        str_len = array_len
-        do i = 1, array_len
-            if (c_char_array(i) == c_null_char) then
-                str_len = i - 1
-                exit
-            end if
-        end do
-
-        ! create string
-        M_ALLOCATE(character(len=str_len) :: str_out)
-
-        do concurrent (i = 1:str_len) shared(c_char_array, str_out)
-            call c_char_as_char(c_char_array(i), str_out(i:i))
-        end do
-    end subroutine c_char_1d_as_string
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a string to 1D c_char array
-    pure subroutine string_as_c_char_1d(str, c_char_array)
-        character(len=*), intent(in) :: str
-            !! Fortran string to be converted
-        character(kind=c_char, len=1), dimension(:), intent(out) :: c_char_array
-            !! c int array, representing chars of `str`, will always end with null char. If array too small, it will hold fitting trimmed `str`.
-
-        integer(int32) :: i_str, str_len
-
-        ! determine string length to be converted
-        str_len = min(len_trim(str), size(c_char_array, 1))
-
-        do concurrent (i_str = 1:str_len) shared(str, c_char_array)
-            call c_char_as_char(str(i_str:i_str), c_char_array(i_str))
-        end do
-
-        if (size(c_char_array, 1) > str_len) then
-            c_char_array(str_len + 1) = c_null_char
-        end if
-    end subroutine string_as_c_char_1d
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a 2D c_char array to 1D string array
-    pure subroutine c_char_2d_as_string(c_char_array, str_out, ierr)
-        character(kind=c_char, len=1), dimension(:, :), intent(in) :: c_char_array
-            !! c int array, columns as ascii arrays
-        character(len=:), dimension(:), allocatable, intent(out) :: str_out
-            !! Fortran array of resulting strings
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        integer(int32) :: i_str, n_rows, n_strings, tmp_ierr
-        character(len=:), allocatable :: string
-
-        call set_ok(ierr)
-
-        n_rows = size(c_char_array, 1)
-        n_strings = size(c_char_array, 2)
-
-        M_ALLOCATE(character(len=n_rows) :: str_out(n_strings))
-
-        ! create strings
-        ! GFORTRAN BUG: do concurrent (i_str = 1:n_strings) local(tmp_ierr) shared(c_char_array, string, ierr, str_out)
-        do i_str = 1, n_strings
-            call c_char_1d_as_string(c_char_array(:, i_str), string, tmp_ierr)
-            if (is_err(tmp_ierr)) ierr = tmp_ierr
-
-            str_out(i_str) = string
-        end do
-    end subroutine c_char_2d_as_string
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Converts a 1D string array to 2D c_char array
-    pure subroutine string_as_c_char_2d(strings, c_char_array)
-        character(len=*), dimension(:), intent(in) :: strings
-            !! Fortran array of strings
-        character(kind=c_char, len=1), dimension(:, :), intent(out) :: c_char_array
-            !! c int array, columns as ascii arrays
-
-        integer(int32) :: i_str
-
-        ! Guard against a caller-provided c_char_array with fewer columns than there are strings:
-        ! only convert as many strings as fit, instead of writing out of bounds on
-        ! `c_char_array(:, i_str)` for i_str beyond its column count.
-        ! GFORTRAN BUG: do concurrent (i_str = 1:min(size(strings, 1), size(c_char_array, 2))) shared(strings, c_char_array)
-        do i_str = 1, min(size(strings, 1), size(c_char_array, 2))
-            call string_as_c_char_1d(strings(i_str), c_char_array(:, i_str))
-        end do
-    end subroutine string_as_c_char_2d
+        call c_f_pointer(c_loc(buffer), whole)
+        n = index(whole, c_null_char) - 1
+        if (n < 0) n = len(whole)          ! no NUL: the whole buffer is the string
+        ! pointer assignment, NOT c_f_pointer -- c_f_pointer onto a deferred length compiles
+        ! and then yields an empty string on gfortran and a segfault on ifx
+        view => whole(1:n)
+    end function c_char_as_view
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Converts int32 to c_int64_t, elemental -> any shape

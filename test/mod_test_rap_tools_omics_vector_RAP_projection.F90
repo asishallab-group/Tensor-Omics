@@ -3,6 +3,7 @@ module mod_test_rap_tools_omics_vector_RAP_projection
     use asserts
     use tox_relative_axis_plane_tools
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     use tox_errors
     implicit none
@@ -31,7 +32,7 @@ contains
 
         character(len=*), intent(in) :: test_name
         real(real64), dimension(:, :), intent(in) :: vecs
-        logical, dimension(:), intent(in) :: axes_mask, vecs_mask
+        logical(c_bool), dimension(:), intent(in) :: axes_mask, vecs_mask
         real(real64), dimension(:, :), intent(out), optional :: result_projections
 
         integer(int32) :: n_axes, n_vecs, n_selected_axes, n_selected_vecs
@@ -67,7 +68,7 @@ contains
     !> Test all axes and vectors are selected
     subroutine test_all_selected()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs, i_vec
 
@@ -97,7 +98,7 @@ contains
     !> Test one axis and all vectors are selected
     subroutine test_one_axis_selected()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
@@ -117,7 +118,7 @@ contains
     !> Test all axes and one vector are selected
     subroutine test_one_vector_selected()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
@@ -138,7 +139,7 @@ contains
     subroutine test_constant_vector()
         real(real64), dimension(3, 3) :: vecs
         real(real64), allocatable :: projections(:, :)
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
         vecs = 0.0_real64
@@ -165,7 +166,7 @@ contains
     !> Test orthogonal vector
     subroutine test_orthogonal_vector()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
@@ -186,7 +187,7 @@ contains
     !> Test no axes
     subroutine test_no_axes()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
@@ -206,7 +207,7 @@ contains
     !> Test no vectors
     subroutine test_no_vectors()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
@@ -226,7 +227,7 @@ contains
     !> Test mixed selection
     subroutine test_mixed_selection()
         real(real64), dimension(3, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
@@ -246,7 +247,7 @@ contains
     !> Test non-square vecs
     subroutine test_non_square_vecs()
         real(real64), dimension(4, 2) :: vecs
-        logical :: axes_mask(4), vecs_mask(2)
+        logical(c_bool) :: axes_mask(4), vecs_mask(2)
         real(real64), allocatable :: projections(:, :)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 

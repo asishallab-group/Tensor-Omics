@@ -1,22 +1,22 @@
 """Emitting the generated wrapper modules.
 
-One `tox_<name>.F90` per kernel module, holding the validating wrapper `foo` and, when the
-kernel needs work arrays, the allocating wrapper `foo_alloc`, for every kernel. Unlike the
-C wrappers these are ordinary library sources -- no `bind(C)`, no `NO_C_BINDING` guard, no
-pointer marshalling.
+One `tox_<name>.F90` per implementation module, holding `foo` and -- where the implementation
+has work arrays to take over -- `foo_expert` beside it. Unlike the C wrappers these are
+ordinary library sources: no `bind(C)`, no `NO_C_BINDING` guard, no pointer marshalling.
 
-A validating wrapper: set `ierr` ok (the kernel it calls has none and reports nothing),
-validate every input against its documented range -- and, for reals, the framework's
-default finiteness contract -- bail on error, then call the kernel unchanged.
+A validating body: set `ierr` ok (the implementation it calls has none and reports nothing),
+validate every input against its documented range -- and, for reals, the framework's default
+finiteness contract -- bail on error, then call the implementation unchanged. That is the
+whole of `foo_expert`, and the whole of a lone `foo` with nothing to take over.
 
-An allocating wrapper takes over the work the caller should not do: it drops the kernel's
+An allocating body does the work the caller should not have to: it drops the implementation's
 work arrays, permutations and recommend-sized values from its signature, validates what is
 left, calls the recommend routines to size the work arrays, allocates them, seeds and sorts
-the permutations, then calls the kernel directly (it has just built the permutation, so
-there is nothing left for the validating wrapper to re-check).
+the permutations, runs the prologue, then calls the implementation directly (it has just
+built the permutation, so there is nothing left for the expert tier to re-check).
 
-The allocating wrapper reads the kernel's full picture -- every argument, its extents, and
-its `DM_OUTPUT_FROM` plan -- off its sibling validating wrapper, which carries them all.
+It reads the implementation's full picture -- every argument, its extents, and its
+`DM_OUTPUT_FROM` plan -- off its `foo_expert` sibling, which carries them all.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..config import CONVENTIONS, Conventions
+from ..ir.doc import Doc, DocLine
 from ..ir.entities import Argument, Module, Procedure
 from ..ir.types import BaseType
 from ..render import Writer
@@ -40,12 +41,15 @@ from .fortran_c import _EXTENT_IDENTIFIER_RE, _chunks, _product
 
 
 #: The exclusive-bound helpers a range expression may wrap a bound in, and where they live.
-#: Named by their own module rather than by the `f42_utils` parent that re-exports them, so
+#: Named by their own implementation module rather than by any parent re-exporting them, so
 #: the import says where the thing is defined -- as a resolved module constant already does.
-_BOUND_HELPERS = {"above": "f42_math", "below": "f42_math"}
+_BOUND_HELPERS = {"above": "f42_math_impl", "below": "f42_math_impl"}
 
 #: What seeding and sorting a permutation needs, and where those live
-_PERMUTATION_HELPERS = {"init_perm": "f42_sort", "sort_array_heapsort": "f42_sort"}
+_PERMUTATION_HELPERS = {
+    "init_perm": "f42_sort_impl",
+    "sort_array_heapsort": "f42_sort_impl",
+}
 
 #: The intrinsic-module functions a range expression may call, and where they come from.
 #: A bound is often "how many of these values are usable", which is a NaN test away.
@@ -62,11 +66,11 @@ _INTRINSIC_MODULES = frozenset({"ieee_arithmetic"})
 class WrapperInfo:
     """What the emitter needs about a generated wrapper beyond its own signature.
 
-    The kernel it calls (its name is not derivable for a mode-split wrapper, which is named
-    from the mode table) and, for a per-mode wrapper, the mode it fixes.
+    The implementation it calls (its name is not derivable for a mode-split wrapper, which is
+    named from the mode table) and, for a per-mode wrapper, the mode it fixes.
     """
 
-    kernel_name: str
+    impl_name: str
     mode_fix: ModeFix | None = None
 
 
@@ -82,7 +86,7 @@ class FortranWrapperEmitter:
         #: used to resolve module constants named in a `DM_MIN`/`DM_MAX` expression, so
         #: they can be imported; None in a unit test whose bounds use no constants
         self.project = project
-        #: per-wrapper info (kernel name, mode fix), keyed by lower-case procedure name;
+        #: per-wrapper info (impl name, mode fix), keyed by lower-case procedure name;
         #: set for the duration of a `module()` call. Empty in a unit test that passes none,
         #: which drives the ordinary (non-split) path via the fallbacks below.
         self._wrapper_info: dict[str, WrapperInfo] = {}
@@ -97,14 +101,11 @@ class FortranWrapperEmitter:
         writer.line(f"#include <{self.macros_header}>")
         writer.blank()
 
-        link = f"[[{self._kernel_module(module)}(module)]]"
-        writer.block(
-            render_doc(module.doc, kind="module", summary=f"Wrappers for {link}")
-        )
+        writer.block(self._module_doc(module))
         writer.line(f"module {module.name}")
         with writer.indent():
             self._module_uses(writer, module)
-            # Not a bare `implicit none`: a mistyped kernel call would otherwise compile as
+            # Not a bare `implicit none`: a mistyped impl call would otherwise compile as
             # an implicit external and fail only at link. Generated code is exactly where
             # that must surface at the generator's output, not in a build log.
             writer.line("M_IMPLICIT_NONE")
@@ -132,8 +133,7 @@ class FortranWrapperEmitter:
         neither the macros header nor `implicit none`.
         """
         writer = Writer()
-        summary = f"Gathers the {module.name} family"
-        writer.block(render_doc(module.doc, kind="module", summary=summary))
+        writer.block(self._module_doc(module))
         writer.line(f"module {module.name}")
         with writer.indent():
             for used in module.uses:
@@ -141,14 +141,34 @@ class FortranWrapperEmitter:
         writer.line(f"end module {module.name}")
         return writer.render(trailing_newline=True)
 
-    def _kernel_module(self, module: Module) -> str:
-        return f"{module.name}{self.conventions.kernel_suffix}"
+    def _module_doc(self, module: Module) -> str:
+        """The module's documentation, with a note saying where the file came from.
+
+        The documentation is the implementation module's own, unchanged: a generated module is
+        the published API, so the author's prose about the family is what a reader of it wants.
+        The note is added here rather than carried in the IR because it is about *this file* --
+        Python and R say the same thing in their own words, and would otherwise print it twice.
+
+        No `summary:` tag either. The doc's own first line is the summary; a "Wrappers for
+        <impl>" tag above it would displace that everywhere Ford shows a one-liner, to say what
+        the note at the bottom of the same comment already says.
+        """
+        impl = self._impl_module(module)
+        note = f"Generated from [[{impl}(module)]]; do not edit -- regenerate instead."
+        blocks = list(module.doc.blocks)
+        if blocks:
+            blocks.append(DocLine.parse(""))
+        blocks.append(DocLine.parse(note))
+        return render_doc(Doc(tuple(blocks)), kind="module")
+
+    def _impl_module(self, module: Module) -> str:
+        return f"{module.name}{self.conventions.impl_suffix}"
 
     def _module_uses(self, writer: Writer, module: Module) -> None:
-        kernel_module = self._kernel_module(module)
+        impl_module = self._impl_module(module)
 
         # everything imported besides the intrinsic kinds and tox_errors, keyed by module:
-        # the recommend routines, the f42_utils permutation/bound helpers, and any module
+        # the recommend routines, the permutation/bound helpers, and any module
         # constant a range expression names
         extra: dict[str, set[str]] = {}
         for producer_module, names in self._producers(module).items():
@@ -172,15 +192,32 @@ class FortranWrapperEmitter:
                 for value in roles.mode.values:
                     extra.setdefault(value.module, set()).add(value.parameter)
 
-        # the kernels, plus any recommend routine / constant that lives in the kernel module
-        kernel_names = {self._kernel_name(p, module) for p in module}
-        kernel_names |= extra.pop(kernel_module, set())
-        for chunk in _chunks(sorted(kernel_names), 4):
-            writer.line(f"use {kernel_module}, only: {', '.join(chunk)}")
+        kinds = {a.type.kind for p in module for a in p.arguments if a.type.kind}
+        # kinds the emitter itself writes, which no argument need carry: a module whose
+        # arguments are all real still spells `allow_nan=.true._c_bool`
+        for procedure in module:
+            kinds |= self._emitted_literal_kinds(procedure)
 
-        kinds = sorted({a.type.kind for p in module for a in p.arguments if a.type.kind})
-        for chunk in _chunks(kinds, 6):
-            writer.line(f"use, intrinsic :: iso_fortran_env, only: {', '.join(chunk)}")
+        # A module that names a C kind depends on f42_safeguard, whose compile-time guards say
+        # which kind is missing where the platform has none. The dependency is what puts
+        # safeguard at the front of the build: without it the module compiles first and fails
+        # with the compiler's message about the kind instead of the guard's about which one.
+        if any(_kind_module(kind) == "iso_c_binding" for kind in kinds):
+            writer.line("use f42_safeguard")
+
+        # the implementations, plus any recommend routine / constant that lives in the
+        # implementation module
+        impl_names = {self._impl_name(p, module) for p in module}
+        impl_names |= extra.pop(impl_module, set())
+        for chunk in _chunks(sorted(impl_names), 4):
+            writer.line(f"use {impl_module}, only: {', '.join(chunk)}")
+
+        by_owner: dict[str, set[str]] = {}
+        for kind in kinds:
+            by_owner.setdefault(_kind_module(kind), set()).add(kind)
+        for owner in sorted(by_owner):
+            for chunk in _chunks(sorted(by_owner[owner]), 6):
+                writer.line(f"use, intrinsic :: {owner}, only: {', '.join(chunk)}")
 
         for other_module, names in sorted(extra.items()):
             intrinsic = ", intrinsic :: " if other_module in _INTRINSIC_MODULES else " "
@@ -193,7 +230,7 @@ class FortranWrapperEmitter:
     def _bound_imports(self, module: Module) -> dict[str, set[str]]:
         """Modules and names a range expression refers to and so must import.
 
-        A bound may be `above(0.0_real64)` (helpers from f42_utils), call an IEEE inquiry
+        A bound may be `above(0.0_real64)` (helpers from `f42_math_impl`), call an IEEE inquiry
         (`count(.not. ieee_is_nan(x))`, for a bound that is "how many of these are usable"),
         or name a module constant like `PI`. Identifiers that are the wrapper's own
         arguments, Fortran intrinsics, or literals need nothing.
@@ -273,7 +310,7 @@ class FortranWrapperEmitter:
                 continue
             foo = self._sibling(module, alloc)
             for argument in taken_over_arguments(
-                self._kernel_arguments(foo), self.conventions,
+                self._impl_arguments(foo), self.conventions,
                 self._prologue_for(foo, module),
             ):
                 if not is_computed(argument):
@@ -285,7 +322,7 @@ class FortranWrapperEmitter:
         return producers
 
     def _has_permutations(self, module: Module) -> bool:
-        """Whether anything here is seeded and sorted, so `f42_sort` is worth importing.
+        """Whether anything here is seeded and sorted, so `f42_sort_impl` is worth importing.
 
         Asks the same question the emission does, prologue included -- a family whose only
         permutation the prologue builds needs neither helper.
@@ -296,7 +333,7 @@ class FortranWrapperEmitter:
             foo = self._sibling(module, alloc)
             prologue = self._prologue_for(foo, module)
             taken = taken_over_arguments(
-                self._kernel_arguments(foo), self.conventions, prologue
+                self._impl_arguments(foo), self.conventions, prologue
             )
             if sorted_permutations(taken, prologue, self.conventions):
                 return True
@@ -307,25 +344,36 @@ class FortranWrapperEmitter:
     def _is_allocating(self, procedure: Procedure, module: Module) -> bool:
         """Whether `procedure` is emitted with the allocating body.
 
-        True only for a real allocating wrapper: an `_alloc` variant that has a validating
-        sibling to take work arrays over from. A self-allocating *pipeline* kernel whose
-        public name merely ends in `_alloc` (so `is_alloc_variant` is true, e.g. `loess_alloc`)
-        has no such sibling -- it prepares its own work arrays internally -- and is emitted
-        with the ordinary validating body, its foo being a thin validate-then-call shim.
+        Exactly the wrappers that have an expert sibling to take the work arrays over from.
+        A procedure with no `<name>_expert` beside it is the only entry point there is, so
+        it takes nothing over and is emitted with the ordinary validating body -- which is
+        also why a lone wrapper wears the plain name (`synthesize._wrappers_for`).
         """
-        return procedure.is_alloc_variant and self._sibling(module, procedure) is not None
+        return self._sibling(module, procedure) is not None
 
     def subroutine(self, procedure: Procedure, module: Module) -> str:
         writer = Writer()
-        kernel = self._kernel_name(procedure, module)
-        link = f"[[{self._kernel_module(module)}(module):{kernel}]]"
-        summary = (
-            f"Allocates its work arrays, then calls {link}."
-            if self._is_allocating(procedure, module)
-            else f"Validates its inputs, then calls {link}."
-        )
+        impl = self._impl_name(procedure, module)
+        link = f"[[{self._impl_module(module)}(module):{impl}]]"
+        # Which tier this is, not merely what it does: both validate, and a reader of the
+        # generated manual has to be able to tell `foo` from `foo_expert` by its summary.
+        if self._is_allocating(procedure, module):
+            summary = (
+                f"Validates its inputs, prepares what {link} needs, then calls it. "
+                f"The entry point to reach for first; see "
+                f"[[{module.name}(module):{procedure.name}{self.conventions.expert_suffix}]] "
+                "to prepare it yourself."
+            )
+        elif self._plain_of(module, procedure) is not None:
+            summary = (
+                f"Validates its inputs, then calls {link} with what you supply. "
+                "The expert entry point: it allocates nothing and prepares nothing; "
+                f"[[{module.name}(module):{self._base(procedure)}]] does both."
+            )
+        else:
+            summary = f"Validates its inputs, then calls {link}."
         writer.block(render_doc(procedure.doc, kind="procedure", summary=summary))
-        self._signature(writer, procedure)
+        self._signature(writer, procedure, module)
         with writer.indent():
             if self._is_allocating(procedure, module):
                 self._allocating_body(writer, procedure, module)
@@ -341,7 +389,7 @@ class FortranWrapperEmitter:
         writer.blank()
         self._validation(writer, foo)
         writer.blank()
-        self._kernel_call(writer, foo, module)
+        self._impl_call(writer, foo, module)
 
     def _allocating_body(
         self, writer: Writer, alloc: Procedure, module: Module
@@ -349,7 +397,7 @@ class FortranWrapperEmitter:
         foo = self._sibling(module, alloc)
         prologue = self._prologue_for(foo, module)
         taken = taken_over_arguments(
-            self._kernel_arguments(foo), self.conventions, prologue
+            self._impl_arguments(foo), self.conventions, prologue
         )
         materialized = self._materialized_producer_inputs(foo, alloc, taken)
         self._declarations(writer, alloc.arguments)
@@ -367,25 +415,25 @@ class FortranWrapperEmitter:
         # Below the work arrays, because preparing them is what a prologue is for -- it is the
         # sugar this tier adds over the expert one, which lets a caller prepare them instead.
         self._prologue_call(writer, prologue, alloc, module, taken)
-        self._kernel_call(writer, foo, module)
+        self._impl_call(writer, foo, module)
 
     # -- prologue ---------------------------------------------------------------
 
     def _prologue_for(self, foo: Procedure, module: Module):
         """The prologue the allocating wrapper runs, resolved to the procedure it names.
 
-        Declared on the kernel, since it is the kernel's own contract. Returns None when
-        there is none, or when the project is unavailable (a unit test), so the ordinary
-        path is unaffected.
+        Declared on the implementation, since it is the implementation's own contract. Returns
+        None when there is none, or when the project is unavailable (a unit test), so the
+        ordinary path is unaffected.
         """
         if self.project is None:
             return None
-        kernel = self.project.procedure(
-            self._kernel_module(module), self._kernel_name(foo, module)
+        impl = self.project.procedure(
+            self._impl_module(module), self._impl_name(foo, module)
         )
-        if kernel is None:
+        if impl is None:
             return None
-        directive = kernel.directives.prologue
+        directive = impl.directives.prologue
         if directive is None:
             return None
         return self.project.procedure(directive.module, directive.procedure)
@@ -423,44 +471,93 @@ class FortranWrapperEmitter:
         writer.line(f"if ({handled}) return")
         writer.blank()
 
+    def _is_pure(self, procedure: Procedure, module: Module) -> bool:
+        """Whether this wrapper can be `pure`: everything it calls has to be.
+
+        A caller who wants a `pure` procedure -- to call it from `do concurrent`, or from
+        their own pure code -- should not have to reach past the wrapper to the
+        implementation to get one. The wrapper is pure exactly when the implementation is
+        and so is everything the wrapper adds, so the property is derived rather than
+        declared: `tox_errors`' validators and `set_ok`/`is_err` are pure, and so are
+        `init_perm` and every `sort_array_heapsort` specific, which leaves the
+        implementation itself, the `DM_OUTPUT_FROM` producers and the prologue.
+
+        (`allocate(..., stat=)` is permitted in a pure procedure, so the allocating tier is
+        no less eligible than the expert one.)
+
+        False without a project to resolve them -- a unit test. Guessing `pure` wrongly is a
+        compile error in generated code; guessing it away only costs the caller.
+        """
+        if self.project is None:
+            return False
+        called = [
+            self.project.procedure(self._impl_module(module), self._impl_name(procedure, module))
+        ]
+        foo = self._sibling(module, procedure) or procedure
+        called.append(self._prologue_for(foo, module))
+        for argument in foo.arguments:
+            roles = argument.roles
+            plan = roles.computed_from if roles is not None else None
+            if plan is not None:
+                called.append(plan.producer)
+        return all(p is not None and p.is_pure for p in called if p is not None) and (
+            called[0] is not None
+        )
+
     # -- names ------------------------------------------------------------------
 
     def _base(self, procedure: Procedure) -> str:
-        name = procedure.name
-        for suffix in (self.conventions.alloc_suffix, self.conventions.validating_suffix):
-            if suffix and name.lower().endswith(suffix):
-                return name[: -len(suffix)]
-        return name
+        """The name both tiers of a pair share: `foo` for `foo` and for `foo_expert`.
 
-    def _kernel_name(self, procedure: Procedure, module: Module) -> str:
-        # a mode-split wrapper is named from the mode table, so its kernel is not derivable
-        # from its name; take it from the spec when available
+        Only the expert suffix is stripped, because it is the only one the generator adds.
+        `validate` refuses an implementation whose base name already ends in it, so no
+        wrapper reaches here whose own name would be shortened by mistake.
+        """
+        name = procedure.name
+        suffix = self.conventions.expert_suffix
+        return name[: -len(suffix)] if name.lower().endswith(suffix) else name
+
+    def _impl_name(self, procedure: Procedure, module: Module) -> str:
+        # a mode-split wrapper is named from the mode table, so its implementation is not
+        # derivable from its name; take it from the spec when available
         info = self._wrapper_info.get(procedure.name.lower())
         if info is not None:
-            return info.kernel_name
-        return f"{self._base(procedure)}{self.conventions.kernel_suffix}"
+            return info.impl_name
+        return f"{self._base(procedure)}{self.conventions.impl_suffix}"
 
     def _mode_fix(self, procedure: Procedure) -> ModeFix | None:
         info = self._wrapper_info.get(procedure.name.lower())
         return info.mode_fix if info is not None else None
 
-    def _sibling(self, module: Module, alloc: Procedure) -> Procedure:
-        return module.procedure(self._base(alloc) + self.conventions.validating_suffix)
+    def _sibling(self, module: Module, allocating: Procedure) -> Procedure | None:
+        """The expert half of `allocating`, which carries the full signature to read.
 
-    def _kernel_arguments(self, foo: Procedure) -> list[Argument]:
-        """The kernel's own arguments minus ierr -- the ones that may be taken over.
+        `foo_expert` is where the implementation's whole argument list survives -- the work
+        arrays, the permutations and the recommend-sized values that `foo` drops -- so the
+        allocating body reads its picture from there rather than from its own dummies.
+        """
+        return module.procedure(allocating.name + self.conventions.expert_suffix)
+
+    def _plain_of(self, module: Module, expert: Procedure) -> Procedure | None:
+        """The allocating half `expert` is the expert of, or None if it is a lone wrapper."""
+        base = self._base(expert)
+        return module.procedure(base) if base != expert.name else None
+
+    def _impl_arguments(self, foo: Procedure) -> list[Argument]:
+        """The implementation's own arguments minus ierr -- the ones that may be taken over.
 
         Used to work out the allocations and permutations; ierr is never among them, so
-        dropping it here is harmless and independent of whether the kernel declares one.
+        dropping it here is harmless and independent of whether the implementation declares
+        one.
         """
         error = self.conventions.error_arg.lower()
         return [a for a in foo.arguments if a.name.lower() != error]
 
-    def _kernel_declares_error(self, foo: Procedure, module: Module) -> bool:
-        """Whether the kernel takes `ierr`, so the wrapper has a position to clear."""
+    def _impl_declares_error(self, foo: Procedure, module: Module) -> bool:
+        """Whether the implementation takes `ierr`, so the wrapper has a position to clear."""
         error = self.conventions.error_arg.lower()
         return any(
-            a.name.lower() == error for a in self._kernel_call_arguments(foo, module)
+            a.name.lower() == error for a in self._impl_call_arguments(foo, module)
         )
 
     def _emits_arg_pos_clear(self, module: Module) -> bool:
@@ -470,32 +567,33 @@ class FortranWrapperEmitter:
         two separately is how a missing import gets shipped.
         """
         return any(
-            self._kernel_declares_error(procedure, module)
+            self._impl_declares_error(procedure, module)
             for procedure in module
             if not self._is_allocating(procedure, module)
         ) or bool(self._prologues(module))
 
-    def _kernel_call_arguments(self, foo: Procedure, module: Module) -> list[Argument]:
-        """The kernel's own signature, for the call.
+    def _impl_call_arguments(self, foo: Procedure, module: Module) -> list[Argument]:
+        """The implementation's own signature, for the call.
 
-        Includes `ierr` exactly when the kernel declares one: a kernel that propagates a
-        sub-helper's failure takes `ierr`, a pure one does not, and the wrapper must pass on
-        whichever the kernel actually has. Resolved from the kernel itself when the project
-        is available; without it (a unit test) the kernel has no ierr, since synthesis only
-        appends one to the wrapper.
+        Includes `ierr` exactly when the implementation declares one: an implementation that
+        propagates a sub-helper's failure takes `ierr`, a pure one does not, and the wrapper
+        must pass on whichever the implementation actually has. Resolved from the
+        implementation itself when the project is available; without it (a unit test) the
+        implementation has no ierr, since synthesis only appends one to the wrapper.
         """
         if self.project is not None:
-            kernel = self.project.procedure(
-                self._kernel_module(module), self._kernel_name(foo, module)
+            impl = self.project.procedure(
+                self._impl_module(module), self._impl_name(foo, module)
             )
-            if kernel is not None:
-                return list(kernel.arguments)
-        return self._kernel_arguments(foo)
+            if impl is not None:
+                return list(impl.arguments)
+        return self._impl_arguments(foo)
 
     # -- declarations -----------------------------------------------------------
 
-    def _signature(self, writer: Writer, procedure: Procedure) -> None:
-        writer.line(f"subroutine {procedure.name}(&")
+    def _signature(self, writer: Writer, procedure: Procedure, module: Module) -> None:
+        prefix = "pure " if self._is_pure(procedure, module) else ""
+        writer.line(f"{prefix}subroutine {procedure.name}(&")
         names = [a.name for a in procedure.arguments]
         with writer.indent(2):
             for name in names[:-1]:
@@ -552,7 +650,7 @@ class FortranWrapperEmitter:
 
         `set_ok` stays outside the guard. It is not a check: it is what leaves `ierr` defined
         on the path where nothing goes wrong, and a build without validation still has to
-        report the runtime errors a kernel raises.
+        report the runtime errors an implementation raises.
 
         Compiling the checks out is for a caller who has already established that the inputs
         are good -- an inner loop calling the same wrapper a million times over data it
@@ -585,7 +683,7 @@ class FortranWrapperEmitter:
 
         A distance-matrix argument is validated for structure; a `n_selected_<x>` count is
         validated against `count(<x>_mask)`. Both come from information the wrapper already has
-        (the argument's roles / shape), so the kernel need not carry them or an `ierr`.
+        (the argument's roles / shape), so the implementation need not carry them or an `ierr`.
         """
         error = self.conventions.error_arg
         lines: list[str] = []
@@ -652,8 +750,8 @@ class FortranWrapperEmitter:
         """A square real matrix named by the distance-matrix convention.
 
         It is validated for distance-matrix structure (symmetry, non-negativity, zero diagonal)
-        by `validate_distance_matrix`, which no per-argument range validator expresses, so it also
-        opts out of the finiteness contract.
+        by `validate_distance_matrix`, which no per-argument range validator expresses, so it
+        also opts out of the finiteness contract.
         """
         if argument.type.base is not BaseType.REAL or not argument.intent.is_input:
             return False
@@ -699,6 +797,34 @@ class FortranWrapperEmitter:
             return "validate_all_in_range_int" if argument.is_array else "validate_in_range_int"
         return None
 
+    def _emitted_literal_kinds(self, procedure: Procedure) -> set[str]:
+        """Kinds the emitter writes as literals, which no argument need carry.
+
+        The import list is built from the arguments, so a kind that only ever appears in
+        something the emitter invents is invisible to it -- and an unimported kind is a
+        compile error in code nobody wrote. Two sources, and this has to stay in step with
+        both: the `allow_nan=`/`allow_infinite=` keywords below, and a `DM_OUTPUT_FROM`
+        producer input supplied as a constant.
+        """
+        kinds: set[str] = set()
+        for argument in procedure.arguments:
+            directives = argument.directives
+            if (argument.type.base is BaseType.REAL
+                    and self._validator_for(argument) is not None
+                    and (directives.allows_nan or directives.allows_infinite)):
+                kinds.add(_VALIDATOR_LOGICAL_KIND)
+            plan = argument.roles.computed_from if argument.roles else None
+            if plan is None:
+                continue
+            supplied = {pi.name.lower(): pi for pi in plan.inputs}
+            for dummy in plan.producer.arguments:
+                supply = supplied.get(dummy.name.lower())
+                if supply is None or supply.argument is not None:
+                    continue
+                if isinstance(supply.constant, bool) and dummy.type.kind:
+                    kinds.add(dummy.type.kind)
+        return kinds
+
     def _validation_call(self, argument: Argument, position: int) -> str:
         validator = self._validator_for(argument)
         if validator is None:
@@ -724,10 +850,12 @@ class FortranWrapperEmitter:
         if directives.sentinel is not None:
             keywords.append(f"sentinel={directives.sentinel.expression}")
         if argument.type.base is BaseType.REAL:
+            # `tox_errors` declares these two `logical(c_bool)`, and argument association
+            # does not convert kinds -- so the emitter's own literal has to carry it.
             if directives.allows_nan:
-                keywords.append("allow_nan=.true.")
+                keywords.append(f"allow_nan=.true._{_VALIDATOR_LOGICAL_KIND}")
             if directives.allows_infinite:
-                keywords.append("allow_infinite=.true.")
+                keywords.append(f"allow_infinite=.true._{_VALIDATOR_LOGICAL_KIND}")
 
         return f"call {validator}({head}, {', '.join(keywords)})"
 
@@ -857,15 +985,16 @@ class FortranWrapperEmitter:
             writer.line(f"call init_perm({argument.name})")
             writer.line(f"call sort_array_heapsort({base}, {argument.name})")
 
-    # -- the kernel call --------------------------------------------------------
+    # -- the implementation call --------------------------------------------------------
 
-    def _kernel_call(self, writer: Writer, foo: Procedure, module: Module) -> None:
-        kernel = self._kernel_name(foo, module)
-        arguments = self._kernel_call_arguments(foo, module)
+    def _impl_call(self, writer: Writer, foo: Procedure, module: Module) -> None:
+        impl = self._impl_name(foo, module)
+        arguments = self._impl_call_arguments(foo, module)
         mode_fix = self._mode_fix(foo)
-        # the validating wrapper carries exactly the kernel arguments this variant supplies
-        # (as dummies, or -- in the allocating body -- as the locals it prepared); anything
-        # else is a mode fixed to its parameter, or an argument another mode takes and this
+        # the validating wrapper carries exactly the implementation arguments this variant
+        # supplies (as dummies, or -- in the allocating body -- as the locals it prepared);
+        # anything else is a mode fixed to its parameter, or an argument another mode takes and
+        # this
         # one omits (an absent optional)
         present = {a.name.lower() for a in foo.arguments}
         actuals = []
@@ -875,8 +1004,8 @@ class FortranWrapperEmitter:
                 actuals.append((argument.name, mode_fix.parameter))
             elif lowered in present:
                 actuals.append((argument.name, argument.name))
-        self._call(writer, kernel, actuals)
-        if self._kernel_declares_error(foo, module):
+        self._call(writer, impl, actuals)
+        if self._impl_declares_error(foo, module):
             self._clear_arg_pos(writer)
 
     def _clear_arg_pos(self, writer: Writer) -> None:
@@ -901,15 +1030,41 @@ class FortranWrapperEmitter:
         writer.line(")")
 
 
+#: The kind `tox_errors` declares its logical dummies with, which is what the emitter's own
+#: `allow_nan=`/`allow_infinite=` literals must carry.
+_VALIDATOR_LOGICAL_KIND = "c_bool"
+
+#: Kind constants that live in `iso_c_binding` rather than `iso_fortran_env`. Splitting them
+#: matters from the moment any argument is `logical(c_bool)`: emitting one `only:` list from
+#: `iso_fortran_env` put `c_bool` in it, and gfortran rejects the module outright -- then
+#: reports every dummy of that kind as having no implicit type, which reads like ten separate
+#: faults rather than one bad `use`.
+_C_BINDING_KINDS = frozenset({
+    "c_bool", "c_char", "c_signed_char", "c_short", "c_int", "c_long", "c_long_long",
+    "c_float", "c_double", "c_long_double", "c_float_complex", "c_double_complex",
+    "c_size_t", "c_int8_t", "c_int16_t", "c_int32_t", "c_int64_t", "c_intptr_t",
+    "c_ptr", "c_funptr",
+})
+
+
+def _kind_module(kind: str) -> str:
+    """The intrinsic module a kind constant comes from."""
+    return "iso_c_binding" if kind in _C_BINDING_KINDS else "iso_fortran_env"
+
+
 def _fortran_literal(value: object, argument: Argument) -> str:
     """A constant producer input, rendered back as a kinded Fortran literal.
 
     The kind is the producer dummy's own, so `1` handed to an `integer(int32)` input comes
-    out `1_int32` and `.false.` for a logical.
+    out `1_int32`, and `.false.` handed to a `logical(c_bool)` one comes out
+    `.false._c_bool`. A logical was the exception until logicals stopped being default-kind:
+    argument association does not convert kinds, so an unkinded literal against a
+    `logical(c_bool)` dummy is a compile error rather than a silent widening.
     """
-    if isinstance(value, bool):
-        return ".true." if value else ".false."
     kind = argument.type.kind
+    if isinstance(value, bool):
+        literal = ".true." if value else ".false."
+        return f"{literal}_{kind}" if kind else literal
     if isinstance(value, int):
         return f"{value}_{kind}" if kind else str(value)
     if isinstance(value, float):

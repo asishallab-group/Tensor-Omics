@@ -7,14 +7,13 @@
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
 
-# The generated binding exposes the Fortran routine as it is; the sort prep the old
-# wrapper did is here, so the assertions below stay about the numerics.
+# The entry point sorts the distribution itself; only the clamping of invalid (negative)
+# RDIs is left here, so the assertions below stay about the numerics.
 scaled_distance_quantile <- function(distribution, c_const) {
   if (length(distribution) == 0) return(numeric(0))
   sorted_rdi <- distribution
   sorted_rdi[sorted_rdi < 0] <- 0
-  perm <- order(sorted_rdi)
-  compute_scaled_distance_quantile(distribution, sorted_rdi, perm, c_const)
+  compute_scaled_distance_quantile(distribution, sorted_rdi, c_const)
 }
 
 # =====================

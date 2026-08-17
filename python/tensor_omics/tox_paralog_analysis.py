@@ -1,6 +1,18 @@
-"""tox_paralog_analysis
+r"""tox_paralog_analysis
 
-Generated from the kernel; do not edit -- regenerate instead.
+Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.
+
+Candidate paralog subsets are enumerated as bitmask-encoded gene sets, built up one gene at a time
+starting from single genes. At every extension step the candidate is scored against the pattern-specific
+criterion (small angle plus magnitude gain for dosage effect, or bounded residual distance for
+subfunctionalization); subsets that can no longer satisfy the criterion are pruned instead of being
+extended further, which keeps the combinatorial subset search tractable.
+
+There is a routine per pattern rather than one taking a pattern flag:
+`detect_dosage_effect` and `detect_subfunctionalization` find the subsets, and
+`filter_paralogs_by_pattern_dosage_effect` / `_subfunctionalization` reduce a set of genes to
+those matching. Which criterion a result was scored against is therefore visible at the call
+site, and each routine takes only the thresholds its own pattern needs.
 
 Python binding, generated from tox_paralog_analysis. Do not edit.
 """
@@ -281,7 +293,7 @@ def detect_dosage_effect(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_paralog_analysis::detect_dosage_effect`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -310,7 +322,7 @@ def detect_dosage_effect(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_paralog_analysis_kernel import calc_work_arr_paralog_subsets_size
+    from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
     _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]
@@ -385,7 +397,7 @@ def detect_subfunctionalization(
         max allowed residual distance from `ancestor`
         The minimum valid value is `0.0`.
     paralog_norms : np.ndarray[np.float64] of shape (n_genes,)
-        euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+        euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
         The minimum valid value is `0.0`.
     sorted_paralog_norms_perm : np.ndarray[np.int32] of shape (n_genes,)
         ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
@@ -411,7 +423,7 @@ def detect_subfunctionalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_paralog_analysis::detect_subfunctionalization`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -452,7 +464,7 @@ def detect_subfunctionalization(
     n_mask_chunks = filtered_paralogs_mask.shape[0]
 
     # work out what other procedures must supply, per DM_OUTPUT_FROM
-    from .tox_paralog_analysis_kernel import calc_work_arr_paralog_subsets_size
+    from .tox_paralog_analysis_impl import calc_work_arr_paralog_subsets_size
     _calc_work_arr_paralog_subsets_size_result = calc_work_arr_paralog_subsets_size(max_subset_size=max_subset_size, n_genes=n_genes, filtered_paralogs_mask=filtered_paralogs_mask)
     max_subset_size = _calc_work_arr_paralog_subsets_size_result["max_subset_size"]
     n_paralog_subsets = _calc_work_arr_paralog_subsets_size_result["work_array_size"]

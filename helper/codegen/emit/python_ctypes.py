@@ -22,7 +22,7 @@ from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 from .error_arguments import sources_of
-from .doc_numpydoc import render_docstring
+from .doc_numpydoc import _description, render_docstring
 
 #: A Fortran numeric literal's kind suffix -- `0_int32`, `2.0_real64`. Python has no such
 #: thing, so an extent expression carried over verbatim (`max(0_int32, n - 1)`) is a syntax
@@ -90,9 +90,10 @@ def ctype_of(argument: CArgument) -> str:
 def dtype_of(argument: CArgument) -> str:
     """The numpy dtype of an array of this type.
 
-    A character is `S<len>`: numpy lays `S<n>` items out as n contiguous zero-padded
-    bytes each, which is exactly Fortran's `character(len=1) :: buf(len, n)` in column
-    order. So the strings need no repacking, only encoding.
+    A character is `S<len>`: numpy lays `S<n>` items out as n contiguous bytes each, which
+    is exactly Fortran's `character(len=1) :: buf(len, n)` in column order. So the strings
+    need no repacking, only encoding -- and the blank padding this layer applies itself,
+    because the wrapper reads the buffer back through a `character(len=n)` pointer view.
     """
     if argument.type.is_character:
         return _character_dtype(argument)
@@ -123,6 +124,20 @@ def _character_dtype(argument: CArgument) -> str:
 def character_length(argument: CArgument) -> str:
     """A character's length, which C carries as its leading extent."""
     return argument.dimension.extents[0]
+
+
+def _pad_width(argument: CArgument) -> str | None:
+    """The byte width an encoded string is blank-padded to, or None where numpy sizes it.
+
+    Deliberately the same text `_character_dtype` interpolates into `S<n>`, so the padding
+    and the item size cannot drift apart. `None` is the assumed-length *input* case, where
+    the strings themselves are where the length comes from and there is no width to pad to
+    until they have been encoded.
+    """
+    length = argument.source.type.length if argument.source else None
+    if length is not None and length.is_assumed and argument.intent.is_input:
+        return None
+    return character_length(argument)
 
 
 def character_rank(argument: CArgument) -> int:
@@ -266,18 +281,25 @@ class PythonEmitter:
 
     def module(self, module: CWrapperModule) -> str:
         writer = Writer()
-        # the name first, then whatever the module says about itself: interpolating that
-        # summary into a sentence turns a generated module's "do not edit" banner into
-        # "Python binding to Generated from the kernel; do not edit".
-        summary = module.doc.summary
-        body = f"{summary}\n\n" if summary else ""
-        writer.block(
-            f'"""{module.stripped_name}\n'
-            f"\n"
-            f"{body}"
-            f"Python binding, generated from {module.stripped_name}. Do not edit.\n"
-            f'"""'
+        # The module's whole documentation, not only its first line. A generated module is
+        # the published API, so what the author wrote about the family is what a Python
+        # reader should get; taking the summary alone dropped every module doc to one
+        # sentence. Rendered through `_description` like any other doc, so Ford links
+        # resolve to the bindings a Python caller can actually reach.
+        body = Writer()
+        _description(body, module.doc, self)
+        rendered = body.render()
+        # raw, for the same reason a procedure docstring is: an author's prose carries LaTeX
+        # (`\(`, `\frac`), which is an invalid escape sequence in a plain string
+        writer.line(f'r"""{module.stripped_name}')
+        writer.blank()
+        if rendered:
+            writer.block(rendered)
+            writer.blank()
+        writer.line(
+            f"Python binding, generated from {module.stripped_name}. Do not edit."
         )
+        writer.line('"""')
         writer.blank()
         writer.line("import ctypes")
         writer.line("import os")
@@ -462,10 +484,14 @@ class PythonEmitter:
         if argument.conversion is Conversion.MODE:
             # a mode is a character to C, so it goes through the same buffer as any
             # string; only lower-cased first, since the C wrapper matches on the
-            # lower-case spelling of the parameter name
+            # lower-case spelling of the parameter name. Blank-padded like every other
+            # string: the C wrapper matches the buffer with `select case`, and a Fortran
+            # character comparison blank-pads the shorter operand, so "iqr   " still
+            # selects `case ("iqr")`.
             body = Writer()
             body.line(
-                f"{name} = np.array([str({name}).lower().encode()], "
+                f"{name} = np.array([str({name}).lower().encode()"
+                f".ljust({character_length(argument)})], "
                 f"dtype={dtype_of(argument)})"
             )
             return self._guarded(argument, body)
@@ -555,25 +581,51 @@ class PythonEmitter:
             )
 
     def _prepare_character(self, argument: CArgument) -> Writer:
-        """Encode strings into the zero-padded buffer C expects.
+        """Encode strings into the blank-padded buffer C expects.
 
-        numpy's `S` dtype pads with nulls, which is what makes this safe: Fortran's
-        `c_char_1d_as_string` reads up to the first null, so a short string in a long
-        buffer arrives with its real length.
+        The Fortran wrapper takes a `character(len=strlen)` pointer view of this buffer
+        rather than converting it, so whatever pads a short string *is* part of the value.
+        Blanks are the padding Fortran's own `trim`, `len_trim` and string comparison are
+        defined on, and no UTF-8 continuation byte (0x80-0xBF) can be mistaken for one.
+
+        The padding goes on the **encoded bytes**, never on the `str`: the width is a byte
+        count everywhere else in this layer, and `str.ljust` would measure it in characters
+        -- after which numpy would re-pad a multibyte string with the nulls this replaced.
         """
         name = argument.name
+        width = _pad_width(argument)
         body = Writer()
         if character_rank(argument) == 0:
-            body.line(f"{name} = np.array([str({name}).encode()], dtype={dtype_of(argument)})")
+            # Where numpy sizes the item, ljust(1) is the whole job: it is a no-op for
+            # every non-empty string, and it stops an empty one becoming numpy's forced
+            # single null byte.
+            body.line(
+                f"{name} = np.array([str({name}).encode().ljust({width or 1})], "
+                f"dtype={dtype_of(argument)})"
+            )
         else:
             body.line("try:")
             with body.indent():
                 items = (f"np.asarray({name}).ravel(order='F')"
                          if argument.shape_arg is not None else name)
-                body.line(
-                    f"{name} = np.asarray("
-                    f"[str(_s).encode() for _s in {items}], dtype={dtype_of(argument)})"
-                )
+                if width is None:
+                    # numpy sizes the item from the longest element, so the width is not
+                    # known until every string is encoded. `default=0` covers an empty
+                    # sequence and `or 1` an array of nothing but empty strings, either of
+                    # which would otherwise ask numpy for a width of zero.
+                    body.line(f"_{name}_bytes = [str(_s).encode() for _s in {items}]")
+                    body.line(f"_{name}_width = max(map(len, _{name}_bytes), default=0) or 1")
+                    body.line(
+                        f"{name} = np.asarray("
+                        f"[_b.ljust(_{name}_width) for _b in _{name}_bytes], "
+                        f"dtype={dtype_of(argument)})"
+                    )
+                else:
+                    body.line(
+                        f"{name} = np.asarray("
+                        f"[str(_s).encode().ljust({width}) for _s in {items}], "
+                        f"dtype={dtype_of(argument)})"
+                    )
             body.line("except TypeError as error:")
             with body.indent():
                 body.line(
@@ -921,11 +973,12 @@ class PythonEmitter:
             return f"np.empty(({count},), dtype={dtype_of(argument)}, order='C')"
 
         if argument.type.is_character:
-            # zeros, not empty, and this is the one case where it matters. Fortran fills
-            # a character buffer only partially: string_as_c_char_1d writes the string
-            # and *one* null, and string_as_c_char_2d fills only as many columns as it
-            # has strings. Uninitialised bytes past that would be read back as a string,
-            # because nothing terminates them. Zeros are the null padding that does.
+            # zeros, not empty, and this is the one case where it matters. Fortran writes
+            # through a pointer view, so it blank-fills the whole width of every element it
+            # assigns -- but it may assign none at all (an early error return, an array it
+            # fills only partly). The zeros are what makes such an element read back as ""
+            # rather than as garbage: numpy drops the trailing nulls of an `S` item.
+            # Not `np.full(..., b" ")`, which fills each item with one blank and nulls.
             shape = ", ".join(_python_extent(e) for e in argument.dimension.extents[1:]) or "1"
             return f"np.zeros(({shape},), dtype={dtype_of(argument)})"
 
@@ -1052,14 +1105,17 @@ class PythonEmitter:
             # shape, so the caller gets the n-d array back rather than the flat buffer
             # and a shape they have to reapply themselves. Column-major, as Fortran wrote.
             if argument.type.is_character:
-                decoded = f"[_s.decode() for _s in {argument.name}]"
+                decoded = f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
                 return f"np.asarray({decoded}).reshape(tuple({argument.shape_arg}), order='F')"
             return f"{argument.name}.reshape(tuple({argument.shape_arg}), order='F')"
         if argument.type.is_character:
-            # numpy hands back zero-padded bytes; the caller wants str
+            # numpy hands back the bytes with any trailing nulls already dropped; Fortran
+            # blank-padded them to the buffer width, so the caller's str is what is left
+            # after the blanks. `rstrip(' ')` and not a bare `rstrip()`: that would also eat
+            # tabs and newlines, which travel through this API as data.
             if character_rank(argument) == 0:
-                return f"{argument.name}[0].decode()"
-            return f"[_s.decode() for _s in {argument.name}]"
+                return f"{argument.name}[0].decode().rstrip(' ')"
+            return f"[_s.decode().rstrip(' ') for _s in {argument.name}]"
         if argument.is_scalar:
             return f"{argument.name}.value"
         if roles is not None and roles.result_size_arg is not None:

@@ -1,4 +1,4 @@
-"""f42_serde_arrays_deserialize_int
+r"""f42_serde_arrays_deserialize_int
 
 Module for deserializing integer arrays from files
 
@@ -61,7 +61,7 @@ def deserialize_int_helper(
     _filename_raw = filename
 
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize

@@ -14,7 +14,18 @@
     "body": [
       "${1:result} <- bst_range_query(",
       "  values = ${2:values},",
-      "  sorted_indices = ${3:sorted_indices},",
+      "  lower_bound = ${3:lower_bound},",
+      "  upper_bound = ${4:upper_bound}",
+      ")"
+    ]
+  },
+  "bst_range_query_expert (call)": {
+    "prefix": "f42:bst_range_query_expert",
+    "description": "bst_range_query_expert",
+    "body": [
+      "${1:result} <- bst_range_query_expert(",
+      "  values = ${2:values},",
+      "  values_perm = ${3:values_perm},",
       "  lower_bound = ${4:lower_bound},",
       "  upper_bound = ${5:upper_bound}",
       ")"
@@ -159,22 +170,45 @@
       ")"
     ]
   },
+  "compute_edf (call)": {
+    "prefix": "f42:compute_edf",
+    "description": "Returns the sorted unique values and their cumulative frequencies in [0,1].",
+    "body": [
+      "${1:result} <- compute_edf(",
+      "  values = ${2:values}",
+      ")"
+    ]
+  },
   "compute_edf_expert (call)": {
     "prefix": "f42:compute_edf_expert",
     "description": "Returns the sorted unique values and their cumulative frequencies in [0,1].",
     "body": [
       "${1:result} <- compute_edf_expert(",
       "  values = ${2:values},",
-      "  perm = ${3:perm}",
+      "  values_perm = ${3:values_perm}",
       ")"
     ]
   },
-  "compute_edf (call)": {
-    "prefix": "f42:compute_edf",
-    "description": "Allocates workspace internally and performs sorting before computing EDF.",
+  "calc_percentile (call)": {
+    "prefix": "f42:calc_percentile",
+    "description": "Uses linear interpolation between adjacent values.",
     "body": [
-      "${1:result} <- compute_edf(",
-      "  values = ${2:values}",
+      "${1:result} <- calc_percentile(",
+      "  array = ${2:array},",
+      "  percentile = ${3:percentile},",
+      "  n_considered = ${4:0L}",
+      ")"
+    ]
+  },
+  "calc_percentile_expert (call)": {
+    "prefix": "f42:calc_percentile_expert",
+    "description": "Uses linear interpolation between adjacent values.",
+    "body": [
+      "${1:result} <- calc_percentile_expert(",
+      "  array = ${2:array},",
+      "  array_perm = ${3:array_perm},",
+      "  percentile = ${4:percentile},",
+      "  n_considered = ${5:0L}",
       ")"
     ]
   },
@@ -185,7 +219,18 @@
       "${1:result} <- compute_scaled_distance_quantile(",
       "  rdi = ${2:rdi},",
       "  sorted_rdi = ${3:sorted_rdi},",
-      "  perm = ${4:perm},",
+      "  c_const = ${4:c_const}",
+      ")"
+    ]
+  },
+  "compute_scaled_distance_quantile_expert (call)": {
+    "prefix": "f42:compute_scaled_distance_quantile_expert",
+    "description": "This is NOT a null-hypothesis-testing p-value: each distance is compared against the",
+    "body": [
+      "${1:result} <- compute_scaled_distance_quantile_expert(",
+      "  rdi = ${2:rdi},",
+      "  sorted_rdi = ${3:sorted_rdi},",
+      "  sorted_rdi_perm = ${4:sorted_rdi_perm},",
       "  c_const = ${5:c_const}",
       ")"
     ]

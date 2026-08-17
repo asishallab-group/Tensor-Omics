@@ -5,9 +5,10 @@ module mod_test_data_integration
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
     ! an internal helper of the permutation test, so it stays in the kernel module
-    use tox_data_integration_stats_kernel, only: shuffle_reference_point_helper
+    use tox_data_integration_stats_impl, only: shuffle_reference_point_helper
     use tox_errors
-    use f42_utils, only: above, below, init_random, shuffle_vector
+    use f42_math_impl, only: above, below
+    use f42_random_impl, only: init_random, shuffle_vector
     use test_suite, only: test_case
 
     implicit none
@@ -49,7 +50,7 @@ contains
         ! all_tests(22) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
     end function get_all_tests_data_integration
 
-    !> Test the fjct_compute_jsd_alloc function.
+    !> Test the fjct_compute_jsd function.
     subroutine test_fjct
         integer(int32), parameter :: n_reps_S1 = 3, n_reps_S2 = 4, n_neighbors = 5, n_points = 3, k_families = 2
         integer(int32), parameter :: n_bins = 4, n_genes_S1 = 10, n_genes_S2 = 10
@@ -115,7 +116,7 @@ contains
         expected_js_divergences = 0.0_real64
 
         expected_weights = [1.0_real64, 0.0_real64, 0.0_real64]
-        call fjct_compute_jsd_alloc( &
+        call fjct_compute_jsd( &
             family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
             neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, &
             included_n_reps_S1, included_n_reps_S2, total_included_n_reps(family_idx), global_js_divergence(family_idx), weights, ierr &
@@ -135,7 +136,7 @@ contains
         expected_total_included_n_reps = 3_int32
         expected_js_divergences = [0.0_real64, 0.0_real64, 0.5_real64*log(2.0_real64)] ! s1 pmf val is 1.0, s2 is 0 -> mean is 0.5 -> jsd is 0.5*log(2)
         expected_weights = [0.0_real64, 0.0_real64, 1.0_real64]
-        call fjct_compute_jsd_alloc( &
+        call fjct_compute_jsd( &
             family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
             neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, &
             included_n_reps_S1, included_n_reps_S2, total_included_n_reps(family_idx), global_js_divergence(family_idx), weights, ierr &
@@ -221,7 +222,7 @@ contains
         S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
 
         global_jsd_observed = 0.0_real64
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, random_seed=random_seed, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
+        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, random_seed=random_seed, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 1: unexpected error")
 
         call assert_equal_array_real(shuffled_S_12, expected_S_12, size(S_12, kind=int32), 0.0_real64, "test_gjct_permutation_test: Test 1: concatenated S1, S2 does not match the expected permutation")
@@ -235,11 +236,11 @@ contains
         S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
 
         call init_random(random_seed)
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
+        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 2: 1. call, unexpected error")
         call assert_equal_array_real(shuffled_S_12, expected_S_12, size(S_12, kind=int32), 0.0_real64, "test_gjct_permutation_test: Test 2: 1. call, concatenated S1, S2 does not match the expected permutation")
 
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
+        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 2: 2. call, unexpected error")
         call assert_true(any(shuffled_S_12 /= expected_S_12), "test_gjct_permutation_test: Test 2: 2. call, concatenated S1, S2 should not match the expected permutation")
 
@@ -254,14 +255,14 @@ contains
         ! all should be greater or equal -> p_value=1
         global_jsd_observed = 0.0_real64
 
-        call gjct_permutation_test_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
+        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 3: unexpected error")
 
         call assert_equal_real(p_value, 1.0_real64, TOL, "test_gjct_permutation_test: Test 3: for zero observed jsd, p_value should be 1")
 
         ! no one should be greater or equal -> p_value=1/(n_permutations+1)=1/3
         global_jsd_observed = huge(0.0_real64)
-        call gjct_permutation_test_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
+        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 3: unexpected error")
 
         call assert_equal_real(p_value, 1.0_real64/3.0_real64, TOL, "test_gjct_permutation_test: Test 3: for max observed jsd, p_value should be 1/3")
@@ -321,18 +322,18 @@ contains
         ! Expected R = 10 + 0.65 * (11-10) = 10.65
         !
 
-        call determine_study_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_determine_shared_residual_range: Test 1: ierr should be OK")
         call assert_equal_real(R, 10.65_real64, TOL, "test_determine_shared_residual_range: Test 1: R should be 10.65")
 
         ! ============================================================
-        ! Test 2 — Custom quantile (50%)
+        ! Test 2 — Custom quantile (median, q=0.5)
         ! ============================================================
         !
         ! Median of sorted array above = 0.5 * (sorted(12) + sorted(13)) = 5.5
         !
-        q = 50.0_real64
-        call determine_study_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
+        q = 0.5_real64
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_determine_shared_residual_range: Test 2: ierr should be OK")
         call assert_equal_real(R, 4.0_real64, TOL, "test_determine_shared_residual_range: Test 2: R should be 4.0")
 
@@ -340,14 +341,14 @@ contains
         ! Test 3 — Quantile < 0 → error
         ! ============================================================
         q = below(0.0_real64)
-        call determine_study_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_determine_shared_residual_range: Test 3: ierr should be INVALID_INPUT")
 
         ! ============================================================
-        ! Test 4 — Quantile > 100 → error
+        ! Test 4 — Quantile > 1 → error
         ! ============================================================
-        q = above(100.0_real64)
-        call determine_study_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
+        q = above(1.0_real64)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr, residual_range_quantile=q)
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_determine_shared_residual_range: Test 4: ierr should be INVALID_INPUT")
 
         ! ============================================================
@@ -376,7 +377,7 @@ contains
         ! sorted(25) = 11
         ! -> R = 11
         !
-        call determine_study_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_determine_shared_residual_range: Test 5: ierr should be OK")
         call assert_equal_real(R, 11.0_real64, TOL, "test_determine_shared_residual_range: Test 5: R should ignore NaNs")
 
@@ -385,7 +386,7 @@ contains
         ! ============================================================
         S1 = 0.0_real64
         S2 = 0.0_real64
-        call determine_study_shared_residual_range_alloc(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr)
+        call determine_study_shared_residual_range(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, R, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_determine_shared_residual_range: Test 6: ierr should be OK")
         call assert_equal_real(R, 0.0_real64, TOL, "test_determine_shared_residual_range: Test 6: R should be zero")
 
@@ -397,7 +398,7 @@ contains
         ! sorted = [3, 4]
         ! rank = 0.95 * (2-1) + 1 = 1.95
         ! R = 3 + (4-3)*0.95 = 3.95
-        call determine_study_shared_residual_range_alloc(S1, S2, 1_int32, 1_int32, 1_int32, 1_int32, R, ierr=ierr)
+        call determine_study_shared_residual_range(S1, S2, 1_int32, 1_int32, 1_int32, 1_int32, R, ierr=ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_determine_shared_residual_range: Test 6: ierr should be OK")
         call assert_equal_real(R, 3.95_real64, TOL, "test_determine_shared_residual_range: Test 7: R should be 3.95")
 
@@ -1026,10 +1027,10 @@ contains
     end subroutine test_compute_residuals_invalid_input
 
     ! --------------------------------------------------------------------------
-    ! Test Cases for pool_means_alloc
+    ! Test Cases for pool_means
     ! --------------------------------------------------------------------------
 
-    ! Test case 9: Basic pool_means_alloc functionality.
+    ! Test case 9: Basic pool_means functionality.
     subroutine test_pool_means_alloc_basic()
         integer, parameter :: n_genes_S1 = 5, n_genes_S2 = 5, n_points = 3
         real(real64) :: mean_S1(n_genes_S1), mean_S2(n_genes_S2), x_star(n_points)
@@ -1038,7 +1039,7 @@ contains
         mean_S1 = [1.0, 3.0, 5.0, 7.0, 9.0]
         mean_S2 = [2.0, 4.0, 6.0, 8.0, 10.0]
 
-        call pool_study_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
+        call pool_study_means(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_alloc_basic: should succeed")
         call assert_equal_int(N_pool, 10, "test_pool_means_alloc_basic: N_pool should be 10")
@@ -1052,7 +1053,7 @@ contains
         call assert_equal_real(x_star(3), 7.75_real64, TOL, "test_pool_means_alloc_basic: third quantile")
     end subroutine test_pool_means_alloc_basic
 
-    ! Test case 10: pool_means_alloc with NaN values.
+    ! Test case 10: pool_means with NaN values.
     subroutine test_pool_means_alloc_with_nan()
         integer, parameter :: n_genes_S1 = 4, n_genes_S2 = 4, n_points = 2
         real(real64) :: mean_S1(n_genes_S1), mean_S2(n_genes_S2), x_star(n_points)
@@ -1061,7 +1062,7 @@ contains
         mean_S1 = [1.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 3.0_real64, 5.0_real64]
         mean_S2 = [2.0_real64, 4.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 6.0_real64]
 
-        call pool_study_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
+        call pool_study_means(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_alloc_with_nan: should succeed")
         call assert_equal_int(N_pool, 6, "test_pool_means_alloc_with_nan: N_pool should exclude NaN values")
@@ -1072,7 +1073,7 @@ contains
         call assert_equal_real(x_star(2), 4.0_real64 + 1.0_real64/3.0_real64, TOL, "test_pool_means_alloc_with_nan: second quantile")
     end subroutine test_pool_means_alloc_with_nan
 
-    ! Test case 11: pool_means_alloc with single study.
+    ! Test case 11: pool_means with single study.
     subroutine test_pool_means_alloc_single_study()
         integer, parameter :: n_genes_S1 = 5, n_genes_S2 = 1, n_points = 3
         real(real64) :: mean_S1(n_genes_S1), mean_S2(1), x_star(n_points)
@@ -1081,13 +1082,13 @@ contains
         mean_S1 = [1.0, 2.0, 3.0, 4.0, 5.0]
         mean_S2 = [0.0]  ! Dummy
 
-        call pool_study_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
+        call pool_study_means(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_alloc_single_study: should succeed")
         ! Does not work with a single study
     end subroutine test_pool_means_alloc_single_study
 
-    ! Test case 12: pool_means_alloc with invalid input.
+    ! Test case 12: pool_means with invalid input.
     subroutine test_pool_means_alloc_invalid_input()
         integer, parameter :: n_genes_S1 = 0, n_genes_S2 = 5, n_points = 3
         real(real64) :: mean_S1(1), mean_S2(5), x_star(n_points)
@@ -1096,11 +1097,11 @@ contains
         mean_S2 = [1.0, 2.0, 3.0, 4.0, 5.0]
 
         ! Test with zero genes in S1
-        call pool_study_means_alloc(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
+        call pool_study_means(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, N_pool, x_star, ierr)
         call assert_not_equal_int(ierr, ERR_OK, "test_pool_means_alloc_invalid_input: zero genes in S1 should fail")
 
         ! Test with zero points
-        call pool_study_means_alloc(5, mean_S2, n_genes_S2, mean_S2, 0, N_pool, x_star, ierr)
+        call pool_study_means(5, mean_S2, n_genes_S2, mean_S2, 0, N_pool, x_star, ierr)
         call assert_not_equal_int(ierr, ERR_OK, "test_pool_means_alloc_invalid_input: zero points should fail")
     end subroutine test_pool_means_alloc_invalid_input
 
@@ -1135,7 +1136,7 @@ contains
         ! -----------------------------
         ! Call routine
         ! -----------------------------
-        call construct_neighborhoods( &
+        call construct_neighborhoods_expert( &
             n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
@@ -1177,7 +1178,7 @@ contains
         call assert_equal_array_real(neighborhood_residuals(:, 2, 2), resid_S(:, 3), n_reps_S, TOL, &
                                      "test_construct_neighborhoods_basic: Incorrect residuals(:,2,2)")
 
-        call construct_neighborhoods( &
+        call construct_neighborhoods_expert( &
             0_int32, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
@@ -1185,7 +1186,7 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT")
 
-        call construct_neighborhoods( &
+        call construct_neighborhoods_expert( &
             n_points, x_star, 0_int32, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
@@ -1193,7 +1194,7 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT")
 
-        call construct_neighborhoods( &
+        call construct_neighborhoods_expert( &
             n_points, x_star, n_genes_S, mean_S, 0_int32, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
@@ -1201,7 +1202,7 @@ contains
 
         call assert_err(ierr, ERR_EMPTY_INPUT, "ierr must be ERR_EMPTY_INPUT", arg_pos=5_int32)
 
-        call construct_neighborhoods( &
+        call construct_neighborhoods_expert( &
             n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &
@@ -1236,7 +1237,7 @@ contains
                           10.0, 20.0, 30.0, 40.0 &
                           ], shape(resid_S))
 
-        call construct_neighborhoods( &
+        call construct_neighborhoods_expert( &
             n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, &
             tmp_distances, tmp_distances_perm, &
             neighborhood_residuals, neighborhood_indices, &

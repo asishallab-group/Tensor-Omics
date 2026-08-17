@@ -66,8 +66,8 @@ test_fjct <- function() {
   expected_js_divergences <- c(0,0,0)
   expected_weights <- c(1,0,0)
 
-  # ---- alloc variant ----
-  res_alloc <- fjct_compute_jsd(
+  # ---- plain variant ----
+  res_plain <- fjct_compute_jsd(
     family_idx,
     gene_to_family_S1,
     gene_to_family_S2,
@@ -88,32 +88,32 @@ test_fjct <- function() {
     shared_residual_range
   )
 
-  # ---- compare alloc vs expert ----
-  assert_equal_int(res_expert$included_n_reps_S1, res_alloc$included_n_reps_S1,
-                         "Family 1: expert vs alloc included_n_reps_S1 mismatch")
-  assert_equal_int(res_expert$included_n_reps_S2, res_alloc$included_n_reps_S2,
-                         "Family 1: expert vs alloc included_n_reps_S2 mismatch")
-  assert_equal_numeric(res_expert$js_divergences, res_alloc$js_divergences, TOL,
-                          "Family 1: expert vs alloc js_divergences mismatch")
-  assert_equal_numeric(res_expert$weights, res_alloc$weights, TOL,
-                          "Family 1: expert vs alloc weights mismatch")
-  assert_equal_numeric(res_expert$global_js_divergence, res_alloc$global_js_divergence, TOL,
-                    "Family 1: expert vs alloc global_js_divergence mismatch")
+  # ---- compare plain vs expert ----
+  assert_equal_int(res_expert$included_n_reps_S1, res_plain$included_n_reps_S1,
+                         "Family 1: expert vs plain included_n_reps_S1 mismatch")
+  assert_equal_int(res_expert$included_n_reps_S2, res_plain$included_n_reps_S2,
+                         "Family 1: expert vs plain included_n_reps_S2 mismatch")
+  assert_equal_numeric(res_expert$js_divergences, res_plain$js_divergences, TOL,
+                          "Family 1: expert vs plain js_divergences mismatch")
+  assert_equal_numeric(res_expert$weights, res_plain$weights, TOL,
+                          "Family 1: expert vs plain weights mismatch")
+  assert_equal_numeric(res_expert$global_js_divergence, res_plain$global_js_divergence, TOL,
+                    "Family 1: expert vs plain global_js_divergence mismatch")
 
-  # ---- compare alloc vs expected ----
-  assert_equal_int(res_alloc$total_included_n_reps, expected_total_included_n_reps,
+  # ---- compare plain vs expected ----
+  assert_equal_int(res_plain$total_included_n_reps, expected_total_included_n_reps,
                    "Family 1: total_included_n_reps mismatch")
-  assert_equal_int(res_alloc$included_n_reps_S1, expected_included_n_reps_S1,
+  assert_equal_int(res_plain$included_n_reps_S1, expected_included_n_reps_S1,
                          "Family 1: included_n_reps_S1 mismatch")
-  assert_equal_int(res_alloc$included_n_reps_S2, expected_included_n_reps_S2,
+  assert_equal_int(res_plain$included_n_reps_S2, expected_included_n_reps_S2,
                          "Family 1: included_n_reps_S2 mismatch")
-  assert_equal_numeric(res_alloc$js_divergences, expected_js_divergences, TOL,
+  assert_equal_numeric(res_plain$js_divergences, expected_js_divergences, TOL,
                           "Family 1: js_divergences mismatch")
-  assert_equal_numeric(res_alloc$weights, expected_weights, TOL,
+  assert_equal_numeric(res_plain$weights, expected_weights, TOL,
                           "Family 1: weights mismatch")
 
   expected_global_jsd <- expected_weights[3] * expected_js_divergences[3]
-  assert_equal_numeric(res_alloc$global_js_divergence, expected_global_jsd, TOL,
+  assert_equal_numeric(res_plain$global_js_divergence, expected_global_jsd, TOL,
                     "Family 1: global_js_divergence mismatch")
   # ============================================================
   # Family 2
@@ -137,8 +137,8 @@ test_fjct <- function() {
 
   expected_weights <- c(0,0,1)
 
-  # ---- alloc variant ----
-  res_alloc <- fjct_compute_jsd(
+  # ---- plain variant ----
+  res_plain <- fjct_compute_jsd(
     family_idx,
     gene_to_family_S1,
     gene_to_family_S2,
@@ -159,32 +159,32 @@ test_fjct <- function() {
     shared_residual_range
   )
 
-  # ---- compare alloc vs expert ----
-  assert_equal_int(res_expert$included_n_reps_S1, res_alloc$included_n_reps_S1,
-                         "Family 2: expert vs alloc included_n_reps_S1 mismatch")
-  assert_equal_int(res_expert$included_n_reps_S2, res_alloc$included_n_reps_S2,
-                         "Family 2: expert vs alloc included_n_reps_S2 mismatch")
-  assert_equal_numeric(res_expert$js_divergences, res_alloc$js_divergences, TOL,
-                          "Family 2: expert vs alloc js_divergences mismatch")
-  assert_equal_numeric(res_expert$weights, res_alloc$weights, TOL,
-                          "Family 2: expert vs alloc weights mismatch")
-  assert_equal_numeric(res_expert$global_js_divergence, res_alloc$global_js_divergence, TOL,
-                    "Family 2: expert vs alloc global_js_divergence mismatch")
+  # ---- compare plain vs expert ----
+  assert_equal_int(res_expert$included_n_reps_S1, res_plain$included_n_reps_S1,
+                         "Family 2: expert vs plain included_n_reps_S1 mismatch")
+  assert_equal_int(res_expert$included_n_reps_S2, res_plain$included_n_reps_S2,
+                         "Family 2: expert vs plain included_n_reps_S2 mismatch")
+  assert_equal_numeric(res_expert$js_divergences, res_plain$js_divergences, TOL,
+                          "Family 2: expert vs plain js_divergences mismatch")
+  assert_equal_numeric(res_expert$weights, res_plain$weights, TOL,
+                          "Family 2: expert vs plain weights mismatch")
+  assert_equal_numeric(res_expert$global_js_divergence, res_plain$global_js_divergence, TOL,
+                    "Family 2: expert vs plain global_js_divergence mismatch")
 
-  # ---- compare alloc vs expected ----
-  assert_equal_int(res_alloc$total_included_n_reps, expected_total_included_n_reps,
+  # ---- compare plain vs expected ----
+  assert_equal_int(res_plain$total_included_n_reps, expected_total_included_n_reps,
                    "Family 2: total_included_n_reps mismatch")
-  assert_equal_int(res_alloc$included_n_reps_S1, expected_included_n_reps_S1,
+  assert_equal_int(res_plain$included_n_reps_S1, expected_included_n_reps_S1,
                          "Family 2: included_n_reps_S1 mismatch")
-  assert_equal_int(res_alloc$included_n_reps_S2, expected_included_n_reps_S2,
+  assert_equal_int(res_plain$included_n_reps_S2, expected_included_n_reps_S2,
                          "Family 2: included_n_reps_S2 mismatch")
-  assert_equal_numeric(res_alloc$js_divergences, expected_js_divergences, TOL,
+  assert_equal_numeric(res_plain$js_divergences, expected_js_divergences, TOL,
                           "Family 2: js_divergences mismatch")
-  assert_equal_numeric(res_alloc$weights, expected_weights, TOL,
+  assert_equal_numeric(res_plain$weights, expected_weights, TOL,
                           "Family 2: weights mismatch")
 
   expected_global_jsd <- expected_weights[3] * expected_js_divergences[3]
-  assert_equal_numeric(res_alloc$global_js_divergence, expected_global_jsd, TOL,
+  assert_equal_numeric(res_plain$global_js_divergence, expected_global_jsd, TOL,
                     "Family 2: global_js_divergence mismatch")
 
   # ============================================================

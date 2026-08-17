@@ -20,9 +20,12 @@ test_bst_functions <- function() {
   
   # Test BST range query
   # DM_RESULT_SIZE_IS trims the result, so the count is no longer returned separately
-  range_result <- bst_range_query(x, bst_ix, 1.5, 3.5)
+  range_result <- bst_range_query_expert(x, bst_ix, 1.5, 3.5)
   slice <- x[range_result]
   assert_equal_numeric(slice, c(2.0, 3.0), 0.0, "Expected output match exactly the values in range 1.5,3.5")
+
+  # The allocating entry point builds the index itself
+  assert_equal_int(bst_range_query(x, 1.5, 3.5), range_result)
 }
 
 test_kd_functions <- function() {

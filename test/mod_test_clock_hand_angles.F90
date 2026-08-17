@@ -3,7 +3,8 @@ module mod_test_clock_hand_angles
     use asserts
     use tox_relative_axis_plane_tools
     use, intrinsic :: iso_fortran_env, only: real64
-    use f42_utils, only: PI
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use f42_math_impl, only: PI
     use test_suite, only: test_case
     use tox_errors
     implicit none
@@ -318,7 +319,7 @@ contains
     subroutine test_single_pair_shift_vectors()
         real(real64) :: fields(2, 2, 1), signed_angles(1)
         real(real64) :: reference(2)
-        logical :: vecs_selection_mask(1)
+        logical(c_bool) :: vecs_selection_mask(1)
         integer :: ierr
         fields(:, 1, 1) = [1.0_real64, 0.0_real64]
         fields(:, 2, 1) = [0.0_real64, 1.0_real64]
@@ -334,7 +335,7 @@ contains
     subroutine test_multiple_pairs_shift_vectors()
         real(real64) :: fields(2, 2, 3), signed_angles(3)
         real(real64) :: reference(2)
-        logical :: vecs_selection_mask(3)
+        logical(c_bool) :: vecs_selection_mask(3)
         integer :: ierr
         fields(:, 1, 1) = [1.0_real64, 0.0_real64]
         fields(:, 2, 1) = [0.0_real64, 1.0_real64]
@@ -355,7 +356,7 @@ contains
     subroutine test_shift_vectors_with_selection_mask()
         real(real64) :: fields(2, 2, 4), signed_angles(2)
         real(real64) :: reference(2)
-        logical :: vecs_selection_mask(4)
+        logical(c_bool) :: vecs_selection_mask(4)
         integer :: ierr
         fields(:, 1, 1) = [1.0_real64, 0.0_real64]
         fields(:, 2, 1) = [0.0_real64, 1.0_real64]
@@ -396,7 +397,7 @@ contains
         integer, parameter :: n_dims = 100, n_vecs = 1000
         real(real64) :: reference(n_dims)
         real(real64) :: fields(n_dims, 2, n_vecs), signed_angles(n_vecs)
-        logical :: vecs_selection_mask(n_vecs)
+        logical(c_bool) :: vecs_selection_mask(n_vecs)
         integer :: i, ierr
         ! every vector used to be a multiple of (1,1,...,1), so no rotation happened at all
         ! and no reference could have oriented one; these turn in the (1,2) plane instead
@@ -423,7 +424,7 @@ contains
         real(real64) :: v1(3), v2(3), single_angle
         real(real64) :: reference(3)
         real(real64) :: fields(3, 2, 1), batch_angles(1)
-        logical :: vecs_selection_mask(1)
+        logical(c_bool) :: vecs_selection_mask(1)
         integer :: ierr_single, ierr_batch
         v1 = [1.0_real64, 2.0_real64, 3.0_real64]
         v2 = [3.0_real64, 2.0_real64, 1.0_real64]

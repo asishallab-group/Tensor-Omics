@@ -3,6 +3,7 @@ module mod_test_get_outliers
   use asserts
   use tox_get_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite
   use tox_errors, only: get_err_code
   implicit none
@@ -13,7 +14,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(24))
+    allocate(all_tests(25))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -39,6 +40,7 @@ contains
     all_tests(22) = test_case("test_outliers_extreme_detection", test_outliers_extreme_detection)
     all_tests(23) = test_case("test_outliers_nan_handling", test_outliers_nan_handling)
     all_tests(24) = test_case("test_scaling_performance_benchmark",test_scaling_performance_benchmark)
+    all_tests(25) = test_case("test_family_scaling_non_finite_distance", test_family_scaling_non_finite_distance)
 
   end function get_all_tests_get_outliers
 
@@ -79,7 +81,7 @@ contains
       end do
     end do
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, 'Error code 0 (test_scaling_basic)')
@@ -140,7 +142,7 @@ contains
     ! 2. Timing subroutine
     call cpu_time(t1)
     
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
     
     call cpu_time(t2)
@@ -173,7 +175,7 @@ contains
     perm = [(i, i=1,n_genes)]
     stack_left = 0
     stack_right = 0
-    call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
+    call compute_rdi_expert(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
     call assert_equal_real(rdi(1), 1.0_real64, 1e-12_real64, "RDI gene 1")
     call assert_equal_real(rdi(2), 1.0_real64, 1e-12_real64, "RDI gene 2")
     call assert_equal_real(rdi(3), 1.5_real64, 1e-12_real64, "RDI gene 3")
@@ -190,17 +192,17 @@ contains
     integer(int32), parameter :: genes_per_fam = 6_int32
     integer(int32), parameter :: n_genes = n_families * genes_per_fam
 
-    real(real64)   :: distances(n_genes)
-    integer(int32) :: gene_to_fam(n_genes)
+    real(real64)    :: distances(n_genes)
+    integer(int32)  :: gene_to_fam(n_genes)
 
-    real(real64)   :: work_array(n_genes)
-    integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical        :: is_outlier(n_genes)
-    integer(int32) :: ierr
+    real(real64)    :: work_array(n_genes)
+    integer(int32)  :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
+    integer(int32)  :: ierr
 
-    real(real64)   :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: loess_n(n_families)
-    real(real64)   :: quantile(n_genes)
+    real(real64)    :: loess_x(n_families), loess_y(n_families)
+    integer(int32)  :: loess_n(n_families)
+    real(real64)    :: quantile(n_genes)
 
     integer(int32) :: f, j, idx
     integer(int32) :: i_out, i_norm
@@ -217,10 +219,10 @@ contains
       end do
     end do
 
-    call detect_outliers_alloc( &
+    call detect_outliers( &
         n_genes, n_families, distances, gene_to_fam, &
         is_outlier, loess_x, loess_y, loess_n, quantile, ierr=ierr, &
-        percentile=60.0_real64)
+        percentile=0.6_real64)
 
     call assert_equal_int(get_err_code(ierr), 0, "ierr should be 0 (test_detect_outliers_basic)")
     call assert_true(any(is_outlier), "At least one outlier detected")
@@ -263,7 +265,7 @@ contains
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes), sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -279,7 +281,7 @@ contains
     ! values ascending: 0.1 (idx2), 0.2 (idx4), 0.3 (idx1), 0.4 (idx3)
     perm = [2_int32, 4_int32, 1_int32, 3_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 75.0_real64, ierr=ierr)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.75_real64, ierr=ierr)
 
     ! percentile 75%: idx = ceil(4*0.75)=3
     ! threshold = sorted_rdi(perm(3)) = sorted_rdi(1) = 0.3
@@ -313,7 +315,7 @@ contains
     integer(int32), parameter :: n_genes=4
     real(real64) :: rdi(n_genes), sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -350,7 +352,7 @@ contains
     real(real64) :: rdi(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -359,7 +361,7 @@ contains
     sorted_rdi = rdi
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64, ierr=ierr)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 1.0_real64, ierr=ierr)
 
     call assert_equal_real(threshold, 0.4_real64, 1d-12, "Percentile 100 -> threshold must be maximum")
     call assert_false(any(is_outlier(1:3)), "No outliers below maximum at 100 percentile")
@@ -379,7 +381,7 @@ contains
     real(real64) :: rdi(n_genes) = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -400,7 +402,7 @@ contains
     call assert_equal_real(quantile(4), 2.0_real64/denom, 1d-12, "quantile(d=4)=0.4")
 
     ! Percentile 100 -> threshold = maximum (4.0)
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64, ierr=ierr)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 1.0_real64, ierr=ierr)
     call assert_equal_real(threshold, 4.0_real64, 1d-12, "p=100 -> threshold=max")
     call assert_false(any(is_outlier(1:3)), "Values below max not outliers at percentile 100")
     call assert_true(is_outlier(4), "Max value is outlier at percentile 100")
@@ -417,7 +419,7 @@ contains
     real(real64) :: rdi(n_genes) = [1.0_real64, 2.0_real64, 2.0_real64, 3.0_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -430,7 +432,7 @@ contains
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
     ! percentile 50 -> idx = ceil(4*0.5)=2 -> threshold = second smallest = 2.0
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 50.0_real64, ierr=ierr)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.5_real64, ierr=ierr)
 
     call assert_equal_real(threshold, 2.0_real64, 1d-12, "Threshold must be 2.0 at 50 percentile")
     call assert_true(is_outlier(2), "First 2.0 must be outlier")
@@ -452,7 +454,7 @@ contains
     real(real64) :: rdi(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     real(real64), parameter :: c = 1.0_real64
     real(real64), parameter :: denom = real(n_genes, real64) + c  ! 5.0
@@ -483,7 +485,7 @@ contains
     real(real64) :: rdi(n_genes) = [-0.1_real64, -0.2_real64, -0.3_real64, -0.4_real64, -0.5_real64]
     real(real64) :: sorted_rdi(n_genes), quantile(n_genes)
     integer(int32) :: perm(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: threshold
     integer(int32) :: ierr
 
@@ -496,7 +498,7 @@ contains
     ! All values equal (0). Any perm is fine.
     perm = [1_int32, 2_int32, 3_int32, 4_int32, 5_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 80.0_real64, ierr=ierr)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.8_real64, ierr=ierr)
 
     call assert_equal_real(threshold, 0.0_real64, 1d-12, "All-negative -> clamped distribution -> threshold 0")
     call assert_true(.not. any(is_outlier), "All-negative RDI should not be outliers")
@@ -515,12 +517,12 @@ contains
     integer(int32) :: gene_to_fam(n_genes) = [1,3,0]
     real(real64) :: work_array(n_genes)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64) :: quantile(n_genes)
     integer(int32) :: ierr
     real(real64) :: loess_x(n_families), loess_y(n_families)
     integer(int32) :: loess_n(n_families)
-    call detect_outliers_alloc(n_genes, n_families, distances, gene_to_fam, &
+    call detect_outliers(n_genes, n_families, distances, gene_to_fam, &
       is_outlier, loess_x, loess_y, loess_n, quantile, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), 201, 'detect_outliers propagates error_code 201 for invalid indices')
   end subroutine test_detect_outliers_invalid_indices
@@ -536,14 +538,14 @@ contains
 
     real(real64) :: work_array(n_genes)
     integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     integer(int32) :: ierr
 
     real(real64) :: loess_x(n_families), loess_y(n_families)
     integer(int32) :: loess_n(n_families)
     real(real64) :: quantile(n_genes)
 
-    call detect_outliers_alloc( &
+    call detect_outliers( &
       n_genes, n_families, distances, gene_to_fam, &
       is_outlier, loess_x, loess_y, loess_n, quantile, ierr=ierr)
 
@@ -589,7 +591,7 @@ contains
     gene_to_fam(7)  = 0_int32
     gene_to_fam(23) = n_families + 3_int32
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 201, 'Error code 201 for invalid family indices')
@@ -605,28 +607,28 @@ contains
 
     integer(int32), parameter :: n_genes = 1_int32, n_families = 1_int32
 
-    real(real64)   :: distances(n_genes)   = [0.0_real64]
-    integer(int32) :: gene_to_fam(n_genes) = [1_int32]
+    real(real64)    :: distances(n_genes)   = [0.0_real64]
+    integer(int32)  :: gene_to_fam(n_genes) = [1_int32]
 
-    real(real64)   :: dscale(n_families)
-    real(real64)   :: rdi(n_genes)
-    real(real64)   :: sorted_rdi(n_genes)
-    real(real64)   :: work_array(n_genes)
+    real(real64)    :: dscale(n_families)
+    real(real64)    :: rdi(n_genes)
+    real(real64)    :: sorted_rdi(n_genes)
+    real(real64)    :: work_array(n_genes)
 
-    integer(int32) :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
-    logical        :: is_outlier(n_genes)
-    integer(int32) :: ierr
-    integer(int32) :: i
+    integer(int32)  :: perm(n_genes), stack_left(n_genes), stack_right(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
+    integer(int32)  :: ierr
+    integer(int32)  :: i
 
-    real(real64)   :: loess_x(n_families), loess_y(n_families)
-    integer(int32) :: loess_n(n_families)  ! NOTE: used as workspace by scaling alloc in your detect_outliers
-    real(real64)   :: quantile(n_genes)
+    real(real64)    :: loess_x(n_families), loess_y(n_families)
+    integer(int32)  :: loess_n(n_families)  ! NOTE: used as workspace by scaling alloc in your detect_outliers
+    real(real64)    :: quantile(n_genes)
     ! the LOESS fit diagnostics the allocating wrapper returns alongside the scaling
     real(real64) :: low_sd_cutoff
     integer(int32) :: excluded_low_sd(n_families)
 
     ! 1) scaling (alloc wrapper)
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, loess_n, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), 0, "Scaling ierr should be 0 (test_single_gene_family)")
 
@@ -635,14 +637,14 @@ contains
     stack_left  = 0_int32
     stack_right = 0_int32
 
-    call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
+    call compute_rdi_expert(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
 
     ! 3) Outlier detection (and quantile)
     perm = [(i, i=1,n_genes)]
-    call detect_outliers_alloc( &
+    call detect_outliers( &
                         n_genes, n_families, distances, gene_to_fam, &
                         is_outlier, loess_x, loess_y, loess_n, quantile, ierr=ierr, &
-                        percentile=95.0_real64)
+                        percentile=0.95_real64)
 
     call assert_equal_int(get_err_code(ierr), 0, "detect_outliers ierr should be 0 (test_single_gene_family)")
 
@@ -694,7 +696,7 @@ contains
     end do
 
     ! Scaling (alloc wrapper)
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, loess_n, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), 0, "Scaling ierr should be 0 (test_all_zero_distances)")
 
@@ -703,7 +705,7 @@ contains
     stack_left  = 0_int32
     stack_right = 0_int32
 
-    call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
+    call compute_rdi_expert(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
 
     ! Assertions
     call assert_true(all(dscale == 0.0_real64), "All zero distances => all dscale == 0.0")
@@ -739,7 +741,7 @@ contains
       distances(i) = 1.0_real64 + 0.1_real64 * real(i-1, real64)
     end do
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "ierr should be 0 (test_all_genes_one_family)")
@@ -779,7 +781,7 @@ contains
     end do
 
     ! Scaling: with all singleton families, n_valid stays 0 => dscale remains 0 for all families
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), 0, "Scaling ierr should be 0 (test_negative_nan_distances)")
     call assert_true(all(dscale == 0.0_real64), "All singleton families => dscale should remain 0.0")
@@ -791,7 +793,7 @@ contains
     stack_left  = 0_int32
     stack_right = 0_int32
 
-    call compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
+    call compute_rdi_expert(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right, ierr)
 
     call assert_equal_real(rdi(1), 0.0_real64, 1e-12_real64, &
         "Negative distance with zero scaling gives RDI=0.0 (not outlier)")
@@ -831,7 +833,7 @@ contains
     gene_to_fam(10) = 0_int32
     gene_to_fam(37) = n_families + 5_int32
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 201, 'Error code 201 for invalid family indices')
@@ -862,12 +864,45 @@ contains
       gene_to_fam(i) = i  ! singleton families
     end do
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, 'Error code 0 for single-gene families')
     call assert_true(all(dscale == 0.0_real64), 'All singleton families scaling 0.0')
   end subroutine test_single_gene_family_scaling
+
+  !> A non-finite distance must surface as an error, not silently flow into log2.
+  !| `compute_family_scaling` feeds family means/stddevs to `logx_helper` (non-validating) inside a
+  !| `do concurrent`. The callee validates those log2 arguments up front so a NaN/Inf distance -- which
+  !| propagates into a family mean -- is rejected with `ierr`, rather than producing a NaN/Inf scale.
+  subroutine test_family_scaling_non_finite_distance()
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf
+    implicit none
+
+    integer(int32), parameter :: n_families = 2_int32
+    integer(int32), parameter :: n_genes    = 4_int32
+
+    real(real64)   :: distances(n_genes)
+    integer(int32) :: gene_to_fam(n_genes) = [1_int32, 1_int32, 2_int32, 2_int32]
+    real(real64)   :: dscale(n_families)
+    real(real64)   :: loess_x(n_families), loess_y(n_families)
+    integer(int32) :: indices_used(n_families)
+    integer(int32) :: ierr
+    ! the LOESS fit diagnostics the allocating wrapper returns alongside the scaling
+    real(real64) :: low_sd_cutoff
+    integer(int32) :: excluded_low_sd(n_families)
+
+    ! Two families of two genes each (so n_valid = 2, past the single-family early return); one
+    ! distance is +Inf, making that family's mean +Inf.
+    distances = [ieee_value(1.0_real64, ieee_positive_inf), 1.0_real64, 2.0_real64, 3.0_real64]
+
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
+                                loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, &
+                                excluded_low_sd=excluded_low_sd, ierr=ierr)
+
+    call assert_true(ierr /= 0, "Non-finite family mean must error, not reach log2 silently")
+  end subroutine test_family_scaling_non_finite_distance
 
   subroutine test_all_zero_distances_scaling()
     use, intrinsic :: iso_fortran_env, only: int32, real64
@@ -900,7 +935,7 @@ contains
       end do
     end do
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, 'Error code 0 for all-zero distances')
@@ -938,7 +973,7 @@ contains
       end do
     end do
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, indices_used, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, 'Error code 0 for LOESS global scaling')
@@ -969,7 +1004,7 @@ contains
       gene_to_fam(i) = (i - 1) / genes_per_fam + 1
     end do
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       loess_x, loess_y, loess_n, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, 'Error code 0 (test_outliers_zero_variance)')
@@ -1009,7 +1044,7 @@ contains
     gene_to_fam(idx) = 8
     distances(idx) = 10.0_real64
 
-    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+    call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, &
                                       lx, ly, ln, low_sd_cutoff=low_sd_cutoff, excluded_low_sd=excluded_low_sd, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, 'Error code 0 (test_outliers_orphan_genes)')
@@ -1036,7 +1071,7 @@ contains
     real(real64)    :: distances(n_genes)
     real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
     integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
-    logical         :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64)    :: quantile(n_genes)
 
     do i = 1, n_genes - 1
@@ -1044,12 +1079,12 @@ contains
     end do
     distances(n_genes) = 500.0_real64
 
-    ! percentile=90: threshold at the 90th percentile; with n=12, this typically isolates the largest value
+    ! percentile=0.9: threshold at the 90th percentile; with n=12, this typically isolates the largest value
     perm = [(i, i=1,n_genes)]
-    call detect_outliers_alloc( &
+    call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, &
                          is_outlier, lx, ly, ln, quantile, ierr=ierr, &
-                         percentile=90.0_real64)
+                         percentile=0.9_real64)
 
     call assert_equal_int(get_err_code(ierr), 0, "Error code 0 (test_outliers_extreme_detection)")
     call assert_true(is_outlier(12), "The extreme gene (12) should be an outlier")
@@ -1075,14 +1110,14 @@ contains
     integer(int32)  :: gene_to_fam(n_genes) = [1_int32, 1_int32, 1_int32, 1_int32]
     real(real64)    :: work_rdi(n_genes), lx(n_families), ly(n_families)
     integer(int32)  :: perm(n_genes), sl(n_genes), sr(n_genes), ln(n_families), ierr, i
-    logical         :: is_outlier(n_genes)
+    logical(c_bool) :: is_outlier(n_genes)
     real(real64)    :: quantile(n_genes)
 
     distances = 1.0_real64
     distances(1) = ieee_value(1.0_real64, ieee_quiet_nan)
 
     perm = [(i, i=1,n_genes)]
-    call detect_outliers_alloc( &
+    call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, &
                          is_outlier, lx, ly, ln, quantile, ierr=ierr)
 

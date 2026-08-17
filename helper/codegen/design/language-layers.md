@@ -149,12 +149,16 @@ part of a numeric array, zeros *look like results*, while uninitialised memory l
 the garbage it is. On the error path nothing is returned, so a caller never sees either.
 
 For a **character** output, `np.zeros` — and here the reasoning inverts, which is why the
-rule is not uniform. Fortran fills a character buffer only *partially*:
-`string_as_c_char_1d` writes the string and **one** null; `string_as_c_char_2d` fills only
-as many columns as it has strings. Whatever is read back is terminated by the first null,
-so any uninitialised byte past the written data would be read *as part of a string*. The
-zeros are the null padding that stops that. `np.empty` here would return trailing garbage
-inside the returned strings.
+rule is not uniform. Fortran writes through a pointer view of this buffer, so it blank-fills
+the whole width of every element it *assigns* — but it may assign none at all, or only the
+leading elements: an early `ierr` return, or an array it fills partly. The bindings strip
+trailing blanks on the way out, which turns an unwritten element into whatever bytes were
+already there. The zeros make that `""`, because NumPy drops the trailing nulls of an `S`
+item and R's `tox_char_alloc` blank-fills for the same reason. `np.empty` here would return
+trailing garbage inside the returned strings.
+
+Not `np.full(..., b" ")`, which looks like the obvious spelling and is not: NumPy fills each
+item with one blank and nulls the rest.
 
 So: **`empty` where Fortran fills the whole buffer, `zeros` where it fills only part.**
 Numeric is the former, character the latter.
@@ -303,11 +307,40 @@ to call; it may live in **any** module, and Python imports it inside the calling
 rather than at the top of the file, because two modules may size each other's outputs and a
 module-level import would then be circular.
 
+## Decision: a default is rendered in the vocabulary of the layer that reads it
+
+`DM_DEFAULT(MODE_ROBUST)` quotes the author's Fortran back into the documentation, and in
+Fortran a mode is an integer. Everywhere a binding reads that documentation the mode is a
+*string*, so the sentence named the one value such a caller must not pass — a Python
+docstring said `mode : str, one of 'plain' | 'robust', optional, default 'robust'` and then,
+two lines down, ``The default value is `1`.``
+
+The fix is not "render the mode string" but the more general rule that already governs
+`doc_literals`: **a literal is written the way the layer that reads it writes it.** So the
+default now reads `'robust'` in the Python docstring, `"robust"` in the roxygen block — each
+matching the quoting its own type line already uses for the accepted modes — and `'robust'`
+in the C wrapper, whose dummy is `character(len=1, kind=c_char)`.
+
+**The generated Fortran wrapper is deliberately left alone.** Its dummy really is
+`integer(int32)`, so `1_int32` is the correct thing to print there, and rewriting it would be
+the same bug pointing the other way. That is what makes the negative control in
+`test_generate` worth as much as the three positive ones. The split falls out of the layering
+rather than being asserted per emitter: the three string layers all work from `CArgument`,
+which knows the mode table and carries the translated default, while the Fortran wrapper
+works from the IR `Argument`, which does not.
+
+`render_mode_default` anchors on the whole sentence `DM_DEFAULT` expands to, which is what
+keeps it off the author's own prose — the wording is the macro's, so rewriting the literal
+inside it is the generator editing its own output. **Rejected — rewriting the `Doc` block
+upstream in `c_abi`**, which would have fixed all three layers in one place: it also fixes
+them to one spelling, and the whole reason `doc_literals` exists is that `.true.` is `True`
+in Python and `TRUE` in R.
+
+**The gap that let this ship** was in the fixtures, not the emitters: `fx_modes` had two mode
+arguments and neither was optional, so "a mode with a default" was generated nowhere in the
+test suite. `link_method` now carries `DM_DEFAULT(METHOD_WARD)`.
+
 ## Open
 
 - **ifx** — `optional` in `bind(C)` and `implicit none (type, external)` are verified with
   gfortran only. Both are F2018; ifx is expected to agree.
-- **A mode argument's `DM_DEFAULT` renders its raw integer in the prose line** while the
-  signature line renders the mode string, so a Python docstring reads `mode : str, one of
-  'plain' | 'robust', optional, default 'robust'` and then `The default value is 1.` The
-  signature is right; the prose line should render the string too.

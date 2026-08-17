@@ -32,7 +32,7 @@ _TABSTOP = re.compile(r"\$\{(\d+)(?::([^}]*)|\|([^}]*)\|)?\}")
 def built():
     """The real `src`, taken through the same stages as `generate.py`.
 
-    Synthesis included: the kernels are where most of the exported surface comes from, so a
+    Synthesis included: the implementations are where most of the exported surface comes from, so a
     fixture that skipped it would see only the handful of hand-written exports and quietly
     stop covering whole shapes -- a mode argument among them.
     """

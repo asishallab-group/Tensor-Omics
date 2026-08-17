@@ -58,7 +58,7 @@
 ! The last is for a caller who has already established that the inputs are good -- an inner
 ! loop over data it produced itself. It gives up every diagnostic the framework offers, so it
 ! is a whole-build decision rather than a per-call one. `call set_ok(ierr)` survives it: that
-! is not a check, it is what leaves `ierr` defined, and a kernel's own runtime errors are
+! is not a check, it is what leaves `ierr` defined, and an implementation's own runtime errors are
 ! still reported. Pass it with `./build.sh --directive=NO_INPUT_VALIDATION`.
 
 ! Marks a procedure for export to C, Python and R. Written in the procedure's Ford
@@ -105,17 +105,20 @@
 #define DM_OUTPUT_FROM_AUTO It is *VERY IMPORTANT*
 #define DM_OUTPUT_FROM_JUST_INFO It is recommended
 
-! A prologue is the sugar the *allocating* wrapper adds: it runs after the work arrays are
-! prepared and before the kernel, and may handle the call itself -- writing the outputs and
-! reporting `handled`, so the kernel is skipped. It derives what the expert tier lets a
-! caller pass in, exactly as the `<base>_perm` convention seeds and heapsorts a permutation.
-! There is no scope. Work that every wrapper needs is work every *caller of the kernel*
-! needs, and both wrappers call the kernel -- so it belongs at the top of the kernel, where
-! it needs no directive at all. A kernel with no work arrays generates no allocating wrapper,
-! so a prologue on one would never run, and that is an error.
-! The prologue's dummies are supplied by name from the kernel's arguments -- the work arrays
-! included -- plus `handled` and `ierr`; a name that matches neither is an error, so rename
-! the prologue's dummy to whatever the kernel calls the same thing. It must declare
+! A prologue is the sugar `foo` adds over `foo_expert`: it runs after the work arrays are
+! prepared and before the implementation, and may handle the call itself -- writing the
+! outputs and reporting `handled`, so the implementation is skipped. It derives what the
+! expert tier lets a caller pass in, exactly as the `<base>_perm` convention seeds and
+! heapsorts a permutation.
+! There is no scope. Work that every wrapper needs is work every *caller of the
+! implementation* needs, and both wrappers call it -- so it belongs at the top of the
+! implementation, where it needs no directive at all. An implementation with no work arrays
+! generates only `foo`, so a prologue on one would never run, and that is an error.
+! The prologue's dummies are supplied by name from the implementation's arguments -- the work
+! arrays included -- plus `handled` and `ierr`; a name that matches none of these becomes an
+! argument of `foo` itself, which is how a prologue asks for what it derives from. A name
+! that is merely *close* to one of them is an error, so rename the prologue's dummy to
+! whatever the implementation calls the same thing. It must declare
 ! `logical, intent(out) :: handled` and set it on every path.
 ! It runs below the allocations, so it may not produce anything they, the permutation sorts
 ! or the recommend calls above it read.

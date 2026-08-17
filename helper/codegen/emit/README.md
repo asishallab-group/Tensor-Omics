@@ -42,7 +42,7 @@ cannot disagree — **never re-derive any of it in an emitter**:
 
 | You are handed | Meaning |
 |---|---|
-| `CWrapper.name` / `.stripped_name` | the exported C symbol, and the name your binding should use (`_c` dropped, `_alloc`/`_expert` pairing already applied) |
+| `CWrapper.name` / `.stripped_name` | the exported C symbol, and the name your binding should use (`_c` dropped, and a hand-written `_alloc` pair already translated) |
 | `CArgument.type`, `.dimension`, `.intent` | the type *as C sees it*, already mapped from the Fortran kind |
 | `.origin` | `ARGUMENT`, `RESULT`, `EXTENT`, `STRLEN` or `ERROR` — the last three are invented for C and are yours to supply, not the caller's |
 | `.conversion` | `NONE`, `LOGICAL`, `CHARACTER` or `MODE` — the value needs work between your language and C |
@@ -171,8 +171,8 @@ other's outputs and a module-level import would be circular.
 | Type | What C sees | What your emitter must do |
 |---|---|---|
 | **logical** | `c_bool`, one byte | the host's boolean is probably an `int` (R) or an object (Python) — convert, and note the scan is free, so check for missing values while you are there |
-| **character in** | a `c_char` buffer with the length as the **leading extent** | encode; the item size *is* the string length |
-| **character out** | the same buffer | **zero-fill it** (§4.6) |
+| **character in** | a `c_char` buffer with the length as the **leading extent** | encode, then **blank-pad every slot to the full width**. The item size *is* the string length, measured in **bytes** (so UTF-8 is never truncated by the sizing). Pad the encoded bytes, not the host's string |
+| **character out** | the same buffer | **blank-fill it** (§4.6), and strip trailing blanks — not NULs — on the way back |
 | **mode argument** | an integer, but the caller passes a **string** | lower-case the string and let the C wrapper map it; an unknown mode is rejected before Fortran is entered. The accepted set is in `.mode` |
 | **missing values** | nothing — Fortran has no `NA` | check where the check is free. R checks integers (`anyNA`, ALTREP-aware so `1:n` is O(1)), logicals and characters (converted anyway), never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
 | **kinds with no mapping** | — | already an error upstream. Never guess a mapping: a wrong guess compiles and lies |
@@ -182,7 +182,7 @@ other's outputs and a module-level import would be circular.
 | Case | Handling |
 |---|---|
 | **numeric output** | allocate **uninitialised** (`np.empty`). Fortran fills it; zeroing is an O(n) write of data about to be overwritten, and where Fortran fills only part, zeros *look like results* while garbage looks like garbage |
-| **character output** | allocate **zero-filled**. Fortran fills a character buffer only partially and the nulls terminate the strings; an uninitialised byte past the written data is read back *as part of a string* |
+| **character output** | allocate **blank-filled**. Fortran fills a character buffer only partially, and an uninitialised byte past the written data is read back *as part of a string*. Blanks rather than nulls because the Fortran side is now a `character(len=n)` pointer view of this very buffer, so what it writes and what it leaves are both read with Fortran's own convention: `trim`, `len_trim` and comparison all work on blanks. Nothing scans for a NUL any more, so a zero-filled buffer would come back with the padding attached to the string |
 | **result trimming** (`DM_RESULT_SIZE_IS`) | return only the first *n* elements, where *n* is the argument named |
 | **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |
@@ -216,7 +216,8 @@ else.
   (`doc_literals.py`). A Fortran kind suffix in a doc is noise everywhere else — and in an
   *extent expression* it is a syntax error, so the same stripping applies there.
 - Resolve Ford links to **what the reader can call in your language** (`doc_links.py`): a link to
-  a kernel becomes the binding that wraps it, a link to a mode parameter becomes the mode string.
+  an implementation becomes the binding that wraps it, a link to a mode parameter becomes
+  the mode string.
   Resolve parsed link spans, never by text substitution — a text pass over `[[...]]` mangles R's
   own `x[[i]]`.
 - Never rewrite author prose. If a sentence is wrong, it is wrong in the Fortran.
@@ -231,8 +232,9 @@ else.
 - **Validate in a shim.** The host knows the argument names; C does not.
 - **Ask for a derived argument.** It will be overwritten, and the caller will never know why.
 - **Skip the cross-checks.** They are the thing Fortran cannot do for itself.
-- **Invent a naming convention.** `stripped_name` is the name; `_alloc`/`_expert` pairing is
-  already applied.
+- **Invent a naming convention.** `stripped_name` is the name. A generated pair is already
+  called `foo` / `foo_expert` in Fortran; a hand-written `foo` / `foo_alloc` pair has been
+  translated into those same two names before it reaches you.
 - **Hardcode a constant that lives in `src/macros.h`** — the arg-pos factor above all.
 - **Mirror `NO_INPUT_VALIDATION`.** That directive drops the *Fortran* wrappers' checks at
   compile time, for a caller who has established their inputs are good. Your layer's own
@@ -282,8 +284,8 @@ Three levels, and the third is the one that matters:
 3. **End to end** — generate from the fixtures, **compile**, and **call** it, the way
    `test_end_to_end.py` (Python) and `test_end_to_end_r.py` (R) do. Assert real behaviour:
    the sum is right, an out-of-range value is rejected with the argument position its own caller
-   sees, an `_alloc` variant really allocates and sorts. Anything less proves the output is
-   plausible, not correct.
+   sees, and the allocating entry point really allocates and sorts. Anything less proves the
+   output is plausible, not correct.
 
 The fixtures in [`../tests/fixtures/`](../tests/fixtures/) are the specification: a deliberate,
 complete set of the constructs the generator supports, held to a no-diagnostics bar. If your host

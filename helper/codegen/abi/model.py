@@ -108,6 +108,18 @@ class CArgument:
         return self.conversion is not Conversion.NONE
 
     @property
+    def mode_default(self) -> str | None:
+        """The mode string an omitted mode argument takes, or None if it is not one.
+
+        `default` already holds it -- the ABI translates the documented integer into the
+        string the binding accepts -- but a caller needs both questions answered together
+        before it may rewrite the `DM_DEFAULT` prose, which is true only for a mode.
+        """
+        if self.conversion is not Conversion.MODE or not self.has_default:
+            return None
+        return None if self.default is None else str(self.default)
+
+    @property
     def is_temporary(self) -> bool:
         return bool(self.source is not None and self.source.roles and self.source.roles.is_temporary)
 

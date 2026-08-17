@@ -1,6 +1,11 @@
-"""tox_gene_centroids
+r"""tox_gene_centroids
 
-Generated from the kernel; do not edit -- regenerate instead.
+Expression centroids of gene families.
+
+`mean_vector` is the centroid of a set of expression vectors. `group_centroid_orthologs`
+and `group_centroid_all` take the centroid of a family: over its orthologs only, or over
+every gene in it -- two routines rather than one taking a flag, so which set a result is
+over is visible at the call site.
 
 Python binding, generated from tox_gene_centroids. Do not edit.
 """
@@ -170,7 +175,7 @@ def group_centroid_orthologs(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_orthologs_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_orthologs`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -261,7 +266,7 @@ def group_centroid_all(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_all_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_gene_centroids::group_centroid_all`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

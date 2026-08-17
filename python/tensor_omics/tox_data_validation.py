@@ -1,6 +1,13 @@
-"""tox_data_validation
+r"""tox_data_validation
 
 Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+and cross-array consistency).
+
+Complements ``tox_errors``'s generic per-argument validators
+(`validate_dimension_size`, `validate_in_range_int/real`, ...) with checks specific to the
+TensorOmics gene/family/expression/centroid/shift-vector data model, such as verifying that
+`shift_vectors` was actually derived from `expression_vectors` and `family_centroids` as
+expected. :func:`tensor_omics.validate_all_data` runs the full suite.
 
 Python binding, generated from tox_data_validation. Do not edit.
 """
@@ -188,13 +195,17 @@ def validate_data_structure(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_ids = np.asarray([str(_s).encode() for _s in gene_ids], dtype="S")
+        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
+        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
     if gene_ids.ndim != 1:
         raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
     try:
-        gene_family_ids = np.asarray([str(_s).encode() for _s in gene_family_ids], dtype="S")
+        _gene_family_ids_bytes = [str(_s).encode() for _s in gene_family_ids]
+        _gene_family_ids_width = max(map(len, _gene_family_ids_bytes), default=0) or 1
+        gene_family_ids = np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_family_ids' must be a sequence of strings: {error}") from None
     if gene_family_ids.ndim != 1:
@@ -544,7 +555,9 @@ def validate_string_array_uniqueness(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        str_arr = np.asarray([str(_s).encode() for _s in str_arr], dtype="S")
+        _str_arr_bytes = [str(_s).encode() for _s in str_arr]
+        _str_arr_width = max(map(len, _str_arr_bytes), default=0) or 1
+        str_arr = np.asarray([_b.ljust(_str_arr_width) for _b in _str_arr_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'str_arr' must be a sequence of strings: {error}") from None
     if str_arr.ndim != 1:
@@ -626,13 +639,17 @@ def validate_all_data(
     """
     # accept anything array-like, converting only when C needs it
     try:
-        gene_ids = np.asarray([str(_s).encode() for _s in gene_ids], dtype="S")
+        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
+        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
     if gene_ids.ndim != 1:
         raise ValueError(f"'gene_ids' must have 1 dimension, but has {gene_ids.ndim}")
     try:
-        gene_family_ids = np.asarray([str(_s).encode() for _s in gene_family_ids], dtype="S")
+        _gene_family_ids_bytes = [str(_s).encode() for _s in gene_family_ids]
+        _gene_family_ids_width = max(map(len, _gene_family_ids_bytes), default=0) or 1
+        gene_family_ids = np.asarray([_b.ljust(_gene_family_ids_width) for _b in _gene_family_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_family_ids' must be a sequence of strings: {error}") from None
     if gene_family_ids.ndim != 1:

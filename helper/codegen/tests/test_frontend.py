@@ -229,6 +229,45 @@ class TestTheWholeRealSource:
         assert derived, "no derived types found; this test needs a new example"
         assert all("<" not in t.derived_name for t in derived)
 
+    def test_generic_interfaces_and_derived_types_are_carried(self, real_project):
+        """Nothing is generated from either, so nothing more of them is modelled -- but a link
+        naming one has to resolve (`validate.check_doc_links`)."""
+        project, _ = real_project
+
+        sort = project.module("f42_sort_impl")
+        assert {d.name for d in sort.declarations} >= {"sort_array", "sort_array_heapsort"}
+        assert all(d.kind == "interface" for d in sort.declarations)
+
+        hashmap = project.module("f42_xxh3_hashmap")
+        assert {(d.name, d.kind) for d in hashmap.declarations} == {
+            ("hashmap_type", "type"),
+            ("hashset_type", "type"),
+        }
+
+    def test_an_interface_s_own_documentation_is_read(self, real_project):
+        """It belongs to no procedure and no module, so if it is not read here the links in
+        it are read nowhere."""
+        project, _ = real_project
+
+        interface = next(
+            d for d in project.module("f42_sort_impl").declarations
+            if d.name == "sort_array_heapsort"
+        )
+
+        assert "worst-case" in interface.doc.text
+        assert [str(link) for link in interface.doc.links] == [
+            "[[f42_sort_impl(module):sort_array(interface)]]"
+        ]
+
+    def test_a_private_routine_is_not_carried(self, real_project):
+        """Ford documents only what a module makes public, and the link check follows it: a
+        link to a private name dangles in the rendered docs exactly as this says it does."""
+        project, _ = real_project
+        hashmap = project.module("f42_xxh3_hashmap")
+
+        assert "resize_hashmap" not in hashmap.public_names
+        assert "hashmap_get" in hashmap.public_names
+
 
 class TestIntentsAndAttributes:
     @pytest.mark.parametrize(
@@ -296,7 +335,7 @@ class TestDirectives:
         assert argument.directives.default.expression == expression
 
     def test_output_from_is_read(self, project):
-        argument = project.procedure("fx_edges", "fx_cluster").argument("n_work")
+        argument = project.procedure("fx_edges", "fx_cluster_expert").argument("n_work")
 
         directive = argument.directives.output_from
         assert directive.procedure == "fx_work_size"
@@ -512,29 +551,29 @@ def _module_with(tmp_path, doc_line):
 class TestAllocatableLocals:
     """The generator never reads a body, so an allocation is seen through its declaration."""
 
-    def parse_kernel(self, tmp_path, declarations):
+    def parse_impl(self, tmp_path, declarations):
         src = tmp_path / "src"
         src.mkdir()
-        (src / "fx_alloc_kernel.F90").write_text(
-            "!> summary: a kernel module\n"
-            "module fx_alloc_kernel\n"
+        (src / "fx_alloc_impl.F90").write_text(
+            "!> summary: an implementation module\n"
+            "module fx_alloc_impl\n"
             "    use, intrinsic :: iso_fortran_env, only: real64, int32\n"
             "    implicit none\n"
             "contains\n"
             "    !> summary: p\n"
             "    !| author: A\n"
-            "    subroutine fx_p_kernel(n)\n"
+            "    subroutine fx_p_impl(n)\n"
             "        integer(int32), intent(in) :: n\n"
             "            !! a count\n"
             f"{declarations}"
-            "    end subroutine fx_p_kernel\n"
-            "end module fx_alloc_kernel\n"
+            "    end subroutine fx_p_impl\n"
+            "end module fx_alloc_impl\n"
         )
         parsed, bag = parse(src_dir=src)
-        return parsed.project.procedure("fx_alloc_kernel", "fx_p_kernel"), bag
+        return parsed.project.procedure("fx_alloc_impl", "fx_p_impl"), bag
 
     def test_an_allocatable_local_is_recorded(self, tmp_path):
-        procedure, _ = self.parse_kernel(
+        procedure, _ = self.parse_impl(
             tmp_path,
             "        real(real64), dimension(:), allocatable :: workspace, scratch\n",
         )
@@ -542,7 +581,7 @@ class TestAllocatableLocals:
         assert procedure.allocatable_locals == ("workspace", "scratch")
 
     def test_the_rule_fires_on_it(self, tmp_path):
-        procedure, bag = self.parse_kernel(
+        procedure, bag = self.parse_impl(
             tmp_path,
             "        real(real64), dimension(:), allocatable :: workspace\n",
         )
@@ -551,14 +590,14 @@ class TestAllocatableLocals:
         assert any("allocates: 'workspace'" in e.message for e in bag.errors), bag.render()
 
     def test_a_pointer_local_is_not_an_allocation(self, tmp_path):
-        procedure, _ = self.parse_kernel(
+        procedure, _ = self.parse_impl(
             tmp_path, "        real(real64), dimension(:), pointer :: view\n"
         )
 
         assert procedure.allocatable_locals == ()
 
     def test_a_plain_local_is_not_an_allocation(self, tmp_path):
-        procedure, _ = self.parse_kernel(
+        procedure, _ = self.parse_impl(
             tmp_path, "        integer(int32) :: i\n"
         )
 
@@ -566,6 +605,6 @@ class TestAllocatableLocals:
 
     def test_an_argument_is_never_a_local(self, tmp_path):
         # `n` is a dummy; only what is left after Ford splits them off counts
-        procedure, _ = self.parse_kernel(tmp_path, "")
+        procedure, _ = self.parse_impl(tmp_path, "")
 
         assert procedure.allocatable_locals == ()

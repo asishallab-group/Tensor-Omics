@@ -42,7 +42,7 @@ detect_neofunctionalization <- function(ancestors, genes, gene_to_fam, threshold
 
 #' Identifies subsets of paralogs matching this pattern
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_dosage_effect}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
@@ -96,7 +96,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 
 #' Identifies subsets of paralogs matching this pattern
 #'
-#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_paralog_analysis::detect_subfunctionalization}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param ancestor a numeric vector. expression vector of ancestral ortholog
@@ -113,7 +113,7 @@ detect_dosage_effect <- function(ancestor, genes, filtered_paralogs_mask, max_su
 #'   The minimum valid value is `0`.
 #' @param rdi_threshold a numeric scalar. max allowed residual distance from `ancestor`
 #'   The minimum valid value is `0.0`.
-#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_utils` computes them)
+#' @param paralog_norms a numeric vector. euclidean norms of the genes, used for subset pruning (`norm` from `f42_vector_impl` computes them)
 #'   The minimum valid value is `0.0`.
 #' @param sorted_paralog_norms_perm a integer vector. ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
 #'   The minimum valid value is `1`.

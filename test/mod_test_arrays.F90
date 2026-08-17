@@ -445,7 +445,7 @@ contains
 
     !> Test logical array for 1D
     subroutine test_logical_array_1d()
-        logical, allocatable :: larr1d(:), larr1d2(:)
+        logical(c_bool), allocatable :: larr1d(:), larr1d2(:)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
         call set_ok(ierr)
@@ -470,7 +470,7 @@ contains
 
     !> Test logical array for 2D
     subroutine test_logical_array_2d()
-        logical, allocatable :: larr(:, :), larr2(:, :)
+        logical(c_bool), allocatable :: larr(:, :), larr2(:, :)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
         call set_ok(ierr)
@@ -491,7 +491,7 @@ contains
 
     !> Test logical array for 3D
     subroutine test_logical_array_3d()
-        logical, allocatable :: larr(:, :, :), larr2(:, :, :)
+        logical(c_bool), allocatable :: larr(:, :, :), larr2(:, :, :)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
         call set_ok(ierr)
@@ -513,7 +513,7 @@ contains
 
     !> Test logical array for 4D
     subroutine test_logical_array_4d()
-        logical, allocatable :: larr(:, :, :, :), larr2(:, :, :, :)
+        logical(c_bool), allocatable :: larr(:, :, :, :), larr2(:, :, :, :)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
         call set_ok(ierr)
@@ -535,7 +535,7 @@ contains
 
     !> Test logical array for 5D
     subroutine test_logical_array_5d()
-        logical, allocatable :: larr(:, :, :, :, :), larr2(:, :, :, :, :)
+        logical(c_bool), allocatable :: larr(:, :, :, :, :), larr2(:, :, :, :, :)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
         call set_ok(ierr)

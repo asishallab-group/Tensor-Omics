@@ -1,6 +1,12 @@
-"""tox_clustering
+r"""tox_clustering
 
-Generated from the kernel; do not edit -- regenerate instead.
+Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+(agglomerative) linkage clustering over a precomputed distance matrix.
+
+`k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
+applies the same to whole time series, treating each factor's trajectory as one point.
+`linkage_clustering` takes the distances already computed and merges under the linkage
+criterion asked for, so the same matrix can be re-clustered without recomputing it.
 
 Python binding, generated from tox_clustering. Do not edit.
 """
@@ -321,7 +327,7 @@ def linkage_clustering(
         raise ValueError(f"'distances' must have 2 dimensions, but has {distances.ndim}")
     if not distances.flags.f_contiguous:
         raise ValueError("'distances' is modified in place, so it must already be column-major (order='F')")
-    method = np.array([str(method).lower().encode()], dtype="S8")
+    method = np.array([str(method).lower().encode().ljust(8)], dtype="S8")
 
     # what the inputs already say, rather than asking for it again
     n_points = distances.shape[0]

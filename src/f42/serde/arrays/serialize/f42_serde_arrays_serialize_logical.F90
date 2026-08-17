@@ -2,7 +2,9 @@
 
 !> Module for serializing logical arrays into files
 module f42_serde_arrays_serialize_logical
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_serde_arrays_utils, only: write_file_header, LOGICAL_TYPE_CODE
     use tox_errors, only: set_ok, is_err, validate_in_range_int, ERR_WRITE_DATA, set_err
     M_IMPLICIT_NONE
@@ -18,7 +20,7 @@ contains
     subroutine serialize_logical_helper(arr, n_elements, arr_shape, filename, ierr)
         integer(int32), intent(in) :: n_elements
             !! Number of strings in `arr`
-        logical, dimension(n_elements), intent(in) :: arr
+        logical(c_bool), dimension(n_elements), intent(in) :: arr
             !! Array to be serialized
         integer(int32), dimension(:), intent(in) :: arr_shape
             !! Extents of `arr`, one per dimension
@@ -48,7 +50,7 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Directly serialize a 1D logical array into a file
     subroutine serialize_logical_1d(arr, filename, ierr)
-        logical, dimension(:), contiguous, intent(in) :: arr
+        logical(c_bool), dimension(:), contiguous, intent(in) :: arr
             !! Array to be serialized
         character(len=*), intent(in)  :: filename
             !! Name of the file to write to
@@ -61,7 +63,7 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Directly serialize a 2D logical array into a file
     subroutine serialize_logical_2d(arr, filename, ierr)
-        logical, dimension(:, :), contiguous, intent(in) :: arr
+        logical(c_bool), dimension(:, :), contiguous, intent(in) :: arr
             !! Array to be serialized
         character(len=*), intent(in)  :: filename
             !! Name of the file to write to
@@ -74,7 +76,7 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Directly serialize a 3D logical array into a file
     subroutine serialize_logical_3d(arr, filename, ierr)
-        logical, dimension(:, :, :), contiguous, intent(in) :: arr
+        logical(c_bool), dimension(:, :, :), contiguous, intent(in) :: arr
             !! Array to be serialized
         character(len=*), intent(in)  :: filename
             !! Name of the file to write to
@@ -87,7 +89,7 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Directly serialize a 4D logical array into a file
     subroutine serialize_logical_4d(arr, filename, ierr)
-        logical, dimension(:, :, :, :), contiguous, intent(in) :: arr
+        logical(c_bool), dimension(:, :, :, :), contiguous, intent(in) :: arr
             !! Array to be serialized
         character(len=*), intent(in)  :: filename
             !! Name of the file to write to
@@ -100,7 +102,7 @@ contains
     !> AUTHOR_AARON_SCHROEDER
     !| Directly serialize a 5D logical array into a file
     subroutine serialize_logical_5d(arr, filename, ierr)
-        logical, dimension(:, :, :, :, :), contiguous, intent(in) :: arr
+        logical(c_bool), dimension(:, :, :, :, :), contiguous, intent(in) :: arr
             !! Array to be serialized
         character(len=*), intent(in)  :: filename
             !! Name of the file to write to
