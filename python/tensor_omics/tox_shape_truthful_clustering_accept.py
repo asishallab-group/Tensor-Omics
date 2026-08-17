@@ -1,6 +1,19 @@
-"""tox_shape_truthful_clustering_accept
+r"""tox_shape_truthful_clustering_accept
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC): Accept
+
+`accept_ensemble`: whether a grown ensemble at t+1 is still compatible with its own growth
+trajectory, judged by four criteria -- tangent-space drift (chordal distance, compared
+against a reference set: the bootstrap iteration plus the trailing o-window, not just the
+immediately preceding iteration), change in intrinsic dimension (against both the bootstrap
+iteration and the immediately preceding one), relative change in spectral gap, and relative
+change in residual (RMSE), both against the immediately preceding iteration only. See
+`misc/mod_STC.md`, SKG `accept_ensemble`, for the full algorithm definition and the
+"no cumulative-rotation budget" rationale for comparing against a reference set rather than
+a single previous state. This compares the SAME ensemble across one growth step -- not two
+different ensembles/anchors at a possible junction -- so, unlike
+`misc/STC_for_LoManLe.md` section 4's explicit "angle never gates a junction" rule, a
+tangent-space-drift mismatch here legitimately contributes to rejection.
 
 Python binding, generated from tox_shape_truthful_clustering_accept. Do not edit.
 """
@@ -133,7 +146,7 @@ def accept_ensemble(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_accept::accept_ensemble_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_accept::accept_ensemble`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

@@ -1,14 +1,15 @@
 !> Unit test suite for tox_shape_truthful_clustering (ensemble_identification_merged),
 !| generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_impl.F90.
 module mod_test_shape_truthful_clustering_merged
     use tox_shape_truthful_clustering, only: ensemble_identification_merged
-    use tox_shape_truthful_clustering_kernel, only: STOP_REASON_FIXED_POINT, &
+    use tox_shape_truthful_clustering_impl, only: STOP_REASON_FIXED_POINT, &
                                                     MEMBER_ADDED_AT_STEP_NON_MEMBER, MEMBER_ADDED_AT_STEP_SEED
-    use f42_kd_tree, only: build_kd_index_alloc
+    use f42_kd_tree, only: build_kd_index
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -20,8 +21,8 @@ contains
         type(test_case), allocatable :: all_tests(:)
         allocate (all_tests(5))
 
-        all_tests(1) = test_case("test_merged_single_seed_matches_per_seed_kernel", &
-                                 test_merged_single_seed_matches_per_seed_kernel)
+        all_tests(1) = test_case("test_merged_single_seed_matches_per_seed_impl", &
+                                 test_merged_single_seed_matches_per_seed_impl)
         all_tests(2) = test_case("test_merged_two_independent_seeds", test_merged_two_independent_seeds)
         all_tests(3) = test_case("test_merged_zero_seeds", test_merged_zero_seeds)
         all_tests(4) = test_case("test_merged_seed_count_mismatch", test_merged_seed_count_mismatch)
@@ -46,22 +47,22 @@ contains
         vectors(:, 7) = [0.0d0, 3.0d0]
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_fixture_a: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_fixture_a: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_fixture_a
 
-    subroutine test_merged_single_seed_matches_per_seed_kernel()
+    subroutine test_merged_single_seed_matches_per_seed_impl()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: seed_selection_mask(7)
-        logical        :: ensemble_masks(7, 1), expected_mask(7)
+        logical(c_bool)        :: seed_selection_mask(7)
+        logical(c_bool)        :: ensemble_masks(7, 1), expected_mask(7)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(4, 1), ensemble_k_history(4, 1)
         integer(int32) :: ensemble_member_added_at_step(7, 1), expected_step(7)
-        logical        :: ensemble_low_confidence_masks(7, 1)
-        logical        :: ensemble_accepted_history(4, 1)
+        logical(c_bool)        :: ensemble_low_confidence_masks(7, 1)
+        logical(c_bool)        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(2, 4, 1)
         real(real64)   :: ensemble_S_history(2, 4, 1), ensemble_U_history(2, 2, 4, 1)
         real(real64)   :: ensemble_U_first(2, 2, 1)
@@ -106,7 +107,7 @@ contains
         expected_mask(1:2) = .true.
         call assert_equal_array_logical(ensemble_low_confidence_masks(:, 1), expected_mask, 7_int32, &
                                         "merged single seed: low_confidence_mask is iteration 1's own mask")
-    end subroutine test_merged_single_seed_matches_per_seed_kernel
+    end subroutine test_merged_single_seed_matches_per_seed_impl
 
     !> Two independent copies of fixture A, translated far apart (+100,+100 in the second),
     !| seeded at both copies' own index-1 point. Each column must reproduce fixture A's
@@ -115,12 +116,12 @@ contains
     subroutine test_merged_two_independent_seeds()
         real(real64)   :: vectors(2, 14)
         integer(int32) :: kd_indices(14), dim_order(2), ierr, i
-        logical        :: seed_selection_mask(14)
-        logical        :: ensemble_masks(14, 2), expected_mask_1(14), expected_mask_2(14)
+        logical(c_bool)        :: seed_selection_mask(14)
+        logical(c_bool)        :: ensemble_masks(14, 2), expected_mask_1(14), expected_mask_2(14)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(4, 2), ensemble_k_history(4, 2)
         integer(int32) :: ensemble_member_added_at_step(14, 2), expected_step_1(14), expected_step_2(14)
-        logical        :: ensemble_low_confidence_masks(14, 2)
-        logical        :: ensemble_accepted_history(4, 2)
+        logical(c_bool)        :: ensemble_low_confidence_masks(14, 2)
+        logical(c_bool)        :: ensemble_accepted_history(4, 2)
         real(real64)   :: ensemble_growth_radii(2), ensemble_G_history(4, 2), ensemble_mu_history(2, 4, 2)
         real(real64)   :: ensemble_S_history(2, 4, 2), ensemble_U_history(2, 2, 4, 2)
         real(real64)   :: ensemble_U_first(2, 2, 2)
@@ -137,9 +138,9 @@ contains
         vectors(2, 8:14) = vectors(2, 8:14) + 100.0d0
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 14_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 14_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_merged_two_independent_seeds: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_merged_two_independent_seeds: build_kd_index failed: ', ierr
             error stop
         end if
 
@@ -201,12 +202,12 @@ contains
     subroutine test_merged_zero_seeds()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: seed_selection_mask(7)
-        logical        :: ensemble_masks(7, 0)
+        logical(c_bool)        :: seed_selection_mask(7)
+        logical(c_bool)        :: ensemble_masks(7, 0)
         integer(int32) :: ensemble_stop_reason(0), ensemble_d_history(4, 0), ensemble_k_history(4, 0)
         integer(int32) :: ensemble_member_added_at_step(7, 0)
-        logical        :: ensemble_low_confidence_masks(7, 0)
-        logical        :: ensemble_accepted_history(4, 0)
+        logical(c_bool)        :: ensemble_low_confidence_masks(7, 0)
+        logical(c_bool)        :: ensemble_accepted_history(4, 0)
         real(real64)   :: ensemble_growth_radii(0), ensemble_G_history(4, 0), ensemble_mu_history(2, 4, 0)
         real(real64)   :: ensemble_S_history(2, 4, 0), ensemble_U_history(2, 2, 4, 0)
         real(real64)   :: ensemble_U_first(2, 2, 0)
@@ -231,12 +232,12 @@ contains
     subroutine test_merged_seed_count_mismatch()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: seed_selection_mask(7)
-        logical        :: ensemble_masks(7, 1)
+        logical(c_bool)        :: seed_selection_mask(7)
+        logical(c_bool)        :: ensemble_masks(7, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(4, 1), ensemble_k_history(4, 1)
         integer(int32) :: ensemble_member_added_at_step(7, 1)
-        logical        :: ensemble_low_confidence_masks(7, 1)
-        logical        :: ensemble_accepted_history(4, 1)
+        logical(c_bool)        :: ensemble_low_confidence_masks(7, 1)
+        logical(c_bool)        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(2, 4, 1)
         real(real64)   :: ensemble_S_history(2, 4, 1), ensemble_U_history(2, 2, 4, 1)
         real(real64)   :: ensemble_U_first(2, 2, 1)
@@ -263,12 +264,12 @@ contains
     subroutine test_merged_n_dimensions_too_small()
         real(real64)   :: vectors(1, 7)
         integer(int32) :: kd_indices(7), dim_order(1), ierr, i
-        logical        :: seed_selection_mask(7)
-        logical        :: ensemble_masks(7, 1)
+        logical(c_bool)        :: seed_selection_mask(7)
+        logical(c_bool)        :: ensemble_masks(7, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(4, 1), ensemble_k_history(4, 1)
         integer(int32) :: ensemble_member_added_at_step(7, 1)
-        logical        :: ensemble_low_confidence_masks(7, 1)
-        logical        :: ensemble_accepted_history(4, 1)
+        logical(c_bool)        :: ensemble_low_confidence_masks(7, 1)
+        logical(c_bool)        :: ensemble_accepted_history(4, 1)
         real(real64)   :: ensemble_growth_radii(1), ensemble_G_history(4, 1), ensemble_mu_history(1, 4, 1)
         real(real64)   :: ensemble_S_history(1, 4, 1), ensemble_U_history(1, 1, 4, 1)
         real(real64)   :: ensemble_U_first(1, 1, 1)
@@ -278,9 +279,9 @@ contains
             vectors(1, i) = real(i - 1, real64)
         end do
         dim_order = [1]
-        call build_kd_index_alloc(vectors, 1_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 1_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_merged_n_dimensions_too_small: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_merged_n_dimensions_too_small: build_kd_index failed: ', ierr
             error stop
         end if
 

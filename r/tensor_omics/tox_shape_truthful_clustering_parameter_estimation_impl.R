@@ -7,7 +7,7 @@
 #' see `tox_stc_observable_svd_workspace` and `tox_stc_accept_ensemble_svd_workspace` for
 #' the individual formulas this combines.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation_kernel::tox_stc_estimate_parameters_svd_workspace}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation_impl::tox_stc_estimate_parameters_svd_workspace}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_dimensions a integer scalar. Ambient dimension D

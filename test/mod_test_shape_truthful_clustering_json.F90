@@ -5,12 +5,13 @@
 !| never call into seeding/growth/observable/accept themselves.
 module mod_test_shape_truthful_clustering_json
     use tox_stc_json, only: serialize_stc_results_as_json, write_stc_interactive_html_report
-    use tox_shape_truthful_clustering_kernel, only: STOP_REASON_FIXED_POINT, &
+    use tox_shape_truthful_clustering_impl, only: STOP_REASON_FIXED_POINT, &
         STOP_REASON_REJECTED_AFTER_STABLE
-    use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_MERGE_OVERLAP_COEFFICIENT
+    use tox_shape_truthful_clustering_reconciliation_impl, only: MODE_MERGE_OVERLAP_COEFFICIENT
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -62,8 +63,8 @@ contains
         integer(int32), intent(out) :: n_super_ensembles
         real(real64), intent(out) :: vectors(2, 4)
         character(len=1), intent(out) :: dim_names(2)
-        logical, intent(out) :: seed_selection_mask(4)
-        logical, intent(out) :: ensemble_masks(4, 2)
+        logical(c_bool), intent(out) :: seed_selection_mask(4)
+        logical(c_bool), intent(out) :: ensemble_masks(4, 2)
         integer(int32), intent(out) :: ensemble_stop_reason(2)
         real(real64), intent(out) :: ensemble_growth_radii(2)
         real(real64), intent(out) :: ensemble_U_history(2, 2, 2, 2)
@@ -72,9 +73,9 @@ contains
         real(real64), intent(out) :: ensemble_G_history(2, 2)
         real(real64), intent(out) :: ensemble_mu_history(2, 2, 2)
         integer(int32), intent(out) :: ensemble_k_history(2, 2)
-        logical, intent(out) :: ensemble_accepted_history(2, 2)
+        logical(c_bool), intent(out) :: ensemble_accepted_history(2, 2)
         integer(int32), intent(out) :: ensemble_member_added_at_step(4, 2)
-        logical, intent(out) :: ensemble_low_confidence_masks(4, 2)
+        logical(c_bool), intent(out) :: ensemble_low_confidence_masks(4, 2)
         real(real64), intent(out) :: ensemble_U_first(2, 2, 2)
         integer(int32), intent(out) :: ensemble_d_first(2)
         integer(int32), intent(out) :: super_ensembles(2, 2)
@@ -159,15 +160,15 @@ contains
         integer(int32) :: n_dimensions, n_vectors, n_selected_seed, o, max_group_size, n_super_ensembles
         real(real64) :: vectors(2, 4)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
-        logical :: ensemble_accepted_history(2, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: ensemble_accepted_history(2, 2)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(2, 2), ensemble_k_history(2, 2)
         integer(int32) :: ensemble_member_added_at_step(4, 2), ensemble_d_first(2)
         real(real64) :: ensemble_growth_radii(2), ensemble_U_history(2, 2, 2, 2), ensemble_S_history(2, 2, 2)
         real(real64) :: ensemble_G_history(2, 2), ensemble_mu_history(2, 2, 2), ensemble_U_first(2, 2, 2)
         integer(int32) :: super_ensembles(2, 2)
-        logical :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
-        logical :: ensemble_eligible_by_var_explained(2)
+        logical(c_bool) :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(2)
         character(len=32) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -273,15 +274,15 @@ contains
         integer(int32) :: n_dimensions, n_vectors, n_selected_seed, o, max_group_size, n_super_ensembles
         real(real64) :: vectors(2, 4)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
-        logical :: ensemble_accepted_history(2, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: ensemble_accepted_history(2, 2)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(2, 2), ensemble_k_history(2, 2)
         integer(int32) :: ensemble_member_added_at_step(4, 2), ensemble_d_first(2)
         real(real64) :: ensemble_growth_radii(2), ensemble_U_history(2, 2, 2, 2), ensemble_S_history(2, 2, 2)
         real(real64) :: ensemble_G_history(2, 2), ensemble_mu_history(2, 2, 2), ensemble_U_first(2, 2, 2)
         integer(int32) :: super_ensembles(2, 2)
-        logical :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
-        logical :: ensemble_eligible_by_var_explained(2)
+        logical(c_bool) :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(2)
         character(len=32) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -334,15 +335,15 @@ contains
     subroutine test_json_zero_ensembles()
         real(real64) :: vectors(2, 2)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(2)
-        logical :: ensemble_masks(2, 0), ensemble_low_confidence_masks(2, 0), ensemble_accepted_history(1, 0)
+        logical(c_bool) :: seed_selection_mask(2)
+        logical(c_bool) :: ensemble_masks(2, 0), ensemble_low_confidence_masks(2, 0), ensemble_accepted_history(1, 0)
         integer(int32) :: ensemble_stop_reason(0), ensemble_d_history(1, 0), ensemble_k_history(1, 0)
         integer(int32) :: ensemble_member_added_at_step(2, 0), ensemble_d_first(0)
         real(real64) :: ensemble_growth_radii(0), ensemble_U_history(2, 2, 1, 0), ensemble_S_history(2, 1, 0)
         real(real64) :: ensemble_G_history(1, 0), ensemble_mu_history(2, 1, 0), ensemble_U_first(2, 2, 0)
         integer(int32) :: super_ensembles(2, 0)
-        logical :: ensemble_eligible(0), ensemble_eligible_by_stop_condition(0), ensemble_eligible_by_dimension(0)
-        logical :: ensemble_eligible_by_var_explained(0)
+        logical(c_bool) :: ensemble_eligible(0), ensemble_eligible_by_stop_condition(0), ensemble_eligible_by_dimension(0)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(0)
         character(len=32) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -397,15 +398,15 @@ contains
     subroutine test_json_no_history_ensemble_omits_observable_keys()
         real(real64) :: vectors(2, 2)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(2)
-        logical :: ensemble_masks(2, 1), ensemble_low_confidence_masks(2, 1), ensemble_accepted_history(1, 1)
+        logical(c_bool) :: seed_selection_mask(2)
+        logical(c_bool) :: ensemble_masks(2, 1), ensemble_low_confidence_masks(2, 1), ensemble_accepted_history(1, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(1, 1), ensemble_k_history(1, 1)
         integer(int32) :: ensemble_member_added_at_step(2, 1), ensemble_d_first(1)
         real(real64) :: ensemble_growth_radii(1), ensemble_U_history(2, 2, 1, 1), ensemble_S_history(2, 1, 1)
         real(real64) :: ensemble_G_history(1, 1), ensemble_mu_history(2, 1, 1), ensemble_U_first(2, 2, 1)
         integer(int32) :: super_ensembles(2, 0)
-        logical :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
-        logical :: ensemble_eligible_by_var_explained(1)
+        logical(c_bool) :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(1)
         character(len=32) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -478,15 +479,15 @@ contains
         integer(int32) :: n_dimensions, n_vectors, n_selected_seed, o, max_group_size, n_super_ensembles
         real(real64) :: vectors(2, 4)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
-        logical :: ensemble_accepted_history(2, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: ensemble_accepted_history(2, 2)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(2, 2), ensemble_k_history(2, 2)
         integer(int32) :: ensemble_member_added_at_step(4, 2), ensemble_d_first(2)
         real(real64) :: ensemble_growth_radii(2), ensemble_U_history(2, 2, 2, 2), ensemble_S_history(2, 2, 2)
         real(real64) :: ensemble_G_history(2, 2), ensemble_mu_history(2, 2, 2), ensemble_U_first(2, 2, 2)
         integer(int32) :: super_ensembles(2, 2)
-        logical :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
-        logical :: ensemble_eligible_by_var_explained(2)
+        logical(c_bool) :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(2)
         character(len=32) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -540,15 +541,15 @@ contains
     subroutine test_json_invalid_n_dimensions()
         real(real64) :: vectors(0, 2)
         character(len=1) :: dim_names(0)
-        logical :: seed_selection_mask(2)
-        logical :: ensemble_masks(2, 0), ensemble_low_confidence_masks(2, 0), ensemble_accepted_history(1, 0)
+        logical(c_bool) :: seed_selection_mask(2)
+        logical(c_bool) :: ensemble_masks(2, 0), ensemble_low_confidence_masks(2, 0), ensemble_accepted_history(1, 0)
         integer(int32) :: ensemble_stop_reason(0), ensemble_d_history(1, 0), ensemble_k_history(1, 0)
         integer(int32) :: ensemble_member_added_at_step(2, 0), ensemble_d_first(0)
         real(real64) :: ensemble_growth_radii(0), ensemble_U_history(0, 0, 1, 0), ensemble_S_history(0, 1, 0)
         real(real64) :: ensemble_G_history(1, 0), ensemble_mu_history(0, 1, 0), ensemble_U_first(0, 0, 0)
         integer(int32) :: super_ensembles(2, 0)
-        logical :: ensemble_eligible(0), ensemble_eligible_by_stop_condition(0), ensemble_eligible_by_dimension(0)
-        logical :: ensemble_eligible_by_var_explained(0)
+        logical(c_bool) :: ensemble_eligible(0), ensemble_eligible_by_stop_condition(0), ensemble_eligible_by_dimension(0)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(0)
         integer(int32) :: ierr
 
         seed_selection_mask = .false.
@@ -584,15 +585,15 @@ contains
     subroutine test_json_rejected_trailing_column_uses_last_accepted()
         real(real64) :: vectors(2, 3)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(3)
-        logical :: ensemble_masks(3, 1), ensemble_low_confidence_masks(3, 1), ensemble_accepted_history(2, 1)
+        logical(c_bool) :: seed_selection_mask(3)
+        logical(c_bool) :: ensemble_masks(3, 1), ensemble_low_confidence_masks(3, 1), ensemble_accepted_history(2, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(2, 1), ensemble_k_history(2, 1)
         integer(int32) :: ensemble_member_added_at_step(3, 1), ensemble_d_first(1)
         real(real64) :: ensemble_growth_radii(1), ensemble_U_history(2, 2, 2, 1), ensemble_S_history(2, 2, 1)
         real(real64) :: ensemble_G_history(2, 1), ensemble_mu_history(2, 2, 1), ensemble_U_first(2, 2, 1)
         integer(int32) :: super_ensembles(1, 0)
-        logical :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
-        logical :: ensemble_eligible_by_var_explained(1)
+        logical(c_bool) :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(1)
         character(len=40) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -696,15 +697,15 @@ contains
     subroutine test_json_drift_and_final_chordal_distance()
         real(real64) :: vectors(2, 2)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(2)
-        logical :: ensemble_masks(2, 1), ensemble_low_confidence_masks(2, 1), ensemble_accepted_history(3, 1)
+        logical(c_bool) :: seed_selection_mask(2)
+        logical(c_bool) :: ensemble_masks(2, 1), ensemble_low_confidence_masks(2, 1), ensemble_accepted_history(3, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(3, 1), ensemble_k_history(3, 1)
         integer(int32) :: ensemble_member_added_at_step(2, 1), ensemble_d_first(1)
         real(real64) :: ensemble_growth_radii(1), ensemble_U_history(2, 2, 3, 1), ensemble_S_history(2, 3, 1)
         real(real64) :: ensemble_G_history(3, 1), ensemble_mu_history(2, 3, 1), ensemble_U_first(2, 2, 1)
         integer(int32) :: super_ensembles(1, 0)
-        logical :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
-        logical :: ensemble_eligible_by_var_explained(1)
+        logical(c_bool) :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(1)
         character(len=40) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -796,15 +797,15 @@ contains
     subroutine test_json_observable_history_rmse_null_when_size_le_one()
         real(real64) :: vectors(2, 1)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(1)
-        logical :: ensemble_masks(1, 1), ensemble_low_confidence_masks(1, 1), ensemble_accepted_history(1, 1)
+        logical(c_bool) :: seed_selection_mask(1)
+        logical(c_bool) :: ensemble_masks(1, 1), ensemble_low_confidence_masks(1, 1), ensemble_accepted_history(1, 1)
         integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(1, 1), ensemble_k_history(1, 1)
         integer(int32) :: ensemble_member_added_at_step(1, 1), ensemble_d_first(1)
         real(real64) :: ensemble_growth_radii(1), ensemble_U_history(2, 2, 1, 1), ensemble_S_history(2, 1, 1)
         real(real64) :: ensemble_G_history(1, 1), ensemble_mu_history(2, 1, 1), ensemble_U_first(2, 2, 1)
         integer(int32) :: super_ensembles(1, 0)
-        logical :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
-        logical :: ensemble_eligible_by_var_explained(1)
+        logical(c_bool) :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(1)
         character(len=40) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -869,23 +870,23 @@ contains
     !| 2 becomes ineligible, so the (1,2) pair must vanish from `overlap_coefficient_matrix`
     !| entirely (not merely zeroed) and `params.excluded_stop_reasons` must report exactly
     !| `["rejected_after_stable"]`. Mirrors this module's own filter -- see
-    !| `tox_shape_truthful_clustering_reconciliation_kernel`'s `allowed_stop_reasons`, which
+    !| `tox_shape_truthful_clustering_reconciliation_impl`'s `allowed_stop_reasons`, which
     !| this JSON-layer filter is deliberately kept consistent with (misc/mod_STC.md, "Filtering
     !| ensembles out of reconciliation by Stop Condition").
     subroutine test_json_stop_reason_filter_excludes_pair()
         integer(int32) :: n_dimensions, n_vectors, n_selected_seed, o, max_group_size, n_super_ensembles
         real(real64) :: vectors(2, 4)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
-        logical :: ensemble_accepted_history(2, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: ensemble_accepted_history(2, 2)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(2, 2), ensemble_k_history(2, 2)
         integer(int32) :: ensemble_member_added_at_step(4, 2), ensemble_d_first(2)
         real(real64) :: ensemble_growth_radii(2), ensemble_U_history(2, 2, 2, 2), ensemble_S_history(2, 2, 2)
         real(real64) :: ensemble_G_history(2, 2), ensemble_mu_history(2, 2, 2), ensemble_U_first(2, 2, 2)
         integer(int32) :: super_ensembles(2, 2)
-        logical :: allowed(4)
-        logical :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
-        logical :: ensemble_eligible_by_var_explained(2)
+        logical(c_bool) :: allowed(4)
+        logical(c_bool) :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(2)
         character(len=40) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize
@@ -998,15 +999,15 @@ contains
         integer(int32) :: n_dimensions, n_vectors, n_selected_seed, o, max_group_size, n_super_ensembles
         real(real64) :: vectors(2, 4)
         character(len=1) :: dim_names(2)
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
-        logical :: ensemble_accepted_history(2, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: ensemble_accepted_history(2, 2)
         integer(int32) :: ensemble_stop_reason(2), ensemble_d_history(2, 2), ensemble_k_history(2, 2)
         integer(int32) :: ensemble_member_added_at_step(4, 2), ensemble_d_first(2)
         real(real64) :: ensemble_growth_radii(2), ensemble_U_history(2, 2, 2, 2), ensemble_S_history(2, 2, 2)
         real(real64) :: ensemble_G_history(2, 2), ensemble_mu_history(2, 2, 2), ensemble_U_first(2, 2, 2)
         integer(int32) :: super_ensembles(2, 2)
-        logical :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
-        logical :: ensemble_eligible_by_var_explained(2)
+        logical(c_bool) :: ensemble_eligible(2), ensemble_eligible_by_stop_condition(2), ensemble_eligible_by_dimension(2)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(2)
         character(len=48) :: filename
         character(len=:), allocatable :: content
         integer(int32) :: ierr, unit, filesize

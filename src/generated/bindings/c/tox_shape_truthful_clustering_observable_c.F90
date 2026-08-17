@@ -2,7 +2,15 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_shape_truthful_clustering_observable(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| # Shape Truthful Clustering (STC): Observable
+!|
+!| `observable`: the tuple (U, d, G, mu, normal_error, tangent_scales) for an ensemble,
+!| obtained from the economy-mode singular value decomposition (LAPACK `dgesdd`) of its
+!| centered member vectors -- never an eigendecomposition of an explicitly formed
+!| covariance matrix (see `misc/mod_STC.md`, "Numerical Linear Algebra"). `normal_error` and
+!| `tangent_scales` are simple, dependency-free reductions over the eigenvalues `observable`
+!| computes. See `misc/mod_STC.md`, SKG `observable`/`normal_error`/`tangent_scales`, for the
+!| full algorithm definitions.
 module tox_shape_truthful_clustering_observable_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -12,15 +20,15 @@ module tox_shape_truthful_clustering_observable_c
 
     public :: normal_error_c
     public :: tangent_scales_c
-    public :: observable_expert_c
     public :: observable_c
+    public :: observable_expert_c
     public :: ensemble_final_observable_c
 
 contains
 
     !> summary: C-wrapper for [[tox_shape_truthful_clustering_observable(module):normal_error(subroutine)]]
     !| No pass over the ensemble's member vectors is required; the sum is already implied by
-    !| the singular value decomposition [[tox_shape_truthful_clustering_observable_kernel(module):observable_kernel]]
+    !| the singular value decomposition [[tox_shape_truthful_clustering_observable_impl(module):observable_impl]]
     !| computes.
     subroutine normal_error_c(&
             d,&
@@ -109,6 +117,93 @@ contains
     !| of ensemble size, and slots directly into `normal_error`/`tangent_scales`'s existing
     !| `n_dimensions`-length interface. `ierr` is set only if the LAPACK SVD fails to
     !| converge -- not a condition any input check could foresee.
+    subroutine observable_c(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            member_selection_mask,&
+            n_selected_member,&
+            U,&
+            eigenvalues,&
+            mu,&
+            d,&
+            G,&
+            normal_error_value,&
+            tangent_scales_value,&
+            ierr&
+        ) bind(C, name="observable_c")
+        use tox_shape_truthful_clustering_observable, only: observable
+
+        integer(c_int), intent(in), target :: n_dimensions
+            !! Ambient dimension D
+            !! The minimum valid value is `2_int32`.
+        integer(c_int), intent(in), target :: n_vectors
+            !! Number of input vectors N
+        real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
+            !! Input data matrix
+        logical(c_bool), dimension(n_vectors), intent(in), target :: member_selection_mask
+            !! Ensemble membership over the full dataset
+        integer(c_int), intent(in), target :: n_selected_member
+            !! Number of selected members (count of .TRUE. in member_selection_mask)
+            !! The minimum valid value is `2_int32`.
+            !! The maximum valid value is `n_vectors`.
+        real(c_double), dimension(n_dimensions, n_dimensions), intent(out), target :: U
+            !! Tangent+normal basis, zero-padded beyond rank
+        real(c_double), dimension(n_dimensions), intent(out), target :: eigenvalues
+            !! Covariance eigenvalues, descending, zero-padded beyond rank
+        real(c_double), dimension(n_dimensions), intent(out), target :: mu
+            !! Ensemble center
+        integer(c_int), intent(out), target :: d
+            !! Estimated intrinsic (tangent) dimension
+        real(c_double), intent(out), target :: G
+            !! Spectral gap at d
+        real(c_double), intent(out), target :: normal_error_value
+            !! Mean squared residual off the tangent subspace
+        real(c_double), dimension(n_dimensions), intent(out), target :: tangent_scales_value
+            !! Extent along each tangent direction, zero-padded beyond d
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dimensions)
+        M_CHECK_NON_NULL(n_vectors)
+        M_CHECK_NON_NULL(n_selected_member)
+        M_CHECK_NON_NULL(d)
+        M_CHECK_NON_NULL(G)
+        M_CHECK_NON_NULL(normal_error_value)
+        M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
+        M_CHECK_ARRAY_NON_NULL(member_selection_mask, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(U, n_dimensions * n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(eigenvalues, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(mu, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(tangent_scales_value, n_dimensions)
+
+        call observable(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            member_selection_mask = member_selection_mask,&
+            n_selected_member = n_selected_member,&
+            U = U,&
+            eigenvalues = eigenvalues,&
+            mu = mu,&
+            d = d,&
+            G = G,&
+            normal_error_value = normal_error_value,&
+            tangent_scales_value = tangent_scales_value,&
+            ierr = ierr&
+        )
+    end subroutine observable_c
+
+    !> summary: C-wrapper for [[tox_shape_truthful_clustering_observable(module):observable_expert(subroutine)]]
+    !| `U` and `eigenvalues` are zero-padded to the full ambient dimension `n_dimensions`:
+    !| the economy SVD only yields `rank = min(n_dimensions, n_selected_member)` genuine
+    !| columns/values, less than `n_dimensions` whenever an ensemble is smaller than the
+    !| ambient space (typical early in growth). This keeps the output shape fixed regardless
+    !| of ensemble size, and slots directly into `normal_error`/`tangent_scales`'s existing
+    !| `n_dimensions`-length interface. `ierr` is set only if the LAPACK SVD fails to
+    !| converge -- not a condition any input check could foresee.
     subroutine observable_expert_c(&
             vectors,&
             n_dimensions,&
@@ -132,7 +227,7 @@ contains
             tangent_scales_value,&
             ierr&
         ) bind(C, name="observable_expert_c")
-        use tox_shape_truthful_clustering_observable, only: observable
+        use tox_shape_truthful_clustering_observable, only: observable_expert
 
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
@@ -145,10 +240,10 @@ contains
             !! The maximum valid value is `n_vectors`.
         integer(c_int), intent(in), target :: lwork
             !! Size of tmp_work
-            !! It is *VERY IMPORTANT* to compute this argument from the `lwork` output produced by [[tox_shape_truthful_clustering_observable_kernel(module):tox_stc_observable_svd_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `lwork` output produced by [[tox_shape_truthful_clustering_observable_impl(module):tox_stc_observable_svd_workspace]].
         integer(c_int), intent(in), target :: iwork_size
             !! Size of tmp_iwork
-            !! It is *VERY IMPORTANT* to compute this argument from the `iwork_size` output produced by [[tox_shape_truthful_clustering_observable_kernel(module):tox_stc_observable_svd_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `iwork_size` output produced by [[tox_shape_truthful_clustering_observable_impl(module):tox_stc_observable_svd_workspace]].
         real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
             !! Input data matrix
         logical(c_bool), dimension(n_vectors), intent(in), target :: member_selection_mask
@@ -181,7 +276,6 @@ contains
             !! Extent along each tangent direction, zero-padded beyond d
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success
-        logical, dimension(n_vectors) :: member_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -206,13 +300,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(mu, n_dimensions)
         M_CHECK_ARRAY_NON_NULL(tangent_scales_value, n_dimensions)
 
-        member_selection_mask_f = member_selection_mask
-
-        call observable(&
+        call observable_expert(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&
-            member_selection_mask = member_selection_mask_f,&
+            member_selection_mask = member_selection_mask,&
             n_selected_member = n_selected_member,&
             lwork = lwork,&
             iwork_size = iwork_size,&
@@ -233,99 +325,9 @@ contains
         )
     end subroutine observable_expert_c
 
-    !> summary: C-wrapper for [[tox_shape_truthful_clustering_observable(module):observable_alloc(subroutine)]]
-    !| `U` and `eigenvalues` are zero-padded to the full ambient dimension `n_dimensions`:
-    !| the economy SVD only yields `rank = min(n_dimensions, n_selected_member)` genuine
-    !| columns/values, less than `n_dimensions` whenever an ensemble is smaller than the
-    !| ambient space (typical early in growth). This keeps the output shape fixed regardless
-    !| of ensemble size, and slots directly into `normal_error`/`tangent_scales`'s existing
-    !| `n_dimensions`-length interface. `ierr` is set only if the LAPACK SVD fails to
-    !| converge -- not a condition any input check could foresee.
-    subroutine observable_c(&
-            vectors,&
-            n_dimensions,&
-            n_vectors,&
-            member_selection_mask,&
-            n_selected_member,&
-            U,&
-            eigenvalues,&
-            mu,&
-            d,&
-            G,&
-            normal_error_value,&
-            tangent_scales_value,&
-            ierr&
-        ) bind(C, name="observable_c")
-        use tox_shape_truthful_clustering_observable, only: observable_alloc
-
-        integer(c_int), intent(in), target :: n_dimensions
-            !! Ambient dimension D
-            !! The minimum valid value is `2_int32`.
-        integer(c_int), intent(in), target :: n_vectors
-            !! Number of input vectors N
-        real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
-            !! Input data matrix
-        logical(c_bool), dimension(n_vectors), intent(in), target :: member_selection_mask
-            !! Ensemble membership over the full dataset
-        integer(c_int), intent(in), target :: n_selected_member
-            !! Number of selected members (count of .TRUE. in member_selection_mask)
-            !! The minimum valid value is `2_int32`.
-            !! The maximum valid value is `n_vectors`.
-        real(c_double), dimension(n_dimensions, n_dimensions), intent(out), target :: U
-            !! Tangent+normal basis, zero-padded beyond rank
-        real(c_double), dimension(n_dimensions), intent(out), target :: eigenvalues
-            !! Covariance eigenvalues, descending, zero-padded beyond rank
-        real(c_double), dimension(n_dimensions), intent(out), target :: mu
-            !! Ensemble center
-        integer(c_int), intent(out), target :: d
-            !! Estimated intrinsic (tangent) dimension
-        real(c_double), intent(out), target :: G
-            !! Spectral gap at d
-        real(c_double), intent(out), target :: normal_error_value
-            !! Mean squared residual off the tangent subspace
-        real(c_double), dimension(n_dimensions), intent(out), target :: tangent_scales_value
-            !! Extent along each tangent direction, zero-padded beyond d
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success
-        logical, dimension(n_vectors) :: member_selection_mask_f
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_dimensions)
-        M_CHECK_NON_NULL(n_vectors)
-        M_CHECK_NON_NULL(n_selected_member)
-        M_CHECK_NON_NULL(d)
-        M_CHECK_NON_NULL(G)
-        M_CHECK_NON_NULL(normal_error_value)
-        M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
-        M_CHECK_ARRAY_NON_NULL(member_selection_mask, n_vectors)
-        M_CHECK_ARRAY_NON_NULL(U, n_dimensions * n_dimensions)
-        M_CHECK_ARRAY_NON_NULL(eigenvalues, n_dimensions)
-        M_CHECK_ARRAY_NON_NULL(mu, n_dimensions)
-        M_CHECK_ARRAY_NON_NULL(tangent_scales_value, n_dimensions)
-
-        member_selection_mask_f = member_selection_mask
-
-        call observable_alloc(&
-            vectors = vectors,&
-            n_dimensions = n_dimensions,&
-            n_vectors = n_vectors,&
-            member_selection_mask = member_selection_mask_f,&
-            n_selected_member = n_selected_member,&
-            U = U,&
-            eigenvalues = eigenvalues,&
-            mu = mu,&
-            d = d,&
-            G = G,&
-            normal_error_value = normal_error_value,&
-            tangent_scales_value = tangent_scales_value,&
-            ierr = ierr&
-        )
-    end subroutine observable_c
-
     !> summary: C-wrapper for [[tox_shape_truthful_clustering_observable(module):ensemble_final_observable(subroutine)]]
     !| Not simply the last *populated* history column: `stc_push_ensemble_history`
-    !| (`tox_shape_truthful_clustering_kernel`) also pushes a *rejected* final candidate right
+    !| (`tox_shape_truthful_clustering_impl`) also pushes a *rejected* final candidate right
     !| before `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
     !| `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is, in exactly those
     !| two cases, the discarded candidate's geometry, not the ensemble's real final state.
@@ -341,10 +343,10 @@ contains
     !| state" from -- see `misc/mod_STC.md`, "Ensemble identification"). Consolidates what was
     !| previously a private, single-consumer helper in `tox_stc_json.F90`
     !| (`stc_last_accepted_history_index`) into a proper, independently testable kernel now
-    !| that `tox_shape_truthful_clustering_filter_kernel` needs the exact same extraction --
+    !| that `tox_shape_truthful_clustering_filter_impl` needs the exact same extraction --
     !| placed here, not in the parent module, specifically so both of those (and any future
     !| sibling) can depend on it without a circular module dependency (the parent module
-    !| already `use`s `tox_shape_truthful_clustering_reconciliation_kernel`, which will in turn
+    !| already `use`s `tox_shape_truthful_clustering_reconciliation_impl`, which will in turn
     !| `use` the filter kernel module, which needs this).
     subroutine ensemble_final_observable_c(&
             n_dimensions,&
@@ -425,8 +427,6 @@ contains
             !! trailing window, not just its final entry
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(o, n_ensembles) :: ensemble_accepted_history_f
-        logical, dimension(n_ensembles) :: ensemble_has_final_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -449,8 +449,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_has_final, n_ensembles)
         M_CHECK_ARRAY_NON_NULL(ensemble_final_index, n_ensembles)
 
-        ensemble_accepted_history_f = ensemble_accepted_history
-
         call ensemble_final_observable(&
             n_dimensions = n_dimensions,&
             o = o,&
@@ -461,19 +459,17 @@ contains
             ensemble_mu_history = ensemble_mu_history,&
             ensemble_G_history = ensemble_G_history,&
             ensemble_k_history = ensemble_k_history,&
-            ensemble_accepted_history = ensemble_accepted_history_f,&
+            ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_U_final = ensemble_U_final,&
             ensemble_d_final = ensemble_d_final,&
             ensemble_S_final = ensemble_S_final,&
             ensemble_mu_final = ensemble_mu_final,&
             ensemble_G_final = ensemble_G_final,&
             ensemble_k_final = ensemble_k_final,&
-            ensemble_has_final = ensemble_has_final_f,&
+            ensemble_has_final = ensemble_has_final,&
             ensemble_final_index = ensemble_final_index,&
             ierr = ierr&
         )
-
-        ensemble_has_final = ensemble_has_final_f
     end subroutine ensemble_final_observable_c
 
 end module tox_shape_truthful_clustering_observable_c

@@ -2,14 +2,14 @@
 
 #' Pick n_anchors point indices at evenly-spaced percentiles of the density-sorted order
 #'
-#' Nearest-rank selection (not `calc_percentile_helper`'s own linear interpolation): these
+#' Nearest-rank selection (not `calc_percentile_impl`'s own linear interpolation): these
 #' must be genuine point indices, not interpolated values. Percentiles are
 #' $100/n_{\text{anchors}}, 200/n_{\text{anchors}}, \ldots, 100$ -- e.g. $n_{\text{anchors}}=5$
 #' gives 20/40/60/80/100%ile. Duplicate anchor indices are possible (not deduplicated) when
 #' `n_anchors` is close to `n_vectors`; harmless -- a duplicated anchor's cloud just grows
 #' redundantly, one estimator-anchor "slot" among several effectively wasted, not incorrect.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation::sample_estimator_anchors_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation::sample_estimator_anchors}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param density_labels a numeric vector. Per-vector density label, see density_labels
@@ -89,7 +89,7 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
 #' n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
 #' 5.14.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation::estimate_stc_parameters_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_parameter_estimation::estimate_stc_parameters}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix

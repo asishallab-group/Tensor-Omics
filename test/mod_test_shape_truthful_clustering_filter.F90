@@ -1,14 +1,15 @@
 !> Unit test suite for tox_shape_truthful_clustering_filter (filter_ensembles_by_stop_condition,
 !| filter_ensembles_by_dimension, filter_ensembles_by_var_explained, filter_ensembles), generated
-!| from src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_filter_kernel.F90.
+!| from src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_filter_impl.F90.
 module mod_test_shape_truthful_clustering_filter
     use tox_shape_truthful_clustering_filter, only: filter_ensembles_by_stop_condition, &
         filter_ensembles_by_dimension, filter_ensembles_by_var_explained, filter_ensembles
-    use tox_shape_truthful_clustering_kernel, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
+    use tox_shape_truthful_clustering_impl, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
         STOP_REASON_REJECTED_IMMEDIATELY, STOP_REASON_FIXED_POINT
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -64,7 +65,7 @@ contains
     !| ineligible.
     subroutine test_filter_stop_condition_exact_exclusion()
         integer(int32) :: ensemble_stop_reason(4)
-        logical        :: allowed(4), eligible(4)
+        logical(c_bool)        :: allowed(4), eligible(4)
         integer(int32) :: ierr
 
         ensemble_stop_reason = [STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
@@ -87,7 +88,7 @@ contains
     !| regardless of its actual Stop Condition.
     subroutine test_filter_stop_condition_absent_is_noop()
         integer(int32) :: ensemble_stop_reason(4)
-        logical        :: eligible(4)
+        logical(c_bool)        :: eligible(4)
         integer(int32) :: ierr
 
         ensemble_stop_reason = [STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
@@ -108,7 +109,7 @@ contains
     !| off-by-one in either direction.
     subroutine test_filter_stop_condition_all_four_values()
         integer(int32) :: ensemble_stop_reason(1)
-        logical        :: allowed(4), eligible(1)
+        logical(c_bool)        :: allowed(4), eligible(1)
         integer(int32) :: ierr, r
 
         do r = 1, 4
@@ -128,7 +129,7 @@ contains
 
     subroutine test_filter_stop_condition_zero_ensembles()
         integer(int32) :: ensemble_stop_reason(0)
-        logical        :: eligible(0)
+        logical(c_bool)        :: eligible(0)
         integer(int32) :: ierr
 
         call filter_ensembles_by_stop_condition(0_int32, ensemble_stop_reason, eligible=eligible, ierr=ierr)
@@ -137,7 +138,7 @@ contains
 
     subroutine test_filter_stop_condition_invalid_value()
         integer(int32) :: ensemble_stop_reason(1)
-        logical        :: eligible(1)
+        logical(c_bool)        :: eligible(1)
         integer(int32) :: ierr
 
         ensemble_stop_reason(1) = 5_int32 ! only 1..4 are valid Stop Condition indices
@@ -151,7 +152,7 @@ contains
     !> D=3. d_final = [0,1,2,3]. d_min=2 alone must exclude the first two (0,1), keep the last two.
     subroutine test_filter_dimension_d_min_only()
         integer(int32) :: ensemble_d_final(4)
-        logical        :: ensemble_has_final(4), eligible(4)
+        logical(c_bool)        :: ensemble_has_final(4), eligible(4)
         integer(int32) :: ierr
 
         ensemble_d_final = [0, 1, 2, 3]
@@ -173,7 +174,7 @@ contains
     !> D=3. d_final = [0,1,2,3]. d_max=1 alone must keep the first two (0,1), exclude the last two.
     subroutine test_filter_dimension_d_max_only()
         integer(int32) :: ensemble_d_final(4)
-        logical        :: ensemble_has_final(4), eligible(4)
+        logical(c_bool)        :: ensemble_has_final(4), eligible(4)
         integer(int32) :: ierr
 
         ensemble_d_final = [0, 1, 2, 3]
@@ -195,7 +196,7 @@ contains
     !> D=3. d_final = [0,1,2,3]. d_min=1, d_max=2 together must keep only the middle two.
     subroutine test_filter_dimension_both_bounds()
         integer(int32) :: ensemble_d_final(4)
-        logical        :: ensemble_has_final(4), eligible(4)
+        logical(c_bool)        :: ensemble_has_final(4), eligible(4)
         integer(int32) :: ierr
 
         ensemble_d_final = [0, 1, 2, 3]
@@ -219,7 +220,7 @@ contains
     !| even consulted" in this case).
     subroutine test_filter_dimension_both_absent_is_noop()
         integer(int32) :: ensemble_d_final(2)
-        logical        :: ensemble_has_final(2), eligible(2)
+        logical(c_bool)        :: ensemble_has_final(2), eligible(2)
         integer(int32) :: ierr
 
         ensemble_d_final = [0, 3]
@@ -241,7 +242,7 @@ contains
     !| would otherwise pass).
     subroutine test_filter_dimension_no_final_excluded_once_bound_present()
         integer(int32) :: ensemble_d_final(1)
-        logical        :: ensemble_has_final(1), eligible(1)
+        logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
 
         ensemble_d_final(1) = 1 ! would satisfy d_min=0/d_max=3 if has_final were true
@@ -259,7 +260,7 @@ contains
 
     subroutine test_filter_dimension_invalid_n_dimensions()
         integer(int32) :: ensemble_d_final(1)
-        logical        :: ensemble_has_final(1), eligible(1)
+        logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
 
         ensemble_d_final(1) = 0
@@ -275,7 +276,7 @@ contains
     !| unsatisfiable by construction: every ensemble ends up ineligible.
     subroutine test_filter_dimension_d_min_exceeds_d_max_still_computes()
         integer(int32) :: ensemble_d_final(3)
-        logical        :: ensemble_has_final(3), eligible(3)
+        logical(c_bool)        :: ensemble_has_final(3), eligible(3)
         integer(int32) :: ierr
 
         ensemble_d_final = [0, 1, 2]
@@ -299,7 +300,7 @@ contains
     subroutine test_filter_var_explained_clean_fixture()
         real(real64)   :: ensemble_S_final(2, 1)
         integer(int32) :: ensemble_d_final(1), ensemble_k_final(1)
-        logical        :: ensemble_has_final(1), eligible(1)
+        logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
 
         ensemble_S_final(:, 1) = [10.0d0, 1.0d0]
@@ -323,7 +324,7 @@ contains
     subroutine test_filter_var_explained_threshold_at_boundary()
         real(real64)   :: ensemble_S_final(2, 1)
         integer(int32) :: ensemble_d_final(1), ensemble_k_final(1)
-        logical        :: ensemble_has_final(1), eligible(1)
+        logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
         real(real64), parameter :: ve = 100.0d0/101.0d0
 
@@ -357,7 +358,7 @@ contains
     subroutine test_filter_var_explained_k_le_one_guard()
         real(real64)   :: ensemble_S_final(2, 2)
         integer(int32) :: ensemble_d_final(2), ensemble_k_final(2)
-        logical        :: ensemble_has_final(2), eligible(2)
+        logical(c_bool)        :: ensemble_has_final(2), eligible(2)
         integer(int32) :: ierr
 
         ensemble_S_final(:, 1) = [10.0d0, 1.0d0]
@@ -387,7 +388,7 @@ contains
     subroutine test_filter_var_explained_absent_is_noop()
         real(real64)   :: ensemble_S_final(2, 1)
         integer(int32) :: ensemble_d_final(1), ensemble_k_final(1)
-        logical        :: ensemble_has_final(1), eligible(1)
+        logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
 
         ensemble_S_final(:, 1) = [10.0d0, 1.0d0]
@@ -408,7 +409,7 @@ contains
     subroutine test_filter_var_explained_invalid_threshold()
         real(real64)   :: ensemble_S_final(2, 1)
         integer(int32) :: ensemble_d_final(1), ensemble_k_final(1)
-        logical        :: ensemble_has_final(1), eligible(1)
+        logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
 
         ensemble_S_final(:, 1) = [10.0d0, 1.0d0]
@@ -434,10 +435,10 @@ contains
         real(real64)   :: ensemble_U_history(2, 2, 1, 4), ensemble_S_history(2, 1, 4), ensemble_mu_history(2, 1, 4)
         real(real64)   :: ensemble_G_history(1, 4)
         integer(int32) :: ensemble_d_history(1, 4), ensemble_k_history(1, 4), ensemble_stop_reason(4)
-        logical        :: ensemble_accepted_history(1, 4)
-        logical        :: allowed(4)
-        logical        :: eligible(4), eligible_by_stop_condition(4), eligible_by_dimension(4)
-        logical        :: eligible_by_var_explained(4)
+        logical(c_bool)        :: ensemble_accepted_history(1, 4)
+        logical(c_bool)        :: allowed(4)
+        logical(c_bool)        :: eligible(4), eligible_by_stop_condition(4), eligible_by_dimension(4)
+        logical(c_bool)        :: eligible_by_var_explained(4)
         integer(int32) :: ierr
 
         ensemble_U_history = 0.0d0
@@ -502,9 +503,9 @@ contains
         real(real64)   :: ensemble_U_history(2, 2, 1, 2), ensemble_S_history(2, 1, 2), ensemble_mu_history(2, 1, 2)
         real(real64)   :: ensemble_G_history(1, 2)
         integer(int32) :: ensemble_d_history(1, 2), ensemble_k_history(1, 2), ensemble_stop_reason(2)
-        logical        :: ensemble_accepted_history(1, 2)
-        logical        :: eligible(2), eligible_by_stop_condition(2), eligible_by_dimension(2)
-        logical        :: eligible_by_var_explained(2)
+        logical(c_bool)        :: ensemble_accepted_history(1, 2)
+        logical(c_bool)        :: eligible(2), eligible_by_stop_condition(2), eligible_by_dimension(2)
+        logical(c_bool)        :: eligible_by_var_explained(2)
         integer(int32) :: ierr
 
         ensemble_U_history = 0.0d0

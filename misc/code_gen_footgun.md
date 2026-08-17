@@ -58,7 +58,7 @@ the two argument names side by side would consider the pairing obvious.
 ## Minimal example
 
 ```fortran
-pure subroutine gene_stats_kernel(gene_values, n_genes, is_gene_mask, n_selected_gene, result)
+pure subroutine gene_stats_impl(gene_values, n_genes, is_gene_mask, n_selected_gene, result)
     real(real64),   intent(in)  :: gene_values(n_genes)
     integer(int32), intent(in)  :: n_genes
     logical,        intent(in)  :: is_gene_mask(n_genes)
@@ -67,7 +67,7 @@ pure subroutine gene_stats_kernel(gene_values, n_genes, is_gene_mask, n_selected
         !! Number of selected genes (count of .TRUE. in is_gene_mask)
     real(real64),   intent(out) :: result(n_selected_gene)
     ...
-end subroutine gene_stats_kernel
+end subroutine gene_stats_impl
 ```
 
 `n_selected_gene` strips to owner `"gene"`. `is_gene_mask` strips `_mask` to owner
@@ -187,8 +187,8 @@ warnings; the break only surfaces the first time the Python binding is actually 
 
 ## Where we hit this
 
-`ensemble_reconciliation_kernel` in
-`src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_reconciliation_kernel.F90`
+`ensemble_reconciliation_impl` in
+`src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_reconciliation_impl.F90`
 originally sized its output at `n_ensembles*(n_ensembles - 1)/2`, the exact worst-case count
 of unordered ensemble pairs. The Fortran kernel, the generated Fortran wrapper, and the R
 binding (which never recomputes the shape itself -- it reads the buffer `.Call` already
@@ -265,7 +265,7 @@ nothing catches that.
 ## Minimal example
 
 ```fortran
-pure subroutine density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+pure subroutine density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                       k_density, tmp_neighbors, tmp_distances, tmp_range_stack, ..., labels)
     ...
     integer(int32), intent(in), optional :: k_density
@@ -277,12 +277,12 @@ pure subroutine density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indic
     integer(int32) :: actual_k_density, k_query
     M_DEFAULT_VAL(k_density, actual_k_density, 30_int32)
     k_query = actual_k_density + 1
-    call kd_knn_query_helper(..., tmp_neighbors(1:k_query), ...)   ! n_vectors=5, k_query=31
+    call kd_knn_query_impl(..., tmp_neighbors(1:k_query), ...)   ! n_vectors=5, k_query=31
 ```
 
 Calling the *generated, validating* wrapper with `k_density` omitted, on a 5-point dataset,
 never raises `ERR_INVALID_INPUT` -- it resolves `k_density` to 30 inside the kernel and asks
-`kd_knn_query_helper` to fill a 31-element slice of a 5-element array. That is an
+`kd_knn_query_impl` to fill a 31-element slice of a 5-element array. That is an
 out-of-bounds write. We hit this directly: it corrupted memory silently, then crashed later
 in unrelated code (a `SIGSEGV` inside `libgfortran`'s `_dl_fini`, during process teardown,
 nowhere near the actual bug) -- the kind of failure that is very expensive to trace back to
@@ -319,7 +319,7 @@ default -- exactly what one of our own first-draft tests did by accident.
 
 Neither fix has been made in the generator itself yet -- both are still open. What *has* been
 fixed, at the two call sites this actually bit us
-(`calc_ensemble_growth_radius_kernel`'s `k_min`, `density_labels_kernel`'s `k_density`), is a
+(`calc_ensemble_growth_radius_impl`'s `k_min`, `density_labels_impl`'s `k_density`), is a
 kernel-level stopgap: `actual_k = min(actual_k, n_vectors - 1)` right after `M_DEFAULT_VAL`,
 which makes the *resolved* value safe regardless of whether it came from an explicit
 (already wrapper-validated) argument or the unchecked default. This is a per-kernel patch,

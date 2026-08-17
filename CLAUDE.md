@@ -4,8 +4,8 @@
 
 All Fortran code in this repo must strictly follow `./misc/Fortran_Coding_Guides.tex` (the
 "F42" standard) for general Scientific Kernel (SK) philosophy and coding style, **and**
-`codegen_guide.md` for naming/annotation conventions and the kernel/wrapper split -- read
-both before writing or reviewing any Fortran. `codegen_guide.md` supersedes F42 section
+`codegen_guide.md` for naming/annotation conventions and the implementation/wrapper split --
+read both before writing or reviewing any Fortran. `codegen_guide.md` supersedes F42 section
 10.3.2's older `_alloc -> unsuffixed -> _helper` naming triad; F42 still governs everything
 else (purity, types, control flow, parallelization, data layout).
 
@@ -28,29 +28,47 @@ F42 highlights that still apply everywhere:
 
 ## Code generation
 
-TensorOmics generates its public API from hand-written kernels. Read `codegen_guide.md`
-before writing or reviewing any kernel -- it is the authoritative, exhaustive reference;
-this section is only a pointer, not a summary to keep in sync by hand.
+TensorOmics generates its public API from hand-written implementations. Read
+`codegen_guide.md` before writing or reviewing any Fortran on either path it describes --
+it is the authoritative, exhaustive reference; this section is only a pointer, not a summary
+to keep in sync by hand.
 
-The load-bearing rule: **only write kernels (`src/kernel/`) and other hand-written,
-non-generated trees (`src/f42/`, `src/data/`)**. Never hand-edit `src/generated/`,
+The load-bearing rule: **only write implementations (`src/tox/`) and other hand-written,
+non-generated trees (`src/f42/`)**. Never hand-edit `src/generated/`,
 `python/tensor_omics/`, `r/tensor_omics/`, or `snippets/` -- the generator deletes and
 rewrites all four on every run, so anything written there by hand survives exactly until the
 next build.
 
-- A kernel is a `pure` procedure named `<name>_kernel`, in a module named
-  `tox_<family>_kernel` under `src/kernel/`. No validation, no `ierr` (except a genuine
-  runtime failure no input check could foresee -- an external library reporting failure,
-  e.g.), no allocation anywhere in the module.
+- An implementation is a `pure` procedure named `<name>_impl`, in a module named
+  `tox_<family>_impl` (or `f42_<family>_impl` under `src/f42/`) -- the module name is the
+  entire generation trigger, no fixed directory, no marker macro. No validation, no `ierr`
+  (except a genuine runtime failure no input check could foresee -- an external library
+  reporting failure, e.g.), no allocation anywhere in the module. The file must be named for
+  the module (`tox_x_impl` in `tox_x_impl.F90`).
 - Every argument's `!!` doc, plus its `DM_MIN`/`DM_MAX`/`DM_SENTINEL`/`DM_ALLOW_NAN`/
   `DM_ALLOW_INFINITE`/`DM_DEFAULT`/`DM_OUTPUT_FROM`/`DM_PROLOGUE` annotations where
   applicable, is the *entire* contract the generator has to work from -- there is no other
   place to state a constraint. Undocumented or under-annotated arguments generate an
   unvalidated or wrongly-validated public API.
-- The generator writes the validating wrapper, the allocating wrapper (`_alloc`, published
-  as the plain name), the expert tier (published as `_expert`), and the C/Python/R bindings.
-- IO, infrastructure, and anything that is not a numeric pipeline kernel is hand-written and
-  exported via `M_EXPORT_C` instead (`src/data/`, `src/f42/`) -- see `codegen_guide.md` Part II.
+- The generator writes the plain entry point (validates *and* allocates every `tmp_` work
+  array, published under the implementation's own unsuffixed name -- e.g. `foo_impl`
+  publishes as `foo`), the expert tier (validates only, caller supplies the work arrays --
+  published as `foo_expert`, only where there is something for it to take over), and the
+  C/Python/R bindings. There is no more `_alloc` suffix anywhere in the published API --
+  the plain name *is* the allocating tier now.
+- Every stored `logical` (an array or scalar dummy/local that isn't a `logical, parameter`
+  or a `logical` function result) is declared `logical(c_bool)` (`iso_c_binding`), not plain
+  `logical` -- one byte instead of four, no boundary-crossing copy. A bare `.true.`/`.false.`
+  literal passed as an actual argument needs the explicit `.true._c_bool`/`.false._c_bool`
+  suffix (argument association does not convert kinds); plain assignment does convert, so
+  `M_DEFAULT_VAL(opt, actual, .false.)` and `DM_DEFAULT(.false.)` stay bare.
+- Only implementations and a short infrastructure whitelist (intrinsic modules, `tox_errors`,
+  `tox_conversions`, `f42_config`, `f42_safeguard`) may be `use`d from inside an
+  implementation module -- enforced by the generator, not just convention.
+- IO, infrastructure, and anything that is not a numeric pipeline procedure is hand-written
+  and exported via `M_EXPORT_C` instead (`src/tox/data/`, `src/f42/`) -- see
+  `codegen_guide.md` Part II. On this path *you* validate (the generator does not write a
+  wrapper for you), and `DM_MIN`/`DM_MAX`/etc. are documentation only, not checks.
 
 ## Unit Test Writing
 
@@ -103,27 +121,30 @@ greedy anchor selection). `misc/mod_STC.md` is the sole, authoritative implement
 `misc/STC_current_algorithm_draft.md` remain as earlier-draft/LoManLe-integration-rationale
 references only -- implement against `mod_STC.md`.
 
-Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/`:
+Implementation modules, one per major step, under `src/tox/shape_truthful_clustering/`
+(migrated from the pre-`131-codegen-new` `src/kernel/shape_truthful_clustering/`
+`_kernel`-suffixed layout on 2026-08-17 -- same shape, `_kernel` renamed to `_impl`
+throughout, nothing else about the split changed):
 
-- `tox_shape_truthful_clustering_kernel.F90` -- parent; holds `ensemble_identification`'s
-  own kernel(s) directly (the family's natural top-level entry point) *and* `use`s the six
-  children below -- a deliberate deviation from `codegen_guide.md` section 5.15's own
-  `tox_data_integration_kernel` example, where the parent holds no procedures of its own.
+- `tox_shape_truthful_clustering_impl.F90` -- parent; holds `ensemble_identification`'s
+  own implementation(s) directly (the family's natural top-level entry point) *and* `use`s
+  the six children below -- a deliberate deviation from `codegen_guide.md` section 5.15's
+  own `tox_data_integration_impl` example, where the parent holds no procedures of its own.
   `ensemble_identification`/`_merged` also report `low_confidence_mask`/
   `ensemble_low_confidence_masks`, one column per seed regardless of `stop_reason` -- see
   `misc/mod_STC.md`, "Ensemble identification", "Output".
-- `tox_shape_truthful_clustering_seeding_kernel.F90` -- `density_labels`, `seeds`. Also
-  `use`s its sibling `tox_shape_truthful_clustering_ensemble_growing_kernel` directly, to
-  reuse `calc_ensemble_growth_radius_kernel` for `seeds`' own coverage radius rather than a
+- `tox_shape_truthful_clustering_seeding_impl.F90` -- `density_labels`, `seeds`. Also
+  `use`s its sibling `tox_shape_truthful_clustering_ensemble_growing_impl` directly, to
+  reuse `calc_ensemble_growth_radius_impl` for `seeds`' own coverage radius rather than a
   second, separately-implemented computation -- the first sibling-to-sibling dependency in
   this family.
-- `tox_shape_truthful_clustering_ensemble_growing_kernel.F90` -- `calc_ensemble_growth_radius`,
+- `tox_shape_truthful_clustering_ensemble_growing_impl.F90` -- `calc_ensemble_growth_radius`,
   `grow_ensemble`.
-- `tox_shape_truthful_clustering_observable_kernel.F90` -- `observable`, `normal_error`,
+- `tox_shape_truthful_clustering_observable_impl.F90` -- `observable`, `normal_error`,
   `tangent_scales`.
-- `tox_shape_truthful_clustering_accept_kernel.F90` -- `accept_ensemble`.
-- `tox_shape_truthful_clustering_reconciliation_kernel.F90` -- `ensemble_reconciliation`.
-- `tox_shape_truthful_clustering_parameter_estimation_kernel.F90` -- `sample_estimator_anchors`,
+- `tox_shape_truthful_clustering_accept_impl.F90` -- `accept_ensemble`.
+- `tox_shape_truthful_clustering_reconciliation_impl.F90` -- `ensemble_reconciliation`.
+- `tox_shape_truthful_clustering_parameter_estimation_impl.F90` -- `sample_estimator_anchors`,
   `grow_estimator_anchor_clouds`, `estimate_stc_parameters`. A separate, optional pipeline
   step (not run automatically by `seeds`/`ensemble_identification`) that proposes starting
   values for `k_min`/`k_density`/`density_quantile`/`alpha_max`/`G_max`/`d_max` directly from
@@ -132,7 +153,7 @@ Kernel modules, one per major step, under `src/kernel/shape_truthful_clustering/
   `--estimate-parameters` flag (see below), not into
   `misc/STC-experiments/run_stc_experiments.sh`'s default parameter sweep.
 
-STC's own output layer, hand-written (not generated) but not kernels either:
+STC's own output layer, hand-written (not generated) but not implementations either:
 
 - `src/tox_stc_html_assets.F90` -- generated (via `helper/embed_stc_html_assets.py`, not the
   main codegen pipeline; do not hand-edit) compile-time Fortran string constants for the

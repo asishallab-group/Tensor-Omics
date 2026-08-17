@@ -9,7 +9,7 @@
 #' larger-than-required LWORK is always safe per LAPACK's own convention, so one size,
 #' computed once, serves every one of accept_ensemble's (up to o+1) comparisons.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_accept_kernel::tox_stc_accept_ensemble_svd_workspace}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_accept_impl::tox_stc_accept_ensemble_svd_workspace}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_dimensions a integer scalar. Ambient dimension D

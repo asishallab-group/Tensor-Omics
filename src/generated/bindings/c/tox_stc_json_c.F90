@@ -9,7 +9,7 @@
 !| `tox_stc_html_assets`/`helper/embed_stc_html_assets.py`). Builds a [[f42_json(module)]]
 !| document model directly from STC's own raw result arrays (as returned by
 !| `ensemble_identification_merged`/`ensemble_reconciliation`, see
-!| `tox_shape_truthful_clustering_kernel`/`tox_shape_truthful_clustering_reconciliation_kernel`)
+!| `tox_shape_truthful_clustering_impl`/`tox_shape_truthful_clustering_reconciliation_impl`)
 !| and writes it out -- this module is the STC-domain boundary on top of the generic
 !| [[f42_json(module)]] serializer, the same role `tox_flyer_json` plays for the tox_flyer
 !| viewer, and follows that module's exact single-subroutine pattern for the same reason: a
@@ -27,13 +27,13 @@
 !| (`id`, `n_ensembles`, per-point/per-ensemble membership lists, `super_ensemble_id`, the
 !| full pairwise Overlap Coefficient matrix, per-point residual lengths, tangent line
 !| endpoints, the two report-layer drift statistics below) are computed here from the raw
-!| membership masks and history arrays -- `ensemble_reconciliation_kernel` itself only ever
+!| membership masks and history arrays -- `ensemble_reconciliation_impl` itself only ever
 !| reports Overlap Coefficient along a super-ensemble's own merge chain
 !| (`super_ensembles_overlap_coefficient`), never the full N x N matrix the heatmap needs, so
 !| that matrix is recomputed directly from `ensemble_masks` with the same
 !| `|intersect| / min(|A|,|B|)` formula, once per pair with a nonempty intersection.
 !|
-!| Two derived statistics reuse `tox_shape_truthful_clustering_accept_kernel`'s own
+!| Two derived statistics reuse `tox_shape_truthful_clustering_accept_impl`'s own
 !| `stc_chordal_distance` helper directly (made `public` there for exactly this reuse) rather
 !| than re-deriving the formula: the **consecutive tangent-space drift** between each pair of
 !| adjacent retained history columns (a genuine per-iteration quantity, fully reconstructable
@@ -47,9 +47,10 @@
 !| iteration-unaware.
 module tox_stc_json_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
+    use, intrinsic :: iso_c_binding, only: c_loc
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -117,7 +118,7 @@ contains
             ierr&
         ) bind(C, name="serialize_stc_results_as_json_c")
         use tox_stc_json, only: serialize_stc_results_as_json
-        use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_MERGE_ANY, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_REPORT
+        use tox_shape_truthful_clustering_reconciliation_impl, only: MODE_MERGE_ANY, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_REPORT
 
         integer(c_int), intent(in), target :: filename_strlen
             !! length of the strings in `filename`
@@ -203,11 +204,11 @@ contains
         character(len=1, kind=c_char), dimension(25), intent(in), target :: reconciliation_mode
             !! This run's `ensemble_reconciliation` mode
             !!
-            !! | Mode                                                | Value                                                                                                    |
-            !! |-----------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-            !! | Report intersecting pairs only                      | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]                    |
-            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
-            !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]                 |
+            !! | Mode                                                | Value                                                                                                  |
+            !! |-----------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+            !! | Report intersecting pairs only                      | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]]                    |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
+            !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_ANY(variable)]]                 |
         real(c_double), intent(in), target :: min_overlap_coefficient
             !! This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
         logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
@@ -217,15 +218,15 @@ contains
             !! see `ensemble_eligible` below
         integer(c_int), intent(in), optional :: filter_d_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
         integer(c_int), intent(in), optional :: filter_d_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
         real(c_double), intent(in), optional :: filter_var_explained_min
             !! This run's minimum tolerated final variance explained for reconciliation
-            !! eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `var_explained_min`; reported for transparency only, same as
             !! `allowed_stop_reasons` above
         logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible
@@ -252,18 +253,9 @@ contains
             !! `estimate_stc_parameters`'s proposed `d_max`, if estimation was used
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success
-        character(len=:), allocatable :: filename_f
-        character(len=:), allocatable, dimension(:) :: dim_names_f
-        logical, dimension(n_vectors) :: seed_selection_mask_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
-        logical, dimension(o, n_selected_seed) :: ensemble_accepted_history_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
+        character(len=filename_strlen), pointer :: filename_f
+        character(len=dim_names_strlen), pointer, dimension(:) :: dim_names_f
         integer(int32) :: reconciliation_mode_mode_f
-        logical, dimension(:), allocatable :: allowed_stop_reasons_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_by_stop_condition_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_by_dimension_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_by_var_explained_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -311,18 +303,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_dimension, n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_var_explained, n_selected_seed)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(dim_names, dim_names_f, ierr)
-        if (is_err(ierr)) return
-        seed_selection_mask_f = seed_selection_mask
-        ensemble_masks_f = ensemble_masks
-        ensemble_accepted_history_f = ensemble_accepted_history
-        ensemble_low_confidence_masks_f = ensemble_low_confidence_masks
+        call c_f_pointer(c_loc(filename), filename_f)
+        call c_f_pointer(c_loc(dim_names), dim_names_f, [n_dimensions])
         block
-            character(len=:), allocatable :: reconciliation_mode_f
-            call c_char_1d_as_string(reconciliation_mode, reconciliation_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: reconciliation_mode_f
+            reconciliation_mode_f => c_char_as_view(reconciliation_mode)
 
             select case (reconciliation_mode_f)
                 case ("report")
@@ -336,11 +321,6 @@ contains
                     return
             end select
         end block
-        if (present(allowed_stop_reasons)) allowed_stop_reasons_f = allowed_stop_reasons
-        ensemble_eligible_f = ensemble_eligible
-        ensemble_eligible_by_stop_condition_f = ensemble_eligible_by_stop_condition
-        ensemble_eligible_by_dimension_f = ensemble_eligible_by_dimension
-        ensemble_eligible_by_var_explained_f = ensemble_eligible_by_var_explained
 
         call serialize_stc_results_as_json(&
             filename = filename_f,&
@@ -352,8 +332,8 @@ contains
             n_super_ensembles = n_super_ensembles,&
             vectors = vectors,&
             dim_names = dim_names_f,&
-            seed_selection_mask = seed_selection_mask_f,&
-            ensemble_masks = ensemble_masks_f,&
+            seed_selection_mask = seed_selection_mask,&
+            ensemble_masks = ensemble_masks,&
             ensemble_stop_reason = ensemble_stop_reason,&
             ensemble_growth_radii = ensemble_growth_radii,&
             ensemble_U_history = ensemble_U_history,&
@@ -362,9 +342,9 @@ contains
             ensemble_G_history = ensemble_G_history,&
             ensemble_mu_history = ensemble_mu_history,&
             ensemble_k_history = ensemble_k_history,&
-            ensemble_accepted_history = ensemble_accepted_history_f,&
+            ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
-            ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            ensemble_low_confidence_masks = ensemble_low_confidence_masks,&
             ensemble_U_first = ensemble_U_first,&
             ensemble_d_first = ensemble_d_first,&
             super_ensembles = super_ensembles,&
@@ -380,14 +360,14 @@ contains
             bandwidth_percentile = bandwidth_percentile,&
             reconciliation_mode = reconciliation_mode_mode_f,&
             min_overlap_coefficient = min_overlap_coefficient,&
-            allowed_stop_reasons = allowed_stop_reasons_f,&
+            allowed_stop_reasons = allowed_stop_reasons,&
             filter_d_min = filter_d_min,&
             filter_d_max = filter_d_max,&
             filter_var_explained_min = filter_var_explained_min,&
-            ensemble_eligible = ensemble_eligible_f,&
-            ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition_f,&
-            ensemble_eligible_by_dimension = ensemble_eligible_by_dimension_f,&
-            ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained_f,&
+            ensemble_eligible = ensemble_eligible,&
+            ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition,&
+            ensemble_eligible_by_dimension = ensemble_eligible_by_dimension,&
+            ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained,&
             estimated_k_min = estimated_k_min,&
             estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
@@ -458,7 +438,7 @@ contains
             ierr&
         ) bind(C, name="write_stc_interactive_html_report_c")
         use tox_stc_json, only: write_stc_interactive_html_report
-        use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_MERGE_ANY, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_REPORT
+        use tox_shape_truthful_clustering_reconciliation_impl, only: MODE_MERGE_ANY, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_REPORT
 
         integer(c_int), intent(in), target :: filename_strlen
             !! length of the strings in `filename`
@@ -544,11 +524,11 @@ contains
         character(len=1, kind=c_char), dimension(25), intent(in), target :: reconciliation_mode
             !! This run's `ensemble_reconciliation` mode
             !!
-            !! | Mode                                                | Value                                                                                                    |
-            !! |-----------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-            !! | Report intersecting pairs only                      | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]                    |
-            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
-            !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]                 |
+            !! | Mode                                                | Value                                                                                                  |
+            !! |-----------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+            !! | Report intersecting pairs only                      | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]]                    |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
+            !! | Merge transitively on any intersection              | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_ANY(variable)]]                 |
         real(c_double), intent(in), target :: min_overlap_coefficient
             !! This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
         logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
@@ -558,15 +538,15 @@ contains
             !! see `ensemble_eligible` below
         integer(c_int), intent(in), optional :: filter_d_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
         integer(c_int), intent(in), optional :: filter_d_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
         real(c_double), intent(in), optional :: filter_var_explained_min
             !! This run's minimum tolerated final variance explained for reconciliation
-            !! eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `var_explained_min`; reported for transparency only, same as
             !! `allowed_stop_reasons` above
         logical(c_bool), dimension(n_selected_seed), intent(in), target :: ensemble_eligible
@@ -593,18 +573,9 @@ contains
             !! `estimate_stc_parameters`'s proposed `d_max`, if estimation was used
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success
-        character(len=:), allocatable :: filename_f
-        character(len=:), allocatable, dimension(:) :: dim_names_f
-        logical, dimension(n_vectors) :: seed_selection_mask_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
-        logical, dimension(o, n_selected_seed) :: ensemble_accepted_history_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
+        character(len=filename_strlen), pointer :: filename_f
+        character(len=dim_names_strlen), pointer, dimension(:) :: dim_names_f
         integer(int32) :: reconciliation_mode_mode_f
-        logical, dimension(:), allocatable :: allowed_stop_reasons_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_by_stop_condition_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_by_dimension_f
-        logical, dimension(n_selected_seed) :: ensemble_eligible_by_var_explained_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -652,18 +623,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_dimension, n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_eligible_by_var_explained, n_selected_seed)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(dim_names, dim_names_f, ierr)
-        if (is_err(ierr)) return
-        seed_selection_mask_f = seed_selection_mask
-        ensemble_masks_f = ensemble_masks
-        ensemble_accepted_history_f = ensemble_accepted_history
-        ensemble_low_confidence_masks_f = ensemble_low_confidence_masks
+        call c_f_pointer(c_loc(filename), filename_f)
+        call c_f_pointer(c_loc(dim_names), dim_names_f, [n_dimensions])
         block
-            character(len=:), allocatable :: reconciliation_mode_f
-            call c_char_1d_as_string(reconciliation_mode, reconciliation_mode_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: reconciliation_mode_f
+            reconciliation_mode_f => c_char_as_view(reconciliation_mode)
 
             select case (reconciliation_mode_f)
                 case ("report")
@@ -677,11 +641,6 @@ contains
                     return
             end select
         end block
-        if (present(allowed_stop_reasons)) allowed_stop_reasons_f = allowed_stop_reasons
-        ensemble_eligible_f = ensemble_eligible
-        ensemble_eligible_by_stop_condition_f = ensemble_eligible_by_stop_condition
-        ensemble_eligible_by_dimension_f = ensemble_eligible_by_dimension
-        ensemble_eligible_by_var_explained_f = ensemble_eligible_by_var_explained
 
         call write_stc_interactive_html_report(&
             filename = filename_f,&
@@ -693,8 +652,8 @@ contains
             n_super_ensembles = n_super_ensembles,&
             vectors = vectors,&
             dim_names = dim_names_f,&
-            seed_selection_mask = seed_selection_mask_f,&
-            ensemble_masks = ensemble_masks_f,&
+            seed_selection_mask = seed_selection_mask,&
+            ensemble_masks = ensemble_masks,&
             ensemble_stop_reason = ensemble_stop_reason,&
             ensemble_growth_radii = ensemble_growth_radii,&
             ensemble_U_history = ensemble_U_history,&
@@ -703,9 +662,9 @@ contains
             ensemble_G_history = ensemble_G_history,&
             ensemble_mu_history = ensemble_mu_history,&
             ensemble_k_history = ensemble_k_history,&
-            ensemble_accepted_history = ensemble_accepted_history_f,&
+            ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
-            ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            ensemble_low_confidence_masks = ensemble_low_confidence_masks,&
             ensemble_U_first = ensemble_U_first,&
             ensemble_d_first = ensemble_d_first,&
             super_ensembles = super_ensembles,&
@@ -721,14 +680,14 @@ contains
             bandwidth_percentile = bandwidth_percentile,&
             reconciliation_mode = reconciliation_mode_mode_f,&
             min_overlap_coefficient = min_overlap_coefficient,&
-            allowed_stop_reasons = allowed_stop_reasons_f,&
+            allowed_stop_reasons = allowed_stop_reasons,&
             filter_d_min = filter_d_min,&
             filter_d_max = filter_d_max,&
             filter_var_explained_min = filter_var_explained_min,&
-            ensemble_eligible = ensemble_eligible_f,&
-            ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition_f,&
-            ensemble_eligible_by_dimension = ensemble_eligible_by_dimension_f,&
-            ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained_f,&
+            ensemble_eligible = ensemble_eligible,&
+            ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition,&
+            ensemble_eligible_by_dimension = ensemble_eligible_by_dimension,&
+            ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained,&
             estimated_k_min = estimated_k_min,&
             estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&

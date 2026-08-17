@@ -1,6 +1,25 @@
-"""tox_shape_truthful_clustering_reconciliation
+r"""tox_shape_truthful_clustering_reconciliation
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC): Ensemble Reconciliation
+
+`ensemble_reconciliation`: identifies intersecting ensembles from Ensemble Identification's
+merged `ensemble_masks` output and, depending on `mode`, either just reports intersecting
+pairs or groups transitively-intersecting ensembles into "super-ensembles" via a union-find
+over the pairwise intersection graph. See `misc/mod_STC.md`, "Ensemble Reconciliation", for
+the full algorithm definition. Does not alter Ensemble Identification's own result -- this
+module only reports and groups, on the side.
+
+A thin, two-call orchestrator over its own two sibling kernels: first
+:func:`tensor_omics.filter_ensembles` (which
+ensembles are even eligible to contribute a pair, by Stop Condition/final dimension/final
+variance explained), then this module's own `merge_to_super_ensembles_impl` (the actual
+pairwise-intersection/union-find grouping, over eligible ensembles only). Splitting these
+into two independently testable, independently reusable kernels -- rather than one kernel
+that both decides eligibility and merges -- is a deliberate design choice: eligibility is a
+statement about *individual* ensembles (their own Stop Condition/geometry), merging is a
+statement about *pairs*, and conflating the two made every new filtering criterion require
+touching the same monolithic merge logic. See `misc/mod_STC.md`'s own rationale for the
+split.
 
 Python binding, generated from tox_shape_truthful_clustering_reconciliation. Do not edit.
 """
@@ -100,7 +119,7 @@ def ensemble_reconciliation(
     ensemble_masks : np.ndarray[np.bool_] of shape (n_vectors, n_ensembles,), column-major (order='F')
         Per-ensemble membership, see Ensemble Identification's merged output
     ensemble_stop_reason : np.ndarray[np.int32] of shape (n_ensembles,)
-        Per-ensemble Stop Condition, see `filter_ensembles_kernel`
+        Per-ensemble Stop Condition, see `filter_ensembles_impl`
         The minimum valid value is `1`.
         The maximum valid value is `4`.
     ensemble_U_history : np.ndarray[np.float64] of shape (n_dimensions, n_dimensions, o, n_ensembles,), column-major (order='F')
@@ -121,7 +140,7 @@ def ensemble_reconciliation(
     mode : str, one of 'report' | 'merge_overlap_coefficient' | 'merge_any', optional, default 'report'
         How intersections are processed
 
-        The default value is `1`.
+        The default value is `'report'`.
     min_overlap_coefficient : float, optional, default 0.9
         Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
         \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
@@ -132,25 +151,25 @@ def ensemble_reconciliation(
         The default value is `0.9`.
     report_overlap_coefficient : bool, optional, default False
         Whether to compute and return `super_ensembles_overlap_coefficient` at all --
-        see `merge_to_super_ensembles_kernel`'s own note on this being guarded, not
+        see `merge_to_super_ensembles_impl`'s own note on this being guarded, not
         unconditional
         The default value is `False`.
     allowed_stop_reasons : np.ndarray[np.bool_] of shape (4,), optional
-        See `tox_shape_truthful_clustering_filter_kernel`'s own
-        `filter_ensembles_by_stop_condition_kernel`
+        See `tox_shape_truthful_clustering_filter_impl`'s own
+        `filter_ensembles_by_stop_condition_impl`
     d_min : int, optional
-        See `tox_shape_truthful_clustering_filter_kernel`'s own
-        `filter_ensembles_by_dimension_kernel`
+        See `tox_shape_truthful_clustering_filter_impl`'s own
+        `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
     d_max : int, optional
-        See `tox_shape_truthful_clustering_filter_kernel`'s own
-        `filter_ensembles_by_dimension_kernel`
+        See `tox_shape_truthful_clustering_filter_impl`'s own
+        `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
     var_explained_min : float, optional
-        See `tox_shape_truthful_clustering_filter_kernel`'s own
-        `filter_ensembles_by_var_explained_kernel`
+        See `tox_shape_truthful_clustering_filter_impl`'s own
+        `filter_ensembles_by_var_explained_impl`
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
     max_group_size : int
@@ -195,18 +214,18 @@ def ensemble_reconciliation(
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
             Combined per-ensemble eligibility actually used for merging above -- see
-            `filter_ensembles_kernel`. Ineligible ensembles are otherwise untouched: they
+            `filter_ensembles_impl`. Ineligible ensembles are otherwise untouched: they
             are never removed from `ensemble_masks` or anything else this whole family
             reports, only excluded from contributing a pair here.
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible_by_stop_condition : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
-            See `filter_ensembles_by_stop_condition_kernel`
+            See `filter_ensembles_by_stop_condition_impl`
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible_by_dimension : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
-            See `filter_ensembles_by_dimension_kernel`
+            See `filter_ensembles_by_dimension_impl`
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible_by_var_explained : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
-            See `filter_ensembles_by_var_explained_kernel`
+            See `filter_ensembles_by_var_explained_impl`
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -274,7 +293,7 @@ def ensemble_reconciliation(
         raise TypeError(f"'ensemble_accepted_history' must be an array of np.bool_: {error}") from None
     if ensemble_accepted_history.ndim != 2:
         raise ValueError(f"'ensemble_accepted_history' must have 2 dimensions, but has {ensemble_accepted_history.ndim}")
-    mode = np.array([str(mode).lower().encode()], dtype="S25")
+    mode = np.array([str(mode).lower().encode().ljust(25)], dtype="S25")
     if allowed_stop_reasons is not None:
         try:
             allowed_stop_reasons = np.ascontiguousarray(allowed_stop_reasons, dtype=np.bool_)
@@ -433,12 +452,12 @@ def merge_to_super_ensembles(
         Per-ensemble membership, see Ensemble Identification's merged output
     eligible : np.ndarray[np.bool_] of shape (n_ensembles,)
         Per-ensemble eligibility to contribute a pair here at all -- see
-        `tox_shape_truthful_clustering_filter_kernel`'s own `filter_ensembles_kernel`,
+        `tox_shape_truthful_clustering_filter_impl`'s own `filter_ensembles_impl`,
         this kernel's own sibling in `ensemble_reconciliation`'s two-call orchestration
     mode : str, one of 'report' | 'merge_overlap_coefficient' | 'merge_any', optional, default 'report'
         How intersections are processed
 
-        The default value is `1`.
+        The default value is `'report'`.
     min_overlap_coefficient : float, optional, default 0.9
         Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
         \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
@@ -475,7 +494,7 @@ def merge_to_super_ensembles(
             `n_super_ensembles`. Sized at $N_{\mathcal{E}}(N_{\mathcal{E}}-1)$, twice mode
             ``'report'``'s
             own true worst case ($N_{\mathcal{E}}(N_{\mathcal{E}}-1)/2$, every pair
-            intersects) -- deliberately not divided by 2, see `ensemble_reconciliation_kernel`'s
+            intersects) -- deliberately not divided by 2, see `ensemble_reconciliation_impl`'s
             own identical note.
             A result is a value; call `.copy()` to obtain a modifiable array.
         n_super_ensembles : int
@@ -510,7 +529,7 @@ def merge_to_super_ensembles(
         raise TypeError(f"'eligible' must be an array of np.bool_: {error}") from None
     if eligible.ndim != 1:
         raise ValueError(f"'eligible' must have 1 dimension, but has {eligible.ndim}")
-    mode = np.array([str(mode).lower().encode()], dtype="S25")
+    mode = np.array([str(mode).lower().encode().ljust(25)], dtype="S25")
 
     # what the inputs already say, rather than asking for it again
     n_vectors = ensemble_masks.shape[0]

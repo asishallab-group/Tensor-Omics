@@ -8,7 +8,7 @@
 #' (`k_min = n_vectors - 1`) and sliced internally, since `k_min`'s resolved value is only
 #' known once its default (if any) has been applied.
 #'
-#' `radius_percentile` generalizes what used to be a hardcoded median: `seeds_kernel`
+#' `radius_percentile` generalizes what used to be a hardcoded median: `seeds_impl`
 #' reuses this same SKG for its seed-exclusion radius (see `misc/mod_STC.md`, SKG
 #' `seeds`), and a fixed dataset-wide-in-spirit median there was observed to suppress
 #' entire uncovered regions (e.g. curvature extrema on a wavy manifold) whose own growth
@@ -16,7 +16,7 @@
 #' shrink its exclusion radius independently of this kernel's own default, without
 #' touching the actual growth-radius computation any other caller relies on.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_ensemble_growing::calc_ensemble_growth_radius_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_ensemble_growing::calc_ensemble_growth_radius}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix
@@ -72,7 +72,7 @@ calc_ensemble_growth_radius <- function(vectors, kd_indices, dimension_order, se
 #' `is_member_mask` (an empty ensemble) is a well-defined degenerate case: there is nothing
 #' to grow from, so the result is all-FALSE too, not an error.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_ensemble_growing::grow_ensemble_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_ensemble_growing::grow_ensemble}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix

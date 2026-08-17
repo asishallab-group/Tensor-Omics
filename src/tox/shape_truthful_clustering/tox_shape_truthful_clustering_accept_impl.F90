@@ -14,15 +14,17 @@
 !| different ensembles/anchors at a possible junction -- so, unlike
 !| `misc/STC_for_LoManLe.md` section 4's explicit "angle never gates a junction" rule, a
 !| tangent-space-drift mismatch here legitimately contributes to rejection.
-module tox_shape_truthful_clustering_accept_kernel
+module tox_shape_truthful_clustering_accept_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, ERR_INTERNAL
-    use f42_utils, only: above
+    use f42_math_impl, only: above
     M_IMPLICIT_NONE
 
     interface
         ! Declared pure for the same reason as dgesdd in
-        ! tox_shape_truthful_clustering_observable_kernel. `u`/`vt` are assumed-size (`*`)
+        ! tox_shape_truthful_clustering_observable_impl. `u`/`vt` are assumed-size (`*`)
         ! since this module's only call site uses JOBU='N', JOBVT='N', for which LAPACK
         ! documents them as "not referenced" -- their exact shape is irrelevant.
         pure subroutine dgesvd(jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info)
@@ -39,7 +41,7 @@ module tox_shape_truthful_clustering_accept_kernel
     end interface
 
     private
-    public :: accept_ensemble_kernel
+    public :: accept_ensemble_impl
     public :: tox_stc_accept_ensemble_svd_workspace
     public :: stc_chordal_distance
 
@@ -83,7 +85,7 @@ contains
     !| see `normal_error` in the sibling observable kernel module; already free, no new SVD or
     !| storage. `ierr` is set only if a LAPACK SVD fails to converge -- not a condition any
     !| input check could foresee.
-    pure subroutine accept_ensemble_kernel(n_dimensions, o, &
+    pure subroutine accept_ensemble_impl(n_dimensions, o, &
                                            U_first, d_first, &
                                            U_history, d_history, history_len, &
                                            G_t, normal_error_t, &
@@ -154,20 +156,20 @@ contains
             !! DM_MIN(0.0_real64)
         integer(int32), intent(in) :: lwork
             !! Size of tmp_work
-            !! DM_OUTPUT_FROM(lwork, tox_stc_accept_ensemble_svd_workspace, tox_shape_truthful_clustering_accept_kernel, AUTO)
+            !! DM_OUTPUT_FROM(lwork, tox_stc_accept_ensemble_svd_workspace, tox_shape_truthful_clustering_accept_impl, AUTO)
         real(real64), intent(out) :: tmp_m(n_dimensions, n_dimensions)
             !! Workspace: M = U_r(:,1:d)^T U_tp1(:,1:d) for whichever reference is being compared
         real(real64), intent(out) :: tmp_s(n_dimensions)
             !! Workspace: singular values of tmp_m (= cos of the principal angles)
         real(real64), intent(out) :: tmp_work(lwork)
             !! Workspace: LAPACK dgesvd scratch
-        logical, intent(out) :: is_accepted
+        logical(c_bool), intent(out) :: is_accepted
             !! .true. if all four acceptance criteria are satisfied
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success
 
         real(real64)   :: rmse_t, rmse_tp1, chordal_distance, chordal_max
-        logical        :: applicable, chordal_ok, d_diff_ok, g_ratio_ok, rmse_ratio_ok
+        logical(c_bool)        :: applicable, chordal_ok, d_diff_ok, g_ratio_ok, rmse_ratio_ok
         integer(int32) :: i
 
         call set_ok(ierr)
@@ -201,13 +203,13 @@ contains
 
         is_accepted = chordal_ok .and. d_diff_ok .and. g_ratio_ok .and. rmse_ratio_ok
 
-    end subroutine accept_ensemble_kernel
+    end subroutine accept_ensemble_impl
 
     !> Chordal distance (Edelman, Arias & Smith 1998; related to the Davis-Kahan sinTheta
     !| theorem) between two tangent bases of matching rank, or "not applicable" when their
     !| ranks differ -- no shared dimension to compare angles over, see `accept_ensemble`'s
     !| criterion (1). Not itself a kernel (no generator wrapper -- callers pass their own
-    !| workspace directly): shared scratch-reuse plumbing for `accept_ensemble_kernel`'s
+    !| workspace directly): shared scratch-reuse plumbing for `accept_ensemble_impl`'s
     !| reference-set loop, exported `public` so `tox_stc_json`'s report-layer drift
     !| computations (see `misc/mod_STC.md`, "Ensemble Observable Plots") can reuse the exact
     !| same formula instead of re-deriving it. `ierr` is set only on a genuine LAPACK SVD
@@ -220,7 +222,7 @@ contains
         real(real64),   intent(out)   :: tmp_m(n_dimensions, n_dimensions)
         real(real64),   intent(out)   :: tmp_s(n_dimensions)
         real(real64),   intent(out)   :: tmp_work(lwork)
-        logical,        intent(out)   :: applicable
+        logical(c_bool),        intent(out)   :: applicable
         real(real64),   intent(out)   :: chordal_distance
         integer(int32), intent(out)   :: ierr
 
@@ -249,4 +251,4 @@ contains
 
     end subroutine stc_chordal_distance
 
-end module tox_shape_truthful_clustering_accept_kernel
+end module tox_shape_truthful_clustering_accept_impl

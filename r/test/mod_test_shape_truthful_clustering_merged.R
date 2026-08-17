@@ -14,7 +14,7 @@ fixture_a <- function() {
   list(vectors = vectors, kd_indices = kd_indices, dimension_order = dimension_order)
 }
 
-test_single_seed_matches_per_seed_kernel <- function() {
+test_single_seed_matches_per_seed_impl <- function() {
   fx <- fixture_a()
   seed_selection_mask <- rep(FALSE, 7)
   seed_selection_mask[1] <- TRUE

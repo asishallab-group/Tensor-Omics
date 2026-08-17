@@ -24,9 +24,10 @@
 !|   collide.
 module tox_stc_csv
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
     use f42_safeguard
-    use f42_utils, only: open_file
+    use f42_io, only: open_file
     use tox_errors, only: is_err, set_ok, validate_dimension_size, validate_in_range_int
     M_IMPLICIT_NONE
 
@@ -56,11 +57,11 @@ contains
             !! Maximum number of ensembles one super-ensemble can hold
         integer(int32), intent(in) :: n_super_ensembles
             !! Number of leading columns of `super_ensembles` actually filled
-        logical, intent(in) :: seed_selection_mask(n_vectors)
+        logical(c_bool), intent(in) :: seed_selection_mask(n_vectors)
             !! Seed selection, see `seeds`
-        logical, intent(in) :: ensemble_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_masks(n_vectors, n_selected_seed)
             !! Per-ensemble accepted membership, one column per seed
-        logical, intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
             !! Per-ensemble iteration-1 fallback membership
         integer(int32), intent(in) :: super_ensembles(max_group_size, n_selected_seed*(n_selected_seed - 1))
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
@@ -160,7 +161,7 @@ contains
             !! Number of input vectors N
         integer(int32), intent(in) :: n_selected_seed
             !! Number of selected seeds / accepted ensembles
-        logical, intent(in) :: ensemble_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_masks(n_vectors, n_selected_seed)
             !! Per-ensemble accepted membership, one column per seed
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success

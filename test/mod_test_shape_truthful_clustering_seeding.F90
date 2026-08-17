@@ -1,12 +1,13 @@
 !> Unit test suite for tox_shape_truthful_clustering_seeding (density_labels, seeds),
 !| generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_seeding_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_seeding_impl.F90.
 module mod_test_shape_truthful_clustering_seeding
-    use tox_shape_truthful_clustering_seeding, only: density_labels_alloc, seeds_alloc
-    use f42_kd_tree, only: build_kd_index_alloc
+    use tox_shape_truthful_clustering_seeding, only: density_labels, seeds
+    use f42_kd_tree, only: build_kd_index
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -46,7 +47,7 @@ contains
     !
     ! 3 points on a line, (0,0),(1,0),(3,0), k_density=2 (every other point), default
     ! bandwidth_percentile=68.27. Hand-computed (and cross-checked against an independent
-    ! Python re-implementation of the same formula, including calc_percentile_helper's own
+    ! Python re-implementation of the same formula, including calc_percentile_impl's own
     ! linear-interpolation rule: rank = (percentile/100)*(n-1) + 1) expected densities:
     !   point 1 (x=0): neighbor distances [1,3] -> rank = 0.6827*1+1 = 1.6827 -> interpolate
     !     1 and 3 at fraction 0.6827 -> bandwidth = 2.3654
@@ -62,13 +63,13 @@ contains
         real(real64)   :: labels(3)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_hand_computed: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_density_labels_hand_computed: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -94,13 +95,13 @@ contains
         real(real64)   :: labels(3)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_bandwidth_percentile_median: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_density_labels_bandwidth_percentile_median: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
                                   bandwidth_percentile=50.0d0, labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -118,13 +119,13 @@ contains
         real(real64)   :: labels(3)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_invalid_bandwidth_percentile: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_density_labels_invalid_bandwidth_percentile: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
                                   bandwidth_percentile=101.0d0, labels=labels, ierr=ierr)
         call assert_true(is_err(ierr), "density_labels should reject bandwidth_percentile > 100")
     end subroutine test_density_labels_invalid_bandwidth_percentile
@@ -144,13 +145,13 @@ contains
         real(real64)   :: labels(5)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_symmetric_neighborhood_does_not_underflow: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_density_labels_symmetric_neighborhood_does_not_underflow: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -172,7 +173,7 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call density_labels_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -195,13 +196,13 @@ contains
         real(real64)   :: labels(6)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 6_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 6_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_dense_vs_sparse: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_density_labels_dense_vs_sparse: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 6_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 6_int32, kd_indices, dim_order, k_density=2_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -220,7 +221,7 @@ contains
         call build_line_fixture(vectors, kd_indices, dim_order)
         kd_indices(1) = 12
 
-        call density_labels_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
                                   labels=labels, ierr=ierr)
         call assert_true(is_err(ierr), "density_labels should reject a kd_indices entry > n_vectors")
     end subroutine test_density_labels_invalid_kd_indices
@@ -232,18 +233,18 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call density_labels_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=11_int32, &
+        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=11_int32, &
                                   labels=labels, ierr=ierr)
         call assert_true(is_err(ierr), "density_labels should reject k_density > n_vectors - 1")
     end subroutine test_density_labels_k_density_too_large
 
     !> Regression test for a genuine crash: on branch smoothing-onward, calling
-    !| `density_labels_alloc`/`seeds_alloc` with `k_density` *omitted* on a dataset smaller
+    !| `density_labels`/`seeds` with `k_density` *omitted* on a dataset smaller
     !| than the default (30) corrupted memory (an out-of-bounds k-NN query for 31 neighbors
     !| among 5 points) and crashed later, in unrelated code -- see
     !| `misc/code_gen_footgun.md`'s third entry for the generator-level root cause (an omitted
     !| optional's default is never validated against a runtime-dependent DM_MAX the way an
-    !| explicit value is) and `density_labels_kernel`'s own `min(actual_k_density,
+    !| explicit value is) and `density_labels_impl`'s own `min(actual_k_density,
     !| n_vectors - 1)` clamp for the fix. This asserts the fix, not just its absence of a
     !| crash: omitting `k_density` here must resolve to exactly `n_vectors - 1` -- the same
     !| result an explicit `k_density = n_vectors - 1` call already produces.
@@ -254,22 +255,22 @@ contains
         real(real64)   :: labels_omitted(5), labels_explicit(5)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_omitted_k_density_is_clamped: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_density_labels_omitted_k_density_is_clamped: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, labels=labels_omitted, ierr=ierr)
+        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, labels=labels_omitted, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'density_labels_alloc (k_density omitted) failed unexpectedly: ', ierr
+            write (*, *) 'density_labels (k_density omitted) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call density_labels_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
                                   labels=labels_explicit, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'density_labels_alloc (k_density=4) failed unexpectedly: ', ierr
+            write (*, *) 'density_labels (k_density=4) failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -296,16 +297,16 @@ contains
         real(real64)   :: vectors(2, 4) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 10.0d0, 0.0d0, 10.1d0, 0.0d0], [2, 4])
         integer(int32) :: kd_indices(4), dim_order(2), ierr
-        logical        :: is_seed_mask(4)
+        logical(c_bool)        :: is_seed_mask(4)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 4_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 4_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_two_separated_clusters: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_seeds_two_separated_clusters: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 4_int32, kd_indices, dim_order, k_density=1_int32, &
+        call seeds(vectors, 2_int32, 4_int32, kd_indices, dim_order, k_density=1_int32, &
                          is_seed_mask=is_seed_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'seeds failed unexpectedly: ', ierr
@@ -324,16 +325,16 @@ contains
     subroutine test_seeds_single_cluster_one_seed()
         real(real64)   :: vectors(2, 2) = reshape([0.0d0, 0.0d0, 0.1d0, 0.0d0], [2, 2])
         integer(int32) :: kd_indices(2), dim_order(2), ierr
-        logical        :: is_seed_mask(2)
+        logical(c_bool)        :: is_seed_mask(2)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 2_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 2_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_single_cluster_one_seed: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_seeds_single_cluster_one_seed: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 2_int32, kd_indices, dim_order, k_density=1_int32, &
+        call seeds(vectors, 2_int32, 2_int32, kd_indices, dim_order, k_density=1_int32, &
                          is_seed_mask=is_seed_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'seeds failed unexpectedly: ', ierr
@@ -350,21 +351,21 @@ contains
     subroutine test_seeds_exclusion_radius_percentile_widens_coverage()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2), ierr
-        logical        :: mask_default(11), mask_wide(11), expected_default(11), expected_wide(11)
+        logical(c_bool)        :: mask_default(11), mask_wide(11), expected_default(11), expected_wide(11)
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call seeds_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
                          is_seed_mask=mask_default, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'seeds_alloc (default exclusion_radius_percentile) failed unexpectedly: ', ierr
+            write (*, *) 'seeds (default exclusion_radius_percentile) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
                          exclusion_radius_percentile=100.0d0, is_seed_mask=mask_wide, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'seeds_alloc (exclusion_radius_percentile=100) failed unexpectedly: ', ierr
+            write (*, *) 'seeds (exclusion_radius_percentile=100) failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -385,16 +386,16 @@ contains
         real(real64)   :: vectors(2, 5) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
         integer(int32) :: kd_indices(5), dim_order(2), ierr
-        logical        :: is_seed_mask(5)
+        logical(c_bool)        :: is_seed_mask(5)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_invalid_exclusion_radius_percentile: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_seeds_invalid_exclusion_radius_percentile: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
                          exclusion_radius_percentile=101.0d0, is_seed_mask=is_seed_mask, ierr=ierr)
         call assert_true(is_err(ierr), "seeds should reject exclusion_radius_percentile > 100")
     end subroutine test_seeds_invalid_exclusion_radius_percentile
@@ -403,16 +404,16 @@ contains
         real(real64)   :: vectors(2, 5) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
         integer(int32) :: kd_indices(5), dim_order(2), ierr
-        logical        :: is_seed_mask(5)
+        logical(c_bool)        :: is_seed_mask(5)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_invalid_k_density: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_seeds_invalid_k_density: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=0_int32, &
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=0_int32, &
                          is_seed_mask=is_seed_mask, ierr=ierr)
         call assert_true(is_err(ierr), "seeds should reject k_density < 1")
     end subroutine test_seeds_invalid_k_density
@@ -420,32 +421,32 @@ contains
     !> Regression test for the same crash as
     !| test_density_labels_omitted_k_density_is_clamped above, exercised through `seeds`
     !| itself (which resolves `k_density` a second time, independently, for
-    !| `calc_ensemble_growth_radius_kernel`'s own coverage-radius call): omitting `k_density`
+    !| `calc_ensemble_growth_radius_impl`'s own coverage-radius call): omitting `k_density`
     !| on N=5 must produce exactly the same seed selection as explicitly passing
     !| `k_density = n_vectors - 1 = 4`, not a crash.
     subroutine test_seeds_omitted_k_density_is_clamped()
         real(real64)   :: vectors(2, 5) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
         integer(int32) :: kd_indices(5), dim_order(2), ierr
-        logical        :: mask_omitted(5), mask_explicit(5)
+        logical(c_bool)        :: mask_omitted(5), mask_explicit(5)
 
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_omitted_k_density_is_clamped: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_seeds_omitted_k_density_is_clamped: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, is_seed_mask=mask_omitted, ierr=ierr)
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, is_seed_mask=mask_omitted, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'seeds_alloc (k_density omitted) failed unexpectedly: ', ierr
+            write (*, *) 'seeds (k_density omitted) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call seeds_alloc(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
                          is_seed_mask=mask_explicit, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'seeds_alloc (k_density=4) failed unexpectedly: ', ierr
+            write (*, *) 'seeds (k_density=4) failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -466,9 +467,9 @@ contains
         end do
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 11_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_line_fixture: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_line_fixture: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_line_fixture

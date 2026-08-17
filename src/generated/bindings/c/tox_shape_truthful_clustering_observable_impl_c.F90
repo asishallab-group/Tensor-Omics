@@ -1,7 +1,7 @@
 #ifndef NO_C_BINDING
 #include <src/macros.h>
 
-!> summary: C-wrappers for [[tox_shape_truthful_clustering_observable_kernel(module)]]
+!> summary: C-wrappers for [[tox_shape_truthful_clustering_observable_impl(module)]]
 !| # Shape Truthful Clustering (STC): Observable
 !|
 !| `observable`: the tuple (U, d, G, mu, normal_error, tangent_scales) for an ensemble,
@@ -11,7 +11,7 @@
 !| `tangent_scales` are simple, dependency-free reductions over the eigenvalues `observable`
 !| computes. See `misc/mod_STC.md`, SKG `observable`/`normal_error`/`tangent_scales`, for the
 !| full algorithm definitions.
-module tox_shape_truthful_clustering_observable_kernel_c
+module tox_shape_truthful_clustering_observable_impl_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_int, c_loc
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
@@ -22,7 +22,7 @@ module tox_shape_truthful_clustering_observable_kernel_c
 
 contains
 
-    !> summary: C-wrapper for [[tox_shape_truthful_clustering_observable_kernel(module):tox_stc_observable_svd_workspace(subroutine)]]
+    !> summary: C-wrapper for [[tox_shape_truthful_clustering_observable_impl(module):tox_stc_observable_svd_workspace(subroutine)]]
     !| The documented minimum-workspace formula for JOBZ='S' (see `man dgesdd`):
     !| LWORK >= 4*min(M,N)**2 + 7*min(M,N), IWORK size = 8*min(M,N), where M=n_dimensions and
     !| N=n_selected_member.
@@ -33,7 +33,7 @@ contains
             iwork_size,&
             ierr&
         ) bind(C, name="tox_stc_observable_svd_workspace_c")
-        use tox_shape_truthful_clustering_observable_kernel, only: tox_stc_observable_svd_workspace
+        use tox_shape_truthful_clustering_observable_impl, only: tox_stc_observable_svd_workspace
 
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
@@ -61,5 +61,5 @@ contains
         )
     end subroutine tox_stc_observable_svd_workspace_c
 
-end module tox_shape_truthful_clustering_observable_kernel_c
+end module tox_shape_truthful_clustering_observable_impl_c
 #endif

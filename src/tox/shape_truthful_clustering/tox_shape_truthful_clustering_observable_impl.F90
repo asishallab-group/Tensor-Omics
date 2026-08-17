@@ -9,8 +9,10 @@
 !| `tangent_scales` are simple, dependency-free reductions over the eigenvalues `observable`
 !| computes. See `misc/mod_STC.md`, SKG `observable`/`normal_error`/`tangent_scales`, for the
 !| full algorithm definitions.
-module tox_shape_truthful_clustering_observable_kernel
+module tox_shape_truthful_clustering_observable_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, ERR_INTERNAL
     M_IMPLICIT_NONE
 
@@ -34,20 +36,20 @@ module tox_shape_truthful_clustering_observable_kernel
     end interface
 
     private
-    public :: normal_error_kernel
-    public :: tangent_scales_kernel
-    public :: observable_kernel
+    public :: normal_error_impl
+    public :: tangent_scales_impl
+    public :: observable_impl
     public :: tox_stc_observable_svd_workspace
-    public :: ensemble_final_observable_kernel
+    public :: ensemble_final_observable_impl
 
 contains
 
     !> summary: Mean squared residual of an ensemble's members off its tangent subspace
     !| AUTHOR_ASIS_HALLAB
     !| No pass over the ensemble's member vectors is required; the sum is already implied by
-    !| the singular value decomposition [[tox_shape_truthful_clustering_observable_kernel(module):observable_kernel]]
+    !| the singular value decomposition [[tox_shape_truthful_clustering_observable_impl(module):observable_impl]]
     !| computes.
-    pure subroutine normal_error_kernel(d, eigenvalues, n_dimensions, normal_error_value)
+    pure subroutine normal_error_impl(d, eigenvalues, n_dimensions, normal_error_value)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
         integer(int32), intent(in) :: d
@@ -62,11 +64,11 @@ contains
 
         normal_error_value = sum(eigenvalues(d + 1:n_dimensions))
 
-    end subroutine normal_error_kernel
+    end subroutine normal_error_impl
 
     !> summary: Extent along each tangent direction of an ensemble's tangent subspace
     !| AUTHOR_ASIS_HALLAB
-    pure subroutine tangent_scales_kernel(d, eigenvalues, n_dimensions, tangent_scales_value)
+    pure subroutine tangent_scales_impl(d, eigenvalues, n_dimensions, tangent_scales_value)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
         integer(int32), intent(in) :: d
@@ -81,7 +83,7 @@ contains
 
         tangent_scales_value = sqrt(eigenvalues(1:d))
 
-    end subroutine tangent_scales_kernel
+    end subroutine tangent_scales_impl
 
     !> M_EXPORT_C
     !| summary: Recommend LAPACK dgesdd workspace sizes for observable's economy-mode SVD
@@ -116,7 +118,7 @@ contains
     !| of ensemble size, and slots directly into `normal_error`/`tangent_scales`'s existing
     !| `n_dimensions`-length interface. `ierr` is set only if the LAPACK SVD fails to
     !| converge -- not a condition any input check could foresee.
-    pure subroutine observable_kernel(vectors, n_dimensions, n_vectors, member_selection_mask, n_selected_member, &
+    pure subroutine observable_impl(vectors, n_dimensions, n_vectors, member_selection_mask, n_selected_member, &
                                       lwork, iwork_size, &
                                       tmp_y, tmp_s, tmp_u_econ, tmp_vt_econ, tmp_work, tmp_iwork, &
                                       U, eigenvalues, mu, d, G, normal_error_value, tangent_scales_value, ierr)
@@ -127,7 +129,7 @@ contains
             !! Number of input vectors N
         real(real64), intent(in) :: vectors(n_dimensions, n_vectors)
             !! Input data matrix
-        logical, intent(in) :: member_selection_mask(n_vectors)
+        logical(c_bool), intent(in) :: member_selection_mask(n_vectors)
             !! Ensemble membership over the full dataset
         integer(int32), intent(in) :: n_selected_member
             !! Number of selected members (count of .TRUE. in member_selection_mask)
@@ -135,10 +137,10 @@ contains
             !! DM_MAX(n_vectors)
         integer(int32), intent(in) :: lwork
             !! Size of tmp_work
-            !! DM_OUTPUT_FROM(lwork, tox_stc_observable_svd_workspace, tox_shape_truthful_clustering_observable_kernel, AUTO)
+            !! DM_OUTPUT_FROM(lwork, tox_stc_observable_svd_workspace, tox_shape_truthful_clustering_observable_impl, AUTO)
         integer(int32), intent(in) :: iwork_size
             !! Size of tmp_iwork
-            !! DM_OUTPUT_FROM(iwork_size, tox_stc_observable_svd_workspace, tox_shape_truthful_clustering_observable_kernel, AUTO)
+            !! DM_OUTPUT_FROM(iwork_size, tox_stc_observable_svd_workspace, tox_shape_truthful_clustering_observable_impl, AUTO)
         real(real64), intent(out) :: tmp_y(n_dimensions, n_selected_member)
             !! Workspace: centered member matrix
         real(real64), intent(out) :: tmp_s(min(n_dimensions, n_selected_member))
@@ -218,21 +220,21 @@ contains
         d = d_local
         G = best_gap
 
-        call normal_error_kernel(d_local, eigenvalues, n_dimensions, normal_error_value)
+        call normal_error_impl(d_local, eigenvalues, n_dimensions, normal_error_value)
 
         tangent_scales_value = 0.0_real64
         block
             real(real64) :: tangent_scales_local(d_local)
-            call tangent_scales_kernel(d_local, eigenvalues, n_dimensions, tangent_scales_local)
+            call tangent_scales_impl(d_local, eigenvalues, n_dimensions, tangent_scales_local)
             tangent_scales_value(1:d_local) = tangent_scales_local
         end block
 
-    end subroutine observable_kernel
+    end subroutine observable_impl
 
     !> summary: Each ensemble's final *accepted* growth-history state
     !| AUTHOR_ASIS_HALLAB
     !| Not simply the last *populated* history column: `stc_push_ensemble_history`
-    !| (`tox_shape_truthful_clustering_kernel`) also pushes a *rejected* final candidate right
+    !| (`tox_shape_truthful_clustering_impl`) also pushes a *rejected* final candidate right
     !| before `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
     !| `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is, in exactly those
     !| two cases, the discarded candidate's geometry, not the ensemble's real final state.
@@ -248,12 +250,12 @@ contains
     !| state" from -- see `misc/mod_STC.md`, "Ensemble identification"). Consolidates what was
     !| previously a private, single-consumer helper in `tox_stc_json.F90`
     !| (`stc_last_accepted_history_index`) into a proper, independently testable kernel now
-    !| that `tox_shape_truthful_clustering_filter_kernel` needs the exact same extraction --
+    !| that `tox_shape_truthful_clustering_filter_impl` needs the exact same extraction --
     !| placed here, not in the parent module, specifically so both of those (and any future
     !| sibling) can depend on it without a circular module dependency (the parent module
-    !| already `use`s `tox_shape_truthful_clustering_reconciliation_kernel`, which will in turn
+    !| already `use`s `tox_shape_truthful_clustering_reconciliation_impl`, which will in turn
     !| `use` the filter kernel module, which needs this).
-    pure subroutine ensemble_final_observable_kernel(n_dimensions, o, n_ensembles, &
+    pure subroutine ensemble_final_observable_impl(n_dimensions, o, n_ensembles, &
                                                       ensemble_U_history, ensemble_d_history, ensemble_S_history, &
                                                       ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
                                                       ensemble_accepted_history, &
@@ -282,7 +284,7 @@ contains
             !! Per-ensemble trailing spectral gaps
         integer(int32), intent(in) :: ensemble_k_history(o, n_ensembles)
             !! Per-ensemble trailing sizes; 0 marks an unpopulated column
-        logical, intent(in) :: ensemble_accepted_history(o, n_ensembles)
+        logical(c_bool), intent(in) :: ensemble_accepted_history(o, n_ensembles)
             !! Whether the growth iteration retained in each history column was itself
             !! accepted -- see this kernel's own summary above
         real(real64), intent(out) :: ensemble_U_final(n_dimensions, n_dimensions, n_ensembles)
@@ -303,7 +305,7 @@ contains
         integer(int32), intent(out) :: ensemble_k_final(n_ensembles)
             !! Each ensemble's final accepted size; zero when `ensemble_has_final` is
             !! `.false.` for that ensemble
-        logical, intent(out) :: ensemble_has_final(n_ensembles)
+        logical(c_bool), intent(out) :: ensemble_has_final(n_ensembles)
             !! Whether any history column at all qualifies as this ensemble's final accepted
             !! state -- see this kernel's own summary above for the (rare) `.false.` cases
         integer(int32), intent(out) :: ensemble_final_index(n_ensembles)
@@ -345,6 +347,6 @@ contains
             end if
         end do
 
-    end subroutine ensemble_final_observable_kernel
+    end subroutine ensemble_final_observable_impl
 
-end module tox_shape_truthful_clustering_observable_kernel
+end module tox_shape_truthful_clustering_observable_impl

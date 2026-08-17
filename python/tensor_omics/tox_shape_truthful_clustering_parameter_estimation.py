@@ -1,6 +1,16 @@
-"""tox_shape_truthful_clustering_parameter_estimation
+r"""tox_shape_truthful_clustering_parameter_estimation
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC): Parameter Estimation
+
+A separate, optional pipeline step estimating near-optimal starting values for the crucial
+parameters (`k_min`, `k_density`, `density_quantile`,
+`chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
+fraction of the cost of a grid search or a
+resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local
+neighborhoods using the same primitives the real pipeline already has
+(`density_labels`, `observable`), then read the parameters off simple summary statistics of
+that pass. See `misc/mod_STC.md`, "Estimate parameters from data", for the full algorithm
+definition and the reasoning behind every design choice below.
 
 Python binding, generated from tox_shape_truthful_clustering_parameter_estimation. Do not edit.
 """
@@ -101,7 +111,7 @@ def sample_estimator_anchors(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_parameter_estimation::sample_estimator_anchors_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_parameter_estimation::sample_estimator_anchors`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -298,7 +308,7 @@ def estimate_stc_parameters(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_parameter_estimation::estimate_stc_parameters_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_parameter_estimation::estimate_stc_parameters`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

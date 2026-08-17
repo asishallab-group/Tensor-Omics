@@ -11,19 +11,22 @@
 !| (`density_labels`, `observable`), then read the parameters off simple summary statistics of
 !| that pass. See `misc/mod_STC.md`, "Estimate parameters from data", for the full algorithm
 !| definition and the reasoning behind every design choice below.
-module tox_shape_truthful_clustering_parameter_estimation_kernel
+module tox_shape_truthful_clustering_parameter_estimation_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: sort_real_heapsort, init_perm, calc_percentile_helper
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use f42_sort_impl, only: sort_real_heapsort, init_perm
+    use f42_stats_impl, only: calc_percentile_impl
     use tox_errors, only: set_ok, set_err_once, ERR_INTERNAL
-    use tox_shape_truthful_clustering_seeding_kernel, only: density_labels_kernel
-    use tox_shape_truthful_clustering_observable_kernel, only: observable_kernel, tox_stc_observable_svd_workspace
+    use tox_shape_truthful_clustering_seeding_impl, only: density_labels_impl
+    use tox_shape_truthful_clustering_observable_impl, only: observable_impl, tox_stc_observable_svd_workspace
     M_IMPLICIT_NONE
 
     interface
-        ! Own copy of the dgesvd interface, matching tox_shape_truthful_clustering_accept_kernel's
+        ! Own copy of the dgesvd interface, matching tox_shape_truthful_clustering_accept_impl's
         ! identical declaration -- module-private interface bodies are not importable via `use`,
         ! so every module that calls a given LAPACK routine declares its own, same as
-        ! tox_shape_truthful_clustering_observable_kernel's own dgesdd interface.
+        ! tox_shape_truthful_clustering_observable_impl's own dgesdd interface.
         pure subroutine dgesvd(jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info)
             import :: int32, real64
             character,      intent(in)    :: jobu, jobvt
@@ -42,22 +45,22 @@ module tox_shape_truthful_clustering_parameter_estimation_kernel
 #define CM_FIRST_QUARTILE_PERCENTILE_DEFAULT 25.0_real64
 
     private
-    public :: sample_estimator_anchors_kernel
-    public :: grow_estimator_anchor_clouds_kernel
-    public :: estimate_stc_parameters_kernel
+    public :: sample_estimator_anchors_impl
+    public :: grow_estimator_anchor_clouds_impl
+    public :: estimate_stc_parameters_impl
     public :: tox_stc_estimate_parameters_svd_workspace
 
 contains
 
     !> summary: Pick n_anchors point indices at evenly-spaced percentiles of the density-sorted order
     !| AUTHOR_ASIS_HALLAB
-    !| Nearest-rank selection (not `calc_percentile_helper`'s own linear interpolation): these
+    !| Nearest-rank selection (not `calc_percentile_impl`'s own linear interpolation): these
     !| must be genuine point indices, not interpolated values. Percentiles are
     !| $100/n_{\text{anchors}}, 200/n_{\text{anchors}}, \ldots, 100$ -- e.g. $n_{\text{anchors}}=5$
     !| gives 20/40/60/80/100%ile. Duplicate anchor indices are possible (not deduplicated) when
     !| `n_anchors` is close to `n_vectors`; harmless -- a duplicated anchor's cloud just grows
     !| redundantly, one estimator-anchor "slot" among several effectively wasted, not incorrect.
-    pure subroutine sample_estimator_anchors_kernel(density_labels, n_vectors, n_anchors, &
+    pure subroutine sample_estimator_anchors_impl(density_labels, n_vectors, n_anchors, &
                                                     tmp_sort_perm, &
                                                     anchor_indices)
         integer(int32), intent(in) :: n_vectors
@@ -88,7 +91,7 @@ contains
             anchor_indices(i) = tmp_sort_perm(rank_idx)
         end do
 
-    end subroutine sample_estimator_anchors_kernel
+    end subroutine sample_estimator_anchors_impl
 
     !> summary: Multi-source competitive region growth of the n_anchors estimator anchors, bounded by seed_max_set_size
     !| AUTHOR_ASIS_HALLAB
@@ -102,7 +105,7 @@ contains
     !| growth capped small by design, the rescan is cheap in absolute terms regardless -- see
     !| `misc/mod_STC.md` for the full complexity discussion and why this is a deliberate
     !| simplicity trade, not an oversight.
-    pure subroutine grow_estimator_anchor_clouds_kernel(vectors, n_dimensions, n_vectors, &
+    pure subroutine grow_estimator_anchor_clouds_impl(vectors, n_dimensions, n_vectors, &
                                                         anchor_indices, n_anchors, seed_max_set_size, &
                                                         cloud_masks, cloud_sizes)
         integer(int32), intent(in) :: n_dimensions
@@ -126,14 +129,14 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
             !! DM_DEFAULT(CM_SEED_MAX_SET_SIZE_DEFAULT)
-        logical, intent(out) :: cloud_masks(n_vectors, n_anchors)
+        logical(c_bool), intent(out) :: cloud_masks(n_vectors, n_anchors)
             !! .true. for members of each EA's (column) final cloud, including its own anchor
         integer(int32), intent(out) :: cloud_sizes(n_anchors)
             !! Final cloud size per EA
 
         integer(int32) :: actual_max_claims, total_claimed, e, p, q, best_ea, best_point
         real(real64)   :: actual_seed_max_set_size, d2, global_best_d2
-        logical        :: claimed(n_vectors)
+        logical(c_bool)        :: claimed(n_vectors)
 
         M_DEFAULT_VAL(seed_max_set_size, actual_seed_max_set_size, CM_SEED_MAX_SET_SIZE_DEFAULT)
 
@@ -175,7 +178,7 @@ contains
             total_claimed                    = total_claimed + 1
         end do
 
-    end subroutine grow_estimator_anchor_clouds_kernel
+    end subroutine grow_estimator_anchor_clouds_impl
 
     !> M_EXPORT_C
     !| summary: Recommend LAPACK workspace sizes for estimate_stc_parameters' SVD calls
@@ -218,7 +221,7 @@ contains
     !| depends on the data's own spatial distribution, not just
     !| n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
     !| 5.14.
-    pure subroutine estimate_stc_parameters_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+    pure subroutine estimate_stc_parameters_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                    k_density, bandwidth_percentile, &
                                                    n_anchors, seed_max_set_size, first_quartile_percentile, &
                                                    lwork_observable, iwork_size, lwork_angle, &
@@ -274,13 +277,13 @@ contains
             !! DM_DEFAULT(CM_FIRST_QUARTILE_PERCENTILE_DEFAULT)
         integer(int32), intent(in) :: lwork_observable
             !! Size of tmp_work
-            !! DM_OUTPUT_FROM(lwork_observable, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_kernel, AUTO)
+            !! DM_OUTPUT_FROM(lwork_observable, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_impl, AUTO)
         integer(int32), intent(in) :: iwork_size
             !! Size of tmp_iwork
-            !! DM_OUTPUT_FROM(iwork_size, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_kernel, AUTO)
+            !! DM_OUTPUT_FROM(iwork_size, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_impl, AUTO)
         integer(int32), intent(in) :: lwork_angle
             !! Size of tmp_angle_work
-            !! DM_OUTPUT_FROM(lwork_angle, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_kernel, AUTO)
+            !! DM_OUTPUT_FROM(lwork_angle, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_impl, AUTO)
         integer(int32), intent(out) :: tmp_neighbors(n_vectors)
             !! Workspace, see density_labels
         real(real64), intent(out) :: tmp_distances(n_vectors)
@@ -293,7 +296,7 @@ contains
             !! Workspace: per-vector density labels, see density_labels
         integer(int32), intent(out) :: tmp_anchor_indices(n_vectors)
             !! Workspace: estimator anchor indices (sized for the worst case, sliced internally)
-        logical, intent(out) :: tmp_cloud_masks(n_vectors, n_vectors)
+        logical(c_bool), intent(out) :: tmp_cloud_masks(n_vectors, n_vectors)
             !! Workspace: EA cloud membership (sized for the worst case, sliced internally)
         integer(int32), intent(out) :: tmp_cloud_sizes(n_vectors)
             !! Workspace: EA cloud sizes (sized for the worst case, sliced internally)
@@ -359,15 +362,15 @@ contains
         actual_n_anchors = min(actual_n_anchors, n_vectors)
         M_DEFAULT_VAL(first_quartile_percentile, actual_first_quartile_percentile, CM_FIRST_QUARTILE_PERCENTILE_DEFAULT)
 
-        call density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+        call density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                    k_density, bandwidth_percentile, &
                                    tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                    tmp_density_labels)
 
-        call sample_estimator_anchors_kernel(tmp_density_labels, n_vectors, actual_n_anchors, &
+        call sample_estimator_anchors_impl(tmp_density_labels, n_vectors, actual_n_anchors, &
                                              tmp_sort_perm, tmp_anchor_indices(1:actual_n_anchors))
 
-        call grow_estimator_anchor_clouds_kernel(vectors, n_dimensions, n_vectors, &
+        call grow_estimator_anchor_clouds_impl(vectors, n_dimensions, n_vectors, &
                                                  tmp_anchor_indices(1:actual_n_anchors), actual_n_anchors, &
                                                  seed_max_set_size, &
                                                  tmp_cloud_masks(:, 1:actual_n_anchors), &
@@ -379,7 +382,7 @@ contains
             if (tmp_cloud_sizes(e) < 2) cycle
             n_valid = n_valid + 1
 
-            call observable_kernel(vectors, n_dimensions, n_vectors, tmp_cloud_masks(:, e), tmp_cloud_sizes(e), &
+            call observable_impl(vectors, n_dimensions, n_vectors, tmp_cloud_masks(:, e), tmp_cloud_sizes(e), &
                                    lwork_observable, iwork_size, &
                                    tmp_y(:, 1:tmp_cloud_sizes(e)), tmp_s(1:min(n_dimensions, tmp_cloud_sizes(e))), &
                                    tmp_u_econ(:, 1:min(n_dimensions, tmp_cloud_sizes(e))), &
@@ -401,7 +404,8 @@ contains
             end do
             call init_perm(dist_perm(1:n_members))
             call sort_real_heapsort(dist_vals(1:n_members), dist_perm(1:n_members))
-            call calc_percentile_helper(dist_vals(1:n_members), dist_perm(1:n_members), 50.0_real64, tmp_median)
+            ! calc_percentile_impl takes its percentile as a [0,1] fraction (0.5 is the median).
+            call calc_percentile_impl(dist_vals(1:n_members), n_members, dist_perm(1:n_members), 0.5_real64, tmp_median)
             median_dist_vals(n_valid) = tmp_median
         end do
 
@@ -413,13 +417,13 @@ contains
         ! --- Aggregation: medians over the n_valid EAs -------------------------------------
         call init_perm(k_perm(1:n_valid))
         call sort_real_heapsort(k_vals(1:n_valid), k_perm(1:n_valid))
-        call calc_percentile_helper(k_vals(1:n_valid), k_perm(1:n_valid), 50.0_real64, estimated_k_min)
+        call calc_percentile_impl(k_vals(1:n_valid), n_valid, k_perm(1:n_valid), 0.5_real64, estimated_k_min)
         estimated_k_density = estimated_k_min
 
         call init_perm(dist_perm(1:n_valid))
         call sort_real_heapsort(median_dist_vals(1:n_valid), dist_perm(1:n_valid))
-        call calc_percentile_helper(median_dist_vals(1:n_valid), dist_perm(1:n_valid), 50.0_real64, &
-                                    estimated_density_quantile)
+        call calc_percentile_impl(median_dist_vals(1:n_valid), n_valid, dist_perm(1:n_valid), 0.5_real64, &
+                                  estimated_density_quantile)
 
         ! --- Aggregation: first_quartile_percentile over all pairs of the n_valid EAs -------
         n_pairs         = 0
@@ -465,21 +469,24 @@ contains
             return
         end if
 
+        ! calc_percentile_impl takes its percentile as a [0,1] fraction; first_quartile_percentile
+        ! is documented and validated as 0-100, so it is rescaled at each call site below.
         call init_perm(pair_perm(1:n_chordal_pairs))
         call sort_real_heapsort(chordal_vals(1:n_chordal_pairs), pair_perm(1:n_chordal_pairs))
-        call calc_percentile_helper(chordal_vals(1:n_chordal_pairs), pair_perm(1:n_chordal_pairs), &
-                                    actual_first_quartile_percentile, estimated_chordal_dist_max_as_prcnt_of_range)
+        call calc_percentile_impl(chordal_vals(1:n_chordal_pairs), n_chordal_pairs, pair_perm(1:n_chordal_pairs), &
+                                  actual_first_quartile_percentile/100.0_real64, &
+                                  estimated_chordal_dist_max_as_prcnt_of_range)
 
         call init_perm(pair_perm(1:n_pairs))
         call sort_real_heapsort(g_ratio_vals(1:n_pairs), pair_perm(1:n_pairs))
-        call calc_percentile_helper(g_ratio_vals(1:n_pairs), pair_perm(1:n_pairs), &
-                                    actual_first_quartile_percentile, estimated_G_max)
+        call calc_percentile_impl(g_ratio_vals(1:n_pairs), n_pairs, pair_perm(1:n_pairs), &
+                                  actual_first_quartile_percentile/100.0_real64, estimated_G_max)
 
         call init_perm(pair_perm(1:n_pairs))
         call sort_real_heapsort(d_diff_vals(1:n_pairs), pair_perm(1:n_pairs))
-        call calc_percentile_helper(d_diff_vals(1:n_pairs), pair_perm(1:n_pairs), &
-                                    actual_first_quartile_percentile, estimated_d_max)
+        call calc_percentile_impl(d_diff_vals(1:n_pairs), n_pairs, pair_perm(1:n_pairs), &
+                                  actual_first_quartile_percentile/100.0_real64, estimated_d_max)
 
-    end subroutine estimate_stc_parameters_kernel
+    end subroutine estimate_stc_parameters_impl
 
-end module tox_shape_truthful_clustering_parameter_estimation_kernel
+end module tox_shape_truthful_clustering_parameter_estimation_impl

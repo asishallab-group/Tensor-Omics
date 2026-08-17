@@ -9,7 +9,7 @@
 #' Conditions applies. Deliberately sequential: growth at each step depends on the
 #' previous one, so there is nothing to parallelize *within* a single seed's growth --
 #' outer-level parallelism belongs in whatever calls this once per seed, matching
-#' `grow_ensemble_kernel`'s own precedent.
+#' `grow_ensemble_impl`'s own precedent.
 #'
 #' Two deliberate readings of the spec, flagged here since the prose leaves them
 #' implicit: (1) an isolated seed -- no neighbor at all within its own growth radius --
@@ -155,10 +155,10 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
 #' seed's growth is fully independent of every other's, so the per-seed calls below write
 #' to disjoint array sections -- safe for `do concurrent`, matching the spec's own "In
 #' parallel grow ensembles around each seed vector" and this codebase's existing
-#' `do concurrent`-everywhere convention (`tox_shift_vectors_kernel`, `tox_gene_centroids_kernel`,
+#' `do concurrent`-everywhere convention (`tox_shift_vectors_impl`, `tox_gene_centroids_impl`,
 #' ...). Left for a later pass if it turns out to matter in practice: the spec's own caveat
 #' that `do concurrent` is unsafe together with external-library calls under gfortran --
-#' `ensemble_identification_kernel` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
+#' `ensemble_identification_impl` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
 #' and `accept_ensemble` -- has not been stress-tested here; `!$omp parallel do` is the
 #' documented fallback if it ever is.
 #'

@@ -56,21 +56,28 @@ build_spherical_kd <- function(points, dimension_order) {
 
 #' Find the k nearest neighbors of a query point in a pre-built k-d tree
 #'
-#' Iterative, stack-based traversal with a bounded max-heap of size `k_neighbors` and
-#' splitting-plane pruning (the near side of each split is always explored, the far side
-#' only when its distance to the splitting plane no longer rules out a closer neighbor
-#' than the heap's current worst). O(log k) per heap update instead of a linear scan.
+#' Via a bounded max-heap kept directly in `neighbors`/`distances` and splitting-plane
+#' pruning. Requires `k_neighbors <= n_points`: every point is then guaranteed visited
+#' before the heap can still have room, so no fallback for "fewer than k found" is needed.
+#' Does not guarantee `neighbors`/`distances` are sorted nearest-to-farthest (max-heap
+#' order internally).
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::kd_knn_query_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{f42_kd_tree::kd_knn_query}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param points a numeric matrix. Original points dataset
 #' @param kd_indices a integer vector. Pre-built k-d tree index, see \code{\link{build_kd_index}}
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_points`.
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
 #' @param query_point a numeric vector. Query point coordinates
 #' @param k_neighbors a integer scalar. Number of neighbors to find
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_points`.
 #' @return a named list with elements:
-#'   \item{neighbors}{a integer vector. guaranteed (max-heap order internally)}
+#'   \item{neighbors}{a integer vector. Output: indices of the k nearest neighbors (nearest-to-farthest order not guaranteed, max-heap order internally)}
 #'   \item{distances}{a numeric vector. Output: Euclidean distances to the k nearest neighbors}
 #' @export
 kd_knn_query <- function(points, kd_indices, dimension_order, query_point, k_neighbors) {
@@ -113,14 +120,19 @@ kd_knn_query <- function(points, kd_indices, dimension_order, query_point, k_nei
 #' `in_radius_mask = FALSE` reset here costs O(n_points) on every call regardless of how
 #' few points are actually found.
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::kd_range_query_mask_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{f42_kd_tree::kd_range_query_mask}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param points a numeric matrix. Original points dataset
 #' @param kd_indices a integer vector. Pre-built k-d tree index
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_points`.
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
 #' @param query_point a numeric vector. Query point coordinates
 #' @param radius a numeric scalar. Search radius
+#'   The minimum valid value is `0.0`.
 #' @return a logical vector. Output: TRUE for points within `radius` of `query_point`
 #' @export
 kd_range_query_mask <- function(points, kd_indices, dimension_order, query_point, radius) {
@@ -154,14 +166,19 @@ kd_range_query_mask <- function(points, kd_indices, dimension_order, query_point
 #' \code{\link{kd_range_query_count}} instead, to skip the
 #' index-buffer writes entirely.
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::kd_range_query_list_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{f42_kd_tree::kd_range_query_list}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param points a numeric matrix. Original points dataset
 #' @param kd_indices a integer vector. Pre-built k-d tree index
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_points`.
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
 #' @param query_point a numeric vector. Query point coordinates
 #' @param radius a numeric scalar. Search radius
+#'   The minimum valid value is `0.0`.
 #' @return a named list with elements:
 #'   \item{neighbors}{a integer vector. Output: indices within `radius`, valid in `neighbors(1:n_found)`}
 #'   \item{n_found}{a integer scalar. Output: number of points within `radius`}
@@ -197,14 +214,19 @@ kd_range_query_list <- function(points, kd_indices, dimension_order, query_point
 #' buffer at all -- only a scalar count. The right choice when the identities of the
 #' points found are never needed, e.g. a per-point local-density label.
 #'
-#' Generated from the Fortran procedure \code{f42_kd_tree::kd_range_query_count_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{f42_kd_tree::kd_range_query_count}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param points a numeric matrix. Original points dataset
 #' @param kd_indices a integer vector. Pre-built k-d tree index
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_points`.
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_dimensions`.
 #' @param query_point a numeric vector. Query point coordinates
 #' @param radius a numeric scalar. Search radius
+#'   The minimum valid value is `0.0`.
 #' @return a integer scalar. Output: number of points within `radius`
 #' @export
 kd_range_query_count <- function(points, kd_indices, dimension_order, query_point, radius) {

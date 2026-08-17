@@ -3,17 +3,17 @@
 #' Filter eligible ensembles, then group/report their intersections
 #'
 #' See this module's own header comment for why this is a two-call orchestrator, and
-#' `tox_shape_truthful_clustering_filter_kernel`'s own `filter_ensembles_kernel` for the
+#' `tox_shape_truthful_clustering_filter_impl`'s own `filter_ensembles_impl` for the
 #' full eligibility-filtering algorithm (Stop Condition/final dimension/final variance
 #' explained, each independently optional, combined by logical AND). `ierr` is set only if
-#' `merge_to_super_ensembles_kernel` discovers a component larger than `max_group_size` --
+#' `merge_to_super_ensembles_impl` discovers a component larger than `max_group_size` --
 #' see that kernel's own doc comment.
 #'
 #' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_reconciliation::ensemble_reconciliation}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param ensemble_masks a logical matrix. Per-ensemble membership, see Ensemble Identification's merged output
-#' @param ensemble_stop_reason a integer vector. Per-ensemble Stop Condition, see `filter_ensembles_kernel`
+#' @param ensemble_stop_reason a integer vector. Per-ensemble Stop Condition, see `filter_ensembles_impl`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `4`.
 #' @param ensemble_U_history a numeric array of rank 4. Per-ensemble trailing tangent+normal bases, see Ensemble Identification's merged
@@ -26,7 +26,7 @@
 #' @param ensemble_accepted_history a logical matrix. Whether the growth iteration retained in each history column was itself accepted
 #' @param mode a string, one of "report", "merge_overlap_coefficient", "merge_any". How intersections are processed
 #'
-#'   The default value is `1`.
+#'   The default value is `"report"`.
 #' @param min_overlap_coefficient a numeric scalar. Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
 #'   \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
 #'   \code{'merge_overlap_coefficient'};
@@ -35,21 +35,21 @@
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
 #' @param report_overlap_coefficient a logical scalar. Whether to compute and return `super_ensembles_overlap_coefficient` at all --
-#'   see `merge_to_super_ensembles_kernel`'s own note on this being guarded, not
+#'   see `merge_to_super_ensembles_impl`'s own note on this being guarded, not
 #'   unconditional
 #'   The default value is `FALSE`.
-#' @param allowed_stop_reasons a logical vector. See `tox_shape_truthful_clustering_filter_kernel`'s own
-#'   `filter_ensembles_by_stop_condition_kernel`
-#' @param d_min a integer scalar. See `tox_shape_truthful_clustering_filter_kernel`'s own
-#'   `filter_ensembles_by_dimension_kernel`
+#' @param allowed_stop_reasons a logical vector. See `tox_shape_truthful_clustering_filter_impl`'s own
+#'   `filter_ensembles_by_stop_condition_impl`
+#' @param d_min a integer scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
+#'   `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param d_max a integer scalar. See `tox_shape_truthful_clustering_filter_kernel`'s own
-#'   `filter_ensembles_by_dimension_kernel`
+#' @param d_max a integer scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
+#'   `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param var_explained_min a numeric scalar. See `tox_shape_truthful_clustering_filter_kernel`'s own
-#'   `filter_ensembles_by_var_explained_kernel`
+#' @param var_explained_min a numeric scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
+#'   `filter_ensembles_by_var_explained_impl`
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #' @param max_group_size a integer scalar. Maximum number of ensembles one super-ensemble (one column of `super_ensembles`)
@@ -82,12 +82,12 @@
 #'     `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`. All zero unless
 #'     `report_overlap_coefficient` was requested -- see the note above.}
 #'   \item{eligible}{a logical vector. Combined per-ensemble eligibility actually used for merging above -- see
-#'     `filter_ensembles_kernel`. Ineligible ensembles are otherwise untouched: they
+#'     `filter_ensembles_impl`. Ineligible ensembles are otherwise untouched: they
 #'     are never removed from `ensemble_masks` or anything else this whole family
 #'     reports, only excluded from contributing a pair here.}
-#'   \item{eligible_by_stop_condition}{a logical vector. See `filter_ensembles_by_stop_condition_kernel`}
-#'   \item{eligible_by_dimension}{a logical vector. See `filter_ensembles_by_dimension_kernel`}
-#'   \item{eligible_by_var_explained}{a logical vector. See `filter_ensembles_by_var_explained_kernel`}
+#'   \item{eligible_by_stop_condition}{a logical vector. See `filter_ensembles_by_stop_condition_impl`}
+#'   \item{eligible_by_dimension}{a logical vector. See `filter_ensembles_by_dimension_impl`}
+#'   \item{eligible_by_var_explained}{a logical vector. See `filter_ensembles_by_var_explained_impl`}
 #' @export
 ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, mode = "report", min_overlap_coefficient = 0.9, report_overlap_coefficient = FALSE, allowed_stop_reasons = NULL, d_min = NULL, d_max = NULL, var_explained_min = NULL, max_group_size) {
     ensemble_masks <- .tox_as_logical(ensemble_masks, "ensemble_masks")
@@ -172,7 +172,7 @@ ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemb
 #' guarded behind `report_overlap_coefficient`, never unconditional (see `misc/mod_STC.md`'s
 #' explicit note on this).
 #'
-#' An ineligible ensemble (`.not. eligible(i)`, see `filter_ensembles_kernel`) never
+#' An ineligible ensemble (`.not. eligible(i)`, see `filter_ensembles_impl`) never
 #' contributes a pair here at all -- a plain `eligible(i) .and. eligible(j)` guard, no array
 #' copying/compaction, the same "logical AND of masks" shape mode
 #' \code{'merge_overlap_coefficient'}'s
@@ -193,11 +193,11 @@ ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemb
 #'
 #' @param ensemble_masks a logical matrix. Per-ensemble membership, see Ensemble Identification's merged output
 #' @param eligible a logical vector. Per-ensemble eligibility to contribute a pair here at all -- see
-#'   `tox_shape_truthful_clustering_filter_kernel`'s own `filter_ensembles_kernel`,
+#'   `tox_shape_truthful_clustering_filter_impl`'s own `filter_ensembles_impl`,
 #'   this kernel's own sibling in `ensemble_reconciliation`'s two-call orchestration
 #' @param mode a string, one of "report", "merge_overlap_coefficient", "merge_any". How intersections are processed
 #'
-#'   The default value is `1`.
+#'   The default value is `"report"`.
 #' @param min_overlap_coefficient a numeric scalar. Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
 #'   \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
 #'   \code{'merge_overlap_coefficient'};
@@ -225,7 +225,7 @@ ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemb
 #'     `n_super_ensembles`. Sized at $N_{\mathcal{E}}(N_{\mathcal{E}}-1)$, twice mode
 #'     \code{'report'}'s
 #'     own true worst case ($N_{\mathcal{E}}(N_{\mathcal{E}}-1)/2$, every pair
-#'     intersects) -- deliberately not divided by 2, see `ensemble_reconciliation_kernel`'s
+#'     intersects) -- deliberately not divided by 2, see `ensemble_reconciliation_impl`'s
 #'     own identical note.}
 #'   \item{n_super_ensembles}{a integer scalar. Number of leading columns of `super_ensembles`/`super_ensembles_overlap_coefficient`
 #'     actually filled}

@@ -7,20 +7,23 @@
 !| over every current member, of the points within that radius). See `misc/mod_STC.md`,
 !| sections "Local Radius Identification" and SKG `grow_ensemble`, for the full algorithm
 !| definition. Both take an already-built k-d tree (`kd_indices`, `dimension_order`, see
-!| [[f42_kd_tree(module):build_kd_index_alloc(subroutine)]]) as input, the same one shared
+!| [[f42_kd_tree_impl(module):build_kd_index_impl(subroutine)]]) as input, the same one shared
 !| with the seeding kernels, rather than building their own.
-module tox_shape_truthful_clustering_ensemble_growing_kernel
+module tox_shape_truthful_clustering_ensemble_growing_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: sort_real_heapsort, calc_percentile_helper
-    use f42_kd_tree, only: kd_knn_query_helper, kd_range_query_mask_helper
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use f42_sort_impl, only: sort_real_heapsort
+    use f42_stats_impl, only: calc_percentile_impl
+    use f42_kd_tree_impl, only: kd_knn_query_impl, kd_range_query_mask_impl
     M_IMPLICIT_NONE
 
 #define CM_GROWTH_RADIUS_K_MIN_DEFAULT 30_int32
 #define CM_GROWTH_RADIUS_PERCENTILE_DEFAULT 50.0_real64
 
     private
-    public :: calc_ensemble_growth_radius_kernel
-    public :: grow_ensemble_kernel
+    public :: calc_ensemble_growth_radius_impl
+    public :: grow_ensemble_impl
 
 contains
 
@@ -32,14 +35,14 @@ contains
     !| (`k_min = n_vectors - 1`) and sliced internally, since `k_min`'s resolved value is only
     !| known once its default (if any) has been applied.
     !|
-    !| `radius_percentile` generalizes what used to be a hardcoded median: `seeds_kernel`
+    !| `radius_percentile` generalizes what used to be a hardcoded median: `seeds_impl`
     !| reuses this same SKG for its seed-exclusion radius (see `misc/mod_STC.md`, SKG
     !| `seeds`), and a fixed dataset-wide-in-spirit median there was observed to suppress
     !| entire uncovered regions (e.g. curvature extrema on a wavy manifold) whose own growth
     !| never actually reaches that far -- exposing the percentile lets that specific call site
     !| shrink its exclusion radius independently of this kernel's own default, without
     !| touching the actual growth-radius computation any other caller relies on.
-    pure subroutine calc_ensemble_growth_radius_kernel(vectors, n_dimensions, n_vectors, &
+    pure subroutine calc_ensemble_growth_radius_impl(vectors, n_dimensions, n_vectors, &
                                                         kd_indices, dimension_order, seed_index, k_min, &
                                                         radius_percentile, &
                                                         tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
@@ -103,9 +106,9 @@ contains
 
         M_DEFAULT_VAL(radius_percentile, actual_radius_percentile, CM_GROWTH_RADIUS_PERCENTILE_DEFAULT)
 
-        call kd_knn_query_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                 vectors(:, seed_index), k_query, tmp_range_stack, &
-                                 tmp_neighbors(1:k_query), tmp_distances(1:k_query))
+        call kd_knn_query_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+                               vectors(:, seed_index), k_query, tmp_range_stack, &
+                               tmp_neighbors(1:k_query), tmp_distances(1:k_query))
 
         ! Exclude the seed itself, at distance 0, from its own k_query nearest neighbors: swap
         ! it into the last slot, then only the first actual_k_min entries are used from here
@@ -129,10 +132,13 @@ contains
         end do
         call sort_real_heapsort(tmp_distances(1:actual_k_min), tmp_sort_perm(1:actual_k_min))
 
-        call calc_percentile_helper(tmp_distances(1:actual_k_min), tmp_sort_perm(1:actual_k_min), &
-                                    actual_radius_percentile, growth_radius)
+        ! calc_percentile_impl takes its percentile as a [0,1] fraction; this SKG's own
+        ! radius_percentile is documented and validated as 0-100, so it is rescaled at the call
+        ! site rather than changing what every caller of this kernel passes.
+        call calc_percentile_impl(tmp_distances(1:actual_k_min), actual_k_min, tmp_sort_perm(1:actual_k_min), &
+                                  actual_radius_percentile/100.0_real64, growth_radius)
 
-    end subroutine calc_ensemble_growth_radius_kernel
+    end subroutine calc_ensemble_growth_radius_impl
 
     !> summary: Grow an ensemble by one step, the union of every current member's growth-radius neighborhood
     !| AUTHOR_ASIS_HALLAB
@@ -143,7 +149,7 @@ contains
     !| ensemble's member count is typically small, especially early in growth. An all-.false.
     !| `is_member_mask` (an empty ensemble) is a well-defined degenerate case: there is nothing
     !| to grow from, so the result is all-.false. too, not an error.
-    pure subroutine grow_ensemble_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+    pure subroutine grow_ensemble_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                          is_member_mask, growth_radius, &
                                          tmp_range_stack, tmp_member_mask_buf, &
                                          is_member_mask_next)
@@ -161,16 +167,16 @@ contains
             !! Dimension order used to build `kd_indices`
             !! DM_MIN(1_int32)
             !! DM_MAX(n_dimensions)
-        logical, intent(in) :: is_member_mask(n_vectors)
+        logical(c_bool), intent(in) :: is_member_mask(n_vectors)
             !! Current ensemble membership
         real(real64), intent(in) :: growth_radius
             !! This ensemble's growth radius, see `calc_ensemble_growth_radius`
             !! DM_MIN(0.0_real64)
         integer(int32), intent(out) :: tmp_range_stack(3, n_vectors)
             !! Workspace: k-d tree traversal stack
-        logical, intent(out) :: tmp_member_mask_buf(n_vectors)
+        logical(c_bool), intent(out) :: tmp_member_mask_buf(n_vectors)
             !! Workspace: per-member range-query result
-        logical, intent(out) :: is_member_mask_next(n_vectors)
+        logical(c_bool), intent(out) :: is_member_mask_next(n_vectors)
             !! Grown ensemble membership (superset of `is_member_mask`)
 
         integer(int32) :: i
@@ -179,11 +185,11 @@ contains
 
         do i = 1, n_vectors
             if (.not. is_member_mask(i)) cycle
-            call kd_range_query_mask_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                            vectors(:, i), growth_radius, tmp_range_stack, tmp_member_mask_buf)
+            call kd_range_query_mask_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+                                          vectors(:, i), growth_radius, tmp_range_stack, tmp_member_mask_buf)
             is_member_mask_next = is_member_mask_next .or. tmp_member_mask_buf
         end do
 
-    end subroutine grow_ensemble_kernel
+    end subroutine grow_ensemble_impl
 
-end module tox_shape_truthful_clustering_ensemble_growing_kernel
+end module tox_shape_truthful_clustering_ensemble_growing_impl

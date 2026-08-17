@@ -1,14 +1,15 @@
 !> Unit test suite for tox_shape_truthful_clustering (ensemble_identification), generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_impl.F90.
 module mod_test_shape_truthful_clustering
     use tox_shape_truthful_clustering, only: ensemble_identification
-    use tox_shape_truthful_clustering_kernel, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
+    use tox_shape_truthful_clustering_impl, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
                                                     STOP_REASON_REJECTED_IMMEDIATELY, STOP_REASON_FIXED_POINT, &
                                                     MEMBER_ADDED_AT_STEP_NON_MEMBER, MEMBER_ADDED_AT_STEP_SEED
-    use f42_kd_tree, only: build_kd_index_alloc
+    use f42_kd_tree, only: build_kd_index
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -62,9 +63,9 @@ contains
         vectors(:, 7) = [0.0d0, 3.0d0]
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_fixture_a: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_fixture_a: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_fixture_a
@@ -72,11 +73,11 @@ contains
     subroutine test_ensemble_identification_natural_fixed_point()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7), expected_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(4), k_history(4), expected_k(4)
         integer(int32) :: member_added_at_step(7), expected_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(4)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(4)
         real(real64)   :: growth_radius, G_history(4), mu_history(2, 4), S_history(2, 4), U_history(2, 2, 4)
         real(real64)   :: U_first(2, 2)
         integer(int32) :: d_first
@@ -132,11 +133,11 @@ contains
     subroutine test_ensemble_identification_history_window_shifts()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(2), k_history(2), expected_k(2)
         integer(int32) :: member_added_at_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(2)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(2)
         real(real64)   :: growth_radius, G_history(2), mu_history(2, 2), S_history(2, 2), U_history(2, 2, 2)
         real(real64)   :: U_first(2, 2)
         integer(int32) :: d_first
@@ -167,11 +168,11 @@ contains
     subroutine test_ensemble_identification_max_size_at_bootstrap()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3), expected_k(3)
         integer(int32) :: member_added_at_step(7), expected_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(3)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
         real(real64)   :: U_first(2, 2)
         integer(int32) :: d_first
@@ -215,11 +216,11 @@ contains
     subroutine test_ensemble_identification_max_size_poisons_prior_accepts()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7), expected_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3), expected_k(3)
         integer(int32) :: member_added_at_step(7), expected_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(3)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
         real(real64)   :: U_first(2, 2)
         integer(int32) :: d_first
@@ -287,9 +288,9 @@ contains
         vectors(:, 7) = [1.0d0, 2.0d0, 0.0d0]
         dim_order = [1, 2, 3]
 
-        call build_kd_index_alloc(vectors, 3_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 3_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_fixture_b: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_fixture_b: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_fixture_b
@@ -297,11 +298,11 @@ contains
     subroutine test_ensemble_identification_rejected_immediately()
         real(real64)   :: vectors(3, 7)
         integer(int32) :: kd_indices(7), dim_order(3), ierr
-        logical        :: final_ensemble_mask(7), expected_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(2), k_history(2), expected_k(2)
         integer(int32) :: member_added_at_step(7), expected_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(2), expected_accepted(2)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(2), expected_accepted(2)
         real(real64)   :: growth_radius, G_history(2), mu_history(3, 2), S_history(3, 2), U_history(3, 3, 2)
         real(real64)   :: U_first(3, 3)
         integer(int32) :: d_first
@@ -362,9 +363,9 @@ contains
         vectors(:, 7) = [2.0d0, 2.0d0, 0.0d0]
         dim_order = [1, 2, 3]
 
-        call build_kd_index_alloc(vectors, 3_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 3_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_fixture_c: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_fixture_c: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_fixture_c
@@ -372,11 +373,11 @@ contains
     subroutine test_ensemble_identification_rejected_after_stable()
         real(real64)   :: vectors(3, 7)
         integer(int32) :: kd_indices(7), dim_order(3), ierr
-        logical        :: final_ensemble_mask(7), expected_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7), expected_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3), expected_k(3)
         integer(int32) :: member_added_at_step(7), expected_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(3), expected_accepted(3)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(3), expected_accepted(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(3, 3), S_history(3, 3), U_history(3, 3, 3)
         real(real64)   :: U_first(3, 3)
         integer(int32) :: d_first
@@ -422,11 +423,11 @@ contains
     subroutine test_ensemble_identification_seed_index_out_of_range()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3)
         integer(int32) :: member_added_at_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(3)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(2, 3), S_history(2, 3), U_history(2, 2, 3)
         real(real64)   :: U_first(2, 2)
         integer(int32) :: d_first
@@ -447,11 +448,11 @@ contains
     subroutine test_ensemble_identification_o_zero()
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2), ierr
-        logical        :: final_ensemble_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(0), k_history(0)
         integer(int32) :: member_added_at_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(0)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(0)
         real(real64)   :: growth_radius, G_history(0), mu_history(2, 0), S_history(2, 0), U_history(2, 2, 0)
         real(real64)   :: U_first(2, 2)
         integer(int32) :: d_first
@@ -472,11 +473,11 @@ contains
     subroutine test_ensemble_identification_n_dimensions_too_small()
         real(real64)   :: vectors(1, 7)
         integer(int32) :: kd_indices(7), dim_order(1), ierr
-        logical        :: final_ensemble_mask(7)
+        logical(c_bool)        :: final_ensemble_mask(7)
         integer(int32) :: stop_reason, d_history(3), k_history(3)
         integer(int32) :: member_added_at_step(7)
-        logical        :: low_confidence_mask(7)
-        logical        :: accepted_history(3)
+        logical(c_bool)        :: low_confidence_mask(7)
+        logical(c_bool)        :: accepted_history(3)
         real(real64)   :: growth_radius, G_history(3), mu_history(1, 3), S_history(1, 3), U_history(1, 1, 3)
         real(real64)   :: U_first(1, 1)
         integer(int32) :: d_first
@@ -486,9 +487,9 @@ contains
             vectors(1, i) = real(i - 1, real64)
         end do
         dim_order = [1]
-        call build_kd_index_alloc(vectors, 1_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 1_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_ensemble_identification_n_dimensions_too_small: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_ensemble_identification_n_dimensions_too_small: build_kd_index failed: ', ierr
             error stop
         end if
 

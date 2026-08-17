@@ -1,6 +1,27 @@
-"""tox_shape_truthful_clustering_filter
+r"""tox_shape_truthful_clustering_filter
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC): Ensemble Filtering
+
+`filter_ensembles`: decides which ensembles are eligible to be submitted to
+`merge_to_super_ensembles` (see the sibling `tox_shape_truthful_clustering_reconciliation_impl`,
+whose own `ensemble_reconciliation` is now a thin two-call orchestrator: this module first,
+then that one). Composed of independent, individually testable per-criterion filters --
+`filter_ensembles_by_stop_condition`, `filter_ensembles_by_dimension`,
+`filter_ensembles_by_var_explained` -- each returning its own `eligible(n_ensembles)` mask
+over the *same* ensembles, combined by `filter_ensembles` itself via a plain logical AND. A
+criterion whose own threshold/allowed-set argument is omitted contributes an all-`True`
+mask (no constraint from that criterion), so omitting every optional argument makes
+`filter_ensembles` itself a true no-op (every ensemble eligible) -- see `misc/mod_STC.md`,
+"Ensemble Reconciliation".
+
+Filtering never alters `ensemble_identification`'s own output, nor does it remove an
+ineligible ensemble from anywhere else this whole family reports it (points, the JSON's
+`ensembles` array, CSV output, ...) -- only `merge_to_super_ensembles`'s own pairing/grouping
+decision (and, downstream, `tox_stc_json`'s independently-computed `overlap_coefficient_matrix`,
+which applies the identical mask for the same reason) ever sees an ineligible ensemble
+excluded. No array copying/compaction anywhere in this module: every mask is exactly
+`n_ensembles` long, over the same 1-indexed ensemble numbering everything else in this
+family already uses.
 
 Python binding, generated from tox_shape_truthful_clustering_filter. Do not edit.
 """
@@ -104,7 +125,7 @@ def filter_ensembles_by_stop_condition(
     ensemble_stop_reason : np.ndarray[np.int32] of shape (n_ensembles,)
         Per-ensemble Stop Condition, see `ensemble_identification`'s merged
         `ensemble_stop_reason` -- an index 1..4 into `allowed_stop_reasons` below, in the
-        order `tox_shape_truthful_clustering_kernel`'s own `STOP_REASON_MAX_SIZE` (1),
+        order `tox_shape_truthful_clustering_impl`'s own `STOP_REASON_MAX_SIZE` (1),
         `STOP_REASON_REJECTED_AFTER_STABLE` (2), `STOP_REASON_REJECTED_IMMEDIATELY` (3),
         `STOP_REASON_FIXED_POINT` (4) -- not imported by name here, to avoid a circular
         module dependency (the parent module already `use`s the reconciliation module,
@@ -407,21 +428,21 @@ def filter_ensembles(
     ensemble_accepted_history : np.ndarray[np.bool_] of shape (o, n_ensembles,), column-major (order='F')
         Whether the growth iteration retained in each history column was itself accepted
     ensemble_stop_reason : np.ndarray[np.int32] of shape (n_ensembles,)
-        Per-ensemble Stop Condition, see `filter_ensembles_by_stop_condition_kernel`
+        Per-ensemble Stop Condition, see `filter_ensembles_by_stop_condition_impl`
         The minimum valid value is `1`.
         The maximum valid value is `4`.
     allowed_stop_reasons : np.ndarray[np.bool_] of shape (4,), optional
-        See `filter_ensembles_by_stop_condition_kernel`
+        See `filter_ensembles_by_stop_condition_impl`
     d_min : int, optional
-        See `filter_ensembles_by_dimension_kernel`
+        See `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
     d_max : int, optional
-        See `filter_ensembles_by_dimension_kernel`
+        See `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
     var_explained_min : float, optional
-        See `filter_ensembles_by_var_explained_kernel`
+        See `filter_ensembles_by_var_explained_impl`
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
 
@@ -434,13 +455,13 @@ def filter_ensembles(
             Combined eligibility: `True` only where all three per-criterion masks are
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible_by_stop_condition : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
-            See `filter_ensembles_by_stop_condition_kernel`
+            See `filter_ensembles_by_stop_condition_impl`
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible_by_dimension : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
-            See `filter_ensembles_by_dimension_kernel`
+            See `filter_ensembles_by_dimension_impl`
             A result is a value; call `.copy()` to obtain a modifiable array.
         eligible_by_var_explained : np.ndarray[np.bool_] of shape (n_ensembles,), read-only
-            See `filter_ensembles_by_var_explained_kernel`
+            See `filter_ensembles_by_var_explained_impl`
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

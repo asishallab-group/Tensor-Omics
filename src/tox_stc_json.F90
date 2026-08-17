@@ -7,7 +7,7 @@
 !| `tox_stc_html_assets`/`helper/embed_stc_html_assets.py`). Builds a [[f42_json(module)]]
 !| document model directly from STC's own raw result arrays (as returned by
 !| `ensemble_identification_merged`/`ensemble_reconciliation`, see
-!| `tox_shape_truthful_clustering_kernel`/`tox_shape_truthful_clustering_reconciliation_kernel`)
+!| `tox_shape_truthful_clustering_impl`/`tox_shape_truthful_clustering_reconciliation_impl`)
 !| and writes it out -- this module is the STC-domain boundary on top of the generic
 !| [[f42_json(module)]] serializer, the same role `tox_flyer_json` plays for the tox_flyer
 !| viewer, and follows that module's exact single-subroutine pattern for the same reason: a
@@ -25,13 +25,13 @@
 !| (`id`, `n_ensembles`, per-point/per-ensemble membership lists, `super_ensemble_id`, the
 !| full pairwise Overlap Coefficient matrix, per-point residual lengths, tangent line
 !| endpoints, the two report-layer drift statistics below) are computed here from the raw
-!| membership masks and history arrays -- `ensemble_reconciliation_kernel` itself only ever
+!| membership masks and history arrays -- `ensemble_reconciliation_impl` itself only ever
 !| reports Overlap Coefficient along a super-ensemble's own merge chain
 !| (`super_ensembles_overlap_coefficient`), never the full N x N matrix the heatmap needs, so
 !| that matrix is recomputed directly from `ensemble_masks` with the same
 !| `|intersect| / min(|A|,|B|)` formula, once per pair with a nonempty intersection.
 !|
-!| Two derived statistics reuse `tox_shape_truthful_clustering_accept_kernel`'s own
+!| Two derived statistics reuse `tox_shape_truthful_clustering_accept_impl`'s own
 !| `stc_chordal_distance` helper directly (made `public` there for exactly this reuse) rather
 !| than re-deriving the formula: the **consecutive tangent-space drift** between each pair of
 !| adjacent retained history columns (a genuine per-iteration quantity, fully reconstructable
@@ -45,17 +45,18 @@
 !| iteration-unaware.
 module tox_stc_json
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use f42_safeguard
     use f42_json, only: json_object, json_array, json_value, serialize_json_object
-    use f42_utils, only: open_file
+    use f42_io, only: open_file
     use tox_errors, only: is_err, set_ok, validate_dimension_size, validate_in_range_int
     use tox_stc_html_assets, only: REPORT_TEMPLATE_HEAD, REPORT_TEMPLATE_MID, REPORT_TEMPLATE_TAIL, D3_JS
-    use tox_shape_truthful_clustering_kernel, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
+    use tox_shape_truthful_clustering_impl, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
         STOP_REASON_REJECTED_IMMEDIATELY, STOP_REASON_FIXED_POINT
-    use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_REPORT, MODE_MERGE_OVERLAP_COEFFICIENT, &
+    use tox_shape_truthful_clustering_reconciliation_impl, only: MODE_REPORT, MODE_MERGE_OVERLAP_COEFFICIENT, &
         MODE_MERGE_ANY
-    use tox_shape_truthful_clustering_accept_kernel, only: stc_chordal_distance, tox_stc_accept_ensemble_svd_workspace
-    use tox_shape_truthful_clustering_observable_kernel, only: ensemble_final_observable_kernel
+    use tox_shape_truthful_clustering_accept_impl, only: stc_chordal_distance, tox_stc_accept_ensemble_svd_workspace
+    use tox_shape_truthful_clustering_observable_impl, only: ensemble_final_observable_impl
     M_IMPLICIT_NONE
 
     private
@@ -112,9 +113,9 @@ contains
             !! Input data matrix
         character(len=*), intent(in), target :: dim_names(n_dimensions)
             !! Per-dimension display name
-        logical, intent(in) :: seed_selection_mask(n_vectors)
+        logical(c_bool), intent(in) :: seed_selection_mask(n_vectors)
             !! Seed selection, see `seeds`
-        logical, intent(in), target :: ensemble_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in), target :: ensemble_masks(n_vectors, n_selected_seed)
             !! Per-ensemble accepted membership, one column per seed
         integer(int32), intent(in) :: ensemble_stop_reason(n_selected_seed)
             !! Per-ensemble Stop Condition
@@ -132,7 +133,7 @@ contains
             !! Per-ensemble trailing centers
         integer(int32), intent(in) :: ensemble_k_history(o, n_selected_seed)
             !! Per-ensemble trailing sizes
-        logical, intent(in) :: ensemble_accepted_history(o, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_accepted_history(o, n_selected_seed)
             !! Whether the growth iteration retained in each history column was itself accepted
             !! -- `stc_push_ensemble_history` also pushes a *rejected* final candidate before
             !! `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
@@ -143,7 +144,7 @@ contains
             !! Per-ensemble growth-iteration-joined bookkeeping, see `ensemble_identification`'s
             !! `member_added_at_step`; this module only ever reads its column max (= T, the
             !! final accepted growth iteration), not the per-vector values themselves
-        logical, intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
             !! Per-ensemble iteration-1 fallback membership
         real(real64), intent(in), target :: ensemble_U_first(n_dimensions, n_dimensions, n_selected_seed)
             !! Per-ensemble tangent+normal basis at the bootstrap iteration (iteration 1)
@@ -176,37 +177,37 @@ contains
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Report intersecting pairs only | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]] |
-            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
-            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]] |
+            !! | Report intersecting pairs only | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]] |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
+            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_ANY(variable)]] |
         real(real64), intent(in), target :: min_overlap_coefficient
             !! This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
-        logical, intent(in), optional :: allowed_stop_reasons(4)
+        logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
             !! This run's per-Stop-Condition eligibility actually used by
             !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
             !! for transparency only; this module no longer derives eligibility from it itself,
             !! see `ensemble_eligible` below
         integer(int32), intent(in), optional, target :: filter_d_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
         integer(int32), intent(in), optional, target :: filter_d_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
         real(real64), intent(in), optional, target :: filter_var_explained_min
             !! This run's minimum tolerated final variance explained for reconciliation
-            !! eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `var_explained_min`; reported for transparency only, same as
             !! `allowed_stop_reasons` above
-        logical, intent(in) :: ensemble_eligible(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible(n_selected_seed)
             !! Per-ensemble combined reconciliation eligibility actually used by
             !! `ensemble_reconciliation`, see its own `eligible` output
-        logical, intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
             !! See `ensemble_reconciliation`'s own `eligible_by_stop_condition`
-        logical, intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
             !! See `ensemble_reconciliation`'s own `eligible_by_dimension`
-        logical, intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
             !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(int32), intent(in), optional, target :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
@@ -303,9 +304,9 @@ contains
             !! Input data matrix
         character(len=*), intent(in), target :: dim_names(n_dimensions)
             !! Per-dimension display name
-        logical, intent(in) :: seed_selection_mask(n_vectors)
+        logical(c_bool), intent(in) :: seed_selection_mask(n_vectors)
             !! Seed selection, see `seeds`
-        logical, intent(in), target :: ensemble_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in), target :: ensemble_masks(n_vectors, n_selected_seed)
             !! Per-ensemble accepted membership, one column per seed
         integer(int32), intent(in) :: ensemble_stop_reason(n_selected_seed)
             !! Per-ensemble Stop Condition
@@ -323,7 +324,7 @@ contains
             !! Per-ensemble trailing centers
         integer(int32), intent(in) :: ensemble_k_history(o, n_selected_seed)
             !! Per-ensemble trailing sizes
-        logical, intent(in) :: ensemble_accepted_history(o, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_accepted_history(o, n_selected_seed)
             !! Whether the growth iteration retained in each history column was itself accepted
             !! -- `stc_push_ensemble_history` also pushes a *rejected* final candidate before
             !! `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
@@ -334,7 +335,7 @@ contains
             !! Per-ensemble growth-iteration-joined bookkeeping, see `ensemble_identification`'s
             !! `member_added_at_step`; this module only ever reads its column max (= T, the
             !! final accepted growth iteration), not the per-vector values themselves
-        logical, intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
             !! Per-ensemble iteration-1 fallback membership
         real(real64), intent(in), target :: ensemble_U_first(n_dimensions, n_dimensions, n_selected_seed)
             !! Per-ensemble tangent+normal basis at the bootstrap iteration (iteration 1)
@@ -367,37 +368,37 @@ contains
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Report intersecting pairs only | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]] |
-            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
-            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]] |
+            !! | Report intersecting pairs only | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]] |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]] |
+            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_ANY(variable)]] |
         real(real64), intent(in), target :: min_overlap_coefficient
             !! This run's minimum Overlap Coefficient for `MODE_MERGE_OVERLAP_COEFFICIENT`
-        logical, intent(in), optional :: allowed_stop_reasons(4)
+        logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
             !! This run's per-Stop-Condition eligibility actually used by
             !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
             !! for transparency only; this module no longer derives eligibility from it itself,
             !! see `ensemble_eligible` below
         integer(int32), intent(in), optional, target :: filter_d_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
         integer(int32), intent(in), optional, target :: filter_d_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
-            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
         real(real64), intent(in), optional, target :: filter_var_explained_min
             !! This run's minimum tolerated final variance explained for reconciliation
-            !! eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+            !! eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `var_explained_min`; reported for transparency only, same as
             !! `allowed_stop_reasons` above
-        logical, intent(in) :: ensemble_eligible(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible(n_selected_seed)
             !! Per-ensemble combined reconciliation eligibility actually used by
             !! `ensemble_reconciliation`, see its own `eligible` output
-        logical, intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
             !! See `ensemble_reconciliation`'s own `eligible_by_stop_condition`
-        logical, intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
             !! See `ensemble_reconciliation`'s own `eligible_by_dimension`
-        logical, intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
             !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(int32), intent(in), optional, target :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
@@ -525,7 +526,7 @@ contains
         integer(int32), intent(in) :: n_dimensions
         integer(int32), intent(in) :: n_vectors
         real(real64), intent(in)   :: vectors(n_dimensions, n_vectors)
-        logical, intent(in)        :: member_mask(n_vectors)
+        logical(c_bool), intent(in)        :: member_mask(n_vectors)
         real(real64), intent(in)   :: mu(n_dimensions)
         real(real64), intent(in)   :: u1(n_dimensions)
         real(real64), intent(out)  :: line_start(n_dimensions)
@@ -533,7 +534,7 @@ contains
 
         real(real64)   :: proj, proj_min, proj_max
         integer(int32) :: k
-        logical        :: first
+        logical(c_bool)        :: first
 
         first    = .true.
         proj_min = 0.0_real64
@@ -593,8 +594,8 @@ contains
         integer(int32), intent(in) :: n_super_ensembles
         real(real64), intent(in), target :: vectors(n_dimensions, n_vectors)
         character(len=*), intent(in), target :: dim_names(n_dimensions)
-        logical, intent(in) :: seed_selection_mask(n_vectors)
-        logical, intent(in), target :: ensemble_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: seed_selection_mask(n_vectors)
+        logical(c_bool), intent(in), target :: ensemble_masks(n_vectors, n_selected_seed)
         integer(int32), intent(in) :: ensemble_stop_reason(n_selected_seed)
         real(real64), intent(in), target :: ensemble_growth_radii(n_selected_seed)
         real(real64), intent(in), target :: ensemble_U_history(n_dimensions, n_dimensions, o, n_selected_seed)
@@ -603,9 +604,9 @@ contains
         real(real64), intent(in), target :: ensemble_G_history(o, n_selected_seed)
         real(real64), intent(in), target :: ensemble_mu_history(n_dimensions, o, n_selected_seed)
         integer(int32), intent(in) :: ensemble_k_history(o, n_selected_seed)
-        logical, intent(in) :: ensemble_accepted_history(o, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_accepted_history(o, n_selected_seed)
         integer(int32), intent(in) :: ensemble_member_added_at_step(n_vectors, n_selected_seed)
-        logical, intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
         real(real64), intent(in) :: ensemble_U_first(n_dimensions, n_dimensions, n_selected_seed)
         integer(int32), intent(in) :: ensemble_d_first(n_selected_seed)
         integer(int32), intent(in), target :: super_ensembles(max_group_size, n_selected_seed*(n_selected_seed - 1))
@@ -621,14 +622,14 @@ contains
         real(real64), intent(in), target :: bandwidth_percentile
         integer(int32), intent(in) :: reconciliation_mode
         real(real64), intent(in), target :: min_overlap_coefficient
-        logical, intent(in), optional :: allowed_stop_reasons(4)
+        logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
         integer(int32), intent(in), optional, target :: filter_d_min
         integer(int32), intent(in), optional, target :: filter_d_max
         real(real64), intent(in), optional, target :: filter_var_explained_min
-        logical, intent(in), target :: ensemble_eligible(n_selected_seed)
-        logical, intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
-        logical, intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
-        logical, intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
+        logical(c_bool), intent(in), target :: ensemble_eligible(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
+        logical(c_bool), intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
         integer(int32), intent(in), optional, target :: estimated_k_min
         integer(int32), intent(in), optional, target :: estimated_k_density
         real(real64), intent(in), optional, target :: estimated_density_quantile
@@ -689,7 +690,7 @@ contains
         type(json_array), target :: ensemble_line_start_arr(n_selected_seed)
         type(json_array), target :: ensemble_line_end_arr(n_selected_seed)
         real(real64), target :: ensemble_final_chordal_buf(n_selected_seed)
-        logical :: ensemble_final_chordal_applicable(n_selected_seed)
+        logical(c_bool) :: ensemble_final_chordal_applicable(n_selected_seed)
         type(json_array), target :: ensemble_excluded_by_arr(n_selected_seed)
         character(len=20), target :: ensemble_excluded_by_names(3, n_selected_seed)
         integer(int32) :: n_excluded_by
@@ -715,7 +716,7 @@ contains
             ! passed to every stc_chordal_distance call, so a future change to that formula
             ! surfaces as a real (LAPACK-detected) workspace-too-small failure here, not silent
             ! truncation.
-        logical :: cd_applicable
+        logical(c_bool) :: cd_applicable
         real(real64) :: cd_value
 
         ! -- super_ensembles ---------------------------------------------------------------------
@@ -745,7 +746,7 @@ contains
 
         integer(int32) :: i, j, s, r, slot, idx, d_val, group_size, intersect_count, mem_slot
         integer(int32) :: vector_to_seed_index(n_vectors)
-        logical        :: actual_allowed_stop_reasons(4)
+        logical(c_bool)        :: actual_allowed_stop_reasons(4)
 
         real(real64), target   :: ensemble_U_final(n_dimensions, n_dimensions, n_selected_seed)
         integer(int32), target :: ensemble_d_final(n_selected_seed)
@@ -753,7 +754,7 @@ contains
         real(real64), target   :: ensemble_mu_final(n_dimensions, n_selected_seed)
         real(real64), target   :: ensemble_G_final(n_selected_seed)
         integer(int32)         :: ensemble_k_final(n_selected_seed)
-        logical                :: ensemble_has_final(n_selected_seed)
+        logical(c_bool)                :: ensemble_has_final(n_selected_seed)
         integer(int32) :: ensemble_final_index(n_selected_seed)
 
         call set_ok(ierr)
@@ -761,24 +762,24 @@ contains
 
         ! `ensemble_eligible`/`_by_stop_condition`/`_by_dimension`/`_by_var_explained` are
         ! consumed directly as inputs now (computed once by `ensemble_reconciliation`'s own
-        ! `filter_ensembles_kernel`) -- this module no longer derives eligibility itself, only
+        ! `filter_ensembles_impl`) -- this module no longer derives eligibility itself, only
         ! reports `allowed_stop_reasons` back out (below, `excluded_stop_reasons`) for
         ! transparency about what was actually used.
         !
         ! Each ensemble's final accepted state is likewise computed once, here, via the shared
         ! extraction kernel -- replacing what used to be a private, per-ensemble
         ! `stc_last_accepted_history_index` helper duplicated nowhere else. See
-        ! `tox_shape_truthful_clustering_observable_kernel`'s own `ensemble_final_observable`
+        ! `tox_shape_truthful_clustering_observable_impl`'s own `ensemble_final_observable`
         ! for the full rationale (in particular why the last *populated* history column is not
         ! always the right one to use).
-        call ensemble_final_observable_kernel(n_dimensions, o, n_selected_seed, &
+        call ensemble_final_observable_impl(n_dimensions, o, n_selected_seed, &
             ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, &
             ensemble_G_history, ensemble_k_history, ensemble_accepted_history, &
             ensemble_U_final, ensemble_d_final, ensemble_S_final, ensemble_mu_final, ensemble_G_final, &
             ensemble_k_final, ensemble_has_final, ensemble_final_index)
 
         ! ==== reconstruct the seed-index -> vector-index mapping =============================
-        ! Mirrors ensemble_identification_merged_kernel's own construction of `seed_indices`
+        ! Mirrors ensemble_identification_merged_impl's own construction of `seed_indices`
         ! exactly: column s of every per-ensemble output corresponds to the s-th .true. entry
         ! of seed_selection_mask, scanning vectors in order.
         vector_to_seed_index = 0

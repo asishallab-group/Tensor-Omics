@@ -1,8 +1,21 @@
-"""tox_shape_truthful_clustering_accept_kernel
+r"""tox_shape_truthful_clustering_accept_impl
 
 # Shape Truthful Clustering (STC): Accept
 
-Python binding, generated from tox_shape_truthful_clustering_accept_kernel. Do not edit.
+`accept_ensemble`: whether a grown ensemble at t+1 is still compatible with its own growth
+trajectory, judged by four criteria -- tangent-space drift (chordal distance, compared
+against a reference set: the bootstrap iteration plus the trailing o-window, not just the
+immediately preceding iteration), change in intrinsic dimension (against both the bootstrap
+iteration and the immediately preceding one), relative change in spectral gap, and relative
+change in residual (RMSE), both against the immediately preceding iteration only. See
+`misc/mod_STC.md`, SKG `accept_ensemble`, for the full algorithm definition and the
+"no cumulative-rotation budget" rationale for comparing against a reference set rather than
+a single previous state. This compares the SAME ensemble across one growth step -- not two
+different ensembles/anchors at a possible junction -- so, unlike
+`misc/STC_for_LoManLe.md` section 4's explicit "angle never gates a junction" rule, a
+tangent-space-drift mismatch here legitimately contributes to rejection.
+
+Python binding, generated from tox_shape_truthful_clustering_accept_impl. Do not edit.
 """
 
 import ctypes
@@ -47,7 +60,7 @@ def tox_stc_accept_ensemble_svd_workspace(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_accept_kernel::tox_stc_accept_ensemble_svd_workspace`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_accept_impl::tox_stc_accept_ensemble_svd_workspace`, whose argument names are
     the ones an error message reports.
     """
     # outputs and work arrays, which the caller never sees

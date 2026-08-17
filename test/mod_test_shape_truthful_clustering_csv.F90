@@ -10,6 +10,7 @@ module mod_test_shape_truthful_clustering_csv
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -37,9 +38,9 @@ contains
     !| mod_test_shape_truthful_clustering_json.F90:test_json_two_ensembles_with_overlap's own
     !| membership fixture exactly.
     subroutine build_fixture(seed_selection_mask, ensemble_masks, ensemble_low_confidence_masks, super_ensembles)
-        logical, intent(out) :: seed_selection_mask(4)
-        logical, intent(out) :: ensemble_masks(4, 2)
-        logical, intent(out) :: ensemble_low_confidence_masks(4, 2)
+        logical(c_bool), intent(out) :: seed_selection_mask(4)
+        logical(c_bool), intent(out) :: ensemble_masks(4, 2)
+        logical(c_bool), intent(out) :: ensemble_low_confidence_masks(4, 2)
         integer(int32), intent(out) :: super_ensembles(2, 2)
 
         seed_selection_mask = [.true., .false., .false., .true.]
@@ -52,7 +53,7 @@ contains
     end subroutine build_fixture
 
     subroutine test_points_csv_membership()
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
         integer(int32) :: super_ensembles(2, 2)
         character(len=32) :: filename
         character(len=200) :: line
@@ -88,7 +89,7 @@ contains
     end subroutine test_points_csv_membership
 
     subroutine test_points_csv_zero_ensembles()
-        logical :: seed_selection_mask(2), ensemble_masks(2, 0), ensemble_low_confidence_masks(2, 0)
+        logical(c_bool) :: seed_selection_mask(2), ensemble_masks(2, 0), ensemble_low_confidence_masks(2, 0)
         integer(int32) :: super_ensembles(2, 0)
         character(len=32) :: filename
         character(len=200) :: line
@@ -110,7 +111,7 @@ contains
     end subroutine test_points_csv_zero_ensembles
 
     subroutine test_overlap_csv_pairwise_coefficient()
-        logical :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
+        logical(c_bool) :: seed_selection_mask(4), ensemble_masks(4, 2), ensemble_low_confidence_masks(4, 2)
         integer(int32) :: super_ensembles(2, 2)
         character(len=32) :: filename
         character(len=200) :: line
@@ -131,7 +132,7 @@ contains
     end subroutine test_overlap_csv_pairwise_coefficient
 
     subroutine test_overlap_csv_no_intersecting_pairs()
-        logical :: ensemble_masks(4, 2)
+        logical(c_bool) :: ensemble_masks(4, 2)
         character(len=32) :: filename
         character(len=200) :: line
         integer(int32) :: ierr, unit, ios

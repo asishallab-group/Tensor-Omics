@@ -60,7 +60,7 @@ tangent_scales <- function(d, eigenvalues) {
 #' `n_dimensions`-length interface. `ierr` is set only if the LAPACK SVD fails to
 #' converge -- not a condition any input check could foresee.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_observable::observable_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_observable::observable}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix
@@ -99,7 +99,7 @@ observable <- function(vectors, member_selection_mask) {
 #' Each ensemble's final *accepted* growth-history state
 #'
 #' Not simply the last *populated* history column: `stc_push_ensemble_history`
-#' (`tox_shape_truthful_clustering_kernel`) also pushes a *rejected* final candidate right
+#' (`tox_shape_truthful_clustering_impl`) also pushes a *rejected* final candidate right
 #' before `ensemble_identification` halts growth via `STOP_REASON_REJECTED_IMMEDIATELY`/
 #' `STOP_REASON_REJECTED_AFTER_STABLE`, so the last populated column is, in exactly those
 #' two cases, the discarded candidate's geometry, not the ensemble's real final state.
@@ -115,10 +115,10 @@ observable <- function(vectors, member_selection_mask) {
 #' state" from -- see `misc/mod_STC.md`, "Ensemble identification"). Consolidates what was
 #' previously a private, single-consumer helper in `tox_stc_json.F90`
 #' (`stc_last_accepted_history_index`) into a proper, independently testable kernel now
-#' that `tox_shape_truthful_clustering_filter_kernel` needs the exact same extraction --
+#' that `tox_shape_truthful_clustering_filter_impl` needs the exact same extraction --
 #' placed here, not in the parent module, specifically so both of those (and any future
 #' sibling) can depend on it without a circular module dependency (the parent module
-#' already `use`s `tox_shape_truthful_clustering_reconciliation_kernel`, which will in turn
+#' already `use`s `tox_shape_truthful_clustering_reconciliation_impl`, which will in turn
 #' `use` the filter kernel module, which needs this).
 #'
 #' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_observable::ensemble_final_observable}, whose argument names

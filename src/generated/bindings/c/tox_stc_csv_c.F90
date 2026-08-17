@@ -26,9 +26,8 @@
 !| collide.
 module tox_stc_csv_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_f_pointer, c_int, c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -79,10 +78,7 @@ contains
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success
-        character(len=:), allocatable :: filename_f
-        logical, dimension(n_vectors) :: seed_selection_mask_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
+        character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -97,11 +93,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_low_confidence_masks, n_vectors * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(super_ensembles, max_group_size * (n_selected_seed*(n_selected_seed-1)))
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        seed_selection_mask_f = seed_selection_mask
-        ensemble_masks_f = ensemble_masks
-        ensemble_low_confidence_masks_f = ensemble_low_confidence_masks
+        call c_f_pointer(c_loc(filename), filename_f)
 
         call serialize_stc_points_as_csv(&
             filename = filename_f,&
@@ -109,9 +101,9 @@ contains
             n_selected_seed = n_selected_seed,&
             max_group_size = max_group_size,&
             n_super_ensembles = n_super_ensembles,&
-            seed_selection_mask = seed_selection_mask_f,&
-            ensemble_masks = ensemble_masks_f,&
-            ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            seed_selection_mask = seed_selection_mask,&
+            ensemble_masks = ensemble_masks,&
+            ensemble_low_confidence_masks = ensemble_low_confidence_masks,&
             super_ensembles = super_ensembles,&
             ierr = ierr&
         )
@@ -142,8 +134,7 @@ contains
             !! Per-ensemble accepted membership, one column per seed
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success
-        character(len=:), allocatable :: filename_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
+        character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -153,15 +144,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
         M_CHECK_ARRAY_NON_NULL(ensemble_masks, n_vectors * n_selected_seed)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        ensemble_masks_f = ensemble_masks
+        call c_f_pointer(c_loc(filename), filename_f)
 
         call serialize_stc_ensemble_overlap_as_csv(&
             filename = filename_f,&
             n_vectors = n_vectors,&
             n_selected_seed = n_selected_seed,&
-            ensemble_masks = ensemble_masks_f,&
+            ensemble_masks = ensemble_masks,&
             ierr = ierr&
         )
     end subroutine serialize_stc_ensemble_overlap_as_csv_c
@@ -191,7 +180,7 @@ contains
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success
-        character(len=:), allocatable :: filename_f
+        character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -201,8 +190,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
         M_CHECK_ARRAY_NON_NULL(super_ensembles, max_group_size * n_super_ensembles)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(filename), filename_f)
 
         call serialize_stc_super_ensembles_as_tsv(&
             filename = filename_f,&

@@ -1,6 +1,25 @@
-"""tox_shape_truthful_clustering_seeding
+r"""tox_shape_truthful_clustering_seeding
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC): Seeding
+
+Kernels for identifying seed points to grow ensembles from: `density_labels` (an
+adaptive-bandwidth local density estimate) and `seeds` (the greedy, density-ranked,
+coverage-based seed selection). See `misc/mod_STC.md`, section "Seeding", for the full
+algorithm definition.
+
+`density_labels` and `seeds` both take an already-built k-d tree (`kd_indices`,
+`dimension_order`, see :func:`tensor_omics.build_kd_index`) as input
+rather than building their own: the same tree is also needed by `calc_ensemble_growth_radius`
+and `grow_ensemble`, so building it once in a future orchestrator (`ensemble_identification`)
+and passing it to every consumer avoids redundant O(N log N) rebuilds. `seeds_impl` calls
+`density_labels_impl` and, for each selected seed,
+:func:`tensor_omics.calc_ensemble_growth_radius`
+directly (all `pure`, no `ierr`) rather than through their own validated entries, to avoid
+redundant re-validation. Reusing `calc_ensemble_growth_radius_impl` for the seed coverage
+radius -- rather than a second, separately-implemented median-of-k-NN-distances computation
+-- is why this module now depends on its sibling
+`tox_shape_truthful_clustering_ensemble_growing_impl`, the first sibling-to-sibling
+dependency in this family (previously only the parent module called into siblings).
 
 Python binding, generated from tox_shape_truthful_clustering_seeding. Do not edit.
 """
@@ -99,7 +118,7 @@ def density_labels(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_seeding::density_labels_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_seeding::density_labels`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -213,7 +232,7 @@ def seeds(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_seeding::seeds_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_seeding::seeds`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

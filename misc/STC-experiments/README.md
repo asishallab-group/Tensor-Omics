@@ -206,11 +206,11 @@ tool). See `C-layer/README.md` for the full table; briefly:
 This directory only *drives and visualizes* STC -- for the algorithm itself:
 
 - `misc/mod_STC.md` -- the authoritative specification.
-- `src/kernel/shape_truthful_clustering/` -- the implementation (`tox_shape_truthful_clustering_kernel.F90`
-  for `ensemble_identification`(`_merged`), the sibling `_seeding_kernel.F90`,
-  `_ensemble_growing_kernel.F90`, `_observable_kernel.F90`, `_accept_kernel.F90`,
-  `_parameter_estimation_kernel.F90` (`estimate_stc_parameters` and its helpers),
-  `_reconciliation_kernel.F90` modules for everything it orchestrates), and
+- `src/tox/shape_truthful_clustering/` -- the implementation (`tox_shape_truthful_clustering_impl.F90`
+  for `ensemble_identification`(`_merged`), the sibling `_seeding_impl.F90`,
+  `_ensemble_growing_impl.F90`, `_observable_impl.F90`, `_accept_impl.F90`,
+  `_parameter_estimation_impl.F90` (`estimate_stc_parameters` and its helpers),
+  `_reconciliation_impl.F90` modules for everything it orchestrates), and
   `src/tox_stc_json.F90`/`src/tox_stc_csv.F90` for the output writers `stc_cli` calls.
 - `C-layer/` -- `stc_cli` itself; see `C-layer/README.md`.
 - `test/mod_test_shape_truthful_clustering*.F90` (and their `python/test/`/`r/test/`

@@ -1,14 +1,15 @@
 !> Unit test suite for tox_shape_truthful_clustering_reconciliation (ensemble_reconciliation,
 !| merge_to_super_ensembles), generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_reconciliation_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_reconciliation_impl.F90.
 module mod_test_shape_truthful_clustering_reconciliation
     use tox_shape_truthful_clustering_reconciliation, only: ensemble_reconciliation, merge_to_super_ensembles
-    use tox_shape_truthful_clustering_reconciliation_kernel, only: MODE_REPORT, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_MERGE_ANY
-    use tox_shape_truthful_clustering_kernel, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
+    use tox_shape_truthful_clustering_reconciliation_impl, only: MODE_REPORT, MODE_MERGE_OVERLAP_COEFFICIENT, MODE_MERGE_ANY
+    use tox_shape_truthful_clustering_impl, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
         STOP_REASON_REJECTED_IMMEDIATELY, STOP_REASON_FIXED_POINT
     use tox_errors, only: is_ok, is_err, ERR_SIZE_MISMATCH
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -71,7 +72,7 @@ contains
     !|
     !| Also returns a minimal, uniform D=2/o=1 history fixture (every ensemble "accepted" at a
     !| single column, k=2, d=0, everything else zero) -- `ensemble_reconciliation`'s own new
-    !| required history arguments, needed only to drive `filter_ensembles_kernel`'s dimension/
+    !| required history arguments, needed only to drive `filter_ensembles_impl`'s dimension/
     !| variance-explained filters, neither of which any test below (other than
     !| `test_reconciliation_dimension_filter_excludes_pair`/
     !| `test_reconciliation_var_explained_filter_excludes_pair`, which build their own dedicated
@@ -80,7 +81,7 @@ contains
                              ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, &
                              ensemble_G_history, ensemble_k_history, ensemble_accepted_history, &
                              stop_reason_overrides)
-        logical, intent(out) :: ensemble_masks(14, 6)
+        logical(c_bool), intent(out) :: ensemble_masks(14, 6)
         integer(int32), intent(out) :: ensemble_stop_reason(6)
         real(real64), intent(out) :: ensemble_U_history(2, 2, 1, 6)
         integer(int32), intent(out) :: ensemble_d_history(1, 6)
@@ -88,7 +89,7 @@ contains
         real(real64), intent(out) :: ensemble_mu_history(2, 1, 6)
         real(real64), intent(out) :: ensemble_G_history(1, 6)
         integer(int32), intent(out) :: ensemble_k_history(1, 6)
-        logical, intent(out) :: ensemble_accepted_history(1, 6)
+        logical(c_bool), intent(out) :: ensemble_accepted_history(1, 6)
         integer(int32), intent(in), optional :: stop_reason_overrides(6)
             !! Non-zero entries override the corresponding ensemble's default
             !! STOP_REASON_FIXED_POINT; zero entries leave the default in place.
@@ -120,16 +121,16 @@ contains
     end subroutine build_fixture
 
     subroutine test_reconciliation_report_mode_no_transitive_merge()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(2, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(1, 30)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -141,7 +142,7 @@ contains
                                      ensemble_S_history=ensemble_S_history, ensemble_mu_history=ensemble_mu_history, &
                                      ensemble_G_history=ensemble_G_history, ensemble_k_history=ensemble_k_history, &
                                      ensemble_accepted_history=ensemble_accepted_history, o=1_int32, &
-                                     mode=MODE_REPORT, report_overlap_coefficient=.true., max_group_size=2_int32, &
+                                     mode=MODE_REPORT, report_overlap_coefficient=.true._c_bool, max_group_size=2_int32, &
                                      super_ensembles=super_ensembles, n_super_ensembles=n_super_ensembles, &
                                      super_ensembles_overlap_coefficient=super_ensembles_overlap_coefficient, &
                                      eligible=eligible, eligible_by_stop_condition=eligible_by_stop_condition, &
@@ -163,17 +164,17 @@ contains
     end subroutine test_reconciliation_report_mode_no_transitive_merge
 
     subroutine test_reconciliation_merge_any_transitive()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group1(3), expected_group2(3)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -185,7 +186,7 @@ contains
                                      ensemble_S_history=ensemble_S_history, ensemble_mu_history=ensemble_mu_history, &
                                      ensemble_G_history=ensemble_G_history, ensemble_k_history=ensemble_k_history, &
                                      ensemble_accepted_history=ensemble_accepted_history, o=1_int32, &
-                                     mode=MODE_MERGE_ANY, report_overlap_coefficient=.true., max_group_size=3_int32, &
+                                     mode=MODE_MERGE_ANY, report_overlap_coefficient=.true._c_bool, max_group_size=3_int32, &
                                      super_ensembles=super_ensembles, n_super_ensembles=n_super_ensembles, &
                                      super_ensembles_overlap_coefficient=super_ensembles_overlap_coefficient, &
                                      eligible=eligible, eligible_by_stop_condition=eligible_by_stop_condition, &
@@ -215,17 +216,17 @@ contains
     !> min_overlap_coefficient=0.6 exceeds the 1-2-3 chain's OC (0.5), excluding it entirely,
     !| but is still below the separate 5-6 pair's OC (2/3), which still qualifies.
     subroutine test_reconciliation_merge_oc_excludes_weak_chain()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group(3)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -258,17 +259,17 @@ contains
     !> min_overlap_coefficient=0.4 is below both the chain's OC (0.5) and the pair's OC (2/3),
     !| so all three edges qualify -- same result as merge_any.
     subroutine test_reconciliation_merge_oc_includes_all()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group1(3)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -303,16 +304,16 @@ contains
     !| stay all-zero even though real intersections (with genuine nonzero Overlap Coefficient)
     !| exist.
     subroutine test_reconciliation_oc_not_computed_unless_requested()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -342,16 +343,16 @@ contains
 
     !> The transitively-merged {1,2,3} group has 3 members; max_group_size=2 cannot hold it.
     subroutine test_reconciliation_group_exceeds_max_group_size()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(2, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(1, 30)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -373,16 +374,16 @@ contains
     end subroutine test_reconciliation_group_exceeds_max_group_size
 
     subroutine test_reconciliation_n_ensembles_too_small()
-        logical        :: ensemble_masks(14, 1)
+        logical(c_bool)        :: ensemble_masks(14, 1)
         integer(int32) :: ensemble_stop_reason(1)
         real(real64)   :: ensemble_U_history(2, 2, 1, 1), ensemble_S_history(2, 1, 1), ensemble_mu_history(2, 1, 1)
         real(real64)   :: ensemble_G_history(1, 1)
         integer(int32) :: ensemble_d_history(1, 1), ensemble_k_history(1, 1)
-        logical        :: ensemble_accepted_history(1, 1)
+        logical(c_bool)        :: ensemble_accepted_history(1, 1)
         integer(int32) :: super_ensembles(2, 0), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(1, 0)
-        logical        :: eligible(1), eligible_by_stop_condition(1), eligible_by_dimension(1)
-        logical        :: eligible_by_var_explained(1)
+        logical(c_bool)        :: eligible(1), eligible_by_stop_condition(1), eligible_by_dimension(1)
+        logical(c_bool)        :: eligible_by_var_explained(1)
 
         ensemble_masks = .false.
         ensemble_stop_reason = STOP_REASON_FIXED_POINT
@@ -410,16 +411,16 @@ contains
     end subroutine test_reconciliation_n_ensembles_too_small
 
     subroutine test_reconciliation_invalid_mode()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -447,17 +448,17 @@ contains
     !| chain's two pairs -- n_super_ensembles goes from 3 (see the no-filter report-mode test
     !| above) to 2.
     subroutine test_reconciliation_stop_reason_filter_excludes_pair()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6), overrides(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(2, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(1, 30)
-        logical        :: allowed(4)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: allowed(4)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         overrides = 0
         overrides(5) = STOP_REASON_REJECTED_IMMEDIATELY
@@ -497,17 +498,17 @@ contains
     !| to the no-filter `test_reconciliation_merge_any_transitive` case above -- proving
     !| "absent" truly means "every Stop Condition allowed", not an accidental all-false default.
     subroutine test_reconciliation_stop_reason_filter_absent_is_noop()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6), overrides(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group1(3), expected_group2(3)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         overrides = 0
         overrides(1) = STOP_REASON_MAX_SIZE
@@ -523,7 +524,7 @@ contains
                                      ensemble_S_history=ensemble_S_history, ensemble_mu_history=ensemble_mu_history, &
                                      ensemble_G_history=ensemble_G_history, ensemble_k_history=ensemble_k_history, &
                                      ensemble_accepted_history=ensemble_accepted_history, o=1_int32, &
-                                     mode=MODE_MERGE_ANY, report_overlap_coefficient=.true., max_group_size=3_int32, &
+                                     mode=MODE_MERGE_ANY, report_overlap_coefficient=.true._c_bool, max_group_size=3_int32, &
                                      super_ensembles=super_ensembles, n_super_ensembles=n_super_ensembles, &
                                      super_ensembles_overlap_coefficient=super_ensembles_overlap_coefficient, &
                                      eligible=eligible, eligible_by_stop_condition=eligible_by_stop_condition, &
@@ -550,18 +551,18 @@ contains
     !| intersect directly (see build_fixture's own docstring), so nothing bridges them once 2
     !| is ineligible. Only the untouched {5,6} group should survive.
     subroutine test_reconciliation_stop_reason_filter_breaks_chain()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6), overrides(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group(3)
-        logical        :: allowed(4)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: allowed(4)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         overrides = 0
         overrides(2) = STOP_REASON_REJECTED_IMMEDIATELY
@@ -598,18 +599,18 @@ contains
     !| value that matches none of them (STOP_REASON_REJECTED_AFTER_STABLE) must be a true
     !| no-op, identical to the no-filter merge_any result.
     subroutine test_reconciliation_stop_reason_filter_unused_value_noop()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group1(3), expected_group2(3)
-        logical        :: allowed(4)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: allowed(4)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -651,16 +652,16 @@ contains
     !| single-column (o=1) history fixture, since `build_fixture`'s own history is
     !| deliberately uniform/unused by the other tests above.
     subroutine test_reconciliation_dimension_filter_excludes_pair()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(2, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(1, 30)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -699,16 +700,16 @@ contains
     !| clear it. Excluding ensemble 5 must drop the (5,6) pair, mirroring the dimension-filter
     !| test above. k=2 throughout keeps the k-1=1 eigenvalue denominator simple.
     subroutine test_reconciliation_var_explained_filter_excludes_pair()
-        logical        :: ensemble_masks(14, 6)
+        logical(c_bool)        :: ensemble_masks(14, 6)
         integer(int32) :: ensemble_stop_reason(6)
         real(real64)   :: ensemble_U_history(2, 2, 1, 6), ensemble_S_history(2, 1, 6), ensemble_mu_history(2, 1, 6)
         real(real64)   :: ensemble_G_history(1, 6)
         integer(int32) :: ensemble_d_history(1, 6), ensemble_k_history(1, 6)
-        logical        :: ensemble_accepted_history(1, 6)
+        logical(c_bool)        :: ensemble_accepted_history(1, 6)
         integer(int32) :: super_ensembles(2, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(1, 30)
-        logical        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
-        logical        :: eligible_by_var_explained(6)
+        logical(c_bool)        :: eligible(6), eligible_by_stop_condition(6), eligible_by_dimension(6)
+        logical(c_bool)        :: eligible_by_var_explained(6)
         integer(int32) :: e
 
         call build_fixture(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, &
@@ -751,7 +752,7 @@ contains
     !| `test_reconciliation_merge_any_transitive`'s own result exactly, with no history-array
     !| fixture involved at all (this kernel only ever consumes `ensemble_masks`/`eligible`).
     subroutine test_merge_to_super_ensembles_all_eligible_matches_merge_any()
-        logical        :: ensemble_masks(14, 6), eligible(6)
+        logical(c_bool)        :: ensemble_masks(14, 6), eligible(6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group1(3), expected_group2(3)
@@ -766,7 +767,7 @@ contains
         eligible = .true.
 
         call merge_to_super_ensembles(ensemble_masks=ensemble_masks, eligible=eligible, n_vectors=14_int32, &
-                                      n_ensembles=6_int32, mode=MODE_MERGE_ANY, report_overlap_coefficient=.true., &
+                                      n_ensembles=6_int32, mode=MODE_MERGE_ANY, report_overlap_coefficient=.true._c_bool, &
                                       max_group_size=3_int32, super_ensembles=super_ensembles, &
                                       n_super_ensembles=n_super_ensembles, &
                                       super_ensembles_overlap_coefficient=super_ensembles_overlap_coefficient, ierr=ierr)
@@ -789,7 +790,7 @@ contains
     !| 1-2-3 chain -- proves `merge_to_super_ensembles` honors `eligible` as a plain input,
     !| independent of however a caller chose to compute it.
     subroutine test_merge_to_super_ensembles_excludes_ineligible_ensemble()
-        logical        :: ensemble_masks(14, 6), eligible(6)
+        logical(c_bool)        :: ensemble_masks(14, 6), eligible(6)
         integer(int32) :: super_ensembles(3, 30), n_super_ensembles, ierr
         real(real64)   :: super_ensembles_overlap_coefficient(2, 30)
         integer(int32) :: expected_group1(3)
@@ -805,7 +806,7 @@ contains
         eligible(5) = .false.
 
         call merge_to_super_ensembles(ensemble_masks=ensemble_masks, eligible=eligible, n_vectors=14_int32, &
-                                      n_ensembles=6_int32, mode=MODE_MERGE_ANY, report_overlap_coefficient=.true., &
+                                      n_ensembles=6_int32, mode=MODE_MERGE_ANY, report_overlap_coefficient=.true._c_bool, &
                                       max_group_size=3_int32, super_ensembles=super_ensembles, &
                                       n_super_ensembles=n_super_ensembles, &
                                       super_ensembles_overlap_coefficient=super_ensembles_overlap_coefficient, ierr=ierr)

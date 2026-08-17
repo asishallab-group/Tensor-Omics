@@ -20,7 +20,7 @@
 #' storage. `ierr` is set only if a LAPACK SVD fails to converge -- not a condition any
 #' input check could foresee.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_accept::accept_ensemble_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_accept::accept_ensemble}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param U_first a numeric matrix. Ensemble's tangent+normal basis at its bootstrap iteration (iteration 1), see

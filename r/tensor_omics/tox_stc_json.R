@@ -51,13 +51,13 @@
 #'   for transparency only; this module no longer derives eligibility from it itself,
 #'   see `ensemble_eligible` below
 #' @param filter_d_min a integer scalar. This run's minimum tolerated final intrinsic dimension for reconciliation
-#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
 #' @param filter_d_max a integer scalar. This run's maximum tolerated final intrinsic dimension for reconciliation
-#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
 #' @param filter_var_explained_min a numeric scalar. This run's minimum tolerated final variance explained for reconciliation
-#'   eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+#'   eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `var_explained_min`; reported for transparency only, same as
 #'   `allowed_stop_reasons` above
 #' @param ensemble_eligible a logical vector. Per-ensemble combined reconciliation eligibility actually used by
@@ -256,13 +256,13 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
 #'   for transparency only; this module no longer derives eligibility from it itself,
 #'   see `ensemble_eligible` below
 #' @param filter_d_min a integer scalar. This run's minimum tolerated final intrinsic dimension for reconciliation
-#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
 #' @param filter_d_max a integer scalar. This run's maximum tolerated final intrinsic dimension for reconciliation
-#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+#'   eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
 #' @param filter_var_explained_min a numeric scalar. This run's minimum tolerated final variance explained for reconciliation
-#'   eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+#'   eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `var_explained_min`; reported for transparency only, same as
 #'   `allowed_stop_reasons` above
 #' @param ensemble_eligible a logical vector. Per-ensemble combined reconciliation eligibility actually used by

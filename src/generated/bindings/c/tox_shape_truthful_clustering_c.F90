@@ -2,7 +2,24 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_shape_truthful_clustering(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| # Shape Truthful Clustering (STC)
+!|
+!| A renormalization-group-inspired ensemble-growth clustering method; see
+!| `misc/mod_STC.md` for the full algorithm definition. The family is split over five
+!| kernel modules -- seeding, ensemble growing, observable, accept, and reconciliation --
+!| which this module gathers, so a caller reaches the whole pipeline through it.
+!|
+!| Unlike `codegen_guide.md` section 5.15's own `tox_data_integration_impl` example, this
+!| parent also holds `ensemble_identification`'s own kernel directly -- it is this family's
+!| natural top-level entry point (it orchestrates every other SKG here), not just a bag of
+!| siblings.
+!|
+!| `ensemble_identification_impl` grows and tracks a single ensemble from a single seed --
+!| see `misc/mod_STC.md`, "Ensemble identification", "### Output". `ensemble_identification_merged_impl`
+!| calls it once per seed and assembles the "#### Merged output" arrays (`ensemble_masks`,
+!| `ensemble_U_history`, ...). `ensemble_reconciliation_impl`, in the sibling
+!| `tox_shape_truthful_clustering_reconciliation_impl` module, then identifies and groups
+!| intersecting ensembles from that merged output, on the side.
 module tox_shape_truthful_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -23,7 +40,7 @@ contains
     !| Conditions applies. Deliberately sequential: growth at each step depends on the
     !| previous one, so there is nothing to parallelize *within* a single seed's growth --
     !| outer-level parallelism belongs in whatever calls this once per seed, matching
-    !| `grow_ensemble_kernel`'s own precedent.
+    !| `grow_ensemble_impl`'s own precedent.
     !|
     !| Two deliberate readings of the spec, flagged here since the prose leaves them
     !| implicit: (1) an isolated seed -- no neighbor at all within its own growth radius --
@@ -127,11 +144,11 @@ contains
             !! `STOP_REASON_MAX_SIZE` -- see Stop Condition 1.
         integer(c_int), intent(out), target :: stop_reason
             !! Which Stop Condition ended growth: one of
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_MAX_SIZE(variable)]],
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_REJECTED_AFTER_STABLE(variable)]],
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_REJECTED_IMMEDIATELY(variable)]], or
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_FIXED_POINT(variable)]] --
-            !! or [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_ERROR(variable)]] if
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_MAX_SIZE(variable)]],
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_REJECTED_AFTER_STABLE(variable)]],
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_REJECTED_IMMEDIATELY(variable)]], or
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_FIXED_POINT(variable)]] --
+            !! or [[tox_shape_truthful_clustering_impl(module):STOP_REASON_ERROR(variable)]] if
             !! `ierr` is non-zero, in which case every other output for this seed is undefined.
         real(c_double), intent(out), target :: growth_radius
             !! This seed's growth radius, see `calc_ensemble_growth_radius`
@@ -182,9 +199,6 @@ contains
             !! Error code; zero on success. Set only on a genuine LAPACK SVD non-convergence
             !! in `observable`/`accept_ensemble` -- every Stop Condition is a valid,
             !! non-error algorithmic outcome, see `misc/mod_STC.md`, "Stop Conditions".
-        logical, dimension(n_vectors) :: final_ensemble_mask_f
-        logical, dimension(o) :: accepted_history_f
-        logical, dimension(n_vectors) :: low_confidence_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -232,7 +246,7 @@ contains
             f_max = f_max,&
             a = a,&
             o = o,&
-            final_ensemble_mask = final_ensemble_mask_f,&
+            final_ensemble_mask = final_ensemble_mask,&
             stop_reason = stop_reason,&
             growth_radius = growth_radius,&
             U_history = U_history,&
@@ -241,17 +255,13 @@ contains
             G_history = G_history,&
             mu_history = mu_history,&
             k_history = k_history,&
-            accepted_history = accepted_history_f,&
+            accepted_history = accepted_history,&
             member_added_at_step = member_added_at_step,&
-            low_confidence_mask = low_confidence_mask_f,&
+            low_confidence_mask = low_confidence_mask,&
             U_first = U_first,&
             d_first = d_first,&
             ierr = ierr&
         )
-
-        final_ensemble_mask = final_ensemble_mask_f
-        accepted_history = accepted_history_f
-        low_confidence_mask = low_confidence_mask_f
     end subroutine ensemble_identification_c
 
     !> summary: C-wrapper for [[tox_shape_truthful_clustering(module):ensemble_identification_merged(subroutine)]]
@@ -261,10 +271,10 @@ contains
     !| seed's growth is fully independent of every other's, so the per-seed calls below write
     !| to disjoint array sections -- safe for `do concurrent`, matching the spec's own "In
     !| parallel grow ensembles around each seed vector" and this codebase's existing
-    !| `do concurrent`-everywhere convention (`tox_shift_vectors_kernel`, `tox_gene_centroids_kernel`,
+    !| `do concurrent`-everywhere convention (`tox_shift_vectors_impl`, `tox_gene_centroids_impl`,
     !| ...). Left for a later pass if it turns out to matter in practice: the spec's own caveat
     !| that `do concurrent` is unsafe together with external-library calls under gfortran --
-    !| `ensemble_identification_kernel` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
+    !| `ensemble_identification_impl` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
     !| and `accept_ensemble` -- has not been stress-tested here; `!$omp parallel do` is the
     !| documented fallback if it ever is.
     !|
@@ -393,10 +403,6 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success. Set only if a genuine LAPACK SVD non-convergence
             !! occurred for any seed -- see `ensemble_identification`.
-        logical, dimension(n_vectors) :: seed_selection_mask_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_masks_f
-        logical, dimension(o, n_selected_seed) :: ensemble_accepted_history_f
-        logical, dimension(n_vectors, n_selected_seed) :: ensemble_low_confidence_masks_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -430,15 +436,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(ensemble_U_first, n_dimensions * n_dimensions * n_selected_seed)
         M_CHECK_ARRAY_NON_NULL(ensemble_d_first, n_selected_seed)
 
-        seed_selection_mask_f = seed_selection_mask
-
         call ensemble_identification_merged(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            seed_selection_mask = seed_selection_mask_f,&
+            seed_selection_mask = seed_selection_mask,&
             n_selected_seed = n_selected_seed,&
             k_min = k_min,&
             chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
@@ -448,7 +452,7 @@ contains
             f_max = f_max,&
             a = a,&
             o = o,&
-            ensemble_masks = ensemble_masks_f,&
+            ensemble_masks = ensemble_masks,&
             ensemble_stop_reason = ensemble_stop_reason,&
             ensemble_growth_radii = ensemble_growth_radii,&
             ensemble_U_history = ensemble_U_history,&
@@ -457,17 +461,13 @@ contains
             ensemble_G_history = ensemble_G_history,&
             ensemble_mu_history = ensemble_mu_history,&
             ensemble_k_history = ensemble_k_history,&
-            ensemble_accepted_history = ensemble_accepted_history_f,&
+            ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_member_added_at_step = ensemble_member_added_at_step,&
-            ensemble_low_confidence_masks = ensemble_low_confidence_masks_f,&
+            ensemble_low_confidence_masks = ensemble_low_confidence_masks,&
             ensemble_U_first = ensemble_U_first,&
             ensemble_d_first = ensemble_d_first,&
             ierr = ierr&
         )
-
-        ensemble_masks = ensemble_masks_f
-        ensemble_accepted_history = ensemble_accepted_history_f
-        ensemble_low_confidence_masks = ensemble_low_confidence_masks_f
     end subroutine ensemble_identification_merged_c
 
 end module tox_shape_truthful_clustering_c

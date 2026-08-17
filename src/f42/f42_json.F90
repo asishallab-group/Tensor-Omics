@@ -4,6 +4,7 @@
 module f42_json
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
     M_IMPLICIT_NONE
 
@@ -107,7 +108,8 @@ contains
     end subroutine serialize_real
 
     !> Serializes any scalar value as JSON.
-    !! All intrinsics `integer(int32)`, `real(real64)`, `logical`, `complex(real64)` are supported, everything else results in `null`.
+    !! All intrinsics `integer(int32)`, `real(real64)`, `logical`, `logical(c_bool)`, `complex(real64)`
+    !! are supported, everything else results in `null`.
     !!
     !! `complex(real64)` will be serialized as array of the two components: [real, imag]
     subroutine serialize_scalar(scalar, unit)
@@ -123,6 +125,8 @@ contains
                 call serialize_real(scalar, unit)
             type is (logical)
                 write (unit, "(A)", advance="no") trim(merge("true ", "false", scalar))
+            type is (logical(c_bool))
+                write (unit, "(A)", advance="no") trim(merge("true ", "false", logical(scalar)))
             type is (character(*))
                 call serialize_string(scalar, unit)
             type is (complex(real64))
@@ -261,7 +265,7 @@ contains
     end subroutine serialize_object
 
     !> Serializes a [[json_object(type)]] and writes it to the passed unit
-    !| Trailing whitespace of string keys and values is stripped, see [[serialize_string(subroutine)]].
+    !| Trailing whitespace of string keys and values is stripped, see `serialize_string`.
     subroutine serialize_json_object(json_obj, unit, max_depth, truncated)
         type(json_object), intent(in) :: json_obj
             !! JSON Object to serialize
@@ -284,7 +288,7 @@ contains
     end subroutine serialize_json_object
 
     !> Serializes a [[json_array(type)]] and writes it to the passed unit
-    !| Trailing whitespace of string values is stripped, see [[serialize_string(subroutine)]].
+    !| Trailing whitespace of string values is stripped, see `serialize_string`.
     subroutine serialize_json_array(json_arr, unit, max_depth, truncated)
         type(json_array), intent(in) :: json_arr
             !! JSON Array to serialize

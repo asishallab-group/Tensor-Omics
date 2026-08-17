@@ -10,9 +10,9 @@
 !| module only reports and groups, on the side.
 !|
 !| A thin, two-call orchestrator over its own two sibling kernels: first
-!| [[tox_shape_truthful_clustering_filter_kernel(module):filter_ensembles_kernel]] (which
+!| [[tox_shape_truthful_clustering_filter_impl(module):filter_ensembles_impl]] (which
 !| ensembles are even eligible to contribute a pair, by Stop Condition/final dimension/final
-!| variance explained), then this module's own `merge_to_super_ensembles_kernel` (the actual
+!| variance explained), then this module's own `merge_to_super_ensembles_impl` (the actual
 !| pairwise-intersection/union-find grouping, over eligible ensembles only). Splitting these
 !| into two independently testable, independently reusable kernels -- rather than one kernel
 !| that both decides eligibility and merges -- is a deliberate design choice: eligibility is a
@@ -20,10 +20,12 @@
 !| statement about *pairs*, and conflating the two made every new filtering criterion require
 !| touching the same monolithic merge logic. See `misc/mod_STC.md`'s own rationale for the
 !| split.
-module tox_shape_truthful_clustering_reconciliation_kernel
+module tox_shape_truthful_clustering_reconciliation_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, ERR_SIZE_MISMATCH
-    use tox_shape_truthful_clustering_filter_kernel, only: filter_ensembles_kernel
+    use tox_shape_truthful_clustering_filter_impl, only: filter_ensembles_impl
     M_IMPLICIT_NONE
 
 #define CM_STC_MODE_REPORT 1_int32
@@ -41,20 +43,20 @@ module tox_shape_truthful_clustering_reconciliation_kernel
     !> Mode 3: transitively group ensembles connected by any nonempty intersection.
     integer(int32), parameter, public :: MODE_MERGE_ANY = CM_STC_MODE_MERGE_ANY
 
-    public :: ensemble_reconciliation_kernel
-    public :: merge_to_super_ensembles_kernel
+    public :: ensemble_reconciliation_impl
+    public :: merge_to_super_ensembles_impl
 
 contains
 
     !> summary: Filter eligible ensembles, then group/report their intersections
     !| AUTHOR_ASIS_HALLAB
     !| See this module's own header comment for why this is a two-call orchestrator, and
-    !| `tox_shape_truthful_clustering_filter_kernel`'s own `filter_ensembles_kernel` for the
+    !| `tox_shape_truthful_clustering_filter_impl`'s own `filter_ensembles_impl` for the
     !| full eligibility-filtering algorithm (Stop Condition/final dimension/final variance
     !| explained, each independently optional, combined by logical AND). `ierr` is set only if
-    !| `merge_to_super_ensembles_kernel` discovers a component larger than `max_group_size` --
+    !| `merge_to_super_ensembles_impl` discovers a component larger than `max_group_size` --
     !| see that kernel's own doc comment.
-    pure subroutine ensemble_reconciliation_kernel(ensemble_masks, ensemble_stop_reason, n_dimensions, n_vectors, &
+    pure subroutine ensemble_reconciliation_impl(ensemble_masks, ensemble_stop_reason, n_dimensions, n_vectors, &
                                                     n_ensembles, &
                                                     ensemble_U_history, ensemble_d_history, ensemble_S_history, &
                                                     ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
@@ -81,10 +83,10 @@ contains
         integer(int32), intent(in) :: o
             !! Trailing observable-history window depth
             !! DM_MIN(1_int32)
-        logical, intent(in) :: ensemble_masks(n_vectors, n_ensembles)
+        logical(c_bool), intent(in) :: ensemble_masks(n_vectors, n_ensembles)
             !! Per-ensemble membership, see Ensemble Identification's merged output
         integer(int32), intent(in) :: ensemble_stop_reason(n_ensembles)
-            !! Per-ensemble Stop Condition, see `filter_ensembles_kernel`
+            !! Per-ensemble Stop Condition, see `filter_ensembles_impl`
             !! DM_MIN(1_int32)
             !! DM_MAX(4_int32)
         real(real64), intent(in) :: ensemble_U_history(n_dimensions, n_dimensions, o, n_ensembles)
@@ -100,46 +102,46 @@ contains
             !! Per-ensemble trailing spectral gaps
         integer(int32), intent(in) :: ensemble_k_history(o, n_ensembles)
             !! Per-ensemble trailing sizes
-        logical, intent(in) :: ensemble_accepted_history(o, n_ensembles)
+        logical(c_bool), intent(in) :: ensemble_accepted_history(o, n_ensembles)
             !! Whether the growth iteration retained in each history column was itself accepted
         integer(int32), intent(in), optional :: mode
             !! How intersections are processed
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Report intersecting pairs only        | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]     |
-            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]  |
-            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]  |
+            !! | Report intersecting pairs only        | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]]     |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]  |
+            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_ANY(variable)]]  |
             !! DM_DEFAULT(CM_STC_MODE_REPORT)
         real(real64), intent(in), optional :: min_overlap_coefficient
             !! Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
             !! \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
-            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]];
+            !! [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]];
             !! ignored in every other mode
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_STC_MIN_OVERLAP_COEFFICIENT_DEFAULT)
-        logical, intent(in), optional :: report_overlap_coefficient
+        logical(c_bool), intent(in), optional :: report_overlap_coefficient
             !! Whether to compute and return `super_ensembles_overlap_coefficient` at all --
-            !! see `merge_to_super_ensembles_kernel`'s own note on this being guarded, not
+            !! see `merge_to_super_ensembles_impl`'s own note on this being guarded, not
             !! unconditional
             !! DM_DEFAULT(.false.)
-        logical, intent(in), optional :: allowed_stop_reasons(4)
-            !! See `tox_shape_truthful_clustering_filter_kernel`'s own
-            !! `filter_ensembles_by_stop_condition_kernel`
+        logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
+            !! See `tox_shape_truthful_clustering_filter_impl`'s own
+            !! `filter_ensembles_by_stop_condition_impl`
         integer(int32), intent(in), optional :: d_min
-            !! See `tox_shape_truthful_clustering_filter_kernel`'s own
-            !! `filter_ensembles_by_dimension_kernel`
+            !! See `tox_shape_truthful_clustering_filter_impl`'s own
+            !! `filter_ensembles_by_dimension_impl`
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
         integer(int32), intent(in), optional :: d_max
-            !! See `tox_shape_truthful_clustering_filter_kernel`'s own
-            !! `filter_ensembles_by_dimension_kernel`
+            !! See `tox_shape_truthful_clustering_filter_impl`'s own
+            !! `filter_ensembles_by_dimension_impl`
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
         real(real64), intent(in), optional :: var_explained_min
-            !! See `tox_shape_truthful_clustering_filter_kernel`'s own
-            !! `filter_ensembles_by_var_explained_kernel`
+            !! See `tox_shape_truthful_clustering_filter_impl`'s own
+            !! `filter_ensembles_by_var_explained_impl`
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
         integer(int32), intent(in) :: max_group_size
@@ -158,7 +160,7 @@ contains
             !! belonging to that group, padded with 0 (invalid, ensembles are 1-indexed) below
             !! the group's actual size, and 0 in every row of an unused trailing column beyond
             !! `n_super_ensembles`. Sized at $N_{\mathcal{E}}(N_{\mathcal{E}}-1)$, twice mode
-            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]'s
+            !! [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]]'s
             !! own true worst case ($N_{\mathcal{E}}(N_{\mathcal{E}}-1)/2$, every pair
             !! intersects) -- deliberately not divided by 2: the generator translates this
             !! specification expression close to verbatim into the Python/R bindings, where
@@ -174,34 +176,34 @@ contains
             !! Column $l$, row $c_i$: the Overlap Coefficient between the ensembles in
             !! `super_ensembles(c_i, l)` and `super_ensembles(c_i + 1, l)`. All zero unless
             !! `report_overlap_coefficient` was requested -- see the note above.
-        logical, intent(out) :: eligible(n_ensembles)
+        logical(c_bool), intent(out) :: eligible(n_ensembles)
             !! Combined per-ensemble eligibility actually used for merging above -- see
-            !! `filter_ensembles_kernel`. Ineligible ensembles are otherwise untouched: they
+            !! `filter_ensembles_impl`. Ineligible ensembles are otherwise untouched: they
             !! are never removed from `ensemble_masks` or anything else this whole family
             !! reports, only excluded from contributing a pair here.
-        logical, intent(out) :: eligible_by_stop_condition(n_ensembles)
-            !! See `filter_ensembles_by_stop_condition_kernel`
-        logical, intent(out) :: eligible_by_dimension(n_ensembles)
-            !! See `filter_ensembles_by_dimension_kernel`
-        logical, intent(out) :: eligible_by_var_explained(n_ensembles)
-            !! See `filter_ensembles_by_var_explained_kernel`
+        logical(c_bool), intent(out) :: eligible_by_stop_condition(n_ensembles)
+            !! See `filter_ensembles_by_stop_condition_impl`
+        logical(c_bool), intent(out) :: eligible_by_dimension(n_ensembles)
+            !! See `filter_ensembles_by_dimension_impl`
+        logical(c_bool), intent(out) :: eligible_by_var_explained(n_ensembles)
+            !! See `filter_ensembles_by_var_explained_impl`
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success. Set only if a discovered component's size exceeds
             !! `max_group_size` -- not a condition any input check could foresee, see above.
 
         call set_ok(ierr)
 
-        call filter_ensembles_kernel(n_dimensions, o, n_ensembles, &
+        call filter_ensembles_impl(n_dimensions, o, n_ensembles, &
             ensemble_U_history, ensemble_d_history, ensemble_S_history, &
             ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, &
             ensemble_stop_reason, allowed_stop_reasons, d_min, d_max, var_explained_min, &
             eligible, eligible_by_stop_condition, eligible_by_dimension, eligible_by_var_explained)
 
-        call merge_to_super_ensembles_kernel(ensemble_masks, eligible, n_vectors, n_ensembles, &
+        call merge_to_super_ensembles_impl(ensemble_masks, eligible, n_vectors, n_ensembles, &
             mode, min_overlap_coefficient, report_overlap_coefficient, max_group_size, &
             super_ensembles, n_super_ensembles, super_ensembles_overlap_coefficient, ierr)
 
-    end subroutine ensemble_reconciliation_kernel
+    end subroutine ensemble_reconciliation_impl
 
     !> summary: Group/report intersections among eligible ensembles into super-ensembles
     !| AUTHOR_ASIS_HALLAB
@@ -215,10 +217,10 @@ contains
     !| guarded behind `report_overlap_coefficient`, never unconditional (see `misc/mod_STC.md`'s
     !| explicit note on this).
     !|
-    !| An ineligible ensemble (`.not. eligible(i)`, see `filter_ensembles_kernel`) never
+    !| An ineligible ensemble (`.not. eligible(i)`, see `filter_ensembles_impl`) never
     !| contributes a pair here at all -- a plain `eligible(i) .and. eligible(j)` guard, no array
     !| copying/compaction, the same "logical AND of masks" shape mode
-    !| [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]'s
+    !| [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]'s
     !| own Overlap Coefficient threshold check already uses.
     !|
     !| Modes 2 and 3 group via a union-find over the qualifying-edge graph (`stc_uf_find`/
@@ -230,7 +232,7 @@ contains
     !| static input check could foresee (it depends on the actual intersection pattern), so it
     !| is reported via `ierr` rather than silently truncated -- see `codegen_guide.md` section
     !| 5.14.
-    pure subroutine merge_to_super_ensembles_kernel(ensemble_masks, eligible, n_vectors, n_ensembles, &
+    pure subroutine merge_to_super_ensembles_impl(ensemble_masks, eligible, n_vectors, n_ensembles, &
                                                      mode, min_overlap_coefficient, report_overlap_coefficient, &
                                                      max_group_size, &
                                                      super_ensembles, n_super_ensembles, &
@@ -240,30 +242,30 @@ contains
         integer(int32), intent(in) :: n_ensembles
             !! Number of ensembles N_E
             !! DM_MIN(2_int32)
-        logical, intent(in) :: ensemble_masks(n_vectors, n_ensembles)
+        logical(c_bool), intent(in) :: ensemble_masks(n_vectors, n_ensembles)
             !! Per-ensemble membership, see Ensemble Identification's merged output
-        logical, intent(in) :: eligible(n_ensembles)
+        logical(c_bool), intent(in) :: eligible(n_ensembles)
             !! Per-ensemble eligibility to contribute a pair here at all -- see
-            !! `tox_shape_truthful_clustering_filter_kernel`'s own `filter_ensembles_kernel`,
+            !! `tox_shape_truthful_clustering_filter_impl`'s own `filter_ensembles_impl`,
             !! this kernel's own sibling in `ensemble_reconciliation`'s two-call orchestration
         integer(int32), intent(in), optional :: mode
             !! How intersections are processed
             !!
             !! | Mode | Value |
             !! |------|-------|
-            !! | Report intersecting pairs only        | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]     |
-            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]  |
-            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_ANY(variable)]]  |
+            !! | Report intersecting pairs only        | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]]     |
+            !! | Merge transitively at a minimum Overlap Coefficient | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]]  |
+            !! | Merge transitively on any intersection | [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_ANY(variable)]]  |
             !! DM_DEFAULT(CM_STC_MODE_REPORT)
         real(real64), intent(in), optional :: min_overlap_coefficient
             !! Minimum Overlap Coefficient ($|\mathcal{E}_i \cap \mathcal{E}_j| /
             !! \min(|\mathcal{E}_i|, |\mathcal{E}_j|)$) for an edge to qualify in mode
-            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]];
+            !! [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_MERGE_OVERLAP_COEFFICIENT(variable)]];
             !! ignored in every other mode
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_STC_MIN_OVERLAP_COEFFICIENT_DEFAULT)
-        logical, intent(in), optional :: report_overlap_coefficient
+        logical(c_bool), intent(in), optional :: report_overlap_coefficient
             !! Whether to compute and return `super_ensembles_overlap_coefficient` at all --
             !! see the note above on this being guarded, not unconditional
             !! DM_DEFAULT(.false.)
@@ -283,9 +285,9 @@ contains
             !! belonging to that group, padded with 0 (invalid, ensembles are 1-indexed) below
             !! the group's actual size, and 0 in every row of an unused trailing column beyond
             !! `n_super_ensembles`. Sized at $N_{\mathcal{E}}(N_{\mathcal{E}}-1)$, twice mode
-            !! [[tox_shape_truthful_clustering_reconciliation_kernel(module):MODE_REPORT(variable)]]'s
+            !! [[tox_shape_truthful_clustering_reconciliation_impl(module):MODE_REPORT(variable)]]'s
             !! own true worst case ($N_{\mathcal{E}}(N_{\mathcal{E}}-1)/2$, every pair
-            !! intersects) -- deliberately not divided by 2, see `ensemble_reconciliation_kernel`'s
+            !! intersects) -- deliberately not divided by 2, see `ensemble_reconciliation_impl`'s
             !! own identical note.
         integer(int32), intent(out) :: n_super_ensembles
             !! Number of leading columns of `super_ensembles`/`super_ensembles_overlap_coefficient`
@@ -303,7 +305,7 @@ contains
         integer(int32) :: member(n_ensembles)
         integer(int32) :: actual_mode
         real(real64)   :: actual_min_overlap_coefficient
-        logical        :: actual_report_overlap_coefficient
+        logical(c_bool)        :: actual_report_overlap_coefficient
         integer(int32) :: i, j, l, r, group_size, intersect_count, root
 
         call set_ok(ierr)
@@ -389,12 +391,12 @@ contains
 
         end if
 
-    end subroutine merge_to_super_ensembles_kernel
+    end subroutine merge_to_super_ensembles_impl
 
     !> Union-find root lookup with path compression. A `pure` function's dummy arguments
     !| must all be `intent(in)` -- path compression mutates `parent`, so this has to be a
     !| subroutine, not a function. Not itself a kernel (private, no wrapper): shared
-    !| bookkeeping for `merge_to_super_ensembles_kernel`, not part of the public contract.
+    !| bookkeeping for `merge_to_super_ensembles_impl`, not part of the public contract.
     recursive pure subroutine stc_uf_find(parent, n, i, root)
         integer(int32), intent(in) :: n
         integer(int32), intent(inout) :: parent(n)
@@ -411,7 +413,7 @@ contains
 
     !> Union-find merge, always attaching the numerically larger root under the smaller --
     !| so a component's root is always its own smallest member, see
-    !| `merge_to_super_ensembles_kernel`'s own doc comment above.
+    !| `merge_to_super_ensembles_impl`'s own doc comment above.
     pure subroutine stc_uf_union(parent, n, i, j)
         integer(int32), intent(in) :: n
         integer(int32), intent(inout) :: parent(n)
@@ -429,4 +431,4 @@ contains
         end if
     end subroutine stc_uf_union
 
-end module tox_shape_truthful_clustering_reconciliation_kernel
+end module tox_shape_truthful_clustering_reconciliation_impl

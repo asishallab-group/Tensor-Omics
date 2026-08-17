@@ -6,7 +6,7 @@
 #' LWORK >= 4*min(M,N)**2 + 7*min(M,N), IWORK size = 8*min(M,N), where M=n_dimensions and
 #' N=n_selected_member.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_observable_kernel::tox_stc_observable_svd_workspace}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_observable_impl::tox_stc_observable_svd_workspace}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_dimensions a integer scalar. Ambient dimension D

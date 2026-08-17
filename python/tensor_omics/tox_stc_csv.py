@@ -1,6 +1,27 @@
-"""tox_stc_csv
+r"""tox_stc_csv
 
 Plain-text (CSV/TSV) companions to `tox_stc_json`'s JSON/HTML report, for the data-science
+workflow the JSON alone does not serve well: loading STC's results back into a Python/R
+analysis pipeline (`pandas.read_csv`/`read.csv`) without a JSON parser, joined back to the
+caller's own input table purely by row number. Three independent, narrow writers, one per
+artifact -- deliberately not derived from `tox_stc_json`'s own internal tree-building (that
+machinery is JSON-object-shaped and private to one subroutine call, see
+`tox_stc_json::stc_build_and_serialize_json`'s own doc comment); each writer here instead
+recomputes its own small amount of derived state directly from the raw `ensemble_masks`/
+`super_ensembles` arrays, the same source-of-truth `tox_stc_json` reads.
+
+- `serialize_stc_points_as_csv`: one row per input vector, ensemble/super-ensemble/
+low-confidence/seed-of membership as quoted, comma-joined list cells (standard CSV
+quoting, so `pandas.read_csv`/`read.csv` parse the embedded commas correctly) -- the
+"assign each data point back to its ensemble(s) using the input table's own row numbers"
+table.
+- `serialize_stc_ensemble_overlap_as_csv`: the full pairwise Overlap Coefficient matrix
+(only pairs with a nonempty intersection, matching `tox_stc_json`'s own convention) as a
+plain three-column CSV.
+- `serialize_stc_super_ensembles_as_tsv`: one line per super-ensemble, in the same
+`<id>` TAB `<comma-separated member list>` shape as a gene-family file -- deliberately
+*not* CSV-quoted, since the field separator (TAB) and the list separator (comma) never
+collide.
 
 Python binding, generated from tox_stc_csv. Do not edit.
 """
@@ -105,7 +126,7 @@ def serialize_stc_points_as_csv(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
         seed_selection_mask = np.ascontiguousarray(seed_selection_mask, dtype=np.bool_)
     except (TypeError, ValueError) as error:
@@ -200,7 +221,7 @@ def serialize_stc_ensemble_overlap_as_csv(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
         ensemble_masks = np.asfortranarray(ensemble_masks, dtype=np.bool_)
     except (TypeError, ValueError) as error:
@@ -257,7 +278,7 @@ def serialize_stc_super_ensembles_as_tsv(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
         super_ensembles = np.asfortranarray(super_ensembles, dtype=np.int32)
     except (TypeError, ValueError) as error:

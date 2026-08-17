@@ -1,7 +1,7 @@
 source("r/load_tensor_omics.R")
 source("r/test_helpers.R")
 
-# ensemble_stop_reason values, 1-indexed -- tox_shape_truthful_clustering_kernel's own
+# ensemble_stop_reason values, 1-indexed -- tox_shape_truthful_clustering_impl's own
 # STOP_REASON_MAX_SIZE(1)/STOP_REASON_REJECTED_AFTER_STABLE(2)/STOP_REASON_REJECTED_IMMEDIATELY(3)/
 # STOP_REASON_FIXED_POINT(4). Not exported as named constants by any binding (see the Fortran
 # kernel's own doc comment on why), so used as plain integers here, matching every other

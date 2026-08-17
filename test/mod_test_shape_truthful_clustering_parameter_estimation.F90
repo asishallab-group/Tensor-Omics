@@ -1,14 +1,15 @@
 !> Unit test suite for tox_shape_truthful_clustering_parameter_estimation (sample_estimator_anchors,
 !| grow_estimator_anchor_clouds, estimate_stc_parameters), generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_parameter_estimation_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_parameter_estimation_impl.F90.
 module mod_test_shape_truthful_clustering_parameter_estimation
-    use tox_shape_truthful_clustering_parameter_estimation, only: sample_estimator_anchors_alloc, &
+    use tox_shape_truthful_clustering_parameter_estimation, only: sample_estimator_anchors, &
                                                                    grow_estimator_anchor_clouds, &
-                                                                   estimate_stc_parameters_alloc
-    use f42_kd_tree, only: build_kd_index_alloc
+                                                                   estimate_stc_parameters
+    use f42_kd_tree, only: build_kd_index
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -58,9 +59,9 @@ contains
             density_labels(i) = real(i, real64)
         end do
 
-        call sample_estimator_anchors_alloc(density_labels, 11_int32, 5_int32, anchor_indices, ierr)
+        call sample_estimator_anchors(density_labels, 11_int32, 5_int32, anchor_indices, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'sample_estimator_anchors_alloc failed unexpectedly: ', ierr
+            write (*, *) 'sample_estimator_anchors failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -80,9 +81,9 @@ contains
             density_labels(i) = real(i, real64)
         end do
 
-        call sample_estimator_anchors_alloc(density_labels, 5_int32, 5_int32, anchor_indices, ierr)
+        call sample_estimator_anchors(density_labels, 5_int32, 5_int32, anchor_indices, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'sample_estimator_anchors_alloc failed unexpectedly: ', ierr
+            write (*, *) 'sample_estimator_anchors failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -98,7 +99,7 @@ contains
             density_labels(i) = real(i, real64)
         end do
 
-        call sample_estimator_anchors_alloc(density_labels, 11_int32, 0_int32, anchor_indices, ierr)
+        call sample_estimator_anchors(density_labels, 11_int32, 0_int32, anchor_indices, ierr)
         call assert_true(is_err(ierr), "sample_estimator_anchors should reject n_anchors < 1")
     end subroutine test_sample_anchors_invalid_n_anchors_zero
 
@@ -110,7 +111,7 @@ contains
             density_labels(i) = real(i, real64)
         end do
 
-        call sample_estimator_anchors_alloc(density_labels, 11_int32, 12_int32, anchor_indices, ierr)
+        call sample_estimator_anchors(density_labels, 11_int32, 12_int32, anchor_indices, ierr)
         call assert_true(is_err(ierr), "sample_estimator_anchors should reject n_anchors > n_vectors")
     end subroutine test_sample_anchors_invalid_n_anchors_too_large
 
@@ -131,9 +132,9 @@ contains
         end do
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 7_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 7_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_line_fixture_7: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_line_fixture_7: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_line_fixture_7
@@ -147,7 +148,7 @@ contains
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2)
         integer(int32) :: anchor_indices(2), cloud_sizes(2), expected_sizes(2), ierr
-        logical        :: cloud_masks(7, 2), expected_cloud_1(7)
+        logical(c_bool)        :: cloud_masks(7, 2), expected_cloud_1(7)
 
         call build_line_fixture_7(vectors, kd_indices, dim_order)
         anchor_indices = [1, 7]
@@ -178,7 +179,7 @@ contains
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2)
         integer(int32) :: anchor_indices(2), cloud_sizes(2), expected_sizes(2), ierr
-        logical        :: cloud_masks(7, 2)
+        logical(c_bool)        :: cloud_masks(7, 2)
 
         call build_line_fixture_7(vectors, kd_indices, dim_order)
         anchor_indices = [1, 7]
@@ -205,7 +206,7 @@ contains
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2)
         integer(int32) :: anchor_indices(2), cloud_sizes(2), expected_sizes(2), ierr
-        logical        :: cloud_masks(7, 2)
+        logical(c_bool)        :: cloud_masks(7, 2)
 
         call build_line_fixture_7(vectors, kd_indices, dim_order)
         anchor_indices = [1, 7]
@@ -226,7 +227,7 @@ contains
         real(real64)   :: vectors(2, 7)
         integer(int32) :: kd_indices(7), dim_order(2)
         integer(int32) :: anchor_indices(2), cloud_sizes(2), ierr
-        logical        :: cloud_masks(7, 2)
+        logical(c_bool)        :: cloud_masks(7, 2)
 
         call build_line_fixture_7(vectors, kd_indices, dim_order)
         anchor_indices = [1, 7]
@@ -259,19 +260,19 @@ contains
             vectors(2, i) = 0.0d0
         end do
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_estimate_parameters_collinear_line: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_estimate_parameters_collinear_line: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call estimate_stc_parameters_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=50.0d0, &
+        call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=50.0d0, &
                                            estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, &
                                            estimated_G_max=est_G_max, estimated_d_max=est_d_max, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'estimate_stc_parameters_alloc failed unexpectedly: ', ierr
+            write (*, *) 'estimate_stc_parameters failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -300,13 +301,13 @@ contains
             vectors(2, i) = 0.0d0
         end do
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_estimate_parameters_too_few_valid_eas: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_estimate_parameters_too_few_valid_eas: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call estimate_stc_parameters_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=0.0d0, &
+        call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=0.0d0, &
                                            estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
@@ -325,13 +326,13 @@ contains
             vectors(2, i) = 0.0d0
         end do
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_estimate_parameters_invalid_n_anchors: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_estimate_parameters_invalid_n_anchors: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call estimate_stc_parameters_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, n_anchors=50_int32, &
+        call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, n_anchors=50_int32, &
                                            estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
@@ -350,13 +351,13 @@ contains
             vectors(2, i) = 0.0d0
         end do
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 21_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_estimate_parameters_invalid_seed_max_set_size: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'test_estimate_parameters_invalid_seed_max_set_size: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call estimate_stc_parameters_alloc(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=-1.0d0, &
+        call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=-1.0d0, &
                                            estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
@@ -383,19 +384,19 @@ contains
             vectors(2, i) = 0.0d0
         end do
         dim_order = [1, 2]
-        call build_kd_index_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr_omitted)
+        call build_kd_index(vectors, 2_int32, 3_int32, kd_indices, dim_order, ierr_omitted)
         if (.not. is_ok(ierr_omitted)) then
-            write (*, *) 'test_estimate_parameters_omitted_n_anchors_is_clamped: build_kd_index_alloc failed: ', ierr_omitted
+            write (*, *) 'test_estimate_parameters_omitted_n_anchors_is_clamped: build_kd_index failed: ', ierr_omitted
             error stop
         end if
 
-        call estimate_stc_parameters_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, seed_max_set_size=100.0d0, &
+        call estimate_stc_parameters(vectors, 2_int32, 3_int32, kd_indices, dim_order, seed_max_set_size=100.0d0, &
                                            estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
                                            estimated_d_max=est_d_max, ierr=ierr_omitted)
 
-        call estimate_stc_parameters_alloc(vectors, 2_int32, 3_int32, kd_indices, dim_order, n_anchors=3_int32, &
+        call estimate_stc_parameters(vectors, 2_int32, 3_int32, kd_indices, dim_order, n_anchors=3_int32, &
                                            seed_max_set_size=100.0d0, &
                                            estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
                                            estimated_density_quantile=est_density_quantile, &

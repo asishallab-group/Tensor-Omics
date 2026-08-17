@@ -1,8 +1,16 @@
-"""tox_shape_truthful_clustering_observable_kernel
+r"""tox_shape_truthful_clustering_observable_impl
 
 # Shape Truthful Clustering (STC): Observable
 
-Python binding, generated from tox_shape_truthful_clustering_observable_kernel. Do not edit.
+`observable`: the tuple (U, d, G, mu, normal_error, tangent_scales) for an ensemble,
+obtained from the economy-mode singular value decomposition (LAPACK `dgesdd`) of its
+centered member vectors -- never an eigendecomposition of an explicitly formed
+covariance matrix (see `misc/mod_STC.md`, "Numerical Linear Algebra"). `normal_error` and
+`tangent_scales` are simple, dependency-free reductions over the eigenvalues `observable`
+computes. See `misc/mod_STC.md`, SKG `observable`/`normal_error`/`tangent_scales`, for the
+full algorithm definitions.
+
+Python binding, generated from tox_shape_truthful_clustering_observable_impl. Do not edit.
 """
 
 import ctypes
@@ -57,7 +65,7 @@ def tox_stc_observable_svd_workspace(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_observable_kernel::tox_stc_observable_svd_workspace`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_observable_impl::tox_stc_observable_svd_workspace`, whose argument names are
     the ones an error message reports.
     """
     # outputs and work arrays, which the caller never sees

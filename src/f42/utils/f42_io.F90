@@ -2,7 +2,10 @@
 
 !> File I/O helpers.
 !|
-!| One of the modules [[f42_utils(module)]] gathers; `use f42_utils` reaches all of them.
+!| Not gathered by [[f42_utils_impl(module)]] -- `open_file` is internal Fortran-to-Fortran
+!| plumbing (no `M_EXPORT_C`, not an `_impl`), used directly by the hand-written export-path
+!| modules that need it (`tox_stc_json`, `tox_stc_csv`, `tox_flyer_json`), so it stays outside
+!| the generated-utilities family rather than routing through it.
 module f42_io
     use, intrinsic :: iso_fortran_env, only: int32
     use tox_errors, only: set_ok, set_err, is_err, ERR_FILE_OPEN

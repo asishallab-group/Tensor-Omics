@@ -12,7 +12,7 @@ from tensor_omics import ensemble_identification, build_kd_index
 from test_helpers import run_all_tests, assert_error
 from tensor_omics.error_handling import ERR_INVALID_INPUT
 
-# tox_shape_truthful_clustering_kernel's STOP_REASON_*/MEMBER_ADDED_AT_STEP_* parameters are
+# tox_shape_truthful_clustering_impl's STOP_REASON_*/MEMBER_ADDED_AT_STEP_* parameters are
 # not exposed as importable constants (no existing codegen mechanism does that for a plain
 # result-code output, unlike a "mode" input) -- these mirror their literal Fortran values.
 STOP_REASON_MAX_SIZE = 1

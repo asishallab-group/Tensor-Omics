@@ -10,7 +10,7 @@
 #'
 #' @param ensemble_stop_reason a integer vector. Per-ensemble Stop Condition, see `ensemble_identification`'s merged
 #'   `ensemble_stop_reason` -- an index 1..4 into `allowed_stop_reasons` below, in the
-#'   order `tox_shape_truthful_clustering_kernel`'s own `STOP_REASON_MAX_SIZE` (1),
+#'   order `tox_shape_truthful_clustering_impl`'s own `STOP_REASON_MAX_SIZE` (1),
 #'   `STOP_REASON_REJECTED_AFTER_STABLE` (2), `STOP_REASON_REJECTED_IMMEDIATELY` (3),
 #'   `STOP_REASON_FIXED_POINT` (4) -- not imported by name here, to avoid a circular
 #'   module dependency (the parent module already `use`s the reconciliation module,
@@ -42,7 +42,7 @@ filter_ensembles_by_stop_condition <- function(ensemble_stop_reason, allowed_sto
 #' (`ensemble_has_final(e)` false) is never eligible under this criterion once at least one
 #' of `d_min`/`d_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
 #' no-op (every ensemble eligible, `ensemble_has_final` not even consulted), matching
-#' `filter_ensembles_by_stop_condition_kernel`'s own "omitted means unconstrained"
+#' `filter_ensembles_by_stop_condition_impl`'s own "omitted means unconstrained"
 #' convention. `d_min` could in principle default to `0` (a genuine constant
 #' expression), but is left nullable like `d_max` (whose own natural default, `n_dimensions`,
 #' is a runtime value and so cannot be a generated default) rather than have the two bounds
@@ -160,24 +160,24 @@ filter_ensembles_by_var_explained <- function(ensemble_S_final, ensemble_d_final
 #' @param ensemble_G_history a numeric matrix. Per-ensemble trailing spectral gaps
 #' @param ensemble_k_history a integer matrix. Per-ensemble trailing sizes
 #' @param ensemble_accepted_history a logical matrix. Whether the growth iteration retained in each history column was itself accepted
-#' @param ensemble_stop_reason a integer vector. Per-ensemble Stop Condition, see `filter_ensembles_by_stop_condition_kernel`
+#' @param ensemble_stop_reason a integer vector. Per-ensemble Stop Condition, see `filter_ensembles_by_stop_condition_impl`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `4`.
-#' @param allowed_stop_reasons a logical vector. See `filter_ensembles_by_stop_condition_kernel`
-#' @param d_min a integer scalar. See `filter_ensembles_by_dimension_kernel`
+#' @param allowed_stop_reasons a logical vector. See `filter_ensembles_by_stop_condition_impl`
+#' @param d_min a integer scalar. See `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param d_max a integer scalar. See `filter_ensembles_by_dimension_kernel`
+#' @param d_max a integer scalar. See `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param var_explained_min a numeric scalar. See `filter_ensembles_by_var_explained_kernel`
+#' @param var_explained_min a numeric scalar. See `filter_ensembles_by_var_explained_impl`
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{eligible}{a logical vector. Combined eligibility: `TRUE` only where all three per-criterion masks are}
-#'   \item{eligible_by_stop_condition}{a logical vector. See `filter_ensembles_by_stop_condition_kernel`}
-#'   \item{eligible_by_dimension}{a logical vector. See `filter_ensembles_by_dimension_kernel`}
-#'   \item{eligible_by_var_explained}{a logical vector. See `filter_ensembles_by_var_explained_kernel`}
+#'   \item{eligible_by_stop_condition}{a logical vector. See `filter_ensembles_by_stop_condition_impl`}
+#'   \item{eligible_by_dimension}{a logical vector. See `filter_ensembles_by_dimension_impl`}
+#'   \item{eligible_by_var_explained}{a logical vector. See `filter_ensembles_by_var_explained_impl`}
 #' @export
 filter_ensembles <- function(ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, ensemble_stop_reason, allowed_stop_reasons = NULL, d_min = NULL, d_max = NULL, var_explained_min = NULL) {
     ensemble_U_history <- .tox_as_double_array(ensemble_U_history, "ensemble_U_history", 4L)

@@ -19,7 +19,7 @@ contains
     !| AUTHOR_FRANZ_ERIC_SILL
     subroutine serialize_tox_data_as_flyer_json(filename, tissues, n_tissues, family_ids, n_families, centroids, gene_ids, n_genes, genes, gene_to_fam, sorted_gene_to_fam_perm, gene_outliers, gene_species, gene_types, ierr)
         use tox_errors, only: is_err, set_ok, set_err, ERR_INVALID_INPUT, ERR_ALLOC_FAIL, validate_dimension_size, validate_all_in_range_int
-        use f42_utils, only: open_file
+        use f42_io, only: open_file
 
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues

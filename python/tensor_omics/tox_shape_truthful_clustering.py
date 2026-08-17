@@ -1,6 +1,23 @@
-"""tox_shape_truthful_clustering
+r"""tox_shape_truthful_clustering
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC)
+
+A renormalization-group-inspired ensemble-growth clustering method; see
+`misc/mod_STC.md` for the full algorithm definition. The family is split over five
+kernel modules -- seeding, ensemble growing, observable, accept, and reconciliation --
+which this module gathers, so a caller reaches the whole pipeline through it.
+
+Unlike `codegen_guide.md` section 5.15's own `tox_data_integration_impl` example, this
+parent also holds `ensemble_identification`'s own kernel directly -- it is this family's
+natural top-level entry point (it orchestrates every other SKG here), not just a bag of
+siblings.
+
+`ensemble_identification_impl` grows and tracks a single ensemble from a single seed --
+see `misc/mod_STC.md`, "Ensemble identification", "### Output". `ensemble_identification_merged_impl`
+calls it once per seed and assembles the "#### Merged output" arrays (`ensemble_masks`,
+`ensemble_U_history`, ...). `ensemble_reconciliation_impl`, in the sibling
+`tox_shape_truthful_clustering_reconciliation_impl` module, then identifies and groups
+intersecting ensembles from that merged output, on the side.
 
 Python binding, generated from tox_shape_truthful_clustering. Do not edit.
 """

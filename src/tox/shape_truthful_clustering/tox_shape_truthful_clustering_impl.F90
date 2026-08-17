@@ -7,26 +7,28 @@
 !| kernel modules -- seeding, ensemble growing, observable, accept, and reconciliation --
 !| which this module gathers, so a caller reaches the whole pipeline through it.
 !|
-!| Unlike `codegen_guide.md` section 5.15's own `tox_data_integration_kernel` example, this
+!| Unlike `codegen_guide.md` section 5.15's own `tox_data_integration_impl` example, this
 !| parent also holds `ensemble_identification`'s own kernel directly -- it is this family's
 !| natural top-level entry point (it orchestrates every other SKG here), not just a bag of
 !| siblings.
 !|
-!| `ensemble_identification_kernel` grows and tracks a single ensemble from a single seed --
-!| see `misc/mod_STC.md`, "Ensemble identification", "### Output". `ensemble_identification_merged_kernel`
+!| `ensemble_identification_impl` grows and tracks a single ensemble from a single seed --
+!| see `misc/mod_STC.md`, "Ensemble identification", "### Output". `ensemble_identification_merged_impl`
 !| calls it once per seed and assembles the "#### Merged output" arrays (`ensemble_masks`,
-!| `ensemble_U_history`, ...). `ensemble_reconciliation_kernel`, in the sibling
-!| `tox_shape_truthful_clustering_reconciliation_kernel` module, then identifies and groups
+!| `ensemble_U_history`, ...). `ensemble_reconciliation_impl`, in the sibling
+!| `tox_shape_truthful_clustering_reconciliation_impl` module, then identifies and groups
 !| intersecting ensembles from that merged output, on the side.
-module tox_shape_truthful_clustering_kernel
+module tox_shape_truthful_clustering_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err_once, ERR_INTERNAL
-    use f42_utils, only: above
-    use tox_shape_truthful_clustering_seeding_kernel
-    use tox_shape_truthful_clustering_ensemble_growing_kernel
-    use tox_shape_truthful_clustering_observable_kernel
-    use tox_shape_truthful_clustering_accept_kernel
-    use tox_shape_truthful_clustering_reconciliation_kernel
+    use f42_math_impl, only: above
+    use tox_shape_truthful_clustering_seeding_impl
+    use tox_shape_truthful_clustering_ensemble_growing_impl
+    use tox_shape_truthful_clustering_observable_impl
+    use tox_shape_truthful_clustering_accept_impl
+    use tox_shape_truthful_clustering_reconciliation_impl
     M_IMPLICIT_NONE
 
 #define CM_STC_GROWTH_RADIUS_K_MIN_DEFAULT 30_int32
@@ -63,8 +65,8 @@ module tox_shape_truthful_clustering_kernel
     !> `member_added_at_step` value for the seed vector itself (joined "at step 0", before growth).
     integer(int32), parameter, public :: MEMBER_ADDED_AT_STEP_SEED = CM_STC_MEMBER_ADDED_AT_STEP_SEED
 
-    public :: ensemble_identification_kernel
-    public :: ensemble_identification_merged_kernel
+    public :: ensemble_identification_impl
+    public :: ensemble_identification_merged_impl
 
 contains
 
@@ -77,7 +79,7 @@ contains
     !| Conditions applies. Deliberately sequential: growth at each step depends on the
     !| previous one, so there is nothing to parallelize *within* a single seed's growth --
     !| outer-level parallelism belongs in whatever calls this once per seed, matching
-    !| `grow_ensemble_kernel`'s own precedent.
+    !| `grow_ensemble_impl`'s own precedent.
     !|
     !| Two deliberate readings of the spec, flagged here since the prose leaves them
     !| implicit: (1) an isolated seed -- no neighbor at all within its own growth radius --
@@ -89,7 +91,7 @@ contains
     !| `final_ensemble_mask` reflects the last *accepted* state, not this one -- otherwise
     !| `accepted_history` could only ever read `.true.`, since only accepted iterations would
     !| ever reach the array at all.
-    pure subroutine ensemble_identification_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+    pure subroutine ensemble_identification_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                     seed_index, k_min, chordal_dist_max_as_prcnt_of_range, &
                                                     d_max, G_max, RMSE_change_max, f_max, a, o, &
                                                     final_ensemble_mask, stop_reason, growth_radius, &
@@ -150,16 +152,16 @@ contains
             !! default here: a Fortran array bound cannot depend on a possibly-absent
             !! optional dummy, and this argument sizes every history output below.
             !! DM_MIN(1_int32)
-        logical, intent(out) :: final_ensemble_mask(n_vectors)
+        logical(c_bool), intent(out) :: final_ensemble_mask(n_vectors)
             !! The last accepted ensemble's membership. All `.false.` when `stop_reason` is
             !! `STOP_REASON_MAX_SIZE` -- see Stop Condition 1.
         integer(int32), intent(out) :: stop_reason
             !! Which Stop Condition ended growth: one of
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_MAX_SIZE(variable)]],
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_REJECTED_AFTER_STABLE(variable)]],
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_REJECTED_IMMEDIATELY(variable)]], or
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_FIXED_POINT(variable)]] --
-            !! or [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_ERROR(variable)]] if
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_MAX_SIZE(variable)]],
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_REJECTED_AFTER_STABLE(variable)]],
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_REJECTED_IMMEDIATELY(variable)]], or
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_FIXED_POINT(variable)]] --
+            !! or [[tox_shape_truthful_clustering_impl(module):STOP_REASON_ERROR(variable)]] if
             !! `ierr` is non-zero, in which case every other output for this seed is undefined.
         real(real64), intent(out) :: growth_radius
             !! This seed's growth radius, see `calc_ensemble_growth_radius`
@@ -179,7 +181,7 @@ contains
             !! Trailing ensemble sizes, one per retained iteration. 0 marks a column beyond
             !! the number of iterations actually retained -- a real ensemble size is always
             !! at least 1.
-        logical, intent(out) :: accepted_history(o)
+        logical(c_bool), intent(out) :: accepted_history(o)
             !! Whether the growth iteration retained in the corresponding column was
             !! accepted. Iteration 1 (the bootstrap step) is always `.true.` by convention.
             !! The single most recent column is `.false.` when, and only when, growth
@@ -189,7 +191,7 @@ contains
             !! `MEMBER_ADDED_AT_STEP_NON_MEMBER` for non-members, `MEMBER_ADDED_AT_STEP_SEED`
             !! for the seed itself, the growth-iteration index at which each other member
             !! joined otherwise
-        logical, intent(out) :: low_confidence_mask(n_vectors)
+        logical(c_bool), intent(out) :: low_confidence_mask(n_vectors)
             !! Membership from this seed's iteration 1 (the unconditional bootstrap
             !! grow_ensemble+observable call), reported regardless of stop_reason -- including
             !! when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
@@ -215,10 +217,10 @@ contains
         real(real64)    :: growth_distances(n_vectors)
         integer(int32) :: range_stack(3, n_vectors)
         integer(int32) :: growth_sort_perm(n_vectors)
-        logical         :: member_mask_buf(n_vectors)
+        logical(c_bool)         :: member_mask_buf(n_vectors)
 
-        logical         :: mask_current(n_vectors)
-        logical         :: mask_candidate(n_vectors)
+        logical(c_bool)         :: mask_current(n_vectors)
+        logical(c_bool)         :: mask_candidate(n_vectors)
         integer(int32) :: n_candidate
 
         real(real64)   :: U_candidate(n_dimensions, n_dimensions)
@@ -234,7 +236,7 @@ contains
         real(real64)   :: prev_G
         real(real64)   :: prev_normal_error
 
-        logical         :: is_accepted
+        logical(c_bool)         :: is_accepted
         integer(int32) :: accept_ierr
         real(real64)   :: accept_tmp_m(n_dimensions, n_dimensions)
         real(real64)   :: accept_tmp_s(n_dimensions)
@@ -266,7 +268,7 @@ contains
         history_len   = 0
         accepted_count = 0
 
-        call calc_ensemble_growth_radius_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+        call calc_ensemble_growth_radius_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                 seed_index, k_min, &
                                                 tmp_neighbors=growth_neighbors, tmp_distances=growth_distances, &
                                                 tmp_range_stack=range_stack, tmp_sort_perm=growth_sort_perm, &
@@ -277,7 +279,7 @@ contains
 
         ! First growth step (the bootstrap): unconditional, no accept_ensemble check yet --
         ! see "First growth step" in `misc/mod_STC.md`.
-        call grow_ensemble_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+        call grow_ensemble_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                   mask_current, growth_radius, &
                                   range_stack, member_mask_buf, mask_candidate)
 
@@ -307,7 +309,7 @@ contains
             real(real64)   :: work_c(4*min(n_dimensions, n_candidate)**2 + 7*min(n_dimensions, n_candidate))
             integer(int32) :: iwork_c(8*min(n_dimensions, n_candidate))
 
-            call observable_kernel(vectors, n_dimensions, n_vectors, mask_candidate, n_candidate, &
+            call observable_impl(vectors, n_dimensions, n_vectors, mask_candidate, n_candidate, &
                                    4*min(n_dimensions, n_candidate)**2 + 7*min(n_dimensions, n_candidate), &
                                    8*min(n_dimensions, n_candidate), &
                                    y_c, s_c, u_econ_c, vt_econ_c, work_c, iwork_c, &
@@ -341,7 +343,7 @@ contains
         accepted_count       = 1
 
         call stc_push_ensemble_history(n_dimensions, o, U_candidate, S_candidate, d_candidate, G_candidate, &
-                                       mu_candidate, n_candidate, .true., history_len, &
+                                       mu_candidate, n_candidate, .true._c_bool, history_len, &
                                        U_history, S_history, d_history, G_history, mu_history, k_history, &
                                        accepted_history)
 
@@ -350,7 +352,7 @@ contains
 
         growth_loop: do t = 2, n_vectors
 
-            call grow_ensemble_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+            call grow_ensemble_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                       mask_current, growth_radius, &
                                       range_stack, member_mask_buf, mask_candidate)
 
@@ -385,7 +387,7 @@ contains
                 real(real64)   :: work_c(4*min(n_dimensions, n_candidate)**2 + 7*min(n_dimensions, n_candidate))
                 integer(int32) :: iwork_c(8*min(n_dimensions, n_candidate))
 
-                call observable_kernel(vectors, n_dimensions, n_vectors, mask_candidate, n_candidate, &
+                call observable_impl(vectors, n_dimensions, n_vectors, mask_candidate, n_candidate, &
                                        4*min(n_dimensions, n_candidate)**2 + 7*min(n_dimensions, n_candidate), &
                                        8*min(n_dimensions, n_candidate), &
                                        y_c, s_c, u_econ_c, vt_econ_c, work_c, iwork_c, &
@@ -400,7 +402,7 @@ contains
 
             S_candidate = sqrt(eigenvalues_candidate*real(n_candidate - 1, real64))
 
-            call accept_ensemble_kernel(n_dimensions, o, U_first, d_first, &
+            call accept_ensemble_impl(n_dimensions, o, U_first, d_first, &
                                         U_history, d_history, history_len, &
                                         prev_G, prev_normal_error, &
                                         U_candidate, d_candidate, G_candidate, normal_error_scratch, &
@@ -420,7 +422,7 @@ contains
                 accepted_count       = accepted_count + 1
 
                 call stc_push_ensemble_history(n_dimensions, o, U_candidate, S_candidate, d_candidate, G_candidate, &
-                                               mu_candidate, n_candidate, .true., history_len, &
+                                               mu_candidate, n_candidate, .true._c_bool, history_len, &
                                                U_history, S_history, d_history, G_history, mu_history, k_history, &
                                                accepted_history)
 
@@ -431,7 +433,7 @@ contains
                 ! note above), then stop -- final_ensemble_mask is already the last accepted
                 ! state, no further update needed.
                 call stc_push_ensemble_history(n_dimensions, o, U_candidate, S_candidate, d_candidate, G_candidate, &
-                                               mu_candidate, n_candidate, .false., history_len, &
+                                               mu_candidate, n_candidate, .false._c_bool, history_len, &
                                                U_history, S_history, d_history, G_history, mu_history, k_history, &
                                                accepted_history)
 
@@ -445,7 +447,7 @@ contains
 
         end do growth_loop
 
-    end subroutine ensemble_identification_kernel
+    end subroutine ensemble_identification_impl
 
     !> summary: Run ensemble_identification once per seed and assemble the merged, per-ensemble output arrays
     !| AUTHOR_ASIS_HALLAB
@@ -455,10 +457,10 @@ contains
     !| seed's growth is fully independent of every other's, so the per-seed calls below write
     !| to disjoint array sections -- safe for `do concurrent`, matching the spec's own "In
     !| parallel grow ensembles around each seed vector" and this codebase's existing
-    !| `do concurrent`-everywhere convention (`tox_shift_vectors_kernel`, `tox_gene_centroids_kernel`,
+    !| `do concurrent`-everywhere convention (`tox_shift_vectors_impl`, `tox_gene_centroids_impl`,
     !| ...). Left for a later pass if it turns out to matter in practice: the spec's own caveat
     !| that `do concurrent` is unsafe together with external-library calls under gfortran --
-    !| `ensemble_identification_kernel` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
+    !| `ensemble_identification_impl` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
     !| and `accept_ensemble` -- has not been stress-tested here; `!$omp parallel do` is the
     !| documented fallback if it ever is.
     !|
@@ -467,7 +469,7 @@ contains
     !| explicitly required to be gated because it adds a real, if small, extra cost per pair,
     !| this is just bookkeeping already computed as a side effect of the per-seed growth loop
     !| itself -- there is no separate cost left to gate.
-    pure subroutine ensemble_identification_merged_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+    pure subroutine ensemble_identification_merged_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                            seed_selection_mask, n_selected_seed, &
                                                            k_min, chordal_dist_max_as_prcnt_of_range, &
                                                            d_max, G_max, RMSE_change_max, f_max, a, o, &
@@ -492,7 +494,7 @@ contains
             !! Dimension order used to build `kd_indices`
             !! DM_MIN(1_int32)
             !! DM_MAX(n_dimensions)
-        logical, intent(in) :: seed_selection_mask(n_vectors)
+        logical(c_bool), intent(in) :: seed_selection_mask(n_vectors)
             !! Seed selection, see `seeds`
         integer(int32), intent(in) :: n_selected_seed
             !! Number of selected seeds (count of .TRUE. in seed_selection_mask); zero is a
@@ -532,7 +534,7 @@ contains
             !! Trailing observable-history window depth, see `ensemble_identification`. Always
             !! required, for the same reason as there: it sizes every history output below.
             !! DM_MIN(1_int32)
-        logical, intent(out) :: ensemble_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(out) :: ensemble_masks(n_vectors, n_selected_seed)
             !! Per-ensemble accepted membership, one column per seed, see `final_ensemble_mask`
         integer(int32), intent(out) :: ensemble_stop_reason(n_selected_seed)
             !! Per-ensemble Stop Condition, see `ensemble_identification`
@@ -550,11 +552,11 @@ contains
             !! Per-ensemble trailing centers, see `mu_history`
         integer(int32), intent(out) :: ensemble_k_history(o, n_selected_seed)
             !! Per-ensemble trailing sizes, see `k_history`
-        logical, intent(out) :: ensemble_accepted_history(o, n_selected_seed)
+        logical(c_bool), intent(out) :: ensemble_accepted_history(o, n_selected_seed)
             !! Per-ensemble trailing accepted flags, see `accepted_history`
         integer(int32), intent(out) :: ensemble_member_added_at_step(n_vectors, n_selected_seed)
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
-        logical, intent(out) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
+        logical(c_bool), intent(out) :: ensemble_low_confidence_masks(n_vectors, n_selected_seed)
             !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
         real(real64), intent(out) :: ensemble_U_first(n_dimensions, n_dimensions, n_selected_seed)
             !! Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`
@@ -601,7 +603,7 @@ contains
                                                       ensemble_accepted_history, ensemble_member_added_at_step, &
                                                       ensemble_low_confidence_masks, &
                                                       ensemble_U_first, ensemble_d_first, ierr_per_seed)
-            call ensemble_identification_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+            call ensemble_identification_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                 seed_indices(i_e), k_min, chordal_dist_max_as_prcnt_of_range, &
                                                 d_max, G_max, RMSE_change_max, f_max, a, o, &
                                                 ensemble_masks(:, i_e), ensemble_stop_reason(i_e), &
@@ -621,11 +623,11 @@ contains
             end if
         end do
 
-    end subroutine ensemble_identification_merged_kernel
+    end subroutine ensemble_identification_merged_impl
 
     !> Shift-and-append one observable into a trailing o-column history window, oldest to
     !| newest. Not itself a kernel (private, no wrapper): pure array bookkeeping shared by
-    !| every push site in `ensemble_identification_kernel`, not part of the public contract.
+    !| every push site in `ensemble_identification_impl`, not part of the public contract.
     pure subroutine stc_push_ensemble_history(n_dimensions, o, U_candidate, S_candidate, d_candidate, G_candidate, &
                                               mu_candidate, n_candidate, is_accepted, history_len, &
                                               U_history, S_history, d_history, G_history, mu_history, k_history, &
@@ -635,7 +637,7 @@ contains
         real(real64), intent(in) :: S_candidate(n_dimensions)
         real(real64), intent(in) :: G_candidate
         real(real64), intent(in) :: mu_candidate(n_dimensions)
-        logical, intent(in) :: is_accepted
+        logical(c_bool), intent(in) :: is_accepted
         integer(int32), intent(inout) :: history_len
         real(real64), intent(inout) :: U_history(n_dimensions, n_dimensions, o)
         real(real64), intent(inout) :: S_history(n_dimensions, o)
@@ -643,7 +645,7 @@ contains
         real(real64), intent(inout) :: G_history(o)
         real(real64), intent(inout) :: mu_history(n_dimensions, o)
         integer(int32), intent(inout) :: k_history(o)
-        logical, intent(inout) :: accepted_history(o)
+        logical(c_bool), intent(inout) :: accepted_history(o)
 
         if (history_len < o) then
             history_len = history_len + 1
@@ -667,4 +669,4 @@ contains
 
     end subroutine stc_push_ensemble_history
 
-end module tox_shape_truthful_clustering_kernel
+end module tox_shape_truthful_clustering_impl

@@ -1,12 +1,13 @@
 !> Unit test suite for tox_shape_truthful_clustering_observable (normal_error, tangent_scales,
 !| observable), generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_observable_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_observable_impl.F90.
 module mod_test_shape_truthful_clustering_observable
-  use tox_shape_truthful_clustering_observable, only: normal_error, tangent_scales, observable_alloc, &
+  use tox_shape_truthful_clustering_observable, only: normal_error, tangent_scales, observable, &
     ensemble_final_observable
   use tox_errors, only: is_ok, is_err
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite, only: test_case
   implicit none
   public
@@ -218,7 +219,7 @@ contains
   subroutine test_observable_full_rank_rectangle()
     integer(int32), parameter :: d_dim = 3, n = 4
     real(real64)   :: vectors(d_dim, n)
-    logical        :: member_selection_mask(n)
+    logical(c_bool)        :: member_selection_mask(n)
     real(real64)   :: U(d_dim, d_dim), eigenvalues(d_dim), mu(d_dim)
     real(real64)   :: normal_error_value, tangent_scales_value(d_dim), G
     integer(int32) :: d, ierr
@@ -230,7 +231,7 @@ contains
     vectors(:, 4) = [2.0d0, 1.0d0, 0.0d0]
     member_selection_mask = .true.
 
-    call observable_alloc(vectors, d_dim, n, member_selection_mask, n, &
+    call observable(vectors, d_dim, n, member_selection_mask, n, &
                     U, eigenvalues, mu, d, G, normal_error_value, tangent_scales_value, ierr)
     if (.not. is_ok(ierr)) then
       write(*,*) 'observable failed unexpectedly: ', ierr
@@ -268,7 +269,7 @@ contains
   subroutine test_observable_low_rank_padding()
     integer(int32), parameter :: d_dim = 5, n = 3
     real(real64)   :: vectors(d_dim, n)
-    logical        :: member_selection_mask(n)
+    logical(c_bool)        :: member_selection_mask(n)
     real(real64)   :: U(d_dim, d_dim), eigenvalues(d_dim), mu(d_dim)
     real(real64)   :: normal_error_value, tangent_scales_value(d_dim), G
     integer(int32) :: d, ierr
@@ -280,7 +281,7 @@ contains
     vectors(1,3) = 2.0d0
     member_selection_mask = .true.
 
-    call observable_alloc(vectors, d_dim, n, member_selection_mask, n, &
+    call observable(vectors, d_dim, n, member_selection_mask, n, &
                     U, eigenvalues, mu, d, G, normal_error_value, tangent_scales_value, ierr)
     if (.not. is_ok(ierr)) then
       write(*,*) 'observable failed unexpectedly: ', ierr
@@ -307,7 +308,7 @@ contains
   subroutine test_observable_too_few_members()
     integer(int32), parameter :: d_dim = 3, n = 4
     real(real64)   :: vectors(d_dim, n)
-    logical        :: member_selection_mask(n)
+    logical(c_bool)        :: member_selection_mask(n)
     real(real64)   :: U(d_dim, d_dim), eigenvalues(d_dim), mu(d_dim)
     real(real64)   :: normal_error_value, tangent_scales_value(d_dim), G
     integer(int32) :: d, ierr
@@ -319,7 +320,7 @@ contains
     member_selection_mask = .false.
     member_selection_mask(1) = .true.
 
-    call observable_alloc(vectors, d_dim, n, member_selection_mask, 1_int32, &
+    call observable(vectors, d_dim, n, member_selection_mask, 1_int32, &
                     U, eigenvalues, mu, d, G, normal_error_value, tangent_scales_value, ierr)
     call assert_true(is_err(ierr), "observable should reject an ensemble with fewer than 2 members")
   end subroutine test_observable_too_few_members
@@ -329,7 +330,7 @@ contains
   subroutine test_observable_dimension_too_small()
     integer(int32), parameter :: d_dim = 1, n = 3
     real(real64)   :: vectors(d_dim, n)
-    logical        :: member_selection_mask(n)
+    logical(c_bool)        :: member_selection_mask(n)
     real(real64)   :: U(d_dim, d_dim), eigenvalues(d_dim), mu(d_dim)
     real(real64)   :: normal_error_value, tangent_scales_value(d_dim), G
     integer(int32) :: d, ierr
@@ -339,7 +340,7 @@ contains
     vectors(:, 3) = [2.0d0]
     member_selection_mask = .true.
 
-    call observable_alloc(vectors, d_dim, n, member_selection_mask, n, &
+    call observable(vectors, d_dim, n, member_selection_mask, n, &
                     U, eigenvalues, mu, d, G, normal_error_value, tangent_scales_value, ierr)
     call assert_true(is_err(ierr), "observable should reject n_dimensions=1")
   end subroutine test_observable_dimension_too_small
@@ -357,11 +358,11 @@ contains
     real(real64)   :: U_hist(d_dim, d_dim, o, n_e), S_hist(d_dim, o, n_e), mu_hist(d_dim, o, n_e)
     real(real64)   :: G_hist(o, n_e)
     integer(int32) :: d_hist(o, n_e), k_hist(o, n_e)
-    logical        :: accepted_hist(o, n_e)
+    logical(c_bool)        :: accepted_hist(o, n_e)
     real(real64)   :: U_final(d_dim, d_dim, n_e), S_final(d_dim, n_e), mu_final(d_dim, n_e)
     real(real64)   :: G_final(n_e)
     integer(int32) :: d_final(n_e), k_final(n_e), final_index(n_e)
-    logical        :: has_final(n_e)
+    logical(c_bool)        :: has_final(n_e)
     integer(int32) :: ierr
 
     k_hist(1, 1) = 2; k_hist(2, 1) = 3
@@ -401,11 +402,11 @@ contains
     real(real64)   :: U_hist(d_dim, d_dim, o, n_e), S_hist(d_dim, o, n_e), mu_hist(d_dim, o, n_e)
     real(real64)   :: G_hist(o, n_e)
     integer(int32) :: d_hist(o, n_e), k_hist(o, n_e)
-    logical        :: accepted_hist(o, n_e)
+    logical(c_bool)        :: accepted_hist(o, n_e)
     real(real64)   :: U_final(d_dim, d_dim, n_e), S_final(d_dim, n_e), mu_final(d_dim, n_e)
     real(real64)   :: G_final(n_e)
     integer(int32) :: d_final(n_e), k_final(n_e), final_index(n_e)
-    logical        :: has_final(n_e)
+    logical(c_bool)        :: has_final(n_e)
     integer(int32) :: ierr
 
     k_hist(1, 1) = 2; k_hist(2, 1) = 3
@@ -441,11 +442,11 @@ contains
     real(real64)   :: U_hist(d_dim, d_dim, o, n_e), S_hist(d_dim, o, n_e), mu_hist(d_dim, o, n_e)
     real(real64)   :: G_hist(o, n_e)
     integer(int32) :: d_hist(o, n_e), k_hist(o, n_e)
-    logical        :: accepted_hist(o, n_e)
+    logical(c_bool)        :: accepted_hist(o, n_e)
     real(real64)   :: U_final(d_dim, d_dim, n_e), S_final(d_dim, n_e), mu_final(d_dim, n_e)
     real(real64)   :: G_final(n_e)
     integer(int32) :: d_final(n_e), k_final(n_e), final_index(n_e)
-    logical        :: has_final(n_e)
+    logical(c_bool)        :: has_final(n_e)
     integer(int32) :: ierr
 
     k_hist = 0
@@ -482,11 +483,11 @@ contains
     real(real64)   :: U_hist(d_dim, d_dim, o, n_e), S_hist(d_dim, o, n_e), mu_hist(d_dim, o, n_e)
     real(real64)   :: G_hist(o, n_e)
     integer(int32) :: d_hist(o, n_e), k_hist(o, n_e)
-    logical        :: accepted_hist(o, n_e)
+    logical(c_bool)        :: accepted_hist(o, n_e)
     real(real64)   :: U_final(d_dim, d_dim, n_e), S_final(d_dim, n_e), mu_final(d_dim, n_e)
     real(real64)   :: G_final(n_e)
     integer(int32) :: d_final(n_e), k_final(n_e), final_index(n_e)
-    logical        :: has_final(n_e)
+    logical(c_bool)        :: has_final(n_e)
     integer(int32) :: ierr
 
     ! Ensemble 1: column 1 accepted, column 2 rejected.
@@ -538,11 +539,11 @@ contains
     real(real64)   :: U_hist(d_dim, d_dim, o, n_e), S_hist(d_dim, o, n_e), mu_hist(d_dim, o, n_e)
     real(real64)   :: G_hist(o, n_e)
     integer(int32) :: d_hist(o, n_e), k_hist(o, n_e)
-    logical        :: accepted_hist(o, n_e)
+    logical(c_bool)        :: accepted_hist(o, n_e)
     real(real64)   :: U_final(d_dim, d_dim, n_e), S_final(d_dim, n_e), mu_final(d_dim, n_e)
     real(real64)   :: G_final(n_e)
     integer(int32) :: d_final(n_e), k_final(n_e), final_index(n_e)
-    logical        :: has_final(n_e)
+    logical(c_bool)        :: has_final(n_e)
     integer(int32) :: ierr
 
     k_hist(1, 1) = 3

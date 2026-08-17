@@ -8,23 +8,26 @@
 !| algorithm definition.
 !|
 !| `density_labels` and `seeds` both take an already-built k-d tree (`kd_indices`,
-!| `dimension_order`, see [[f42_kd_tree(module):build_kd_index_alloc(subroutine)]]) as input
+!| `dimension_order`, see [[f42_kd_tree_impl(module):build_kd_index_impl(subroutine)]]) as input
 !| rather than building their own: the same tree is also needed by `calc_ensemble_growth_radius`
 !| and `grow_ensemble`, so building it once in a future orchestrator (`ensemble_identification`)
-!| and passing it to every consumer avoids redundant O(N log N) rebuilds. `seeds_kernel` calls
-!| `density_labels_kernel` and, for each selected seed,
-!| [[tox_shape_truthful_clustering_ensemble_growing_kernel(module):calc_ensemble_growth_radius_kernel]]
+!| and passing it to every consumer avoids redundant O(N log N) rebuilds. `seeds_impl` calls
+!| `density_labels_impl` and, for each selected seed,
+!| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]
 !| directly (all `pure`, no `ierr`) rather than through their own validated entries, to avoid
-!| redundant re-validation. Reusing `calc_ensemble_growth_radius_kernel` for the seed coverage
+!| redundant re-validation. Reusing `calc_ensemble_growth_radius_impl` for the seed coverage
 !| radius -- rather than a second, separately-implemented median-of-k-NN-distances computation
 !| -- is why this module now depends on its sibling
-!| `tox_shape_truthful_clustering_ensemble_growing_kernel`, the first sibling-to-sibling
+!| `tox_shape_truthful_clustering_ensemble_growing_impl`, the first sibling-to-sibling
 !| dependency in this family (previously only the parent module called into siblings).
-module tox_shape_truthful_clustering_seeding_kernel
+module tox_shape_truthful_clustering_seeding_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_utils, only: sort_real_heapsort, init_perm, calc_percentile_helper
-    use f42_kd_tree, only: kd_knn_query_helper, kd_range_query_mask_helper
-    use tox_shape_truthful_clustering_ensemble_growing_kernel, only: calc_ensemble_growth_radius_kernel
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use f42_sort_impl, only: sort_real_heapsort, init_perm
+    use f42_stats_impl, only: calc_percentile_impl
+    use f42_kd_tree_impl, only: kd_knn_query_impl, kd_range_query_mask_impl
+    use tox_shape_truthful_clustering_ensemble_growing_impl, only: calc_ensemble_growth_radius_impl
     M_IMPLICIT_NONE
 
 #define CM_DENSITY_K_DEFAULT 30_int32
@@ -32,8 +35,8 @@ module tox_shape_truthful_clustering_seeding_kernel
 #define CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT 50.0_real64
 
     private
-    public :: density_labels_kernel
-    public :: seeds_kernel
+    public :: density_labels_impl
+    public :: seeds_impl
 
 contains
 
@@ -71,7 +74,7 @@ contains
     !| standard adaptive-KDE normalization (divide by the bandwidth to the power of the
     !| ambient dimension) ties the estimate back to an absolute scale, so a genuinely tighter
     !| neighborhood outscores a genuinely looser one, not just a differently-shaped one.
-    pure subroutine density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+    pure subroutine density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                           k_density, bandwidth_percentile, &
                                           tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                           labels)
@@ -118,7 +121,7 @@ contains
         real(real64)   :: actual_bandwidth_percentile, bandwidth
 
         M_DEFAULT_VAL(k_density, actual_k_density, CM_DENSITY_K_DEFAULT)
-        ! See calc_ensemble_growth_radius_kernel's identical clamp and its own comment: an
+        ! See calc_ensemble_growth_radius_impl's identical clamp and its own comment: an
         ! *explicit* k_density is already wrapper-validated against DM_MAX(n_vectors - 1); this
         ! guards CM_DENSITY_K_DEFAULT itself, which the wrapper never validates against a
         ! runtime-dependent bound when k_density is omitted (misc/code_gen_footgun.md's third
@@ -130,12 +133,12 @@ contains
         M_DEFAULT_VAL(bandwidth_percentile, actual_bandwidth_percentile, CM_BANDWIDTH_PERCENTILE_DEFAULT)
 
         do i_vec = 1, n_vectors
-            call kd_knn_query_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                     vectors(:, i_vec), k_query, tmp_range_stack, &
-                                     tmp_neighbors(1:k_query), tmp_distances(1:k_query))
+            call kd_knn_query_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+                                   vectors(:, i_vec), k_query, tmp_range_stack, &
+                                   tmp_neighbors(1:k_query), tmp_distances(1:k_query))
 
             ! Exclude the vector itself, at distance 0, from its own k_query nearest
-            ! neighbors -- see calc_ensemble_growth_radius_kernel's identical swap-with-last
+            ! neighbors -- see calc_ensemble_growth_radius_impl's identical swap-with-last
             ! approach for why this is safe irrespective of kd_knn_query's result order.
             self_pos = 0
             do j = 1, k_query
@@ -154,8 +157,12 @@ contains
             end do
             call sort_real_heapsort(tmp_distances(1:actual_k_density), tmp_sort_perm(1:actual_k_density))
 
-            call calc_percentile_helper(tmp_distances(1:actual_k_density), tmp_sort_perm(1:actual_k_density), &
-                                        actual_bandwidth_percentile, bandwidth)
+            ! calc_percentile_impl takes its percentile as a [0,1] fraction; this SKG's own
+            ! bandwidth_percentile is documented and validated as 0-100, so it is rescaled at
+            ! the call site rather than changing what every caller of this kernel passes.
+            call calc_percentile_impl(tmp_distances(1:actual_k_density), actual_k_density, &
+                                      tmp_sort_perm(1:actual_k_density), &
+                                      actual_bandwidth_percentile/100.0_real64, bandwidth)
             ! A percentile of the raw distances is 0 only for genuinely coincident points (the
             ! chosen percentile landing exactly on one or more zero-distance duplicates) --
             ! unlike the earlier MAD-based bandwidth, an otherwise-regular neighborhood never
@@ -166,7 +173,7 @@ contains
                             /bandwidth**n_dimensions
         end do
 
-    end subroutine density_labels_kernel
+    end subroutine density_labels_impl
 
     !> summary: Select seed points via greedy, density-ranked, coverage-based selection
     !| AUTHOR_ASIS_HALLAB
@@ -175,7 +182,7 @@ contains
     !| coverage radius as visited, and continues with the next-highest-density unvisited
     !| vector until none remain -- so only genuinely uncovered regions can seed another
     !| ensemble. The coverage radius is
-    !| [[tox_shape_truthful_clustering_ensemble_growing_kernel(module):calc_ensemble_growth_radius_kernel]]'s
+    !| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]'s
     !| own computation, called on the newly-selected seed with `k_density` in place of
     !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
     !| seed placement across a region much larger than what that seed's own ensemble will
@@ -189,7 +196,7 @@ contains
     !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
     !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
     !| `misc/STC-experiments/README.md`.
-    pure subroutine seeds_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+    pure subroutine seeds_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                  k_density, bandwidth_percentile, exclusion_radius_percentile, &
                                  tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                  tmp_labels, tmp_rank_perm, &
@@ -242,11 +249,11 @@ contains
             !! Workspace: per-vector density labels, see `density_labels`
         integer(int32), intent(out) :: tmp_rank_perm(n_vectors)
             !! Workspace: density-descending sort permutation
-        logical, intent(out) :: tmp_visited_mask(n_vectors)
+        logical(c_bool), intent(out) :: tmp_visited_mask(n_vectors)
             !! Workspace: coverage tracker across the greedy loop
-        logical, intent(out) :: tmp_newly_covered_mask(n_vectors)
+        logical(c_bool), intent(out) :: tmp_newly_covered_mask(n_vectors)
             !! Workspace: per-candidate range-query result
-        logical, intent(out) :: is_seed_mask(n_vectors)
+        logical(c_bool), intent(out) :: is_seed_mask(n_vectors)
             !! .true. for points selected as seeds
 
         real(real64)   :: coverage_radius, actual_exclusion_radius_percentile
@@ -254,7 +261,7 @@ contains
 
         M_DEFAULT_VAL(exclusion_radius_percentile, actual_exclusion_radius_percentile, CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT)
 
-        call density_labels_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+        call density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                    k_density, bandwidth_percentile, &
                                    tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, tmp_labels)
 
@@ -276,19 +283,19 @@ contains
             if (tmp_visited_mask(candidate)) cycle
             is_seed_mask(candidate) = .true.
 
-            call calc_ensemble_growth_radius_kernel(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+            call calc_ensemble_growth_radius_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                     candidate, k_density, &
                                                     radius_percentile=actual_exclusion_radius_percentile, &
                                                     tmp_neighbors=tmp_neighbors, tmp_distances=tmp_distances, &
                                                     tmp_range_stack=tmp_range_stack, tmp_sort_perm=tmp_sort_perm, &
                                                     growth_radius=coverage_radius)
 
-            call kd_range_query_mask_helper(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                            vectors(:, candidate), coverage_radius, tmp_range_stack, &
-                                            tmp_newly_covered_mask)
+            call kd_range_query_mask_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
+                                          vectors(:, candidate), coverage_radius, tmp_range_stack, &
+                                          tmp_newly_covered_mask)
             tmp_visited_mask = tmp_visited_mask .or. tmp_newly_covered_mask
         end do
 
-    end subroutine seeds_kernel
+    end subroutine seeds_impl
 
-end module tox_shape_truthful_clustering_seeding_kernel
+end module tox_shape_truthful_clustering_seeding_impl

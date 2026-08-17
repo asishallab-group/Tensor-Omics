@@ -1,11 +1,31 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_shape_truthful_clustering_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> # Shape Truthful Clustering (STC)
+!|
+!| A renormalization-group-inspired ensemble-growth clustering method; see
+!| `misc/mod_STC.md` for the full algorithm definition. The family is split over five
+!| kernel modules -- seeding, ensemble growing, observable, accept, and reconciliation --
+!| which this module gathers, so a caller reaches the whole pipeline through it.
+!|
+!| Unlike `codegen_guide.md` section 5.15's own `tox_data_integration_impl` example, this
+!| parent also holds `ensemble_identification`'s own kernel directly -- it is this family's
+!| natural top-level entry point (it orchestrates every other SKG here), not just a bag of
+!| siblings.
+!|
+!| `ensemble_identification_impl` grows and tracks a single ensemble from a single seed --
+!| see `misc/mod_STC.md`, "Ensemble identification", "### Output". `ensemble_identification_merged_impl`
+!| calls it once per seed and assembles the "#### Merged output" arrays (`ensemble_masks`,
+!| `ensemble_U_history`, ...). `ensemble_reconciliation_impl`, in the sibling
+!| `tox_shape_truthful_clustering_reconciliation_impl` module, then identifies and groups
+!| intersecting ensembles from that merged output, on the side.
+!|
+!| Generated from [[tox_shape_truthful_clustering_impl(module)]]; do not edit -- regenerate instead.
 module tox_shape_truthful_clustering
-    use tox_shape_truthful_clustering_kernel, only: ensemble_identification_kernel, ensemble_identification_merged_kernel
+    use f42_safeguard
+    use tox_shape_truthful_clustering_impl, only: ensemble_identification_impl, ensemble_identification_merged_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use f42_math, only: above
+    use f42_math_impl, only: above
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, clear_err_arg_pos
     use tox_errors, only: set_err_once, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
     use tox_errors, only: validate_in_range_int, validate_in_range_real
@@ -17,7 +37,7 @@ module tox_shape_truthful_clustering
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_shape_truthful_clustering_kernel(module):ensemble_identification_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_shape_truthful_clustering_impl(module):ensemble_identification_impl]].
     !| The iteration wrapper described in `misc/mod_STC.md`, "Ensemble identification": each
     !| growth step is `grow_ensemble` + `observable`, compared against the last *accepted*
     !| iteration via `accept_ensemble` -- skipped, by convention, for the very first growth
@@ -25,7 +45,7 @@ contains
     !| Conditions applies. Deliberately sequential: growth at each step depends on the
     !| previous one, so there is nothing to parallelize *within* a single seed's growth --
     !| outer-level parallelism belongs in whatever calls this once per seed, matching
-    !| `grow_ensemble_kernel`'s own precedent.
+    !| `grow_ensemble_impl`'s own precedent.
     !|
     !| Two deliberate readings of the spec, flagged here since the prose leaves them
     !| implicit: (1) an isolated seed -- no neighbor at all within its own growth radius --
@@ -37,7 +57,7 @@ contains
     !| `final_ensemble_mask` reflects the last *accepted* state, not this one -- otherwise
     !| `accepted_history` could only ever read `.true.`, since only accepted iterations would
     !| ever reach the array at all.
-    subroutine ensemble_identification(&
+    pure subroutine ensemble_identification(&
             vectors,&
             n_dimensions,&
             n_vectors,&
@@ -122,16 +142,16 @@ contains
             !! Stop Condition 2
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
-        logical, dimension(n_vectors), intent(out) :: final_ensemble_mask
+        logical(c_bool), dimension(n_vectors), intent(out) :: final_ensemble_mask
             !! The last accepted ensemble's membership. All `.false.` when `stop_reason` is
             !! `STOP_REASON_MAX_SIZE` -- see Stop Condition 1.
         integer(int32), intent(out) :: stop_reason
             !! Which Stop Condition ended growth: one of
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_MAX_SIZE(variable)]],
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_REJECTED_AFTER_STABLE(variable)]],
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_REJECTED_IMMEDIATELY(variable)]], or
-            !! [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_FIXED_POINT(variable)]] --
-            !! or [[tox_shape_truthful_clustering_kernel(module):STOP_REASON_ERROR(variable)]] if
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_MAX_SIZE(variable)]],
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_REJECTED_AFTER_STABLE(variable)]],
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_REJECTED_IMMEDIATELY(variable)]], or
+            !! [[tox_shape_truthful_clustering_impl(module):STOP_REASON_FIXED_POINT(variable)]] --
+            !! or [[tox_shape_truthful_clustering_impl(module):STOP_REASON_ERROR(variable)]] if
             !! `ierr` is non-zero, in which case every other output for this seed is undefined.
         real(real64), intent(out) :: growth_radius
             !! This seed's growth radius, see `calc_ensemble_growth_radius`
@@ -151,7 +171,7 @@ contains
             !! Trailing ensemble sizes, one per retained iteration. 0 marks a column beyond
             !! the number of iterations actually retained -- a real ensemble size is always
             !! at least 1.
-        logical, dimension(o), intent(out) :: accepted_history
+        logical(c_bool), dimension(o), intent(out) :: accepted_history
             !! Whether the growth iteration retained in the corresponding column was
             !! accepted. Iteration 1 (the bootstrap step) is always `.true.` by convention.
             !! The single most recent column is `.false.` when, and only when, growth
@@ -161,7 +181,7 @@ contains
             !! `MEMBER_ADDED_AT_STEP_NON_MEMBER` for non-members, `MEMBER_ADDED_AT_STEP_SEED`
             !! for the seed itself, the growth-iteration index at which each other member
             !! joined otherwise
-        logical, dimension(n_vectors), intent(out) :: low_confidence_mask
+        logical(c_bool), dimension(n_vectors), intent(out) :: low_confidence_mask
             !! Membership from this seed's iteration 1 (the unconditional bootstrap
             !! grow_ensemble+observable call), reported regardless of stop_reason -- including
             !! when stop_reason is STOP_REASON_MAX_SIZE, for which final_ensemble_mask is
@@ -202,7 +222,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call ensemble_identification_kernel(&
+        call ensemble_identification_impl(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&
@@ -236,17 +256,17 @@ contains
         call clear_err_arg_pos(ierr)
     end subroutine ensemble_identification
 
-    !> summary: Validates its inputs, then calls [[tox_shape_truthful_clustering_kernel(module):ensemble_identification_merged_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_shape_truthful_clustering_impl(module):ensemble_identification_merged_impl]].
     !| See `misc/mod_STC.md`, "Ensemble identification", "#### Merged output": every per-seed
     !| output of `ensemble_identification` gains one extra trailing dimension of size
     !| `n_selected_seed`, one column per seed, in the order seeds occur in `seed_selection_mask`. Each
     !| seed's growth is fully independent of every other's, so the per-seed calls below write
     !| to disjoint array sections -- safe for `do concurrent`, matching the spec's own "In
     !| parallel grow ensembles around each seed vector" and this codebase's existing
-    !| `do concurrent`-everywhere convention (`tox_shift_vectors_kernel`, `tox_gene_centroids_kernel`,
+    !| `do concurrent`-everywhere convention (`tox_shift_vectors_impl`, `tox_gene_centroids_impl`,
     !| ...). Left for a later pass if it turns out to matter in practice: the spec's own caveat
     !| that `do concurrent` is unsafe together with external-library calls under gfortran --
-    !| `ensemble_identification_kernel` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
+    !| `ensemble_identification_impl` calls LAPACK (`dgesdd`/`dgesvd`) by way of `observable`
     !| and `accept_ensemble` -- has not been stress-tested here; `!$omp parallel do` is the
     !| documented fallback if it ever is.
     !|
@@ -255,7 +275,7 @@ contains
     !| explicitly required to be gated because it adds a real, if small, extra cost per pair,
     !| this is just bookkeeping already computed as a side effect of the per-seed growth loop
     !| itself -- there is no separate cost left to gate.
-    subroutine ensemble_identification_merged(&
+    pure subroutine ensemble_identification_merged(&
             vectors,&
             n_dimensions,&
             n_vectors,&
@@ -311,7 +331,7 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        logical, dimension(n_vectors), intent(in) :: seed_selection_mask
+        logical(c_bool), dimension(n_vectors), intent(in) :: seed_selection_mask
             !! Seed selection, see `seeds`
         integer(int32), intent(in), optional :: k_min
             !! Neighborhood size for each seed's growth radius, see `calc_ensemble_growth_radius`
@@ -342,7 +362,7 @@ contains
             !! Stop Condition 2
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
-        logical, dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_masks
+        logical(c_bool), dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_masks
             !! Per-ensemble accepted membership, one column per seed, see `final_ensemble_mask`
         integer(int32), dimension(n_selected_seed), intent(out) :: ensemble_stop_reason
             !! Per-ensemble Stop Condition, see `ensemble_identification`
@@ -360,11 +380,11 @@ contains
             !! Per-ensemble trailing centers, see `mu_history`
         integer(int32), dimension(o, n_selected_seed), intent(out) :: ensemble_k_history
             !! Per-ensemble trailing sizes, see `k_history`
-        logical, dimension(o, n_selected_seed), intent(out) :: ensemble_accepted_history
+        logical(c_bool), dimension(o, n_selected_seed), intent(out) :: ensemble_accepted_history
             !! Per-ensemble trailing accepted flags, see `accepted_history`
         integer(int32), dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_member_added_at_step
             !! Per-ensemble growth-iteration-joined bookkeeping, see `member_added_at_step`
-        logical, dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_low_confidence_masks
+        logical(c_bool), dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_low_confidence_masks
             !! Per-ensemble iteration-1 fallback membership, see `low_confidence_mask`
         real(real64), dimension(n_dimensions, n_dimensions, n_selected_seed), intent(out) :: ensemble_U_first
             !! Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`
@@ -394,7 +414,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call ensemble_identification_merged_kernel(&
+        call ensemble_identification_merged_impl(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&

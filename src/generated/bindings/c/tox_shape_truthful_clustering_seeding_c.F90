@@ -2,7 +2,26 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_shape_truthful_clustering_seeding(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| # Shape Truthful Clustering (STC): Seeding
+!|
+!| Kernels for identifying seed points to grow ensembles from: `density_labels` (an
+!| adaptive-bandwidth local density estimate) and `seeds` (the greedy, density-ranked,
+!| coverage-based seed selection). See `misc/mod_STC.md`, section "Seeding", for the full
+!| algorithm definition.
+!|
+!| `density_labels` and `seeds` both take an already-built k-d tree (`kd_indices`,
+!| `dimension_order`, see [[f42_kd_tree_impl(module):build_kd_index_impl(subroutine)]]) as input
+!| rather than building their own: the same tree is also needed by `calc_ensemble_growth_radius`
+!| and `grow_ensemble`, so building it once in a future orchestrator (`ensemble_identification`)
+!| and passing it to every consumer avoids redundant O(N log N) rebuilds. `seeds_impl` calls
+!| `density_labels_impl` and, for each selected seed,
+!| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]
+!| directly (all `pure`, no `ierr`) rather than through their own validated entries, to avoid
+!| redundant re-validation. Reusing `calc_ensemble_growth_radius_impl` for the seed coverage
+!| radius -- rather than a second, separately-implemented median-of-k-NN-distances computation
+!| -- is why this module now depends on its sibling
+!| `tox_shape_truthful_clustering_ensemble_growing_impl`, the first sibling-to-sibling
+!| dependency in this family (previously only the parent module called into siblings).
 module tox_shape_truthful_clustering_seeding_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -10,14 +29,117 @@ module tox_shape_truthful_clustering_seeding_c
     M_IMPLICIT_NONE
     private
 
-    public :: density_labels_expert_c
     public :: density_labels_c
-    public :: seeds_expert_c
+    public :: density_labels_expert_c
     public :: seeds_c
+    public :: seeds_expert_c
 
 contains
 
     !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):density_labels(subroutine)]]
+    !| For each vector: find its `k_density` nearest neighbors (excluding itself), take the
+    !| `bandwidth_percentile` percentile of the distances to them as a per-vector local
+    !| bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
+    !| normalized by `bandwidth**n_dimensions`. Unlike a single dataset-wide radius, this
+    !| bandwidth shrinks in dense regions and grows in sparse ones, so the resulting labels
+    !| reflect local, not global, density. See `misc/mod_STC.md`, SKG `density_labels`.
+    !|
+    !| `bandwidth_percentile` is a heuristic knob, not a calibrated standard deviation, and
+    !| deliberately documented as one: for a genuine 1-D Gaussian, 68.27% of its mass sits
+    !| within one SD, so the 68.27th percentile of *samples from that Gaussian* equals the SD
+    !| exactly -- which is where the default comes from -- but our distances are norms in
+    !| `n_dimensions` dimensions, not draws from a 1-D Gaussian, and the same "percentile that
+    !| equals the SD" shifts with dimension (it is ~39% at 2 dimensions, ~20% at 3, following
+    !| a chi distribution with `n_dimensions` degrees of freedom, not a plain half-normal).
+    !| Correcting for that would need the *local intrinsic* dimension, not the ambient one --
+    !| STC's whole premise is data concentrated near a lower-dimensional manifold, so the
+    !| ambient `n_dimensions` is typically the wrong dimension to correct with anyway, and the
+    !| local one is not yet known at this point in the pipeline (estimating it is `observable`'s
+    !| job, run later, on an actual ensemble -- not something to redo per point just to
+    !| calibrate a seeding bandwidth). So this is left an explicit, undisguised heuristic:
+    !| `bandwidth_percentile` is exposed for exactly this reason -- to be explored
+    !| empirically (see `misc/STC-experiments/README.md`) rather than settled by further
+    !| first-principles argument that does not actually resolve for manifold-concentrated data.
+    !|
+    !| The `bandwidth**n_dimensions` normalization is not optional, independent of which
+    !| percentile is chosen: a raw `sum(exp(-d**2/(2*bandwidth**2)))`, without it, is
+    !| scale-invariant -- scaling every distance (and therefore the bandwidth) by the same
+    !| constant leaves `d/bandwidth`, the only thing that enters the exponent, unchanged, so a
+    !| tight cluster and the same cluster stretched out 20x would score identically. The
+    !| standard adaptive-KDE normalization (divide by the bandwidth to the power of the
+    !| ambient dimension) ties the estimate back to an absolute scale, so a genuinely tighter
+    !| neighborhood outscores a genuinely looser one, not just a differently-shaped one.
+    subroutine density_labels_c(&
+            vectors,&
+            n_dimensions,&
+            n_vectors,&
+            kd_indices,&
+            dimension_order,&
+            k_density,&
+            bandwidth_percentile,&
+            labels,&
+            ierr&
+        ) bind(C, name="density_labels_c")
+        use tox_shape_truthful_clustering_seeding, only: density_labels
+
+        integer(c_int), intent(in), target :: n_dimensions
+            !! Ambient dimension D
+        integer(c_int), intent(in), target :: n_vectors
+            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
+            !! single point.
+            !! The minimum valid value is `2_int32`.
+        real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
+            !! Input data matrix
+        integer(c_int), dimension(n_vectors), intent(in), target :: kd_indices
+            !! Pre-built k-d tree index over `vectors`
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors`.
+        integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
+            !! Dimension order used to build `kd_indices`
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_dimensions`.
+        integer(c_int), intent(in), target :: k_density
+            !! Neighborhood size the local density estimate is taken over
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_vectors - 1_int32`.
+            !! The default value is `30_int32`.
+        real(c_double), intent(in), target :: bandwidth_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
+            !! see above
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `68.27_real64`.
+        real(c_double), dimension(n_vectors), intent(out), target :: labels
+            !! Per-vector local density label
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_dimensions)
+        M_CHECK_NON_NULL(n_vectors)
+        M_CHECK_NON_NULL(k_density)
+        M_CHECK_NON_NULL(bandwidth_percentile)
+        M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
+        M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
+        M_CHECK_ARRAY_NON_NULL(labels, n_vectors)
+
+        call density_labels(&
+            vectors = vectors,&
+            n_dimensions = n_dimensions,&
+            n_vectors = n_vectors,&
+            kd_indices = kd_indices,&
+            dimension_order = dimension_order,&
+            k_density = k_density,&
+            bandwidth_percentile = bandwidth_percentile,&
+            labels = labels,&
+            ierr = ierr&
+        )
+    end subroutine density_labels_c
+
+    !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):density_labels_expert(subroutine)]]
     !| For each vector: find its `k_density` nearest neighbors (excluding itself), take the
     !| `bandwidth_percentile` percentile of the distances to them as a per-vector local
     !| bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
@@ -65,7 +187,7 @@ contains
             labels,&
             ierr&
         ) bind(C, name="density_labels_expert_c")
-        use tox_shape_truthful_clustering_seeding, only: density_labels
+        use tox_shape_truthful_clustering_seeding, only: density_labels_expert
 
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
@@ -123,7 +245,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_sort_perm, n_vectors)
         M_CHECK_ARRAY_NON_NULL(labels, n_vectors)
 
-        call density_labels(&
+        call density_labels_expert(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&
@@ -140,40 +262,27 @@ contains
         )
     end subroutine density_labels_expert_c
 
-    !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):density_labels_alloc(subroutine)]]
-    !| For each vector: find its `k_density` nearest neighbors (excluding itself), take the
-    !| `bandwidth_percentile` percentile of the distances to them as a per-vector local
-    !| bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
-    !| normalized by `bandwidth**n_dimensions`. Unlike a single dataset-wide radius, this
-    !| bandwidth shrinks in dense regions and grows in sparse ones, so the resulting labels
-    !| reflect local, not global, density. See `misc/mod_STC.md`, SKG `density_labels`.
+    !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):seeds(subroutine)]]
+    !| Ranks vectors by density label, descending (see `density_labels`). Starting with the
+    !| highest-density unvisited vector, marks it a seed, marks every vector within its own
+    !| coverage radius as visited, and continues with the next-highest-density unvisited
+    !| vector until none remain -- so only genuinely uncovered regions can seed another
+    !| ensemble. The coverage radius is
+    !| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]'s
+    !| own computation, called on the newly-selected seed with `k_density` in place of
+    !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
+    !| seed placement across a region much larger than what that seed's own ensemble will
+    !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
+    !| by any grown ensemble, see `misc/STC-experiments/README.md`.
     !|
-    !| `bandwidth_percentile` is a heuristic knob, not a calibrated standard deviation, and
-    !| deliberately documented as one: for a genuine 1-D Gaussian, 68.27% of its mass sits
-    !| within one SD, so the 68.27th percentile of *samples from that Gaussian* equals the SD
-    !| exactly -- which is where the default comes from -- but our distances are norms in
-    !| `n_dimensions` dimensions, not draws from a 1-D Gaussian, and the same "percentile that
-    !| equals the SD" shifts with dimension (it is ~39% at 2 dimensions, ~20% at 3, following
-    !| a chi distribution with `n_dimensions` degrees of freedom, not a plain half-normal).
-    !| Correcting for that would need the *local intrinsic* dimension, not the ambient one --
-    !| STC's whole premise is data concentrated near a lower-dimensional manifold, so the
-    !| ambient `n_dimensions` is typically the wrong dimension to correct with anyway, and the
-    !| local one is not yet known at this point in the pipeline (estimating it is `observable`'s
-    !| job, run later, on an actual ensemble -- not something to redo per point just to
-    !| calibrate a seeding bandwidth). So this is left an explicit, undisguised heuristic:
-    !| `bandwidth_percentile` is exposed for exactly this reason -- to be explored
-    !| empirically (see `misc/STC-experiments/README.md`) rather than settled by further
-    !| first-principles argument that does not actually resolve for manifold-concentrated data.
-    !|
-    !| The `bandwidth**n_dimensions` normalization is not optional, independent of which
-    !| percentile is chosen: a raw `sum(exp(-d**2/(2*bandwidth**2)))`, without it, is
-    !| scale-invariant -- scaling every distance (and therefore the bandwidth) by the same
-    !| constant leaves `d/bandwidth`, the only thing that enters the exponent, unchanged, so a
-    !| tight cluster and the same cluster stretched out 20x would score identically. The
-    !| standard adaptive-KDE normalization (divide by the bandwidth to the power of the
-    !| ambient dimension) ties the estimate back to an absolute scale, so a genuinely tighter
-    !| neighborhood outscores a genuinely looser one, not just a differently-shaped one.
-    subroutine density_labels_c(&
+    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
+    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
+    !| exclusion radius can be tuned independently of the actual growth-phase radius any
+    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
+    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
+    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
+    !| `misc/STC-experiments/README.md`.
+    subroutine seeds_c(&
             vectors,&
             n_dimensions,&
             n_vectors,&
@@ -181,10 +290,11 @@ contains
             dimension_order,&
             k_density,&
             bandwidth_percentile,&
-            labels,&
+            exclusion_radius_percentile,&
+            is_seed_mask,&
             ierr&
-        ) bind(C, name="density_labels_c")
-        use tox_shape_truthful_clustering_seeding, only: density_labels_alloc
+        ) bind(C, name="seeds_c")
+        use tox_shape_truthful_clustering_seeding, only: seeds
 
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
@@ -203,19 +313,25 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
         integer(c_int), intent(in), target :: k_density
-            !! Neighborhood size the local density estimate is taken over
+            !! Neighborhood size for both the density estimate and the coverage radius, see
+            !! `density_labels` and `calc_ensemble_growth_radius`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
         real(c_double), intent(in), target :: bandwidth_percentile
             !! Percentile (0 to 100) of the k_density neighbor distances used as the local
-            !! Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
-            !! see above
+            !! Gaussian bandwidth, see `density_labels`
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
-        real(c_double), dimension(n_vectors), intent(out), target :: labels
-            !! Per-vector local density label
+        real(c_double), intent(in), target :: exclusion_radius_percentile
+            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! coverage/exclusion radius, see above
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
+        logical(c_bool), dimension(n_vectors), intent(out), target :: is_seed_mask
+            !! .true. for points selected as seeds
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -225,12 +341,13 @@ contains
         M_CHECK_NON_NULL(n_vectors)
         M_CHECK_NON_NULL(k_density)
         M_CHECK_NON_NULL(bandwidth_percentile)
+        M_CHECK_NON_NULL(exclusion_radius_percentile)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
         M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
         M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
-        M_CHECK_ARRAY_NON_NULL(labels, n_vectors)
+        M_CHECK_ARRAY_NON_NULL(is_seed_mask, n_vectors)
 
-        call density_labels_alloc(&
+        call seeds(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&
@@ -238,18 +355,19 @@ contains
             dimension_order = dimension_order,&
             k_density = k_density,&
             bandwidth_percentile = bandwidth_percentile,&
-            labels = labels,&
+            exclusion_radius_percentile = exclusion_radius_percentile,&
+            is_seed_mask = is_seed_mask,&
             ierr = ierr&
         )
-    end subroutine density_labels_c
+    end subroutine seeds_c
 
-    !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):seeds(subroutine)]]
+    !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):seeds_expert(subroutine)]]
     !| Ranks vectors by density label, descending (see `density_labels`). Starting with the
     !| highest-density unvisited vector, marks it a seed, marks every vector within its own
     !| coverage radius as visited, and continues with the next-highest-density unvisited
     !| vector until none remain -- so only genuinely uncovered regions can seed another
     !| ensemble. The coverage radius is
-    !| [[tox_shape_truthful_clustering_ensemble_growing_kernel(module):calc_ensemble_growth_radius_kernel]]'s
+    !| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]'s
     !| own computation, called on the newly-selected seed with `k_density` in place of
     !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
     !| seed placement across a region much larger than what that seed's own ensemble will
@@ -283,7 +401,7 @@ contains
             is_seed_mask,&
             ierr&
         ) bind(C, name="seeds_expert_c")
-        use tox_shape_truthful_clustering_seeding, only: seeds
+        use tox_shape_truthful_clustering_seeding, only: seeds_expert
 
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
@@ -339,9 +457,6 @@ contains
             !! .true. for points selected as seeds
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_vectors) :: tmp_visited_mask_f
-        logical, dimension(n_vectors) :: tmp_newly_covered_mask_f
-        logical, dimension(n_vectors) :: is_seed_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -363,7 +478,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_newly_covered_mask, n_vectors)
         M_CHECK_ARRAY_NON_NULL(is_seed_mask, n_vectors)
 
-        call seeds(&
+        call seeds_expert(&
             vectors = vectors,&
             n_dimensions = n_dimensions,&
             n_vectors = n_vectors,&
@@ -378,118 +493,12 @@ contains
             tmp_sort_perm = tmp_sort_perm,&
             tmp_labels = tmp_labels,&
             tmp_rank_perm = tmp_rank_perm,&
-            tmp_visited_mask = tmp_visited_mask_f,&
-            tmp_newly_covered_mask = tmp_newly_covered_mask_f,&
-            is_seed_mask = is_seed_mask_f,&
+            tmp_visited_mask = tmp_visited_mask,&
+            tmp_newly_covered_mask = tmp_newly_covered_mask,&
+            is_seed_mask = is_seed_mask,&
             ierr = ierr&
         )
-
-        tmp_visited_mask = tmp_visited_mask_f
-        tmp_newly_covered_mask = tmp_newly_covered_mask_f
-        is_seed_mask = is_seed_mask_f
     end subroutine seeds_expert_c
-
-    !> summary: C-wrapper for [[tox_shape_truthful_clustering_seeding(module):seeds_alloc(subroutine)]]
-    !| Ranks vectors by density label, descending (see `density_labels`). Starting with the
-    !| highest-density unvisited vector, marks it a seed, marks every vector within its own
-    !| coverage radius as visited, and continues with the next-highest-density unvisited
-    !| vector until none remain -- so only genuinely uncovered regions can seed another
-    !| ensemble. The coverage radius is
-    !| [[tox_shape_truthful_clustering_ensemble_growing_kernel(module):calc_ensemble_growth_radius_kernel]]'s
-    !| own computation, called on the newly-selected seed with `k_density` in place of
-    !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
-    !| seed placement across a region much larger than what that seed's own ensemble will
-    !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
-    !| by any grown ensemble, see `misc/STC-experiments/README.md`.
-    !|
-    !| `exclusion_radius_percentile` exposes that computation's own `radius_percentile`
-    !| (default 50.0, the median -- unchanged from this SKG's original behavior) so the
-    !| exclusion radius can be tuned independently of the actual growth-phase radius any
-    !| other caller of `calc_ensemble_growth_radius` relies on: shrinking it here trades
-    !| fewer, larger ensembles for less over-eager seed suppression around curvature extrema
-    !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
-    !| `misc/STC-experiments/README.md`.
-    subroutine seeds_c(&
-            vectors,&
-            n_dimensions,&
-            n_vectors,&
-            kd_indices,&
-            dimension_order,&
-            k_density,&
-            bandwidth_percentile,&
-            exclusion_radius_percentile,&
-            is_seed_mask,&
-            ierr&
-        ) bind(C, name="seeds_c")
-        use tox_shape_truthful_clustering_seeding, only: seeds_alloc
-
-        integer(c_int), intent(in), target :: n_dimensions
-            !! Ambient dimension D
-        integer(c_int), intent(in), target :: n_vectors
-            !! Number of input vectors N. At least 2: a "nearest neighbor" is undefined for a
-            !! single point.
-            !! The minimum valid value is `2_int32`.
-        real(c_double), dimension(n_dimensions, n_vectors), intent(in), target :: vectors
-            !! Input data matrix
-        integer(c_int), dimension(n_vectors), intent(in), target :: kd_indices
-            !! Pre-built k-d tree index over `vectors`
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors`.
-        integer(c_int), dimension(n_dimensions), intent(in), target :: dimension_order
-            !! Dimension order used to build `kd_indices`
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_dimensions`.
-        integer(c_int), intent(in), target :: k_density
-            !! Neighborhood size for both the density estimate and the coverage radius, see
-            !! `density_labels` and `calc_ensemble_growth_radius`
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_vectors - 1_int32`.
-            !! The default value is `30_int32`.
-        real(c_double), intent(in), target :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
-            !! Gaussian bandwidth, see `density_labels`
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `68.27_real64`.
-        real(c_double), intent(in), target :: exclusion_radius_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
-            !! coverage/exclusion radius, see above
-            !! The minimum valid value is `0.0_real64`.
-            !! The maximum valid value is `100.0_real64`.
-            !! The default value is `50.0_real64`.
-        logical(c_bool), dimension(n_vectors), intent(out), target :: is_seed_mask
-            !! .true. for points selected as seeds
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_vectors) :: is_seed_mask_f
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_dimensions)
-        M_CHECK_NON_NULL(n_vectors)
-        M_CHECK_NON_NULL(k_density)
-        M_CHECK_NON_NULL(bandwidth_percentile)
-        M_CHECK_NON_NULL(exclusion_radius_percentile)
-        M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
-        M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
-        M_CHECK_ARRAY_NON_NULL(dimension_order, n_dimensions)
-        M_CHECK_ARRAY_NON_NULL(is_seed_mask, n_vectors)
-
-        call seeds_alloc(&
-            vectors = vectors,&
-            n_dimensions = n_dimensions,&
-            n_vectors = n_vectors,&
-            kd_indices = kd_indices,&
-            dimension_order = dimension_order,&
-            k_density = k_density,&
-            bandwidth_percentile = bandwidth_percentile,&
-            exclusion_radius_percentile = exclusion_radius_percentile,&
-            is_seed_mask = is_seed_mask_f,&
-            ierr = ierr&
-        )
-
-        is_seed_mask = is_seed_mask_f
-    end subroutine seeds_c
 
 end module tox_shape_truthful_clustering_seeding_c
 #endif

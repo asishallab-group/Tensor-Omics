@@ -35,7 +35,7 @@
 #' ambient dimension) ties the estimate back to an absolute scale, so a genuinely tighter
 #' neighborhood outscores a genuinely looser one, not just a differently-shaped one.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_seeding::density_labels_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_seeding::density_labels}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix
@@ -98,7 +98,7 @@ density_labels <- function(vectors, kd_indices, dimension_order, k_density = 30L
 #' (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
 #' `misc/STC-experiments/README.md`.
 #'
-#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_seeding::seeds_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_seeding::seeds}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param vectors a numeric matrix. Input data matrix

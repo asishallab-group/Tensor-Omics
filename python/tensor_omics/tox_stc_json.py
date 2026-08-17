@@ -1,6 +1,48 @@
-"""tox_stc_json
+r"""tox_stc_json
 
 Serialization of Shape Truthful Clustering (STC) pipeline results into the JSON format
+consumed by `misc/STC-experiments/interactive_template.html`'s D3 report, and into a
+self-contained interactive HTML report combining that JSON with the report template and
+the vendored D3 library (both baked in at compile time, see
+`tox_stc_html_assets`/`helper/embed_stc_html_assets.py`). Builds a ``f42_json``
+document model directly from STC's own raw result arrays (as returned by
+`ensemble_identification_merged`/`ensemble_reconciliation`, see
+`tox_shape_truthful_clustering_impl`/`tox_shape_truthful_clustering_reconciliation_impl`)
+and writes it out -- this module is the STC-domain boundary on top of the generic
+``f42_json`` serializer, the same role `tox_flyer_json` plays for the tox_flyer
+viewer, and follows that module's exact single-subroutine pattern for the same reason: a
+`json_object`/`json_array`'s pointer components must never outlive the frame that owns
+their target storage, so tree-building and serialization happen inside one call.
+
+Deliberately writes with serial (`advance='no'`) writes directly into the destination
+file's own stream unit, never materializing the JSON (or the assembled HTML) as an
+in-memory string. One harmless, well-understood side effect: `close()` on a formatted
+stream unit appends exactly one trailing newline beyond whatever was explicitly written --
+irrelevant to a browser rendering HTML or a JSON parser, both of which ignore trailing
+whitespace.
+
+`points`/`ensembles`/`super_ensembles` JSON keys not derivable from a single argument
+(`id`, `n_ensembles`, per-point/per-ensemble membership lists, `super_ensemble_id`, the
+full pairwise Overlap Coefficient matrix, per-point residual lengths, tangent line
+endpoints, the two report-layer drift statistics below) are computed here from the raw
+membership masks and history arrays -- `ensemble_reconciliation_impl` itself only ever
+reports Overlap Coefficient along a super-ensemble's own merge chain
+(`super_ensembles_overlap_coefficient`), never the full N x N matrix the heatmap needs, so
+that matrix is recomputed directly from `ensemble_masks` with the same
+`|intersect| / min(|A|,|B|)` formula, once per pair with a nonempty intersection.
+
+Two derived statistics reuse `tox_shape_truthful_clustering_accept_impl`'s own
+`stc_chordal_distance` helper directly (made `public` there for exactly this reuse) rather
+than re-deriving the formula: the **consecutive tangent-space drift** between each pair of
+adjacent retained history columns (a genuine per-iteration quantity, fully reconstructable
+from `ensemble_U_history` alone, unlike anything `accept_ensemble` itself tested), and the
+**final accept-tested chordal distance** -- the one historical `accept_ensemble` criterion
+(1) value that *is* exactly reconstructable after the fact, since the currently-stored
+window minus its own last column, plus `ensemble_U_first`, is precisely the reference set
+that was used to test the ensemble's actual final growth step. See `misc/mod_STC.md`,
+"Ensemble Observable Plots", for the full rationale; neither statistic is stored as part of
+`ensemble_identification`'s own output, keeping that SKG's kernels fully general and
+iteration-unaware.
 
 Python binding, generated from tox_stc_json. Do not edit.
 """
@@ -272,15 +314,15 @@ def serialize_stc_results_as_json(
         see `ensemble_eligible` below
     filter_d_min : int, optional
         This run's minimum tolerated final intrinsic dimension for reconciliation
-        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
     filter_d_max : int, optional
         This run's maximum tolerated final intrinsic dimension for reconciliation
-        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
     filter_var_explained_min : float, optional
         This run's minimum tolerated final variance explained for reconciliation
-        eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `var_explained_min`; reported for transparency only, same as
         `allowed_stop_reasons` above
     ensemble_eligible : np.ndarray[np.bool_] of shape (n_selected_seed,)
@@ -321,7 +363,7 @@ def serialize_stc_results_as_json(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
         vectors = np.asfortranarray(vectors, dtype=np.float64)
     except (TypeError, ValueError) as error:
@@ -329,7 +371,9 @@ def serialize_stc_results_as_json(
     if vectors.ndim != 2:
         raise ValueError(f"'vectors' must have 2 dimensions, but has {vectors.ndim}")
     try:
-        dim_names = np.asarray([str(_s).encode() for _s in dim_names], dtype="S")
+        _dim_names_bytes = [str(_s).encode() for _s in dim_names]
+        _dim_names_width = max(map(len, _dim_names_bytes), default=0) or 1
+        dim_names = np.asarray([_b.ljust(_dim_names_width) for _b in _dim_names_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'dim_names' must be a sequence of strings: {error}") from None
     if dim_names.ndim != 1:
@@ -430,7 +474,7 @@ def serialize_stc_results_as_json(
         raise TypeError(f"'super_ensembles' must be an array of np.int32: {error}") from None
     if super_ensembles.ndim != 2:
         raise ValueError(f"'super_ensembles' must have 2 dimensions, but has {super_ensembles.ndim}")
-    reconciliation_mode = np.array([str(reconciliation_mode).lower().encode()], dtype="S25")
+    reconciliation_mode = np.array([str(reconciliation_mode).lower().encode().ljust(25)], dtype="S25")
     if allowed_stop_reasons is not None:
         try:
             allowed_stop_reasons = np.ascontiguousarray(allowed_stop_reasons, dtype=np.bool_)
@@ -797,15 +841,15 @@ def write_stc_interactive_html_report(
         see `ensemble_eligible` below
     filter_d_min : int, optional
         This run's minimum tolerated final intrinsic dimension for reconciliation
-        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
     filter_d_max : int, optional
         This run's maximum tolerated final intrinsic dimension for reconciliation
-        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
     filter_var_explained_min : float, optional
         This run's minimum tolerated final variance explained for reconciliation
-        eligibility -- see `tox_shape_truthful_clustering_filter_kernel`'s own
+        eligibility -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `var_explained_min`; reported for transparency only, same as
         `allowed_stop_reasons` above
     ensemble_eligible : np.ndarray[np.bool_] of shape (n_selected_seed,)
@@ -846,7 +890,7 @@ def write_stc_interactive_html_report(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
         vectors = np.asfortranarray(vectors, dtype=np.float64)
     except (TypeError, ValueError) as error:
@@ -854,7 +898,9 @@ def write_stc_interactive_html_report(
     if vectors.ndim != 2:
         raise ValueError(f"'vectors' must have 2 dimensions, but has {vectors.ndim}")
     try:
-        dim_names = np.asarray([str(_s).encode() for _s in dim_names], dtype="S")
+        _dim_names_bytes = [str(_s).encode() for _s in dim_names]
+        _dim_names_width = max(map(len, _dim_names_bytes), default=0) or 1
+        dim_names = np.asarray([_b.ljust(_dim_names_width) for _b in _dim_names_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'dim_names' must be a sequence of strings: {error}") from None
     if dim_names.ndim != 1:
@@ -955,7 +1001,7 @@ def write_stc_interactive_html_report(
         raise TypeError(f"'super_ensembles' must be an array of np.int32: {error}") from None
     if super_ensembles.ndim != 2:
         raise ValueError(f"'super_ensembles' must have 2 dimensions, but has {super_ensembles.ndim}")
-    reconciliation_mode = np.array([str(reconciliation_mode).lower().encode()], dtype="S25")
+    reconciliation_mode = np.array([str(reconciliation_mode).lower().encode().ljust(25)], dtype="S25")
     if allowed_stop_reasons is not None:
         try:
             allowed_stop_reasons = np.ascontiguousarray(allowed_stop_reasons, dtype=np.bool_)

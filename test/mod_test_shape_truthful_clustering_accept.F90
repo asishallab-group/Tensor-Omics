@@ -1,10 +1,11 @@
 !> Unit test suite for tox_shape_truthful_clustering_accept (accept_ensemble), generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_accept_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_accept_impl.F90.
 module mod_test_shape_truthful_clustering_accept
-  use tox_shape_truthful_clustering_accept, only: accept_ensemble_alloc
+  use tox_shape_truthful_clustering_accept, only: accept_ensemble
   use tox_errors, only: is_ok, is_err
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite, only: test_case
   implicit none
   public
@@ -51,7 +52,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -61,7 +62,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                5.0d0, 1.0d0, U, 2_int32, 5.0d0, 1.0d0, &
                                0.1d0, 0_int32, 0.0d0, 0.0d0, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -79,7 +80,7 @@ contains
     real(real64)   :: U_t(d_dim, d_dim), U_tp1(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
     real(real64)   :: pi, theta
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr
 
     pi    = 4.0d0 * atan(1.0d0)
@@ -97,7 +98,7 @@ contains
     U_history(:, :, 1) = U_t
     d_history(1)       = 1_int32
 
-    call accept_ensemble_alloc(d_dim, o, U_t, 1_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U_t, 1_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U_tp1, 1_int32, 1.0d0, 1.0d0, &
                                0.5d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -115,7 +116,7 @@ contains
     real(real64)   :: U_t(d_dim, d_dim), U_tp1(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
     real(real64)   :: pi, theta
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr
 
     pi    = 4.0d0 * atan(1.0d0)
@@ -133,7 +134,7 @@ contains
     U_history(:, :, 1) = U_t
     d_history(1)       = 1_int32
 
-    call accept_ensemble_alloc(d_dim, o, U_t, 1_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U_t, 1_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U_tp1, 1_int32, 1.0d0, 1.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -153,7 +154,7 @@ contains
     real(real64)   :: U_first(d_dim, d_dim), U_tp1(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
     real(real64)   :: pi
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr
 
     pi = 4.0d0 * atan(1.0d0)
@@ -173,7 +174,7 @@ contains
     U_tp1(2,1) = sin(80.0d0 * pi / 180.0d0)
     U_tp1(2,2) = 1.0d0
 
-    call accept_ensemble_alloc(d_dim, o, U_first, 1_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U_first, 1_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U_tp1, 1_int32, 1.0d0, 1.0d0, &
                                0.5d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -191,7 +192,7 @@ contains
     real(real64)   :: U_first(d_dim, d_dim), U_tp1(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
     real(real64)   :: pi
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr
 
     pi = 4.0d0 * atan(1.0d0)
@@ -211,7 +212,7 @@ contains
     U_tp1(2,1) = sin(6.0d0 * pi / 180.0d0)
     U_tp1(2,2) = 1.0d0
 
-    call accept_ensemble_alloc(d_dim, o, U_first, 1_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U_first, 1_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U_tp1, 1_int32, 1.0d0, 1.0d0, &
                                0.5d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -230,7 +231,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -240,7 +241,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 0_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 0_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                0.9d0, 1_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -256,7 +257,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -266,7 +267,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 0_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 0_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                0.9d0, 2_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -282,7 +283,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -292,7 +293,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 10.0d0, 1.0d0, &
                                0.9d0, 0_int32, 1.0d0, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -307,7 +308,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -317,7 +318,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 10.0d0, 1.0d0, &
                                0.9d0, 0_int32, 3.0d0, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -333,7 +334,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -343,7 +344,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 10.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d0, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -360,7 +361,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -370,7 +371,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 10.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.2d0, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -386,7 +387,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -396,7 +397,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                0.0d0, 1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     call assert_true(is_err(ierr), "accept_ensemble should reject G_t <= 0")
@@ -410,7 +411,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -420,7 +421,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, -1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     call assert_true(is_err(ierr), "accept_ensemble should reject normal_error_t < 0")
@@ -434,7 +435,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -444,7 +445,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, 0.0d0, U, 2_int32, 1.0d0, 0.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     if (.not. is_ok(ierr)) then
@@ -459,7 +460,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -469,7 +470,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, d_dim + 1_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, d_dim + 1_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     call assert_true(is_err(ierr), "accept_ensemble should reject d_first > n_dimensions")
@@ -480,7 +481,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -490,7 +491,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 1_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                1.5d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     call assert_true(is_err(ierr), "accept_ensemble should reject chordal_dist_max_as_prcnt_of_range > 1")
@@ -501,7 +502,7 @@ contains
     integer(int32), parameter :: d_dim = 3, o = 1
     real(real64)   :: U(d_dim, d_dim), U_history(d_dim, d_dim, o)
     integer(int32) :: d_history(o)
-    logical        :: is_accepted
+    logical(c_bool)        :: is_accepted
     integer(int32) :: ierr, i
 
     U = 0.0d0
@@ -511,7 +512,7 @@ contains
     U_history(:, :, 1) = U
     d_history(1)       = 2_int32
 
-    call accept_ensemble_alloc(d_dim, o, U, 2_int32, U_history, d_history, 2_int32, &
+    call accept_ensemble(d_dim, o, U, 2_int32, U_history, d_history, 2_int32, &
                                1.0d0, 1.0d0, U, 2_int32, 1.0d0, 1.0d0, &
                                0.9d0, 0_int32, 1.0d10, 1.0d10, is_accepted, ierr)
     call assert_true(is_err(ierr), "accept_ensemble should reject history_len > o")

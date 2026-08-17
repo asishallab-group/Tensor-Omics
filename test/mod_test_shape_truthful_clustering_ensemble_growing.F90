@@ -1,12 +1,13 @@
 !> Unit test suite for tox_shape_truthful_clustering_ensemble_growing
 !| (calc_ensemble_growth_radius, grow_ensemble), generated from
-!| src/kernel/shape_truthful_clustering/tox_shape_truthful_clustering_ensemble_growing_kernel.F90.
+!| src/tox/shape_truthful_clustering/tox_shape_truthful_clustering_ensemble_growing_impl.F90.
 module mod_test_shape_truthful_clustering_ensemble_growing
-    use tox_shape_truthful_clustering_ensemble_growing, only: calc_ensemble_growth_radius_alloc, grow_ensemble_alloc
-    use f42_kd_tree, only: build_kd_index_alloc
+    use tox_shape_truthful_clustering_ensemble_growing, only: calc_ensemble_growth_radius, grow_ensemble
+    use f42_kd_tree, only: build_kd_index
     use tox_errors, only: is_ok, is_err
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -49,10 +50,10 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=4_int32, growth_radius=growth_radius, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'calc_ensemble_growth_radius_alloc failed unexpectedly: ', ierr
+            write (*, *) 'calc_ensemble_growth_radius failed unexpectedly: ', ierr
             error stop
         end if
         call assert_equal_real(growth_radius, 1.5d0, 1.0d-9, "calc_ensemble_growth_radius: even k_min=4")
@@ -65,10 +66,10 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=3_int32, growth_radius=growth_radius, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'calc_ensemble_growth_radius_alloc failed unexpectedly: ', ierr
+            write (*, *) 'calc_ensemble_growth_radius failed unexpectedly: ', ierr
             error stop
         end if
         call assert_equal_real(growth_radius, 1.0d0, 1.0d-9, "calc_ensemble_growth_radius: odd k_min=3")
@@ -81,7 +82,7 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 12_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 12_int32, &
                                                growth_radius=growth_radius, ierr=ierr)
         call assert_true(is_err(ierr), "calc_ensemble_growth_radius should reject seed_index > n_vectors")
     end subroutine test_growth_radius_seed_index_out_of_range
@@ -93,15 +94,15 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=11_int32, growth_radius=growth_radius, ierr=ierr)
         call assert_true(is_err(ierr), "calc_ensemble_growth_radius should reject k_min > n_vectors-1")
     end subroutine test_growth_radius_k_min_too_large
 
-    !> Regression test for a genuine crash: calling `calc_ensemble_growth_radius_alloc` with
+    !> Regression test for a genuine crash: calling `calc_ensemble_growth_radius` with
     !| `k_min` *omitted* on this 11-point fixture (default 30, but DM_MAX(n_vectors - 1) is
     !| only 10) used to corrupt memory -- see `misc/code_gen_footgun.md`'s third entry for the
-    !| generator-level root cause and `calc_ensemble_growth_radius_kernel`'s own
+    !| generator-level root cause and `calc_ensemble_growth_radius_impl`'s own
     !| `min(actual_k_min, n_vectors - 1)` clamp for the fix. Asserts the fix itself: omitting
     !| `k_min` here must resolve to exactly `n_vectors - 1 = 10`, matching an explicit call.
     subroutine test_growth_radius_omitted_k_min_is_clamped()
@@ -111,17 +112,17 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                growth_radius=radius_omitted, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'calc_ensemble_growth_radius_alloc (k_min omitted) failed unexpectedly: ', ierr
+            write (*, *) 'calc_ensemble_growth_radius (k_min omitted) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=10_int32, growth_radius=radius_explicit, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'calc_ensemble_growth_radius_alloc (k_min=10) failed unexpectedly: ', ierr
+            write (*, *) 'calc_ensemble_growth_radius (k_min=10) failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -130,7 +131,7 @@ contains
     end subroutine test_growth_radius_omitted_k_min_is_clamped
 
     !> Same k_min=4 fixture as test_growth_radius_even_k, distances sorted [1,1,2,2].
-    !| radius_percentile=0.0 is calc_percentile_helper's own "below the first index" edge
+    !| radius_percentile=0.0 is calc_percentile_impl's own "below the first index" edge
     !| case, which returns the smallest value in sorted order -- the nearest-neighbor
     !| distance, 1.0 -- irrespective of k_min's parity.
     subroutine test_growth_radius_percentile_min()
@@ -140,11 +141,11 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=4_int32, radius_percentile=0.0d0, &
                                                growth_radius=growth_radius, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'calc_ensemble_growth_radius_alloc failed unexpectedly: ', ierr
+            write (*, *) 'calc_ensemble_growth_radius failed unexpectedly: ', ierr
             error stop
         end if
         call assert_equal_real(growth_radius, 1.0d0, 1.0d-9, "calc_ensemble_growth_radius: radius_percentile=0.0 is the min")
@@ -159,11 +160,11 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=4_int32, radius_percentile=100.0d0, &
                                                growth_radius=growth_radius, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'calc_ensemble_growth_radius_alloc failed unexpectedly: ', ierr
+            write (*, *) 'calc_ensemble_growth_radius failed unexpectedly: ', ierr
             error stop
         end if
         call assert_equal_real(growth_radius, 2.0d0, 1.0d-9, "calc_ensemble_growth_radius: radius_percentile=100.0 is the max")
@@ -176,7 +177,7 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call calc_ensemble_growth_radius_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 2_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                k_min=4_int32, radius_percentile=101.0d0, &
                                                growth_radius=growth_radius, ierr=ierr)
         call assert_true(is_err(ierr), "calc_ensemble_growth_radius should reject radius_percentile > 100")
@@ -187,7 +188,7 @@ contains
         integer(int32) :: kd_indices(11), dim_order(0), ierr
         real(real64)   :: growth_radius
 
-        call calc_ensemble_growth_radius_alloc(vectors, 0_int32, 11_int32, kd_indices, dim_order, 6_int32, &
+        call calc_ensemble_growth_radius(vectors, 0_int32, 11_int32, kd_indices, dim_order, 6_int32, &
                                                growth_radius=growth_radius, ierr=ierr)
         call assert_true(is_err(ierr), "calc_ensemble_growth_radius should reject n_dimensions=0")
     end subroutine test_growth_radius_zero_dimensions
@@ -201,17 +202,17 @@ contains
     subroutine test_grow_ensemble_single_member()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2), ierr
-        logical        :: is_member_mask(11), is_member_mask_next(11), expected(11)
+        logical(c_bool)        :: is_member_mask(11), is_member_mask_next(11), expected(11)
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
         is_member_mask = .false.
         is_member_mask(6) = .true.
 
-        call grow_ensemble_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call grow_ensemble(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                  is_member_mask, 1.5d0, is_member_mask_next, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'grow_ensemble_alloc failed unexpectedly: ', ierr
+            write (*, *) 'grow_ensemble failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -223,17 +224,17 @@ contains
     subroutine test_grow_ensemble_multi_member_union()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2), ierr
-        logical        :: is_member_mask(11), is_member_mask_next(11), expected(11)
+        logical(c_bool)        :: is_member_mask(11), is_member_mask_next(11), expected(11)
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
         is_member_mask = .false.
         is_member_mask(5:7) = .true.
 
-        call grow_ensemble_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call grow_ensemble(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                  is_member_mask, 1.5d0, is_member_mask_next, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'grow_ensemble_alloc failed unexpectedly: ', ierr
+            write (*, *) 'grow_ensemble failed unexpectedly: ', ierr
             error stop
         end if
 
@@ -251,15 +252,15 @@ contains
     subroutine test_grow_ensemble_empty_ensemble_is_degenerate()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2), ierr
-        logical        :: is_member_mask(11), is_member_mask_next(11)
+        logical(c_bool)        :: is_member_mask(11), is_member_mask_next(11)
 
         call build_line_fixture(vectors, kd_indices, dim_order)
         is_member_mask = .false.
 
-        call grow_ensemble_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call grow_ensemble(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                  is_member_mask, 1.5d0, is_member_mask_next, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'grow_ensemble_alloc failed unexpectedly: ', ierr
+            write (*, *) 'grow_ensemble failed unexpectedly: ', ierr
             error stop
         end if
         call assert_true(.not. any(is_member_mask_next), "grow_ensemble: an empty ensemble stays empty")
@@ -268,13 +269,13 @@ contains
     subroutine test_grow_ensemble_negative_radius()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2), ierr
-        logical        :: is_member_mask(11), is_member_mask_next(11)
+        logical(c_bool)        :: is_member_mask(11), is_member_mask_next(11)
 
         call build_line_fixture(vectors, kd_indices, dim_order)
         is_member_mask = .false.
         is_member_mask(6) = .true.
 
-        call grow_ensemble_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call grow_ensemble(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                  is_member_mask, -1.5d0, is_member_mask_next, ierr)
         call assert_true(is_err(ierr), "grow_ensemble should reject a negative growth radius")
     end subroutine test_grow_ensemble_negative_radius
@@ -282,12 +283,12 @@ contains
     subroutine test_grow_ensemble_zero_dimensions()
         real(real64)   :: vectors(0, 11)
         integer(int32) :: kd_indices(11), dim_order(0), ierr
-        logical        :: is_member_mask(11), is_member_mask_next(11)
+        logical(c_bool)        :: is_member_mask(11), is_member_mask_next(11)
 
         is_member_mask = .false.
         is_member_mask(6) = .true.
 
-        call grow_ensemble_alloc(vectors, 0_int32, 11_int32, kd_indices, dim_order, &
+        call grow_ensemble(vectors, 0_int32, 11_int32, kd_indices, dim_order, &
                                  is_member_mask, 1.5d0, is_member_mask_next, ierr)
         call assert_true(is_err(ierr), "grow_ensemble should reject n_dimensions=0")
     end subroutine test_grow_ensemble_zero_dimensions
@@ -305,9 +306,9 @@ contains
         end do
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 11_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_line_fixture: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_line_fixture: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_line_fixture

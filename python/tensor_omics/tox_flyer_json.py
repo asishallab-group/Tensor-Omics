@@ -1,6 +1,8 @@
-"""tox_flyer_json
+r"""tox_flyer_json
 
 Serialization of tox analysis results into the JSON format consumed by the tox_flyer viewer.
+Builds a ``f42_json`` document model from the tox data arrays and writes it out. This
+module is the tox-domain boundary on top of the generic ``f42_json`` serializer.
 
 Python binding, generated from tox_flyer_json. Do not edit.
 """
@@ -100,15 +102,19 @@ def serialize_tox_data_as_flyer_json(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
     try:
-        tissues = np.asarray([str(_s).encode() for _s in tissues], dtype="S")
+        _tissues_bytes = [str(_s).encode() for _s in tissues]
+        _tissues_width = max(map(len, _tissues_bytes), default=0) or 1
+        tissues = np.asarray([_b.ljust(_tissues_width) for _b in _tissues_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'tissues' must be a sequence of strings: {error}") from None
     if tissues.ndim != 1:
         raise ValueError(f"'tissues' must have 1 dimension, but has {tissues.ndim}")
     try:
-        family_ids = np.asarray([str(_s).encode() for _s in family_ids], dtype="S")
+        _family_ids_bytes = [str(_s).encode() for _s in family_ids]
+        _family_ids_width = max(map(len, _family_ids_bytes), default=0) or 1
+        family_ids = np.asarray([_b.ljust(_family_ids_width) for _b in _family_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'family_ids' must be a sequence of strings: {error}") from None
     if family_ids.ndim != 1:
@@ -120,7 +126,9 @@ def serialize_tox_data_as_flyer_json(
     if centroids.ndim != 2:
         raise ValueError(f"'centroids' must have 2 dimensions, but has {centroids.ndim}")
     try:
-        gene_ids = np.asarray([str(_s).encode() for _s in gene_ids], dtype="S")
+        _gene_ids_bytes = [str(_s).encode() for _s in gene_ids]
+        _gene_ids_width = max(map(len, _gene_ids_bytes), default=0) or 1
+        gene_ids = np.asarray([_b.ljust(_gene_ids_width) for _b in _gene_ids_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_ids' must be a sequence of strings: {error}") from None
     if gene_ids.ndim != 1:
@@ -150,13 +158,17 @@ def serialize_tox_data_as_flyer_json(
     if gene_outliers.ndim != 1:
         raise ValueError(f"'gene_outliers' must have 1 dimension, but has {gene_outliers.ndim}")
     try:
-        gene_species = np.asarray([str(_s).encode() for _s in gene_species], dtype="S")
+        _gene_species_bytes = [str(_s).encode() for _s in gene_species]
+        _gene_species_width = max(map(len, _gene_species_bytes), default=0) or 1
+        gene_species = np.asarray([_b.ljust(_gene_species_width) for _b in _gene_species_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_species' must be a sequence of strings: {error}") from None
     if gene_species.ndim != 1:
         raise ValueError(f"'gene_species' must have 1 dimension, but has {gene_species.ndim}")
     try:
-        gene_types = np.asarray([str(_s).encode() for _s in gene_types], dtype="S")
+        _gene_types_bytes = [str(_s).encode() for _s in gene_types]
+        _gene_types_width = max(map(len, _gene_types_bytes), default=0) or 1
+        gene_types = np.asarray([_b.ljust(_gene_types_width) for _b in _gene_types_bytes], dtype="S")
     except TypeError as error:
         raise TypeError(f"'gene_types' must be a sequence of strings: {error}") from None
     if gene_types.ndim != 1:

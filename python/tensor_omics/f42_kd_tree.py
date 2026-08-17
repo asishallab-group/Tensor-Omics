@@ -288,12 +288,18 @@ def kd_knn_query(
         Original points dataset
     kd_indices : np.ndarray[np.int32] of shape (n_points,)
         Pre-built k-d tree index, see :func:`tensor_omics.build_kd_index`
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
     dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
         Dimension order used to build `kd_indices`
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
     query_point : np.ndarray[np.float64] of shape (n_dimensions,)
         Query point coordinates
     k_neighbors : int
         Number of neighbors to find
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
 
     Returns
     -------
@@ -301,7 +307,7 @@ def kd_knn_query(
         with keys:
 
         neighbors : np.ndarray[np.int32] of shape (k_neighbors,), read-only
-            guaranteed (max-heap order internally)
+            Output: indices of the k nearest neighbors (nearest-to-farthest order not guaranteed, max-heap order internally)
             A result is a value; call `.copy()` to obtain a modifiable array.
         distances : np.ndarray[np.float64] of shape (k_neighbors,), read-only
             Output: Euclidean distances to the k nearest neighbors
@@ -314,7 +320,7 @@ def kd_knn_query(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_kd_tree::kd_knn_query_alloc`, whose argument names are
+    Generated from the Fortran procedure `f42_kd_tree::kd_knn_query`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -405,12 +411,17 @@ def kd_range_query_mask(
         Original points dataset
     kd_indices : np.ndarray[np.int32] of shape (n_points,)
         Pre-built k-d tree index
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
     dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
         Dimension order used to build `kd_indices`
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
     query_point : np.ndarray[np.float64] of shape (n_dimensions,)
         Query point coordinates
     radius : float
         Search radius
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -425,7 +436,7 @@ def kd_range_query_mask(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_kd_tree::kd_range_query_mask_alloc`, whose argument names are
+    Generated from the Fortran procedure `f42_kd_tree::kd_range_query_mask`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -510,12 +521,17 @@ def kd_range_query_list(
         Original points dataset
     kd_indices : np.ndarray[np.int32] of shape (n_points,)
         Pre-built k-d tree index
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
     dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
         Dimension order used to build `kd_indices`
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
     query_point : np.ndarray[np.float64] of shape (n_dimensions,)
         Query point coordinates
     radius : float
         Search radius
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -535,7 +551,7 @@ def kd_range_query_list(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_kd_tree::kd_range_query_list_alloc`, whose argument names are
+    Generated from the Fortran procedure `f42_kd_tree::kd_range_query_list`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -625,12 +641,17 @@ def kd_range_query_count(
         Original points dataset
     kd_indices : np.ndarray[np.int32] of shape (n_points,)
         Pre-built k-d tree index
+        The minimum valid value is `1`.
+        The maximum valid value is `n_points`.
     dimension_order : np.ndarray[np.int32] of shape (n_dimensions,)
         Dimension order used to build `kd_indices`
+        The minimum valid value is `1`.
+        The maximum valid value is `n_dimensions`.
     query_point : np.ndarray[np.float64] of shape (n_dimensions,)
         Query point coordinates
     radius : float
         Search radius
+        The minimum valid value is `0.0`.
 
     Returns
     -------
@@ -644,7 +665,7 @@ def kd_range_query_count(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_kd_tree::kd_range_query_count_alloc`, whose argument names are
+    Generated from the Fortran procedure `f42_kd_tree::kd_range_query_count`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

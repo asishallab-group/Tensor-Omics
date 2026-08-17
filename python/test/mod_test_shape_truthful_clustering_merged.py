@@ -29,7 +29,7 @@ def _fixture_a():
     return vectors, kd_indices, dimension_order
 
 
-def test_single_seed_matches_per_seed_kernel():
+def test_single_seed_matches_per_seed_impl():
     vectors, kd_indices, dimension_order = _fixture_a()
     seed_selection_mask = np.zeros(7, dtype=np.bool_)
     seed_selection_mask[0] = True

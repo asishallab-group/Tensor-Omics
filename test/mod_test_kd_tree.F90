@@ -6,6 +6,7 @@ module mod_test_kd_tree
     use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -287,9 +288,9 @@ contains
         end do
         dim_order = [1, 2]
 
-        call build_kd_index_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, ierr)
+        call build_kd_index(vectors, 2_int32, 11_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'build_line_fixture: build_kd_index_alloc failed: ', ierr
+            write (*, *) 'build_line_fixture: build_kd_index failed: ', ierr
             error stop
         end if
     end subroutine build_line_fixture
@@ -300,14 +301,14 @@ contains
         integer(int32) :: kd_indices(11), dim_order(2)
         integer(int32) :: neighbors(3), ierr
         real(real64)   :: distances(3)
-        logical        :: found(11)
+        logical(c_bool)        :: found(11)
         integer(int32) :: i
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_knn_query_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_knn_query(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                 [5.0d0, 0.0d0], 3_int32, neighbors, distances, ierr)
-        call assert_true(is_ok(ierr), "kd_knn_query_alloc should succeed")
+        call assert_true(is_ok(ierr), "kd_knn_query should succeed")
 
         found = .false.
         do i = 1, 3
@@ -328,9 +329,9 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_knn_query_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_knn_query(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                 [5.0d0, 0.0d0], 11_int32, neighbors, distances, ierr)
-        call assert_true(is_ok(ierr), "kd_knn_query_alloc with k=n_points should succeed")
+        call assert_true(is_ok(ierr), "kd_knn_query with k=n_points should succeed")
         call assert_permutation(neighbors, 11_int32, "kd_knn_query with k=n_points covers every point once")
     end subroutine test_kd_knn_query_k_equals_n
 
@@ -343,11 +344,11 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_knn_query_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_knn_query(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                 [5.0d0, 0.0d0], 0_int32, neighbors(1:0), distances(1:0), ierr)
         call assert_true(is_err(ierr), "kd_knn_query should reject k_neighbors=0")
 
-        call kd_knn_query_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_knn_query(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                 [5.0d0, 0.0d0], 12_int32, neighbors, distances, ierr)
         call assert_true(is_err(ierr), "kd_knn_query should reject k_neighbors > n_points")
     end subroutine test_kd_knn_query_invalid_k
@@ -356,14 +357,14 @@ contains
     subroutine test_kd_range_query_mask_basic()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2)
-        logical        :: in_radius_mask(11), expected(11)
+        logical(c_bool)        :: in_radius_mask(11), expected(11)
         integer(int32) :: ierr
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_range_query_mask_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_range_query_mask(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                        [5.0d0, 0.0d0], 1.5d0, in_radius_mask, ierr)
-        call assert_true(is_ok(ierr), "kd_range_query_mask_alloc should succeed")
+        call assert_true(is_ok(ierr), "kd_range_query_mask should succeed")
 
         expected = .false.
         expected(5:7) = .true.
@@ -374,12 +375,12 @@ contains
     subroutine test_kd_range_query_mask_negative_radius()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2)
-        logical        :: in_radius_mask(11)
+        logical(c_bool)        :: in_radius_mask(11)
         integer(int32) :: ierr
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_range_query_mask_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_range_query_mask(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                        [5.0d0, 0.0d0], -1.0d0, in_radius_mask, ierr)
         call assert_true(is_err(ierr), "kd_range_query_mask should reject a negative radius")
     end subroutine test_kd_range_query_mask_negative_radius
@@ -389,14 +390,14 @@ contains
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2)
         integer(int32) :: neighbors(11), n_found, ierr
-        logical        :: found(11)
+        logical(c_bool)        :: found(11)
         integer(int32) :: i
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_range_query_list_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_range_query_list(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                        [5.0d0, 0.0d0], 1.5d0, neighbors, n_found, ierr)
-        call assert_true(is_ok(ierr), "kd_range_query_list_alloc should succeed")
+        call assert_true(is_ok(ierr), "kd_range_query_list should succeed")
         call assert_equal_int(n_found, 3, "kd_range_query_list: 3 points within radius 1.5 of x=5")
 
         found = .false.
@@ -415,7 +416,7 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_range_query_list_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_range_query_list(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                        [5.0d0, 0.0d0], -1.0d0, neighbors, n_found, ierr)
         call assert_true(is_err(ierr), "kd_range_query_list should reject a negative radius")
     end subroutine test_kd_range_query_list_negative_radius
@@ -428,9 +429,9 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call kd_range_query_count_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+        call kd_range_query_count(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                         [5.0d0, 0.0d0], 1.5d0, neighbor_count, ierr)
-        call assert_true(is_ok(ierr), "kd_range_query_count_alloc should succeed")
+        call assert_true(is_ok(ierr), "kd_range_query_count should succeed")
         call assert_equal_int(neighbor_count, 3, "kd_range_query_count: 3 points within radius 1.5 of x=5")
     end subroutine test_kd_range_query_count_basic
 
@@ -440,7 +441,7 @@ contains
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2)
         integer(int32) :: neighbors(11), n_found, neighbor_count, ierr
-        logical        :: in_radius_mask(11)
+        logical(c_bool)        :: in_radius_mask(11)
         real(real64)   :: query_x
         integer(int32) :: qi
 
@@ -449,17 +450,17 @@ contains
         do qi = 0, 10
             query_x = real(qi, real64)
 
-            call kd_range_query_list_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+            call kd_range_query_list(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                            [query_x, 0.0d0], 2.5d0, neighbors, n_found, ierr)
-            call assert_true(is_ok(ierr), "kd_range_query_list_alloc should succeed")
+            call assert_true(is_ok(ierr), "kd_range_query_list should succeed")
 
-            call kd_range_query_count_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+            call kd_range_query_count(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                             [query_x, 0.0d0], 2.5d0, neighbor_count, ierr)
-            call assert_true(is_ok(ierr), "kd_range_query_count_alloc should succeed")
+            call assert_true(is_ok(ierr), "kd_range_query_count should succeed")
 
-            call kd_range_query_mask_alloc(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
+            call kd_range_query_mask(vectors, 2_int32, 11_int32, kd_indices, dim_order, &
                                            [query_x, 0.0d0], 2.5d0, in_radius_mask, ierr)
-            call assert_true(is_ok(ierr), "kd_range_query_mask_alloc should succeed")
+            call assert_true(is_ok(ierr), "kd_range_query_mask should succeed")
 
             call assert_equal_int(neighbor_count, n_found, "count must match list's n_found")
             call assert_equal_int(neighbor_count, count(in_radius_mask, kind=int32), "count must match mask's true count")

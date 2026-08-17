@@ -8,6 +8,8 @@
 module f42_kd_tree_impl
     use f42_sort_impl, only: sort_array_heapsort, init_perm
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, validate_in_range_int, is_err
     M_IMPLICIT_NONE
 
@@ -220,18 +222,16 @@ contains
             !! Number of neighbors to find
             !! DM_MIN(1_int32)
             !! DM_MAX(n_points)
-        integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
-            !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
         integer(int32), dimension(k_neighbors), intent(out) :: neighbors
-            !! Output: indices of the k nearest neighbors; nearest-to-farthest order is not
-            !! guaranteed (max-heap order internally)
+            !! Output: indices of the k nearest neighbors (nearest-to-farthest order not guaranteed, max-heap order internally)
         real(real64), dimension(k_neighbors), intent(out) :: distances
             !! Output: Euclidean distances to the k nearest neighbors
-
+        integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
+            !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
         integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx
         integer(int32) :: found_count, i
         real(real64)   :: dist_sq, diff_val, max_dist_in_heap, axis_dist
-        logical        :: explore_left, explore_right
+        logical(c_bool)        :: explore_left, explore_right
 
         found_count = 0
         max_dist_in_heap = huge(1.0_real64)
@@ -425,11 +425,10 @@ contains
         real(real64), intent(in) :: radius
             !! Search radius
             !! DM_MIN(0.0_real64)
+        logical(c_bool), dimension(n_points), intent(out) :: in_radius_mask
+            !! Output: .true. for points within `radius` of `query_point`
         integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
             !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
-        logical, dimension(n_points), intent(out) :: in_radius_mask
-            !! Output: .true. for points within `radius` of `query_point`
-
         integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx, i
         real(real64)   :: dist_sq, radius_sq, axis_dist, diff_val
 
@@ -507,13 +506,12 @@ contains
         real(real64), intent(in) :: radius
             !! Search radius
             !! DM_MIN(0.0_real64)
-        integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
-            !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
         integer(int32), dimension(n_points), intent(out) :: neighbors
             !! Output: indices within `radius`, valid in `neighbors(1:n_found)`
         integer(int32), intent(out) :: n_found
             !! Output: number of points within `radius`
-
+        integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
+            !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
         integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx, i
         real(real64)   :: dist_sq, radius_sq, axis_dist, diff_val
 
@@ -591,11 +589,10 @@ contains
         real(real64), intent(in) :: radius
             !! Search radius
             !! DM_MIN(0.0_real64)
-        integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
-            !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
         integer(int32), intent(out) :: neighbor_count
             !! Output: number of points within `radius`
-
+        integer(int32), dimension(3, n_points), intent(out) :: tmp_range_stack
+            !! Workspace: traversal stack for [left_idx, right_idx, depth] frames
         integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx, i
         real(real64)   :: dist_sq, radius_sq, axis_dist, diff_val
 

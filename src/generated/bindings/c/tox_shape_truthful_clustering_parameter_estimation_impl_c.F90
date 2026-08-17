@@ -1,7 +1,7 @@
 #ifndef NO_C_BINDING
 #include <src/macros.h>
 
-!> summary: C-wrappers for [[tox_shape_truthful_clustering_parameter_estimation_kernel(module)]]
+!> summary: C-wrappers for [[tox_shape_truthful_clustering_parameter_estimation_impl(module)]]
 !| # Shape Truthful Clustering (STC): Parameter Estimation
 !|
 !| A separate, optional pipeline step estimating near-optimal starting values for the crucial
@@ -13,7 +13,7 @@
 !| (`density_labels`, `observable`), then read the parameters off simple summary statistics of
 !| that pass. See `misc/mod_STC.md`, "Estimate parameters from data", for the full algorithm
 !| definition and the reasoning behind every design choice below.
-module tox_shape_truthful_clustering_parameter_estimation_kernel_c
+module tox_shape_truthful_clustering_parameter_estimation_impl_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_int, c_loc
     use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
@@ -24,7 +24,7 @@ module tox_shape_truthful_clustering_parameter_estimation_kernel_c
 
 contains
 
-    !> summary: C-wrapper for [[tox_shape_truthful_clustering_parameter_estimation_kernel(module):tox_stc_estimate_parameters_svd_workspace(subroutine)]]
+    !> summary: C-wrapper for [[tox_shape_truthful_clustering_parameter_estimation_impl(module):tox_stc_estimate_parameters_svd_workspace(subroutine)]]
     !| Worst-case sizing for both `observable`'s dgesdd (an EA cloud can be as large as
     !| n_vectors) and the pairwise principal-angle dgesvd (shared rank at most n_dimensions),
     !| see `tox_stc_observable_svd_workspace` and `tox_stc_accept_ensemble_svd_workspace` for
@@ -37,7 +37,7 @@ contains
             lwork_angle,&
             ierr&
         ) bind(C, name="tox_stc_estimate_parameters_svd_workspace_c")
-        use tox_shape_truthful_clustering_parameter_estimation_kernel, only: tox_stc_estimate_parameters_svd_workspace
+        use tox_shape_truthful_clustering_parameter_estimation_impl, only: tox_stc_estimate_parameters_svd_workspace
 
         integer(c_int), intent(in), target :: n_dimensions
             !! Ambient dimension D
@@ -69,5 +69,5 @@ contains
         )
     end subroutine tox_stc_estimate_parameters_svd_workspace_c
 
-end module tox_shape_truthful_clustering_parameter_estimation_kernel_c
+end module tox_shape_truthful_clustering_parameter_estimation_impl_c
 #endif

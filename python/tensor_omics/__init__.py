@@ -178,7 +178,7 @@ from .tox_shape_truthful_clustering import (
 from .tox_shape_truthful_clustering_accept import (
     accept_ensemble,
 )
-from .tox_shape_truthful_clustering_accept_kernel import (
+from .tox_shape_truthful_clustering_accept_impl import (
     tox_stc_accept_ensemble_svd_workspace,
 )
 from .tox_shape_truthful_clustering_ensemble_growing import (
@@ -197,7 +197,7 @@ from .tox_shape_truthful_clustering_observable import (
     observable,
     ensemble_final_observable,
 )
-from .tox_shape_truthful_clustering_observable_kernel import (
+from .tox_shape_truthful_clustering_observable_impl import (
     tox_stc_observable_svd_workspace,
 )
 from .tox_shape_truthful_clustering_parameter_estimation import (
@@ -205,7 +205,7 @@ from .tox_shape_truthful_clustering_parameter_estimation import (
     grow_estimator_anchor_clouds,
     estimate_stc_parameters,
 )
-from .tox_shape_truthful_clustering_parameter_estimation_kernel import (
+from .tox_shape_truthful_clustering_parameter_estimation_impl import (
     tox_stc_estimate_parameters_svd_workspace,
 )
 from .tox_shape_truthful_clustering_reconciliation import (

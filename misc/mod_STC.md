@@ -68,47 +68,53 @@ Scientific Kernel (SK) philosophy (section 10.2: purity, no I/O, no
 `allocate`/`deallocate` in the numerical core, determinism), and
 `codegen_guide.md` for the naming scheme and how each procedure is written --
 it supersedes F42 section 10.3.2's older `_alloc -> unsuffixed -> _helper`
-suffix triad. Concretely:
+suffix triad, and (as of the `131-codegen-new` generator) also supersedes
+this document's own earlier `_kernel`/`src/kernel/` naming, which is what
+`codegen_guide.md` itself once called an implementation. Concretely:
 
-* a kernel is a `pure` procedure named `<name>_kernel`, in a module named
-  `tox_<family>_kernel` under `src/kernel/`: no validation, no `ierr` (except
-  a genuine runtime failure no input check could foresee, e.g. an SVD that
-  fails to converge -- `codegen_guide.md` section 5.14), no allocation
-  anywhere in the module;
+* an implementation is a `pure` procedure named `<name>_impl`, in a module
+  named `tox_<family>_impl` under `src/tox/`: no validation, no `ierr`
+  (except a genuine runtime failure no input check could foresee, e.g. an
+  SVD that fails to converge -- `codegen_guide.md` section 5.14), no
+  allocation anywhere in the module;
 * every argument's constraints are stated as `!!`/`DM_*` documentation
   (`DM_MIN`, `DM_MAX`, `DM_SENTINEL`, `DM_DEFAULT`, `DM_OUTPUT_FROM`,
   `DM_PROLOGUE`, ...) -- that documentation is the generator's only input,
   and the *sole* place validation for that argument is stated;
-* the generator derives the validating wrapper, the allocating wrapper
-  (`_alloc`, published as the plain name), the expert tier (published as
-  `_expert`), and the C/Python/R bindings from the kernel and its
-  annotations -- none of those are hand-written.
+* the generator derives the plain entry point (validates *and* allocates,
+  published under the implementation's own unsuffixed name), the expert tier
+  (validates only, caller supplies every work array -- published as
+  `_expert`), and the C/Python/R bindings from the implementation and its
+  annotations -- none of those are hand-written. Every stored `logical`
+  (an array or a scalar that isn't a `logical, parameter` or a `logical`
+  function result) is declared `logical(c_bool)`, the one-byte kind, not
+  plain `logical`.
 
 Related routines following this pattern are called SK-groups (SKGs). See
-"Implementation Modules" below for where each SKG's kernel lives.
+"Implementation Modules" below for where each SKG's implementation lives.
 
 ## Implementation Modules
 
-Each major step gets its own kernel module under
-`src/kernel/shape_truthful_clustering/`, following `codegen_guide.md` section
+Each major step gets its own implementation module under
+`src/tox/shape_truthful_clustering/`, following `codegen_guide.md` section
 5.15 ("a family too big for one file"):
 
 | Module file | SKGs |
 |---|---|
-| `tox_shape_truthful_clustering_kernel.F90` (parent) | `ensemble_identification` (its own kernel(s), directly in the parent -- see note below) |
-| `tox_shape_truthful_clustering_seeding_kernel.F90` | `density_labels`, `seeds` |
-| `tox_shape_truthful_clustering_ensemble_growing_kernel.F90` | `calc_ensemble_growth_radius`, `grow_ensemble` |
-| `tox_shape_truthful_clustering_observable_kernel.F90` | `observable`, `normal_error`, `tangent_scales`, `ensemble_final_observable` |
-| `tox_shape_truthful_clustering_accept_kernel.F90` | `accept_ensemble` |
-| `tox_shape_truthful_clustering_filter_kernel.F90` | `filter_ensembles_by_stop_condition`, `filter_ensembles_by_dimension`, `filter_ensembles_by_var_explained`, `filter_ensembles` |
-| `tox_shape_truthful_clustering_reconciliation_kernel.F90` | `ensemble_reconciliation` (a thin two-call orchestrator: `filter_ensembles` then this module's own `merge_to_super_ensembles`) |
-| `tox_shape_truthful_clustering_parameter_estimation_kernel.F90` | `sample_estimator_anchors`, `grow_estimator_anchor_clouds`, `estimate_stc_parameters` |
+| `tox_shape_truthful_clustering_impl.F90` (parent) | `ensemble_identification` (its own implementation(s), directly in the parent -- see note below) |
+| `tox_shape_truthful_clustering_seeding_impl.F90` | `density_labels`, `seeds` |
+| `tox_shape_truthful_clustering_ensemble_growing_impl.F90` | `calc_ensemble_growth_radius`, `grow_ensemble` |
+| `tox_shape_truthful_clustering_observable_impl.F90` | `observable`, `normal_error`, `tangent_scales`, `ensemble_final_observable` |
+| `tox_shape_truthful_clustering_accept_impl.F90` | `accept_ensemble` |
+| `tox_shape_truthful_clustering_filter_impl.F90` | `filter_ensembles_by_stop_condition`, `filter_ensembles_by_dimension`, `filter_ensembles_by_var_explained`, `filter_ensembles` |
+| `tox_shape_truthful_clustering_reconciliation_impl.F90` | `ensemble_reconciliation` (a thin two-call orchestrator: `filter_ensembles` then this module's own `merge_to_super_ensembles`) |
+| `tox_shape_truthful_clustering_parameter_estimation_impl.F90` | `sample_estimator_anchors`, `grow_estimator_anchor_clouds`, `estimate_stc_parameters` |
 
-The parent module holds `ensemble_identification`'s own kernel(s) directly,
-in addition to `use`-ing its siblings -- a deliberate deviation from
-section 5.15's own `tox_data_integration_kernel` example, whose parent holds
-no procedures of its own. `ensemble_identification` is this family's natural
-top-level entry point (it orchestrates every other SKG), unlike
+The parent module holds `ensemble_identification`'s own implementation(s)
+directly, in addition to `use`-ing its siblings -- a deliberate deviation
+from section 5.15's own `tox_data_integration_impl` example, whose parent
+holds no procedures of its own. `ensemble_identification` is this family's
+natural top-level entry point (it orchestrates every other SKG), unlike
 `data_integration`'s parent, which really is just a bag of siblings with no
 natural "top" member.
 
@@ -1289,3 +1295,121 @@ column table is shown, in which the below information is contained:
     assigned to each data-point.
   * The Min., 1st Qu., Median, Mean, 3rd Qu., and Max. of all Ensembles' final
     observables Spectral-Gap, RMSE, and Tangent-Space Drift.
+
+# Potential Time Complexity Improvements
+
+`observable`'s SVD (see "SKG `observable`" above) is the leading candidate for
+where STC spends its time: `grow_ensemble` performs a batch (rank-$k$, not
+rank-1) membership expansion per growth iteration, and `observable`
+recomputes a full economy-mode `dgesdd` decomposition of the ensemble's
+centered members **from scratch** every time, at every iteration, for every
+ensemble. Two independent, not-yet-implemented ideas below would each reduce
+that cost -- one requires no algorithmic change at all, the other is a real
+piece of engineering. Neither has been implemented or profiled; both are
+recorded here as scoped candidates, not commitments. **Before implementing
+either, profile a real run first** -- both proposals below are asymptotic
+reasoning, not measurement, and reconciliation's pairwise Overlap Coefficient
+computation ($O(|\mathcal{E}|^2 \cdot N)$ over all ensemble pairs, see
+"Ensemble Reconciliation" above) or the k-d tree build could dominate wall
+time instead, depending on the actual $N$/ensemble-count/growth-depth
+regime a given dataset falls into.
+
+## Reduce `normal_error`'s cost via the total-variance identity
+
+`normal_error` (see "SKG `normal_error`" above) is already described as
+"free" in the sense that it needs no separate pass over the ensemble's
+members -- it is read directly off the tail of the SVD `observable` already
+computed. That framing implicitly still assumes the **full** $D$-length
+eigenvalue spectrum is available to sum over $j = d_{\mathcal{E}}+1, \ldots, D$. If a future
+change (see "Batch/incremental SVD via Brand's algorithm" below, or any
+other truncation) ever stops carrying the full spectrum forward and tracks
+only the top-$d_{\max}$ tangent directions, `normal_error` would lose its
+current free ride -- unless it is computed a different way:
+
+By the standard Frobenius-norm identity, the sum of *all* eigenvalues of the
+ensemble's centered covariance equals its total variance:
+
+$$
+\sum_{j=1}^{D} \lambda^{\mathcal{E}}_{j} = \frac{1}{k_{\mathcal{E}}-1}\sum_{x_i \in \mathcal{E}} \|\mathbf{x}_i - \boldsymbol\mu_{\mathcal{E}}\|^2 \;=:\; \text{total\_variance}_{\mathcal{E}}.
+$$
+
+So, equivalently,
+
+$$
+\text{normal\_error}_{\mathcal{E}} = \text{total\_variance}_{\mathcal{E}} - \sum_{j=1}^{d_{\mathcal{E}}} \lambda^{\mathcal{E}}_{j}.
+$$
+
+`total_variance` is an $O(D)$ running sum of squared deviations from the
+mean, updatable incrementally as members are added to the ensemble (a
+standard Chan/Welford-style incremental-mean correction handles
+$\boldsymbol\mu_{\mathcal{E}}$ shifting at each growth step, at the same
+$O(D)$ cost per point). Only the top-$d_{\max}$ eigenvalues are then needed
+to recover `normal_error` -- not the full $D-d$ tail -- which is exactly what
+a truncated/incremental tangent basis (below) would leave available.
+
+This change is independent of the SVD-cost idea below and can be adopted on
+its own regardless of whether `observable` ever moves off a from-scratch
+`dgesdd` call: it only removes `normal_error`'s dependency on the tail of the
+spectrum, which today is a non-issue (the tail is already computed anyway)
+but becomes one the moment the full spectrum stops being computed.
+
+## Batch/incremental SVD via Brand's algorithm
+
+`observable`'s `dgesdd` call recomputes the full singular value decomposition
+of $Y_{\mathcal{E}_{t+1}}$ from scratch at every growth iteration, discarding
+the previous iteration's decomposition entirely. Brand's algorithm ("Fast
+low-rank modifications of the thin SVD", Brand 2002) instead *updates* an
+existing truncated SVD incrementally as new columns (members) are added,
+without recomputing from scratch:
+
+1. Project the new members onto the current tangent basis $U$: $p = U^\top c$
+   for each new centered member vector $c$ (`dgemv`/`dgemm`).
+2. Compute the residual outside the current span, $c_\perp = c - Up$, and its
+   norm $\rho = \|c_\perp\|$ (`dnrm2`).
+3. Form and decompose a small bordered matrix built from $S$, $p$, and $\rho$
+   -- size $(r+k)\times(r+k)$ for a batch of $k$ new members against a
+   tracked rank $r$ -- via an ordinary `dgesvd`/`dgesdd` call, cheap because
+   $r$ is kept small.
+4. Rotate $U$ (and $S$, and $V$ if kept) through that small SVD's factors.
+
+Every step is BLAS Level 1/2/3 plus one small dense LAPACK SVD call -- no new
+dependency, and the existing `dgesdd`/`dgesvd` interface blocks in
+`observable`/`accept_ensemble` are already declared `pure` for exactly this
+reason, so an incremental update drops into the same `pure` kernel discipline
+with no architectural friction. Because `grow_ensemble` adds a batch of $k$
+members per iteration (not one point at a time), the update is the *block*
+form of Brand's algorithm, not the simpler rank-1 case.
+
+This is real, scoped engineering, not a drop-in replacement of the `dgesdd`
+call site -- three things are needed beyond the update step itself:
+
+* **A bounded working rank for the spectral-gap search.** `observable`
+  currently discovers $d_{\mathcal{E}}$ by scanning the gap $G(r)$ across
+  *all* $D-1$ candidate positions (see "SKG `observable`", step (2)), which
+  needs the full spectrum. An incremental update only tracks a small rank
+  $r_{\text{track}}$ (a few more than $d_{\max}$, not the full $D$), so the
+  gap-search would need to run over that smaller tracked set instead --
+  meaning a rank has to be chosen *before* it is known, which is a real
+  behavior change and a real correctness risk: if the true best gap sits
+  beyond $r_{\text{track}}$ (data less structured than expected, or
+  $d_{\max}$ mis-set), the truncated search would silently pick a worse $d$
+  than today's full-spectrum scan is guaranteed to find.
+* **Mean recentering.** Brand's original formulation updates a subspace of a
+  *fixed* point set; STC's $\boldsymbol\mu_{\mathcal{E}}$ shifts every time
+  members are added, which needs Brand's own mean-tracking correction term
+  layered onto the plain projection/update steps above, not just those steps
+  alone.
+* **Periodic reorthogonalization.** Over a long growth trajectory, $U$ drifts
+  from exact orthogonality under repeated incremental updates. Since
+  `accept_ensemble`'s accept/reject decisions depend on `chordal_dist`/$G$/$d$
+  being numerically faithful (not merely close), an occasional QR or
+  full-recompute reset is needed to bound that drift -- and choosing its
+  cadence is a real design decision, not a default that can be picked once
+  and forgotten.
+
+Combined with the `normal_error` change above, a truncated incremental basis
+would need to carry forward the top-$r_{\text{track}}$ eigenvalues (for the
+gap search) and the running `total_variance` (for `normal_error`), rather
+than the full $D$-length spectrum `observable` currently returns -- a
+detail any implementation of this idea has to account for in its own output
+shape, not an afterthought bolted on at the end.

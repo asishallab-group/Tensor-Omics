@@ -7,9 +7,9 @@
 !| module is the tox-domain boundary on top of the generic [[f42_json(module)]] serializer.
 module tox_flyer_json_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string, c_char_2d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
+    use, intrinsic :: iso_c_binding, only: c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_ALLOC_FAIL
     M_IMPLICIT_NONE
     private
 
@@ -85,13 +85,13 @@ contains
             !! Gene type string (ortholog/paralog)
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: filename_f
-        character(len=:), allocatable, dimension(:) :: tissues_f
-        character(len=:), allocatable, dimension(:) :: family_ids_f
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
-        logical, dimension(n_genes) :: gene_outliers_f
-        character(len=:), allocatable, dimension(:) :: gene_species_f
-        character(len=:), allocatable, dimension(:) :: gene_types_f
+        character(len=filename_strlen), pointer :: filename_f
+        character(len=tissues_strlen), pointer, dimension(:) :: tissues_f
+        character(len=family_ids_strlen), pointer, dimension(:) :: family_ids_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        logical, dimension(:), allocatable :: gene_outliers_f
+        character(len=gene_species_strlen), pointer, dimension(:) :: gene_species_f
+        character(len=gene_types_strlen), pointer, dimension(:) :: gene_types_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -116,19 +116,14 @@ contains
         M_CHECK_ARRAY_NON_NULL(gene_species, gene_species_strlen * n_genes)
         M_CHECK_ARRAY_NON_NULL(gene_types, gene_types_strlen * n_genes)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(tissues, tissues_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(family_ids, family_ids_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(filename), filename_f)
+        call c_f_pointer(c_loc(tissues), tissues_f, [n_tissues])
+        call c_f_pointer(c_loc(family_ids), family_ids_f, [n_families])
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_genes])
+        M_ALLOCATE(gene_outliers_f(n_genes))
         gene_outliers_f = gene_outliers
-        call c_char_2d_as_string(gene_species, gene_species_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(gene_types, gene_types_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(gene_species), gene_species_f, [n_genes])
+        call c_f_pointer(c_loc(gene_types), gene_types_f, [n_genes])
 
         call serialize_tox_data_as_flyer_json(&
             filename = filename_f,&

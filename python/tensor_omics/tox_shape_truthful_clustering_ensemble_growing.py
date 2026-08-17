@@ -1,6 +1,14 @@
-"""tox_shape_truthful_clustering_ensemble_growing
+r"""tox_shape_truthful_clustering_ensemble_growing
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Shape Truthful Clustering (STC): Ensemble Growing
+
+Kernels for growing an ensemble by one step: `calc_ensemble_growth_radius` (the
+per-seed, locally adaptive growth radius, computed once) and `grow_ensemble` (the union,
+over every current member, of the points within that radius). See `misc/mod_STC.md`,
+sections "Local Radius Identification" and SKG `grow_ensemble`, for the full algorithm
+definition. Both take an already-built k-d tree (`kd_indices`, `dimension_order`, see
+:func:`tensor_omics.build_kd_index`) as input, the same one shared
+with the seeding kernels, rather than building their own.
 
 Python binding, generated from tox_shape_truthful_clustering_ensemble_growing. Do not edit.
 """
@@ -104,7 +112,7 @@ def calc_ensemble_growth_radius(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_ensemble_growing::calc_ensemble_growth_radius_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_ensemble_growing::calc_ensemble_growth_radius`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -202,7 +210,7 @@ def grow_ensemble(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_shape_truthful_clustering_ensemble_growing::grow_ensemble_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_shape_truthful_clustering_ensemble_growing::grow_ensemble`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
