@@ -3,6 +3,7 @@ program main
     use, intrinsic :: iso_fortran_env, only: int32
     use test_suite
     use mod_test_compute_edf, only: get_all_tests_compute_edf
+    use mod_test_percentile, only: get_all_tests_percentile
     use mod_test_bst, only: get_all_tests_bst
     use mod_test_kd_tree, only: get_all_tests_kd_tree
     use mod_test_sorting, only: get_all_tests_sorting
@@ -45,6 +46,7 @@ program main
     call initialize_suites()
     call add_suite("bst", get_all_tests_bst)
     call add_suite("compute_edf", get_all_tests_compute_edf)
+    call add_suite("percentile", get_all_tests_percentile)
     call add_suite("kd_tree", get_all_tests_kd_tree)
     call add_suite("sorting", get_all_tests_sorting)
     call add_suite("get_outliers", get_all_tests_get_outliers)

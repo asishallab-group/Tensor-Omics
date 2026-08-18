@@ -42,13 +42,13 @@ def test_tox_determine_shared_residual_range():
     S2[:, 0, 1] = [5,  7,  9]
     S2[:, 1, 1] = [0,  1,  2]
 
-    R = tox_determine_shared_residual_range(S1, S2, 95.0)
+    R = tox_determine_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 10.65) < TOL, f"Test 1 failed: expected 10.65, got {R}"
 
     # ============================================================
-    # Test 2 — Custom quantile (50%)
+    # Test 2 — Custom quantile (median, q=0.5)
     # ============================================================
-    R = tox_determine_shared_residual_range(S1, S2, 50.0)
+    R = tox_determine_shared_residual_range(S1, S2, 0.5)
     assert abs(R - 4.0) < TOL, f"Test 2 failed: expected 4.0, got {R}"
 
     # ============================================================
@@ -57,9 +57,9 @@ def test_tox_determine_shared_residual_range():
     assert_error(lambda: tox_determine_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
-    # Test 4 — Quantile > 100 → error
+    # Test 4 — Quantile > 1 → error
     # ============================================================
-    assert_error(lambda: tox_determine_shared_residual_range(S1, S2, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: tox_determine_shared_residual_range(S1, S2, 1.5), "Test 4 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -79,7 +79,7 @@ def test_tox_determine_shared_residual_range():
     S1[0, 0, 0] = np.nan
     S2[2, 1, 1] = np.nan
 
-    R = tox_determine_shared_residual_range(S1, S2, 95.0)
+    R = tox_determine_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 11.0) < TOL, f"Test 5 failed: expected 11.0, got {R}"
 
     # ============================================================
@@ -88,7 +88,7 @@ def test_tox_determine_shared_residual_range():
     S1[:, :, :] = 0
     S2[:, :, :] = 0
 
-    R = tox_determine_shared_residual_range(S1, S2, 95.0)
+    R = tox_determine_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 0.0) < TOL, f"Test 6 failed: expected 0.0, got {R}"
 
     # ============================================================
@@ -97,7 +97,7 @@ def test_tox_determine_shared_residual_range():
     S1 = np.array([[[3.0]]], dtype=np.float64, order="F")
     S2 = np.array([[[-4.0]]], dtype=np.float64, order="F")
 
-    R = tox_determine_shared_residual_range(S1, S2, 95.0)
+    R = tox_determine_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 3.95) < TOL, f"Test 7 failed: expected 3.95, got {R}"
 
 
@@ -130,9 +130,9 @@ def test_tox_determine_shared_residual_range_expert():
     assert abs(R - 10.85) < TOL, f"Test 1 failed: expected 10.85, got {R}"
 
     # ============================================================
-    # Test 2 — Custom quantile (50%)
+    # Test 2 — Custom quantile (median, q=0.5)
     # ============================================================
-    R = tox_determine_shared_residual_range_expert(pool, perm, 50.0)
+    R = tox_determine_shared_residual_range_expert(pool, perm, 0.5)
     assert abs(R - 5.0) < TOL, f"Test 2 failed: expected 5.0, got {R}"
 
     # ============================================================
@@ -141,9 +141,9 @@ def test_tox_determine_shared_residual_range_expert():
     assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
-    # Test 4 — Quantile > 100 → error
+    # Test 4 — Quantile > 1 → error
     # ============================================================
-    assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, 150.0), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, 1.5), "Test 4 failed: expected ERR_INVALID_INPUT")
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -159,7 +159,7 @@ def test_tox_determine_shared_residual_range_expert():
     S2[3, 2] = np.nan
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm, 95.0)
+    R = tox_determine_shared_residual_range_expert(pool, perm, 0.95)
     assert abs(R - 11.0) < TOL, f"Test 5 failed: expected 11.0, got {R}"
 
     # ============================================================
@@ -169,7 +169,7 @@ def test_tox_determine_shared_residual_range_expert():
     S2 = np.zeros((4, 3), dtype=np.float64, order="F")
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm, 95.0)
+    R = tox_determine_shared_residual_range_expert(pool, perm, 0.95)
     assert abs(R - 0.0) < TOL, f"Test 6 failed: expected 0.0, got {R}"
 
     # ============================================================
@@ -179,7 +179,7 @@ def test_tox_determine_shared_residual_range_expert():
     S2 = np.array([[-4.0]], dtype=np.float64, order="F")
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm, 95.0)
+    R = tox_determine_shared_residual_range_expert(pool, perm, 0.95)
     assert abs(R - 3.95) < TOL, f"Test 7 failed: expected 3.95, got {R}"
 
 

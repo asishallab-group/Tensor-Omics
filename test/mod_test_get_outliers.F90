@@ -12,7 +12,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(24))
+    allocate(all_tests(25))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -38,6 +38,7 @@ contains
     all_tests(22) = test_case("test_outliers_extreme_detection", test_outliers_extreme_detection)
     all_tests(23) = test_case("test_outliers_nan_handling", test_outliers_nan_handling)
     all_tests(24) = test_case("test_scaling_performance_benchmark",test_scaling_performance_benchmark)
+    all_tests(25) = test_case("test_family_scaling_non_finite_distance", test_family_scaling_non_finite_distance)
 
   end function get_all_tests_get_outliers
 
@@ -271,7 +272,7 @@ contains
     ! values ascending: 0.1 (idx2), 0.2 (idx4), 0.3 (idx1), 0.4 (idx3)
     perm = [2_int32, 4_int32, 1_int32, 3_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 75.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.75_real64)
 
     ! percentile 75%: idx = ceil(4*0.75)=3
     ! threshold = sorted_rdi(perm(3)) = sorted_rdi(1) = 0.3
@@ -349,7 +350,7 @@ contains
     sorted_rdi = rdi
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 1.0_real64)
 
     call assert_equal_real(threshold, 0.4_real64, 1d-12, "Percentile 100 -> threshold must be maximum")
     call assert_false(any(is_outlier(1:3)), "No outliers below maximum at 100 percentile")
@@ -389,7 +390,7 @@ contains
     call assert_equal_real(quantile(4), 2.0_real64/denom, 1d-12, "quantile(d=4)=0.4")
 
     ! Percentile 100 -> threshold = maximum (4.0)
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 100.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 1.0_real64)
     call assert_equal_real(threshold, 4.0_real64, 1d-12, "p=100 -> threshold=max")
     call assert_false(any(is_outlier(1:3)), "Values below max not outliers at percentile 100")
     call assert_true(is_outlier(4), "Max value is outlier at percentile 100")
@@ -418,7 +419,7 @@ contains
     perm = [1_int32, 2_int32, 3_int32, 4_int32]
 
     ! percentile 50 -> idx = ceil(4*0.5)=2 -> threshold = second smallest = 2.0
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 50.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.5_real64)
 
     call assert_equal_real(threshold, 2.0_real64, 1d-12, "Threshold must be 2.0 at 50 percentile")
     call assert_true(is_outlier(2), "First 2.0 must be outlier")
@@ -482,7 +483,7 @@ contains
     ! All values equal (0). Any perm is fine.
     perm = [1_int32, 2_int32, 3_int32, 4_int32, 5_int32]
 
-    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 80.0_real64)
+    call identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, 0.8_real64)
 
     call assert_equal_real(threshold, 0.0_real64, 1d-12, "All-negative -> clamped distribution -> threshold 0")
     call assert_true(.not. any(is_outlier), "All-negative RDI should not be outliers")
@@ -836,6 +837,35 @@ contains
     call assert_true(all(dscale == 0.0_real64), 'All singleton families scaling 0.0')
   end subroutine test_single_gene_family_scaling
 
+  !> A non-finite distance must surface as an error, not silently flow into log2.
+  !| `compute_family_scaling` feeds family means/stddevs to `logx_helper` (non-validating) inside a
+  !| `do concurrent`. The callee validates those log2 arguments up front so a NaN/Inf distance -- which
+  !| propagates into a family mean -- is rejected with `ierr`, rather than producing a NaN/Inf scale.
+  subroutine test_family_scaling_non_finite_distance()
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_positive_inf
+    implicit none
+
+    integer(int32), parameter :: n_families = 2_int32
+    integer(int32), parameter :: n_genes    = 4_int32
+
+    real(real64)   :: distances(n_genes)
+    integer(int32) :: gene_to_fam(n_genes) = [1_int32, 1_int32, 2_int32, 2_int32]
+    real(real64)   :: dscale(n_families)
+    real(real64)   :: loess_x(n_families), loess_y(n_families)
+    integer(int32) :: indices_used(n_families)
+    integer(int32) :: ierr
+
+    ! Two families of two genes each (so n_valid = 2, past the single-family early return); one
+    ! distance is +Inf, making that family's mean +Inf.
+    distances = [ieee_value(1.0_real64, ieee_positive_inf), 1.0_real64, 2.0_real64, 3.0_real64]
+
+    call compute_family_scaling_alloc(n_genes, n_families, distances, gene_to_fam, dscale, &
+                                      loess_x, loess_y, indices_used, ierr)
+
+    call assert_true(ierr /= 0, "Non-finite family mean must error, not reach log2 silently")
+  end subroutine test_family_scaling_non_finite_distance
+
   subroutine test_all_zero_distances_scaling()
     use, intrinsic :: iso_fortran_env, only: int32, real64
     implicit none
@@ -1000,12 +1030,12 @@ contains
     end do
     distances(n_genes) = 500.0_real64
 
-    ! percentile=90: threshold at the 90th percentile; with n=12, this typically isolates the largest value
+    ! percentile=0.9: threshold at the 90th percentile; with n=12, this typically isolates the largest value
     perm = [(i, i=1,n_genes)]
     call detect_outliers( &
                          n_genes, n_families, distances, gene_to_fam, work_rdi, &
                          perm, sl, sr, is_outlier, lx, ly, ln, quantile, ierr, &
-                         percentile=90.0_real64)
+                         percentile=0.9_real64)
 
     call assert_equal_int(ierr, 0, "Error code 0 (test_outliers_extreme_detection)")
     call assert_true(is_outlier(12), "The extreme gene (12) should be an outlier")

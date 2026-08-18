@@ -5,7 +5,7 @@ module tox_normalization
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_errors, only: set_ok, set_err, ERR_EMPTY_INPUT, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, validate_dimension_size, validate_in_range_real, ERR_ALLOC_FAIL, validate_all_in_range_int, validate_all_in_range_real, ERR_SIZE_MISMATCH
-    use f42_utils, only: norm, is_close, logx, mean, std_dev
+    use f42_utils, only: norm, is_close, logx_helper, above, mean, std_dev
     use tox_loess, only: loess_alloc
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
@@ -522,21 +522,23 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
         ! Locals
-        integer(int32) :: i_gene, i_group, tmp_ierr
+        integer(int32) :: i_gene, i_group
         real(real64) :: expr_val
 
         call set_ok(ierr)
 
-        ! Loop through all elements in the flattened input matrix
-        ! NOTE: kept as a plain sequential loop (not `do concurrent`) because `ierr` is a shared
-        ! scalar written on the (rare/exceptional) error path -- writing it from concurrent
-        ! iterations would be an unsynchronized data race.
-        do i_gene = 1, n_genes
-            do i_group = 1, n_tissues
-                ! Apply the log2(x + 1) transformation
+        ! Validate every element up front (sequentially, as `ierr` is a shared scalar here) so that
+        ! `log2(x + 1)` is only ever evaluated for `x + 1 > 0`, i.e. `x > -1`. With the inputs
+        ! guaranteed valid, the transformation itself can run as a race-free `do concurrent` calling
+        ! the non-validating `logx_helper` -- no per-iteration write to the shared `ierr` is needed.
+        call validate_all_in_range_real(expr, n_genes*n_tissues, ierr, min=above(-1.0_real64))
+        if (is_err(ierr)) return
+
+        ! Apply the log2(x + 1) transformation to every element in the flattened input matrix
+        do concurrent(i_gene=1:n_genes) shared(expr, n_tissues)
+            do concurrent(i_group=1:n_tissues) local(expr_val) shared(expr, i_gene)
                 expr_val = expr(i_group, i_gene) + 1.0_real64
-                call logx(expr_val, 2.0_real64, expr(i_group, i_gene), tmp_ierr)
-                if (is_err(tmp_ierr)) ierr = tmp_ierr
+                call logx_helper(expr_val, 2.0_real64, expr(i_group, i_gene))
             end do
         end do
     end subroutine log2_transformation_inplace_helper

@@ -286,7 +286,7 @@
 <a id="ln-104" name="ln-104" href="#ln-104"></a>
 <a id="ln-105" name="ln-105" href="#ln-105"></a><span class="c">!&gt; Wrapper using C for getting range query usable by python</span>
 <a id="ln-106" name="ln-106" href="#ln-106"></a><span class="k">pure subroutine </span><span class="n">bst_range_query_c</span><span class="p">(</span><span class="n">values</span><span class="p">,</span><span class="w"> </span><span class="n">sorted_indices</span><span class="p">,</span><span class="w"> </span><span class="n">n_values</span><span class="p">,</span><span class="w"> </span><span class="n">lower_bound</span><span class="p">,</span><span class="w"> </span><span class="n">upper_bound</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-107" name="ln-107" href="#ln-107"></a><span class="w">                                  </span><span class="n">output_indices</span><span class="p">,</span><span class="w"> </span><span class="n">n_matches</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;bst_range_query_c&#39;</span><span class="p">)</span>
+<a id="ln-107" name="ln-107" href="#ln-107"></a><span class="w">                                  </span><span class="n">output_indices</span><span class="p">,</span><span class="w"> </span><span class="n">n_matches</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s1">'bst_range_query_c'</span><span class="p">)</span>
 <a id="ln-108" name="ln-108" href="#ln-108"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int</span><span class="p">,</span><span class="w"> </span><span class="kt">c_double</span>
 <a id="ln-109" name="ln-109" href="#ln-109"></a><span class="kt">    </span><span class="k">use </span><span class="n">f42_binary_search_tree</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">bst_range_query</span>
 <a id="ln-110" name="ln-110" href="#ln-110"></a><span class="w">    </span><span class="n">M_USE_NULL_VALIDATION</span>
@@ -323,7 +323,7 @@
 <a id="ln-141" name="ln-141" href="#ln-141"></a>
 <a id="ln-142" name="ln-142" href="#ln-142"></a><span class="c">!&gt; Wrapper using C for building BST index usable by python</span>
 <a id="ln-143" name="ln-143" href="#ln-143"></a><span class="k">pure subroutine </span><span class="n">build_bst_index_c</span><span class="p">(</span><span class="n">values</span><span class="p">,</span><span class="w"> </span><span class="n">n_values</span><span class="p">,</span><span class="w"> </span><span class="n">sorted_indices</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-144" name="ln-144" href="#ln-144"></a><span class="w">    </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;build_bst_index_c&#39;</span><span class="p">)</span>
+<a id="ln-144" name="ln-144" href="#ln-144"></a><span class="w">    </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s1">'build_bst_index_c'</span><span class="p">)</span>
 <a id="ln-145" name="ln-145" href="#ln-145"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int</span><span class="p">,</span><span class="w"> </span><span class="kt">c_double</span>
 <a id="ln-146" name="ln-146" href="#ln-146"></a><span class="kt">    </span><span class="k">use </span><span class="n">f42_binary_search_tree</span>
 <a id="ln-147" name="ln-147" href="#ln-147"></a><span class="w">    </span><span class="n">M_USE_NULL_VALIDATION</span>
@@ -365,7 +365,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-07-30 08:24 +0000             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>
