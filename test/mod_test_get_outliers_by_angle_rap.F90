@@ -476,7 +476,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
         ! Create scaled angles: some normal, some outliers
         real(real64) :: z_scores(n_genes) = [1.0_real64, 1.5_real64, 2.0_real64, 2.5_real64, &
                                              3.0_real64, 2.5_real64, 2.0_real64, -1.0_real64]
-        real(real64) :: percentile = 80.0_real64  ! 80th percentile
+        real(real64) :: percentile = 0.8_real64  ! 80th percentile
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr
@@ -503,7 +503,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
     subroutine test_angle_outliers_alloc_no_valid()
         integer(int32), parameter :: n_genes = 3
         real(real64) :: z_scores(n_genes) = [-1.0_real64, -1.0_real64, -1.0_real64]  ! All invalid
-        real(real64) :: percentile = 90.0_real64
+        real(real64) :: percentile = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr
@@ -533,7 +533,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
         call assert_true(all(is_outlier), "test_angle_outliers_rap_alloc_all_outliers: all should be outliers with 0th percentile")
 
         ! percentile = 100% -> everything inlier
-        call tox_angle_outliers_rap_alloc(z_scores, 100.0_real64, threshold, &
+        call tox_angle_outliers_rap_alloc(z_scores, 1.0_real64, threshold, &
                                           is_outlier, n_genes, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "test_angle_outliers_rap_alloc_all_outliers: error code mismatch")
@@ -561,7 +561,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
                         ]
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
-        real(real64) :: percentile_threshold = 85.0_real64  ! 85th percentile
+        real(real64) :: percentile_threshold = 0.85_real64  ! 85th percentile
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -599,7 +599,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
                         ]
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 90.0_real64
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -624,7 +624,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
 
         ! Each gene in its own family -> families have only 1 gene each
         integer(int32) :: gene_to_fam(n_genes) = [1, 2, 3]
-        real(real64) :: percentile_threshold = 90.0_real64
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -649,7 +649,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
         real(real64) :: rap_angles(n_genes) = [0.1_real64, 0.2_real64, 0.3_real64, 0.4_real64, 0.5_real64]
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 101.0_real64  ! Invalid: must be <= 100
+        real(real64) :: percentile_threshold = 10.0_real64  ! Invalid: must be <= 100
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -679,7 +679,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
                         ]
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 90.0_real64
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -713,7 +713,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
                         ]
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 85.0_real64
+        real(real64) :: percentile_threshold = 0.85_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -754,7 +754,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
                         ]
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2]
-        real(real64) :: percentile_threshold = 90.0_real64
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -783,7 +783,7 @@ all_tests(5) = test_case("test_compute_family_direction_rap_no_stable_direction"
         real(real64) :: rap_angles(n_genes)
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 75.0_real64
+        real(real64) :: percentile_threshold = 0.75_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)

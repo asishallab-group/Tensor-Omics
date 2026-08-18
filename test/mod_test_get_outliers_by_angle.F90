@@ -373,7 +373,7 @@ contains
         integer(int32), parameter :: n_genes = 8
         ! Create scaled angles: some normal, some outliers
         real(real64) :: z_scores(n_genes) = [10.0d0, 10.5d0, 20.0d0, 20.5d0, 30.0d0, 20.5d0, 20.0d0, -1.0d0]
-        real(real64) :: percentile = 80.0d0  ! 80th percentile
+        real(real64) :: percentile = 0.8_real64  ! 80th percentile
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr
@@ -401,7 +401,7 @@ contains
     subroutine test_angle_outliers_alloc_no_valid()
         integer(int32), parameter :: n_genes = 3
         real(real64) :: z_scores(n_genes) = [-1.0d0, -1.0d0, -1.0d0]  ! All invalid
-        real(real64) :: percentile = 90.0d0
+        real(real64) :: percentile = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr
@@ -430,7 +430,7 @@ contains
         call assert_true(all(is_outlier), "test_angle_outliers_alloc_all_outliers: all should be outliers with 0th percentile")
 
         ! percentile = 100% -> everything inlier
-        call tox_angle_outliers_alloc(z_scores, 100.0_real64, threshold, &
+        call tox_angle_outliers_alloc(z_scores, 1.0_real64, threshold, &
                                       is_outlier, n_genes, ierr)
 
         call assert_equal_int(ierr, ERR_OK, "test_angle_outliers_alloc_all_outliers: error code mismatch")
@@ -458,7 +458,7 @@ contains
                                                                          ], [n_samples, n_genes])
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]
-        real(real64) :: percentile_threshold = 85.0d0  ! 85th percentile
+        real(real64) :: percentile_threshold = 0.85_real64  ! 85th percentile
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -496,7 +496,7 @@ contains
                                                                          ], [n_samples, n_genes])
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 90.0d0
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -525,7 +525,7 @@ contains
 
         ! Each gene in its own family -> families have only 1 gene each
         integer(int32) :: gene_to_fam(n_genes) = [1, 2, 3]
-        real(real64) :: percentile_threshold = 90.0d0
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -554,7 +554,7 @@ contains
                                                                          ], [n_samples, n_genes])
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 101.0d0  ! Invalid: must be 0 <= x <= 100
+        real(real64) :: percentile_threshold = 1.01_real64  ! Invalid: must be 0 <= x <= 100
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -584,7 +584,7 @@ contains
                                                                          ], [n_samples, n_genes])
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 90.0d0
+        real(real64) :: percentile_threshold = 0.9_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)
@@ -621,7 +621,7 @@ contains
                                                                          ], [n_samples, n_genes])
 
         integer(int32) :: gene_to_fam(n_genes) = [1, 1, 1, 1, 1, 1, 1]
-        real(real64) :: percentile_threshold = 85.0d0
+        real(real64) :: percentile_threshold = 0.85_real64
         real(real64) :: threshold
         logical :: is_outlier(n_genes)
         integer(int32) :: ierr, status(n_families)

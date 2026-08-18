@@ -441,7 +441,7 @@ contains
         real(real64), dimension(n_genes), intent(in) :: z_scores
             !! Scaled angles (z-scores), `x>=0` and `CM_Z_SCORES_SENTINEL` for invalid/unassigned genes
         real(real64), intent(in) :: percentile
-            !! Percentile threshold (`0.0 < p < 100.0`)
+            !! Percentile threshold (`0.0 <= p <= 1.0`)
         logical, dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outlier status per gene
         integer(int32), intent(out) :: ierr
@@ -457,7 +457,7 @@ contains
         threshold = CM_Z_SCORES_SENTINEL
 
         call validate_dimension_size(n_genes, ierr)
-        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(percentile, ierr, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(z_scores, size(z_scores, kind=int32), ierr, min=0.0_real64, sentinel=CM_Z_SCORES_SENTINEL)
         if (is_err(ierr)) return
 
