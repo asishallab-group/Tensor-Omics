@@ -1,0 +1,6 @@
+parameter,best_mean,best_median,worst_mean,worst_median
+mean_dist_quant,0.45500000000000007,0.5,0.5,0.5
+k_seeding,51.0,55.0,25.0,25.0
+alpha_mad,0.85,0.8125,0.25,0.25
+alpha_accept,0.50625,0.4375,0.58125,0.625
+min_intersection,2.933333333333333,3.0,4.233333333333333,4.0

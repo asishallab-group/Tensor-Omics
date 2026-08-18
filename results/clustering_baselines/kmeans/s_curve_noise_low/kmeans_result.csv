@@ -1,0 +1,2 @@
+dataset,n_vectors,n_dimensions,k_min,k_max,selected_k,selected_inertia,n_init,random_state,evaluation_quantile,evaluation_radius,n_clusters,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
+s_curve_noise_low,500,2,1,15,4,58.04846731557627,20,0,0.15,0.5303278107063578,4,500,0.9305521497570647,1.0,0.9640269493617801,0.3184143799953745,0.014538652998453472,0.002637438003148418,0.33571203800238436,ok,

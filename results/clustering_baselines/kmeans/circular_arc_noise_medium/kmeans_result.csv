@@ -1,0 +1,2 @@
+dataset,n_vectors,n_dimensions,k_min,k_max,selected_k,selected_inertia,n_init,random_state,evaluation_quantile,evaluation_radius,n_clusters,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
+circular_arc_noise_medium,500,2,1,15,3,24.222559043406537,20,0,0.15,0.2074848161782871,3,500,0.8736398956871279,1.0,0.9325590234261469,0.31895148000330664,0.016210923000471666,0.002723348996369168,0.3380123189999722,ok,

@@ -1,0 +1,2 @@
+dataset,n_vectors,n_dimensions,k_min,k_max,selected_k,selected_inertia,n_init,random_state,evaluation_quantile,evaluation_radius,n_clusters,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
+bifurcation_3way_noise_low,500,2,1,15,5,14.71906259175765,20,0,0.15,0.15379708063700293,5,500,0.8962810112051669,1.0,0.9453039986257546,0.30117206100112526,0.015872484000283293,0.0027996900025755167,0.31997925999894505,ok,

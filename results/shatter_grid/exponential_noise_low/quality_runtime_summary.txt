@@ -1,0 +1,10 @@
+n_valid=3125
+quality_min=0.54385399
+quality_median=1.00000000
+quality_mean=0.99155450
+quality_max=1.00000000
+total_clustering_seconds=315.939897
+median_clustering_seconds=0.087628
+runs_with_overlap=95
+runs_with_coverage_gt_1=50
+runs_with_quality_gt_1=0

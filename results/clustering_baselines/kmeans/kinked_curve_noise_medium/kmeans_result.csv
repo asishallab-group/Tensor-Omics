@@ -1,0 +1,2 @@
+dataset,n_vectors,n_dimensions,k_min,k_max,selected_k,selected_inertia,n_init,random_state,evaluation_quantile,evaluation_radius,n_clusters,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
+kinked_curve_noise_medium,500,2,1,15,3,14.127650752921223,20,0,0.15,0.19224406782508288,3,500,0.8723846053458262,1.0,0.9318433860811393,0.3020497969991993,0.014551026994013228,0.003035323999938555,0.31975144099851605,ok,
