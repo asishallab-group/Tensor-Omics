@@ -5,7 +5,7 @@
 module f42_utils
     use safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use tox_errors, only: validate_all_in_range_int, ERR_DIVISION_BY_ZERO, set_ok, set_err, validate_in_range_real, is_err, validate_in_range_int, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int, ERR_ALLOC_FAIL
+    use tox_errors, only: validate_all_in_range_int, ERR_DIVISION_BY_ZERO, ERR_FILE_OPEN, set_ok, set_err, validate_in_range_real, is_err, validate_in_range_int, validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int, ERR_ALLOC_FAIL
     use, intrinsic :: ieee_arithmetic, only: ieee_next_after, ieee_value, ieee_positive_inf, ieee_negative_inf, ieee_is_finite, ieee_is_nan
     implicit none
     public :: init_random, rand_range
@@ -63,6 +63,30 @@ module f42_utils
     real(real64), parameter :: LOG_2 = log(2.0_real64)
         !! Natural logarithm of 2, used to compute base-2 logarithms in [[f42_utils(module):logx(subroutine)]].
 contains
+
+    !> Opens `filename` on a new unit as a stream, replacing any existing file.
+    !| Sets `ERR_FILE_OPEN` on failure. Use `formatted=.true.` for text output, `.false.` for binary.
+    subroutine open_file(filename, unit, formatted, ierr)
+        character(len=*), intent(in) :: filename
+            !! Path of the file to open
+        integer(int32), intent(out) :: unit
+            !! Newly allocated unit connected to `filename`
+        logical, intent(in) :: formatted
+            !! `.true.` for formatted (text), `.false.` for unformatted (binary) access
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+
+        if (formatted) then
+            open(newunit=unit, file=filename, form='formatted', access='stream', status='replace', iostat=ierr)
+        else
+            open(newunit=unit, file=filename, form='unformatted', access='stream', status='replace', iostat=ierr)
+        end if
+        if (is_err(ierr)) then
+            call set_err(ierr, ERR_FILE_OPEN)
+        end if
+    end subroutine open_file
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Initializes a permutation vector with ascending indices

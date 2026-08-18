@@ -5405,3 +5405,129 @@ def compute_scaled_distance_quantile(distribution, c_const):
     check_err_code(ierr.value)
     _readonly(quantile)
     return quantile
+
+
+#> f42_json:serialize_tox_data_as_flyer_json_c: Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
+def tox_serialize_tox_data_as_flyer_json(
+    filename: str,
+    tissues,
+    family_ids,
+    centroids,
+    gene_ids,
+    genes,
+    gene_to_fam,
+    sorted_gene_to_fam_perm,
+    gene_outliers,
+    gene_species,
+    gene_types
+):
+    """
+    Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
+
+    String arrays (tissues, family_ids, gene_ids, gene_species, gene_types) are
+    passed as fixed-length c_char matrices; their per-element string length is
+    derived from the data and forwarded to the Fortran side.
+    """
+
+    # --- counts ---
+    n_tissues = len(tissues)
+    n_families = len(family_ids)
+    n_genes = len(gene_ids)
+
+    # --- validate consistent lengths before passing raw buffers to Fortran, ---
+    # --- otherwise a too-short array leads to an out-of-bounds read on the Fortran side ---
+    for name, seq in (
+        ("gene_species", gene_species),
+        ("gene_types", gene_types),
+        ("gene_to_fam", gene_to_fam),
+        ("sorted_gene_to_fam_perm", sorted_gene_to_fam_perm),
+        ("gene_outliers", gene_outliers),
+    ):
+        if len(seq) != n_genes:
+            raise ValueError(f"{name} has length {len(seq)}, expected n_genes={n_genes}")
+
+    # --- string arrays as fixed-length c_char matrices (+ their string lengths) ---
+    tissues_matrix, tissue_len = _strings_to_c_char_matrix(tissues)
+    family_ids_matrix, family_id_len = _strings_to_c_char_matrix(family_ids)
+    gene_ids_matrix, gene_id_len = _strings_to_c_char_matrix(gene_ids)
+    gene_species_matrix, gene_species_len = _strings_to_c_char_matrix(gene_species)
+    gene_types_matrix, gene_type_len = _strings_to_c_char_matrix(gene_types)
+
+    # --- numeric arrays (Fortran order where needed) ---
+    centroids = np.asfortranarray(centroids, dtype=np.float64)
+    genes = np.asfortranarray(genes, dtype=np.float64)
+    gene_to_fam = np.ascontiguousarray(gene_to_fam, dtype=np.int32)
+    sorted_gene_to_fam_perm = np.ascontiguousarray(sorted_gene_to_fam_perm, dtype=np.int32)
+    gene_outliers = np.ascontiguousarray(gene_outliers, dtype=np.int32)
+
+    # --- validate matrix shapes match the counts ---
+    if centroids.shape != (n_tissues, n_families):
+        raise ValueError(f"centroids has shape {centroids.shape}, expected ({n_tissues}, {n_families})")
+    if genes.shape != (n_tissues, n_genes):
+        raise ValueError(f"genes has shape {genes.shape}, expected ({n_tissues}, {n_genes})")
+
+    # --- ctypes scalars ---
+    n_tissues_c = ctypes.c_int(n_tissues)
+    n_families_c = ctypes.c_int(n_families)
+    n_genes_c = ctypes.c_int(n_genes)
+    filename_len_c = ctypes.c_int(len(filename))
+    tissue_len_c = ctypes.c_int(tissue_len)
+    family_id_len_c = ctypes.c_int(family_id_len)
+    gene_id_len_c = ctypes.c_int(gene_id_len)
+    gene_species_len_c = ctypes.c_int(gene_species_len)
+    gene_type_len_c = ctypes.c_int(gene_type_len)
+    ierr = ctypes.c_int(0)
+
+    # --- bind argtypes ---
+    f = lib.serialize_tox_data_as_flyer_json_c
+    f.argtypes = [
+        ctypes.c_char_p,                                                # filename
+        ctypes.POINTER(ctypes.c_int),                                   # filename_len
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),                   # tissues (2D)
+        ctypes.POINTER(ctypes.c_int),                                   # tissue_len
+        ctypes.POINTER(ctypes.c_int),                                   # n_tissues
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),                   # family_ids
+        ctypes.POINTER(ctypes.c_int),                                   # family_id_len
+        ctypes.POINTER(ctypes.c_int),                                   # n_families
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # centroids
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),                   # gene_ids
+        ctypes.POINTER(ctypes.c_int),                                   # gene_id_len
+        ctypes.POINTER(ctypes.c_int),                                   # n_genes
+        np.ctypeslib.ndpointer(dtype=np.float64, flags="F_CONTIGUOUS"), # genes
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # gene_to_fam
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # sorted_gene_to_fam_perm
+        np.ctypeslib.ndpointer(dtype=np.int32, flags="C_CONTIGUOUS"),   # gene_outliers
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),                   # gene_species
+        ctypes.POINTER(ctypes.c_int),                                   # gene_species_len
+        np.ctypeslib.ndpointer(flags="F_CONTIGUOUS"),                   # gene_types
+        ctypes.POINTER(ctypes.c_int),                                   # gene_type_len
+        ctypes.POINTER(ctypes.c_int),                                   # ierr
+    ]
+    f.restype = None
+
+    # --- call Fortran ---
+    f(
+        filename.encode("utf-8"),
+        ctypes.byref(filename_len_c),
+        tissues_matrix,
+        ctypes.byref(tissue_len_c),
+        ctypes.byref(n_tissues_c),
+        family_ids_matrix,
+        ctypes.byref(family_id_len_c),
+        ctypes.byref(n_families_c),
+        centroids,
+        gene_ids_matrix,
+        ctypes.byref(gene_id_len_c),
+        ctypes.byref(n_genes_c),
+        genes,
+        gene_to_fam,
+        sorted_gene_to_fam_perm,
+        gene_outliers,
+        gene_species_matrix,
+        ctypes.byref(gene_species_len_c),
+        gene_types_matrix,
+        ctypes.byref(gene_type_len_c),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value)

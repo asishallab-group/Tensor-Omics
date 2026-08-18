@@ -3592,3 +3592,55 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
   result <- tox_scaled_distance_quantile_rcpp(distribution, c_const)
   return(result)
 }
+
+
+#> f42_json:serialize_tox_data_as_flyer_json_c: Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
+#' Serialize TOX-related data to JSON that TOXflyer can handle out of the box.
+#'
+#' @param filename String for output file to serialize to.
+#' @param tissues CharacterVector of tissue names.
+#' @param family_ids CharacterVector of family IDs.
+#' @param gene_ids CharacterVector of gene IDs.
+#' @param gene_species CharacterVector of species names.
+#' @param gene_types CharacterVector of gene type names (ortholog/paralog).
+#' @param centroids NumericMatrix with family centroids.
+#' @param gene_expressions NumericMatrix with gene expressions.
+#' @param gene_to_fam IntegerVector with Gene to family mapping -> each (gene) index holds the index of the assigned family.
+#' @param sorted_gene_to_fam_perm IntegerVector with permutation that sorts `gene_to_fam` (so gene indices sorted by family index).
+#' @param gene_outliers LogicalVector indicating whether a certain gene is an outlier or not.
+#' @return ierr int error code.
+serialize_tox_data_as_flyer_json <-  function(
+    filename, tissues, family_ids, gene_ids, gene_species, gene_types,
+    centroids, gene_expressions,
+    gene_to_fam, sorted_gene_to_fam_perm,
+    gene_outliers
+) {
+  n_tissues <- length(tissues)
+  n_families <- length(family_ids)
+  n_genes <- length(gene_ids)
+
+  # validate consistent lengths/dimensions before passing raw buffers to Fortran,
+  # otherwise a too-short array leads to an out-of-bounds read on the Fortran side
+  stopifnot(
+    "gene_species must have length n_genes (= length(gene_ids))" = length(gene_species) == n_genes,
+    "gene_types must have length n_genes" = length(gene_types) == n_genes,
+    "gene_to_fam must have length n_genes" = length(gene_to_fam) == n_genes,
+    "sorted_gene_to_fam_perm must have length n_genes" = length(sorted_gene_to_fam_perm) == n_genes,
+    "gene_outliers must have length n_genes" = length(gene_outliers) == n_genes,
+    "centroids must be an n_tissues x n_families matrix" =
+      is.matrix(centroids) && nrow(centroids) == n_tissues && ncol(centroids) == n_families,
+    "gene_expressions must be an n_tissues x n_genes matrix" =
+      is.matrix(gene_expressions) && nrow(gene_expressions) == n_tissues && ncol(gene_expressions) == n_genes
+  )
+
+  ierr <- serialize_tox_data_as_flyer_json_rcpp(
+    filename, tissues, family_ids, gene_ids, gene_species, gene_types,
+    centroids, gene_expressions,
+    gene_to_fam, sorted_gene_to_fam_perm,
+    gene_outliers
+  )
+
+  check_err_code(ierr)
+
+  invisible()
+}
