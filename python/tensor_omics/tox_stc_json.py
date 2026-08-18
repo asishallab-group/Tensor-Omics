@@ -116,7 +116,7 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_d_min", "filter_d_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
@@ -179,7 +179,7 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_d_min", "filter_d_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
@@ -221,8 +221,8 @@ def serialize_stc_results_as_json(
         ensemble_eligible_by_dimension,
         ensemble_eligible_by_var_explained,
         allowed_stop_reasons=None,
-        filter_d_min=None,
-        filter_d_max=None,
+        filter_dim_min=None,
+        filter_dim_max=None,
         filter_var_explained_min=None,
         estimated_k_min=None,
         estimated_k_density=None,
@@ -312,11 +312,11 @@ def serialize_stc_results_as_json(
         `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
         for transparency only; this module no longer derives eligibility from it itself,
         see `ensemble_eligible` below
-    filter_d_min : int, optional
+    filter_dim_min : int, optional
         This run's minimum tolerated final intrinsic dimension for reconciliation
         eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
-    filter_d_max : int, optional
+    filter_dim_max : int, optional
         This run's maximum tolerated final intrinsic dimension for reconciliation
         eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
@@ -690,8 +690,8 @@ def serialize_stc_results_as_json(
         reconciliation_mode,
         ctypes.byref(ctypes.c_double(min_overlap_coefficient)),
         allowed_stop_reasons,
-        None if filter_d_min is None else ctypes.byref(ctypes.c_int(filter_d_min)),
-        None if filter_d_max is None else ctypes.byref(ctypes.c_int(filter_d_max)),
+        None if filter_dim_min is None else ctypes.byref(ctypes.c_int(filter_dim_min)),
+        None if filter_dim_max is None else ctypes.byref(ctypes.c_int(filter_dim_max)),
         None if filter_var_explained_min is None else ctypes.byref(ctypes.c_double(filter_var_explained_min)),
         ensemble_eligible,
         ensemble_eligible_by_stop_condition,
@@ -748,8 +748,8 @@ def write_stc_interactive_html_report(
         ensemble_eligible_by_dimension,
         ensemble_eligible_by_var_explained,
         allowed_stop_reasons=None,
-        filter_d_min=None,
-        filter_d_max=None,
+        filter_dim_min=None,
+        filter_dim_max=None,
         filter_var_explained_min=None,
         estimated_k_min=None,
         estimated_k_density=None,
@@ -839,11 +839,11 @@ def write_stc_interactive_html_report(
         `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
         for transparency only; this module no longer derives eligibility from it itself,
         see `ensemble_eligible` below
-    filter_d_min : int, optional
+    filter_dim_min : int, optional
         This run's minimum tolerated final intrinsic dimension for reconciliation
         eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
-    filter_d_max : int, optional
+    filter_dim_max : int, optional
         This run's maximum tolerated final intrinsic dimension for reconciliation
         eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
         `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
@@ -1217,8 +1217,8 @@ def write_stc_interactive_html_report(
         reconciliation_mode,
         ctypes.byref(ctypes.c_double(min_overlap_coefficient)),
         allowed_stop_reasons,
-        None if filter_d_min is None else ctypes.byref(ctypes.c_int(filter_d_min)),
-        None if filter_d_max is None else ctypes.byref(ctypes.c_int(filter_d_max)),
+        None if filter_dim_min is None else ctypes.byref(ctypes.c_int(filter_dim_min)),
+        None if filter_dim_max is None else ctypes.byref(ctypes.c_int(filter_dim_max)),
         None if filter_var_explained_min is None else ctypes.byref(ctypes.c_double(filter_var_explained_min)),
         ensemble_eligible,
         ensemble_eligible_by_stop_condition,

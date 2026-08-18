@@ -73,8 +73,8 @@ Broadly:
   `--min-overlap-coefficient`, `--max-group-size`) is optional, defaulting to the same value
   the underlying kernel documents.
 - `--reconciliation-exclude-stop-reasons` (comma-separated Stop Condition names, e.g.
-  `rejected_immediately`, or `rejected_immediately,rejected_after_stable`), `--filter-d-min`/
-  `--filter-d-max` (an ensemble's *final* intrinsic dimension, both inclusive -- distinct from
+  `rejected_immediately`, or `rejected_immediately,rejected_after_stable`), `--filter-dim-min`/
+  `--filter-dim-max` (an ensemble's *final* intrinsic dimension, both inclusive -- distinct from
   `--d-max`, which bounds dimension *drift* during growth, not the final value), and
   `--filter-var-explained-min` (an ensemble's final classical variance explained,
   `sum(tangent eigenvalues) / (sum(tangent eigenvalues) + normal_error)`) each independently

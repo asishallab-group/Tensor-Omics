@@ -149,7 +149,7 @@ contains
 
     ! --- filter_ensembles_by_dimension --------------------------------------
 
-    !> D=3. d_final = [0,1,2,3]. d_min=2 alone must exclude the first two (0,1), keep the last two.
+    !> D=3. d_final = [0,1,2,3]. filter_dim_min=2 alone must exclude the first two (0,1), keep the last two.
     subroutine test_filter_dimension_d_min_only()
         integer(int32) :: ensemble_d_final(4)
         logical(c_bool)        :: ensemble_has_final(4), eligible(4)
@@ -159,19 +159,19 @@ contains
         ensemble_has_final = .true.
 
         call filter_ensembles_by_dimension(3_int32, 4_int32, ensemble_d_final, ensemble_has_final, &
-                                           d_min=2_int32, eligible=eligible, ierr=ierr)
+                                           filter_dim_min=2_int32, eligible=eligible, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'filter_ensembles_by_dimension failed unexpectedly: ', ierr
             error stop
         end if
 
-        call assert_true(.not. eligible(1), "d_min only: d=0 excluded")
-        call assert_true(.not. eligible(2), "d_min only: d=1 excluded")
-        call assert_true(eligible(3), "d_min only: d=2 included (boundary, inclusive)")
-        call assert_true(eligible(4), "d_min only: d=3 included")
+        call assert_true(.not. eligible(1), "filter_dim_min only: d=0 excluded")
+        call assert_true(.not. eligible(2), "filter_dim_min only: d=1 excluded")
+        call assert_true(eligible(3), "filter_dim_min only: d=2 included (boundary, inclusive)")
+        call assert_true(eligible(4), "filter_dim_min only: d=3 included")
     end subroutine test_filter_dimension_d_min_only
 
-    !> D=3. d_final = [0,1,2,3]. d_max=1 alone must keep the first two (0,1), exclude the last two.
+    !> D=3. d_final = [0,1,2,3]. filter_dim_max=1 alone must keep the first two (0,1), exclude the last two.
     subroutine test_filter_dimension_d_max_only()
         integer(int32) :: ensemble_d_final(4)
         logical(c_bool)        :: ensemble_has_final(4), eligible(4)
@@ -181,19 +181,19 @@ contains
         ensemble_has_final = .true.
 
         call filter_ensembles_by_dimension(3_int32, 4_int32, ensemble_d_final, ensemble_has_final, &
-                                           d_max=1_int32, eligible=eligible, ierr=ierr)
+                                           filter_dim_max=1_int32, eligible=eligible, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'filter_ensembles_by_dimension failed unexpectedly: ', ierr
             error stop
         end if
 
-        call assert_true(eligible(1), "d_max only: d=0 included")
-        call assert_true(eligible(2), "d_max only: d=1 included (boundary, inclusive)")
-        call assert_true(.not. eligible(3), "d_max only: d=2 excluded")
-        call assert_true(.not. eligible(4), "d_max only: d=3 excluded")
+        call assert_true(eligible(1), "filter_dim_max only: d=0 included")
+        call assert_true(eligible(2), "filter_dim_max only: d=1 included (boundary, inclusive)")
+        call assert_true(.not. eligible(3), "filter_dim_max only: d=2 excluded")
+        call assert_true(.not. eligible(4), "filter_dim_max only: d=3 excluded")
     end subroutine test_filter_dimension_d_max_only
 
-    !> D=3. d_final = [0,1,2,3]. d_min=1, d_max=2 together must keep only the middle two.
+    !> D=3. d_final = [0,1,2,3]. filter_dim_min=1, filter_dim_max=2 together must keep only the middle two.
     subroutine test_filter_dimension_both_bounds()
         integer(int32) :: ensemble_d_final(4)
         logical(c_bool)        :: ensemble_has_final(4), eligible(4)
@@ -203,16 +203,16 @@ contains
         ensemble_has_final = .true.
 
         call filter_ensembles_by_dimension(3_int32, 4_int32, ensemble_d_final, ensemble_has_final, &
-                                           d_min=1_int32, d_max=2_int32, eligible=eligible, ierr=ierr)
+                                           filter_dim_min=1_int32, filter_dim_max=2_int32, eligible=eligible, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'filter_ensembles_by_dimension failed unexpectedly: ', ierr
             error stop
         end if
 
-        call assert_true(.not. eligible(1), "both bounds: d=0 excluded (below d_min)")
+        call assert_true(.not. eligible(1), "both bounds: d=0 excluded (below filter_dim_min)")
         call assert_true(eligible(2), "both bounds: d=1 included")
         call assert_true(eligible(3), "both bounds: d=2 included")
-        call assert_true(.not. eligible(4), "both bounds: d=3 excluded (above d_max)")
+        call assert_true(.not. eligible(4), "both bounds: d=3 excluded (above filter_dim_max)")
     end subroutine test_filter_dimension_both_bounds
 
     !> Both bounds absent must be a true no-op -- every ensemble eligible, even one with
@@ -245,11 +245,11 @@ contains
         logical(c_bool)        :: ensemble_has_final(1), eligible(1)
         integer(int32) :: ierr
 
-        ensemble_d_final(1) = 1 ! would satisfy d_min=0/d_max=3 if has_final were true
+        ensemble_d_final(1) = 1 ! would satisfy filter_dim_min=0/filter_dim_max=3 if has_final were true
         ensemble_has_final(1) = .false.
 
         call filter_ensembles_by_dimension(3_int32, 1_int32, ensemble_d_final, ensemble_has_final, &
-                                           d_min=0_int32, d_max=3_int32, eligible=eligible, ierr=ierr)
+                                           filter_dim_min=0_int32, filter_dim_max=3_int32, eligible=eligible, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'filter_ensembles_by_dimension failed unexpectedly: ', ierr
             error stop
@@ -267,11 +267,11 @@ contains
         ensemble_has_final(1) = .true.
 
         call filter_ensembles_by_dimension(1_int32, 1_int32, ensemble_d_final, ensemble_has_final, &
-                                           d_min=0_int32, eligible=eligible, ierr=ierr)
+                                           filter_dim_min=0_int32, eligible=eligible, ierr=ierr)
         call assert_true(is_err(ierr), "dimension filter: n_dimensions=1 must be rejected (minimum is 2)")
     end subroutine test_filter_dimension_invalid_n_dimensions
 
-    !> d_min > d_max is not itself validated (each bound is independently checked against
+    !> filter_dim_min > filter_dim_max is not itself validated (each bound is independently checked against
     !| [0, n_dimensions], not against each other) -- the combination is simply, and correctly,
     !| unsatisfiable by construction: every ensemble ends up ineligible.
     subroutine test_filter_dimension_d_min_exceeds_d_max_still_computes()
@@ -283,13 +283,13 @@ contains
         ensemble_has_final = .true.
 
         call filter_ensembles_by_dimension(2_int32, 3_int32, ensemble_d_final, ensemble_has_final, &
-                                           d_min=2_int32, d_max=1_int32, eligible=eligible, ierr=ierr)
+                                           filter_dim_min=2_int32, filter_dim_max=1_int32, eligible=eligible, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'filter_ensembles_by_dimension failed unexpectedly: ', ierr
             error stop
         end if
 
-        call assert_true(.not. any(eligible), "d_min > d_max: unsatisfiable, every ensemble ineligible")
+        call assert_true(.not. any(eligible), "filter_dim_min > filter_dim_max: unsatisfiable, every ensemble ineligible")
     end subroutine test_filter_dimension_d_min_exceeds_d_max_still_computes
 
     ! --- filter_ensembles_by_var_explained ----------------------------------
@@ -427,7 +427,7 @@ contains
 
     !> D=2, o=1, 4 ensembles, each failing a *different* single criterion (or none):
     !| E1: fails stop condition (rejected_immediately, disallowed).
-    !| E2: fails dimension (d=2, d_max=1).
+    !| E2: fails dimension (d=2, filter_dim_max=1).
     !| E3: fails variance explained (S=[1,10] -> ve=1/101 < 0.5).
     !| E4: passes every criterion.
     !| All four masks must be asserted independently, plus the combined `eligible`.
@@ -452,7 +452,7 @@ contains
         ensemble_S_history(:, 1, 3) = [1.0d0, 10.0d0] ! ve = 1/101, fails var_explained_min=0.5
         ensemble_S_history(:, 1, 4) = [10.0d0, 1.0d0]
 
-        ensemble_d_history(1, 2) = 2 ! fails d_max=1
+        ensemble_d_history(1, 2) = 2 ! fails filter_dim_max=1
 
         ensemble_stop_reason = STOP_REASON_FIXED_POINT
         ensemble_stop_reason(1) = STOP_REASON_REJECTED_IMMEDIATELY
@@ -461,7 +461,7 @@ contains
 
         call filter_ensembles(2_int32, 1_int32, 4_int32, ensemble_U_history, ensemble_d_history, ensemble_S_history, &
                               ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, &
-                              ensemble_stop_reason, allowed_stop_reasons=allowed, d_max=1_int32, &
+                              ensemble_stop_reason, allowed_stop_reasons=allowed, filter_dim_max=1_int32, &
                               var_explained_min=0.5d0, eligible=eligible, &
                               eligible_by_stop_condition=eligible_by_stop_condition, &
                               eligible_by_dimension=eligible_by_dimension, &
@@ -496,7 +496,7 @@ contains
         call assert_true(eligible(4), "combined: ensemble 4 overall eligible")
     end subroutine test_filter_ensembles_combined_different_criteria
 
-    !> Omitting every optional filter (`allowed_stop_reasons`/`d_min`/`d_max`/
+    !> Omitting every optional filter (`allowed_stop_reasons`/`filter_dim_min`/`filter_dim_max`/
     !| `var_explained_min`) must leave every ensemble eligible under all four masks, matching
     !| each individual filter's own no-op convention.
     subroutine test_filter_ensembles_all_omitted_is_noop()

@@ -68,7 +68,7 @@ _lib.ensemble_reconciliation_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_RECONCILIATION_ARGUMENTS = ("ensemble_masks", "ensemble_stop_reason", "n_dimensions", "n_vectors", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "o", "mode", "min_overlap_coefficient", "report_overlap_coefficient", "allowed_stop_reasons", "d_min", "d_max", "var_explained_min", "max_group_size", "super_ensembles", "n_super_ensembles", "super_ensembles_overlap_coefficient", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr",)
+_ENSEMBLE_RECONCILIATION_ARGUMENTS = ("ensemble_masks", "ensemble_stop_reason", "n_dimensions", "n_vectors", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "o", "mode", "min_overlap_coefficient", "report_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "var_explained_min", "max_group_size", "super_ensembles", "n_super_ensembles", "super_ensembles_overlap_coefficient", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _ENSEMBLE_RECONCILIATION_ARGUMENT_SOURCES = (None, None, "ensemble_U_history", "ensemble_masks", "ensemble_masks", None, None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, "super_ensembles", None, None, None, None, None, None, None, None,)
 
@@ -108,8 +108,8 @@ def ensemble_reconciliation(
         min_overlap_coefficient=0.9,
         report_overlap_coefficient=False,
         allowed_stop_reasons=None,
-        d_min=None,
-        d_max=None,
+        filter_dim_min=None,
+        filter_dim_max=None,
         var_explained_min=None,
 ):
     r"""Filter eligible ensembles, then group/report their intersections
@@ -157,12 +157,12 @@ def ensemble_reconciliation(
     allowed_stop_reasons : np.ndarray[np.bool_] of shape (4,), optional
         See `tox_shape_truthful_clustering_filter_impl`'s own
         `filter_ensembles_by_stop_condition_impl`
-    d_min : int, optional
+    filter_dim_min : int, optional
         See `tox_shape_truthful_clustering_filter_impl`'s own
         `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
-    d_max : int, optional
+    filter_dim_max : int, optional
         See `tox_shape_truthful_clustering_filter_impl`'s own
         `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
@@ -402,8 +402,8 @@ def ensemble_reconciliation(
         ctypes.byref(ctypes.c_double(min_overlap_coefficient)),
         ctypes.byref(ctypes.c_bool(report_overlap_coefficient)),
         allowed_stop_reasons,
-        None if d_min is None else ctypes.byref(ctypes.c_int(d_min)),
-        None if d_max is None else ctypes.byref(ctypes.c_int(d_max)),
+        None if filter_dim_min is None else ctypes.byref(ctypes.c_int(filter_dim_min)),
+        None if filter_dim_max is None else ctypes.byref(ctypes.c_int(filter_dim_max)),
         None if var_explained_min is None else ctypes.byref(ctypes.c_double(var_explained_min)),
         ctypes.byref(ctypes.c_int(max_group_size)),
         super_ensembles,

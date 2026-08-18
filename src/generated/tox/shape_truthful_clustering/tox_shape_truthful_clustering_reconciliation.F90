@@ -64,8 +64,8 @@ contains
             min_overlap_coefficient,&
             report_overlap_coefficient,&
             allowed_stop_reasons,&
-            d_min,&
-            d_max,&
+            filter_dim_min,&
+            filter_dim_max,&
             var_explained_min,&
             max_group_size,&
             super_ensembles,&
@@ -147,12 +147,12 @@ contains
         logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_stop_condition_impl`
-        integer(int32), intent(in), optional :: d_min
+        integer(int32), intent(in), optional :: filter_dim_min
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_dimension_impl`
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: d_max
+        integer(int32), intent(in), optional :: filter_dim_max
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_dimension_impl`
             !! The minimum valid value is `0_int32`.
@@ -205,8 +205,8 @@ contains
         call validate_in_range_int(n_ensembles, ierr, arg_pos=5_int32, min=2_int32)
         call validate_in_range_int(o, ierr, arg_pos=13_int32, min=1_int32)
         call validate_in_range_real(min_overlap_coefficient, ierr, arg_pos=15_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_int(d_min, ierr, arg_pos=18_int32, min=0_int32, max=n_dimensions)
-        call validate_in_range_int(d_max, ierr, arg_pos=19_int32, min=0_int32, max=n_dimensions)
+        call validate_in_range_int(filter_dim_min, ierr, arg_pos=18_int32, min=0_int32, max=n_dimensions)
+        call validate_in_range_int(filter_dim_max, ierr, arg_pos=19_int32, min=0_int32, max=n_dimensions)
         call validate_in_range_real(var_explained_min, ierr, arg_pos=20_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(max_group_size, ierr, arg_pos=21_int32, min=2_int32, max=n_ensembles)
         call validate_all_in_range_int(ensemble_stop_reason, n_ensembles, ierr, arg_pos=2_int32, min=1_int32, max=4_int32)
@@ -236,8 +236,8 @@ contains
             min_overlap_coefficient = min_overlap_coefficient,&
             report_overlap_coefficient = report_overlap_coefficient,&
             allowed_stop_reasons = allowed_stop_reasons,&
-            d_min = d_min,&
-            d_max = d_max,&
+            filter_dim_min = filter_dim_min,&
+            filter_dim_max = filter_dim_max,&
             var_explained_min = var_explained_min,&
             max_group_size = max_group_size,&
             super_ensembles = super_ensembles,&

@@ -50,20 +50,20 @@ SEXP filter_ensembles_by_stop_condition_call(SEXP ensemble_stop_reason, SEXP all
     return _out;
 }
 
-SEXP filter_ensembles_by_dimension_call(SEXP n_dimensions, SEXP ensemble_d_final, SEXP ensemble_has_final, SEXP d_min, SEXP d_max) {
+SEXP filter_ensembles_by_dimension_call(SEXP n_dimensions, SEXP ensemble_d_final, SEXP ensemble_has_final, SEXP filter_dim_min, SEXP filter_dim_max) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
-    const int* d_min_p = NULL;
-    int d_min_size = 0;
-    if (d_min != R_NilValue) {
-        d_min_size = (int) Rf_length(d_min);
-        d_min_p = INTEGER(d_min);
+    const int* filter_dim_min_p = NULL;
+    int filter_dim_min_size = 0;
+    if (filter_dim_min != R_NilValue) {
+        filter_dim_min_size = (int) Rf_length(filter_dim_min);
+        filter_dim_min_p = INTEGER(filter_dim_min);
     }
-    const int* d_max_p = NULL;
-    int d_max_size = 0;
-    if (d_max != R_NilValue) {
-        d_max_size = (int) Rf_length(d_max);
-        d_max_p = INTEGER(d_max);
+    const int* filter_dim_max_p = NULL;
+    int filter_dim_max_size = 0;
+    if (filter_dim_max != R_NilValue) {
+        filter_dim_max_size = (int) Rf_length(filter_dim_max);
+        filter_dim_max_p = INTEGER(filter_dim_max);
     }
 
     // derived from the inputs, not asked of the caller
@@ -84,8 +84,8 @@ SEXP filter_ensembles_by_dimension_call(SEXP n_dimensions, SEXP ensemble_d_final
         &n_ensembles,
         INTEGER(ensemble_d_final),
         ensemble_has_final_c,
-        d_min_p,
-        d_max_p,
+        filter_dim_min_p,
+        filter_dim_max_p,
         eligible_c,
         &ierr
     );
@@ -151,24 +151,24 @@ SEXP filter_ensembles_by_var_explained_call(SEXP ensemble_S_final, SEXP ensemble
     return _out;
 }
 
-SEXP filter_ensembles_call(SEXP ensemble_U_history, SEXP ensemble_d_history, SEXP ensemble_S_history, SEXP ensemble_mu_history, SEXP ensemble_G_history, SEXP ensemble_k_history, SEXP ensemble_accepted_history, SEXP ensemble_stop_reason, SEXP allowed_stop_reasons, SEXP d_min, SEXP d_max, SEXP var_explained_min) {
+SEXP filter_ensembles_call(SEXP ensemble_U_history, SEXP ensemble_d_history, SEXP ensemble_S_history, SEXP ensemble_mu_history, SEXP ensemble_G_history, SEXP ensemble_k_history, SEXP ensemble_accepted_history, SEXP ensemble_stop_reason, SEXP allowed_stop_reasons, SEXP filter_dim_min, SEXP filter_dim_max, SEXP var_explained_min) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
     int allowed_stop_reasons_size = 0;
     if (allowed_stop_reasons != R_NilValue) {
         allowed_stop_reasons_size = (int) Rf_length(allowed_stop_reasons);
     }
-    const int* d_min_p = NULL;
-    int d_min_size = 0;
-    if (d_min != R_NilValue) {
-        d_min_size = (int) Rf_length(d_min);
-        d_min_p = INTEGER(d_min);
+    const int* filter_dim_min_p = NULL;
+    int filter_dim_min_size = 0;
+    if (filter_dim_min != R_NilValue) {
+        filter_dim_min_size = (int) Rf_length(filter_dim_min);
+        filter_dim_min_p = INTEGER(filter_dim_min);
     }
-    const int* d_max_p = NULL;
-    int d_max_size = 0;
-    if (d_max != R_NilValue) {
-        d_max_size = (int) Rf_length(d_max);
-        d_max_p = INTEGER(d_max);
+    const int* filter_dim_max_p = NULL;
+    int filter_dim_max_size = 0;
+    if (filter_dim_max != R_NilValue) {
+        filter_dim_max_size = (int) Rf_length(filter_dim_max);
+        filter_dim_max_p = INTEGER(filter_dim_max);
     }
     const double* var_explained_min_p = NULL;
     int var_explained_min_size = 0;
@@ -206,8 +206,8 @@ SEXP filter_ensembles_call(SEXP ensemble_U_history, SEXP ensemble_d_history, SEX
         ensemble_accepted_history_c,
         INTEGER(ensemble_stop_reason),
         allowed_stop_reasons != R_NilValue ? allowed_stop_reasons_c : NULL,
-        d_min_p,
-        d_max_p,
+        filter_dim_min_p,
+        filter_dim_max_p,
         var_explained_min_p,
         eligible_c,
         eligible_by_stop_condition_c,

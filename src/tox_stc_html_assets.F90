@@ -277,9 +277,9 @@ module tox_stc_html_assets
         've a minimum Overlap Coefficient, or merge on any intersection.",'//achar(10)//'    min_overlap_coefficient: "Minimum Overlap Coefficient required to merge two ensembles '//&
         'in ''merge_overlap_coefficient'' mode. 0-1.",'//achar(10)//'    excluded_stop_reasons: "Stop Conditions excluded from ensemble_reconciliation''s own me'//&
         'rging — those ensembles still exist everywhere else in this report, they just cannot join '//'a super-ensemble or appear in the overlap-coefficient matrix.",'//achar(10)//&
-        '    filter_d_min: "Minimum final intrinsic dimension (inclusive) required for an ensemble '//'to be eligible for merging. Ensembles below this are still reported everywhere, just exclu'//'ded from reconciliation.",'//&
-        achar(10)//'    filter_d_max: "Maximum final intrinsic dimension (inclusive) required for an ensemble '//'to be eligible for merging. Distinct from d_max above, which bounds dimension drift during'//&
-        ' growth, not the final value.",'//achar(10)//'    filter_var_explained_min: "Minimum final classical variance explained (tangent eigenva'//&
+        '    filter_dim_min: "Minimum final intrinsic dimension (inclusive) required for an ensembl'//'e to be eligible for merging. Ensembles below this are still reported everywhere, just exc'//'luded from reconciliation.",'//&
+        achar(10)//'    filter_dim_max: "Maximum final intrinsic dimension (inclusive) required for an ensembl'//'e to be eligible for merging. Distinct from d_max above, which bounds dimension drift duri'//&
+        'ng growth, not the final value.",'//achar(10)//'    filter_var_explained_min: "Minimum final classical variance explained (tangent eigenva'//&
         'lue energy / total energy) required for an ensemble to be eligible for merging — excludes '//'ensembles that mostly ''learned noise''.",'//achar(10)//&
         '    max_group_size: "Maximum number of ensembles one super-ensemble can hold.",'//achar(10)//'    n_vectors: "Number of input data points (ambient vector count), N.",'//&
         achar(10)//'    n_dimensions: "Ambient dimensionality, D.",'//achar(10)//&

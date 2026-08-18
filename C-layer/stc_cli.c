@@ -104,7 +104,7 @@ extern void serialize_stc_results_as_json_c(
     const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a,
     const double *exclusion_radius_percentile, const double *bandwidth_percentile,
     const char *reconciliation_mode, const double *min_overlap_coefficient,
-    const unsigned char *allowed_stop_reasons, const int *filter_d_min, const int *filter_d_max,
+    const unsigned char *allowed_stop_reasons, const int *filter_dim_min, const int *filter_dim_max,
     const double *filter_var_explained_min, const unsigned char *ensemble_eligible,
     const unsigned char *ensemble_eligible_by_stop_condition, const unsigned char *ensemble_eligible_by_dimension,
     const unsigned char *ensemble_eligible_by_var_explained, const int *estimated_k_min,
@@ -128,7 +128,7 @@ extern void write_stc_interactive_html_report_c(
     const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a,
     const double *exclusion_radius_percentile, const double *bandwidth_percentile,
     const char *reconciliation_mode, const double *min_overlap_coefficient,
-    const unsigned char *allowed_stop_reasons, const int *filter_d_min, const int *filter_d_max,
+    const unsigned char *allowed_stop_reasons, const int *filter_dim_min, const int *filter_dim_max,
     const double *filter_var_explained_min, const unsigned char *ensemble_eligible,
     const unsigned char *ensemble_eligible_by_stop_condition, const unsigned char *ensemble_eligible_by_dimension,
     const unsigned char *ensemble_eligible_by_var_explained, const int *estimated_k_min,
@@ -238,8 +238,8 @@ enum {
     OPT_BANDWIDTH_PERCENTILE,
     OPT_RECONCILIATION_MODE,
     OPT_RECONCILIATION_EXCLUDE_STOP_REASONS,
-    OPT_FILTER_D_MIN,
-    OPT_FILTER_D_MAX,
+    OPT_FILTER_DIM_MIN,
+    OPT_FILTER_DIM_MAX,
     OPT_FILTER_VAR_EXPLAINED_MIN,
     OPT_MIN_OVERLAP_COEFFICIENT,
     OPT_REPORT_OVERLAP_COEFFICIENT,
@@ -283,10 +283,10 @@ struct arguments {
     int a;
     const char *reconciliation_mode;
     const char *reconciliation_exclude_stop_reasons;
-    int have_filter_d_min;
-    int filter_d_min;
-    int have_filter_d_max;
-    int filter_d_max;
+    int have_filter_dim_min;
+    int filter_dim_min;
+    int have_filter_dim_max;
+    int filter_dim_max;
     int have_filter_var_explained_min;
     double filter_var_explained_min;
     double min_overlap_coefficient;
@@ -335,11 +335,11 @@ static struct argp_option options[] = {
      "Comma-separated Stop Conditions to exclude from reconciliation entirely (never merged, never "
      "in overlap_coefficient_matrix -- still reported everywhere else): any of "
      "max_size,rejected_after_stable,rejected_immediately,fixed_point (default: none excluded)", 2},
-    {"filter-d-min", OPT_FILTER_D_MIN, "N", 0,
+    {"filter-dim-min", OPT_FILTER_DIM_MIN, "N", 0,
      "Minimum tolerated final intrinsic dimension for reconciliation eligibility, inclusive "
      "(default: no lower bound) -- distinct from --d-max, which bounds dimension *drift* during "
      "growth, not the final dimension's own value", 2},
-    {"filter-d-max", OPT_FILTER_D_MAX, "N", 0,
+    {"filter-dim-max", OPT_FILTER_DIM_MAX, "N", 0,
      "Maximum tolerated final intrinsic dimension for reconciliation eligibility, inclusive "
      "(default: no upper bound)", 2},
     {"filter-var-explained-min", OPT_FILTER_VAR_EXPLAINED_MIN, "FRACTION", 0,
@@ -401,8 +401,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
         case OPT_RECONCILIATION_MODE: args->reconciliation_mode = arg; break;
         case OPT_RECONCILIATION_EXCLUDE_STOP_REASONS: args->reconciliation_exclude_stop_reasons = arg; break;
-        case OPT_FILTER_D_MIN: args->filter_d_min = atoi(arg); args->have_filter_d_min = 1; break;
-        case OPT_FILTER_D_MAX: args->filter_d_max = atoi(arg); args->have_filter_d_max = 1; break;
+        case OPT_FILTER_DIM_MIN: args->filter_dim_min = atoi(arg); args->have_filter_dim_min = 1; break;
+        case OPT_FILTER_DIM_MAX: args->filter_dim_max = atoi(arg); args->have_filter_dim_max = 1; break;
         case OPT_FILTER_VAR_EXPLAINED_MIN:
             args->filter_var_explained_min = atof(arg);
             args->have_filter_var_explained_min = 1;
@@ -621,8 +621,8 @@ int main(int argc, char **argv) {
         parse_allowed_stop_reasons(args.reconciliation_exclude_stop_reasons, allowed_stop_reasons_buf);
         allowed_stop_reasons_p = allowed_stop_reasons_buf;
     }
-    const int *filter_d_min_p = args.have_filter_d_min ? &args.filter_d_min : NULL;
-    const int *filter_d_max_p = args.have_filter_d_max ? &args.filter_d_max : NULL;
+    const int *filter_dim_min_p = args.have_filter_dim_min ? &args.filter_dim_min : NULL;
+    const int *filter_dim_max_p = args.have_filter_dim_max ? &args.filter_dim_max : NULL;
     const double *filter_var_explained_min_p =
         args.have_filter_var_explained_min ? &args.filter_var_explained_min : NULL;
 
@@ -662,7 +662,7 @@ int main(int argc, char **argv) {
                                   ensemble_mu_history, ensemble_G_history, ensemble_k_history,
                                   ensemble_accepted_history, &args.o, mode_buf,
                                   &args.min_overlap_coefficient, &report_oc, allowed_stop_reasons_p,
-                                  filter_d_min_p, filter_d_max_p, filter_var_explained_min_p, &max_group_size,
+                                  filter_dim_min_p, filter_dim_max_p, filter_var_explained_min_p, &max_group_size,
                                   super_ensembles, &n_super_ensembles, super_ensembles_overlap_coefficient,
                                   ensemble_eligible, ensemble_eligible_by_stop_condition,
                                   ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained,
@@ -702,7 +702,7 @@ int main(int argc, char **argv) {
         super_ensembles, &effective_k_min, &effective_k_density,
         &effective_chordal, &effective_d_max, &effective_G_max, &args.RMSE_change_max, &args.f_max,
         &args.a, &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
-        &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_d_min_p, filter_d_max_p,
+        &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_dim_min_p, filter_dim_max_p,
         filter_var_explained_min_p, ensemble_eligible, ensemble_eligible_by_stop_condition,
         ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p, estimated_k_density_p,
         estimated_density_quantile_p, estimated_chordal_p, estimated_G_max_p, estimated_d_max_p, &ierr);
@@ -721,7 +721,7 @@ int main(int argc, char **argv) {
         super_ensembles, &effective_k_min, &effective_k_density,
         &effective_chordal, &effective_d_max, &effective_G_max, &args.RMSE_change_max, &args.f_max,
         &args.a, &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
-        &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_d_min_p, filter_d_max_p,
+        &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_dim_min_p, filter_dim_max_p,
         filter_var_explained_min_p, ensemble_eligible, ensemble_eligible_by_stop_condition,
         ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p, estimated_k_density_p,
         estimated_density_quantile_p, estimated_chordal_p, estimated_G_max_p, estimated_d_max_p, &ierr);

@@ -121,6 +121,22 @@ greedy anchor selection). `misc/mod_STC.md` is the sole, authoritative implement
 `misc/STC_current_algorithm_draft.md` remain as earlier-draft/LoManLe-integration-rationale
 references only -- implement against `mod_STC.md`.
 
+**Think big, always, with STC.** It is written in Fortran, and built on the `pure`/SoA/kernel
+(now `_impl`) discipline this whole codebase enforces, specifically so it can scale to the
+dataset sizes bioinformatics, modern data science, and ML/AI actually produce -- not just the
+few-hundred-to-few-thousand-point research datasets it is developed and tested against today.
+Clustering is about as universal a primitive as exists in that world, and STC is meant to be
+adopted at large and very large scale, not stay a research-scale prototype. This shapes every
+STC design decision, not only the numeric kernels: a change that works today but would not
+survive a dataset a few orders of magnitude larger is worth flagging as a scaling concern even
+when nothing forces fixing it immediately. Concretely already decided on this basis: once a
+locally-growing ensemble gets large, `observable`'s from-scratch SVD recomputation every growth
+iteration should give way to an incremental/approximate update (Brand's algorithm) rather than
+staying an `O(ensemble size squared)` recompute -- see `misc/mod_STC.md`'s own complexity
+section for the detailed accounting. The same lens applies to the interactive report and any
+future 3+D visualization work: point counts, rendering technique, and interaction model should
+all be chosen with an eye toward where STC is headed, not only where today's fixtures sit.
+
 Implementation modules, one per major step, under `src/tox/shape_truthful_clustering/`
 (migrated from the pre-`131-codegen-new` `src/kernel/shape_truthful_clustering/`
 `_kernel`-suffixed layout on 2026-08-17 -- same shape, `_kernel` renamed to `_impl`

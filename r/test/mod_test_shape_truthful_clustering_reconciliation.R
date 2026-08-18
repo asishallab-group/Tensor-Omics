@@ -32,7 +32,7 @@ stop_reasons <- function() rep(STOP_REASON_FIXED_POINT, 6)
 
 # Minimal, uniform D=2/o=1 history for 6 ensembles -- ensemble_reconciliation's new required
 # history arguments, needed only to drive the dimension/variance-explained filters, which none
-# of the tests below (other than the dedicated d_min/d_max/var_explained_min ones) exercise.
+# of the tests below (other than the dedicated filter_dim_min/filter_dim_max/var_explained_min ones) exercise.
 history_fixture <- function() {
   n_e <- 6
   list(
@@ -193,13 +193,13 @@ test_allowed_stop_reasons_noop_when_no_ensemble_matches <- function() {
 }
 
 test_dimension_filter_excludes_pair <- function() {
-  # Ensemble 5's final intrinsic dimension (2) exceeds d_max=1 (the rest are d=1); excluding it
+  # Ensemble 5's final intrinsic dimension (2) exceeds filter_dim_max=1 (the rest are d=1); excluding it
   # must drop the (5,6) pair from report mode's output.
   h <- history_fixture()
   h$ensemble_d_history[1, ] <- 1L
   h$ensemble_d_history[1, 5] <- 2L
 
-  res <- reconcile(fixture(), stop_reasons(), hist = h, mode = "report", d_max = 1L, max_group_size = 2)
+  res <- reconcile(fixture(), stop_reasons(), hist = h, mode = "report", filter_dim_max = 1L, max_group_size = 2)
 
   assert_true(res$n_super_ensembles == 2)
   assert_true(all(res$super_ensembles[, 1] == c(1, 2)))

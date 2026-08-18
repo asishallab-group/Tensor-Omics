@@ -89,14 +89,14 @@ contains
     end subroutine filter_ensembles_by_stop_condition_c
 
     !> summary: C-wrapper for [[tox_shape_truthful_clustering_filter(module):filter_ensembles_by_dimension(subroutine)]]
-    !| `d_min <= d <= d_max`, both inclusive, each independently optional (an absent bound
+    !| `filter_dim_min <= d <= filter_dim_max`, both inclusive, each independently optional (an absent bound
     !| contributes no constraint on that side). An ensemble with no final accepted state at all
     !| (`ensemble_has_final(e)` false) is never eligible under this criterion once at least one
-    !| of `d_min`/`d_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
+    !| of `filter_dim_min`/`filter_dim_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
     !| no-op (every ensemble eligible, `ensemble_has_final` not even consulted), matching
     !| `filter_ensembles_by_stop_condition_impl`'s own "omitted means unconstrained"
-    !| convention. `d_min` could in principle default to `0_int32` (a genuine constant
-    !| expression), but is left nullable like `d_max` (whose own natural default, `n_dimensions`,
+    !| convention. `filter_dim_min` could in principle default to `0_int32` (a genuine constant
+    !| expression), but is left nullable like `filter_dim_max` (whose own natural default, `n_dimensions`,
     !| is a runtime value and so cannot be a generated default) rather than have the two bounds
     !| of one range behave asymmetrically.
     subroutine filter_ensembles_by_dimension_c(&
@@ -104,8 +104,8 @@ contains
             n_ensembles,&
             ensemble_d_final,&
             ensemble_has_final,&
-            d_min,&
-            d_max,&
+            filter_dim_min,&
+            filter_dim_max,&
             eligible,&
             ierr&
         ) bind(C, name="filter_ensembles_by_dimension_c")
@@ -125,11 +125,11 @@ contains
         logical(c_bool), dimension(n_ensembles), intent(in), target :: ensemble_has_final
             !! Whether each ensemble has a final accepted state at all, see
             !! `ensemble_final_observable`
-        integer(c_int), intent(in), optional :: d_min
+        integer(c_int), intent(in), optional :: filter_dim_min
             !! Minimum tolerated final intrinsic dimension, inclusive
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(c_int), intent(in), optional :: d_max
+        integer(c_int), intent(in), optional :: filter_dim_max
             !! Maximum tolerated final intrinsic dimension, inclusive
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_dimensions`.
@@ -151,8 +151,8 @@ contains
             n_ensembles = n_ensembles,&
             ensemble_d_final = ensemble_d_final,&
             ensemble_has_final = ensemble_has_final,&
-            d_min = d_min,&
-            d_max = d_max,&
+            filter_dim_min = filter_dim_min,&
+            filter_dim_max = filter_dim_max,&
             eligible = eligible,&
             ierr = ierr&
         )
@@ -240,7 +240,7 @@ contains
     !| with a plain logical AND. Also returns the three individual masks, not just the
     !| combination -- so a caller (the report, in particular) can say *which* criterion excluded
     !| a given ensemble, not merely that one did. Supplying none of `allowed_stop_reasons`/
-    !| `d_min`/`d_max`/`var_explained_min` makes every ensemble eligible (all four masks
+    !| `filter_dim_min`/`filter_dim_max`/`var_explained_min` makes every ensemble eligible (all four masks
     !| all-`.true.`), matching each individual filter's own no-op convention.
     subroutine filter_ensembles_c(&
             n_dimensions,&
@@ -255,8 +255,8 @@ contains
             ensemble_accepted_history,&
             ensemble_stop_reason,&
             allowed_stop_reasons,&
-            d_min,&
-            d_max,&
+            filter_dim_min,&
+            filter_dim_max,&
             var_explained_min,&
             eligible,&
             eligible_by_stop_condition,&
@@ -296,11 +296,11 @@ contains
             !! The maximum valid value is `4_int32`.
         logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
             !! See `filter_ensembles_by_stop_condition_impl`
-        integer(c_int), intent(in), optional :: d_min
+        integer(c_int), intent(in), optional :: filter_dim_min
             !! See `filter_ensembles_by_dimension_impl`
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(c_int), intent(in), optional :: d_max
+        integer(c_int), intent(in), optional :: filter_dim_max
             !! See `filter_ensembles_by_dimension_impl`
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_dimensions`.
@@ -350,8 +350,8 @@ contains
             ensemble_accepted_history = ensemble_accepted_history,&
             ensemble_stop_reason = ensemble_stop_reason,&
             allowed_stop_reasons = allowed_stop_reasons,&
-            d_min = d_min,&
-            d_max = d_max,&
+            filter_dim_min = filter_dim_min,&
+            filter_dim_max = filter_dim_max,&
             var_explained_min = var_explained_min,&
             eligible = eligible,&
             eligible_by_stop_condition = eligible_by_stop_condition,&

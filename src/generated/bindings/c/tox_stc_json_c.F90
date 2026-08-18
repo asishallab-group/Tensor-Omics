@@ -102,8 +102,8 @@ contains
             reconciliation_mode,&
             min_overlap_coefficient,&
             allowed_stop_reasons,&
-            filter_d_min,&
-            filter_d_max,&
+            filter_dim_min,&
+            filter_dim_max,&
             filter_var_explained_min,&
             ensemble_eligible,&
             ensemble_eligible_by_stop_condition,&
@@ -216,11 +216,11 @@ contains
             !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
             !! for transparency only; this module no longer derives eligibility from it itself,
             !! see `ensemble_eligible` below
-        integer(c_int), intent(in), optional :: filter_d_min
+        integer(c_int), intent(in), optional :: filter_dim_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
-        integer(c_int), intent(in), optional :: filter_d_max
+        integer(c_int), intent(in), optional :: filter_dim_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
@@ -361,8 +361,8 @@ contains
             reconciliation_mode = reconciliation_mode_mode_f,&
             min_overlap_coefficient = min_overlap_coefficient,&
             allowed_stop_reasons = allowed_stop_reasons,&
-            filter_d_min = filter_d_min,&
-            filter_d_max = filter_d_max,&
+            filter_dim_min = filter_dim_min,&
+            filter_dim_max = filter_dim_max,&
             filter_var_explained_min = filter_var_explained_min,&
             ensemble_eligible = ensemble_eligible,&
             ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition,&
@@ -422,8 +422,8 @@ contains
             reconciliation_mode,&
             min_overlap_coefficient,&
             allowed_stop_reasons,&
-            filter_d_min,&
-            filter_d_max,&
+            filter_dim_min,&
+            filter_dim_max,&
             filter_var_explained_min,&
             ensemble_eligible,&
             ensemble_eligible_by_stop_condition,&
@@ -536,11 +536,11 @@ contains
             !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
             !! for transparency only; this module no longer derives eligibility from it itself,
             !! see `ensemble_eligible` below
-        integer(c_int), intent(in), optional :: filter_d_min
+        integer(c_int), intent(in), optional :: filter_dim_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
-        integer(c_int), intent(in), optional :: filter_d_max
+        integer(c_int), intent(in), optional :: filter_dim_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
@@ -681,8 +681,8 @@ contains
             reconciliation_mode = reconciliation_mode_mode_f,&
             min_overlap_coefficient = min_overlap_coefficient,&
             allowed_stop_reasons = allowed_stop_reasons,&
-            filter_d_min = filter_d_min,&
-            filter_d_max = filter_d_max,&
+            filter_dim_min = filter_dim_min,&
+            filter_dim_max = filter_dim_max,&
             filter_var_explained_min = filter_var_explained_min,&
             ensemble_eligible = ensemble_eligible,&
             ensemble_eligible_by_stop_condition = ensemble_eligible_by_stop_condition,&

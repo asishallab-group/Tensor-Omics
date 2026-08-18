@@ -62,7 +62,7 @@ test_filter_dimension_d_min_only <- function() {
   d_final <- c(0L, 1L, 2L, 3L)
   has_final <- rep(TRUE, 4)
 
-  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, d_min = 2L)
+  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, filter_dim_min = 2L)
 
   assert_true(!eligible[1])
   assert_true(!eligible[2])
@@ -74,7 +74,7 @@ test_filter_dimension_d_max_only <- function() {
   d_final <- c(0L, 1L, 2L, 3L)
   has_final <- rep(TRUE, 4)
 
-  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, d_max = 1L)
+  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, filter_dim_max = 1L)
 
   assert_true(eligible[1])
   assert_true(eligible[2])
@@ -86,7 +86,7 @@ test_filter_dimension_both_bounds <- function() {
   d_final <- c(0L, 1L, 2L, 3L)
   has_final <- rep(TRUE, 4)
 
-  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, d_min = 1L, d_max = 2L)
+  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, filter_dim_min = 1L, filter_dim_max = 2L)
 
   assert_true(!eligible[1])
   assert_true(eligible[2])
@@ -107,7 +107,7 @@ test_filter_dimension_no_final_excluded_once_bound_present <- function() {
   d_final <- c(1L)
   has_final <- c(FALSE)
 
-  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, d_min = 0L, d_max = 3L)
+  eligible <- filter_ensembles_by_dimension(3L, d_final, has_final, filter_dim_min = 0L, filter_dim_max = 3L)
 
   assert_true(!eligible[1])
 }
@@ -115,16 +115,16 @@ test_filter_dimension_no_final_excluded_once_bound_present <- function() {
 test_filter_dimension_invalid_n_dimensions <- function() {
   d_final <- c(0L)
   has_final <- c(TRUE)
-  assert_error(filter_ensembles_by_dimension(1L, d_final, has_final, d_min = 0L),
+  assert_error(filter_ensembles_by_dimension(1L, d_final, has_final, filter_dim_min = 0L),
                "n_dimensions=1 must be rejected (minimum is 2)", ERR_INVALID_INPUT)
 }
 
 test_filter_dimension_d_min_exceeds_d_max_still_computes <- function() {
-  # d_min > d_max is not itself validated -- simply unsatisfiable, every ensemble ineligible.
+  # filter_dim_min > filter_dim_max is not itself validated -- simply unsatisfiable, every ensemble ineligible.
   d_final <- c(0L, 1L, 2L)
   has_final <- rep(TRUE, 3)
 
-  eligible <- filter_ensembles_by_dimension(2L, d_final, has_final, d_min = 2L, d_max = 1L)
+  eligible <- filter_ensembles_by_dimension(2L, d_final, has_final, filter_dim_min = 2L, filter_dim_max = 1L)
 
   assert_true(!any(eligible))
 }
@@ -202,7 +202,7 @@ test_filter_ensembles_combined_different_criteria <- function() {
   k <- array(2L, dim = c(1, 4))
   accepted <- array(TRUE, dim = c(1, 4))
   d <- array(1L, dim = c(1, 4))
-  d[1, 2] <- 2L # ensemble 2 fails d_max=1
+  d[1, 2] <- 2L # ensemble 2 fails filter_dim_max=1
   S <- array(0.0, dim = c(2, 1, 4))
   S[, 1, 1] <- c(10.0, 1.0)
   S[, 1, 2] <- c(10.0, 1.0)
@@ -214,7 +214,7 @@ test_filter_ensembles_combined_different_criteria <- function() {
   allowed <- c(TRUE, TRUE, FALSE, TRUE)
 
   result <- filter_ensembles(U, d, S, mu, G, k, accepted, stop_reason,
-                             allowed_stop_reasons = allowed, d_max = 1L, var_explained_min = 0.5)
+                             allowed_stop_reasons = allowed, filter_dim_max = 1L, var_explained_min = 0.5)
 
   assert_true(!result$eligible_by_stop_condition[1])
   assert_true(result$eligible_by_dimension[1])

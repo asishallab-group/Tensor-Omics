@@ -48,7 +48,7 @@ def _stop_reasons():
 def _history():
     """Minimal, uniform D=2/o=1 history for 6 ensembles -- ensemble_reconciliation's new
     required history arguments, needed only to drive the dimension/variance-explained filters,
-    which none of the tests below (other than the dedicated d_min/d_max/var_explained_min ones)
+    which none of the tests below (other than the dedicated filter_dim_min/filter_dim_max/var_explained_min ones)
     actually exercise. Returns (U, d, S, mu, G, k, accepted)."""
     n_e = 6
     U = np.zeros((2, 2, 1, n_e), dtype=np.float64, order='F')
@@ -197,7 +197,7 @@ def test_allowed_stop_reasons_noop_when_no_ensemble_matches():
 
 
 def test_dimension_filter_excludes_pair():
-    """Ensemble 5's final intrinsic dimension (2) exceeds d_max=1 (the rest are d=1); excluding
+    """Ensemble 5's final intrinsic dimension (2) exceeds filter_dim_max=1 (the rest are d=1); excluding
     it must drop the (5,6) pair from report mode's output, mirroring the stop-condition-filter
     test above but through the dimension filter."""
     U, d, S, mu, G, k, accepted = _history()
@@ -205,7 +205,7 @@ def test_dimension_filter_excludes_pair():
     d[0, 4] = 2  # ensemble 5 (0-indexed 4)
 
     result = _reconcile(_fixture(), _stop_reasons(), 2, history=(U, d, S, mu, G, k, accepted),
-                        mode='report', d_max=1)
+                        mode='report', filter_dim_max=1)
 
     assert result['n_super_ensembles'] == 2
     assert np.array_equal(result['super_ensembles'][:, 0], [1, 2])

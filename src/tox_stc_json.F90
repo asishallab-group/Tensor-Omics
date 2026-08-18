@@ -88,7 +88,7 @@ contains
                                              k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
                                              RMSE_change_max, f_max, a, exclusion_radius_percentile, &
                                              bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
-                                             filter_d_min, filter_d_max, filter_var_explained_min, &
+                                             filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
                                              estimated_k_min, estimated_k_density, estimated_density_quantile, &
@@ -187,11 +187,11 @@ contains
             !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
             !! for transparency only; this module no longer derives eligibility from it itself,
             !! see `ensemble_eligible` below
-        integer(int32), intent(in), optional, target :: filter_d_min
+        integer(int32), intent(in), optional, target :: filter_dim_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
-        integer(int32), intent(in), optional, target :: filter_d_max
+        integer(int32), intent(in), optional, target :: filter_dim_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
@@ -250,7 +250,7 @@ contains
             super_ensembles, &
             k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, &
             exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
-                                             filter_d_min, filter_d_max, filter_var_explained_min, &
+                                             filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
             estimated_k_min, estimated_k_density, estimated_density_quantile, &
@@ -279,7 +279,7 @@ contains
                                                  k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
                                                  RMSE_change_max, f_max, a, exclusion_radius_percentile, &
                                                  bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
-                                             filter_d_min, filter_d_max, filter_var_explained_min, &
+                                             filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
                                                  estimated_k_min, estimated_k_density, estimated_density_quantile, &
@@ -378,11 +378,11 @@ contains
             !! `ensemble_reconciliation` -- reported here (as `params.excluded_stop_reasons`)
             !! for transparency only; this module no longer derives eligibility from it itself,
             !! see `ensemble_eligible` below
-        integer(int32), intent(in), optional, target :: filter_d_min
+        integer(int32), intent(in), optional, target :: filter_dim_min
             !! This run's minimum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_min`; reported for transparency only, same as `allowed_stop_reasons` above
-        integer(int32), intent(in), optional, target :: filter_d_max
+        integer(int32), intent(in), optional, target :: filter_dim_max
             !! This run's maximum tolerated final intrinsic dimension for reconciliation
             !! eligibility, inclusive -- see `tox_shape_truthful_clustering_filter_impl`'s own
             !! `d_max`; reported for transparency only, same as `allowed_stop_reasons` above
@@ -445,7 +445,7 @@ contains
             super_ensembles, &
             k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, &
             exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
-                                             filter_d_min, filter_d_max, filter_var_explained_min, &
+                                             filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
             estimated_k_min, estimated_k_density, estimated_density_quantile, &
@@ -579,7 +579,7 @@ contains
                                             k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
                                             RMSE_change_max, f_max, a, exclusion_radius_percentile, &
                                             bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
-                                             filter_d_min, filter_d_max, filter_var_explained_min, &
+                                             filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
                                             estimated_k_min, estimated_k_density, estimated_density_quantile, &
@@ -623,8 +623,8 @@ contains
         integer(int32), intent(in) :: reconciliation_mode
         real(real64), intent(in), target :: min_overlap_coefficient
         logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
-        integer(int32), intent(in), optional, target :: filter_d_min
-        integer(int32), intent(in), optional, target :: filter_d_max
+        integer(int32), intent(in), optional, target :: filter_dim_min
+        integer(int32), intent(in), optional, target :: filter_dim_max
         real(real64), intent(in), optional, target :: filter_var_explained_min
         logical(c_bool), intent(in), target :: ensemble_eligible(n_selected_seed)
         logical(c_bool), intent(in) :: ensemble_eligible_by_stop_condition(n_selected_seed)
@@ -836,13 +836,13 @@ contains
         if (n_excluded_stop_reasons > 0) &
             excluded_stop_reasons_arr%elements => excluded_stop_reason_names(1:n_excluded_stop_reasons)
         param_values(n_params)%value => excluded_stop_reasons_arr
-        if (present(filter_d_min)) then
-            n_params = n_params + 1; param_keys(n_params) = 'filter_d_min'
-            param_values(n_params)%value => filter_d_min
+        if (present(filter_dim_min)) then
+            n_params = n_params + 1; param_keys(n_params) = 'filter_dim_min'
+            param_values(n_params)%value => filter_dim_min
         end if
-        if (present(filter_d_max)) then
-            n_params = n_params + 1; param_keys(n_params) = 'filter_d_max'
-            param_values(n_params)%value => filter_d_max
+        if (present(filter_dim_max)) then
+            n_params = n_params + 1; param_keys(n_params) = 'filter_dim_max'
+            param_values(n_params)%value => filter_dim_max
         end if
         if (present(filter_var_explained_min)) then
             n_params = n_params + 1; param_keys(n_params) = 'filter_var_explained_min'

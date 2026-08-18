@@ -63,7 +63,7 @@ contains
                                                     ensemble_accepted_history, o, &
                                                     mode, &
                                                     min_overlap_coefficient, report_overlap_coefficient, &
-                                                    allowed_stop_reasons, d_min, d_max, var_explained_min, &
+                                                    allowed_stop_reasons, filter_dim_min, filter_dim_max, var_explained_min, &
                                                     max_group_size, &
                                                     super_ensembles, n_super_ensembles, &
                                                     super_ensembles_overlap_coefficient, &
@@ -129,12 +129,12 @@ contains
         logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_stop_condition_impl`
-        integer(int32), intent(in), optional :: d_min
+        integer(int32), intent(in), optional :: filter_dim_min
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_dimension_impl`
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
-        integer(int32), intent(in), optional :: d_max
+        integer(int32), intent(in), optional :: filter_dim_max
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_dimension_impl`
             !! DM_MIN(0_int32)
@@ -196,7 +196,7 @@ contains
         call filter_ensembles_impl(n_dimensions, o, n_ensembles, &
             ensemble_U_history, ensemble_d_history, ensemble_S_history, &
             ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, &
-            ensemble_stop_reason, allowed_stop_reasons, d_min, d_max, var_explained_min, &
+            ensemble_stop_reason, allowed_stop_reasons, filter_dim_min, filter_dim_max, var_explained_min, &
             eligible, eligible_by_stop_condition, eligible_by_dimension, eligible_by_var_explained)
 
         call merge_to_super_ensembles_impl(ensemble_masks, eligible, n_vectors, n_ensembles, &

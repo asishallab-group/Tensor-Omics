@@ -37,14 +37,14 @@ filter_ensembles_by_stop_condition <- function(ensemble_stop_reason, allowed_sto
 
 #' Ensemble eligibility by final intrinsic dimension
 #'
-#' `d_min <= d <= d_max`, both inclusive, each independently optional (an absent bound
+#' `filter_dim_min <= d <= filter_dim_max`, both inclusive, each independently optional (an absent bound
 #' contributes no constraint on that side). An ensemble with no final accepted state at all
 #' (`ensemble_has_final(e)` false) is never eligible under this criterion once at least one
-#' of `d_min`/`d_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
+#' of `filter_dim_min`/`filter_dim_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
 #' no-op (every ensemble eligible, `ensemble_has_final` not even consulted), matching
 #' `filter_ensembles_by_stop_condition_impl`'s own "omitted means unconstrained"
-#' convention. `d_min` could in principle default to `0` (a genuine constant
-#' expression), but is left nullable like `d_max` (whose own natural default, `n_dimensions`,
+#' convention. `filter_dim_min` could in principle default to `0` (a genuine constant
+#' expression), but is left nullable like `filter_dim_max` (whose own natural default, `n_dimensions`,
 #' is a runtime value and so cannot be a generated default) rather than have the two bounds
 #' of one range behave asymmetrically.
 #'
@@ -59,27 +59,27 @@ filter_ensembles_by_stop_condition <- function(ensemble_stop_reason, allowed_sto
 #'   The maximum valid value is `n_dimensions`.
 #' @param ensemble_has_final a logical vector. Whether each ensemble has a final accepted state at all, see
 #'   `ensemble_final_observable`
-#' @param d_min a integer scalar. Minimum tolerated final intrinsic dimension, inclusive
+#' @param filter_dim_min a integer scalar. Minimum tolerated final intrinsic dimension, inclusive
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param d_max a integer scalar. Maximum tolerated final intrinsic dimension, inclusive
+#' @param filter_dim_max a integer scalar. Maximum tolerated final intrinsic dimension, inclusive
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
 #' @return a logical vector. Per-ensemble eligibility from this criterion alone
 #' @export
-filter_ensembles_by_dimension <- function(n_dimensions, ensemble_d_final, ensemble_has_final, d_min = NULL, d_max = NULL) {
+filter_ensembles_by_dimension <- function(n_dimensions, ensemble_d_final, ensemble_has_final, filter_dim_min = NULL, filter_dim_max = NULL) {
     n_dimensions <- .tox_as_integer_scalar(n_dimensions, "n_dimensions")
     ensemble_d_final <- .tox_as_integer_vector(ensemble_d_final, "ensemble_d_final")
     ensemble_has_final <- .tox_as_logical(ensemble_has_final, "ensemble_has_final")
-    if (!is.null(d_min))
-        d_min <- .tox_as_integer_scalar(d_min, "d_min")
-    if (!is.null(d_max))
-        d_max <- .tox_as_integer_scalar(d_max, "d_max")
+    if (!is.null(filter_dim_min))
+        filter_dim_min <- .tox_as_integer_scalar(filter_dim_min, "filter_dim_min")
+    if (!is.null(filter_dim_max))
+        filter_dim_max <- .tox_as_integer_scalar(filter_dim_max, "filter_dim_max")
     if (length(ensemble_has_final) != length(ensemble_d_final))
         .tox_shape_error("ensemble_has_final", length(ensemble_has_final), "ensemble_d_final", length(ensemble_d_final))
 
-    .result <- .Call("filter_ensembles_by_dimension_call", n_dimensions, ensemble_d_final, ensemble_has_final, d_min, d_max)
-    .arguments <- c("n_dimensions", "n_ensembles", "ensemble_d_final", "ensemble_has_final", "d_min", "d_max", "eligible", "ierr")
+    .result <- .Call("filter_ensembles_by_dimension_call", n_dimensions, ensemble_d_final, ensemble_has_final, filter_dim_min, filter_dim_max)
+    .arguments <- c("n_dimensions", "n_ensembles", "ensemble_d_final", "ensemble_has_final", "filter_dim_min", "filter_dim_max", "eligible", "ierr")
     .sources <- c(NA_character_, "ensemble_d_final", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -146,7 +146,7 @@ filter_ensembles_by_var_explained <- function(ensemble_S_final, ensemble_d_final
 #' with a plain logical AND. Also returns the three individual masks, not just the
 #' combination -- so a caller (the report, in particular) can say *which* criterion excluded
 #' a given ensemble, not merely that one did. Supplying none of `allowed_stop_reasons`/
-#' `d_min`/`d_max`/`var_explained_min` makes every ensemble eligible (all four masks
+#' `filter_dim_min`/`filter_dim_max`/`var_explained_min` makes every ensemble eligible (all four masks
 #' all-`TRUE`), matching each individual filter's own no-op convention.
 #'
 #' Generated from the Fortran procedure \code{tox_shape_truthful_clustering_filter::filter_ensembles}, whose argument names
@@ -164,10 +164,10 @@ filter_ensembles_by_var_explained <- function(ensemble_S_final, ensemble_d_final
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `4`.
 #' @param allowed_stop_reasons a logical vector. See `filter_ensembles_by_stop_condition_impl`
-#' @param d_min a integer scalar. See `filter_ensembles_by_dimension_impl`
+#' @param filter_dim_min a integer scalar. See `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param d_max a integer scalar. See `filter_ensembles_by_dimension_impl`
+#' @param filter_dim_max a integer scalar. See `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
 #' @param var_explained_min a numeric scalar. See `filter_ensembles_by_var_explained_impl`
@@ -179,7 +179,7 @@ filter_ensembles_by_var_explained <- function(ensemble_S_final, ensemble_d_final
 #'   \item{eligible_by_dimension}{a logical vector. See `filter_ensembles_by_dimension_impl`}
 #'   \item{eligible_by_var_explained}{a logical vector. See `filter_ensembles_by_var_explained_impl`}
 #' @export
-filter_ensembles <- function(ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, ensemble_stop_reason, allowed_stop_reasons = NULL, d_min = NULL, d_max = NULL, var_explained_min = NULL) {
+filter_ensembles <- function(ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, ensemble_stop_reason, allowed_stop_reasons = NULL, filter_dim_min = NULL, filter_dim_max = NULL, var_explained_min = NULL) {
     ensemble_U_history <- .tox_as_double_array(ensemble_U_history, "ensemble_U_history", 4L)
     ensemble_d_history <- .tox_as_integer_matrix(ensemble_d_history, "ensemble_d_history")
     ensemble_S_history <- .tox_as_double_array(ensemble_S_history, "ensemble_S_history", 3L)
@@ -190,10 +190,10 @@ filter_ensembles <- function(ensemble_U_history, ensemble_d_history, ensemble_S_
     ensemble_stop_reason <- .tox_as_integer_vector(ensemble_stop_reason, "ensemble_stop_reason")
     if (!is.null(allowed_stop_reasons))
         allowed_stop_reasons <- .tox_as_logical(allowed_stop_reasons, "allowed_stop_reasons")
-    if (!is.null(d_min))
-        d_min <- .tox_as_integer_scalar(d_min, "d_min")
-    if (!is.null(d_max))
-        d_max <- .tox_as_integer_scalar(d_max, "d_max")
+    if (!is.null(filter_dim_min))
+        filter_dim_min <- .tox_as_integer_scalar(filter_dim_min, "filter_dim_min")
+    if (!is.null(filter_dim_max))
+        filter_dim_max <- .tox_as_integer_scalar(filter_dim_max, "filter_dim_max")
     if (!is.null(var_explained_min))
         var_explained_min <- .tox_as_double_scalar(var_explained_min, "var_explained_min")
     if (dim(ensemble_S_history)[1] != dim(ensemble_U_history)[1])
@@ -227,8 +227,8 @@ filter_ensembles <- function(ensemble_U_history, ensemble_d_history, ensemble_S_
     if (length(ensemble_stop_reason) != dim(ensemble_U_history)[4])
         .tox_shape_error("ensemble_stop_reason", length(ensemble_stop_reason), "ensemble_U_history", dim(ensemble_U_history)[4])
 
-    .result <- .Call("filter_ensembles_call", ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, ensemble_stop_reason, allowed_stop_reasons, d_min, d_max, var_explained_min)
-    .arguments <- c("n_dimensions", "o", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_stop_reason", "allowed_stop_reasons", "d_min", "d_max", "var_explained_min", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr")
+    .result <- .Call("filter_ensembles_call", ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, ensemble_stop_reason, allowed_stop_reasons, filter_dim_min, filter_dim_max, var_explained_min)
+    .arguments <- c("n_dimensions", "o", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_stop_reason", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "var_explained_min", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr")
     .sources <- c("ensemble_U_history", "ensemble_U_history", "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 

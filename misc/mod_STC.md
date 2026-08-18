@@ -794,10 +794,15 @@ ensemble eligible).
   `rejected_immediately` (a single, unconfirmed growth step, the
   lowest-confidence outcome) keeps low-confidence ensembles from ever being
   merged.
-* **`filter_ensembles_by_dimension`**: optional `d_min`/`d_max` (each
-  independently optional, both inclusive) bound an ensemble's *final*
+* **`filter_ensembles_by_dimension`**: optional `filter_dim_min`/`filter_dim_max`
+  (each independently optional, both inclusive) bound an ensemble's *final*
   intrinsic dimension -- see `ensemble_final_observable` below for what
-  "final" means here.
+  "final" means here. Named `dim`, not `d`, specifically to stay distinct
+  from `accept_ensemble`'s own `d_max` (see criterion (2) there): that one
+  bounds a *difference* of consecutive/reference dimension estimates during
+  growth, this one bounds the *value* of the final dimension itself, after
+  growth has already terminated -- two unrelated parameters that happened to
+  share a name before this distinction was introduced.
 * **`filter_ensembles_by_var_explained`**: an optional `var_explained_min`
   bounds an ensemble's *final* classical variance explained,
   $\sum_{j=1}^{d}\lambda_j / (\sum_{j=1}^{d}\lambda_j + \text{normal\_error})$
@@ -1340,12 +1345,41 @@ $$
 $$
 
 `total_variance` is an $O(D)$ running sum of squared deviations from the
-mean, updatable incrementally as members are added to the ensemble (a
-standard Chan/Welford-style incremental-mean correction handles
-$\boldsymbol\mu_{\mathcal{E}}$ shifting at each growth step, at the same
-$O(D)$ cost per point). Only the top-$d_{\max}$ eigenvalues are then needed
-to recover `normal_error` -- not the full $D-d$ tail -- which is exactly what
-a truncated/incremental tangent basis (below) would leave available.
+mean, updatable incrementally as members are added to the ensemble. Precisely
+-- and this is the part worth spelling out, since "Chan/Welford-style" alone
+does not say which variant, or why it stays $O(D)$ as the ensemble grows:
+
+Maintain two numbers per ensemble across growth, not the full covariance
+matrix -- the running mean $\boldsymbol\mu_{\mathcal{E}} \in \mathbb{R}^D$
+and a single running **scalar** $M_{\mathcal{E}} := \sum_{x_i \in
+\mathcal{E}} \|\mathbf{x}_i - \boldsymbol\mu_{\mathcal{E}}\|^2$ (so
+$\text{total\_variance}_{\mathcal{E}} = M_{\mathcal{E}} / (k_{\mathcal{E}}-1)$,
+read off on demand, not maintained pre-divided). `grow_ensemble` adds a
+*batch* of $k_B$ new members per iteration, not one point at a time, so the
+relevant update is the parallel/batch form of this identity (Chan, Golub &
+LeVeque 1979, "Updating Formulae and a Pairwise Algorithm for Computing
+Sample Variances"), merging the existing accumulator
+$(\,k_A, \boldsymbol\mu_A, M_A\,)$ with a fresh one computed directly over
+just the new batch, $(\,k_B, \boldsymbol\mu_B, M_B\,)$:
+
+$$
+\delta = \boldsymbol\mu_B - \boldsymbol\mu_A, \qquad
+\boldsymbol\mu_{AB} = \boldsymbol\mu_A + \delta\cdot\frac{k_B}{k_A+k_B}, \qquad
+M_{AB} = M_A + M_B + \delta^\top\delta\cdot\frac{k_A\, k_B}{k_A+k_B}.
+$$
+
+Computing $(\boldsymbol\mu_B, M_B)$ fresh over the $k_B$ new members costs
+$O(D\cdot k_B)$ -- unavoidable, since the new coordinates have to be read at
+least once regardless of algorithm, exactly as `grow_ensemble` already does
+for every other per-member quantity. The merge step above is the part that
+matters: it is $O(D)$ **regardless of how large the existing ensemble
+$\mathcal{E}$ has already grown** ($k_A$ appears only as a scalar in the
+weighting, never as a loop bound) -- nothing here re-scans the ensemble's
+accumulated members, which is exactly what would make this $O(D\cdot
+k_{\mathcal{E}})$ or worse and erase the saving. Only the top-$d_{\max}$
+eigenvalues are then needed to recover `normal_error` -- not the full $D-d$
+tail -- which is exactly what a truncated/incremental tangent basis (below)
+would leave available.
 
 This change is independent of the SVD-cost idea below and can be adopted on
 its own regardless of whether `observable` ever moves off a from-scratch
@@ -1413,3 +1447,60 @@ gap search) and the running `total_variance` (for `normal_error`), rather
 than the full $D$-length spectrum `observable` currently returns -- a
 detail any implementation of this idea has to account for in its own output
 shape, not an afterthought bolted on at the end.
+
+## Estimating the local dimension without a full spectral-gap search
+
+The bounded-working-rank caveat above is the one genuine blocker between
+today's algorithm and a Brand's-algorithm-compatible `observable`: $r_{\text{track}}$
+has to be fixed *before* growth reaches a size where a full-spectrum scan
+would defeat the point of tracking a small rank at all, but nothing today
+supplies that number ahead of time. Two distance-based estimators from the
+intrinsic-dimension-estimation literature could -- both give a cheap, per-point
+or per-neighborhood estimate of the *local intrinsic dimension* $d$ directly
+from neighbor distances, with no SVD, no eigendecomposition, and no
+observable history at all. Both are estimates of $d$ (a number) only, not of
+the tangent basis $U$ itself -- they would seed/bound $r_{\text{track}}$ for
+a subsequent small, Brand's-algorithm-updated SVD, not replace that SVD.
+
+**Levina & Bickel's maximum-likelihood estimator** (Levina, E. and Bickel,
+P. J., "Maximum Likelihood Estimation of Intrinsic Dimension," *Advances in
+Neural Information Processing Systems 17* (NeurIPS 2004), 2005) models the
+number of neighbors falling within a growing radius around a point as an
+inhomogeneous Poisson process, and derives the MLE of the local dimension
+from the log-ratios of nearest-neighbor distances. Given a point $x$ and the
+distances $T_1(x) \leq \cdots \leq T_k(x)$ to its $k$ nearest neighbors
+(exactly what `kd_knn_query` already returns for seeding/density estimation
+-- no new distance computation needed), the per-point estimate is
+
+$$
+\hat{m}_k(x) = \left[\frac{1}{k-1}\sum_{j=1}^{k-1}\log\frac{T_k(x)}{T_j(x)}\right]^{-1}.
+$$
+
+Averaging $\hat{m}_k$ over an ensemble's own members (or over a range of $k$,
+as the original paper recommends to reduce the estimator's own bias/variance)
+gives a single, stable local-dimension estimate per ensemble at negligible
+extra cost over distances STC already has in hand.
+
+**TwoNN** (Facco, E., d'Errico, M., Rodriguez, A., and Laio, A., "Estimating
+the intrinsic dimension of datasets by a minimal neighborhood information,"
+*Scientific Reports* 7, 12140, 2017) goes further and uses only the first two
+nearest-neighbor distances $r_1(x) \leq r_2(x)$ per point. Under the same
+local-Poisson-process assumption, the ratio $\mu(x) = r_2(x)/r_1(x)$ follows
+a Pareto distribution whose shape parameter is exactly the local intrinsic
+dimension; $d$ is then recovered by a linear fit against the empirical CDF of
+$\mu$ values over a sample of points (a closed-form MLE, or an ordinary
+least-squares fit on $-\log(1-F(\mu))$ against $\log\mu$, is enough -- no
+iterative optimization). Needing only 2 neighbors per point makes this the
+cheaper and more curvature-robust of the two, at the cost of relying on less
+information per point than Levina-Bickel's full $k$-neighborhood.
+
+Neither estimator is exact the way today's full-spectrum gap search is --
+both are statistical, with documented bias under non-uniform density,
+strong curvature, or small sample sizes, the same class of trade Brand's
+algorithm itself makes (speed for a guarantee). That argues for treating
+either as a **starting estimate**, re-checked periodically rather than
+trusted once: pairing dimension re-estimation with the same cadence as
+Brand's algorithm's own periodic reorthogonalization reset would let one
+maintenance pass correct both kinds of drift (numerical, in $U$; and
+epistemic, in the assumed $d$) at once, rather than adding a second,
+independently-scheduled correction mechanism.

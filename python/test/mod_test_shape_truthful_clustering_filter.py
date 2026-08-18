@@ -75,7 +75,7 @@ def test_filter_dimension_d_min_only():
     d_final = np.array([0, 1, 2, 3], dtype=np.int32)
     has_final = np.ones(4, dtype=np.bool_)
 
-    eligible = filter_ensembles_by_dimension(3, d_final, has_final, d_min=2)
+    eligible = filter_ensembles_by_dimension(3, d_final, has_final, filter_dim_min=2)
 
     assert not eligible[0]
     assert not eligible[1]
@@ -87,7 +87,7 @@ def test_filter_dimension_d_max_only():
     d_final = np.array([0, 1, 2, 3], dtype=np.int32)
     has_final = np.ones(4, dtype=np.bool_)
 
-    eligible = filter_ensembles_by_dimension(3, d_final, has_final, d_max=1)
+    eligible = filter_ensembles_by_dimension(3, d_final, has_final, filter_dim_max=1)
 
     assert eligible[0]
     assert eligible[1]
@@ -99,7 +99,7 @@ def test_filter_dimension_both_bounds():
     d_final = np.array([0, 1, 2, 3], dtype=np.int32)
     has_final = np.ones(4, dtype=np.bool_)
 
-    eligible = filter_ensembles_by_dimension(3, d_final, has_final, d_min=1, d_max=2)
+    eligible = filter_ensembles_by_dimension(3, d_final, has_final, filter_dim_min=1, filter_dim_max=2)
 
     assert not eligible[0]
     assert eligible[1]
@@ -120,7 +120,7 @@ def test_filter_dimension_no_final_excluded_once_bound_present():
     d_final = np.array([1], dtype=np.int32)
     has_final = np.array([False], dtype=np.bool_)
 
-    eligible = filter_ensembles_by_dimension(3, d_final, has_final, d_min=0, d_max=3)
+    eligible = filter_ensembles_by_dimension(3, d_final, has_final, filter_dim_min=0, filter_dim_max=3)
 
     assert not eligible[0]
 
@@ -128,17 +128,17 @@ def test_filter_dimension_no_final_excluded_once_bound_present():
 def test_filter_dimension_invalid_n_dimensions():
     d_final = np.array([0], dtype=np.int32)
     has_final = np.array([True], dtype=np.bool_)
-    assert_error(lambda: filter_ensembles_by_dimension(1, d_final, has_final, d_min=0),
+    assert_error(lambda: filter_ensembles_by_dimension(1, d_final, has_final, filter_dim_min=0),
                  "n_dimensions=1 must be rejected (minimum is 2)", ERR_INVALID_INPUT)
 
 
 def test_filter_dimension_d_min_exceeds_d_max_still_computes():
-    # d_min > d_max is not itself validated -- simply unsatisfiable, so every ensemble ends up
+    # filter_dim_min > filter_dim_max is not itself validated -- simply unsatisfiable, so every ensemble ends up
     # ineligible.
     d_final = np.array([0, 1, 2], dtype=np.int32)
     has_final = np.ones(3, dtype=np.bool_)
 
-    eligible = filter_ensembles_by_dimension(2, d_final, has_final, d_min=2, d_max=1)
+    eligible = filter_ensembles_by_dimension(2, d_final, has_final, filter_dim_min=2, filter_dim_max=1)
 
     assert not np.any(eligible)
 
@@ -215,7 +215,7 @@ def test_filter_ensembles_combined_different_criteria():
     k = np.full((1, 4), 2, dtype=np.int32, order='F')
     accepted = np.ones((1, 4), dtype=np.bool_, order='F')
     d = np.ones((1, 4), dtype=np.int32, order='F')
-    d[0, 1] = 2  # ensemble 2 (0-indexed 1) fails d_max=1
+    d[0, 1] = 2  # ensemble 2 (0-indexed 1) fails filter_dim_max=1
     S = np.zeros((2, 1, 4), order='F')
     S[:, 0, 0] = [10.0, 1.0]
     S[:, 0, 1] = [10.0, 1.0]
@@ -227,7 +227,7 @@ def test_filter_ensembles_combined_different_criteria():
     allowed = np.array([True, True, False, True], dtype=np.bool_)
 
     result = filter_ensembles(U, d, S, mu, G, k, accepted, stop_reason,
-                              allowed_stop_reasons=allowed, d_max=1, var_explained_min=0.5)
+                              allowed_stop_reasons=allowed, filter_dim_max=1, var_explained_min=0.5)
 
     assert not result['eligible_by_stop_condition'][0]
     assert result['eligible_by_dimension'][0]

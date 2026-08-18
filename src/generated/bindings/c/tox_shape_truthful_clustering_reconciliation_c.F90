@@ -60,8 +60,8 @@ contains
             min_overlap_coefficient,&
             report_overlap_coefficient,&
             allowed_stop_reasons,&
-            d_min,&
-            d_max,&
+            filter_dim_min,&
+            filter_dim_max,&
             var_explained_min,&
             max_group_size,&
             super_ensembles,&
@@ -146,12 +146,12 @@ contains
         logical(c_bool), dimension(4), intent(in), optional :: allowed_stop_reasons
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_stop_condition_impl`
-        integer(c_int), intent(in), optional :: d_min
+        integer(c_int), intent(in), optional :: filter_dim_min
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_dimension_impl`
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(c_int), intent(in), optional :: d_max
+        integer(c_int), intent(in), optional :: filter_dim_max
             !! See `tox_shape_truthful_clustering_filter_impl`'s own
             !! `filter_ensembles_by_dimension_impl`
             !! The minimum valid value is `0_int32`.
@@ -260,8 +260,8 @@ contains
             min_overlap_coefficient = min_overlap_coefficient,&
             report_overlap_coefficient = report_overlap_coefficient,&
             allowed_stop_reasons = allowed_stop_reasons,&
-            d_min = d_min,&
-            d_max = d_max,&
+            filter_dim_min = filter_dim_min,&
+            filter_dim_max = filter_dim_max,&
             var_explained_min = var_explained_min,&
             max_group_size = max_group_size,&
             super_ensembles = super_ensembles,&

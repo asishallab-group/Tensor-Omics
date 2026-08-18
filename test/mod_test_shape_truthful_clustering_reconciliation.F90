@@ -644,8 +644,8 @@ contains
                                     "allowed_stop_reasons no-op: group 2 unchanged")
     end subroutine test_reconciliation_stop_reason_filter_unused_value_noop
 
-    !> Ensemble 5's final intrinsic dimension (2) exceeds d_max=1 (the rest are d=1);
-    !| excluding it via `d_max` must drop the (5,6) pair from report mode's output
+    !> Ensemble 5's final intrinsic dimension (2) exceeds filter_dim_max=1 (the rest are d=1);
+    !| excluding it via `filter_dim_max` must drop the (5,6) pair from report mode's output
     !| entirely, leaving only the untouched 1-2-3 chain's two pairs -- mirrors
     !| `test_reconciliation_stop_reason_filter_excludes_pair`'s own shape, but through
     !| the dimension filter instead of the Stop Condition filter. Uses its own dedicated
@@ -667,7 +667,7 @@ contains
                            ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
                            ensemble_accepted_history)
         ensemble_d_history(1, :) = 1
-        ensemble_d_history(1, 5) = 2 ! only ensemble 5 exceeds d_max=1 below
+        ensemble_d_history(1, 5) = 2 ! only ensemble 5 exceeds filter_dim_max=1 below
 
         call ensemble_reconciliation(ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                      n_dimensions=2_int32, n_vectors=14_int32, n_ensembles=6_int32, &
@@ -675,7 +675,7 @@ contains
                                      ensemble_S_history=ensemble_S_history, ensemble_mu_history=ensemble_mu_history, &
                                      ensemble_G_history=ensemble_G_history, ensemble_k_history=ensemble_k_history, &
                                      ensemble_accepted_history=ensemble_accepted_history, o=1_int32, &
-                                     mode=MODE_REPORT, d_max=1_int32, max_group_size=2_int32, &
+                                     mode=MODE_REPORT, filter_dim_max=1_int32, max_group_size=2_int32, &
                                      super_ensembles=super_ensembles, n_super_ensembles=n_super_ensembles, &
                                      super_ensembles_overlap_coefficient=super_ensembles_overlap_coefficient, &
                                      eligible=eligible, eligible_by_stop_condition=eligible_by_stop_condition, &
@@ -687,12 +687,12 @@ contains
         end if
 
         call assert_equal_int(n_super_ensembles, 2_int32, &
-                              "d_max filter: excluding ensemble 5 (d=2 > d_max=1) drops the (5,6) pair, 1-2/2-3 remain")
-        call assert_equal_array_int(super_ensembles(:, 1), [1, 2], 2_int32, "d_max filter: pair 1 unaffected")
-        call assert_equal_array_int(super_ensembles(:, 2), [2, 3], 2_int32, "d_max filter: pair 2 unaffected")
-        call assert_true(.not. eligible_by_dimension(5), "d_max filter: ensemble 5 flagged ineligible by dimension")
-        call assert_true(eligible_by_dimension(1), "d_max filter: ensemble 1 still eligible by dimension")
-        call assert_true(.not. eligible(5), "d_max filter: ensemble 5's combined eligibility is false")
+                              "filter_dim_max filter: excluding ensemble 5 (d=2 > filter_dim_max=1) drops the (5,6) pair, 1-2/2-3 remain")
+        call assert_equal_array_int(super_ensembles(:, 1), [1, 2], 2_int32, "filter_dim_max filter: pair 1 unaffected")
+        call assert_equal_array_int(super_ensembles(:, 2), [2, 3], 2_int32, "filter_dim_max filter: pair 2 unaffected")
+        call assert_true(.not. eligible_by_dimension(5), "filter_dim_max filter: ensemble 5 flagged ineligible by dimension")
+        call assert_true(eligible_by_dimension(1), "filter_dim_max filter: ensemble 1 still eligible by dimension")
+        call assert_true(.not. eligible(5), "filter_dim_max filter: ensemble 5's combined eligibility is false")
     end subroutine test_reconciliation_dimension_filter_excludes_pair
 
     !> Ensemble 5's final variance explained (eigenvalues [1,100], d=1 -> 1/101 ~ 0.0099) falls

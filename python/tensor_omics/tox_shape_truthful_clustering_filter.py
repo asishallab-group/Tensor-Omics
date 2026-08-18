@@ -63,7 +63,7 @@ _lib.filter_ensembles_by_dimension_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_FILTER_ENSEMBLES_BY_DIMENSION_ARGUMENTS = ("n_dimensions", "n_ensembles", "ensemble_d_final", "ensemble_has_final", "d_min", "d_max", "eligible", "ierr",)
+_FILTER_ENSEMBLES_BY_DIMENSION_ARGUMENTS = ("n_dimensions", "n_ensembles", "ensemble_d_final", "ensemble_has_final", "filter_dim_min", "filter_dim_max", "eligible", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _FILTER_ENSEMBLES_BY_DIMENSION_ARGUMENT_SOURCES = (None, "ensemble_d_final", None, None, None, None, None, None,)
 
@@ -110,7 +110,7 @@ _lib.filter_ensembles_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_FILTER_ENSEMBLES_ARGUMENTS = ("n_dimensions", "o", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_stop_reason", "allowed_stop_reasons", "d_min", "d_max", "var_explained_min", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr",)
+_FILTER_ENSEMBLES_ARGUMENTS = ("n_dimensions", "o", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_stop_reason", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "var_explained_min", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _FILTER_ENSEMBLES_ARGUMENT_SOURCES = ("ensemble_U_history", "ensemble_U_history", "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
@@ -195,8 +195,8 @@ def filter_ensembles_by_dimension(
         n_dimensions,
         ensemble_d_final,
         ensemble_has_final,
-        d_min=None,
-        d_max=None,
+        filter_dim_min=None,
+        filter_dim_max=None,
 ):
     r"""Ensemble eligibility by final intrinsic dimension
 
@@ -213,11 +213,11 @@ def filter_ensembles_by_dimension(
     ensemble_has_final : np.ndarray[np.bool_] of shape (n_ensembles,)
         Whether each ensemble has a final accepted state at all, see
         `ensemble_final_observable`
-    d_min : int, optional
+    filter_dim_min : int, optional
         Minimum tolerated final intrinsic dimension, inclusive
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
-    d_max : int, optional
+    filter_dim_max : int, optional
         Maximum tolerated final intrinsic dimension, inclusive
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
@@ -270,8 +270,8 @@ def filter_ensembles_by_dimension(
         ctypes.byref(ctypes.c_int(n_ensembles)),
         ensemble_d_final,
         ensemble_has_final,
-        None if d_min is None else ctypes.byref(ctypes.c_int(d_min)),
-        None if d_max is None else ctypes.byref(ctypes.c_int(d_max)),
+        None if filter_dim_min is None else ctypes.byref(ctypes.c_int(filter_dim_min)),
+        None if filter_dim_max is None else ctypes.byref(ctypes.c_int(filter_dim_max)),
         eligible,
         ctypes.byref(ierr),
     )
@@ -404,8 +404,8 @@ def filter_ensembles(
         ensemble_accepted_history,
         ensemble_stop_reason,
         allowed_stop_reasons=None,
-        d_min=None,
-        d_max=None,
+        filter_dim_min=None,
+        filter_dim_max=None,
         var_explained_min=None,
 ):
     r"""Combined ensemble eligibility for `merge_to_super_ensembles`
@@ -433,11 +433,11 @@ def filter_ensembles(
         The maximum valid value is `4`.
     allowed_stop_reasons : np.ndarray[np.bool_] of shape (4,), optional
         See `filter_ensembles_by_stop_condition_impl`
-    d_min : int, optional
+    filter_dim_min : int, optional
         See `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
-    d_max : int, optional
+    filter_dim_max : int, optional
         See `filter_ensembles_by_dimension_impl`
         The minimum valid value is `0`.
         The maximum valid value is `n_dimensions`.
@@ -618,8 +618,8 @@ def filter_ensembles(
         ensemble_accepted_history,
         ensemble_stop_reason,
         allowed_stop_reasons,
-        None if d_min is None else ctypes.byref(ctypes.c_int(d_min)),
-        None if d_max is None else ctypes.byref(ctypes.c_int(d_max)),
+        None if filter_dim_min is None else ctypes.byref(ctypes.c_int(filter_dim_min)),
+        None if filter_dim_max is None else ctypes.byref(ctypes.c_int(filter_dim_max)),
         None if var_explained_min is None else ctypes.byref(ctypes.c_double(var_explained_min)),
         eligible,
         eligible_by_stop_condition,

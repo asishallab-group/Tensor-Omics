@@ -81,18 +81,18 @@ contains
 
     !> summary: Ensemble eligibility by final intrinsic dimension
     !| AUTHOR_ASIS_HALLAB
-    !| `d_min <= d <= d_max`, both inclusive, each independently optional (an absent bound
+    !| `filter_dim_min <= d <= filter_dim_max`, both inclusive, each independently optional (an absent bound
     !| contributes no constraint on that side). An ensemble with no final accepted state at all
     !| (`ensemble_has_final(e)` false) is never eligible under this criterion once at least one
-    !| of `d_min`/`d_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
+    !| of `filter_dim_min`/`filter_dim_max` is supplied -- there is no `d` to judge. Both bounds absent is a true
     !| no-op (every ensemble eligible, `ensemble_has_final` not even consulted), matching
     !| `filter_ensembles_by_stop_condition_impl`'s own "omitted means unconstrained"
-    !| convention. `d_min` could in principle default to `0_int32` (a genuine constant
-    !| expression), but is left nullable like `d_max` (whose own natural default, `n_dimensions`,
+    !| convention. `filter_dim_min` could in principle default to `0_int32` (a genuine constant
+    !| expression), but is left nullable like `filter_dim_max` (whose own natural default, `n_dimensions`,
     !| is a runtime value and so cannot be a generated default) rather than have the two bounds
     !| of one range behave asymmetrically.
     pure subroutine filter_ensembles_by_dimension_impl(n_dimensions, n_ensembles, ensemble_d_final, &
-                                                          ensemble_has_final, d_min, d_max, eligible)
+                                                          ensemble_has_final, filter_dim_min, filter_dim_max, eligible)
         integer(int32), intent(in) :: n_dimensions
             !! Ambient dimension D
             !! DM_MIN(2_int32)
@@ -107,11 +107,11 @@ contains
         logical(c_bool), intent(in) :: ensemble_has_final(n_ensembles)
             !! Whether each ensemble has a final accepted state at all, see
             !! `ensemble_final_observable`
-        integer(int32), intent(in), optional :: d_min
+        integer(int32), intent(in), optional :: filter_dim_min
             !! Minimum tolerated final intrinsic dimension, inclusive
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
-        integer(int32), intent(in), optional :: d_max
+        integer(int32), intent(in), optional :: filter_dim_max
             !! Maximum tolerated final intrinsic dimension, inclusive
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
@@ -120,7 +120,7 @@ contains
 
         integer(int32) :: e
 
-        if (.not. present(d_min) .and. .not. present(d_max)) then
+        if (.not. present(filter_dim_min) .and. .not. present(filter_dim_max)) then
             eligible = .true.
             return
         end if
@@ -128,8 +128,8 @@ contains
         do e = 1, n_ensembles
             eligible(e) = ensemble_has_final(e)
             if (.not. eligible(e)) cycle
-            if (present(d_min)) eligible(e) = eligible(e) .and. (ensemble_d_final(e) >= d_min)
-            if (present(d_max)) eligible(e) = eligible(e) .and. (ensemble_d_final(e) <= d_max)
+            if (present(filter_dim_min)) eligible(e) = eligible(e) .and. (ensemble_d_final(e) >= filter_dim_min)
+            if (present(filter_dim_max)) eligible(e) = eligible(e) .and. (ensemble_d_final(e) <= filter_dim_max)
         end do
 
     end subroutine filter_ensembles_by_dimension_impl
@@ -207,13 +207,13 @@ contains
     !| with a plain logical AND. Also returns the three individual masks, not just the
     !| combination -- so a caller (the report, in particular) can say *which* criterion excluded
     !| a given ensemble, not merely that one did. Supplying none of `allowed_stop_reasons`/
-    !| `d_min`/`d_max`/`var_explained_min` makes every ensemble eligible (all four masks
+    !| `filter_dim_min`/`filter_dim_max`/`var_explained_min` makes every ensemble eligible (all four masks
     !| all-`.true.`), matching each individual filter's own no-op convention.
     pure subroutine filter_ensembles_impl(n_dimensions, o, n_ensembles, &
                                             ensemble_U_history, ensemble_d_history, ensemble_S_history, &
                                             ensemble_mu_history, ensemble_G_history, ensemble_k_history, &
                                             ensemble_accepted_history, ensemble_stop_reason, &
-                                            allowed_stop_reasons, d_min, d_max, var_explained_min, &
+                                            allowed_stop_reasons, filter_dim_min, filter_dim_max, var_explained_min, &
                                             eligible, eligible_by_stop_condition, eligible_by_dimension, &
                                             eligible_by_var_explained)
         integer(int32), intent(in) :: n_dimensions
@@ -246,11 +246,11 @@ contains
             !! DM_MAX(4_int32)
         logical(c_bool), intent(in), optional :: allowed_stop_reasons(4)
             !! See `filter_ensembles_by_stop_condition_impl`
-        integer(int32), intent(in), optional :: d_min
+        integer(int32), intent(in), optional :: filter_dim_min
             !! See `filter_ensembles_by_dimension_impl`
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
-        integer(int32), intent(in), optional :: d_max
+        integer(int32), intent(in), optional :: filter_dim_max
             !! See `filter_ensembles_by_dimension_impl`
             !! DM_MIN(0_int32)
             !! DM_MAX(n_dimensions)
@@ -286,7 +286,7 @@ contains
             eligible_by_stop_condition)
 
         call filter_ensembles_by_dimension_impl(n_dimensions, n_ensembles, ensemble_d_final, ensemble_has_final, &
-            d_min, d_max, eligible_by_dimension)
+            filter_dim_min, filter_dim_max, eligible_by_dimension)
 
         call filter_ensembles_by_var_explained_impl(n_dimensions, n_ensembles, ensemble_S_final, ensemble_d_final, &
             ensemble_k_final, ensemble_has_final, var_explained_min, eligible_by_var_explained)

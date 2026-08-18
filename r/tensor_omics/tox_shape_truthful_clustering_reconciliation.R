@@ -40,11 +40,11 @@
 #'   The default value is `FALSE`.
 #' @param allowed_stop_reasons a logical vector. See `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `filter_ensembles_by_stop_condition_impl`
-#' @param d_min a integer scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
+#' @param filter_dim_min a integer scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param d_max a integer scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
+#' @param filter_dim_max a integer scalar. See `tox_shape_truthful_clustering_filter_impl`'s own
 #'   `filter_ensembles_by_dimension_impl`
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_dimensions`.
@@ -89,7 +89,7 @@
 #'   \item{eligible_by_dimension}{a logical vector. See `filter_ensembles_by_dimension_impl`}
 #'   \item{eligible_by_var_explained}{a logical vector. See `filter_ensembles_by_var_explained_impl`}
 #' @export
-ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, mode = "report", min_overlap_coefficient = 0.9, report_overlap_coefficient = FALSE, allowed_stop_reasons = NULL, d_min = NULL, d_max = NULL, var_explained_min = NULL, max_group_size) {
+ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, mode = "report", min_overlap_coefficient = 0.9, report_overlap_coefficient = FALSE, allowed_stop_reasons = NULL, filter_dim_min = NULL, filter_dim_max = NULL, var_explained_min = NULL, max_group_size) {
     ensemble_masks <- .tox_as_logical(ensemble_masks, "ensemble_masks")
     ensemble_stop_reason <- .tox_as_integer_vector(ensemble_stop_reason, "ensemble_stop_reason")
     ensemble_U_history <- .tox_as_double_array(ensemble_U_history, "ensemble_U_history", 4L)
@@ -104,10 +104,10 @@ ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemb
     report_overlap_coefficient <- .tox_as_logical(report_overlap_coefficient, "report_overlap_coefficient")
     if (!is.null(allowed_stop_reasons))
         allowed_stop_reasons <- .tox_as_logical(allowed_stop_reasons, "allowed_stop_reasons")
-    if (!is.null(d_min))
-        d_min <- .tox_as_integer_scalar(d_min, "d_min")
-    if (!is.null(d_max))
-        d_max <- .tox_as_integer_scalar(d_max, "d_max")
+    if (!is.null(filter_dim_min))
+        filter_dim_min <- .tox_as_integer_scalar(filter_dim_min, "filter_dim_min")
+    if (!is.null(filter_dim_max))
+        filter_dim_max <- .tox_as_integer_scalar(filter_dim_max, "filter_dim_max")
     if (!is.null(var_explained_min))
         var_explained_min <- .tox_as_double_scalar(var_explained_min, "var_explained_min")
     max_group_size <- .tox_as_integer_scalar(max_group_size, "max_group_size")
@@ -144,8 +144,8 @@ ensemble_reconciliation <- function(ensemble_masks, ensemble_stop_reason, ensemb
     if (dim(ensemble_accepted_history)[1] != dim(ensemble_U_history)[3])
         .tox_shape_error("ensemble_accepted_history", dim(ensemble_accepted_history)[1], "ensemble_U_history", dim(ensemble_U_history)[3])
 
-    .result <- .Call("ensemble_reconciliation_call", ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, mode, min_overlap_coefficient, report_overlap_coefficient, allowed_stop_reasons, d_min, d_max, var_explained_min, max_group_size)
-    .arguments <- c("ensemble_masks", "ensemble_stop_reason", "n_dimensions", "n_vectors", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "o", "mode", "min_overlap_coefficient", "report_overlap_coefficient", "allowed_stop_reasons", "d_min", "d_max", "var_explained_min", "max_group_size", "super_ensembles", "n_super_ensembles", "super_ensembles_overlap_coefficient", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr")
+    .result <- .Call("ensemble_reconciliation_call", ensemble_masks, ensemble_stop_reason, ensemble_U_history, ensemble_d_history, ensemble_S_history, ensemble_mu_history, ensemble_G_history, ensemble_k_history, ensemble_accepted_history, mode, min_overlap_coefficient, report_overlap_coefficient, allowed_stop_reasons, filter_dim_min, filter_dim_max, var_explained_min, max_group_size)
+    .arguments <- c("ensemble_masks", "ensemble_stop_reason", "n_dimensions", "n_vectors", "n_ensembles", "ensemble_U_history", "ensemble_d_history", "ensemble_S_history", "ensemble_mu_history", "ensemble_G_history", "ensemble_k_history", "ensemble_accepted_history", "o", "mode", "min_overlap_coefficient", "report_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "var_explained_min", "max_group_size", "super_ensembles", "n_super_ensembles", "super_ensembles_overlap_coefficient", "eligible", "eligible_by_stop_condition", "eligible_by_dimension", "eligible_by_var_explained", "ierr")
     .sources <- c(NA_character_, NA_character_, "ensemble_U_history", "ensemble_masks", "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "super_ensembles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
