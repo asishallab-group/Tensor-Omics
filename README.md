@@ -192,6 +192,8 @@ Beyond the profiles above, `build.sh` accepts several options (which `test_runne
 * `--compiler=<gfortran|ifx|nvfortran>` — compiler to use (defaults to `gfortran`). The `FC` environment variable is also honoured, with precedence `--compiler` > `$TOX_COMPILER` > `$FC`.
 * `--max-performance` — enable the `optimization` profile (`-O3` and performance-oriented code paths).
 * `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
+* `--debug` — implies `--diagnostics` plus `-O0`, so gdb doesn't hit optimized-out variables or misleading source stepping. Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
+* `--yes` — skip the confirmation prompt that `--debug --max-performance` would otherwise show.
 * `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect.
 * `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`.
 * `--clean-build` — force `fpm` to rebuild `src/` from scratch (enabled automatically when switching git branches). Useful when `fpm` misses changes that do not alter the module structure.
