@@ -1,366 +1,4 @@
 {
-  "R setup for 'read_gene_ids_from_tsv_file_c' from module 'tox_data_read_write'": {
-    "prefix": "tox:r_setup_read_gene_ids_from_tsv_file_c",
-    "body": [
-      "#' Read gene IDs from a TSV file (R wrapper)",
-      "#' @param filename Path to TSV file",
-      "#' @param n_genes Number of genes (rows)",
-      "#' @param gene_ids_len Max length of gene ID string",
-      "#' @param n_header_rows Number of header rows",
-      "#' @param gene_col Column index for gene IDs",
-      "#' @return List with gene_ids (character vector) and ierr",
-      "read_gene_ids_from_tsv_file <- function(filename, n_genes, gene_ids_len, n_header_rows, gene_col) {",
-      "  res <- tox_read_gene_ids_from_tsv_file_rcpp(filename, n_genes, gene_ids_len, n_header_rows, gene_col)",
-      "  check_err_code(res$ierr)",
-      "  return(res)",
-      "}",
-      ""
-    ],
-    "description": "Read gene ids from a tsv file"
-  },
-  "R call of 'read_gene_ids_from_tsv_file'": {
-    "prefix": "tox:r_read_gene_ids_from_tsv_file",
-    "body": [
-      "${1:result} <- read_gene_ids_from_tsv_file(${2:filename}, ${3:n_genes}, ${4:gene_ids_len}, ${5:n_header_rows}, ${6:gene_col})"
-    ],
-    "description": "Call of R wrapper for 'read_gene_ids_from_tsv_file_c' from module 'tox_data_read_write'"
-  },
-  "R setup for 'read_expression_vectors_tsv_c' from module 'tox_data_read_write'": {
-    "prefix": "tox:r_setup_read_expression_vectors_tsv_c",
-    "body": [
-      "#' Read expression vectors from TSV file(s) (R wrapper)",
-      "#' @param file_list Character vector of file paths (length 1 for single file)",
-      "#' @param gene_ids Character vector of gene IDs (order to match)",
-      "#' @param n_samples Number of samples (rows)",
-      "#' @param n_header_rows Number of header rows",
-      "#' @param gene_col Column index for gene IDs",
-      "#' @param value_cols Integer vector of value column indices",
-      "#' @param delimiter Delimiter (default tab)",
-      "#' @return List with expression_vectors (matrix) and ierr",
-      "read_expression_vectors_tsv <- function(file_list, gene_ids, n_samples, n_header_rows, gene_col, value_cols, delimiter = \"\\t\") {",
-      "  # Convert file_list and gene_ids to raw matrices",
-      "  res <- tox_read_expression_vectors_tsv_rcpp(",
-      "    file_list,",
-      "    gene_ids,",
-      "    as.integer(value_cols),",
-      "    delimiter,",
-      "    as.integer(n_samples),",
-      "    as.integer(n_header_rows),",
-      "    as.integer(gene_col)",
-      "  )",
-      "  check_err_code(res$ierr)",
-      "  return(res)",
-      "}",
-      ""
-    ],
-    "description": "Read expression vectors from given tabular (csv/tsv) files"
-  },
-  "R call of 'read_expression_vectors_tsv'": {
-    "prefix": "tox:r_read_expression_vectors_tsv",
-    "body": [
-      "${1:result} <- read_expression_vectors_tsv(${2:file_list}, ${3:gene_ids}, ${4:n_samples}, ${5:n_header_rows}, ${6:gene_col}, ${7:value_cols}, ${8:delimiter})"
-    ],
-    "description": "Call of R wrapper for 'read_expression_vectors_tsv_c' from module 'tox_data_read_write'"
-  },
-  "R setup for 'read_orthofinder_file_c' from module 'tox_data_read_write'": {
-    "prefix": "tox:r_setup_read_orthofinder_file_c",
-    "body": [
-      "#' Read gene family assignments from a file",
-      "#' @param filename Character string of the filename",
-      "#' @param gene_ids Character vector of gene IDs to match",
-      "#' @param n_families Number of unique gene families expected",
-      "#' @param family_len Maximum length of each family ID",
-      "#' @return A list with elements:",
-      "#'   - family_ids: Character vector of family IDs read from the file",
-      "#'   - gene_to_fam: Integer vector mapping each gene to its family index",
-      "#'   - ierr: Integer error code (0 if successful)",
-      "#' Note: If genes are not found in the gene IDs list a message will be printed but NO error code is thrown",
-      "read_orthofinder_file <- function(filename, gene_ids, n_families, family_len) {",
-      "  n_families <- as.integer(n_families)",
-      "  family_len <- as.integer(family_len)",
-      "",
-      "",
-      "  result <- tox_read_orthofinder_file_rcpp(filename, gene_ids, n_families, family_len)",
-      "",
-      "  check_err_code(result$ierr)",
-      "  return(result)",
-      "}",
-      ""
-    ],
-    "description": "Read an orthofinder family file and map genes to families"
-  },
-  "R call of 'read_orthofinder_file'": {
-    "prefix": "tox:r_read_orthofinder_file",
-    "body": [
-      "${1:result} <- read_orthofinder_file(${2:filename}, ${3:gene_ids}, ${4:n_families}, ${5:family_len})"
-    ],
-    "description": "Call of R wrapper for 'read_orthofinder_file_c' from module 'tox_data_read_write'"
-  },
-  "R setup for 'filter_unassigned_genes_c' from module 'tox_data_tools'": {
-    "prefix": "tox:r_setup_filter_unassigned_genes_c",
-    "body": [
-      "#' Filter out genes without family assignments",
-      "#' @param gene_ids Character vector of gene IDs",
-      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
-      "#' @return A list with elements:    ",
-      "#'   - mask: Logical Mask indicating unassigned genes",
-      "#'   - n_genes_kept: Count of TRUE in mask",
-      "filter_unassigned_genes <- function(gene_ids, gene_to_fam) {",
-      "  ",
-      "  res <- tox_filter_unassigned_genes_rcpp(gene_ids, gene_to_fam)",
-      "  res$mask <- res$mask != 0",
-      "  check_err_code(res$ierr)",
-      "  return(res)",
-      "}",
-      ""
-    ],
-    "description": "Filter out genes that are not assigned to any family (where gene_to_fam == 0)."
-  },
-  "R call of 'filter_unassigned_genes'": {
-    "prefix": "tox:r_filter_unassigned_genes",
-    "body": [
-      "${1:result} <- filter_unassigned_genes(${2:gene_ids}, ${3:gene_to_fam})"
-    ],
-    "description": "Call of R wrapper for 'filter_unassigned_genes_c' from module 'tox_data_tools'"
-  },
-  "R setup for 'validate_data_structure_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_data_structure_c",
-    "body": [
-      "#' Validate overall data structure",
-      "#' @param n_genes Number of genes",
-      "#' @param n_families Number of gene families",
-      "#' @param n_samples Number of samples",
-      "#' @param d Dimensionality of expression vectors (should be 2 * n_samples)",
-      "#' @param gene_ids Character vector of gene IDs",
-      "#' @param gene_family_ids Character vector of gene family IDs",
-      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
-      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
-      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
-      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
-      "validate_data_structure <- function(n_genes, n_families, n_samples, d,",
-      "                                    gene_ids, gene_family_ids,",
-      "                                    gene_to_fam, expression_vectors,",
-      "                                    family_centroids, shift_vectors) {",
-      "  ",
-      "  n_genes    <- as.integer(n_genes)",
-      "  n_families <- as.integer(n_families)",
-      "  n_samples  <- as.integer(n_samples)",
-      "  d          <- as.integer(d)",
-      "",
-      "  expr_matrix <- as.matrix(expression_vectors)",
-      "  fam_matrix <- as.matrix(family_centroids)",
-      "  shift_matrix <- as.matrix(shift_vectors)",
-      "",
-      "  ierr <- tox_validate_data_structure_rcpp(n_genes, n_families, n_samples, d,",
-      "                                    gene_ids, gene_family_ids,",
-      "                                    gene_to_fam, expression_vectors,",
-      "                                    family_centroids, shift_vectors)",
-      "",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Validate overall data structure consistency. Confirms sizes and dependencies as far as possible."
-  },
-  "R call of 'validate_data_structure'": {
-    "prefix": "tox:r_validate_data_structure",
-    "body": [
-      "${1:result} <- validate_data_structure(${2:n_genes}, ${3:n_families}, ${4:n_samples}, ${5:d}, ${6:gene_ids}, ${7:gene_family_ids}, ${8:gene_to_fam}, ${9:expression_vectors}, ${10:family_centroids}, ${11:shift_vectors})"
-    ],
-    "description": "Call of R wrapper for 'validate_data_structure_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'validate_gene_to_family_mapping_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_gene_to_family_mapping_c",
-    "body": [
-      "#' Validate gene to family mapping",
-      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
-      "#' @param n_families Number of families",
-      "validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {",
-      "  ierr <- tox_validate_gene_to_family_mapping_rcpp(gene_to_fam, n_families)",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Validate gene to family mapping"
-  },
-  "R call of 'validate_gene_to_family_mapping'": {
-    "prefix": "tox:r_validate_gene_to_family_mapping",
-    "body": [
-      "${1:result} <- validate_gene_to_family_mapping(${2:gene_to_fam}, ${3:n_families})"
-    ],
-    "description": "Call of R wrapper for 'validate_gene_to_family_mapping_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'validate_expression_data_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_expression_data_c",
-    "body": [
-      "#' Validate expression data",
-      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
-      "#' @param check_non_negative Logical flag to check for non-negative values",
-      "validate_expression_data <- function(expression_vectors, check_non_negative = TRUE) {",
-      "  expr_matrix <- as.matrix(expression_vectors)",
-      "",
-      "  ierr <- tox_validate_expression_data_rcpp(expression_vectors, check_non_negative)",
-      "",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Validate expression data"
-  },
-  "R call of 'validate_expression_data'": {
-    "prefix": "tox:r_validate_expression_data",
-    "body": [
-      "${1:result} <- validate_expression_data(${2:expression_vectors}, ${3:check_non_negative})"
-    ],
-    "description": "Call of R wrapper for 'validate_expression_data_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'validate_family_centroids_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_family_centroids_c",
-    "body": [
-      "#' Validate family centroids",
-      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
-      "validate_family_centroids <- function(family_centroids) {",
-      "  fam_matrix <- as.matrix(family_centroids)",
-      "  ierr <- tox_validate_family_centroids_rcpp(family_centroids)",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Validate family centroids, checks for NaN/Inf"
-  },
-  "R call of 'validate_family_centroids'": {
-    "prefix": "tox:r_validate_family_centroids",
-    "body": [
-      "${1:result} <- validate_family_centroids(${2:family_centroids})"
-    ],
-    "description": "Call of R wrapper for 'validate_family_centroids_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'validate_shift_vectors_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_shift_vectors_c",
-    "body": [
-      "#' Validate shift vectors",
-      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
-      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
-      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
-      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
-      "validate_shift_vectors <- function(shift_vectors, expression_vectors, family_centroids, gene_to_fam) {",
-      "  expr_matrix <- as.matrix(expression_vectors)",
-      "  fam_matrix <- as.matrix(family_centroids)",
-      "  shift_matrix <- as.matrix(shift_vectors)",
-      "",
-      "  n_genes <- ncol(expr_matrix)",
-      "  n_families <- ncol(fam_matrix)",
-      "",
-      "  ierr <- tox_validate_shift_vectors_rcpp(shift_vectors, expression_vectors, family_centroids, gene_to_fam)",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Validate shift vectors, checks if datatypes are correct and if the general structure matches"
-  },
-  "R call of 'validate_shift_vectors'": {
-    "prefix": "tox:r_validate_shift_vectors",
-    "body": [
-      "${1:result} <- validate_shift_vectors(${2:shift_vectors}, ${3:expression_vectors}, ${4:family_centroids}, ${5:gene_to_fam})"
-    ],
-    "description": "Call of R wrapper for 'validate_shift_vectors_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'validate_string_array_uniqueness_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_string_array_uniqueness_c",
-    "body": [
-      "#' Validate uniqueness of string array",
-      "#' @param string_arr Character vector of gene IDs",
-      "#' Note: Uses hashset internally which may increase memory usage temporarily for large datasets",
-      "validate_string_array_uniqueness <- function(string_arr) {",
-      "  ierr <- tox_validate_string_array_uniqueness_rcpp(string_arr)",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Validate uniqueness of strings"
-  },
-  "R call of 'validate_string_array_uniqueness'": {
-    "prefix": "tox:r_validate_string_array_uniqueness",
-    "body": [
-      "${1:result} <- validate_string_array_uniqueness(${2:string_arr})"
-    ],
-    "description": "Call of R wrapper for 'validate_string_array_uniqueness_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'validate_all_data_c' from module 'tox_data_validation'": {
-    "prefix": "tox:r_setup_validate_all_data_c",
-    "body": [
-      "#' Validate all data components together",
-      "#' @param gene_ids Character vector of gene IDs",
-      "#' @param gene_family_ids Character vector of gene family IDs",
-      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
-      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
-      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
-      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
-      "validate_all_data <- function(gene_ids, gene_family_ids,",
-      "                              gene_to_fam, expression_vectors,",
-      "                              family_centroids, shift_vectors) {",
-      "  expr_matrix <- as.matrix(expression_vectors)",
-      "  fam_matrix <- as.matrix(family_centroids)",
-      "  shift_matrix <- as.matrix(shift_vectors)",
-      "",
-      "  ierr <- tox_validate_all_data_rcpp(gene_ids, gene_family_ids,",
-      "                              gene_to_fam, expression_vectors,",
-      "                              family_centroids, shift_vectors)",
-      "",
-      "  check_err_code(ierr)",
-      "  return(ierr)",
-      "}",
-      ""
-    ],
-    "description": "Comprehensive validation of all data components. This function performs all individual validations in one go."
-  },
-  "R call of 'validate_all_data'": {
-    "prefix": "tox:r_validate_all_data",
-    "body": [
-      "${1:result} <- validate_all_data(${2:gene_ids}, ${3:gene_family_ids}, ${4:gene_to_fam}, ${5:expression_vectors}, ${6:family_centroids}, ${7:shift_vectors})"
-    ],
-    "description": "Call of R wrapper for 'validate_all_data_c' from module 'tox_data_validation'"
-  },
-  "R setup for 'create_zip_archive_c' from module 'tox_data_archive'": {
-    "prefix": "tox:r_setup_create_zip_archive_c",
-    "body": [
-      "create_zip_archive <- function(zip_filename, keys, filenames) {",
-      "  # stop(\"Zip archive helpers have been removed. Use an external zip tool instead.\")",
-      "}",
-      ""
-    ],
-    "description": "Low-level function to create zip archive from keys and filenames."
-  },
-  "R call of 'create_zip_archive'": {
-    "prefix": "tox:r_create_zip_archive",
-    "body": [
-      "create_zip_archive(${1:zip_filename}, ${2:keys}, ${3:filenames})"
-    ],
-    "description": "Call of R wrapper for 'create_zip_archive_c' from module 'tox_data_archive'"
-  },
-  "R setup for 'extract_zip_archive_c' from module 'tox_data_archive'": {
-    "prefix": "tox:r_setup_extract_zip_archive_c",
-    "body": [
-      "extract_zip_archive <- function(zip_filename) {",
-      "  # stop(\"Zip archive helpers have been removed. Use an external zip tool instead.\")",
-      "}",
-      ""
-    ],
-    "description": "Extract a zip archive created by create_zip_archive"
-  },
-  "R call of 'extract_zip_archive'": {
-    "prefix": "tox:r_extract_zip_archive",
-    "body": [
-      "extract_zip_archive(${1:zip_filename})"
-    ],
-    "description": "Call of R wrapper for 'extract_zip_archive_c' from module 'tox_data_archive'"
-  },
   "R Helper function 'check_err_code'": {
     "prefix": "tox:r_helper_check_err_code",
     "body": [
@@ -3858,5 +3496,367 @@
       "${1:result} <- tox_loess(${2:x}, ${3:y}, ${4:span}, ${5:degree}, ${6:mode}, ${7:n_iters})"
     ],
     "description": "Call of R wrapper for 'tox_loess_c' from module 'tox_loess'"
+  },
+  "R setup for 'read_gene_ids_from_tsv_file_c' from module 'tox_data_read_write'": {
+    "prefix": "tox:r_setup_read_gene_ids_from_tsv_file_c",
+    "body": [
+      "#' Read gene IDs from a TSV file (R wrapper)",
+      "#' @param filename Path to TSV file",
+      "#' @param n_genes Number of genes (rows)",
+      "#' @param gene_ids_len Max length of gene ID string",
+      "#' @param n_header_rows Number of header rows",
+      "#' @param gene_col Column index for gene IDs",
+      "#' @return List with gene_ids (character vector) and ierr",
+      "read_gene_ids_from_tsv_file <- function(filename, n_genes, gene_ids_len, n_header_rows, gene_col) {",
+      "  res <- tox_read_gene_ids_from_tsv_file_rcpp(filename, n_genes, gene_ids_len, n_header_rows, gene_col)",
+      "  check_err_code(res$ierr)",
+      "  return(res)",
+      "}",
+      ""
+    ],
+    "description": "Read gene ids from a tsv file"
+  },
+  "R call of 'read_gene_ids_from_tsv_file'": {
+    "prefix": "tox:r_read_gene_ids_from_tsv_file",
+    "body": [
+      "${1:result} <- read_gene_ids_from_tsv_file(${2:filename}, ${3:n_genes}, ${4:gene_ids_len}, ${5:n_header_rows}, ${6:gene_col})"
+    ],
+    "description": "Call of R wrapper for 'read_gene_ids_from_tsv_file_c' from module 'tox_data_read_write'"
+  },
+  "R setup for 'read_expression_vectors_tsv_c' from module 'tox_data_read_write'": {
+    "prefix": "tox:r_setup_read_expression_vectors_tsv_c",
+    "body": [
+      "#' Read expression vectors from TSV file(s) (R wrapper)",
+      "#' @param file_list Character vector of file paths (length 1 for single file)",
+      "#' @param gene_ids Character vector of gene IDs (order to match)",
+      "#' @param n_samples Number of samples (rows)",
+      "#' @param n_header_rows Number of header rows",
+      "#' @param gene_col Column index for gene IDs",
+      "#' @param value_cols Integer vector of value column indices",
+      "#' @param delimiter Delimiter (default tab)",
+      "#' @return List with expression_vectors (matrix) and ierr",
+      "read_expression_vectors_tsv <- function(file_list, gene_ids, n_samples, n_header_rows, gene_col, value_cols, delimiter = \"\\t\") {",
+      "  # Convert file_list and gene_ids to raw matrices",
+      "  res <- tox_read_expression_vectors_tsv_rcpp(",
+      "    file_list,",
+      "    gene_ids,",
+      "    as.integer(value_cols),",
+      "    delimiter,",
+      "    as.integer(n_samples),",
+      "    as.integer(n_header_rows),",
+      "    as.integer(gene_col)",
+      "  )",
+      "  check_err_code(res$ierr)",
+      "  return(res)",
+      "}",
+      ""
+    ],
+    "description": "Read expression vectors from given tabular (csv/tsv) files"
+  },
+  "R call of 'read_expression_vectors_tsv'": {
+    "prefix": "tox:r_read_expression_vectors_tsv",
+    "body": [
+      "${1:result} <- read_expression_vectors_tsv(${2:file_list}, ${3:gene_ids}, ${4:n_samples}, ${5:n_header_rows}, ${6:gene_col}, ${7:value_cols}, ${8:delimiter})"
+    ],
+    "description": "Call of R wrapper for 'read_expression_vectors_tsv_c' from module 'tox_data_read_write'"
+  },
+  "R setup for 'read_orthofinder_file_c' from module 'tox_data_read_write'": {
+    "prefix": "tox:r_setup_read_orthofinder_file_c",
+    "body": [
+      "#' Read gene family assignments from a file",
+      "#' @param filename Character string of the filename",
+      "#' @param gene_ids Character vector of gene IDs to match",
+      "#' @param n_families Number of unique gene families expected",
+      "#' @param family_len Maximum length of each family ID",
+      "#' @return A list with elements:",
+      "#'   - family_ids: Character vector of family IDs read from the file",
+      "#'   - gene_to_fam: Integer vector mapping each gene to its family index",
+      "#'   - ierr: Integer error code (0 if successful)",
+      "#' Note: If genes are not found in the gene IDs list a message will be printed but NO error code is thrown",
+      "read_orthofinder_file <- function(filename, gene_ids, n_families, family_len) {",
+      "  n_families <- as.integer(n_families)",
+      "  family_len <- as.integer(family_len)",
+      "",
+      "",
+      "  result <- tox_read_orthofinder_file_rcpp(filename, gene_ids, n_families, family_len)",
+      "",
+      "  check_err_code(result$ierr)",
+      "  return(result)",
+      "}",
+      ""
+    ],
+    "description": "Read an orthofinder family file and map genes to families"
+  },
+  "R call of 'read_orthofinder_file'": {
+    "prefix": "tox:r_read_orthofinder_file",
+    "body": [
+      "${1:result} <- read_orthofinder_file(${2:filename}, ${3:gene_ids}, ${4:n_families}, ${5:family_len})"
+    ],
+    "description": "Call of R wrapper for 'read_orthofinder_file_c' from module 'tox_data_read_write'"
+  },
+  "R setup for 'filter_unassigned_genes_c' from module 'tox_data_tools'": {
+    "prefix": "tox:r_setup_filter_unassigned_genes_c",
+    "body": [
+      "#' Filter out genes without family assignments",
+      "#' @param gene_ids Character vector of gene IDs",
+      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
+      "#' @return A list with elements:    ",
+      "#'   - mask: Logical Mask indicating unassigned genes",
+      "#'   - n_genes_kept: Count of TRUE in mask",
+      "filter_unassigned_genes <- function(gene_ids, gene_to_fam) {",
+      "  ",
+      "  res <- tox_filter_unassigned_genes_rcpp(gene_ids, gene_to_fam)",
+      "  res$mask <- res$mask != 0",
+      "  check_err_code(res$ierr)",
+      "  return(res)",
+      "}",
+      ""
+    ],
+    "description": "Filter out genes that are not assigned to any family (where gene_to_fam == 0)."
+  },
+  "R call of 'filter_unassigned_genes'": {
+    "prefix": "tox:r_filter_unassigned_genes",
+    "body": [
+      "${1:result} <- filter_unassigned_genes(${2:gene_ids}, ${3:gene_to_fam})"
+    ],
+    "description": "Call of R wrapper for 'filter_unassigned_genes_c' from module 'tox_data_tools'"
+  },
+  "R setup for 'validate_data_structure_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_data_structure_c",
+    "body": [
+      "#' Validate overall data structure",
+      "#' @param n_genes Number of genes",
+      "#' @param n_families Number of gene families",
+      "#' @param n_samples Number of samples",
+      "#' @param d Dimensionality of expression vectors (should be 2 * n_samples)",
+      "#' @param gene_ids Character vector of gene IDs",
+      "#' @param gene_family_ids Character vector of gene family IDs",
+      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
+      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
+      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
+      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
+      "validate_data_structure <- function(n_genes, n_families, n_samples, d,",
+      "                                    gene_ids, gene_family_ids,",
+      "                                    gene_to_fam, expression_vectors,",
+      "                                    family_centroids, shift_vectors) {",
+      "  ",
+      "  n_genes    <- as.integer(n_genes)",
+      "  n_families <- as.integer(n_families)",
+      "  n_samples  <- as.integer(n_samples)",
+      "  d          <- as.integer(d)",
+      "",
+      "  expr_matrix <- as.matrix(expression_vectors)",
+      "  fam_matrix <- as.matrix(family_centroids)",
+      "  shift_matrix <- as.matrix(shift_vectors)",
+      "",
+      "  ierr <- tox_validate_data_structure_rcpp(n_genes, n_families, n_samples, d,",
+      "                                    gene_ids, gene_family_ids,",
+      "                                    gene_to_fam, expression_vectors,",
+      "                                    family_centroids, shift_vectors)",
+      "",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Validate overall data structure consistency. Confirms sizes and dependencies as far as possible."
+  },
+  "R call of 'validate_data_structure'": {
+    "prefix": "tox:r_validate_data_structure",
+    "body": [
+      "${1:result} <- validate_data_structure(${2:n_genes}, ${3:n_families}, ${4:n_samples}, ${5:d}, ${6:gene_ids}, ${7:gene_family_ids}, ${8:gene_to_fam}, ${9:expression_vectors}, ${10:family_centroids}, ${11:shift_vectors})"
+    ],
+    "description": "Call of R wrapper for 'validate_data_structure_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'validate_gene_to_family_mapping_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_gene_to_family_mapping_c",
+    "body": [
+      "#' Validate gene to family mapping",
+      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
+      "#' @param n_families Number of families",
+      "validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {",
+      "  ierr <- tox_validate_gene_to_family_mapping_rcpp(gene_to_fam, n_families)",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Validate gene to family mapping"
+  },
+  "R call of 'validate_gene_to_family_mapping'": {
+    "prefix": "tox:r_validate_gene_to_family_mapping",
+    "body": [
+      "${1:result} <- validate_gene_to_family_mapping(${2:gene_to_fam}, ${3:n_families})"
+    ],
+    "description": "Call of R wrapper for 'validate_gene_to_family_mapping_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'validate_expression_data_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_expression_data_c",
+    "body": [
+      "#' Validate expression data",
+      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
+      "#' @param check_non_negative Logical flag to check for non-negative values",
+      "validate_expression_data <- function(expression_vectors, check_non_negative = TRUE) {",
+      "  expr_matrix <- as.matrix(expression_vectors)",
+      "",
+      "  ierr <- tox_validate_expression_data_rcpp(expression_vectors, check_non_negative)",
+      "",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Validate expression data"
+  },
+  "R call of 'validate_expression_data'": {
+    "prefix": "tox:r_validate_expression_data",
+    "body": [
+      "${1:result} <- validate_expression_data(${2:expression_vectors}, ${3:check_non_negative})"
+    ],
+    "description": "Call of R wrapper for 'validate_expression_data_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'validate_family_centroids_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_family_centroids_c",
+    "body": [
+      "#' Validate family centroids",
+      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
+      "validate_family_centroids <- function(family_centroids) {",
+      "  fam_matrix <- as.matrix(family_centroids)",
+      "  ierr <- tox_validate_family_centroids_rcpp(family_centroids)",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Validate family centroids, checks for NaN/Inf"
+  },
+  "R call of 'validate_family_centroids'": {
+    "prefix": "tox:r_validate_family_centroids",
+    "body": [
+      "${1:result} <- validate_family_centroids(${2:family_centroids})"
+    ],
+    "description": "Call of R wrapper for 'validate_family_centroids_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'validate_shift_vectors_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_shift_vectors_c",
+    "body": [
+      "#' Validate shift vectors",
+      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
+      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
+      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
+      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
+      "validate_shift_vectors <- function(shift_vectors, expression_vectors, family_centroids, gene_to_fam) {",
+      "  expr_matrix <- as.matrix(expression_vectors)",
+      "  fam_matrix <- as.matrix(family_centroids)",
+      "  shift_matrix <- as.matrix(shift_vectors)",
+      "",
+      "  n_genes <- ncol(expr_matrix)",
+      "  n_families <- ncol(fam_matrix)",
+      "",
+      "  ierr <- tox_validate_shift_vectors_rcpp(shift_vectors, expression_vectors, family_centroids, gene_to_fam)",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Validate shift vectors, checks if datatypes are correct and if the general structure matches"
+  },
+  "R call of 'validate_shift_vectors'": {
+    "prefix": "tox:r_validate_shift_vectors",
+    "body": [
+      "${1:result} <- validate_shift_vectors(${2:shift_vectors}, ${3:expression_vectors}, ${4:family_centroids}, ${5:gene_to_fam})"
+    ],
+    "description": "Call of R wrapper for 'validate_shift_vectors_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'validate_string_array_uniqueness_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_string_array_uniqueness_c",
+    "body": [
+      "#' Validate uniqueness of string array",
+      "#' @param string_arr Character vector of gene IDs",
+      "#' Note: Uses hashset internally which may increase memory usage temporarily for large datasets",
+      "validate_string_array_uniqueness <- function(string_arr) {",
+      "  ierr <- tox_validate_string_array_uniqueness_rcpp(string_arr)",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Validate uniqueness of strings"
+  },
+  "R call of 'validate_string_array_uniqueness'": {
+    "prefix": "tox:r_validate_string_array_uniqueness",
+    "body": [
+      "${1:result} <- validate_string_array_uniqueness(${2:string_arr})"
+    ],
+    "description": "Call of R wrapper for 'validate_string_array_uniqueness_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'validate_all_data_c' from module 'tox_data_validation'": {
+    "prefix": "tox:r_setup_validate_all_data_c",
+    "body": [
+      "#' Validate all data components together",
+      "#' @param gene_ids Character vector of gene IDs",
+      "#' @param gene_family_ids Character vector of gene family IDs",
+      "#' @param gene_to_fam Integer vector mapping each gene to its family index (0 if unassigned)",
+      "#' @param expression_vectors Numeric matrix of expression values (n_samples x n_genes)",
+      "#' @param family_centroids Numeric matrix of family centroids (n_samples x n_families)",
+      "#' @param shift_vectors Numeric matrix of shift vectors (2*n_samples x n_genes)",
+      "validate_all_data <- function(gene_ids, gene_family_ids,",
+      "                              gene_to_fam, expression_vectors,",
+      "                              family_centroids, shift_vectors) {",
+      "  expr_matrix <- as.matrix(expression_vectors)",
+      "  fam_matrix <- as.matrix(family_centroids)",
+      "  shift_matrix <- as.matrix(shift_vectors)",
+      "",
+      "  ierr <- tox_validate_all_data_rcpp(gene_ids, gene_family_ids,",
+      "                              gene_to_fam, expression_vectors,",
+      "                              family_centroids, shift_vectors)",
+      "",
+      "  check_err_code(ierr)",
+      "  return(ierr)",
+      "}",
+      ""
+    ],
+    "description": "Comprehensive validation of all data components. This function performs all individual validations in one go."
+  },
+  "R call of 'validate_all_data'": {
+    "prefix": "tox:r_validate_all_data",
+    "body": [
+      "${1:result} <- validate_all_data(${2:gene_ids}, ${3:gene_family_ids}, ${4:gene_to_fam}, ${5:expression_vectors}, ${6:family_centroids}, ${7:shift_vectors})"
+    ],
+    "description": "Call of R wrapper for 'validate_all_data_c' from module 'tox_data_validation'"
+  },
+  "R setup for 'create_zip_archive_c' from module 'tox_data_archive'": {
+    "prefix": "tox:r_setup_create_zip_archive_c",
+    "body": [
+      "create_zip_archive <- function(zip_filename, keys, filenames) {",
+      "  # stop(\"Zip archive helpers have been removed. Use an external zip tool instead.\")",
+      "}",
+      ""
+    ],
+    "description": "Low-level function to create zip archive from keys and filenames."
+  },
+  "R call of 'create_zip_archive'": {
+    "prefix": "tox:r_create_zip_archive",
+    "body": [
+      "create_zip_archive(${1:zip_filename}, ${2:keys}, ${3:filenames})"
+    ],
+    "description": "Call of R wrapper for 'create_zip_archive_c' from module 'tox_data_archive'"
+  },
+  "R setup for 'extract_zip_archive_c' from module 'tox_data_archive'": {
+    "prefix": "tox:r_setup_extract_zip_archive_c",
+    "body": [
+      "extract_zip_archive <- function(zip_filename) {",
+      "  # stop(\"Zip archive helpers have been removed. Use an external zip tool instead.\")",
+      "}",
+      ""
+    ],
+    "description": "Extract a zip archive created by create_zip_archive"
+  },
+  "R call of 'extract_zip_archive'": {
+    "prefix": "tox:r_extract_zip_archive",
+    "body": [
+      "extract_zip_archive(${1:zip_filename})"
+    ],
+    "description": "Call of R wrapper for 'extract_zip_archive_c' from module 'tox_data_archive'"
   }
 }
