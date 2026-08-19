@@ -254,8 +254,8 @@ contains
         ! below via `tmp_means_aux` (identical values), so validating them here covers both loops.
         ! With the arguments guaranteed valid, the transform runs as a race-free `do concurrent`
         ! calling the non-validating `logx_helper` -- no per-iteration write to the shared `ierr`.
-        call validate_all_in_range_real(loess_x(1:n_valid) + eps_mean, n_valid, ierr, min=above(0.0_real64))
-        call validate_all_in_range_real(loess_y(1:n_valid) + eps_sd, n_valid, ierr, min=above(0.0_real64))
+        call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr, min=above(-eps_mean))
+        call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr, min=above(-eps_sd))
         if (is_err(ierr)) return
 
         do concurrent(i_valid=1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)

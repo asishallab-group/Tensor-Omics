@@ -405,7 +405,7 @@ contains
         tmp_eval_points(1:n_valid, 1) = tmp_loess_x(1:n_valid)
 
         call loess_fit_robust_impl(n_valid, tmp_loess_x(1:n_valid), tmp_loess_y(1:n_valid), &
-                                     tmp_loess_weights(1:n_valid), tmp_eval_points(1:n_valid, :), &
+                                     tmp_loess_weights(1:n_valid), tmp_eval_points(1:n_valid, 1), &
                                      actual_span, actual_degree, &
                                      n_valid, .false._c_bool, .false._c_bool, CM_LOESS_ROBUST_ITERS, &
                                      tmp_int_workspace, int_workspace_size, &
