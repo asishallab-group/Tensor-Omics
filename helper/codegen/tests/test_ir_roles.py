@@ -839,3 +839,57 @@ class TestResultsAndProjects:
         procedure = analysed(b.procedure("p", b.integer("n"), b.real("v", Intent.IN, "(n)"), b.ierr()), bag)
 
         assert all(argument.roles is not None for argument in procedure)
+
+
+class TestProducerRefusals:
+    """Two DM_OUTPUT_FROM refusals that nothing reached.
+
+    Both stop the run before an emitter builds a call it cannot honour, so losing either
+    means a wrapper that calls a producer for a value the producer never writes.
+    """
+
+    def _project(self, *, output_intent=Intent.OUT, consumer_doc=None):
+        from codegen.ir.directives import Directives, OutputFrom, OutputFromMode
+
+        work = b.integer(
+            "n_work", Intent.IN,
+            directives=Directives(
+                output_from=OutputFrom("n_work", "sizer", "m", OutputFromMode.AUTO)
+            ),
+            **({"doc": consumer_doc} if consumer_doc is not None else {}),
+        )
+        consumer = b.procedure("uses_work", b.integer("n"), work, b.ierr())
+        producer = b.procedure(
+            "sizer", b.integer("n"), b.integer("n_work", output_intent), b.ierr()
+        )
+        return b.project(b.module("m", consumer, producer))
+
+    def test_naming_something_the_producer_does_not_output_is_reported(self, bag):
+        # `n_work` is intent(in) on the producer, so calling it would never fill anything
+        project = self._project(output_intent=Intent.IN)
+
+        analyse_project(project, bag)
+
+        assert "is not an output of 'sizer'" in bag.errors[0].message
+
+    def test_more_than_one_producer_input_table_is_reported(self, bag):
+        # two tables mapping the producer's inputs: which one wins is not for the generator
+        # to guess, so it refuses rather than picking
+        doc = [
+            "Work size.",
+            "",
+            "| Producer input | Supplied by |",
+            "|----------------|-------------|",
+            "| n | n |",
+            "",
+            "| Producer input | Supplied by |",
+            "|----------------|-------------|",
+            "| n | n |",
+        ]
+        project = self._project(consumer_doc=doc)
+
+        analyse_project(project, bag)
+
+        assert any("tables mapping the inputs of" in d.message for d in bag.errors), [
+            d.message for d in bag.errors
+        ]

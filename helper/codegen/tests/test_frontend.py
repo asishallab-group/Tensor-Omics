@@ -608,3 +608,91 @@ class TestAllocatableLocals:
         procedure, _ = self.parse_impl(tmp_path, "")
 
         assert procedure.allocatable_locals == ()
+
+
+class TestTypesFordCannotBeReadFrom:
+    """The two refusals in `_type`, reached directly rather than through a parse.
+
+    `_type` sees only Ford's rendered `full_type` string, so a stand-in carrying that one
+    attribute exercises it exactly as a parse would. Note the deliberately fresh bag: the
+    module-wide `bag` fixture is the *parse's* bag, shared for the session.
+    """
+
+    def _type_of(self, full_type, report=True):
+        from types import SimpleNamespace
+
+        from codegen.diagnostics import SourceLocation
+
+        bag = DiagnosticBag()
+        variable = SimpleNamespace(name="x", full_type=full_type, kind=None)
+        result = FordFrontend(Paths(), diagnostics=bag)._type(
+            variable, SourceLocation(file=Path("src/m.F90")), report=report
+        )
+        return result, [d.message for d in bag.errors]
+
+    def test_a_type_spec_that_does_not_parse_is_reported(self):
+        result, errors = self._type_of("???")
+
+        assert result is None
+        assert "cannot read the type of 'x'" in errors[0]
+
+    def test_a_type_the_generator_does_not_support_is_reported(self):
+        result, errors = self._type_of("procedure")
+
+        assert result is None
+        assert len(errors) == 1
+
+    def test_a_type_that_parses_but_cannot_be_built_is_reported(self):
+        # `real` with no kind: the base type is fine, but a default kind is processor
+        # dependent and so has no defensible C mapping
+        result, errors = self._type_of("real")
+
+        assert result is None
+        assert "has an unusable type 'real'" in errors[0]
+        assert "a kind is required" in errors[0]
+
+    def test_report_false_stays_quiet(self):
+        # `_parameter` reads types this way for entities that need not be interoperable
+        result, errors = self._type_of("real", report=False)
+
+        assert result is None
+        assert errors == []
+
+
+class TestFordGivingUpOnAFile:
+    """Ford warns and carries on; the frontend has to turn that into a diagnostic.
+
+    Reached through `_report_unparsed` with the text Ford actually writes, rather than by
+    corrupting a fixture source: the point is the reporting, and a real parse of a broken
+    file is slow and leaves the failure mode to Ford's version.
+    """
+
+    def _report(self, captured):
+        bag = DiagnosticBag()
+        FordFrontend(Paths(), diagnostics=bag)._report_unparsed(captured)
+        return [d.message for d in bag.errors]
+
+    def test_a_complaint_becomes_an_error(self):
+        errors = self._report(
+            "ERROR in file 'tox_normalization_impl.F90': END statement outside of any nesting"
+        )
+
+        assert len(errors) == 1
+        assert "Ford could not read a source file" in errors[0]
+        assert "tox_normalization_impl.F90" in errors[0]
+
+    def test_a_warning_counts_too(self):
+        errors = self._report("Warning: could not parse src/m.F90")
+
+        assert len(errors) == 1
+
+    def test_ordinary_narration_is_not_an_error(self):
+        # whatever Ford prints about its own progress is not a complaint about a source
+        errors = self._report("Reading file src/m.F90\nCorrelating information\n\n")
+
+        assert errors == []
+
+    def test_each_complaint_is_reported_separately(self):
+        errors = self._report("ERROR in file 'a.F90': bad\nERROR in file 'b.F90': worse")
+
+        assert len(errors) == 2

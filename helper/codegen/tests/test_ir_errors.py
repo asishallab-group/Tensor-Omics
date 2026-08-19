@@ -310,3 +310,46 @@ class TestErrorCode:
     def test_ok_is_recognised_by_value(self):
         assert ErrorCode("ERR_OK", 0).is_ok
         assert not ErrorCode("ERR_X", 1).is_ok
+
+
+class TestCodesReachingTheArgumentPositionFactor:
+    """An error code must stay below the factor that packs the argument position.
+
+    `create_err_code` encodes a failing argument as `factor * position + code`, so a code
+    that is itself as large as the factor is indistinguishable from an error raised against
+    an argument -- the caller decodes it as position 1 of some other code. The check for it
+    ran on every build and nothing asserted it existed.
+    """
+
+    def test_a_code_at_the_factor_is_reported(self, bag):
+        module = b.module(
+            "tox_errors",
+            parameters=(b.parameter("ERR_TOO_BIG", str(DEFAULT_ARG_POS_FACTOR), doc="too big"),),
+        )
+
+        ErrorCatalogue.from_module(module, bag)
+
+        message = bag.errors[0].message
+        assert "reaches the argument position factor" in message
+        assert "ERR_TOO_BIG" in message
+
+    def test_a_negative_code_past_the_factor_is_reported_too(self, bag):
+        # the packing is on the magnitude, so a large negative code collides just as badly
+        module = b.module(
+            "tox_errors",
+            parameters=(b.parameter("ERR_NEG", f"-{DEFAULT_ARG_POS_FACTOR + 5}", doc="neg"),),
+        )
+
+        ErrorCatalogue.from_module(module, bag)
+
+        assert "reaches the argument position factor" in bag.errors[0].message
+
+    def test_a_code_below_the_factor_is_fine(self, bag):
+        module = b.module(
+            "tox_errors",
+            parameters=(b.parameter("ERR_OK_SIZE", str(DEFAULT_ARG_POS_FACTOR - 1), doc="ok"),),
+        )
+
+        ErrorCatalogue.from_module(module, bag)
+
+        assert bag.errors == ()

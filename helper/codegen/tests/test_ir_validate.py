@@ -13,6 +13,7 @@ from codegen.ir.validate import (
     _within_one_edit,
     check_c_kinds_depend_on_the_safeguard,
     check_doc_links,
+    check_extents_are_declared_first,
     validate_module,
     validate_procedure,
     validate_project,
@@ -1358,3 +1359,90 @@ class TestCKindsDependOnTheSafeguard:
         check_c_kinds_depend_on_the_safeguard(project, bag)
 
         assert bag.errors == ()
+
+
+class TestExtentsAreDeclaredFirst:
+    """`real :: a(n)` above `integer :: n` is a GNU extension gfortran rejects under -std=.
+
+    The generator has always ordered its own emitted declarations this way; five
+    hand-written files had drifted from the same rule and only stopped compiling when the
+    diagnostics profile gained `-std=f2023`. This turns the rule back on the sources.
+    """
+
+    def _procedure(self, array_line, extent_line):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        return b.procedure(
+            "p",
+            b.real("array", Intent.IN, "(n)", location=at(array_line)),
+            b.integer("n", Intent.IN, location=at(extent_line)),
+            b.ierr(),
+        )
+
+    def _check(self, procedure, bag):
+        check_extents_are_declared_first(b.project(b.module("m", procedure)), bag)
+        return bag
+
+    def test_an_extent_below_the_array_it_sizes_is_reported(self, bag):
+        self._check(self._procedure(array_line=10, extent_line=12), bag)
+
+        error = only_error(bag)
+        assert "'array' is sized by 'n', which is not declared above it" in error.message
+
+    def test_an_extent_in_the_same_statement_is_reported(self, bag):
+        # `integer :: a(n), n` is rejected exactly as the two-line form is
+        self._check(self._procedure(array_line=10, extent_line=10), bag)
+
+        assert "not declared above it" in only_error(bag).message
+
+    def test_an_extent_above_the_array_is_accepted(self, bag):
+        self._check(self._procedure(array_line=12, extent_line=10), bag)
+
+        assert bag.errors == ()
+
+    def test_an_extent_inside_an_expression_is_checked(self, bag):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p",
+            b.real("series", Intent.IN, "(max(0, n_points - 1))", location=at(10)),
+            b.integer("n_points", Intent.IN, location=at(12)),
+            b.ierr(),
+        )
+
+        self._check(procedure, bag)
+
+        assert "sized by 'n_points'" in only_error(bag).message
+
+    def test_an_extent_that_is_not_an_argument_is_not_our_business(self, bag):
+        # a module parameter, say: its declaration is not in this procedure at all
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p", b.real("buffer", Intent.IN, "(MAX_STACK)", location=at(10)), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_an_argument_with_no_known_line_is_skipped(self, bag):
+        # nothing is guessed at when the declaration could not be located
+        procedure = b.procedure(
+            "p", b.real("array", Intent.IN, "(n)"), b.integer("n", Intent.IN), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_an_unexported_procedure_is_checked_too(self, bag):
+        # this is about whether the file compiles, not about what crosses into C
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        internal = b.procedure(
+            "internal",
+            b.real("array", Intent.IN, "(n)", location=at(10)),
+            b.integer("n", Intent.IN, location=at(12)),
+            meta=Meta(summary="s", author="a"),
+        )
+
+        self._check(internal, bag)
+
+        assert "not declared above it" in only_error(bag).message

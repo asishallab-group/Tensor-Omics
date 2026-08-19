@@ -35,6 +35,7 @@ def validate_project(project: Project, diagnostics: DiagnosticBag,
     check_doc_links(project, diagnostics)
     check_whitelist_is_allocation_free(project, diagnostics, conventions)
     check_c_kinds_depend_on_the_safeguard(project, diagnostics)
+    check_extents_are_declared_first(project, diagnostics)
 
 
 def allocations_in(procedure: Procedure) -> list[str]:
@@ -113,6 +114,59 @@ def check_c_kinds_depend_on_the_safeguard(project: Project, diagnostics: Diagnos
                 "and fails with the compiler's message about the kind instead"
             ),
         )
+
+
+def check_extents_are_declared_first(project: Project, diagnostics: DiagnosticBag) -> None:
+    """An extent is declared above the array it sizes.
+
+    `real(real64) :: array(n)` written above `integer(int32) :: n` is a GNU extension, not
+    standard Fortran: gfortran under `-std=` reports `Symbol 'n' is used before it is typed`,
+    then falls back to implicit typing for the array and buries the real message under a
+    cascade. Writing both in one statement -- `:: a(n), b(n), n` -- is rejected the same way,
+    so an extent on the *same* line as the array it sizes is a finding too.
+
+    The generator already emits its own wrappers in this order (`emit/fortran_c` and
+    `emit/fortran_wrapper` both sort extents ahead of their arrays). This is the same rule
+    turned back on the hand-written sources, which had drifted from it in five files until
+    the diagnostics profile gained `-std=f2023` and stopped compiling.
+
+    Every procedure, not only the exported ones: this is about whether the file compiles, not
+    about what crosses into C. Argument *declaration* order is what matters and it is
+    independent of the dummy-argument list, so the line each declaration was found on is the
+    only thing that can answer it -- an argument whose line is unknown is skipped rather than
+    guessed at.
+    """
+    for module in project:
+        for procedure in module.procedures:
+            lines = {
+                argument.name.lower(): argument.location.line
+                for argument in procedure.arguments
+                if argument.location is not None and argument.location.line is not None
+            }
+            for argument in procedure.arguments:
+                if argument.location is None or argument.location.line is None:
+                    continue
+                declared = argument.location.line
+                for extent in argument.dimension.extents:
+                    for identifier in _IDENTIFIER_RE.findall(extent):
+                        sizer = lines.get(identifier.lower())
+                        if sizer is None or sizer < declared:
+                            continue
+                        # Not "below" vs "in the same statement": the extent's own
+                        # location is looked up by searching for its name, and in exactly
+                        # this broken ordering it matches the `array(n)` above its real
+                        # declaration. One wording that holds either way.
+                        diagnostics.error(
+                            f"'{argument.name}' is sized by '{identifier}', which is not "
+                            f"declared above it",
+                            entity=argument,
+                            note=(
+                                "declare the extent first. Referring to a symbol that is "
+                                "typed later in the specification part is a GNU extension "
+                                "that gfortran rejects under -std=, and the array then takes "
+                                "an implicit type, which buries the real error"
+                            ),
+                        )
 
 
 def check_whitelist_is_allocation_free(project: Project, diagnostics: DiagnosticBag,

@@ -450,3 +450,74 @@ class TestTemporaries:
 
     def test_a_synthesised_argument_is_not_a_temporary(self, bag):
         assert not wrap(b.procedure("p", b.real("x")), bag).argument("ierr").is_temporary
+
+
+class TestDefaultsAndMappingsThatCannotBeBuilt:
+    """The three ABI refusals nothing reached.
+
+    Each of these is the generator declining to emit rather than emitting something wrong,
+    so a regression here is silent by construction: the binding still builds, it just
+    stops complaining about input it cannot represent.
+    """
+
+    def _mode_doc(self, *names):
+        rows = [f"| {n} | [[m(module):MODE_{n.upper()}(variable)]] |" for n in names]
+        return ["| Mode | Value |", "|------|-------|", *rows]
+
+    def test_a_default_that_is_not_a_constant_is_reported(self, bag):
+        from codegen.ir.directives import Default, Directives
+
+        procedure = b.procedure(
+            "p",
+            b.integer("n", Intent.IN, directives=Directives(default=Default("f(x)"))),
+            b.ierr(),
+        )
+        analyse(procedure, bag)
+
+        build_wrapper(procedure, bag)
+
+        assert "is not a constant" in bag.errors[0].message
+        assert "'n'" in bag.errors[0].message
+
+    def test_a_defaulted_mode_that_matches_no_tabulated_value_is_reported(self, bag):
+        from codegen.ir.constants import ConstantEvaluator
+        from codegen.ir.directives import Default, Directives
+
+        procedure = b.procedure(
+            "p",
+            b.integer(
+                "mode", Intent.IN, doc=self._mode_doc("mean", "median"),
+                directives=Directives(default=Default("MODE_MISSING")),
+            ),
+            b.ierr(),
+        )
+        analyse(procedure, bag)
+        evaluator = ConstantEvaluator(
+            {"MODE_MEAN": 0, "MODE_MEDIAN": 1, "MODE_MISSING": 7}
+        )
+
+        build_wrapper(procedure, bag, evaluator=evaluator)
+
+        assert "matches no value in its mode table" in bag.errors[0].message
+
+    def test_a_base_type_with_no_c_mapping_is_reported(self, bag):
+        from codegen.ir.types import FortranType
+
+        derived = b._argument(
+            FortranType(BaseType.DERIVED, kind=None, derived_name="point"),
+            "thing", "", Intent.IN, "",
+        )
+        procedure = b.procedure("p", derived, b.ierr())
+        analyse(procedure, bag)
+
+        build_wrapper(procedure, bag)
+
+        assert "which has no C mapping" in bag.errors[0].message
+
+    def test_a_kind_with_no_c_counterpart_is_reported(self, bag):
+        procedure = b.procedure("p", b.real("x", Intent.IN, kind="real128"), b.ierr())
+        analyse(procedure, bag)
+
+        build_wrapper(procedure, bag)
+
+        assert "has no known C counterpart" in bag.errors[0].message
