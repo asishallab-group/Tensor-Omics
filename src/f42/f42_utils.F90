@@ -645,7 +645,7 @@ contains
         integer(int32) :: left, right, i, j, top, pivot_idx
         real(real64) :: pivot_val
 
-        if (n == 0) return
+        if (n <= 1) return
 
         top = 1
         tmp_stack_left(top) = 1
@@ -713,7 +713,7 @@ contains
         integer(int32) :: left, right, i, j, top, pivot_idx
         integer(int32) :: pivot_val
 
-        if (n == 0) return
+        if (n <= 1) return
 
         top = 1
         tmp_stack_left(top) = 1
@@ -777,7 +777,7 @@ contains
             !! Temporary variables
         character(len=len(array)) :: pivot_val
 
-        if (n == 0) return
+        if (n <= 1) return
 
         top = 1
         tmp_stack_left(top) = 1

@@ -470,6 +470,7 @@ contains
         end where
 
         ! Sort RDI values using the tox_sorting module
+        call init_perm(perm)
         call sort_array(sorted_rdi, perm, stack_left, stack_right)
 
     end subroutine compute_rdi
