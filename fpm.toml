@@ -17,8 +17,8 @@ optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-p
 optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
 optimization.gfortran.flags = "-march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize"
 
-diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all"
-diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all"
+diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -stand f23"
+diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023"
 
 default.linux.flags = "-fPIC"
 
