@@ -125,7 +125,7 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
     if (!is.null(neighbor_mask))
-        neighbor_mask <- .tox_as_logical(neighbor_mask, "neighbor_mask")
+        neighbor_mask <- .tox_as_logical_matrix(neighbor_mask, "neighbor_mask")
     .result <- .Call("build_residual_histograms_call", neighborhood_residuals, shared_residual_range, n_bins, neighbor_mask)
     .arguments <- c("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr")
     .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, "counts", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)

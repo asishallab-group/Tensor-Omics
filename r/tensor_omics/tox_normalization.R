@@ -47,7 +47,7 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
     reps_per_tissue <- .tox_as_integer_vector(reps_per_tissue, "reps_per_tissue")
     span <- .tox_as_double_scalar(span, "span")
     degree <- .tox_as_integer_scalar(degree, "degree")
-    use_quantile <- .tox_as_logical(use_quantile, "use_quantile")
+    use_quantile <- .tox_as_logical_scalar(use_quantile, "use_quantile")
     .result <- .Call("normalization_pipeline_call", expr, reps_per_tissue, span, degree, use_quantile)
     .arguments <- c("n_genes", "n_replicates", "expr", "log_transformed_expr", "reps_per_tissue", "n_tissues", "span", "degree", "use_quantile", "ierr")
     .sources <- c("expr", "expr", NA_character_, NA_character_, NA_character_, "log_transformed_expr", NA_character_, NA_character_, NA_character_, NA_character_)

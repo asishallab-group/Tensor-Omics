@@ -111,8 +111,35 @@
   x
 }
 
-.tox_as_logical <- function(x, name) {
+.tox_as_logical_scalar <- function(x, name) {
+  if (!is.logical(x) || length(x) != 1L) .tox_type_error(name, "a logical scalar", x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_logical_vector <- function(x, name) {
   if (!is.logical(x)) .tox_type_error(name, "a logical vector", x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_logical_matrix <- function(x, name) {
+  if (!is.matrix(x) || !is.logical(x)) .tox_type_error(name, "a logical matrix", x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_logical_array <- function(x, name, ndim) {
+  if (!is.array(x) || !is.logical(x) || length(dim(x)) != ndim)
+    .tox_type_error(name, sprintf("a logical array of rank %d", ndim), x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_integer_array <- function(x, name, ndim) {
+  if (!is.array(x) || !is.numeric(x) || length(dim(x)) != ndim)
+    .tox_type_error(name, sprintf("an integer array of rank %d", ndim), x)
+  storage.mode(x) <- "integer"
   if (anyNA(x)) .tox_na_error(name)
   x
 }

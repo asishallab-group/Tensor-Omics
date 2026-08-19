@@ -63,7 +63,7 @@ validate_gene_to_family_mapping <- function(gene_to_fam, n_families) {
 #' @export
 validate_expression_data <- function(expression_vectors, check_non_negative) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
-    check_non_negative <- .tox_as_logical(check_non_negative, "check_non_negative")
+    check_non_negative <- .tox_as_logical_scalar(check_non_negative, "check_non_negative")
     .result <- .Call("validate_expression_data_call", expression_vectors, check_non_negative)
     .arguments <- c("expression_vectors", "check_non_negative", "ierr")
     .status <- check_err_code(.result$ierr, .arguments)
@@ -160,8 +160,8 @@ validate_all_data <- function(n_genes, n_families, n_samples, gene_ids, gene_fam
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
     family_centroids <- .tox_as_double_matrix(family_centroids, "family_centroids")
     shift_vectors <- .tox_as_double_matrix(shift_vectors, "shift_vectors")
-    check_uniqueness <- .tox_as_logical(check_uniqueness, "check_uniqueness")
-    check_shift_consistency <- .tox_as_logical(check_shift_consistency, "check_shift_consistency")
+    check_uniqueness <- .tox_as_logical_scalar(check_uniqueness, "check_uniqueness")
+    check_shift_consistency <- .tox_as_logical_scalar(check_shift_consistency, "check_shift_consistency")
     .result <- .Call("validate_all_data_call", n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, check_uniqueness, check_shift_consistency)
     .arguments <- c("n_genes", "n_families", "n_samples", "gene_ids", "gene_family_ids", "gene_to_fam", "expression_vectors", "family_centroids", "shift_vectors", "ierr", "check_uniqueness", "check_shift_consistency")
     .status <- check_err_code(.result$ierr, .arguments)

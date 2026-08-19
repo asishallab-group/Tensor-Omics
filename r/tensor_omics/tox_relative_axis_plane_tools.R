@@ -12,8 +12,8 @@
 #' @export
 omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selection_mask) {
     vecs <- .tox_as_double_matrix(vecs, "vecs")
-    vecs_selection_mask <- .tox_as_logical(vecs_selection_mask, "vecs_selection_mask")
-    axes_selection_mask <- .tox_as_logical(axes_selection_mask, "axes_selection_mask")
+    vecs_selection_mask <- .tox_as_logical_vector(vecs_selection_mask, "vecs_selection_mask")
+    axes_selection_mask <- .tox_as_logical_vector(axes_selection_mask, "axes_selection_mask")
     if (length(axes_selection_mask) != dim(vecs)[1])
         .tox_shape_error("axes_selection_mask", length(axes_selection_mask), "vecs", dim(vecs)[1])
     if (length(vecs_selection_mask) != dim(vecs)[2])
@@ -39,8 +39,8 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 #' @export
 omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selection_mask) {
     fields <- .tox_as_double_array(fields, "fields", 3L)
-    fields_selection_mask <- .tox_as_logical(fields_selection_mask, "fields_selection_mask")
-    axes_selection_mask <- .tox_as_logical(axes_selection_mask, "axes_selection_mask")
+    fields_selection_mask <- .tox_as_logical_vector(fields_selection_mask, "fields_selection_mask")
+    axes_selection_mask <- .tox_as_logical_vector(axes_selection_mask, "axes_selection_mask")
     if (length(axes_selection_mask) != dim(fields)[1])
         .tox_shape_error("axes_selection_mask", length(axes_selection_mask), "fields", dim(fields)[1])
     if (length(fields_selection_mask) != dim(fields)[3])
@@ -110,7 +110,7 @@ clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
 #' @export
 clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, orientation_reference) {
     fields <- .tox_as_double_array(fields, "fields", 3L)
-    fields_selection_mask <- .tox_as_logical(fields_selection_mask, "fields_selection_mask")
+    fields_selection_mask <- .tox_as_logical_vector(fields_selection_mask, "fields_selection_mask")
     orientation_reference <- .tox_as_double_vector(orientation_reference, "orientation_reference")
     if (length(orientation_reference) != dim(fields)[1])
         .tox_shape_error("orientation_reference", length(orientation_reference), "fields", dim(fields)[1])

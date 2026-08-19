@@ -868,9 +868,11 @@ class PythonEmitter:
                 # its extents travel separately, so the only thing an extent of it can
                 # mean is how many elements there are altogether
                 return f"{owner.name}.size"
-            axis = self._axis_of(argument.name, c_owner)
-            if axis is not None:
-                return f"{owner.name}.shape[{axis}]"
+            axes = self._axes_of(argument.name, c_owner)
+            if axes:
+                # the first is where the value is read from; the others are what
+                # `_check_shapes` then verifies against it
+                return f"{owner.name}.shape[{axes[0]}]"
         # an output sized by a shape argument: the count is the product of that shape
         for owner in argument.source.roles.extent_of:
             c_owner = wrapper.argument(owner.name)
@@ -879,8 +881,8 @@ class PythonEmitter:
         return ""
 
     @staticmethod
-    def _axis_of(extent: str, owner: CArgument) -> int | None:
-        """Which numpy axis of `owner` carries `extent`.
+    def _axes_of(extent: str, owner: CArgument) -> list[int]:
+        """Which numpy axes of `owner` carry `extent`.
 
         A character's length is a C extent but not a numpy axis: the strings are a numpy
         array of one dimension fewer.
@@ -888,10 +890,10 @@ class PythonEmitter:
         extents = list(owner.dimension.extents)
         if owner.type.is_character and extents:
             extents = extents[1:]
-        try:
-            return extents.index(extent)
-        except ValueError:
-            return None
+        # every axis, not the first: `distances(n_points, n_points)` claims to know
+        # `n_points` twice, and checking only axis 0 lets a non-square array through to a
+        # Fortran view that reads (and, when intent(inout), writes) past the buffer.
+        return [index for index, name in enumerate(extents) if name == extent]
 
     def _check_shapes(self, writer: Writer, wrapper: CWrapper) -> None:
         """Cross-check every extent that more than one input claims to know.
@@ -906,17 +908,18 @@ class PythonEmitter:
             if roles is None or not roles.is_extent:
                 continue
 
-            owners = [
-                (owner, self._axis_of(argument.name, wrapper.argument(owner.name)))
-                for owner in roles.extent_of
-                if wrapper.argument(owner.name) is not None
-                and wrapper.argument(owner.name).intent.is_input
-                and not wrapper.argument(owner.name).optional
+            owners = []
+            for owner in roles.extent_of:
+                c_owner = wrapper.argument(owner.name)
+                if c_owner is None or not c_owner.intent.is_input or c_owner.optional:
+                    continue
                 # a work array the wrapper allocates itself always agrees, and does not
                 # exist yet at this point in the generated function
-                and not wrapper.argument(owner.name).is_temporary
-            ]
-            owners = [(owner, axis) for owner, axis in owners if axis is not None]
+                if c_owner.is_temporary:
+                    continue
+                owners.extend(
+                    (owner, axis) for axis in self._axes_of(argument.name, c_owner)
+                )
             if len(owners) < 2:
                 continue
 

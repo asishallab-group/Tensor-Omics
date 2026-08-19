@@ -122,6 +122,9 @@ k_means_clustering <- function(data_points, centroids, max_iterations = 300L) {
 linkage_clustering <- function(distances, method) {
     distances <- .tox_as_double_matrix(distances, "distances")
     method <- .tox_as_mode(method, "method", c("average", "weighted", "ward"))
+    if (dim(distances)[2] != dim(distances)[1])
+        .tox_shape_error("distances", dim(distances)[2], "distances", dim(distances)[1])
+
     .result <- .Call("linkage_clustering_call", distances, method)
     .arguments <- c("distances", "n_points", "merge_i", "merge_j", "heights", "cluster_sizes", "method", "ierr")
     .sources <- c(NA_character_, "distances", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)

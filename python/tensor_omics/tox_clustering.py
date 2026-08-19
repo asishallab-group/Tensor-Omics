@@ -332,6 +332,12 @@ def linkage_clustering(
     # what the inputs already say, rather than asking for it again
     n_points = distances.shape[0]
 
+    # Fortran cannot check that shared extents agree; this can
+    if distances.shape[1] != n_points:
+        raise ValueError(f"'distances' has {distances.shape[1]} along axis 1, but "
+            f"'distances' implies n_points == {n_points}"
+        )
+
     # outputs and work arrays, which the caller never sees
     merge_i = np.empty((n_points - 1,), dtype=np.int32, order='C')
     merge_j = np.empty((n_points - 1,), dtype=np.int32, order='C')

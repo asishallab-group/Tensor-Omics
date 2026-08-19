@@ -18,7 +18,7 @@
 tox_loess_required_workspace <- function(n_dim, max_neighborhood_size, save_factorization) {
     n_dim <- .tox_as_integer_scalar(n_dim, "n_dim")
     max_neighborhood_size <- .tox_as_integer_scalar(max_neighborhood_size, "max_neighborhood_size")
-    save_factorization <- .tox_as_logical(save_factorization, "save_factorization")
+    save_factorization <- .tox_as_logical_scalar(save_factorization, "save_factorization")
     .result <- .Call("tox_loess_required_workspace_call", n_dim, max_neighborhood_size, save_factorization)
     .arguments <- c("n_dim", "max_neighborhood_size", "int_workspace_size", "real_workspace_size", "save_factorization")
     .status <- check_err_code(.result$ierr, .arguments)

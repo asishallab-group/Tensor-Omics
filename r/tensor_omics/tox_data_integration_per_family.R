@@ -105,8 +105,8 @@ fjct_compute_jsd <- function(family_idx, gene_to_family_S1, gene_to_family_S2, n
 fjct_compute_masked_jsd <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
     neighborhood_residuals_S2 <- .tox_as_double_array(neighborhood_residuals_S2, "neighborhood_residuals_S2", 3L)
-    neighbor_mask_S1 <- .tox_as_logical(neighbor_mask_S1, "neighbor_mask_S1")
-    neighbor_mask_S2 <- .tox_as_logical(neighbor_mask_S2, "neighbor_mask_S2")
+    neighbor_mask_S1 <- .tox_as_logical_matrix(neighbor_mask_S1, "neighbor_mask_S1")
+    neighbor_mask_S2 <- .tox_as_logical_matrix(neighbor_mask_S2, "neighbor_mask_S2")
     n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
     if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])

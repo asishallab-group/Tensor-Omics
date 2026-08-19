@@ -20,8 +20,8 @@
 #' @export
 compute_tissue_versatility <- function(expression_vectors, vectors_selection_mask, axes_selection_mask) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")
-    vectors_selection_mask <- .tox_as_logical(vectors_selection_mask, "vectors_selection_mask")
-    axes_selection_mask <- .tox_as_logical(axes_selection_mask, "axes_selection_mask")
+    vectors_selection_mask <- .tox_as_logical_vector(vectors_selection_mask, "vectors_selection_mask")
+    axes_selection_mask <- .tox_as_logical_vector(axes_selection_mask, "axes_selection_mask")
     if (length(axes_selection_mask) != dim(expression_vectors)[1])
         .tox_shape_error("axes_selection_mask", length(axes_selection_mask), "expression_vectors", dim(expression_vectors)[1])
     if (length(vectors_selection_mask) != dim(expression_vectors)[2])

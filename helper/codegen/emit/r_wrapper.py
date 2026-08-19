@@ -126,9 +126,11 @@ class RWrapperEmitter:
                     # this extent rather than the other way round
                     continue
                 if c_owner is not None and c_owner.intent.is_input and not c_owner.optional:
-                    axis = self._axis_of(consumer_arg, c_owner)
-                    if axis is not None:
-                        return self._extent_expression(c_owner, axis)
+                    axes = self._axes_of(consumer_arg, c_owner)
+                    if axes:
+                        # the first axis is where the value is read from; any others are
+                        # what `_check_shapes` then verifies against it
+                        return self._extent_expression(c_owner, axes[0])
         if roles is not None and roles.is_mask_count:
             return f"sum({roles.mask_count_of.name})"
         return consumer_arg
@@ -252,8 +254,6 @@ class RWrapperEmitter:
             BaseType.LOGICAL: "logical",
         }[argument.type.base]
 
-        if argument.type.base is BaseType.LOGICAL:
-            return f".tox_as_logical({value}, {name})"
         if argument.is_scalar:
             return f".tox_as_{base}_scalar({value}, {name})"
         if argument.rank == 1:
@@ -283,9 +283,10 @@ class RWrapperEmitter:
                     # a work array C allocates itself always agrees, and is not a
                     # variable R has in scope
                     continue
-                axis = self._axis_of(argument.name, c_owner)
-                if axis is not None:
-                    owners.append((c_owner, axis))
+                owners.extend(
+                    (c_owner, axis)
+                    for axis in self._axes_of(argument.name, c_owner)
+                )
             if len(owners) < 2:
                 continue
 
@@ -309,14 +310,17 @@ class RWrapperEmitter:
         return f"dim({owner.name})[{axis + 1}]"
 
     @staticmethod
-    def _axis_of(extent: str, owner: CArgument) -> int | None:
+    def _axes_of(extent: str, owner: CArgument) -> list[int]:
+        """Which axes of `owner` carry `extent` -- all of them, not the first.
+
+        `distances(n_points, n_points)` claims to know `n_points` twice. Checking only
+        the first axis lets a non-square matrix through to a Fortran view that reads,
+        and for an intent(inout) argument writes, past the end of the buffer.
+        """
         extents = list(owner.dimension.extents)
         if owner.type.is_character and extents:
             extents = extents[1:]
-        try:
-            return extents.index(extent)
-        except ValueError:
-            return None
+        return [index for index, name in enumerate(extents) if name == extent]
 
     # -- call and return --------------------------------------------------------
 
@@ -509,8 +513,35 @@ _VALIDATORS = r'''# Generated. Do not edit.
   x
 }
 
-.tox_as_logical <- function(x, name) {
+.tox_as_logical_scalar <- function(x, name) {
+  if (!is.logical(x) || length(x) != 1L) .tox_type_error(name, "a logical scalar", x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_logical_vector <- function(x, name) {
   if (!is.logical(x)) .tox_type_error(name, "a logical vector", x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_logical_matrix <- function(x, name) {
+  if (!is.matrix(x) || !is.logical(x)) .tox_type_error(name, "a logical matrix", x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_logical_array <- function(x, name, ndim) {
+  if (!is.array(x) || !is.logical(x) || length(dim(x)) != ndim)
+    .tox_type_error(name, sprintf("a logical array of rank %d", ndim), x)
+  if (anyNA(x)) .tox_na_error(name)
+  x
+}
+
+.tox_as_integer_array <- function(x, name, ndim) {
+  if (!is.array(x) || !is.numeric(x) || length(dim(x)) != ndim)
+    .tox_type_error(name, sprintf("an integer array of rank %d", ndim), x)
+  storage.mode(x) <- "integer"
   if (anyNA(x)) .tox_na_error(name)
   x
 }
