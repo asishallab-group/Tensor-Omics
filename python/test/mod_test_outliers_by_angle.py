@@ -78,7 +78,7 @@ def test_detect_angle_outliers_basic():
     ], dtype=np.float64, order='F').T
 
     gene_to_fam = np.array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2], dtype=np.int32, order='F')
-    percentile_threshold = 85.0
+    percentile_threshold = 0.85
 
     result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
 
@@ -126,7 +126,7 @@ def test_detect_angle_outliers_single_family():
     ], dtype=np.float64).T
 
     gene_to_fam = np.array([1, 1, 1, 1, 1, 1, 1, 1], dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
 
@@ -159,7 +159,7 @@ def test_detect_angle_outliers_invalid_percentile():
     gene_to_fam = np.array([1, 1, 1, 1, 1], dtype=np.int32)
 
     # Test percentile = 100.0 (invalid: must be < 100)
-    percentile_threshold = 100.0
+    percentile_threshold = 1.0
 
     try:
         result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
@@ -180,7 +180,7 @@ def test_detect_angle_outliers_no_valid_families():
 
     # Each gene in its own family -> families have only 1 gene each
     gene_to_fam = np.array([1, 2, 3], dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
     assert np.any(result["status"] != 0), "Expected status indicator for no valid families"
@@ -201,7 +201,7 @@ def test_detect_angle_outliers_parallel_genes():
     ], dtype=np.float64).T
 
     gene_to_fam = np.array([1, 1, 1, 1, 1, 1], dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
     assert np.any(result["status"] != 0), "Expected status indicator for low angular dispersion"
@@ -223,7 +223,7 @@ def test_detect_angle_outliers_orthogonal_outlier():
     ], dtype=np.float64).T
 
     gene_to_fam = np.array([1, 1, 1, 1, 1, 1, 1], dtype=np.int32)
-    percentile_threshold = 85.0
+    percentile_threshold = 0.85
 
     result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
 
@@ -257,7 +257,7 @@ def test_detect_angle_outliers_invalid_family_mapping():
 
     # Gene 2: unassigned (0), Gene 3: invalid family (3 > n_families)
     gene_to_fam = np.array([1, 1, 0, 3, 2], dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     try:
         result = tox_detect_angle_outliers_pipeline(expression_vectors, gene_to_fam, percentile_threshold)
@@ -571,7 +571,7 @@ def test_angle_outliers_basic():
         1.0, 1.1, 1.2, 1.3, 3.0   # Last one is outlier
     ], dtype=np.float64)
 
-    percentile = 90.0  # 90th percentile
+    percentile = 0.9  # 90th percentile
 
     result = tox_angle_outliers(z_scores, percentile)
 
@@ -598,7 +598,7 @@ def test_angle_outliers_varying_percentile():
     z_scores = np.clip(z_scores, 0.0, None)  # Ensure non-negative
 
     # Test different percentiles
-    percentiles = [80.0, 90.0, 95.0, 99.0]
+    percentiles = [0.8, 0.9, 0.95, 0.99]
 
     for percentile in percentiles:
         result = tox_angle_outliers(z_scores, percentile)
@@ -628,7 +628,7 @@ def test_angle_outliers_invalid_z_scores():
         0.5, 0.6, -1.0, 0.8, 0.9, -1.0, 1.2, 3.0
     ], dtype=np.float64)
 
-    percentile = 90.0
+    percentile = 0.9
 
     result = tox_angle_outliers(z_scores, percentile)
 
@@ -654,7 +654,7 @@ def test_angle_outliers_few_valid_genes():
         -1.0, -1.0, 0.5, 0.6, -1.0
     ], dtype=np.float64)
 
-    percentile = 90.0
+    percentile = 0.9
 
     result = tox_angle_outliers(z_scores, percentile)
     is_outlier = result["is_outlier"]
@@ -671,7 +671,7 @@ def test_angle_outliers_extreme_percentile():
     z_scores = np.linspace(0.0, np.pi, n_genes, dtype=np.float64)
 
     # Test extreme percentiles
-    extreme_percentiles = [0.1, 99.9, 50.0]
+    extreme_percentiles = [0.001, 0.999, 0.5]
 
     for percentile in extreme_percentiles:
         result = tox_angle_outliers(z_scores, percentile)
@@ -680,7 +680,7 @@ def test_angle_outliers_extreme_percentile():
 
         # Count outliers
         outlier_count = np.sum(is_outlier)
-        expected_count = max(1, int((100.0 - percentile) / 100.0 * n_genes))
+        expected_count = max(1, int((1 - percentile) * n_genes))
 
         # Allow some tolerance
         assert abs(outlier_count - expected_count) <= 2, \
@@ -696,7 +696,7 @@ def test_full_pipeline_consistency():
         n_samples, n_genes, n_families, outlier_indices=[4, 10]
     )
 
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     # Run full pipeline
     full_result = tox_detect_angle_outliers_pipeline(
@@ -755,7 +755,7 @@ def test_edge_case_high_dimensional():
         gene_to_fam[i] = (i % n_families) + 1
 
     # Run pipeline
-    percentile_threshold = 95.0
+    percentile_threshold = 0.95
 
     result = tox_detect_angle_outliers_pipeline(
         expression_vectors, gene_to_fam, percentile_threshold
@@ -781,7 +781,7 @@ def test_angle_outliers_expert_basic_consistency():
         0.5, 0.6, -1.0, 0.8, 0.9, 1.1, -1.0, 2.5
     ], dtype=np.float64)
 
-    percentile = 90.0
+    percentile = 0.9
 
     # Reference result
     ref = tox_angle_outliers(z_scores, percentile)

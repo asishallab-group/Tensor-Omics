@@ -468,6 +468,7 @@ contains
         end do
 
         if (count_valid < 2) then
+            threshold = maxval(z_scores)
             is_outlier = .false.
             return
         end if

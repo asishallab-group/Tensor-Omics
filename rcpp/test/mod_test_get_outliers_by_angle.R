@@ -271,7 +271,7 @@ test_z_scores_by_dispersion_invalid <- function() {
 
 test_angle_outliers_basic <- function() {
   z_scores <- c(1.0, 1.5, 2.0, 2.5, 3.0, 2.5, 2.0, -1.0)
-  percentile    <- 80.0
+  percentile    <- 0.8
 
   res <- tox_angle_outliers(
     z_scores = z_scores,
@@ -298,7 +298,7 @@ test_angle_outliers_basic <- function() {
 
 test_angle_outliers_no_valid <- function() {
   z_scores <- c(-1.0, -1.0, -1.0)
-  percentile    <- 90.0
+  percentile    <- 0.9
 
   res <- tox_angle_outliers(
     z_scores = z_scores,
@@ -323,7 +323,7 @@ test_angle_outliers_all_outliers <- function() {
 
   res100 <- tox_angle_outliers(
     z_scores = z_scores,
-    percentile    = 100.0
+    percentile    = 1.0
   )
   assert_equal_int(res100$ierr, ERR_OK, "angle_outliers_all_outliers: ierr mismatch (100%)")
   assert_false(all(as.logical(res100$is_outlier)),
@@ -353,7 +353,7 @@ test_detect_angle_outliers_basic <- function() {
   res <- tox_detect_angle_outliers_pipeline(
     expression_vectors      = expression_vectors,
     gene_to_fam             = gene_to_fam,
-    percentile              = 85.0,
+    percentile              = 0.8,
     min_angular_dispersion  = 0,
     max_angular_dispersion  = PI
   )
@@ -389,7 +389,7 @@ test_detect_angle_outliers_single_family <- function() {
   res <- tox_detect_angle_outliers_pipeline(
     expression_vectors      = expression_vectors,
     gene_to_fam             = gene_to_fam,
-    percentile              = 90.0,
+    percentile              = 0.9,
     min_angular_dispersion  = 0,
     max_angular_dispersion  = PI
   )
@@ -641,7 +641,7 @@ test_z_scores_by_dispersion_rap_zero_dispersion <- function() {
 
 test_angle_outliers_rap_basic <- function() {
   z_scores <- c(1.0, 1.5, 2.0, 2.5, 3.0, 2.5, 2.0, -1.0)
-  percentile    <- 80.0
+  percentile    <- 0.8
 
   res <- tox_angle_outliers_rap(
     z_scores = z_scores,
@@ -668,7 +668,7 @@ test_angle_outliers_rap_basic <- function() {
 
 test_angle_outliers_rap_no_valid <- function() {
   z_scores <- c(-1.0, -1.0, -1.0)
-  percentile    <- 90.0
+  percentile    <- 0.9
 
   res <- tox_angle_outliers_rap(
     z_scores = z_scores,
@@ -694,7 +694,7 @@ test_angle_outliers_rap_all_outliers <- function() {
 
   res100 <- tox_angle_outliers_rap(
     z_scores = z_scores,
-    percentile    = 100.0
+    percentile    = 1.0
   )
   assert_equal_int(res100$ierr, ERR_OK, "angle_outliers_rap_all_outliers: ierr mismatch (100%)")
   assert_false(all(as.logical(res100$is_outlier)),
@@ -715,7 +715,7 @@ test_detect_angle_outliers_pipeline_rap_basic <- function() {
   res <- tox_detect_angle_outliers_pipeline_rap(
     rap_angles            = rap_angles,
     gene_to_fam           = gene_to_fam,
-    percentile            = 85.0,
+    percentile            = 0.85,
     min_family_dispersion = 0,
     max_family_dispersion = PI
   )

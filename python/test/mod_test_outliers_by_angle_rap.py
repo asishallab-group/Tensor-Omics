@@ -11,12 +11,14 @@ from tensoromics_functions import (
     tox_angle_outliers_rap,
     tox_detect_angle_outliers_pipeline_rap
 )
+from test_helpers import run_all_tests, assert_error
 
 # Constants
 PI = np.pi
 EPS = 1.0e-12
 MAX_SC = 10.0
-
+STAT_NO_STABLE_DIRECTION = 401
+STAT_NO_ANGULAR_VARIATION = 402
 
 # ============================================================================
 # Test 1: Circular family direction computation with multiple families
@@ -268,15 +270,7 @@ def test_compute_angular_deviations_rap_invalid_family():
     # Gene 3: invalid family (3 > n_families)
     gene_to_fam = np.array([1, 1, -3, 2], dtype=np.int32)
 
-    try:
-        angular_deviations = tox_compute_angular_deviations_rap(
-            rap_angles,
-            family_mean_angles,
-            gene_to_fam
-        )
-        assert False, "Expected error"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_compute_angular_deviations_rap(rap_angles, family_mean_angles, gene_to_fam), "Expected Error for invalid family")
 
 
 # ============================================================================
@@ -359,15 +353,7 @@ def test_z_scores_by_dispersion_rap_invalid():
     family_dispersions = np.array([0.0, 0.1], dtype=np.float64)  # Family 1: invalid
     gene_to_fam = np.array([1, 1, -3, 2], dtype=np.int32)  # Gene 3: invalid family
 
-    try:
-        z_scores = tox_z_scores_by_dispersion_rap(
-            angular_deviations,
-            family_dispersions,
-            gene_to_fam
-        )
-        assert False, "Expected error"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_z_scores_by_dispersion_rap( angular_deviations, family_dispersions, gene_to_fam), "Expected Error for invalid family")
 
 
 # ============================================================================
@@ -406,7 +392,7 @@ def test_angle_outliers_rap_alloc_basic():
         3.0, 2.5, 2.0, -1.0
     ], dtype=np.float64)
 
-    percentile = 80.0  # 80th percentile
+    percentile = 0.8  # 80th percentile
 
     result = tox_angle_outliers_rap(z_scores, percentile)
 
@@ -434,13 +420,10 @@ def test_angle_outliers_rap_alloc_no_valid():
     n_genes = 3
 
     z_scores = np.array([-1.0, -1.0, -1.0], dtype=np.float64)  # All invalid
-    percentile = 90.0
+    percentile = 0.9
 
-    try:
-        result = tox_angle_outliers_rap(z_scores, percentile)
-        assert False, "Expected exception"
-    except Exception as e:
-        pass
+    result = tox_angle_outliers_rap(z_scores, percentile)
+    assert not any(result["is_outlier"])
 
 # ============================================================================
 # Test 15: Outlier detection where all valid scores are outliers
@@ -457,7 +440,7 @@ def test_angle_outliers_rap_alloc_all_outliers():
     is_outlier = result['is_outlier']
 
     assert np.all(is_outlier), "all should be outliers with 0th percentile"
-    percentile = 100.0  # 0th percentile - everything is inlier
+    percentile = 1.0  # 0th percentile - everything is inlier
 
     result = tox_angle_outliers_rap(z_scores, percentile)
 
@@ -491,7 +474,7 @@ def test_detect_angle_outliers_pipeline_rap_basic():
     ], dtype=np.float64)
 
     gene_to_fam = np.array([1, 1, 1, 1, 1, 2, 2, 2, 2, 2], dtype=np.int32)
-    percentile_threshold = 85.0  # 85th percentile
+    percentile_threshold = 0.85  # 85th percentile
 
     result = tox_detect_angle_outliers_pipeline_rap(
         rap_angles,
@@ -534,7 +517,7 @@ def test_detect_angle_outliers_pipeline_rap_single_family():
     ], dtype=np.float64)
 
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     result = tox_detect_angle_outliers_pipeline_rap(
         rap_angles,
@@ -560,17 +543,10 @@ def test_detect_angle_outliers_pipeline_rap_no_valid_families():
 
     # Each gene in its own family -> families have only 1 gene each
     gene_to_fam = np.array([1, 2, 3], dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
-    try:
-        result = tox_detect_angle_outliers_pipeline_rap(
-            rap_angles,
-            gene_to_fam,
-            percentile_threshold
-        )
-        assert False, "Expected exception"
-    except Exception as e:
-        pass
+    result = tox_detect_angle_outliers_pipeline_rap( rap_angles, gene_to_fam, percentile_threshold)
+    assert all(result["status"] == STAT_NO_STABLE_DIRECTION), result["status"]
 
 # ============================================================================
 # Test 19: Pipeline with invalid percentile threshold
@@ -582,17 +558,9 @@ def test_detect_angle_outliers_pipeline_rap_invalid_percentile():
 
     rap_angles = np.array([0.1, 0.2, 0.3, 0.4, 0.5], dtype=np.float64)
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    percentile_threshold = 101.0  # Invalid: must be <= 100
+    percentile_threshold = 1.01  # Invalid: must be <= 100
 
-    try:
-        result = tox_detect_angle_outliers_pipeline_rap(
-            rap_angles,
-            gene_to_fam,
-            percentile_threshold
-        )
-        assert False, "Expected exception"
-    except Exception as e:
-        pass
+    assert_error(lambda: tox_detect_angle_outliers_pipeline_rap( rap_angles, gene_to_fam, percentile_threshold), "Expected Error for invalid quantile")
 
 
 # ============================================================================
@@ -614,17 +582,10 @@ def test_detect_angle_outliers_pipeline_rap_parallel_genes():
     ], dtype=np.float64)
 
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
-    try:
-        result = tox_detect_angle_outliers_pipeline_rap(
-            rap_angles,
-            gene_to_fam,
-            percentile_threshold
-        )
-        assert False, "Expected exception"
-    except Exception as e:
-        pass
+    result = tox_detect_angle_outliers_pipeline_rap( rap_angles, gene_to_fam, percentile_threshold)
+    assert all(result["status"] == STAT_NO_ANGULAR_VARIATION)
 
 
 # ============================================================================
@@ -647,7 +608,7 @@ def test_detect_angle_outliers_pipeline_rap_orthogonal_outlier():
     ], dtype=np.float64)
 
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    percentile_threshold = 85.0
+    percentile_threshold = 0.85
 
     result = tox_detect_angle_outliers_pipeline_rap(
         rap_angles,
@@ -689,7 +650,7 @@ def test_detect_angle_outliers_pipeline_rap_mixed_directions():
     ], dtype=np.float64)
 
     gene_to_fam = np.array([1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2], dtype=np.int32)
-    percentile_threshold = 90.0
+    percentile_threshold = 0.9
 
     result = tox_detect_angle_outliers_pipeline_rap(
         rap_angles,
@@ -724,7 +685,7 @@ def test_detect_angle_outliers_pipeline_rap_edge_cases():
     ], dtype=np.float64)
 
     gene_to_fam = np.ones(n_genes, dtype=np.int32)
-    percentile_threshold = 75.0
+    percentile_threshold = 0.75
 
     result = tox_detect_angle_outliers_pipeline_rap(
         rap_angles,
@@ -733,41 +694,5 @@ def test_detect_angle_outliers_pipeline_rap_edge_cases():
     )
 
 
-def run_all_tests_angle_outlier_rap():
-    """Run all angle outlier detection tests including new functions."""
-    all_tests = [func for func in globals().values() if callable(func) and func.__name__.startswith("test_")]
-    passed = 0
-    failed = 0
-    skipped = 0
-
-    for test_func in all_tests:
-        test_name = test_func.__name__
-        try:
-            test_func()
-            print(f"✓ {test_name} passed.")
-            passed += 1
-        except AssertionError as e:
-            print(f"✗ {test_name} FAILED: {e}")
-            failed += 1
-        except Exception as e:
-            raise e
-            # Some tests are expected to raise exceptions in certain cases
-            if "Note:" in str(e) or "acceptable" in str(e).lower():
-                print(f"~ {test_name} skipped (expected behavior): {e}")
-                skipped += 1
-            else:
-                print(f"✗ {test_name} FAILED with unexpected error: {e}")
-                failed += 1
-
-    print(f"\nSummary: {passed} passed, {failed} failed, {skipped} skipped")
-    if failed == 0:
-        print("All angle outlier detection tests passed successfully.")
-    else:
-        print(f"{failed} tests failed.")
-
-    return failed == 0
-
-
 if __name__ == "__main__":
-    # Run all tests
-    run_all_tests_angle_outlier_rap()
+    run_all_tests(globals().values())
