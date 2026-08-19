@@ -237,12 +237,12 @@ contains
     !| Internal quicksort implementation for real arrays.
     !| Sorts indirectly using the permutation vector `perm`. Manual stack replaces recursion.
     pure subroutine quicksort_real(array, perm, n, tmp_stack_left, tmp_stack_right)
+        integer(int32), intent(in) :: n
+            !! Size of the array
         real(real64), intent(in) :: array(n)
             !! Real input array to sort
         integer(int32), intent(inout) :: perm(n)
             !! Permutation vector that will be sorted
-        integer(int32), intent(in) :: n
-            !! Size of the array
         integer(int32), intent(out) :: tmp_stack_left(n)
             !! Manual stack of left indices for quicksort recursion
         integer(int32), intent(out) :: tmp_stack_right(n)
@@ -305,12 +305,12 @@ contains
     !| Internal quicksort implementation for integer arrays.
     !| Indirectly sorts `array` using `perm`, same algorithm as `quicksort_real`.
     pure subroutine quicksort_int(array, perm, n, tmp_stack_left, tmp_stack_right)
+        integer(int32), intent(in) :: n
+            !! Size of the array
         integer(int32), intent(in) :: array(n)
             !! Integer input array to sort
         integer(int32), intent(inout) :: perm(n)
             !! Permutation vector that will be sorted
-        integer(int32), intent(in) :: n
-            !! Size of the array
         integer(int32), intent(out) :: tmp_stack_left(n)
             !! Manual stack of left indices for quicksort recursion
         integer(int32), intent(out) :: tmp_stack_right(n)
@@ -369,12 +369,12 @@ contains
     !| Internal quicksort implementation for character arrays.
     !| Lexicographic quicksort using string comparison, indirect via `perm`.
     pure subroutine quicksort_char(array, perm, n, tmp_stack_left, tmp_stack_right)
+        integer(int32), intent(in) :: n
+            !! Size of the array
         character(len=*), intent(in) :: array(n)
             !! Character input array to sort
         integer(int32), intent(inout) :: perm(n)
             !! Permutation vector that will be sorted
-        integer(int32), intent(in) :: n
-            !! Size of the array
         integer(int32), intent(out) :: tmp_stack_left(n)
             !! Manual stack of left indices for quicksort recursion
         integer(int32), intent(out) :: tmp_stack_right(n)

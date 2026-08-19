@@ -26,12 +26,12 @@ contains
             !! Reference x-coordinates.
         real(real64), intent(in) :: y_ref(n_total)
             !! Reference y-coordinates (length n_total).
+        integer(int32), intent(in) :: n_used
+            !! Number of indices actually used for smoothing.
         integer(int32), intent(in) :: indices_used(n_used)
             !! Indices of reference points used for smoothing (only valid indices).
             !! DM_MIN(1_int32)
             !! DM_MAX(n_total)
-        integer(int32), intent(in) :: n_used
-            !! Number of indices actually used for smoothing.
         real(real64), intent(in) :: x_query(n_target)
             !! Target x-coordinates to smooth.
         real(real64), intent(in) :: kernel_sigma
@@ -109,10 +109,10 @@ contains
     !| Returns the sorted unique values and their cumulative frequencies in [0,1].
     !| The number of unique values can be determined by finding the last non-zero cdf_value.
     pure subroutine compute_edf_impl(values, n_values, values_perm, unique_values, cdf_values, n_unique)
-        real(real64), intent(in) :: values(n_values)
-            !! Array of observed data values (e.g., contributions or spikes).
         integer(int32), intent(in) :: n_values
             !! Number of values in the input array.
+        real(real64), intent(in) :: values(n_values)
+            !! Array of observed data values (e.g., contributions or spikes).
         integer(int32), intent(in) :: values_perm(n_values)
             !! Permutation of `values` in ascending order. The allocating entry point builds
             !! and heapsorts it for you; the expert one takes whatever order you supply.
@@ -171,10 +171,10 @@ contains
     !| AUTHOR_AARON_SCHROEDER
     !| Uses linear interpolation between adjacent values.
     pure subroutine calc_percentile_impl(array, n_array, array_perm, percentile, value, n_considered)
-        real(real64), intent(in) :: array(n_array)
-            !! input array
         integer(int32), intent(in) :: n_array
             !! number of elements in `array`
+        real(real64), intent(in) :: array(n_array)
+            !! input array
         integer(int32), intent(in) :: array_perm(n_array)
             !! Permutation of `array` in ascending order. The allocating entry point builds and
             !! heapsorts it for you; the expert one takes whatever order you supply.

@@ -20,8 +20,8 @@ contains
     !| familiar determinant convention exactly; above two there is no canonical quarter turn,
     !| which is precisely why the caller has to say.
     pure function ccw_reference(v, n) result(reference)
-        real(real64), intent(in) :: v(n)
         integer, intent(in) :: n
+        real(real64), intent(in) :: v(n)
         real(real64) :: reference(n)
 
         reference = 0.0_real64

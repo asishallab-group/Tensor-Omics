@@ -197,16 +197,43 @@ class FortranCEmitter:
         `sum(reps_per_tissue)` -- so identifiers are pulled out of it rather than comparing
         the whole string to an argument name; otherwise the argument the expression depends
         on is not recognised as referenced and is left declared below the array using it.
+
+        Hoisting alone is not enough, because a hoisted argument can itself be sized by
+        another hoisted one: `mask(size(gene_to_fam))` puts `gene_to_fam` in the group, and
+        `gene_to_fam(n_elements)` puts `n_elements` there too. Front-loading both in the
+        author's order still leaves `n_elements` below the array that uses it. The group is
+        therefore ordered by dependency, stable within it so everything else stays put.
         """
-        referenced = {
-            identifier.lower()
-            for argument in wrapper
-            for extent in argument.dimension.extents
-            for identifier in _EXTENT_IDENTIFIER_RE.findall(extent)
+        by_name = {a.name.lower(): a for a in wrapper}
+        depends = {
+            a.name.lower(): {
+                identifier.lower()
+                for extent in a.dimension.extents
+                for identifier in _EXTENT_IDENTIFIER_RE.findall(extent)
+            }
+            & by_name.keys()
+            for a in wrapper
         }
-        extents = [a for a in wrapper if a.name.lower() in referenced]
-        rest = [a for a in wrapper if a.name.lower() not in referenced]
-        return [*extents, *rest]
+        referenced = {name for names in depends.values() for name in names}
+
+        ordered: list[CArgument] = []
+        placed: set[str] = set()
+
+        def place(argument: CArgument, visiting: frozenset[str]) -> None:
+            name = argument.name.lower()
+            if name in placed or name in visiting:
+                # a cycle cannot come from valid Fortran, but must not hang the emitter
+                return
+            for dependency in sorted(depends[name]):
+                place(by_name[dependency], visiting | {name})
+            if name not in placed:
+                placed.add(name)
+                ordered.append(argument)
+
+        for argument in wrapper:
+            if argument.name.lower() in referenced:
+                place(argument, frozenset())
+        return [*ordered, *(a for a in wrapper if a.name.lower() not in referenced)]
 
     def _declaration(self, argument: CArgument) -> str:
         attributes = [f"intent({argument.intent.value})"]

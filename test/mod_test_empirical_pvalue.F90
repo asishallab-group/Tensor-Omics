@@ -38,9 +38,9 @@ contains
     pure integer(int32) function naive_count_ge(sorted_rdi, perm, n, d) result(k)
       use, intrinsic :: iso_fortran_env, only: int32, real64
       implicit none
+      integer(int32), intent(in) :: n
       real(real64), intent(in) :: sorted_rdi(n)
       integer(int32), intent(in) :: perm(n)
-      integer(int32), intent(in) :: n
       real(real64), intent(in) :: d
       integer(int32) :: i
       k = 0_int32

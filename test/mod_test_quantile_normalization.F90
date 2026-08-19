@@ -33,8 +33,8 @@ contains
     ! Small helper: stable, simple insertion sort for tests
     ! ============================================================
     subroutine sort_real_ascending(a, n)
-        real(real64), intent(inout) :: a(n)
         integer(int32), intent(in)  :: n
+        real(real64), intent(inout) :: a(n)
         integer :: i, j
         real(real64) :: key
         do i = 2, n

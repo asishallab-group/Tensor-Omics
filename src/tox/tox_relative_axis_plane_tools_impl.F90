@@ -67,12 +67,12 @@ contains
     !> summary: Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
     !| AUTHOR_FRANZ_ERIC_SILL
     pure subroutine omics_field_RAP_projection_impl(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)
-        real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_fields
             !! number of vectors per axis
+        real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
+            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! `.true.` for vectors where projection is to be computed
         integer(int32), intent(in) :: n_selected_fields
@@ -109,12 +109,12 @@ contains
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Projects selected vectors onto its RAP
     pure subroutine project_selected_vecs_onto_rap_helper(selected_vecs, n_selected_axes, n_selected_vecs)
-        real(real64), dimension(n_selected_axes, n_selected_vecs), intent(inout) :: selected_vecs
-            !! matrix with vectors for selected axes
         integer(int32), intent(in) :: n_selected_axes
             !! number of selected axes
         integer(int32), intent(in) :: n_selected_vecs
             !! number of selected vectors per axis
+        real(real64), dimension(n_selected_axes, n_selected_vecs), intent(inout) :: selected_vecs
+            !! matrix with vectors for selected axes
 
         ! project selected vectors onto RAP
         integer(int32) :: i_vec, i_axis
@@ -264,12 +264,12 @@ contains
                                                         fields_selection_mask, &
                                                         n_selected_fields, orientation_reference, &
                                                         signed_angles, ierr)
-        real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         integer(int32), intent(in) :: n_dims
             !! Dimension of each vector in RAP space
         integer(int32), intent(in) :: n_fields
             !! Number of vector pairs
+        real(real64), dimension(n_dims, 2, n_fields), intent(in) :: fields
+            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         integer(int32), intent(in) :: n_selected_fields
@@ -308,10 +308,10 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| Shared utility: the shift-vector and expression-vector entry points below both drive it.
     pure subroutine compute_relative_axis_contributions_impl(vec, n_axes, contributions, ierr)
-        real(real64), dimension(n_axes), intent(in) :: vec
-            !! RAP-projected and normalized vector (expression or shift)
         integer(int32), intent(in) :: n_axes
             !! Number of axes (length of vec and contributions)
+        real(real64), dimension(n_axes), intent(in) :: vec
+            !! RAP-projected and normalized vector (expression or shift)
         real(real64), dimension(n_axes), intent(out) :: contributions
             !! Fractional contribution of each axis (output), values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
@@ -343,10 +343,10 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
     pure subroutine relative_axes_changes_from_shift_vector_impl(vec, n_axes, contributions, ierr)
-        real(real64), dimension(n_axes), intent(in) :: vec
-            !! RAP-projected and normalized shift vector
         integer(int32), intent(in) :: n_axes
             !! Number of axes
+        real(real64), dimension(n_axes), intent(in) :: vec
+            !! RAP-projected and normalized shift vector
         real(real64), dimension(n_axes), intent(out) :: contributions
             !! Fractional contribution of each axis (output), values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
@@ -359,10 +359,10 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| Wrapper for single RAP-projected expression vectors
     pure subroutine relative_axes_expression_from_expression_vector_impl(vec, n_axes, contributions, ierr)
-        real(real64), dimension(n_axes), intent(in) :: vec
-            !! RAP-projected and normalized expression vector
         integer(int32), intent(in) :: n_axes
             !! Number of axes
+        real(real64), dimension(n_axes), intent(in) :: vec
+            !! RAP-projected and normalized expression vector
         real(real64), dimension(n_axes), intent(out) :: contributions
             !! Fractional contribution of each axis (output), values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr

@@ -248,10 +248,10 @@ contains
         ) bind(C, name="get_unassigned_mask_c")
         use tox_data_tools, only: get_unassigned_mask
 
-        integer(c_int), dimension(n_gene_to_fam_elements), intent(in), target :: gene_to_fam
-            !! gene to family mapping
         integer(c_int), intent(in), target :: n_gene_to_fam_elements
             !! number of elements in `gene_to_fam`
+        integer(c_int), dimension(n_gene_to_fam_elements), intent(in), target :: gene_to_fam
+            !! gene to family mapping
         logical(c_bool), dimension(size(gene_to_fam)), intent(out), target :: mask
             !! mask for mapping
         integer(c_int), intent(out), target :: n_genes_kept

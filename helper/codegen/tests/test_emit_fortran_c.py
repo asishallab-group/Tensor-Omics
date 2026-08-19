@@ -92,6 +92,21 @@ class TestDeclarations:
 
         assert text.index(":: n_dims") < text.index(":: vector")
 
+    def test_an_extent_sized_by_another_extent_is_declared_first(self, bag, emitter):
+        # `mask` puts `values` in the hoisted group and `values` puts `n_values` there too,
+        # so hoisting in the author's order still left `n_values` below `values`
+        procedure = b.procedure(
+            "p",
+            b.real("values", Intent.IN, "(n_values)"),
+            b.integer("n_values", Intent.IN),
+            b.logical("mask", Intent.OUT, "(size(values))"),
+            b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        assert text.index(":: n_values") < text.index(":: values") < text.index(":: mask")
+
     def test_documentation_is_inherited_from_the_wrapped_argument(self, bag, emitter):
         text = emit(normalize(), bag, emitter)
 

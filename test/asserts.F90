@@ -112,8 +112,8 @@ contains
 
     !> Assert that two complex arrays are equal within a tolerance.
     subroutine assert_equal_array_complex(a, b, n, tol, msg)
-        complex(real64), intent(in) :: a(n), b(n)
         integer(int32), intent(in) :: n
+        complex(real64), intent(in) :: a(n), b(n)
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
         integer(int32) :: i, n_diff
@@ -129,8 +129,8 @@ contains
 
     !> Assert that two logical arrays are equal within a tolerance.
     subroutine assert_equal_array_logical(a, b, n, msg, n_rows)
-        logical(c_bool), intent(in) :: a(n), b(n)
         integer(int32), intent(in) :: n
+        logical(c_bool), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
         integer(int32), intent(in), optional :: n_rows
             !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
@@ -247,7 +247,8 @@ contains
 
     !> Assert that two integer arrays are equal.
     subroutine assert_equal_array_int(a, b, n, msg, n_rows)
-        integer(int32), intent(in) :: a(n), b(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
         integer(int32), intent(in), optional :: n_rows
             !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
@@ -266,8 +267,8 @@ contains
 
     !> Assert that two real arrays are equal within a tolerance.
     subroutine assert_equal_array_real(a, b, n, tol, msg, n_rows)
-        real(real64), intent(in) :: a(n), b(n), tol
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n), b(n), tol
         character(*), intent(in) :: msg
         integer(int32), intent(in), optional :: n_rows
             !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
@@ -287,9 +288,9 @@ contains
     !> Asserts that two character arrays are equal
     subroutine assert_equal_array_char(a, b, clen, n, msg)
         integer(int32), INTENT(IN) :: clen
+        integer, intent(in) :: n
         character(len=clen), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
-        integer, intent(in) :: n
         integer(int32) :: i, n_diff
         n_diff = count(a /= b)
         if (n_diff > 0) then
@@ -303,8 +304,8 @@ contains
 
     !> Assert that a real array contains no NaN values.
     subroutine assert_no_nan_real(a, n, msg)
-        real(real64), intent(in) :: a(n)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n)
         character(*), intent(in) :: msg
         integer :: i
 
@@ -317,8 +318,8 @@ contains
 
     !> Assert that a real array contains no Inf values.
     subroutine assert_no_inf_real(a, n, msg)
-        real(real64), intent(in) :: a(n)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n)
         character(*), intent(in) :: msg
         integer :: i
         do i = 1, n
@@ -348,7 +349,8 @@ contains
 
     !> Assert that an integer array contains a given value.
     subroutine assert_contains_int(arr, n, val, msg)
-        integer(int32), intent(in) :: arr(n), n, val
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n), val
         character(*), intent(in) :: msg
         if (.not. any(arr == val)) then
             call assertion_error(msg, additional_msg="value not found in array", &
@@ -358,7 +360,8 @@ contains
 
     !> Assert that an integer array is sorted in non-decreasing order.
     subroutine assert_sorted_int(arr, n, msg)
-        integer(int32), intent(in) :: arr(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i
         do i = 2, n
@@ -372,8 +375,8 @@ contains
 
     !> Assert that a real array is sorted in non-decreasing order.
     subroutine assert_sorted_real(arr, n, msg)
-        real(real64), intent(in) :: arr(n)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i
         do i = 2, n
@@ -414,8 +417,8 @@ contains
 
     !> Assert that two real arrays are close within relative and absolute tolerance.
     subroutine assert_allclose_array_real(a, b, n, rtol, atol, msg, n_rows)
-        real(real64), intent(in) :: a(n), b(n), rtol, atol
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n), b(n), rtol, atol
         character(*), intent(in) :: msg
         integer(int32), intent(in), optional :: n_rows
             !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
@@ -438,8 +441,8 @@ contains
 
     !> Assert that the sum of an array equals an expected value.
     subroutine assert_sum_equal(arr, n, expected, msg, tol)
-        real(real64), intent(in) :: arr(n), expected
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: arr(n), expected
         character(*), intent(in) :: msg
         real(real64), intent(in), optional :: tol
             !! Defaults to 1e-12, which suits a sum of a handful of terms and is far too tight
@@ -457,7 +460,8 @@ contains
 
     !> Assert that all elements in an integer array are unique.
     subroutine assert_unique_int(arr, n, msg)
-        integer(int32), intent(in) :: arr(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i, j
         do i = 1, n - 1
@@ -472,7 +476,8 @@ contains
 
     !> Assert that an integer array is a permutation of 1..n.
     subroutine assert_permutation(arr, n, msg)
-        integer(int32), intent(in) :: arr(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i
         logical(c_bool) :: found(n)
