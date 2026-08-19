@@ -216,18 +216,18 @@
 <a id="ln-34" name="ln-34" href="#ln-34"></a>
 <a id="ln-35" name="ln-35" href="#ln-35"></a><span class="w">    </span><span class="c">! libzip interface definitions</span>
 <a id="ln-36" name="ln-36" href="#ln-36"></a><span class="w">    </span><span class="k">interface</span>
-<a id="ln-37" name="ln-37" href="#ln-37"></a><span class="k">        function </span><span class="n">malloc</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;malloc&quot;</span><span class="p">)</span>
+<a id="ln-37" name="ln-37" href="#ln-37"></a><span class="k">        function </span><span class="n">malloc</span><span class="p">(</span><span class="n">size</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"malloc"</span><span class="p">)</span>
 <a id="ln-38" name="ln-38" href="#ln-38"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_size_t</span>
 <a id="ln-39" name="ln-39" href="#ln-39"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">malloc</span>
 <a id="ln-40" name="ln-40" href="#ln-40"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_size_t</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">size</span>
 <a id="ln-41" name="ln-41" href="#ln-41"></a><span class="w">        </span><span class="k">end function </span><span class="n">malloc</span>
 <a id="ln-42" name="ln-42" href="#ln-42"></a>
-<a id="ln-43" name="ln-43" href="#ln-43"></a><span class="w">        </span><span class="k">subroutine </span><span class="n">free</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;free&quot;</span><span class="p">)</span>
+<a id="ln-43" name="ln-43" href="#ln-43"></a><span class="w">        </span><span class="k">subroutine </span><span class="n">free</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"free"</span><span class="p">)</span>
 <a id="ln-44" name="ln-44" href="#ln-44"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span>
 <a id="ln-45" name="ln-45" href="#ln-45"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">ptr</span>
 <a id="ln-46" name="ln-46" href="#ln-46"></a><span class="w">        </span><span class="k">end subroutine </span><span class="n">free</span>
 <a id="ln-47" name="ln-47" href="#ln-47"></a>
-<a id="ln-48" name="ln-48" href="#ln-48"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">,</span><span class="w"> </span><span class="n">errorp</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_open&quot;</span><span class="p">)</span>
+<a id="ln-48" name="ln-48" href="#ln-48"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">,</span><span class="w"> </span><span class="n">errorp</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_open"</span><span class="p">)</span>
 <a id="ln-49" name="ln-49" href="#ln-49"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_char</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-50" name="ln-50" href="#ln-50"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_open</span>
 <a id="ln-51" name="ln-51" href="#ln-51"></a><span class="w">            </span><span class="kt">character</span><span class="p">(</span><span class="nb">kind</span><span class="o">=</span><span class="kt">c_char</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">path</span>
@@ -235,13 +235,13 @@
 <a id="ln-53" name="ln-53" href="#ln-53"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">errorp</span>
 <a id="ln-54" name="ln-54" href="#ln-54"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_open</span>
 <a id="ln-55" name="ln-55" href="#ln-55"></a>
-<a id="ln-56" name="ln-56" href="#ln-56"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_close</span><span class="p">(</span><span class="n">archive</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_close&quot;</span><span class="p">)</span>
+<a id="ln-56" name="ln-56" href="#ln-56"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_close</span><span class="p">(</span><span class="n">archive</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_close"</span><span class="p">)</span>
 <a id="ln-57" name="ln-57" href="#ln-57"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-58" name="ln-58" href="#ln-58"></a><span class="kt">            integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_close</span>
 <a id="ln-59" name="ln-59" href="#ln-59"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
 <a id="ln-60" name="ln-60" href="#ln-60"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_close</span>
 <a id="ln-61" name="ln-61" href="#ln-61"></a>
-<a id="ln-62" name="ln-62" href="#ln-62"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_file_add</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_file_add&quot;</span><span class="p">)</span>
+<a id="ln-62" name="ln-62" href="#ln-62"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_file_add</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="n">source</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_file_add"</span><span class="p">)</span>
 <a id="ln-63" name="ln-63" href="#ln-63"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int64_t</span><span class="p">,</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_char</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-64" name="ln-64" href="#ln-64"></a><span class="kt">            integer</span><span class="p">(</span><span class="kt">c_int64_t</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_file_add</span>
 <a id="ln-65" name="ln-65" href="#ln-65"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
@@ -250,7 +250,7 @@
 <a id="ln-68" name="ln-68" href="#ln-68"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">flags</span>
 <a id="ln-69" name="ln-69" href="#ln-69"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_file_add</span>
 <a id="ln-70" name="ln-70" href="#ln-70"></a>
-<a id="ln-71" name="ln-71" href="#ln-71"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_source_buffer</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="k">data</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">,</span><span class="w"> </span><span class="n">freep</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_source_buffer&quot;</span><span class="p">)</span>
+<a id="ln-71" name="ln-71" href="#ln-71"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_source_buffer</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="k">data</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="p">,</span><span class="w"> </span><span class="n">freep</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_source_buffer"</span><span class="p">)</span>
 <a id="ln-72" name="ln-72" href="#ln-72"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_size_t</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-73" name="ln-73" href="#ln-73"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_source_buffer</span>
 <a id="ln-74" name="ln-74" href="#ln-74"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
@@ -259,7 +259,7 @@
 <a id="ln-77" name="ln-77" href="#ln-77"></a><span class="nb">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">freep</span>
 <a id="ln-78" name="ln-78" href="#ln-78"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_source_buffer</span>
 <a id="ln-79" name="ln-79" href="#ln-79"></a>
-<a id="ln-80" name="ln-80" href="#ln-80"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_set_file_compression</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="nb">index</span><span class="p">,</span><span class="w"> </span><span class="n">comp</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_set_file_compression&quot;</span><span class="p">)</span>
+<a id="ln-80" name="ln-80" href="#ln-80"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_set_file_compression</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="nb">index</span><span class="p">,</span><span class="w"> </span><span class="n">comp</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_set_file_compression"</span><span class="p">)</span>
 <a id="ln-81" name="ln-81" href="#ln-81"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int</span><span class="p">,</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int64_t</span>
 <a id="ln-82" name="ln-82" href="#ln-82"></a><span class="kt">            integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_set_file_compression</span>
 <a id="ln-83" name="ln-83" href="#ln-83"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
@@ -268,7 +268,7 @@
 <a id="ln-86" name="ln-86" href="#ln-86"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">flags</span>
 <a id="ln-87" name="ln-87" href="#ln-87"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_set_file_compression</span>
 <a id="ln-88" name="ln-88" href="#ln-88"></a>
-<a id="ln-89" name="ln-89" href="#ln-89"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_fopen</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="n">fname</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_fopen&quot;</span><span class="p">)</span>
+<a id="ln-89" name="ln-89" href="#ln-89"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_fopen</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="n">fname</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_fopen"</span><span class="p">)</span>
 <a id="ln-90" name="ln-90" href="#ln-90"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_char</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-91" name="ln-91" href="#ln-91"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_fopen</span>
 <a id="ln-92" name="ln-92" href="#ln-92"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
@@ -276,7 +276,7 @@
 <a id="ln-94" name="ln-94" href="#ln-94"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">flags</span>
 <a id="ln-95" name="ln-95" href="#ln-95"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_fopen</span>
 <a id="ln-96" name="ln-96" href="#ln-96"></a>
-<a id="ln-97" name="ln-97" href="#ln-97"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_fread</span><span class="p">(</span><span class="k">file</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_fread&quot;</span><span class="p">)</span>
+<a id="ln-97" name="ln-97" href="#ln-97"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_fread</span><span class="p">(</span><span class="k">file</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">nbytes</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_fread"</span><span class="p">)</span>
 <a id="ln-98" name="ln-98" href="#ln-98"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int64_t</span><span class="p">,</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_size_t</span>
 <a id="ln-99" name="ln-99" href="#ln-99"></a><span class="kt">            integer</span><span class="p">(</span><span class="kt">c_int64_t</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_fread</span>
 <a id="ln-100" name="ln-100" href="#ln-100"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="k">file</span>
@@ -284,20 +284,20 @@
 <a id="ln-102" name="ln-102" href="#ln-102"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_size_t</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">nbytes</span>
 <a id="ln-103" name="ln-103" href="#ln-103"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_fread</span>
 <a id="ln-104" name="ln-104" href="#ln-104"></a>
-<a id="ln-105" name="ln-105" href="#ln-105"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_fclose</span><span class="p">(</span><span class="k">file</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_fclose&quot;</span><span class="p">)</span>
+<a id="ln-105" name="ln-105" href="#ln-105"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_fclose</span><span class="p">(</span><span class="k">file</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_fclose"</span><span class="p">)</span>
 <a id="ln-106" name="ln-106" href="#ln-106"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int</span><span class="p">,</span><span class="w"> </span><span class="kt">c_ptr</span>
 <a id="ln-107" name="ln-107" href="#ln-107"></a><span class="kt">            integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_fclose</span>
 <a id="ln-108" name="ln-108" href="#ln-108"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="k">file</span>
 <a id="ln-109" name="ln-109" href="#ln-109"></a><span class="k">        end function </span><span class="n">zip_fclose</span>
 <a id="ln-110" name="ln-110" href="#ln-110"></a>
-<a id="ln-111" name="ln-111" href="#ln-111"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_get_num_entries</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_get_num_entries&quot;</span><span class="p">)</span>
+<a id="ln-111" name="ln-111" href="#ln-111"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_get_num_entries</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_get_num_entries"</span><span class="p">)</span>
 <a id="ln-112" name="ln-112" href="#ln-112"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_int64_t</span><span class="p">,</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-113" name="ln-113" href="#ln-113"></a><span class="kt">            integer</span><span class="p">(</span><span class="kt">c_int64_t</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_get_num_entries</span>
 <a id="ln-114" name="ln-114" href="#ln-114"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
 <a id="ln-115" name="ln-115" href="#ln-115"></a><span class="w">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">flags</span>
 <a id="ln-116" name="ln-116" href="#ln-116"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_get_num_entries</span>
 <a id="ln-117" name="ln-117" href="#ln-117"></a>
-<a id="ln-118" name="ln-118" href="#ln-118"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_get_name</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="nb">index</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_get_name&quot;</span><span class="p">)</span>
+<a id="ln-118" name="ln-118" href="#ln-118"></a><span class="w">        </span><span class="k">function </span><span class="n">zip_get_name</span><span class="p">(</span><span class="n">archive</span><span class="p">,</span><span class="w"> </span><span class="nb">index</span><span class="p">,</span><span class="w"> </span><span class="n">flags</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_get_name"</span><span class="p">)</span>
 <a id="ln-119" name="ln-119" href="#ln-119"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int64_t</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
 <a id="ln-120" name="ln-120" href="#ln-120"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">zip_get_name</span>
 <a id="ln-121" name="ln-121" href="#ln-121"></a><span class="w">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">archive</span>
@@ -305,7 +305,7 @@
 <a id="ln-123" name="ln-123" href="#ln-123"></a><span class="nb">            </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">flags</span>
 <a id="ln-124" name="ln-124" href="#ln-124"></a><span class="w">        </span><span class="k">end function </span><span class="n">zip_get_name</span>
 <a id="ln-125" name="ln-125" href="#ln-125"></a>
-<a id="ln-126" name="ln-126" href="#ln-126"></a><span class="w">        </span><span class="k">subroutine </span><span class="n">zip_source_free</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;zip_source_free&quot;</span><span class="p">)</span>
+<a id="ln-126" name="ln-126" href="#ln-126"></a><span class="w">        </span><span class="k">subroutine </span><span class="n">zip_source_free</span><span class="p">(</span><span class="n">source</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"zip_source_free"</span><span class="p">)</span>
 <a id="ln-127" name="ln-127" href="#ln-127"></a><span class="w">            </span><span class="k">use </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_ptr</span>
 <a id="ln-128" name="ln-128" href="#ln-128"></a><span class="kt">            </span><span class="k">type</span><span class="p">(</span><span class="kt">c_ptr</span><span class="p">),</span><span class="w"> </span><span class="k">value</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">source</span>
 <a id="ln-129" name="ln-129" href="#ln-129"></a><span class="w">        </span><span class="k">end subroutine </span><span class="n">zip_source_free</span>
@@ -337,13 +337,13 @@
 <a id="ln-155" name="ln-155" href="#ln-155"></a><span class="w">        </span><span class="c">! Validate input arrays</span>
 <a id="ln-156" name="ln-156" href="#ln-156"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">size</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span><span class="w"> </span><span class="o">/=</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="n">filenames</span><span class="p">))</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-157" name="ln-157" href="#ln-157"></a><span class="k">            call </span><span class="n">set_err_once</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_INVALID_INPUT</span><span class="p">)</span>
-<a id="ln-158" name="ln-158" href="#ln-158"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Error: keys and filenames arrays must have same size&quot;</span>
+<a id="ln-158" name="ln-158" href="#ln-158"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"Error: keys and filenames arrays must have same size"</span>
 <a id="ln-159" name="ln-159" href="#ln-159"></a><span class="w">            </span><span class="k">return</span>
 <a id="ln-160" name="ln-160" href="#ln-160"></a><span class="k">        end if</span>
 <a id="ln-161" name="ln-161" href="#ln-161"></a>
 <a id="ln-162" name="ln-162" href="#ln-162"></a><span class="k">        if</span><span class="w"> </span><span class="p">(</span><span class="nb">len_trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-163" name="ln-163" href="#ln-163"></a><span class="k">            call </span><span class="n">set_err_once</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_INVALID_INPUT</span><span class="p">)</span>
-<a id="ln-164" name="ln-164" href="#ln-164"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Error: zip_filename cannot be empty&quot;</span>
+<a id="ln-164" name="ln-164" href="#ln-164"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"Error: zip_filename cannot be empty"</span>
 <a id="ln-165" name="ln-165" href="#ln-165"></a><span class="w">            </span><span class="k">return</span>
 <a id="ln-166" name="ln-166" href="#ln-166"></a><span class="k">        end if</span>
 <a id="ln-167" name="ln-167" href="#ln-167"></a>
@@ -352,7 +352,7 @@
 <a id="ln-170" name="ln-170" href="#ln-170"></a><span class="w">        </span><span class="n">zip_handle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">zip_open</span><span class="p">(</span><span class="nb">trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span><span class="o">//</span><span class="nb">c_null_char</span><span class="p">,</span><span class="w"> </span><span class="n">ZIP_EXCLUSIVE</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">)</span>
 <a id="ln-171" name="ln-171" href="#ln-171"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">is_err</span><span class="p">(</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-172" name="ln-172" href="#ln-172"></a><span class="k">            call </span><span class="n">set_err_once</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_FILE_OPEN</span><span class="p">)</span>
-<a id="ln-173" name="ln-173" href="#ln-173"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">error</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Error opening ZIP file for writing: File already exists&quot;</span>
+<a id="ln-173" name="ln-173" href="#ln-173"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">error</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">10</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"Error opening ZIP file for writing: File already exists"</span>
 <a id="ln-174" name="ln-174" href="#ln-174"></a><span class="w">            </span><span class="k">return</span>
 <a id="ln-175" name="ln-175" href="#ln-175"></a><span class="k">        end if</span>
 <a id="ln-176" name="ln-176" href="#ln-176"></a>
@@ -364,7 +364,7 @@
 <a id="ln-182" name="ln-182" href="#ln-182"></a><span class="k">                    </span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">zip_close</span><span class="p">(</span><span class="n">zip_handle</span><span class="p">)</span>
 <a id="ln-183" name="ln-183" href="#ln-183"></a><span class="w">                    </span><span class="c">! best-effort cleanup: zip_filename was opened with ZIP_EXCLUSIVE, so leaving the</span>
 <a id="ln-184" name="ln-184" href="#ln-184"></a><span class="w">                    </span><span class="c">! partially-written archive on disk would make a retry with the same name fail</span>
-<a id="ln-185" name="ln-185" href="#ln-185"></a><span class="w">                    </span><span class="c">! with &quot;file already exists&quot; even though this attempt never succeeded</span>
+<a id="ln-185" name="ln-185" href="#ln-185"></a><span class="w">                    </span><span class="c">! with "file already exists" even though this attempt never succeeded</span>
 <a id="ln-186" name="ln-186" href="#ln-186"></a><span class="w">                    </span><span class="k">call </span><span class="n">delete_file</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">delete_ierr</span><span class="p">)</span>
 <a id="ln-187" name="ln-187" href="#ln-187"></a><span class="w">                    </span><span class="k">return</span>
 <a id="ln-188" name="ln-188" href="#ln-188"></a><span class="k">                end if</span>
@@ -372,7 +372,7 @@
 <a id="ln-190" name="ln-190" href="#ln-190"></a><span class="k">        end do</span>
 <a id="ln-191" name="ln-191" href="#ln-191"></a>
 <a id="ln-192" name="ln-192" href="#ln-192"></a><span class="w">        </span><span class="c">! Add manifest</span>
-<a id="ln-193" name="ln-193" href="#ln-193"></a><span class="w">        </span><span class="n">manifest_filename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;manifest.txt&quot;</span>
+<a id="ln-193" name="ln-193" href="#ln-193"></a><span class="w">        </span><span class="n">manifest_filename</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"manifest.txt"</span>
 <a id="ln-194" name="ln-194" href="#ln-194"></a><span class="w">        </span><span class="k">call </span><span class="n">write_manifest</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span><span class="w"> </span><span class="n">filenames</span><span class="p">,</span><span class="w"> </span><span class="n">manifest_filename</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
 <a id="ln-195" name="ln-195" href="#ln-195"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">is_err</span><span class="p">(</span><span class="n">ierr</span><span class="p">))</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-196" name="ln-196" href="#ln-196"></a><span class="k">            </span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">zip_close</span><span class="p">(</span><span class="n">zip_handle</span><span class="p">)</span>
@@ -395,9 +395,9 @@
 <a id="ln-213" name="ln-213" href="#ln-213"></a><span class="w">        </span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">zip_close</span><span class="p">(</span><span class="n">zip_handle</span><span class="p">)</span>
 <a id="ln-214" name="ln-214" href="#ln-214"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">is_err</span><span class="p">(</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-215" name="ln-215" href="#ln-215"></a><span class="k">            call </span><span class="n">set_err_once</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">)</span>
-<a id="ln-216" name="ln-216" href="#ln-216"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Error closing ZIP file: &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span>
+<a id="ln-216" name="ln-216" href="#ln-216"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"Error closing ZIP file: "</span><span class="p">,</span><span class="w"> </span><span class="n">error</span>
 <a id="ln-217" name="ln-217" href="#ln-217"></a><span class="w">        </span><span class="k">else if</span><span class="w"> </span><span class="p">(</span><span class="n">is_ok</span><span class="p">(</span><span class="n">ierr</span><span class="p">))</span><span class="w"> </span><span class="k">then</span>
-<a id="ln-218" name="ln-218" href="#ln-218"></a><span class="k">            if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ZIP archive created successfully: &quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span>
+<a id="ln-218" name="ln-218" href="#ln-218"></a><span class="k">            if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"ZIP archive created successfully: "</span><span class="p">,</span><span class="w"> </span><span class="nb">trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span>
 <a id="ln-219" name="ln-219" href="#ln-219"></a><span class="w">        </span><span class="k">end if</span>
 <a id="ln-220" name="ln-220" href="#ln-220"></a><span class="k">    end subroutine </span><span class="n">create_zip_archive</span>
 <a id="ln-221" name="ln-221" href="#ln-221"></a>
@@ -433,7 +433,7 @@
 <a id="ln-251" name="ln-251" href="#ln-251"></a><span class="w">        </span><span class="k">inquire</span><span class="w"> </span><span class="p">(</span><span class="k">file</span><span class="o">=</span><span class="n">zip_filename</span><span class="p">,</span><span class="w"> </span><span class="n">exist</span><span class="o">=</span><span class="n">file_exists</span><span class="p">)</span>
 <a id="ln-252" name="ln-252" href="#ln-252"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(.</span><span class="nb">not</span><span class="p">.</span><span class="w"> </span><span class="n">file_exists</span><span class="p">)</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-253" name="ln-253" href="#ln-253"></a><span class="k">            call </span><span class="n">set_err_once</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_FILE_OPEN</span><span class="p">)</span>
-<a id="ln-254" name="ln-254" href="#ln-254"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ZIP file does not exist: &quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span>
+<a id="ln-254" name="ln-254" href="#ln-254"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"ZIP file does not exist: "</span><span class="p">,</span><span class="w"> </span><span class="nb">trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span>
 <a id="ln-255" name="ln-255" href="#ln-255"></a><span class="w">            </span><span class="k">return</span>
 <a id="ln-256" name="ln-256" href="#ln-256"></a><span class="k">        end if</span>
 <a id="ln-257" name="ln-257" href="#ln-257"></a>
@@ -441,7 +441,7 @@
 <a id="ln-259" name="ln-259" href="#ln-259"></a><span class="w">        </span><span class="n">zip_handle</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">zip_open</span><span class="p">(</span><span class="nb">trim</span><span class="p">(</span><span class="n">zip_filename</span><span class="p">)</span><span class="o">//</span><span class="nb">c_null_char</span><span class="p">,</span><span class="w"> </span><span class="n">ZIP_READ_ONLY</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">)</span>
 <a id="ln-260" name="ln-260" href="#ln-260"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">error</span><span class="w"> </span><span class="o">/=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">.</span><span class="nb">or</span><span class="p">.</span><span class="w"> </span><span class="p">.</span><span class="nb">not</span><span class="p">.</span><span class="w"> </span><span class="nb">c_associated</span><span class="p">(</span><span class="n">zip_handle</span><span class="p">))</span><span class="w"> </span><span class="k">then</span>
 <a id="ln-261" name="ln-261" href="#ln-261"></a><span class="k">            call </span><span class="n">set_err_once</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_FILE_OPEN</span><span class="p">)</span>
-<a id="ln-262" name="ln-262" href="#ln-262"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Error opening ZIP file for reading: &quot;</span><span class="p">,</span><span class="w"> </span><span class="n">error</span>
+<a id="ln-262" name="ln-262" href="#ln-262"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">DEBUG</span><span class="p">)</span><span class="w"> </span><span class="k">print</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="s2">"Error opening ZIP file for reading: "</span><span class="p">,</span><span class="w"> </span><span class="n">error</span>
 <a id="ln-263" name="ln-263" href="#ln-263"></a><span class="w">            </span><span class="k">return</span>
 <a id="ln-264" name="ln-264" href="#ln-264"></a><span class="k">        end if</span>
 <a id="ln-265" name="ln-265" href="#ln-265"></a>
@@ -456,10 +456,10 @@
 <a id="ln-274" name="ln-274" href="#ln-274"></a><span class="k">            end if</span>
 <a id="ln-275" name="ln-275" href="#ln-275"></a>
 <a id="ln-276" name="ln-276" href="#ln-276"></a><span class="w">            </span><span class="c">! Reject entry names that could escape the extraction directory (zip-slip)</span>
-<a id="ln-277" name="ln-277" href="#ln-277"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nb">index</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;..&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">.</span><span class="nb">or</span><span class="p">.</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-278" name="ln-278" href="#ln-278"></a><span class="w">                </span><span class="p">(</span><span class="nb">len_trim</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">.</span><span class="nb">and</span><span class="p">.</span><span class="w"> </span><span class="p">(</span><span class="n">filename</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;/&quot;</span><span class="w"> </span><span class="p">.</span><span class="nb">or</span><span class="p">.</span><span class="w"> </span><span class="n">filename</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">&quot;\&quot;))) then</span>
+<a id="ln-277" name="ln-277" href="#ln-277"></a><span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nb">index</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="s2">".."</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">.</span><span class="nb">or</span><span class="p">.</span><span class="w"> </span><span class="p">&amp;</span>
+<a id="ln-278" name="ln-278" href="#ln-278"></a><span class="w">                </span><span class="p">(</span><span class="nb">len_trim</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="p">.</span><span class="nb">and</span><span class="p">.</span><span class="w"> </span><span class="p">(</span><span class="n">filename</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"/"</span><span class="w"> </span><span class="p">.</span><span class="nb">or</span><span class="p">.</span><span class="w"> </span><span class="n">filename</span><span class="p">(</span><span class="mi">1</span><span class="p">:</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"\"))) then</span>
 <a id="ln-279" name="ln-279" href="#ln-279"></a><span class="s2">                call set_err_once(ierr, ERR_INVALID_INPUT)</span>
-<a id="ln-280" name="ln-280" href="#ln-280"></a><span class="s2">                if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">unsafe</span><span class="w"> </span><span class="n">ZIP</span><span class="w"> </span><span class="k">entry </span><span class="n">name</span><span class="w"> </span><span class="n">rejected</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-280" name="ln-280" href="#ln-280"></a><span class="s2">                if (DEBUG) print *, "</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">unsafe</span><span class="w"> </span><span class="n">ZIP</span><span class="w"> </span><span class="k">entry </span><span class="n">name</span><span class="w"> </span><span class="n">rejected</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-281" name="ln-281" href="#ln-281"></a><span class="s2">                error = zip_close(zip_handle)</span>
 <a id="ln-282" name="ln-282" href="#ln-282"></a><span class="s2">                return</span>
 <a id="ln-283" name="ln-283" href="#ln-283"></a><span class="s2">            end if</span>
@@ -481,12 +481,12 @@
 <a id="ln-299" name="ln-299" href="#ln-299"></a><span class="s2">        ! Close ZIP archive</span>
 <a id="ln-300" name="ln-300" href="#ln-300"></a><span class="s2">        error = zip_close(zip_handle)</span>
 <a id="ln-301" name="ln-301" href="#ln-301"></a><span class="s2">        if (is_err(error)) then</span>
-<a id="ln-302" name="ln-302" href="#ln-302"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">closing</span><span class="w"> </span><span class="n">ZIP</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, error</span>
+<a id="ln-302" name="ln-302" href="#ln-302"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">closing</span><span class="w"> </span><span class="n">ZIP</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", error</span>
 <a id="ln-303" name="ln-303" href="#ln-303"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_CLOSE)</span>
 <a id="ln-304" name="ln-304" href="#ln-304"></a><span class="s2">            return</span>
 <a id="ln-305" name="ln-305" href="#ln-305"></a><span class="s2">        end if</span>
 <a id="ln-306" name="ln-306" href="#ln-306"></a>
-<a id="ln-307" name="ln-307" href="#ln-307"></a><span class="s2">        if (DEBUG) print *, &quot;</span><span class="n">ZIP</span><span class="w"> </span><span class="n">archive</span><span class="w"> </span><span class="n">extracted</span><span class="w"> </span><span class="n">successfully</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(zip_filename)</span>
+<a id="ln-307" name="ln-307" href="#ln-307"></a><span class="s2">        if (DEBUG) print *, "</span><span class="n">ZIP</span><span class="w"> </span><span class="n">archive</span><span class="w"> </span><span class="n">extracted</span><span class="w"> </span><span class="n">successfully</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(zip_filename)</span>
 <a id="ln-308" name="ln-308" href="#ln-308"></a><span class="s2">    end subroutine extract_zip_archive</span>
 <a id="ln-309" name="ln-309" href="#ln-309"></a>
 <a id="ln-310" name="ln-310" href="#ln-310"></a><span class="s2">    !&gt; AUTHOR_AARON_SCHROEDER</span>
@@ -501,9 +501,9 @@
 <a id="ln-319" name="ln-319" href="#ln-319"></a><span class="s2">        call set_ok(iostat)</span>
 <a id="ln-320" name="ln-320" href="#ln-320"></a><span class="s2">        call set_ok(ierr)</span>
 <a id="ln-321" name="ln-321" href="#ln-321"></a>
-<a id="ln-322" name="ln-322" href="#ln-322"></a><span class="s2">        open (newunit=unit, file=filename, iostat=iostat, status=&#39;old&#39;)</span>
+<a id="ln-322" name="ln-322" href="#ln-322"></a><span class="s2">        open (newunit=unit, file=filename, iostat=iostat, status='old')</span>
 <a id="ln-323" name="ln-323" href="#ln-323"></a><span class="s2">        if (is_ok(iostat)) then</span>
-<a id="ln-324" name="ln-324" href="#ln-324"></a><span class="s2">            close (unit, status=&#39;delete&#39;)</span>
+<a id="ln-324" name="ln-324" href="#ln-324"></a><span class="s2">            close (unit, status='delete')</span>
 <a id="ln-325" name="ln-325" href="#ln-325"></a><span class="s2">        else</span>
 <a id="ln-326" name="ln-326" href="#ln-326"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_OPEN)</span>
 <a id="ln-327" name="ln-327" href="#ln-327"></a><span class="s2">        end if</span>
@@ -524,7 +524,7 @@
 <a id="ln-342" name="ln-342" href="#ln-342"></a>
 <a id="ln-343" name="ln-343" href="#ln-343"></a><span class="s2">        character(kind=c_char, len=1), pointer :: name_ptr(:)</span>
 <a id="ln-344" name="ln-344" href="#ln-344"></a><span class="s2">        integer(int32), parameter :: MAX_NAME_LENGTH = 4096  ! Reasonable maximum</span>
-<a id="ln-345" name="ln-345" href="#ln-345"></a><span class="s2">        ! zip_get_name returns a pointer to a NUL-terminated C string of unknown length; we don&#39;t</span>
+<a id="ln-345" name="ln-345" href="#ln-345"></a><span class="s2">        ! zip_get_name returns a pointer to a NUL-terminated C string of unknown length; we don't</span>
 <a id="ln-346" name="ln-346" href="#ln-346"></a><span class="s2">        ! have a real bound from libzip, so we map a fixed-size window over it and rely on</span>
 <a id="ln-347" name="ln-347" href="#ln-347"></a><span class="s2">        ! c_char_1d_as_string to stop at the first NUL byte. MAX_NAME_LENGTH must stay &gt;= the</span>
 <a id="ln-348" name="ln-348" href="#ln-348"></a><span class="s2">        ! longest entry name any archive we read can contain.</span>
@@ -558,16 +558,16 @@
 <a id="ln-376" name="ln-376" href="#ln-376"></a><span class="s2">        file_handle = zip_fopen(zip_handle, trim(filename)//c_null_char, 0)</span>
 <a id="ln-377" name="ln-377" href="#ln-377"></a><span class="s2">        if (.not. c_associated(file_handle)) then</span>
 <a id="ln-378" name="ln-378" href="#ln-378"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_EXTRACT)</span>
-<a id="ln-379" name="ln-379" href="#ln-379"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">opening</span><span class="w"> </span><span class="k">file </span><span class="n">in</span><span class="w"> </span><span class="n">ZIP</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-379" name="ln-379" href="#ln-379"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">opening</span><span class="w"> </span><span class="k">file </span><span class="n">in</span><span class="w"> </span><span class="n">ZIP</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-380" name="ln-380" href="#ln-380"></a><span class="s2">            return</span>
 <a id="ln-381" name="ln-381" href="#ln-381"></a><span class="s2">        end if</span>
 <a id="ln-382" name="ln-382" href="#ln-382"></a>
 <a id="ln-383" name="ln-383" href="#ln-383"></a><span class="s2">        ! Open output file</span>
-<a id="ln-384" name="ln-384" href="#ln-384"></a><span class="s2">        open (newunit=unit, file=trim(filename), access=&#39;stream&#39;, form=&#39;unformatted&#39;, &amp;</span>
-<a id="ln-385" name="ln-385" href="#ln-385"></a><span class="s2">              iostat=iostat, status=&#39;replace&#39;, action=&#39;write&#39;)</span>
+<a id="ln-384" name="ln-384" href="#ln-384"></a><span class="s2">        open (newunit=unit, file=trim(filename), access='stream', form='unformatted', &amp;</span>
+<a id="ln-385" name="ln-385" href="#ln-385"></a><span class="s2">              iostat=iostat, status='replace', action='write')</span>
 <a id="ln-386" name="ln-386" href="#ln-386"></a><span class="s2">        if (iostat /= 0) then</span>
 <a id="ln-387" name="ln-387" href="#ln-387"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_OPEN)</span>
-<a id="ln-388" name="ln-388" href="#ln-388"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">creating</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-388" name="ln-388" href="#ln-388"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">creating</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-389" name="ln-389" href="#ln-389"></a><span class="s2">            error = zip_fclose(file_handle)</span>
 <a id="ln-390" name="ln-390" href="#ln-390"></a><span class="s2">            return</span>
 <a id="ln-391" name="ln-391" href="#ln-391"></a><span class="s2">        end if</span>
@@ -583,7 +583,7 @@
 <a id="ln-401" name="ln-401" href="#ln-401"></a><span class="s2">                write (unit, iostat=iostat) buffer(1:bytes_read)</span>
 <a id="ln-402" name="ln-402" href="#ln-402"></a><span class="s2">                if (iostat /= 0) then</span>
 <a id="ln-403" name="ln-403" href="#ln-403"></a><span class="s2">                    call set_err_once(ierr, ERR_WRITE_DATA)</span>
-<a id="ln-404" name="ln-404" href="#ln-404"></a><span class="s2">                    if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">writing</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-404" name="ln-404" href="#ln-404"></a><span class="s2">                    if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">writing</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-405" name="ln-405" href="#ln-405"></a><span class="s2">                    exit</span>
 <a id="ln-406" name="ln-406" href="#ln-406"></a><span class="s2">                end if</span>
 <a id="ln-407" name="ln-407" href="#ln-407"></a><span class="s2">            end if</span>
@@ -596,11 +596,11 @@
 <a id="ln-414" name="ln-414" href="#ln-414"></a>
 <a id="ln-415" name="ln-415" href="#ln-415"></a><span class="s2">        if (is_err(error)) then</span>
 <a id="ln-416" name="ln-416" href="#ln-416"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_CLOSE)</span>
-<a id="ln-417" name="ln-417" href="#ln-417"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">closing</span><span class="w"> </span><span class="k">file </span><span class="n">in</span><span class="w"> </span><span class="n">ZIP</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-417" name="ln-417" href="#ln-417"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">closing</span><span class="w"> </span><span class="k">file </span><span class="n">in</span><span class="w"> </span><span class="n">ZIP</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-418" name="ln-418" href="#ln-418"></a><span class="s2">        end if</span>
 <a id="ln-419" name="ln-419" href="#ln-419"></a>
 <a id="ln-420" name="ln-420" href="#ln-420"></a><span class="s2">        if (is_ok(ierr)) then</span>
-<a id="ln-421" name="ln-421" href="#ln-421"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Extracted</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-421" name="ln-421" href="#ln-421"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Extracted</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-422" name="ln-422" href="#ln-422"></a><span class="s2">        end if</span>
 <a id="ln-423" name="ln-423" href="#ln-423"></a><span class="s2">    end subroutine extract_file_from_zip</span>
 <a id="ln-424" name="ln-424" href="#ln-424"></a>
@@ -651,18 +651,18 @@
 <a id="ln-469" name="ln-469" href="#ln-469"></a>
 <a id="ln-470" name="ln-470" href="#ln-470"></a><span class="s2">        case (DATA_TYPE_FILE)</span>
 <a id="ln-471" name="ln-471" href="#ln-471"></a><span class="s2">            ! Open file</span>
-<a id="ln-472" name="ln-472" href="#ln-472"></a><span class="s2">            open (newunit=unit, file=data_source, access=&#39;stream&#39;, form=&#39;unformatted&#39;, &amp;</span>
-<a id="ln-473" name="ln-473" href="#ln-473"></a><span class="s2">                  iostat=iostat, status=&#39;old&#39;)</span>
+<a id="ln-472" name="ln-472" href="#ln-472"></a><span class="s2">            open (newunit=unit, file=data_source, access='stream', form='unformatted', &amp;</span>
+<a id="ln-473" name="ln-473" href="#ln-473"></a><span class="s2">                  iostat=iostat, status='old')</span>
 <a id="ln-474" name="ln-474" href="#ln-474"></a><span class="s2">            if (iostat /= 0) then</span>
 <a id="ln-475" name="ln-475" href="#ln-475"></a><span class="s2">                call set_err_once(ierr, ERR_FILE_OPEN)</span>
-<a id="ln-476" name="ln-476" href="#ln-476"></a><span class="s2">                if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">opening</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(data_source)</span>
+<a id="ln-476" name="ln-476" href="#ln-476"></a><span class="s2">                if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">opening</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(data_source)</span>
 <a id="ln-477" name="ln-477" href="#ln-477"></a><span class="s2">                return</span>
 <a id="ln-478" name="ln-478" href="#ln-478"></a><span class="s2">            end if</span>
 <a id="ln-479" name="ln-479" href="#ln-479"></a>
 <a id="ln-480" name="ln-480" href="#ln-480"></a><span class="s2">            inquire (unit, size=file_size, iostat=iostat)</span>
 <a id="ln-481" name="ln-481" href="#ln-481"></a><span class="s2">            if (iostat /= 0 .or. file_size &lt; 0) then</span>
 <a id="ln-482" name="ln-482" href="#ln-482"></a><span class="s2">                call set_err_once(ierr, ERR_READ_DATA)</span>
-<a id="ln-483" name="ln-483" href="#ln-483"></a><span class="s2">                if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">could</span><span class="w"> </span><span class="nb">not </span><span class="n">determine</span><span class="w"> </span><span class="n">size</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(data_source)</span>
+<a id="ln-483" name="ln-483" href="#ln-483"></a><span class="s2">                if (DEBUG) print *, "</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">could</span><span class="w"> </span><span class="nb">not </span><span class="n">determine</span><span class="w"> </span><span class="n">size</span><span class="w"> </span><span class="n">of</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(data_source)</span>
 <a id="ln-484" name="ln-484" href="#ln-484"></a><span class="s2">                close (unit)</span>
 <a id="ln-485" name="ln-485" href="#ln-485"></a><span class="s2">                return</span>
 <a id="ln-486" name="ln-486" href="#ln-486"></a><span class="s2">            end if</span>
@@ -727,13 +727,13 @@
 <a id="ln-545" name="ln-545" href="#ln-545"></a><span class="s2">            return</span>
 <a id="ln-546" name="ln-546" href="#ln-546"></a><span class="s2">        end if</span>
 <a id="ln-547" name="ln-547" href="#ln-547"></a>
-<a id="ln-548" name="ln-548" href="#ln-548"></a><span class="s2">        ! Set compression to &quot;</span><span class="n">store</span><span class="s2">&quot; (no compression)</span>
+<a id="ln-548" name="ln-548" href="#ln-548"></a><span class="s2">        ! Set compression to "</span><span class="n">store</span><span class="s2">" (no compression)</span>
 <a id="ln-549" name="ln-549" href="#ln-549"></a><span class="s2">        error = zip_set_file_compression(zip_handle, index, ZIP_COMPRESSION_STORE, 0)</span>
 <a id="ln-550" name="ln-550" href="#ln-550"></a><span class="s2">        if (is_err(error)) then</span>
-<a id="ln-551" name="ln-551" href="#ln-551"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Warning</span><span class="p">:</span><span class="w"> </span><span class="n">Error</span><span class="w"> </span><span class="n">setting</span><span class="w"> </span><span class="n">compression</span><span class="w"> </span><span class="n">for</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-551" name="ln-551" href="#ln-551"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Warning</span><span class="p">:</span><span class="w"> </span><span class="n">Error</span><span class="w"> </span><span class="n">setting</span><span class="w"> </span><span class="n">compression</span><span class="w"> </span><span class="n">for</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-552" name="ln-552" href="#ln-552"></a><span class="s2">        end if</span>
 <a id="ln-553" name="ln-553" href="#ln-553"></a>
-<a id="ln-554" name="ln-554" href="#ln-554"></a><span class="s2">        if (DEBUG) print *, &quot;</span><span class="n">Added</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">ZIP</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filename)</span>
+<a id="ln-554" name="ln-554" href="#ln-554"></a><span class="s2">        if (DEBUG) print *, "</span><span class="n">Added</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">ZIP</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filename)</span>
 <a id="ln-555" name="ln-555" href="#ln-555"></a>
 <a id="ln-556" name="ln-556" href="#ln-556"></a><span class="s2">    end subroutine add_data_to_zip</span>
 <a id="ln-557" name="ln-557" href="#ln-557"></a>
@@ -756,29 +756,29 @@
 <a id="ln-574" name="ln-574" href="#ln-574"></a><span class="s2">        ! Validate input arrays have same size</span>
 <a id="ln-575" name="ln-575" href="#ln-575"></a><span class="s2">        if (size(keys) /= size(filenames)) then</span>
 <a id="ln-576" name="ln-576" href="#ln-576"></a><span class="s2">            call set_err_once(ierr, ERR_INVALID_INPUT)</span>
-<a id="ln-577" name="ln-577" href="#ln-577"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">keys</span><span class="w"> </span><span class="nb">and </span><span class="n">filenames</span><span class="w"> </span><span class="n">arrays</span><span class="w"> </span><span class="n">must</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">same</span><span class="w"> </span><span class="n">size</span><span class="s2">&quot;</span>
+<a id="ln-577" name="ln-577" href="#ln-577"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">keys</span><span class="w"> </span><span class="nb">and </span><span class="n">filenames</span><span class="w"> </span><span class="n">arrays</span><span class="w"> </span><span class="n">must</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">same</span><span class="w"> </span><span class="n">size</span><span class="s2">"</span>
 <a id="ln-578" name="ln-578" href="#ln-578"></a><span class="s2">            return</span>
 <a id="ln-579" name="ln-579" href="#ln-579"></a><span class="s2">        end if</span>
 <a id="ln-580" name="ln-580" href="#ln-580"></a>
 <a id="ln-581" name="ln-581" href="#ln-581"></a><span class="s2">        ! Open the manifest file for writing</span>
-<a id="ln-582" name="ln-582" href="#ln-582"></a><span class="s2">        open (newunit=unit, file=manifest_filename, status=&#39;replace&#39;, iostat=iostat)</span>
+<a id="ln-582" name="ln-582" href="#ln-582"></a><span class="s2">        open (newunit=unit, file=manifest_filename, status='replace', iostat=iostat)</span>
 <a id="ln-583" name="ln-583" href="#ln-583"></a><span class="s2">        if (iostat /= 0) then</span>
 <a id="ln-584" name="ln-584" href="#ln-584"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_OPEN)</span>
-<a id="ln-585" name="ln-585" href="#ln-585"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">creating</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(manifest_filename)</span>
+<a id="ln-585" name="ln-585" href="#ln-585"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">creating</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(manifest_filename)</span>
 <a id="ln-586" name="ln-586" href="#ln-586"></a><span class="s2">            return</span>
 <a id="ln-587" name="ln-587" href="#ln-587"></a><span class="s2">        end if</span>
 <a id="ln-588" name="ln-588" href="#ln-588"></a>
-<a id="ln-589" name="ln-589" href="#ln-589"></a><span class="s2">        write(unit, &#39;(I0)&#39;) size(keys)</span>
-<a id="ln-590" name="ln-590" href="#ln-590"></a><span class="s2">        write(unit, &#39;(I0)&#39;) len(keys)</span>
-<a id="ln-591" name="ln-591" href="#ln-591"></a><span class="s2">        write(unit, &#39;(I0)&#39;) len(filenames)</span>
+<a id="ln-589" name="ln-589" href="#ln-589"></a><span class="s2">        write(unit, '(I0)') size(keys)</span>
+<a id="ln-590" name="ln-590" href="#ln-590"></a><span class="s2">        write(unit, '(I0)') len(keys)</span>
+<a id="ln-591" name="ln-591" href="#ln-591"></a><span class="s2">        write(unit, '(I0)') len(filenames)</span>
 <a id="ln-592" name="ln-592" href="#ln-592"></a><span class="s2">        ! Write each key-value pair to the manifest</span>
 <a id="ln-593" name="ln-593" href="#ln-593"></a><span class="s2">        do i_key = 1, size(keys)</span>
 <a id="ln-594" name="ln-594" href="#ln-594"></a><span class="s2">            if (len_trim(keys(i_key)) &gt; 0 .and. len_trim(filenames(i_key)) &gt; 0) then</span>
-<a id="ln-595" name="ln-595" href="#ln-595"></a><span class="s2">                write(unit, &#39;(a)&#39;) trim(keys(i_key))</span>
-<a id="ln-596" name="ln-596" href="#ln-596"></a><span class="s2">                write(unit, &#39;(a)&#39;) trim(filenames(i_key))</span>
+<a id="ln-595" name="ln-595" href="#ln-595"></a><span class="s2">                write(unit, '(a)') trim(keys(i_key))</span>
+<a id="ln-596" name="ln-596" href="#ln-596"></a><span class="s2">                write(unit, '(a)') trim(filenames(i_key))</span>
 <a id="ln-597" name="ln-597" href="#ln-597"></a><span class="s2">            else</span>
 <a id="ln-598" name="ln-598" href="#ln-598"></a><span class="s2">                call set_err_once(ierr, ERR_INVALID_INPUT)</span>
-<a id="ln-599" name="ln-599" href="#ln-599"></a><span class="s2">                if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">keys</span><span class="w"> </span><span class="nb">and </span><span class="n">filenames</span><span class="w"> </span><span class="n">must</span><span class="w"> </span><span class="nb">not </span><span class="n">be</span><span class="w"> </span><span class="n">empty</span><span class="w"> </span><span class="n">strings</span><span class="s2">&quot;</span>
+<a id="ln-599" name="ln-599" href="#ln-599"></a><span class="s2">                if (DEBUG) print *, "</span><span class="n">Error</span><span class="p">:</span><span class="w"> </span><span class="n">keys</span><span class="w"> </span><span class="nb">and </span><span class="n">filenames</span><span class="w"> </span><span class="n">must</span><span class="w"> </span><span class="nb">not </span><span class="n">be</span><span class="w"> </span><span class="n">empty</span><span class="w"> </span><span class="n">strings</span><span class="s2">"</span>
 <a id="ln-600" name="ln-600" href="#ln-600"></a><span class="s2">                close (unit)</span>
 <a id="ln-601" name="ln-601" href="#ln-601"></a><span class="s2">                return</span>
 <a id="ln-602" name="ln-602" href="#ln-602"></a><span class="s2">            end if</span>
@@ -787,7 +787,7 @@
 <a id="ln-605" name="ln-605" href="#ln-605"></a><span class="s2">        ! Close the manifest file</span>
 <a id="ln-606" name="ln-606" href="#ln-606"></a><span class="s2">        close (unit)</span>
 <a id="ln-607" name="ln-607" href="#ln-607"></a>
-<a id="ln-608" name="ln-608" href="#ln-608"></a><span class="s2">        if (DEBUG) print *, &quot;</span><span class="n">Manifest</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="n">successfully</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="s2">&quot;, size(keys), &quot;</span><span class="w"> </span><span class="n">entries</span><span class="s2">&quot;</span>
+<a id="ln-608" name="ln-608" href="#ln-608"></a><span class="s2">        if (DEBUG) print *, "</span><span class="n">Manifest</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="n">successfully</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="s2">", size(keys), "</span><span class="w"> </span><span class="n">entries</span><span class="s2">"</span>
 <a id="ln-609" name="ln-609" href="#ln-609"></a><span class="s2">    end subroutine write_manifest</span>
 <a id="ln-610" name="ln-610" href="#ln-610"></a>
 <a id="ln-611" name="ln-611" href="#ln-611"></a><span class="s2">    !&gt; AUTHOR_FRANZ_ERIC_SILL</span>
@@ -807,14 +807,14 @@
 <a id="ln-625" name="ln-625" href="#ln-625"></a><span class="s2">        call set_ok(ierr)</span>
 <a id="ln-626" name="ln-626" href="#ln-626"></a>
 <a id="ln-627" name="ln-627" href="#ln-627"></a><span class="s2">        ! Open the manifest file for reading</span>
-<a id="ln-628" name="ln-628" href="#ln-628"></a><span class="s2">        open (newunit=unit, file=manifest_filename, status=&#39;old&#39;, iostat=iostat, action=&#39;read&#39;)</span>
+<a id="ln-628" name="ln-628" href="#ln-628"></a><span class="s2">        open (newunit=unit, file=manifest_filename, status='old', iostat=iostat, action='read')</span>
 <a id="ln-629" name="ln-629" href="#ln-629"></a><span class="s2">        if (iostat /= 0) then</span>
 <a id="ln-630" name="ln-630" href="#ln-630"></a><span class="s2">            call set_err_once(ierr, ERR_FILE_OPEN)</span>
-<a id="ln-631" name="ln-631" href="#ln-631"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">opening</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(manifest_filename)</span>
+<a id="ln-631" name="ln-631" href="#ln-631"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">opening</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(manifest_filename)</span>
 <a id="ln-632" name="ln-632" href="#ln-632"></a><span class="s2">            return</span>
 <a id="ln-633" name="ln-633" href="#ln-633"></a><span class="s2">        end if</span>
 <a id="ln-634" name="ln-634" href="#ln-634"></a>
-<a id="ln-635" name="ln-635" href="#ln-635"></a><span class="s2">#define CM_CORRUPTED then; call set_err_once(ierr, ERR_READ_DATA); if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">reading</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(manifest_filename); close(unit); return; end if</span>
+<a id="ln-635" name="ln-635" href="#ln-635"></a><span class="s2">#define CM_CORRUPTED then; call set_err_once(ierr, ERR_READ_DATA); if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">reading</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(manifest_filename); close(unit); return; end if</span>
 <a id="ln-636" name="ln-636" href="#ln-636"></a><span class="s2">#define CM_CHECK_CORRUPTED if (iostat /= 0) CM_CORRUPTED</span>
 <a id="ln-637" name="ln-637" href="#ln-637"></a><span class="s2">#define CM_READ(TARGET) read(unit, *, iostat=iostat) TARGET; CM_CHECK_CORRUPTED</span>
 <a id="ln-638" name="ln-638" href="#ln-638"></a><span class="s2">#define CM_READ_DIM(TARGET) CM_READ(TARGET); if (TARGET &lt;= 0) CM_CORRUPTED</span>
@@ -832,7 +832,7 @@
 <a id="ln-650" name="ln-650" href="#ln-650"></a><span class="s2">        end do</span>
 <a id="ln-651" name="ln-651" href="#ln-651"></a>
 <a id="ln-652" name="ln-652" href="#ln-652"></a><span class="s2">        close (unit)</span>
-<a id="ln-653" name="ln-653" href="#ln-653"></a><span class="s2">        if (DEBUG) print *, &quot;</span><span class="k">Read </span><span class="n">manifest</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="s2">&quot;, n_pairs, &quot;</span><span class="w"> </span><span class="n">entries</span><span class="s2">&quot;</span>
+<a id="ln-653" name="ln-653" href="#ln-653"></a><span class="s2">        if (DEBUG) print *, "</span><span class="k">Read </span><span class="n">manifest</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="s2">", n_pairs, "</span><span class="w"> </span><span class="n">entries</span><span class="s2">"</span>
 <a id="ln-654" name="ln-654" href="#ln-654"></a><span class="s2">    end subroutine read_manifest_generic</span>
 <a id="ln-655" name="ln-655" href="#ln-655"></a>
 <a id="ln-656" name="ln-656" href="#ln-656"></a><span class="s2">    !&gt; AUTHOR_AARON_SCHROEDER</span>
@@ -857,12 +857,12 @@
 <a id="ln-675" name="ln-675" href="#ln-675"></a><span class="s2">        integer(c_size_t) :: chunk_size_c</span>
 <a id="ln-676" name="ln-676" href="#ln-676"></a>
 <a id="ln-677" name="ln-677" href="#ln-677"></a><span class="s2">        ! Extract and parse the manifest file</span>
-<a id="ln-678" name="ln-678" href="#ln-678"></a><span class="s2">        call extract_file_from_zip(zip_handle, &quot;</span><span class="n">manifest</span><span class="p">.</span><span class="n">txt</span><span class="s2">&quot;, ierr)</span>
+<a id="ln-678" name="ln-678" href="#ln-678"></a><span class="s2">        call extract_file_from_zip(zip_handle, "</span><span class="n">manifest</span><span class="p">.</span><span class="n">txt</span><span class="s2">", ierr)</span>
 <a id="ln-679" name="ln-679" href="#ln-679"></a><span class="s2">        if (is_err(ierr)) return</span>
-<a id="ln-680" name="ln-680" href="#ln-680"></a><span class="s2">        call read_manifest_generic(&quot;</span><span class="n">manifest</span><span class="p">.</span><span class="n">txt</span><span class="s2">&quot;, keys, filenames, ierr)</span>
+<a id="ln-680" name="ln-680" href="#ln-680"></a><span class="s2">        call read_manifest_generic("</span><span class="n">manifest</span><span class="p">.</span><span class="n">txt</span><span class="s2">", keys, filenames, ierr)</span>
 <a id="ln-681" name="ln-681" href="#ln-681"></a>
 <a id="ln-682" name="ln-682" href="#ln-682"></a><span class="s2">        if (is_err(ierr)) then</span>
-<a id="ln-683" name="ln-683" href="#ln-683"></a><span class="s2">            if (DEBUG) print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">parsing</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-683" name="ln-683" href="#ln-683"></a><span class="s2">            if (DEBUG) print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">parsing</span><span class="w"> </span><span class="n">manifest</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-684" name="ln-684" href="#ln-684"></a><span class="s2">            return</span>
 <a id="ln-685" name="ln-685" href="#ln-685"></a><span class="s2">        end if</span>
 <a id="ln-686" name="ln-686" href="#ln-686"></a><span class="s2">    end subroutine extract_and_parse_manifest</span>
@@ -942,84 +942,84 @@
 <a id="ln-760" name="ln-760" href="#ln-760"></a><span class="s2">            actual_gene_ids_file = gene_ids_file</span>
 <a id="ln-761" name="ln-761" href="#ln-761"></a><span class="s2">            call save_gene_ids(gene_ids, actual_gene_ids_file, ierr)</span>
 <a id="ln-762" name="ln-762" href="#ln-762"></a><span class="s2">            if (is_ok(ierr)) then</span>
-<a id="ln-763" name="ln-763" href="#ln-763"></a><span class="s2">                keys(i) = &#39;gene_ids&#39;</span>
+<a id="ln-763" name="ln-763" href="#ln-763"></a><span class="s2">                keys(i) = 'gene_ids'</span>
 <a id="ln-764" name="ln-764" href="#ln-764"></a><span class="s2">                filenames(i) = actual_gene_ids_file</span>
 <a id="ln-765" name="ln-765" href="#ln-765"></a><span class="s2">                i = i + 1</span>
 <a id="ln-766" name="ln-766" href="#ln-766"></a><span class="s2">            else</span>
 <a id="ln-767" name="ln-767" href="#ln-767"></a><span class="s2">                return</span>
 <a id="ln-768" name="ln-768" href="#ln-768"></a><span class="s2">            end if</span>
 <a id="ln-769" name="ln-769" href="#ln-769"></a><span class="s2">        else</span>
-<a id="ln-770" name="ln-770" href="#ln-770"></a><span class="s2">            actual_gene_ids_file = &quot;&quot;</span>
+<a id="ln-770" name="ln-770" href="#ln-770"></a><span class="s2">            actual_gene_ids_file = ""</span>
 <a id="ln-771" name="ln-771" href="#ln-771"></a><span class="s2">        end if</span>
 <a id="ln-772" name="ln-772" href="#ln-772"></a>
 <a id="ln-773" name="ln-773" href="#ln-773"></a><span class="s2">        if (expression_present) then</span>
 <a id="ln-774" name="ln-774" href="#ln-774"></a><span class="s2">            actual_expression_file = expression_file</span>
 <a id="ln-775" name="ln-775" href="#ln-775"></a><span class="s2">            call save_expression_vectors(expression, actual_expression_file, ierr)</span>
 <a id="ln-776" name="ln-776" href="#ln-776"></a><span class="s2">            if (is_ok(ierr)) then</span>
-<a id="ln-777" name="ln-777" href="#ln-777"></a><span class="s2">                keys(i) = &#39;expression&#39;</span>
+<a id="ln-777" name="ln-777" href="#ln-777"></a><span class="s2">                keys(i) = 'expression'</span>
 <a id="ln-778" name="ln-778" href="#ln-778"></a><span class="s2">                filenames(i) = actual_expression_file</span>
 <a id="ln-779" name="ln-779" href="#ln-779"></a><span class="s2">                i = i + 1</span>
 <a id="ln-780" name="ln-780" href="#ln-780"></a><span class="s2">            else</span>
 <a id="ln-781" name="ln-781" href="#ln-781"></a><span class="s2">                return</span>
 <a id="ln-782" name="ln-782" href="#ln-782"></a><span class="s2">            end if</span>
 <a id="ln-783" name="ln-783" href="#ln-783"></a><span class="s2">        else</span>
-<a id="ln-784" name="ln-784" href="#ln-784"></a><span class="s2">            actual_expression_file = &quot;&quot;</span>
+<a id="ln-784" name="ln-784" href="#ln-784"></a><span class="s2">            actual_expression_file = ""</span>
 <a id="ln-785" name="ln-785" href="#ln-785"></a><span class="s2">        end if</span>
 <a id="ln-786" name="ln-786" href="#ln-786"></a>
 <a id="ln-787" name="ln-787" href="#ln-787"></a><span class="s2">        if (gene_to_family_present) then</span>
 <a id="ln-788" name="ln-788" href="#ln-788"></a><span class="s2">            actual_gene_to_family_file = gene_to_family_file</span>
 <a id="ln-789" name="ln-789" href="#ln-789"></a><span class="s2">            call save_gene_to_family(gene_to_family, actual_gene_to_family_file, ierr)</span>
 <a id="ln-790" name="ln-790" href="#ln-790"></a><span class="s2">            if (is_ok(ierr)) then</span>
-<a id="ln-791" name="ln-791" href="#ln-791"></a><span class="s2">                keys(i) = &#39;gene_to_family&#39;</span>
+<a id="ln-791" name="ln-791" href="#ln-791"></a><span class="s2">                keys(i) = 'gene_to_family'</span>
 <a id="ln-792" name="ln-792" href="#ln-792"></a><span class="s2">                filenames(i) = actual_gene_to_family_file</span>
 <a id="ln-793" name="ln-793" href="#ln-793"></a><span class="s2">                i = i + 1</span>
 <a id="ln-794" name="ln-794" href="#ln-794"></a><span class="s2">            else</span>
 <a id="ln-795" name="ln-795" href="#ln-795"></a><span class="s2">                return</span>
 <a id="ln-796" name="ln-796" href="#ln-796"></a><span class="s2">            end if</span>
 <a id="ln-797" name="ln-797" href="#ln-797"></a><span class="s2">        else</span>
-<a id="ln-798" name="ln-798" href="#ln-798"></a><span class="s2">            actual_gene_to_family_file = &quot;&quot;</span>
+<a id="ln-798" name="ln-798" href="#ln-798"></a><span class="s2">            actual_gene_to_family_file = ""</span>
 <a id="ln-799" name="ln-799" href="#ln-799"></a><span class="s2">        end if</span>
 <a id="ln-800" name="ln-800" href="#ln-800"></a>
 <a id="ln-801" name="ln-801" href="#ln-801"></a><span class="s2">        if (family_ids_present) then</span>
 <a id="ln-802" name="ln-802" href="#ln-802"></a><span class="s2">            actual_family_ids_file = family_ids_file</span>
 <a id="ln-803" name="ln-803" href="#ln-803"></a><span class="s2">            call save_family_ids(family_ids, actual_family_ids_file, ierr)</span>
 <a id="ln-804" name="ln-804" href="#ln-804"></a><span class="s2">            if (is_ok(ierr)) then</span>
-<a id="ln-805" name="ln-805" href="#ln-805"></a><span class="s2">                keys(i) = &#39;family_ids&#39;</span>
+<a id="ln-805" name="ln-805" href="#ln-805"></a><span class="s2">                keys(i) = 'family_ids'</span>
 <a id="ln-806" name="ln-806" href="#ln-806"></a><span class="s2">                filenames(i) = actual_family_ids_file</span>
 <a id="ln-807" name="ln-807" href="#ln-807"></a><span class="s2">                i = i + 1</span>
 <a id="ln-808" name="ln-808" href="#ln-808"></a><span class="s2">            else</span>
 <a id="ln-809" name="ln-809" href="#ln-809"></a><span class="s2">                return</span>
 <a id="ln-810" name="ln-810" href="#ln-810"></a><span class="s2">            end if</span>
 <a id="ln-811" name="ln-811" href="#ln-811"></a><span class="s2">        else</span>
-<a id="ln-812" name="ln-812" href="#ln-812"></a><span class="s2">            actual_family_ids_file = &quot;&quot;</span>
+<a id="ln-812" name="ln-812" href="#ln-812"></a><span class="s2">            actual_family_ids_file = ""</span>
 <a id="ln-813" name="ln-813" href="#ln-813"></a><span class="s2">        end if</span>
 <a id="ln-814" name="ln-814" href="#ln-814"></a>
 <a id="ln-815" name="ln-815" href="#ln-815"></a><span class="s2">        if (family_centroids_present) then</span>
 <a id="ln-816" name="ln-816" href="#ln-816"></a><span class="s2">            actual_family_centroids_file = family_centroids_file</span>
 <a id="ln-817" name="ln-817" href="#ln-817"></a><span class="s2">            call save_family_centroids(family_centroids, actual_family_centroids_file, ierr)</span>
 <a id="ln-818" name="ln-818" href="#ln-818"></a><span class="s2">            if (is_ok(ierr)) then</span>
-<a id="ln-819" name="ln-819" href="#ln-819"></a><span class="s2">                keys(i) = &#39;family_centroids&#39;</span>
+<a id="ln-819" name="ln-819" href="#ln-819"></a><span class="s2">                keys(i) = 'family_centroids'</span>
 <a id="ln-820" name="ln-820" href="#ln-820"></a><span class="s2">                filenames(i) = actual_family_centroids_file</span>
 <a id="ln-821" name="ln-821" href="#ln-821"></a><span class="s2">                i = i + 1</span>
 <a id="ln-822" name="ln-822" href="#ln-822"></a><span class="s2">            else</span>
 <a id="ln-823" name="ln-823" href="#ln-823"></a><span class="s2">                return</span>
 <a id="ln-824" name="ln-824" href="#ln-824"></a><span class="s2">            end if</span>
 <a id="ln-825" name="ln-825" href="#ln-825"></a><span class="s2">        else</span>
-<a id="ln-826" name="ln-826" href="#ln-826"></a><span class="s2">            actual_family_centroids_file = &quot;&quot;</span>
+<a id="ln-826" name="ln-826" href="#ln-826"></a><span class="s2">            actual_family_centroids_file = ""</span>
 <a id="ln-827" name="ln-827" href="#ln-827"></a><span class="s2">        end if</span>
 <a id="ln-828" name="ln-828" href="#ln-828"></a>
 <a id="ln-829" name="ln-829" href="#ln-829"></a><span class="s2">        if (shift_vectors_present) then</span>
 <a id="ln-830" name="ln-830" href="#ln-830"></a><span class="s2">            actual_shift_vectors_file = shift_vectors_file</span>
 <a id="ln-831" name="ln-831" href="#ln-831"></a><span class="s2">            call save_shift_vectors(shift_vectors, actual_shift_vectors_file, ierr)</span>
 <a id="ln-832" name="ln-832" href="#ln-832"></a><span class="s2">            if (is_ok(ierr)) then</span>
-<a id="ln-833" name="ln-833" href="#ln-833"></a><span class="s2">                keys(i) = &#39;shift_vectors&#39;</span>
+<a id="ln-833" name="ln-833" href="#ln-833"></a><span class="s2">                keys(i) = 'shift_vectors'</span>
 <a id="ln-834" name="ln-834" href="#ln-834"></a><span class="s2">                filenames(i) = actual_shift_vectors_file</span>
 <a id="ln-835" name="ln-835" href="#ln-835"></a><span class="s2">                i = i + 1</span>
 <a id="ln-836" name="ln-836" href="#ln-836"></a><span class="s2">            else</span>
 <a id="ln-837" name="ln-837" href="#ln-837"></a><span class="s2">                return</span>
 <a id="ln-838" name="ln-838" href="#ln-838"></a><span class="s2">            end if</span>
 <a id="ln-839" name="ln-839" href="#ln-839"></a><span class="s2">        else</span>
-<a id="ln-840" name="ln-840" href="#ln-840"></a><span class="s2">            actual_shift_vectors_file = &quot;&quot;</span>
+<a id="ln-840" name="ln-840" href="#ln-840"></a><span class="s2">            actual_shift_vectors_file = ""</span>
 <a id="ln-841" name="ln-841" href="#ln-841"></a><span class="s2">        end if</span>
 <a id="ln-842" name="ln-842" href="#ln-842"></a>
 <a id="ln-843" name="ln-843" href="#ln-843"></a><span class="s2">        if (is_ok(ierr)) then</span>
@@ -1027,18 +1027,18 @@
 <a id="ln-845" name="ln-845" href="#ln-845"></a><span class="s2">        end if</span>
 <a id="ln-846" name="ln-846" href="#ln-846"></a>
 <a id="ln-847" name="ln-847" href="#ln-847"></a><span class="s2">        ! Clean up temporary files</span>
-<a id="ln-848" name="ln-848" href="#ln-848"></a><span class="s2">        call cleanup_temporary_files(gene_ids_present, actual_gene_ids_file, &quot;</span><span class="n">Gene</span><span class="w"> </span><span class="n">IDs</span><span class="s2">&quot;)</span>
-<a id="ln-849" name="ln-849" href="#ln-849"></a><span class="s2">        call cleanup_temporary_files(expression_present, actual_expression_file, &quot;</span><span class="n">Expression</span><span class="s2">&quot;)</span>
-<a id="ln-850" name="ln-850" href="#ln-850"></a><span class="s2">        call cleanup_temporary_files(gene_to_family_present, actual_gene_to_family_file, &quot;</span><span class="n">Gene</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="n">mapping</span><span class="s2">&quot;)</span>
-<a id="ln-851" name="ln-851" href="#ln-851"></a><span class="s2">        call cleanup_temporary_files(family_ids_present, actual_family_ids_file, &quot;</span><span class="n">Family</span><span class="w"> </span><span class="n">IDs</span><span class="s2">&quot;)</span>
-<a id="ln-852" name="ln-852" href="#ln-852"></a><span class="s2">        call cleanup_temporary_files(family_centroids_present, actual_family_centroids_file, &quot;</span><span class="n">Centroids</span><span class="s2">&quot;)</span>
-<a id="ln-853" name="ln-853" href="#ln-853"></a><span class="s2">        call cleanup_temporary_files(shift_vectors_present, actual_shift_vectors_file, &quot;</span><span class="n">Shift</span><span class="w"> </span><span class="n">vectors</span><span class="s2">&quot;)</span>
+<a id="ln-848" name="ln-848" href="#ln-848"></a><span class="s2">        call cleanup_temporary_files(gene_ids_present, actual_gene_ids_file, "</span><span class="n">Gene</span><span class="w"> </span><span class="n">IDs</span><span class="s2">")</span>
+<a id="ln-849" name="ln-849" href="#ln-849"></a><span class="s2">        call cleanup_temporary_files(expression_present, actual_expression_file, "</span><span class="n">Expression</span><span class="s2">")</span>
+<a id="ln-850" name="ln-850" href="#ln-850"></a><span class="s2">        call cleanup_temporary_files(gene_to_family_present, actual_gene_to_family_file, "</span><span class="n">Gene</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">family</span><span class="w"> </span><span class="n">mapping</span><span class="s2">")</span>
+<a id="ln-851" name="ln-851" href="#ln-851"></a><span class="s2">        call cleanup_temporary_files(family_ids_present, actual_family_ids_file, "</span><span class="n">Family</span><span class="w"> </span><span class="n">IDs</span><span class="s2">")</span>
+<a id="ln-852" name="ln-852" href="#ln-852"></a><span class="s2">        call cleanup_temporary_files(family_centroids_present, actual_family_centroids_file, "</span><span class="n">Centroids</span><span class="s2">")</span>
+<a id="ln-853" name="ln-853" href="#ln-853"></a><span class="s2">        call cleanup_temporary_files(shift_vectors_present, actual_shift_vectors_file, "</span><span class="n">Shift</span><span class="w"> </span><span class="n">vectors</span><span class="s2">")</span>
 <a id="ln-854" name="ln-854" href="#ln-854"></a>
 <a id="ln-855" name="ln-855" href="#ln-855"></a><span class="s2">        deallocate (keys, filenames)</span>
 <a id="ln-856" name="ln-856" href="#ln-856"></a>
 <a id="ln-857" name="ln-857" href="#ln-857"></a><span class="s2">    contains</span>
 <a id="ln-858" name="ln-858" href="#ln-858"></a><span class="s2">        !| Deletes one intermediate array file after it has been added to the archive. Failure to</span>
-<a id="ln-859" name="ln-859" href="#ln-859"></a><span class="s2">        !| remove it is only ever a warning (via the enclosing subroutine&#39;s `temp_ierr`, never</span>
+<a id="ln-859" name="ln-859" href="#ln-859"></a><span class="s2">        !| remove it is only ever a warning (via the enclosing subroutine's `temp_ierr`, never</span>
 <a id="ln-860" name="ln-860" href="#ln-860"></a><span class="s2">        !| `ierr`), since a leftover temp file does not affect whether the archive itself was</span>
 <a id="ln-861" name="ln-861" href="#ln-861"></a><span class="s2">        !| written successfully.</span>
 <a id="ln-862" name="ln-862" href="#ln-862"></a><span class="s2">        subroutine cleanup_temporary_files(file_present, filename, description)</span>
@@ -1052,7 +1052,7 @@
 <a id="ln-870" name="ln-870" href="#ln-870"></a><span class="s2">            if (file_present .and. len_trim(filename) &gt; 0) then</span>
 <a id="ln-871" name="ln-871" href="#ln-871"></a><span class="s2">                call delete_file(filename, temp_ierr)</span>
 <a id="ln-872" name="ln-872" href="#ln-872"></a><span class="s2">                if (is_err(temp_ierr)) then</span>
-<a id="ln-873" name="ln-873" href="#ln-873"></a><span class="s2">                    if (DEBUG) write (*, *) &#39;Warning: &#39;, trim(description), &#39; file could not be removed: &#39;, trim(filename)</span>
+<a id="ln-873" name="ln-873" href="#ln-873"></a><span class="s2">                    if (DEBUG) write (*, *) 'Warning: ', trim(description), ' file could not be removed: ', trim(filename)</span>
 <a id="ln-874" name="ln-874" href="#ln-874"></a><span class="s2">                end if</span>
 <a id="ln-875" name="ln-875" href="#ln-875"></a><span class="s2">            end if</span>
 <a id="ln-876" name="ln-876" href="#ln-876"></a><span class="s2">        end subroutine cleanup_temporary_files</span>
@@ -1114,39 +1114,39 @@
 <a id="ln-932" name="ln-932" href="#ln-932"></a><span class="s2">        call set_ok(ierr)</span>
 <a id="ln-933" name="ln-933" href="#ln-933"></a><span class="s2">        max_dims = 5</span>
 <a id="ln-934" name="ln-934" href="#ln-934"></a>
-<a id="ln-935" name="ln-935" href="#ln-935"></a><span class="s2">        if (DEBUG) write (*, *) &#39;Extracting zip archive...&#39;</span>
+<a id="ln-935" name="ln-935" href="#ln-935"></a><span class="s2">        if (DEBUG) write (*, *) 'Extracting zip archive...'</span>
 <a id="ln-936" name="ln-936" href="#ln-936"></a>
 <a id="ln-937" name="ln-937" href="#ln-937"></a><span class="s2">        call extract_zip_archive(zip_filename, keys, filenames, ierr)</span>
 <a id="ln-938" name="ln-938" href="#ln-938"></a><span class="s2">        if (is_err(ierr)) return</span>
 <a id="ln-939" name="ln-939" href="#ln-939"></a>
 <a id="ln-940" name="ln-940" href="#ln-940"></a><span class="s2">        ! Find standard files by their keys</span>
-<a id="ln-941" name="ln-941" href="#ln-941"></a><span class="s2">        extracted_gene_ids_file = &quot;&quot;</span>
-<a id="ln-942" name="ln-942" href="#ln-942"></a><span class="s2">        extracted_expression_file = &quot;&quot;</span>
-<a id="ln-943" name="ln-943" href="#ln-943"></a><span class="s2">        extracted_gene_to_family_file = &quot;&quot;</span>
-<a id="ln-944" name="ln-944" href="#ln-944"></a><span class="s2">        extracted_family_ids_file = &quot;&quot;</span>
-<a id="ln-945" name="ln-945" href="#ln-945"></a><span class="s2">        extracted_family_centroids_file = &quot;&quot;</span>
-<a id="ln-946" name="ln-946" href="#ln-946"></a><span class="s2">        extracted_shift_vectors_file = &quot;&quot;</span>
+<a id="ln-941" name="ln-941" href="#ln-941"></a><span class="s2">        extracted_gene_ids_file = ""</span>
+<a id="ln-942" name="ln-942" href="#ln-942"></a><span class="s2">        extracted_expression_file = ""</span>
+<a id="ln-943" name="ln-943" href="#ln-943"></a><span class="s2">        extracted_gene_to_family_file = ""</span>
+<a id="ln-944" name="ln-944" href="#ln-944"></a><span class="s2">        extracted_family_ids_file = ""</span>
+<a id="ln-945" name="ln-945" href="#ln-945"></a><span class="s2">        extracted_family_centroids_file = ""</span>
+<a id="ln-946" name="ln-946" href="#ln-946"></a><span class="s2">        extracted_shift_vectors_file = ""</span>
 <a id="ln-947" name="ln-947" href="#ln-947"></a>
 <a id="ln-948" name="ln-948" href="#ln-948"></a><span class="s2">        ! This key vocabulary is the other half of the contract written by</span>
 <a id="ln-949" name="ln-949" href="#ln-949"></a><span class="s2">        ! [[tox_data_archive(module):save_tox_data(subroutine)]] -- the two must be kept in sync,</span>
 <a id="ln-950" name="ln-950" href="#ln-950"></a><span class="s2">        ! since a key renamed on one side but not the other would silently fall through to the</span>
-<a id="ln-951" name="ln-951" href="#ln-951"></a><span class="s2">        ! &quot;</span><span class="n">non</span><span class="o">-</span><span class="n">standard</span><span class="w"> </span><span class="n">key</span><span class="s2">&quot; branch below instead of failing loudly.</span>
+<a id="ln-951" name="ln-951" href="#ln-951"></a><span class="s2">        ! "</span><span class="n">non</span><span class="o">-</span><span class="n">standard</span><span class="w"> </span><span class="n">key</span><span class="s2">" branch below instead of failing loudly.</span>
 <a id="ln-952" name="ln-952" href="#ln-952"></a><span class="s2">        do i_key = 1, size(keys)</span>
 <a id="ln-953" name="ln-953" href="#ln-953"></a><span class="s2">            select case (trim(keys(i_key)))</span>
-<a id="ln-954" name="ln-954" href="#ln-954"></a><span class="s2">            case (&#39;gene_ids&#39;)</span>
+<a id="ln-954" name="ln-954" href="#ln-954"></a><span class="s2">            case ('gene_ids')</span>
 <a id="ln-955" name="ln-955" href="#ln-955"></a><span class="s2">                extracted_gene_ids_file = trim(filenames(i_key))</span>
-<a id="ln-956" name="ln-956" href="#ln-956"></a><span class="s2">            case (&#39;expression&#39;)</span>
+<a id="ln-956" name="ln-956" href="#ln-956"></a><span class="s2">            case ('expression')</span>
 <a id="ln-957" name="ln-957" href="#ln-957"></a><span class="s2">                extracted_expression_file = trim(filenames(i_key))</span>
-<a id="ln-958" name="ln-958" href="#ln-958"></a><span class="s2">            case (&#39;gene_to_family&#39;)</span>
+<a id="ln-958" name="ln-958" href="#ln-958"></a><span class="s2">            case ('gene_to_family')</span>
 <a id="ln-959" name="ln-959" href="#ln-959"></a><span class="s2">                extracted_gene_to_family_file = trim(filenames(i_key))</span>
-<a id="ln-960" name="ln-960" href="#ln-960"></a><span class="s2">            case (&#39;family_ids&#39;)</span>
+<a id="ln-960" name="ln-960" href="#ln-960"></a><span class="s2">            case ('family_ids')</span>
 <a id="ln-961" name="ln-961" href="#ln-961"></a><span class="s2">                extracted_family_ids_file = trim(filenames(i_key))</span>
-<a id="ln-962" name="ln-962" href="#ln-962"></a><span class="s2">            case (&#39;family_centroids&#39;)</span>
+<a id="ln-962" name="ln-962" href="#ln-962"></a><span class="s2">            case ('family_centroids')</span>
 <a id="ln-963" name="ln-963" href="#ln-963"></a><span class="s2">                extracted_family_centroids_file = trim(filenames(i_key))</span>
-<a id="ln-964" name="ln-964" href="#ln-964"></a><span class="s2">            case (&#39;shift_vectors&#39;)</span>
+<a id="ln-964" name="ln-964" href="#ln-964"></a><span class="s2">            case ('shift_vectors')</span>
 <a id="ln-965" name="ln-965" href="#ln-965"></a><span class="s2">                extracted_shift_vectors_file = trim(filenames(i_key))</span>
 <a id="ln-966" name="ln-966" href="#ln-966"></a><span class="s2">            case default</span>
-<a id="ln-967" name="ln-967" href="#ln-967"></a><span class="s2">                print *, &quot;</span><span class="n">Found</span><span class="w"> </span><span class="n">non</span><span class="o">-</span><span class="n">standard</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="n">archive</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(keys(i_key)), &quot;</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;, trim(filenames(i_key))</span>
+<a id="ln-967" name="ln-967" href="#ln-967"></a><span class="s2">                print *, "</span><span class="n">Found</span><span class="w"> </span><span class="n">non</span><span class="o">-</span><span class="n">standard</span><span class="w"> </span><span class="n">key</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="n">archive</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(keys(i_key)), "</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="k">file</span><span class="p">:</span><span class="w"> </span><span class="s2">", trim(filenames(i_key))</span>
 <a id="ln-968" name="ln-968" href="#ln-968"></a><span class="s2">            end select</span>
 <a id="ln-969" name="ln-969" href="#ln-969"></a><span class="s2">        end do</span>
 <a id="ln-970" name="ln-970" href="#ln-970"></a>
@@ -1178,7 +1178,7 @@
 <a id="ln-996" name="ln-996" href="#ln-996"></a><span class="s2">                call load_gene_ids(gene_ids, extracted_gene_ids_file, ierr)</span>
 <a id="ln-997" name="ln-997" href="#ln-997"></a><span class="s2">                if (is_err(ierr)) return</span>
 <a id="ln-998" name="ln-998" href="#ln-998"></a><span class="s2">            else</span>
-<a id="ln-999" name="ln-999" href="#ln-999"></a><span class="s2">                print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">gene_ids</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-999" name="ln-999" href="#ln-999"></a><span class="s2">                print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">gene_ids</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-1000" name="ln-1000" href="#ln-1000"></a><span class="s2">                return</span>
 <a id="ln-1001" name="ln-1001" href="#ln-1001"></a><span class="s2">            end if</span>
 <a id="ln-1002" name="ln-1002" href="#ln-1002"></a><span class="s2">        end if</span>
@@ -1195,7 +1195,7 @@
 <a id="ln-1013" name="ln-1013" href="#ln-1013"></a><span class="s2">                call load_expression_vectors(expression, extracted_expression_file, ierr)</span>
 <a id="ln-1014" name="ln-1014" href="#ln-1014"></a><span class="s2">                if (is_err(ierr)) return</span>
 <a id="ln-1015" name="ln-1015" href="#ln-1015"></a><span class="s2">            else</span>
-<a id="ln-1016" name="ln-1016" href="#ln-1016"></a><span class="s2">                print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">expression</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-1016" name="ln-1016" href="#ln-1016"></a><span class="s2">                print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">expression</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-1017" name="ln-1017" href="#ln-1017"></a><span class="s2">                return</span>
 <a id="ln-1018" name="ln-1018" href="#ln-1018"></a><span class="s2">            end if</span>
 <a id="ln-1019" name="ln-1019" href="#ln-1019"></a><span class="s2">        end if</span>
@@ -1211,7 +1211,7 @@
 <a id="ln-1029" name="ln-1029" href="#ln-1029"></a><span class="s2">                call load_gene_to_family(gene_to_family, extracted_gene_to_family_file, ierr)</span>
 <a id="ln-1030" name="ln-1030" href="#ln-1030"></a><span class="s2">                if (is_err(ierr)) return</span>
 <a id="ln-1031" name="ln-1031" href="#ln-1031"></a><span class="s2">            else</span>
-<a id="ln-1032" name="ln-1032" href="#ln-1032"></a><span class="s2">                print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">gene_to_family</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-1032" name="ln-1032" href="#ln-1032"></a><span class="s2">                print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">gene_to_family</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-1033" name="ln-1033" href="#ln-1033"></a><span class="s2">                return</span>
 <a id="ln-1034" name="ln-1034" href="#ln-1034"></a><span class="s2">            end if</span>
 <a id="ln-1035" name="ln-1035" href="#ln-1035"></a><span class="s2">        end if</span>
@@ -1226,7 +1226,7 @@
 <a id="ln-1044" name="ln-1044" href="#ln-1044"></a><span class="s2">                M_ALLOCATE(character(len=type_code) :: family_ids(dims(1)))</span>
 <a id="ln-1045" name="ln-1045" href="#ln-1045"></a><span class="s2">                call load_family_ids(family_ids, extracted_family_ids_file, ierr)</span>
 <a id="ln-1046" name="ln-1046" href="#ln-1046"></a><span class="s2">            else</span>
-<a id="ln-1047" name="ln-1047" href="#ln-1047"></a><span class="s2">                print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">family_ids</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-1047" name="ln-1047" href="#ln-1047"></a><span class="s2">                print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">family_ids</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-1048" name="ln-1048" href="#ln-1048"></a><span class="s2">                return</span>
 <a id="ln-1049" name="ln-1049" href="#ln-1049"></a><span class="s2">            end if</span>
 <a id="ln-1050" name="ln-1050" href="#ln-1050"></a><span class="s2">        end if</span>
@@ -1243,7 +1243,7 @@
 <a id="ln-1061" name="ln-1061" href="#ln-1061"></a><span class="s2">                call load_family_centroids(family_centroids, extracted_family_centroids_file, ierr)</span>
 <a id="ln-1062" name="ln-1062" href="#ln-1062"></a><span class="s2">                if (is_err(ierr)) return</span>
 <a id="ln-1063" name="ln-1063" href="#ln-1063"></a><span class="s2">            else</span>
-<a id="ln-1064" name="ln-1064" href="#ln-1064"></a><span class="s2">                print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">family_centroids</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-1064" name="ln-1064" href="#ln-1064"></a><span class="s2">                print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">family_centroids</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-1065" name="ln-1065" href="#ln-1065"></a><span class="s2">                return</span>
 <a id="ln-1066" name="ln-1066" href="#ln-1066"></a><span class="s2">            end if</span>
 <a id="ln-1067" name="ln-1067" href="#ln-1067"></a><span class="s2">        end if</span>
@@ -1260,13 +1260,13 @@
 <a id="ln-1078" name="ln-1078" href="#ln-1078"></a><span class="s2">                call load_shift_vectors(shift_vectors, extracted_shift_vectors_file, ierr)</span>
 <a id="ln-1079" name="ln-1079" href="#ln-1079"></a><span class="s2">                if (is_err(ierr)) return</span>
 <a id="ln-1080" name="ln-1080" href="#ln-1080"></a><span class="s2">            else</span>
-<a id="ln-1081" name="ln-1081" href="#ln-1081"></a><span class="s2">                print *, &quot;</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">shift_vectors</span><span class="w"> </span><span class="k">file</span><span class="s2">&quot;</span>
+<a id="ln-1081" name="ln-1081" href="#ln-1081"></a><span class="s2">                print *, "</span><span class="n">Error</span><span class="w"> </span><span class="n">getting</span><span class="w"> </span><span class="n">metadata</span><span class="w"> </span><span class="n">for</span><span class="w"> </span><span class="n">shift_vectors</span><span class="w"> </span><span class="k">file</span><span class="s2">"</span>
 <a id="ln-1082" name="ln-1082" href="#ln-1082"></a><span class="s2">                return</span>
 <a id="ln-1083" name="ln-1083" href="#ln-1083"></a><span class="s2">            end if</span>
 <a id="ln-1084" name="ln-1084" href="#ln-1084"></a><span class="s2">        end if</span>
 <a id="ln-1085" name="ln-1085" href="#ln-1085"></a>
 <a id="ln-1086" name="ln-1086" href="#ln-1086"></a><span class="s2">        ! Use a separate status variable for cleanup so a temp-file deletion failure does not</span>
-<a id="ln-1087" name="ln-1087" href="#ln-1087"></a><span class="s2">        ! mask the overall success of the actual data load (mirrors save_tox_data&#39;s temp_ierr)</span>
+<a id="ln-1087" name="ln-1087" href="#ln-1087"></a><span class="s2">        ! mask the overall success of the actual data load (mirrors save_tox_data's temp_ierr)</span>
 <a id="ln-1088" name="ln-1088" href="#ln-1088"></a><span class="s2">        call set_ok(temp_ierr)</span>
 <a id="ln-1089" name="ln-1089" href="#ln-1089"></a><span class="s2">        if (len_trim(extracted_gene_ids_file) &gt; 0) call delete_file(extracted_gene_ids_file, temp_ierr)</span>
 <a id="ln-1090" name="ln-1090" href="#ln-1090"></a><span class="s2">        if (len_trim(extracted_expression_file) &gt; 0) call delete_file(extracted_expression_file, temp_ierr)</span>
@@ -1274,8 +1274,8 @@
 <a id="ln-1092" name="ln-1092" href="#ln-1092"></a><span class="s2">        if (len_trim(extracted_family_ids_file) &gt; 0) call delete_file(extracted_family_ids_file, temp_ierr)</span>
 <a id="ln-1093" name="ln-1093" href="#ln-1093"></a><span class="s2">        if (len_trim(extracted_family_centroids_file) &gt; 0) call delete_file(extracted_family_centroids_file, temp_ierr)</span>
 <a id="ln-1094" name="ln-1094" href="#ln-1094"></a><span class="s2">        if (len_trim(extracted_shift_vectors_file) &gt; 0) call delete_file(extracted_shift_vectors_file, temp_ierr)</span>
-<a id="ln-1095" name="ln-1095" href="#ln-1095"></a><span class="s2">        call delete_file(&quot;</span><span class="n">manifest</span><span class="p">.</span><span class="n">txt</span><span class="s2">&quot;, temp_ierr)</span>
-<a id="ln-1096" name="ln-1096" href="#ln-1096"></a><span class="s2">        if (DEBUG .and. is_err(temp_ierr)) print *, &quot;</span><span class="n">Warning</span><span class="p">:</span><span class="w"> </span><span class="n">failed</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">clean</span><span class="w"> </span><span class="n">up</span><span class="w"> </span><span class="n">one</span><span class="w"> </span><span class="nb">or </span><span class="n">more</span><span class="w"> </span><span class="n">temporary</span><span class="w"> </span><span class="n">extracted</span><span class="w"> </span><span class="n">files</span><span class="s2">&quot;</span>
+<a id="ln-1095" name="ln-1095" href="#ln-1095"></a><span class="s2">        call delete_file("</span><span class="n">manifest</span><span class="p">.</span><span class="n">txt</span><span class="s2">", temp_ierr)</span>
+<a id="ln-1096" name="ln-1096" href="#ln-1096"></a><span class="s2">        if (DEBUG .and. is_err(temp_ierr)) print *, "</span><span class="n">Warning</span><span class="p">:</span><span class="w"> </span><span class="n">failed</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">clean</span><span class="w"> </span><span class="n">up</span><span class="w"> </span><span class="n">one</span><span class="w"> </span><span class="nb">or </span><span class="n">more</span><span class="w"> </span><span class="n">temporary</span><span class="w"> </span><span class="n">extracted</span><span class="w"> </span><span class="n">files</span><span class="s2">"</span>
 <a id="ln-1097" name="ln-1097" href="#ln-1097"></a>
 <a id="ln-1098" name="ln-1098" href="#ln-1098"></a><span class="s2">        deallocate (keys, filenames)</span>
 <a id="ln-1099" name="ln-1099" href="#ln-1099"></a><span class="s2">    end subroutine read_tox_data</span>
@@ -1286,7 +1286,7 @@
 <a id="ln-1104" name="ln-1104" href="#ln-1104"></a><span class="s2">subroutine create_zip_archive_c(zip_filename, zip_len, &amp;</span>
 <a id="ln-1105" name="ln-1105" href="#ln-1105"></a><span class="s2">                                keys, keys_len, keys_count, &amp;</span>
 <a id="ln-1106" name="ln-1106" href="#ln-1106"></a><span class="s2">                                filenames, filenames_len, filenames_count, &amp;</span>
-<a id="ln-1107" name="ln-1107" href="#ln-1107"></a><span class="s2">                                ierr) bind(C, name=&quot;</span><span class="n">create_zip_archive_c</span><span class="s2">&quot;)</span>
+<a id="ln-1107" name="ln-1107" href="#ln-1107"></a><span class="s2">                                ierr) bind(C, name="</span><span class="n">create_zip_archive_c</span><span class="s2">")</span>
 <a id="ln-1108" name="ln-1108" href="#ln-1108"></a><span class="s2">    use tox_data_archive, only: create_zip_archive</span>
 <a id="ln-1109" name="ln-1109" href="#ln-1109"></a><span class="s2">    use tox_conversions, only: c_char_2d_as_string, c_char_1d_as_string</span>
 <a id="ln-1110" name="ln-1110" href="#ln-1110"></a><span class="s2">    use iso_c_binding, only: c_int, c_char</span>
@@ -1352,7 +1352,7 @@
 <a id="ln-1170" name="ln-1170" href="#ln-1170"></a>
 <a id="ln-1171" name="ln-1171" href="#ln-1171"></a><span class="s2">!&gt; C binding for extract_zip_archive - can be called directly from Python via ctypes</span>
 <a id="ln-1172" name="ln-1172" href="#ln-1172"></a><span class="s2">subroutine extract_zip_archive_c(zip_filename, filename_len, ierr) &amp;</span>
-<a id="ln-1173" name="ln-1173" href="#ln-1173"></a><span class="s2">    bind(C, name=&quot;</span><span class="n">extract_zip_archive_c</span><span class="err">&quot;</span><span class="p">)</span>
+<a id="ln-1173" name="ln-1173" href="#ln-1173"></a><span class="s2">    bind(C, name="</span><span class="n">extract_zip_archive_c</span><span class="err">"</span><span class="p">)</span>
 <a id="ln-1174" name="ln-1174" href="#ln-1174"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_data_archive</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">extract_zip_archive</span>
 <a id="ln-1175" name="ln-1175" href="#ln-1175"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_conversions</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">c_char_1d_as_string</span>
 <a id="ln-1176" name="ln-1176" href="#ln-1176"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_errors</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">set_ok</span><span class="p">,</span><span class="w"> </span><span class="n">is_err</span>
@@ -1406,7 +1406,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-14 07:55 +0000             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

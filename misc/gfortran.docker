@@ -14,13 +14,14 @@ RUN pacman -Sy --noconfirm archlinux-keyring && \
         gcc-fortran gcc make git curl \
         xxhash libzip \
         python python-pip \
-        r && \
+        r gdb && \
     pacman -Scc --noconfirm
 
 # gcc-fortran, gcc, make  the build itself
 # git                     build.sh reads the current branch to decide on a clean build
 # xxhash, libzip          linked by f42_xxh3_hashmap and tox_data_archive (see fpm.toml)
 # r                       the R test suite, and `R CMD config --cppflags` during the build
+# gdb                     the runner `./build.sh --debug` hands to fpm
 
 ENV VIRTUAL_ENV=/usr/local/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
