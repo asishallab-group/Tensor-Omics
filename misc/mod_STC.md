@@ -1301,6 +1301,50 @@ column table is shown, in which the below information is contained:
   * The Min., 1st Qu., Median, Mean, 3rd Qu., and Max. of all Ensembles' final
     observables Spectral-Gap, RMSE, and Tangent-Space Drift.
 
+## Visualization for 3+ dimensions
+
+We base the visualization on our `tox_flyer`, currently in branch
+`tox_flyer_prototype`. We reuse the "engine" parts of the Babylon.js based
+JavaScript code to visualize the data in explorable three dimensions. As STC is
+thought to be usable for large datasets, we maintain the batching of data and
+automated loading when the camera approaches current limits of displayed data.
+
+The main control elements of the Flyer are reused, too. That involves axes
+selection, the "compass", i.e. the widget indicating orientation in the 3D
+space.
+
+The other control elements defined for 2D space are reused, i.e. control of
+point shape and color, selection of ensembles and seeds to be displayed, and
+local Ensemble tangent spaces to be displayed, too. The latter can be of any
+dimension, one, two or even three, depending on the detected local
+dimensionality. We reuse the control elements for tangent lines' color and
+thickness from the 2D visualization. See below for a definition of the
+algorithm on how to generate a local tangent space visual representation in two
+or three dimensions. Finally, as overlay widgets, the two dimensional
+"Additional Plots" are included in the 3D version, too.
+
+### Visual Representation of 2D or 3D local Tangent Spaces
+
+In the 2D case, we have two orthogonal singular vectors representing the local
+tangent space of an ensemble. Centered at the mean data point of the ensemble
+draw those two tangent space axes. To infer their respective lengths and to
+obtain a grid, project all ensemble data points onto that local tangent space.
+For each data point draw three coordinates in the tangent space: (1) the
+projected point, (2) and (3) the points coordinates on each of the tangent
+space spanning axes, respectively. Finally draw lines from the axes coordinates
+to the point's projection, which gives us an irregular grid that visually
+informs us about sampling density of the local tangent space. 
+
+In the 3D case, we can use the same method, except there is one more local
+tangent space axis to draw.
+
+## Transparency controls
+
+Both for the visualization of local tangent space and the data points
+themselves, in the two cases of two and three dimensional plotting, add to the
+color and shape controls a control of transparency (alpha channel) in the form
+of a slider from 1 to 100%.
+
 # Potential Time Complexity Improvements
 
 `observable`'s SVD (see "SKG `observable`" above) is the leading candidate for
