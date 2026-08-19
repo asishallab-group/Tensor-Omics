@@ -448,6 +448,7 @@ contains
 
         norm_product = sqrt(norm1_sq)*sqrt(norm2_sq)
         if (is_close(norm_product, 0.0_real64)) then
+            angle = 0.0_real64
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
@@ -456,6 +457,20 @@ contains
         theta = clamp(theta, -1.0_real64, 1.0_real64)
         angle = acos(theta)
     end subroutine angle_between
+
+    !> AUTHOR_FRANZ_ERIC_SILL
+    !| Wrap angle to (-π, π]
+    pure function wrap_angle(angle) result(wrapped)
+        real(real64), intent(in) :: angle
+            !! angle to wrap, in radians
+        real(real64) :: wrapped
+
+        real(real64), parameter :: PI2 = 2.0_real64*PI
+
+        wrapped = modulo(angle + PI, PI2) - PI
+
+        if (wrapped <= -PI) wrapped = wrapped + PI2
+    end function wrap_angle
 
     !> AUTHOR_FRANZ_ERIC_SILL
     !| Returns the given degrees in positive radian value \( -90^{\circ} \Rightarrow \frac{3\cdot \pi}{2}, \text{not} -\frac{\pi}{2} \)
@@ -630,7 +645,7 @@ contains
         integer(int32) :: left, right, i, j, top, pivot_idx
         real(real64) :: pivot_val
 
-        if (n == 0) return
+        if (n <= 1) return
 
         top = 1
         tmp_stack_left(top) = 1
@@ -698,7 +713,7 @@ contains
         integer(int32) :: left, right, i, j, top, pivot_idx
         integer(int32) :: pivot_val
 
-        if (n == 0) return
+        if (n <= 1) return
 
         top = 1
         tmp_stack_left(top) = 1
@@ -762,7 +777,7 @@ contains
             !! Temporary variables
         character(len=len(array)) :: pivot_val
 
-        if (n == 0) return
+        if (n <= 1) return
 
         top = 1
         tmp_stack_left(top) = 1

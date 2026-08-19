@@ -199,8 +199,8 @@ contains
         ! below via `tmp_means_aux` (identical values), so validating them here covers both loops.
         ! With the arguments guaranteed valid, the transform runs as a race-free `do concurrent`
         ! calling the non-validating `logx_helper` -- no per-iteration write to the shared `ierr`.
-        call validate_all_in_range_real(loess_x(1:n_valid) + eps_mean, n_valid, ierr, min=above(0.0_real64))
-        call validate_all_in_range_real(loess_y(1:n_valid) + eps_sd, n_valid, ierr, min=above(0.0_real64))
+        call validate_all_in_range_real(loess_x(1:n_valid), n_valid, ierr, min=above(-eps_mean))
+        call validate_all_in_range_real(loess_y(1:n_valid), n_valid, ierr, min=above(-eps_sd))
         if (is_err(ierr)) return
 
         do concurrent(i_valid=1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
@@ -269,11 +269,11 @@ contains
         if (mode == 0) then
             ! If you have a plain routine, call it; otherwise keep robust always.
             call loess_fit_plain( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat(1:n_valid, 1:1), &
+                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat, &
                 span, degree, n_valid, .false., .false., tmp_iv, liv, tmp_wv, lv, tmp_diagl(1:n_valid), tmp_yhat(1:n_valid), ierr)
         else
             call loess_fit_robust( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat(1:n_valid, 1:1), &
+                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_w_init(1:n_valid), tmp_z_mat, &
                 span, degree, n_valid, .false., .false., n_iters, tmp_iv, liv, tmp_wv, lv, tmp_diagl(1:n_valid), &
                 tmp_rw(1:n_valid), tmp_ww(1:n_valid), tmp_res(1:n_valid), tmp_pi(1:n_valid), tmp_yhat(1:n_valid), ierr)
         end if
@@ -470,6 +470,7 @@ contains
         end where
 
         ! Sort RDI values using the tox_sorting module
+        call init_perm(perm)
         call sort_array(sorted_rdi, perm, stack_left, stack_right)
 
     end subroutine compute_rdi

@@ -82,6 +82,14 @@ module tox_errors
         !! null pointer dereference
 
     !------------------------------
+    ! 4xx: Algorithmic / Computational
+    !------------------------------
+    integer(int32), parameter :: STAT_NO_STABLE_DIRECTION = 401
+        !! no stable direction found in angle based outlier detection
+    integer(int32), parameter :: STAT_NO_ANGULAR_VARIATION = 402
+        !! no angular variation inside of a family found in angle based outlier detection
+
+    !------------------------------
     ! 5xxx: Fortran runtime / Unit state
     ! (Keep 5002 for compatibility with existing R mapping)
     !------------------------------

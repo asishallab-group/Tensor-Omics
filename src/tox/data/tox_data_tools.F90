@@ -663,7 +663,6 @@ subroutine read_expression_vectors_tsv_c(file_list_raw, file_list_len, n_files, 
 
     character(len=file_list_len), allocatable :: file_list(:)
     character(len=gene_ids_len), allocatable :: gene_ids(:)
-    character(len=:), allocatable :: delimiter
     character(len=:), allocatable :: tmp_str
     integer(c_int) :: i, j, ios
 
@@ -706,7 +705,7 @@ subroutine read_expression_vectors_tsv_c(file_list_raw, file_list_len, n_files, 
 
     call read_expression_vectors_tsv(file_list, gene_ids, expression_vectors, &
                                      n_header_rows, gene_col, value_cols, &
-                                     start_row, ierr, delimiter)
+                                     start_row, ierr, delimiter_raw(1))
 
     if (is_err(ierr)) return
 

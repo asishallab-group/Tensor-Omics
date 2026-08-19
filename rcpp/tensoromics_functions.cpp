@@ -170,6 +170,163 @@ void detect_outliers_c(
   double* percentile
 );
 
+void tox_normalize_vectors_unit_length_c(
+  double* expression_vectors,
+  int* n_samples,
+  int* n_genes,
+  double* unit_vectors,
+  int* ierr
+);
+void tox_detect_angle_outliers_pipeline_c(
+  int* n_samples,
+  int* n_genes,
+  int* n_families,
+  double* expression_vectors,
+  int* gene_to_fam,
+  double* percentile,
+  double* threshold,
+  int* is_outlier,
+  double* z_scores,
+  int* ierr,
+  int* status,
+  double* min_angular_dispersion,
+  double* max_angular_dispersion
+);
+void tox_compute_family_direction_expert_c(
+  double* unit_vectors,
+  int* gene_to_fam,
+  double* family_directions,
+  double* angular_dispersions,
+  int* n_samples,
+  int* n_genes,
+  int* n_families,
+  int* ierr,
+  int* status,
+  int* tmp_member_counts,
+  double* min_angular_dispersion,
+  double* max_angular_dispersion
+);
+void tox_compute_family_direction_c(
+  double* unit_vectors,
+  int* n_samples,
+  int* n_genes,
+  int* n_families,
+  int* gene_to_fam,
+  double* family_directions,
+  double* angular_dispersions,
+  int* ierr,
+  int* status,
+  double* min_angular_dispersion,
+  double* max_angular_dispersion
+);
+void tox_compute_angles_to_direction_c(
+  double* unit_vectors,
+  int* n_samples,
+  int* n_genes,
+  int* n_families,
+  int* gene_to_fam,
+  double* family_directions,
+  double* angles,
+  int* ierr
+);
+void tox_z_scores_by_dispersion_c(
+  double* angles,
+  int* n_genes,
+  int* n_families,
+  int* gene_to_fam,
+  double* angular_dispersions,
+  double* z_scores,
+  int* ierr
+);
+void tox_angle_outliers_c(
+  double* z_scores,
+  int* n_genes,
+  double* percentile,
+  double* threshold,
+  int* is_outlier,
+  int* ierr
+);
+void tox_angle_outliers_expert_c(
+  double* z_scores,
+  double* threshold,
+  int* is_outlier,
+  int* n_genes,
+  int* ierr
+);
+
+void tox_detect_angle_outliers_pipeline_rap_c(
+  double* rap_angles,
+  int* gene_to_fam,
+  double* percentile,
+  double* threshold,
+  double* z_scores,
+  int* n_genes,
+  int* n_families,
+  int* is_outlier,
+  int* ierr,
+  int* status,
+  double* min_family_dispersion,
+  double* max_family_dispersion
+);
+void tox_compute_family_direction_rap_c(
+  double* rap_angles,
+  int* gene_to_fam,
+  double* family_mean_angles,
+  double* family_dispersions,
+  int* n_genes,
+  int* n_families,
+  int* ierr,
+  int* status,
+  double* min_family_dispersion,
+  double* max_family_dispersion
+);
+void tox_compute_family_direction_rap_expert_c(
+  double* rap_angles,
+  int* gene_to_fam,
+  double* family_mean_angles,
+  double* family_dispersions,
+  int* n_genes,
+  int* n_families,
+  int* ierr,
+  int* status,
+  int* tmp_member_counts,
+  double* min_family_dispersion,
+  double* max_family_dispersion
+);
+void tox_compute_angular_deviations_rap_c(
+  double* rap_angles,
+  double* family_mean_angles,
+  int* gene_to_fam,
+  double* angular_deviations,
+  int* n_genes,
+  int* n_families,
+  int* ierr
+);
+void tox_z_scores_by_dispersion_rap_c(
+  double* angular_deviations,
+  double* family_dispersions,
+  int* gene_to_fam,
+  double* z_scores,
+  int* n_genes,
+  int* n_families,
+  int* ierr
+);
+void tox_angle_outliers_rap_c(
+  double* z_scores,
+  int* n_genes,
+  double* percentile,
+  double* threshold,
+  int* is_outlier,
+  int* ierr
+);
+void tox_angle_outliers_rap_expert_c(
+  double* z_scores,
+  double* threshold,
+  int* is_outlier,
+  int* n_genes,
+  int* ierr
+);
+
 void tox_loess_required_workspace_c(
   int* d,
   int* nvmax,
@@ -4543,6 +4700,550 @@ List tox_detect_outliers_rcpp(NumericVector distances, IntegerVector gene_to_fam
     Named("quantile") = quantile,
     Named("ierr") = ierr
   );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_normalize_vectors_unit_length_rcpp(
+        Rcpp::NumericMatrix expression_vectors) {
+
+    int n_samples = expression_vectors.nrow();
+    int n_genes   = expression_vectors.ncol();
+
+    Rcpp::NumericMatrix unit_vectors(n_samples, n_genes);
+
+    int ierr = 0;
+
+    tox_normalize_vectors_unit_length_c(
+        expression_vectors.begin(),
+        &n_samples,
+        &n_genes,
+        unit_vectors.begin(),
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("unit_vectors") = unit_vectors,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_detect_angle_outliers_pipeline_rcpp(
+        Rcpp::NumericMatrix expression_vectors,
+        Rcpp::IntegerVector gene_to_fam,
+        double percentile,
+        double min_angular_dispersion,
+        double max_angular_dispersion) {
+
+    int n_samples = expression_vectors.nrow();
+    int n_genes   = expression_vectors.ncol();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    Rcpp::NumericVector z_scores(n_genes);
+    Rcpp::IntegerVector is_outlier(n_genes);
+
+    double threshold = 0.0;
+    int ierr = 0;
+    IntegerVector status(n_families);
+
+    tox_detect_angle_outliers_pipeline_c(
+        &n_samples,
+        &n_genes,
+        &n_families,
+        expression_vectors.begin(),
+        gene_to_fam.begin(),
+        &percentile,
+        &threshold,
+        is_outlier.begin(),
+        z_scores.begin(),
+        &ierr,
+        status.begin(),
+        &min_angular_dispersion,
+        &max_angular_dispersion
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("threshold") = threshold,
+        Rcpp::Named("z_scores") = z_scores,
+        Rcpp::Named("is_outlier") = is_outlier,
+        Rcpp::Named("ierr") = ierr,
+        Rcpp::Named("status") = status
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_compute_family_direction_expert_rcpp(
+        Rcpp::NumericMatrix unit_vectors,
+        Rcpp::IntegerVector gene_to_fam,
+        double min_angular_dispersion,
+        double max_angular_dispersion) {
+
+    int n_samples = unit_vectors.nrow();
+    int n_genes   = unit_vectors.ncol();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Allocate outputs
+    Rcpp::NumericMatrix family_directions(n_samples, n_families);
+    Rcpp::NumericVector angular_dispersions(n_families);
+    Rcpp::IntegerVector tmp_member_counts(n_families);
+
+    int ierr = 0;
+    int status = 0;
+
+    tox_compute_family_direction_expert_c(
+        unit_vectors.begin(),
+        gene_to_fam.begin(),
+        family_directions.begin(),
+        angular_dispersions.begin(),
+        &n_samples,
+        &n_genes,
+        &n_families,
+        &ierr,
+        &status,
+        tmp_member_counts.begin(),
+        &min_angular_dispersion,
+        &max_angular_dispersion
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("family_directions") = family_directions,
+        Rcpp::Named("angular_dispersions") = angular_dispersions,
+        Rcpp::Named("tmp_member_counts") = tmp_member_counts,
+        Rcpp::Named("ierr") = ierr,
+        Rcpp::Named("status") = status
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_compute_family_direction_rcpp(
+        Rcpp::NumericMatrix unit_vectors,
+        Rcpp::IntegerVector gene_to_fam,
+        double min_angular_dispersion,
+        double max_angular_dispersion) {
+
+    int n_samples = unit_vectors.nrow();
+    int n_genes   = unit_vectors.ncol();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Allocate outputs
+    Rcpp::NumericMatrix family_directions(n_samples, n_families);
+    Rcpp::NumericVector angular_dispersions(n_families);
+
+    int ierr = 0;
+    int status = 0;
+
+    tox_compute_family_direction_c(
+        unit_vectors.begin(),
+        &n_samples,
+        &n_genes,
+        &n_families,
+        gene_to_fam.begin(),
+        family_directions.begin(),
+        angular_dispersions.begin(),
+        &ierr,
+        &status,
+        &min_angular_dispersion,
+        &max_angular_dispersion
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("family_directions") = family_directions,
+        Rcpp::Named("angular_dispersions") = angular_dispersions,
+        Rcpp::Named("ierr") = ierr,
+        Rcpp::Named("status") = status
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_compute_angles_to_direction_rcpp(
+        Rcpp::NumericMatrix unit_vectors,
+        Rcpp::NumericMatrix family_directions,
+        Rcpp::IntegerVector gene_to_fam) {
+
+    int n_samples = unit_vectors.nrow();
+    int n_genes   = unit_vectors.ncol();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Output vector
+    Rcpp::NumericVector angles(n_genes);
+
+    int ierr = 0;
+
+    tox_compute_angles_to_direction_c(
+        unit_vectors.begin(),
+        &n_samples,
+        &n_genes,
+        &n_families,
+        gene_to_fam.begin(),
+        family_directions.begin(),
+        angles.begin(),
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("angles") = angles,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_z_scores_by_dispersion_rcpp(
+        Rcpp::NumericVector angles,
+        Rcpp::IntegerVector gene_to_fam,
+        Rcpp::NumericVector angular_dispersions) {
+
+    int n_genes = angles.size();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Output vector
+    Rcpp::NumericVector z_scores(n_genes);
+
+    int ierr = 0;
+
+    tox_z_scores_by_dispersion_c(
+        angles.begin(),
+        &n_genes,
+        &n_families,
+        gene_to_fam.begin(),
+        angular_dispersions.begin(),
+        z_scores.begin(),
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("z_scores") = z_scores,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_angle_outliers_rcpp(
+        Rcpp::NumericVector z_scores,
+        double percentile) {
+
+    int n_genes = z_scores.size();
+
+    Rcpp::IntegerVector is_outlier(n_genes);
+
+    double threshold = 0.0;
+    int ierr = 0;
+
+    tox_angle_outliers_c(
+        z_scores.begin(),
+        &n_genes,
+        &percentile,
+        &threshold,
+        is_outlier.begin(),
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("threshold") = threshold,
+        Rcpp::Named("is_outlier") = is_outlier,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_angle_outliers_expert_rcpp(
+        Rcpp::NumericVector z_scores,
+        double threshold) {
+
+    int n_genes = z_scores.size();
+
+    // Output vector
+    Rcpp::IntegerVector is_outlier(n_genes);
+
+    int ierr = 0;
+
+    tox_angle_outliers_expert_c(
+        z_scores.begin(),
+        &threshold,
+        is_outlier.begin(),
+        &n_genes,
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("is_outlier") = is_outlier,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_detect_angle_outliers_pipeline_rap_rcpp(
+        Rcpp::NumericVector rap_angles,
+        Rcpp::IntegerVector gene_to_fam,
+        double percentile,
+        double min_family_dispersion,
+        double max_family_dispersion) {
+
+    int n_genes = rap_angles.size();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Outputs
+    Rcpp::NumericVector z_scores(n_genes);
+    Rcpp::IntegerVector is_outlier(n_genes);
+
+    double threshold = 0.0;
+    int ierr = 0;
+    IntegerVector status(n_families);
+
+    tox_detect_angle_outliers_pipeline_rap_c(
+        rap_angles.begin(),
+        gene_to_fam.begin(),
+        &percentile,
+        &threshold,
+        z_scores.begin(),
+        &n_genes,
+        &n_families,
+        is_outlier.begin(),
+        &ierr,
+        status.begin(),
+        &min_family_dispersion,
+        &max_family_dispersion
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("threshold") = threshold,
+        Rcpp::Named("z_scores") = z_scores,
+        Rcpp::Named("is_outlier") = is_outlier,
+        Rcpp::Named("ierr") = ierr,
+        Rcpp::Named("status") = status
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_compute_family_direction_rap_rcpp(
+        Rcpp::NumericVector rap_angles,
+        Rcpp::IntegerVector gene_to_fam,
+        double min_family_dispersion,
+        double max_family_dispersion) {
+
+    int n_genes = rap_angles.size();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Outputs
+    Rcpp::NumericVector family_mean_angles(n_families);
+    Rcpp::NumericVector family_dispersions(n_families);
+
+    int ierr = 0;
+    IntegerVector status(n_families);
+
+    tox_compute_family_direction_rap_c(
+        rap_angles.begin(),
+        gene_to_fam.begin(),
+        family_mean_angles.begin(),
+        family_dispersions.begin(),
+        &n_genes,
+        &n_families,
+        &ierr,
+        status.begin(),
+        &min_family_dispersion,
+        &max_family_dispersion
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("family_mean_angles") = family_mean_angles,
+        Rcpp::Named("family_dispersions") = family_dispersions,
+        Rcpp::Named("ierr") = ierr,
+        Rcpp::Named("status") = status
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_compute_family_direction_rap_expert_rcpp(
+        Rcpp::NumericVector rap_angles,
+        Rcpp::IntegerVector gene_to_fam,
+        double min_family_dispersion,
+        double max_family_dispersion) {
+
+    int n_genes = rap_angles.size();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Outputs
+    Rcpp::NumericVector family_mean_angles(n_families);
+    Rcpp::NumericVector family_dispersions(n_families);
+    Rcpp::IntegerVector tmp_member_counts(n_families);
+
+    int ierr = 0;
+    IntegerVector status(n_families);
+
+    tox_compute_family_direction_rap_expert_c(
+        rap_angles.begin(),
+        gene_to_fam.begin(),
+        family_mean_angles.begin(),
+        family_dispersions.begin(),
+        &n_genes,
+        &n_families,
+        &ierr,
+        status.begin(),
+        tmp_member_counts.begin(),
+        &min_family_dispersion,
+        &max_family_dispersion
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("family_mean_angles") = family_mean_angles,
+        Rcpp::Named("family_dispersions") = family_dispersions,
+        Rcpp::Named("tmp_member_counts") = tmp_member_counts,
+        Rcpp::Named("ierr") = ierr,
+        Rcpp::Named("status") = status
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_compute_angular_deviations_rap_rcpp(
+        Rcpp::NumericVector rap_angles,
+        Rcpp::NumericVector family_mean_angles,
+        Rcpp::IntegerVector gene_to_fam) {
+
+    int n_genes = rap_angles.size();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Output vector
+    Rcpp::NumericVector angular_deviations(n_genes);
+
+    int ierr = 0;
+
+    tox_compute_angular_deviations_rap_c(
+        rap_angles.begin(),
+        family_mean_angles.begin(),
+        gene_to_fam.begin(),
+        angular_deviations.begin(),
+        &n_genes,
+        &n_families,
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("angular_deviations") = angular_deviations,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_z_scores_by_dispersion_rap_rcpp(
+        Rcpp::NumericVector angular_deviations,
+        Rcpp::NumericVector family_dispersions,
+        Rcpp::IntegerVector gene_to_fam) {
+
+    int n_genes = angular_deviations.size();
+
+    // Compute n_families safely
+    int n_families = 0;
+    if (gene_to_fam.size() > 0)
+        n_families = Rcpp::max(gene_to_fam);
+
+    // Output vector
+    Rcpp::NumericVector z_scores(n_genes);
+
+    int ierr = 0;
+
+    tox_z_scores_by_dispersion_rap_c(
+        angular_deviations.begin(),
+        family_dispersions.begin(),
+        gene_to_fam.begin(),
+        z_scores.begin(),
+        &n_genes,
+        &n_families,
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("z_scores") = z_scores,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_angle_outliers_rap_rcpp(
+        Rcpp::NumericVector z_scores,
+        double percentile) {
+
+    int n_genes = z_scores.size();
+
+    Rcpp::IntegerVector is_outlier(n_genes);
+
+    double threshold = 0.0;
+    int ierr = 0;
+
+    tox_angle_outliers_rap_c(
+        z_scores.begin(),
+        &n_genes,
+        &percentile,
+        &threshold,
+        is_outlier.begin(),
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("threshold") = threshold,
+        Rcpp::Named("is_outlier") = is_outlier,
+        Rcpp::Named("ierr") = ierr
+    );
+}
+
+// [[Rcpp::export]]
+Rcpp::List tox_angle_outliers_rap_expert_rcpp(
+        Rcpp::NumericVector z_scores,
+        double threshold) {
+
+    int n_genes = z_scores.size();
+
+    // Output vector
+    Rcpp::IntegerVector is_outlier(n_genes);
+
+    int ierr = 0;
+
+    tox_angle_outliers_rap_expert_c(
+        z_scores.begin(),
+        &threshold,
+        is_outlier.begin(),
+        &n_genes,
+        &ierr
+    );
+
+    return Rcpp::List::create(
+        Rcpp::Named("is_outlier") = is_outlier,
+        Rcpp::Named("ierr") = ierr
+    );
 }
 
 // [[Rcpp::export]]

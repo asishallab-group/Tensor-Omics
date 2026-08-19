@@ -35,9 +35,10 @@ check_err_code <- function(ierr, arg_pos_map = setNames(list(), character())) {
     `204` = "NaN or Inf found in input data.",
     `205` = "Unsupported data type encountered.",
     `206` = "Array size mismatch detected",
-    `207` = "String exceeds buffer size.",
-    `208` = "Array index out of bounds",
-    `209` = "Division by Zero",
+    `207` = "Array type read does not match expected type.",
+    `208` = "String exceeds buffer size.",
+    `209` = "Array index out of bounds",
+    `210` = "Division by Zero",
 
     # MEMORY ERRORS
     `301` = "Memory allocation failed.",

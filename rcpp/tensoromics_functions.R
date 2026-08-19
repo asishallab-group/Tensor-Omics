@@ -3592,3 +3592,456 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
   result <- tox_scaled_distance_quantile_rcpp(distribution, c_const)
   return(result)
 }
+
+#> tox_get_outliers_by_angle:tox_normalize_vectors_unit_length_c: Normalizes expression vectors to unit length
+#' Normalizes expression vectors to unit length
+#'
+#' @param expression_vectors Numeric matrix (n_samples x n_genes).
+#'
+#' @return A list with unit_vectors, ierr.
+#' @export
+tox_normalize_vectors_unit_length <- function(
+    expression_vectors
+) {
+  validate_numeric_matrix(expression_vectors, "expression_vectors")
+
+  result <- tox_normalize_vectors_unit_length_rcpp(
+    expression_vectors
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_detect_angle_outliers_pipeline_c: Complete pipeline for angle-based outlier detection
+#' Complete pipeline for angle-based outlier detection
+#'
+#' Runs the complete spherical outlier detection pipeline:
+#' 1. Computes family directions and dispersions
+#' 2. Computes angles to family directions
+#' 3. Scales angles by dispersion
+#' 4. Computes outlier threshold and flags outliers
+#'
+#' @param expression_vectors Numeric matrix (n_samples × n_genes).
+#' @param gene_to_fam Integer vector of length n_genes, values in 1..n_families.
+#' @param percentile Numeric scalar, percentile for thresholding.
+#' @param min_angular_dispersion Numeric scalar.
+#' @param max_angular_dispersion Numeric scalar.
+#'
+#' @return A list with threshold, z_scores, is_outlier, ierr, status.
+#' @export
+tox_detect_angle_outliers_pipeline <- function(
+    expression_vectors,
+    gene_to_fam,
+    percentile,
+    min_angular_dispersion,
+    max_angular_dispersion
+) {
+  validate_numeric_matrix(expression_vectors, "expression_vectors")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = ncol(expression_vectors))
+  validate_numeric_scalar(percentile, "percentile")
+  validate_numeric_scalar(min_angular_dispersion, "min_angular_dispersion")
+  validate_numeric_scalar(max_angular_dispersion, "max_angular_dispersion")
+
+  result <- tox_detect_angle_outliers_pipeline_rcpp(
+    expression_vectors,
+    as.integer(gene_to_fam),
+    percentile,
+    min_angular_dispersion,
+    max_angular_dispersion
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_compute_family_direction_expert_c: Compute family reference direction and angular dispersion with pre-sorted permutation array
+#' Compute family reference direction and angular dispersion with pre-sorted permutation array
+#'
+#' Computes family mean directions and dispersions using spherical unit vectors.
+#'
+#' @param unit_vectors Numeric matrix (n_samples × n_genes).
+#' @param gene_to_fam Integer vector of length n_genes.
+#' @param min_angular_dispersion Numeric scalar.
+#' @param max_angular_dispersion Numeric scalar.
+#'
+#' @return A list with family_directions, angular_dispersions, tmp_member_counts, ierr, status.
+#' @export
+tox_compute_family_direction_expert <- function(
+    unit_vectors,
+    gene_to_fam,
+    min_angular_dispersion,
+    max_angular_dispersion
+) {
+  validate_numeric_matrix(unit_vectors, "unit_vectors")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = ncol(unit_vectors))
+  validate_numeric_scalar(min_angular_dispersion, "min_angular_dispersion")
+  validate_numeric_scalar(max_angular_dispersion, "max_angular_dispersion")
+
+  result <- tox_compute_family_direction_expert_rcpp(
+    unit_vectors,
+    as.integer(gene_to_fam),
+    min_angular_dispersion,
+    max_angular_dispersion
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_compute_family_direction_c: Compute family reference direction and angular dispersion with automatic allocation
+#' Compute family reference direction and angular dispersion with automatic allocation
+#'
+#' Computes family mean directions and dispersions using spherical unit vectors.
+#'
+#' @inheritParams tox_compute_family_direction_expert
+#'
+#' @return A list with family_directions, angular_dispersions, ierr, status.
+#' @export
+tox_compute_family_direction <- function(
+    unit_vectors,
+    gene_to_fam,
+    min_angular_dispersion,
+    max_angular_dispersion
+) {
+  validate_numeric_matrix(unit_vectors, "unit_vectors")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = ncol(unit_vectors))
+  validate_numeric_scalar(min_angular_dispersion, "min_angular_dispersion")
+  validate_numeric_scalar(max_angular_dispersion, "max_angular_dispersion")
+
+  result <- tox_compute_family_direction_rcpp(
+    unit_vectors,
+    as.integer(gene_to_fam),
+    min_angular_dispersion,
+    max_angular_dispersion
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_compute_angles_to_direction_c: Compute angles between each gene and its family reference direction
+#' Compute angles between each gene and its family reference direction
+#'
+#' @param unit_vectors Numeric matrix (n_samples × n_genes).
+#' @param family_directions Numeric matrix (n_samples × n_families).
+#' @param gene_to_fam Integer vector of length n_genes.
+#'
+#' @return Numeric vector of angles with attribute `ierr`.
+#' @export
+tox_compute_angles_to_direction <- function(
+    unit_vectors,
+    family_directions,
+    gene_to_fam
+) {
+  validate_numeric_matrix(unit_vectors, "unit_vectors")
+  validate_numeric_matrix(family_directions, "family_directions")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = ncol(unit_vectors))
+
+  result <- tox_compute_angles_to_direction_rcpp(
+    unit_vectors,
+    family_directions,
+    as.integer(gene_to_fam)
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_z_scores_by_dispersion_c: Compute scaled angles by angular dispersion (z-scores)
+#' Compute scaled angles by angular dispersion (z-scores)
+#'
+#' @param angles Numeric vector.
+#' @param gene_to_fam Integer vector of same length.
+#' @param angular_dispersions Numeric vector of length n_families.
+#'
+#' @return Numeric vector of scaled angles with attribute `ierr`.
+#' @export
+tox_z_scores_by_dispersion <- function(
+    angles,
+    gene_to_fam,
+    angular_dispersions
+) {
+  validate_numeric_vector(angles, "angles")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = length(angles))
+  validate_numeric_vector(angular_dispersions, "angular_dispersions")
+
+  result <- tox_z_scores_by_dispersion_rcpp(
+    angles,
+    as.integer(gene_to_fam),
+    angular_dispersions
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_angle_outliers_c: Compute angle based outliers
+#' Compute angle based outliers
+#'
+#' @param z_scores Numeric vector.
+#' @param percentile Numeric scalar.
+#'
+#' @return A list with threshold, is_outlier, ierr, status.
+#' @export
+tox_angle_outliers <- function(
+    z_scores,
+    percentile
+) {
+  validate_numeric_vector(z_scores, "z_scores")
+  validate_numeric_scalar(percentile, "percentile")
+
+  result <- tox_angle_outliers_rcpp(
+    z_scores,
+    percentile
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle:tox_angle_outliers_expert_c: Compute angle based outliers
+#' Compute angle based outliers
+#'
+#' @param z_scores Numeric vector.
+#' @param threshold z-scores>=threshold will be identified as outliers
+#'
+#' @return A list with threshold, is_outlier, ierr.
+#' @export
+tox_angle_outliers_expert <- function(
+    z_scores,
+    threshold
+) {
+  validate_numeric_vector(z_scores, "z_scores")
+  validate_numeric_scalar(threshold, "threshold")
+
+  result <- tox_angle_outliers_expert_rcpp(
+    z_scores,
+    threshold
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_detect_angle_outliers_pipeline_rap_c: Complete pipeline for RAP angle-based outlier detection
+#' Complete pipeline for RAP angle-based outlier detection
+#'
+#' @param rap_angles Numeric vector of RAP angles.
+#' @param gene_to_fam Integer vector of same length.
+#' @param percentile Numeric scalar.
+#' @param min_family_dispersion Numeric scalar.
+#' @param max_family_dispersion Numeric scalar.
+#'
+#' @return A list with threshold, z_scores, is_outlier, ierr, status.
+#' @export
+tox_detect_angle_outliers_pipeline_rap <- function(
+    rap_angles,
+    gene_to_fam,
+    percentile,
+    min_family_dispersion,
+    max_family_dispersion
+) {
+  validate_numeric_vector(rap_angles, "rap_angles")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = length(rap_angles))
+  validate_numeric_scalar(percentile, "percentile")
+  validate_numeric_scalar(min_family_dispersion, "min_family_dispersion")
+  validate_numeric_scalar(max_family_dispersion, "max_family_dispersion")
+
+  result <- tox_detect_angle_outliers_pipeline_rap_rcpp(
+    rap_angles,
+    as.integer(gene_to_fam),
+    percentile,
+    min_family_dispersion,
+    max_family_dispersion
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_compute_family_direction_rap_c: Compute circular mean and dispersion for each gene family
+#' Compute circular mean and dispersion for each gene family
+#'
+#' @inheritParams tox_detect_angle_outliers_pipeline_rap
+#'
+#' @return A list with family_mean_angles, family_dispersions, ierr, status.
+#' @export
+tox_compute_family_direction_rap <- function(
+    rap_angles,
+    gene_to_fam,
+    min_family_dispersion,
+    max_family_dispersion
+) {
+  validate_numeric_vector(rap_angles, "rap_angles")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = length(rap_angles))
+  validate_numeric_scalar(min_family_dispersion, "min_family_dispersion")
+  validate_numeric_scalar(max_family_dispersion, "max_family_dispersion")
+
+  result <- tox_compute_family_direction_rap_rcpp(
+    rap_angles,
+    as.integer(gene_to_fam),
+    min_family_dispersion,
+    max_family_dispersion
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_compute_family_direction_rap_expert_c: Compute circular mean and dispersion for each gene family
+#' Compute circular mean and dispersion for each gene family
+#'
+#' @inheritParams tox_compute_family_direction_rap
+#'
+#' @return A list with family_mean_angles, family_dispersions, tmp_member_counts, ierr, status.
+#' @export
+tox_compute_family_direction_rap_expert <- function(
+    rap_angles,
+    gene_to_fam,
+    min_family_dispersion,
+    max_family_dispersion
+) {
+  validate_numeric_vector(rap_angles, "rap_angles")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = length(rap_angles))
+  validate_numeric_scalar(min_family_dispersion, "min_family_dispersion")
+  validate_numeric_scalar(max_family_dispersion, "max_family_dispersion")
+
+  result <- tox_compute_family_direction_rap_expert_rcpp(
+    rap_angles,
+    as.integer(gene_to_fam),
+    min_family_dispersion,
+    max_family_dispersion
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_compute_angular_deviations_rap_c: Compute wrapped angular deviations between genes and family means
+#' Compute wrapped angular deviations between genes and family means
+#'
+#' @param rap_angles Numeric vector.
+#' @param family_mean_angles Numeric vector of length n_families.
+#' @param gene_to_fam Integer vector of length n_genes.
+#'
+#' @return Numeric vector of angular deviations with attribute `ierr`.
+#' @export
+tox_compute_angular_deviations_rap <- function(
+    rap_angles,
+    family_mean_angles,
+    gene_to_fam
+) {
+  validate_numeric_vector(rap_angles, "rap_angles")
+  validate_numeric_vector(family_mean_angles, "family_mean_angles")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = length(rap_angles))
+
+  result <- tox_compute_angular_deviations_rap_rcpp(
+    rap_angles,
+    family_mean_angles,
+    as.integer(gene_to_fam)
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_z_scores_by_dispersion_rap_c: Scale angular deviations by family dispersion (z-scores)
+#' Scale angular deviations by family dispersion (z-scores)
+#'
+#' @param angular_deviations Numeric vector.
+#' @param family_dispersions Numeric vector of length n_families.
+#' @param gene_to_fam Integer vector of same length as angular_deviations.
+#'
+#' @return Numeric vector of scaled angles with attribute `ierr`.
+#' @export
+tox_z_scores_by_dispersion_rap <- function(
+    angular_deviations,
+    family_dispersions,
+    gene_to_fam
+) {
+  validate_numeric_vector(angular_deviations, "angular_deviations")
+  validate_numeric_vector(family_dispersions, "family_dispersions")
+  validate_integer_vector(gene_to_fam, "gene_to_fam",
+                          expected_length = length(angular_deviations))
+
+  result <- tox_z_scores_by_dispersion_rap_rcpp(
+    angular_deviations,
+    family_dispersions,
+    as.integer(gene_to_fam)
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_angle_outliers_rap_c: Identify directional outliers based on scaled RAP angles
+#' Identify directional outliers based on scaled RAP angles
+#'
+#' @param z_scores Numeric vector.
+#' @param percentile Numeric scalar.
+#'
+#' @return A list with threshold, is_outlier, ierr, status.
+#' @export
+tox_angle_outliers_rap <- function(
+    z_scores,
+    percentile
+) {
+  validate_numeric_vector(z_scores, "z_scores")
+  validate_numeric_scalar(percentile, "percentile")
+
+  result <- tox_angle_outliers_rap_rcpp(
+    z_scores,
+    percentile
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
+
+#> tox_get_outliers_by_angle_rap:tox_angle_outliers_rap_expert_c: Identify directional outliers based on scaled RAP angles
+#' Identify directional outliers based on scaled RAP angles
+#'
+#' @inheritParams tox_angle_outliers_expert
+#'
+#' @return A list with threshold, is_outlier, ierr.
+#' @export
+tox_angle_outliers_rap_expert <- function(
+    z_scores,
+    threshold
+) {
+  validate_numeric_vector(z_scores, "z_scores")
+  validate_numeric_scalar(threshold, "threshold")
+
+  result <- tox_angle_outliers_rap_expert_rcpp(
+    z_scores,
+    threshold
+  )
+
+  check_err_code(result$ierr)
+
+  return(result)
+}
