@@ -40,7 +40,10 @@ contains
         do i = 2, n
             key = a(i)
             j = i - 1
-            do while (j >= 1 .and. a(j) > key)
+            ! Fortran does not short-circuit `.and.`, so the bound test and the element
+            ! comparison cannot share one condition -- `a(0)` would be read at the left edge.
+            do while (j >= 1)
+                if (a(j) <= key) exit
                 a(j+1) = a(j)
                 j = j - 1
             end do
