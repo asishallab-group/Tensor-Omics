@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         compiler: [ifx, gfortran]
-        max_performance_flag: [--max-performance, ""]
+        max_performance_flag: [--max-performance, --diagnostics]
     uses: ./.github/workflows/run_tests.yml
     with:
       compiler: ${{ matrix.compiler }}
