@@ -74,9 +74,24 @@ class ParsedProject:
     arg_pos_factor: int
 
 
-#: Ford prefixes what it gives up on with `Warning:`/`Error:`; its progress narration
-#: (already suppressed by FORD_DEBUGGING) does not match.
-_FORD_COMPLAINT_RE = re.compile(r"^(?:warning|error)\b", re.IGNORECASE)
+#: Ford colours its console output, so matching on "Warning:" at the start of a line works
+#: at a terminal and not in CI, where rich sees no TTY and drops the escapes. Stripped
+#: before matching so the two behave the same.
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+#: What Ford says when it gives up on a file, and only that: `ERROR in file` from its
+#: reader (`sourceform`), `Error parsing` from the per-file `except` in `fortran_project`.
+#: Everything else it writes is narration or an ordinary warning -- an unknown metadata
+#: key, say -- and the file is still in the project. Matching those too made every CI run
+#: fail on six benign `Ignoring unknown Ford metadata key` lines.
+_FORD_GAVE_UP_RE = re.compile(
+    r"ERROR in file\s+'(?P<quoted>[^']*)'|Error parsing\s+(?P<path>\S+?)\.?(?=\s|$)",
+    re.IGNORECASE,
+)
+
+#: Where a captured message stops: Ford's narration, or its next complaint. Without this the
+#: detail runs on into whatever it happened to print next.
+_FORD_NEXT_MESSAGE_RE = re.compile(r"\bPreprocessing\s|\bReading\s|\bWarning:", re.IGNORECASE)
 
 
 class FordFrontend:
@@ -194,12 +209,29 @@ class FordFrontend:
         ever looks at files the run *did* produce. Five outputs could disappear with
         nothing to see in CI.
         """
-        for line in captured.splitlines():
-            text = line.strip()
-            if not text or not _FORD_COMPLAINT_RE.match(text):
+        # rich hard-wraps to the console width, so one message can arrive as several lines
+        # and a per-line match would see only its first fragment. Flattened to one string
+        # first, and the escapes stripped so a terminal and CI are matched the same way.
+        text = " ".join(_ANSI_RE.sub("", captured).split())
+        matches = list(_FORD_GAVE_UP_RE.finditer(text))
+        reported: set[str] = set()
+        for index, match in enumerate(matches):
+            # Ford says it twice for one file -- its reader raises `ERROR in file`, then the
+            # per-file `except` above it warns `Error parsing` -- so report the file, once.
+            source = Path(match.group("quoted") or match.group("path") or "").name
+            if source in reported:
                 continue
+            reported.add(source)
+
+            end = len(text)
+            if index + 1 < len(matches):
+                end = matches[index + 1].start()
+            narration = _FORD_NEXT_MESSAGE_RE.search(text, match.end(), end)
+            if narration is not None:
+                end = narration.start()
+            detail = text[match.start():end].strip()[:200].rstrip(" .:")
             self.diagnostics.error(
-                f"Ford could not read a source file, so it is not in the project: {text}",
+                f"Ford could not read a source file, so it is not in the project: {detail}",
                 note=(
                     "everything generated from it -- its Fortran wrapper, its C binding "
                     "and its Python and R bindings -- is silently missing from this run"

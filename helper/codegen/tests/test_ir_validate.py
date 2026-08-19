@@ -1433,6 +1433,57 @@ class TestExtentsAreDeclaredFirst:
 
         assert bag.errors == ()
 
+    def test_a_character_length_below_its_argument_is_reported(self, bag):
+        # `character(len=clen) :: a(n)` above `integer :: clen` fails the same way an
+        # extent does -- the shape `asserts.F90` had before it was reordered
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p",
+            b.character("labels", Intent.IN, "(n)", length="clen", location=at(12)),
+            b.integer("clen", Intent.IN, location=at(14)),
+            b.integer("n", Intent.IN, location=at(10)),
+            b.ierr(),
+        )
+
+        self._check(procedure, bag)
+
+        assert "sized by 'clen'" in only_error(bag).message
+
+    def test_a_character_length_above_its_argument_is_accepted(self, bag):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p",
+            b.integer("clen", Intent.IN, location=at(10)),
+            b.integer("n", Intent.IN, location=at(11)),
+            b.character("labels", Intent.IN, "(n)", length="clen", location=at(12)),
+            b.ierr(),
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_an_assumed_length_names_nothing_and_is_fine(self, bag):
+        # `character(len=*)` is sized by the caller, not by another argument
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p", b.character("label", Intent.IN, length="*", location=at(10)), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_a_constant_length_is_not_an_argument_reference(self, bag):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p", b.character("label", Intent.IN, length="256", location=at(10)), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
     def test_an_unexported_procedure_is_checked_too(self, bag):
         # this is about whether the file compiles, not about what crosses into C
         at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)

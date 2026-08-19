@@ -681,10 +681,13 @@ class TestFordGivingUpOnAFile:
         assert "Ford could not read a source file" in errors[0]
         assert "tox_normalization_impl.F90" in errors[0]
 
-    def test_a_warning_counts_too(self):
-        errors = self._report("Warning: could not parse src/m.F90")
+    def test_fords_own_give_up_warning_counts_too(self):
+        # the per-file `except` in fortran_project warns with this exact wording; a generic
+        # "Warning:" does not count, which is the whole point of matching the two phrases
+        errors = self._report("Warning: Error parsing src/m.F90.")
 
         assert len(errors) == 1
+        assert "m.F90" in errors[0]
 
     def test_ordinary_narration_is_not_an_error(self):
         # whatever Ford prints about its own progress is not a complaint about a source
@@ -692,7 +695,51 @@ class TestFordGivingUpOnAFile:
 
         assert errors == []
 
+    def test_an_unknown_metadata_key_is_not_a_dropped_file(self):
+        # Ford warns about these on every run of this repository and keeps the file. Taking
+        # them for parse failures is what turned six benign warnings into a red CI.
+        errors = self._report(
+            "Warning: In 'f42_sort_impl.F90:unknown': Ignoring unknown Ford metadata key "
+            "'helper'"
+        )
+
+        assert errors == []
+
+    def test_colour_does_not_decide_what_counts(self):
+        # rich colours its output at a terminal and not in CI, so a matcher that sees the
+        # escape codes behaves differently in the two -- which is exactly how this broke
+        coloured = (
+            "\x1b[1;31mWarning:\x1b[0m In \x1b[32m'f42_sort_impl.F90:unknown'\x1b[0m: "
+            "Ignoring unknown Ford metadata key \x1b[32m'helper'\x1b[0m"
+        )
+
+        assert self._report(coloured) == []
+        assert len(self._report("\x1b[1;31mERROR in file 'a.F90'\x1b[0m: broken")) == 1
+
+    def test_a_message_rich_wrapped_across_lines_is_still_one_complaint(self):
+        # rich hard-wraps to the console width, so a per-line matcher sees only a fragment
+        errors = self._report("ERROR in file\n'tox_normalization_impl.F90': END statement\noutside")
+
+        assert len(errors) == 1
+        assert "tox_normalization_impl.F90" in errors[0]
+
     def test_each_complaint_is_reported_separately(self):
         errors = self._report("ERROR in file 'a.F90': bad\nERROR in file 'b.F90': worse")
 
         assert len(errors) == 2
+
+    def test_one_file_is_reported_once_however_often_ford_says_it(self):
+        # its reader raises `ERROR in file`, then the per-file except above warns
+        # `Error parsing` about the same file
+        errors = self._report(
+            "ERROR in file 'm.F90': bad Warning: Error parsing src/m.F90."
+        )
+
+        assert len(errors) == 1
+
+    def test_the_detail_stops_at_ford_going_back_to_narrating(self):
+        errors = self._report(
+            "ERROR in file 'm.F90': bad Preprocessing /some/other/file.F90"
+        )
+
+        assert "Preprocessing" not in errors[0]

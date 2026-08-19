@@ -117,7 +117,7 @@ def check_c_kinds_depend_on_the_safeguard(project: Project, diagnostics: Diagnos
 
 
 def check_extents_are_declared_first(project: Project, diagnostics: DiagnosticBag) -> None:
-    """An extent is declared above the array it sizes.
+    """An extent -- or a character length -- is declared above the argument it sizes.
 
     `real(real64) :: array(n)` written above `integer(int32) :: n` is a GNU extension, not
     standard Fortran: gfortran under `-std=` reports `Symbol 'n' is used before it is typed`,
@@ -147,7 +147,14 @@ def check_extents_are_declared_first(project: Project, diagnostics: DiagnosticBa
                 if argument.location is None or argument.location.line is None:
                     continue
                 declared = argument.location.line
-                for extent in argument.dimension.extents:
+                # A character length sizes the argument exactly as an extent does, and
+                # `character(len=clen) :: a(n)` above `integer :: clen` is rejected for the
+                # same reason -- `asserts.F90` had precisely that shape.
+                sizes = list(argument.dimension.extents)
+                length = argument.type.length
+                if length is not None and not length.is_constant and length.expr:
+                    sizes.append(length.expr)
+                for extent in sizes:
                     for identifier in _IDENTIFIER_RE.findall(extent):
                         sizer = lines.get(identifier.lower())
                         if sizer is None or sizer < declared:
