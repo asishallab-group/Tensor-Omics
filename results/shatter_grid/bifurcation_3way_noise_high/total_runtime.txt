@@ -1,3 +1,0 @@
-wall_seconds=498.318
-user_seconds=436.007
-sys_seconds=63.197

@@ -1,2 +1,0 @@
-dataset,n_vectors,n_dimensions,eps,min_samples,knee_index,evaluation_quantile,evaluation_radius,n_clusters,n_noise,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
-circular_arc_noise_medium,500,2,0.050346233563724335,4,439,0.15,0.2074848161782871,5,32,468,0.6854333463618373,0.936,0.791356133922151,0.0011178710046806373,0.0012149760004831478,0.001787058004993014,0.004228047997457907,ok,

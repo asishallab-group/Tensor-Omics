@@ -1,2 +1,0 @@
-dataset,n_vectors,n_dimensions,k_min,k_max,selected_k,selected_inertia,n_init,random_state,evaluation_quantile,evaluation_radius,n_clusters,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
-heteroscedastic_noise_low,500,2,1,15,3,24.003256319465216,20,0,0.15,0.1613204977373611,3,500,0.9057191596540872,1.0,0.9505274216988898,0.31913725299818907,0.019832013997074682,0.002377244003582746,0.34149770400108537,ok,

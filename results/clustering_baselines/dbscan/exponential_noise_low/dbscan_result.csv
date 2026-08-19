@@ -1,2 +1,0 @@
-dataset,n_vectors,n_dimensions,eps,min_samples,knee_index,evaluation_quantile,evaluation_radius,n_clusters,n_noise,n_clustered,internal_coherence,coverage,clustering_quality,optimization_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
-exponential_noise_low,500,2,0.03845345353594994,4,380,0.15,0.5781123997494532,14,104,396,0.36400752297404215,0.792,0.4987752284755936,0.0014597839981433935,0.001527366999653168,0.0016911150014493614,0.004794978995050769,ok,

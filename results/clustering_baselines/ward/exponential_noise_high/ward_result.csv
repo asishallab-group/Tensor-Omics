@@ -1,2 +1,0 @@
-dataset,n_vectors,n_dimensions,k,k_source,linkage_method,metric,n_clusters,n_clustered,evaluation_quantile,evaluation_radius,internal_coherence,coverage,clustering_quality,linkage_seconds,cut_seconds,clustering_seconds,quality_seconds,total_seconds,status,error
-exponential_noise_high,500,2,3,results/clustering_baselines/kmeans/kmeans_summary.csv:selected_k,ward,euclidean,3,500,0.15,0.5965232942241294,0.8742268967182429,1.0,0.9328933420484015,0.0016860300020198338,0.009296525000536349,0.010982555002556182,0.004298240994103253,0.015431381005328149,ok,
