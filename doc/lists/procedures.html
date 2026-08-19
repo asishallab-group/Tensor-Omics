@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>All Procedures &ndash; TensorOmics
@@ -87,13 +87,15 @@
                  <td><a href='../proc/above.html'>above</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td><p>Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges.</p></td>
+                 <td><p>Returns the next representable float greater than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus <code>above(0.0_real64)==tiny(1.0_real64)</code> and <code>above(-tiny(1.0_real64))==0.0_real64</code></p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/add_data_to_zip.html'>add_data_to_zip</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Adds one entry to an open ZIP archive, sourced either from a file on disk
+(<code>data_type=DATA_TYPE_FILE</code>, <code>data_source</code> is a path) or from an in-memory string
+(<code>data_type=DATA_TYPE_STRING</code>, <code>data_source</code> is the literal content).</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/add_new_active_mask_helper.html'>add_new_active_mask_helper</a></td>
@@ -133,7 +135,19 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><a href='../proc/below.html'>below</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td><p>Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges.</p></td>
+                 <td><p>Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus <code>below(0.0_real64)==-tiny(1.0_real64)</code> and <code>below(tiny(1.0_real64))==0.0_real64</code></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/binary_search.html'>binary_search</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>Function to find a value in a sorted array using binary search. Returns -1 if not found</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/binary_search_insertion.html'>binary_search_insertion</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>Function to find the position to place a value in a sorted array using binary search</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/bst_range_query.html'>bst_range_query</a></td>
@@ -142,7 +156,7 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><p>Perform a 1D range query over the sorted index.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/bst_range_query_c.html'>bst_range_query_C</a></td>
+                 <td><a href='../proc/bst_range_query_c.html'>bst_range_query_c</a></td>
                  <td><a href='../sourcefile/f42_binary_search_tree.f90.html'>f42_binary_search_tree.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>Wrapper using C for getting range query usable by python</p></td>
@@ -154,7 +168,7 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><p>Build the BST index by sorting indices using values in x.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/build_bst_index_c.html'>build_bst_index_C</a></td>
+                 <td><a href='../proc/build_bst_index_c.html'>build_bst_index_c</a></td>
                  <td><a href='../sourcefile/f42_binary_search_tree.f90.html'>f42_binary_search_tree.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>Wrapper using C for building BST index usable by python</p></td>
@@ -163,18 +177,29 @@ This routine adds a result mask to <code>subsets</code> array.</p></td>
                  <td><a href='../proc/build_kd_index.html'>build_kd_index</a></td>
                  <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
                  <td>Subroutine</td>
-                 <td><p>Build a k-d tree index using a stack-based, non-recursive approach.
-Initialize kd_indices to 1:num_points (original indices)
+                 <td><p>Build a k-d tree index using a stack-based, non-recursive approach.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_alloc.html'>build_kd_index_alloc</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build a k-d tree index using a stack-based, non-recursive approach.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_c.html'>build_kd_index_c</a></td>
+                 <td><a href='../sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C interface for building KD index</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_kd_index_helper.html'>build_kd_index_helper</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Build a k-d tree index using a stack-based, non-recursive approach.
 Choose split dimension by cycling through dimension_order
 Find median index
 Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
 Push right and left intervals onto stack</p></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/build_kd_index_c.html'>build_kd_index_C</a></td>
-                 <td><a href='../sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C interface for building KD index</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/build_residual_histograms.html'>build_residual_histograms</a></td>
@@ -204,10 +229,22 @@ Push right and left intervals onto stack</p></td>
                  <td><a href='../proc/build_spherical_kd.html'>build_spherical_kd</a></td>
                  <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
                  <td>Subroutine</td>
-                 <td><p>Build spherical k-d tree index</p></td>
+                 <td><p>Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors), with
+caller-provided workspace (no internal allocation). See
+<a href="../proc/build_spherical_kd_alloc.html">build_spherical_kd_alloc</a> for the allocating variant and
+a note on why this delegates to the plain (non-spherical) k-d partitioning.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/build_spherical_kd_c.html'>build_spherical_kd_C</a></td>
+                 <td><a href='../proc/build_spherical_kd_alloc.html'>build_spherical_kd_alloc</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors).
+This is a thin, semantically-named wrapper: partitioning is identical to
+<a href="../proc/build_kd_index_alloc.html">build_kd_index_alloc</a> (plain per-axis median splits);
+callers are responsible for ensuring <code>points</code> are actually unit-normalized beforehand.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/build_spherical_kd_c.html'>build_spherical_kd_c</a></td>
                  <td><a href='../sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C interface for building spherical KD index</p></td>
@@ -308,6 +345,12 @@ Uses linear interpolation between adjacent values.</p></td>
 Uses linear interpolation between adjacent values.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/calc_percentile_rank.html'>calc_percentile_rank</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>Calculate the fractional index using linear interpolation method</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/calc_tiss_avg.html'>calc_tiss_avg</a></td>
                  <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
                  <td>Subroutine</td>
@@ -350,10 +393,14 @@ This is the reason why the work array holds the results as well, as all subsets 
                  <td><p>Converts a character value to c_char, elemental -&gt; any shape</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/check_alloc_stat.html'>check_alloc_stat</a></td>
-                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td><a href='../proc/check_file_header.html'>check_file_header</a></td>
+                 <td><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Opens <code>filename</code>, reads its header via <a href="../proc/read_file_header_helper.html">read_file_header_helper</a>,
+and validates the stored type code and shape against the caller's expectations. On any
+mismatch the unit is closed and an error is set; on success the unit is left open (positioned
+right after the header, ready for the caller to read the payload) and it is the caller's
+responsibility to close it.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/check_for_nan_inf.html'>check_for_nan_inf</a></td>
@@ -365,25 +412,13 @@ This is the reason why the work array holds the results as well, as all subsets 
                  <td><a href='../proc/check_io_stat.html'>check_io_stat</a></td>
                  <td><a href='../module/tox_errors.html'>tox_errors</a></td>
                  <td>Subroutine</td>
-                 <td></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/check_okay_ioerror.html'>check_okay_ioerror</a></td>
-                 <td><a href='../module/f42_array_utils.html'>f42_array_utils</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Check I/O error and set ierr accordingly</p></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/check_okay_ndims.html'>check_okay_ndims</a></td>
-                 <td><a href='../module/f42_array_utils.html'>f42_array_utils</a></td>
-                 <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Checks if allocation is successful</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/clamp.html'>clamp</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Interface</td>
-                 <td></td>
+                 <td><p>Generic clamp of a scalar into <code>[min_val, max_val]</code>, dispatches on the value's type.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/clamp_int.html'>clamp_int</a></td>
@@ -412,18 +447,30 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
                  <td></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/clock_hand_angle_between_vectors_helper.html'>clock_hand_angle_between_vectors_helper</a></td>
+                 <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+Calculates the signed rotation angle between two normalized vectors in RAP space.
+For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes for directionality.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/clock_hand_angles_for_shift_vectors.html'>clock_hand_angles_for_shift_vectors</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute signed rotation angles between RAP-projected and normalized vector pairs.
-Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
-This measures both magnitude and directionality of angular separation in RAP space.</p></td>
+                 <td><p>Compute signed rotation angles between for shift vectors, so between their origin and target</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/clock_hand_angles_for_shift_vectors_c.html'>clock_hand_angles_for_shift_vectors_c</a></td>
                  <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
                  <td>Subroutine</td>
                  <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/clock_hand_angles_for_shift_vectors_helper.html'>clock_hand_angles_for_shift_vectors_helper</a></td>
+                 <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Compute signed rotation angles between for shift vectors, so between their origin and target</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/cluster_factor_trajectories_k_means.html'>cluster_factor_trajectories_k_means</a></td>
@@ -495,7 +542,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
                  <td><a href='../proc/compute_contributions.html'>compute_contributions</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
-                 <td><p>This routine performs contribution analysis for a specific factor–dependent pair, including input validation</p></td>
+                 <td><p>This routine performs contribution analysis for a specific factor–dependent pair, no input validation</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_contributions_c.html'>compute_contributions_c</a></td>
@@ -507,7 +554,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
                  <td><a href='../proc/compute_contributions_helper.html'>compute_contributions_helper</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
-                 <td><p>This routine performs contribution analysis for a specific factor–dependent pair, no input validation</p></td>
+                 <td><p>(no input validation) This routine performs contribution analysis for a specific factor–dependent pair, no input validation</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/compute_divergence_per_reference_point.html'>compute_divergence_per_reference_point</a></td>
@@ -533,7 +580,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
                  <td>Subroutine</td>
                  <td><p>Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
 Returns the sorted unique values and their cumulative frequencies in [0,1].
-Assumes perm is already sorted by values[perm]. Caller controls sorting algorithm.
+Assumes <code>values</code> is already sorted by <code>values[perm]</code>. Caller controls sorting algorithm.
 The number of unique values can be determined by finding the last non-zero cdf_value.</p></td>
                </tr>
 			   <tr>
@@ -548,9 +595,7 @@ Use this for convenience; use compute_edf directly for custom sorting.</p></td>
                  <td><a href='../proc/compute_edf_c.html'>compute_edf_c</a></td>
                  <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>IMPORTANT - When using these C wrapper functions, no copies of the arrays will be created.
-The Fortran routine will operate directly on the memory provided by the caller.
-C wrapper for compute_edf.
+                 <td><p>C wrapper for compute_edf.
 Allocates workspace internally and exposes a simple interface with C types.
 The number of unique values is returned via n_unique output parameter.</p></td>
                </tr>
@@ -564,17 +609,13 @@ or have a custom permutation vector. This skips the internal sorting step
 for better performance when the caller has full control.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/compute_empirical_p_values.html'>compute_empirical_p_values</a></td>
+                 <td><a href='../proc/compute_edf_helper.html'>compute_edf_helper</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Subroutine</td>
-                 <td><p>Calculate empirical p-values for scaled expression distances (RDI).</p><a href="../proc/compute_empirical_p_values.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/compute_empirical_p_values_c.html'>compute_empirical_p_values_c</a></td>
-                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C-compatible wrapper for compute_empirical_p_values
-Constant used in the computation, typically 1</p></td>
+                 <td><p>(no input validation) Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
+Returns the sorted unique values and their cumulative frequencies in [0,1].
+Assumes <code>values</code> is already sorted by <code>values[perm]</code>. Caller controls sorting algorithm.
+The number of unique values can be determined by finding the last non-zero cdf_value.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_factor_velocity_from_trajectories_helper.html'>compute_factor_velocity_from_trajectories_helper</a></td>
@@ -593,7 +634,7 @@ Uses LOESS on the median/stddev of intra-family distances for scaling, regardles
                  <td><a href='../proc/compute_family_scaling_alloc.html'>compute_family_scaling_alloc</a></td>
                  <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
                  <td>Subroutine</td>
-                 <td><p>Helper routine that allocates internal arrays and calls compute_family_scaling.
+                 <td><p>Helper routine that allocates internal arrays and calls <a href="../proc/compute_family_scaling.html">compute_family_scaling</a>.
 This makes usage easier since users don't need to care about internal array requirements.</p></td>
                </tr>
 			   <tr>
@@ -644,10 +685,17 @@ this subroutine calculates the p values for the contributions, i.e. how many of 
                  <td><p>C-compatible wrapper for <a href="../proc/compute_p_values.html">compute_p_values</a></p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/compute_p_values_helper.html'>compute_p_values_helper</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Once the permutation tests are calculated (<a href="../proc/perform_permutation_test.html">perform_permutation_test</a>),
+this subroutine calculates the p values for the contributions, i.e. how many of the permutation contributions were at least as high as the real contributions.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/compute_rdi.html'>compute_rdi</a></td>
                  <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
                  <td>Subroutine</td>
-                 <td><p>Compute the hybrid RDI for each gene.
+                 <td><p>Compute the hybrid RDI (Relative Distance Index) for each gene.
 RDI = Euclidean distance / family scaling factor</p></td>
                </tr>
 			   <tr>
@@ -663,6 +711,13 @@ Outputs both unsorted and sorted RDI, permutation, and sorting workspace arrays 
                  <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
                  <td>Subroutine</td>
                  <td><p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_relative_axis_contributions_helper.html'>compute_relative_axis_contributions_helper</a></td>
+                 <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
 Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.</p></td>
                </tr>
 			   <tr>
@@ -684,6 +739,21 @@ Shared utility: computes fractional contribution of each axis to a RAP-projected
                  <td></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/compute_scaled_distance_quantile.html'>compute_scaled_distance_quantile</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI).
+This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+observed distribution it was drawn from, not an independently generated null distribution.
+It instead measures how extreme an observed distance is relative to all observed distances.</p><a href="../proc/compute_scaled_distance_quantile.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_scaled_distance_quantile_c.html'>compute_scaled_distance_quantile_c</a></td>
+                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
+                 <td>Subroutine</td>
+                 <td><p>C-compatible wrapper for compute_scaled_distance_quantile</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/compute_shift_vector_field.html'>compute_shift_vector_field</a></td>
                  <td><a href='../module/tox_shift_vectors.html'>tox_shift_vectors</a></td>
                  <td>Subroutine</td>
@@ -697,6 +767,13 @@ Computes the shift vectors by substracting the corresponding family centroid fro
                  <td><p>C wrapper for <code>compute_shift_vector_field</code>.
 Exposes <code>compute_shift_vector_field</code> to C via iso_c_binding types with explicit dimensions.
 When using these C wrapper functions, no copies of the arrays will be created. The Fortran routine will operate directly on the memory provided by the caller.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/compute_shift_vector_field_helper.html'>compute_shift_vector_field_helper</a></td>
+                 <td><a href='../module/tox_shift_vectors.html'>tox_shift_vectors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Compute the shift vector field for all genes.
+Computes the shift vectors by substracting the corresponding family centroid from the expression vector.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_tissue_versatility.html'>compute_tissue_versatility</a></td>
@@ -714,6 +791,14 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
 Exposes compute_tissue_versatility to C via iso_c_binding types with explicit dimensions.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/compute_tissue_versatility_helper.html'>compute_tissue_versatility_helper</a></td>
+                 <td><a href='../module/tox_tissue_versatility.html'>tox_tissue_versatility</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Computes normalized tissue versatility for selected expression vectors.
+The metric is based on the angle between each gene expression vector and the space diagonal.
+Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/compute_velocity_acceleration_contributions.html'>compute_velocity_acceleration_contributions</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
@@ -723,7 +808,7 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
                  <td><a href='../proc/compute_velocity_acceleration_contributions_alloc.html'>compute_velocity_acceleration_contributions_alloc</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Compute velocity and acceleration contributions for all variable pairs in the trajectories</p><a href="../proc/compute_velocity_acceleration_contributions_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/compute_velocity_acceleration_contributions_alloc_c.html'>compute_velocity_acceleration_contributions_alloc_c</a></td>
@@ -816,14 +901,20 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
                  <td></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/create_err_code.html'>create_err_code</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>Creates the error code for an error and a specific argument position (if argument related)</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/create_zip_archive.html'>create_zip_archive</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Creates a zip archive with generic file lists</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/create_zip_archive_c.html'>create_zip_archive_c</a></td>
-                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
+                 <td><a href='../sourcefile/tox_data_archive.f90.html'>tox_data_archive.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for generic archive creation with arrays of keys and filenames</p></td>
                </tr>
@@ -834,228 +925,227 @@ Exposes compute_tissue_versatility to C via iso_c_binding types with explicit di
                  <td><p>Compute orientation sign from cross product of two vectors, using selected axes</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/degrees.html'>degrees</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Function</td>
+                 <td><p>Returns the given radians in positive degree value <script type="math/tex"> -\frac{\pi}{2} \Rightarrow 270^{\circ}, \text{not} -90^{\circ} </script>
+</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/delete_file.html'>delete_file</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Delete a file from the disk</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_char_1d.html'>deserialize_char_1d</a></td>
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 1D character array from a file (array already allocated)</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_char_2d.html'>deserialize_char_2d</a></td>
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 2D character array from a file (array already allocated)</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_char_3d.html'>deserialize_char_3d</a></td>
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 3D character array from a file (array already allocated)</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_char_4d.html'>deserialize_char_4d</a></td>
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 4D character array from a file (array already allocated)</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_char_5d.html'>deserialize_char_5d</a></td>
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 5D character array from a file (array already allocated)</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_char_flat.html'>deserialize_char_flat</a></td>
-                 <td><a href='../module/f42_deserialize_char.html'>f42_deserialize_char</a></td>
+                 <td><a href='../proc/deserialize_char_helper.html'>deserialize_char_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td>Subroutine</td>
                  <td><p>Subroutine to deserialize a flat character array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_char_nd_c.html'>deserialize_char_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_char.f90.html'>f42_deserialize_char.F90</a></td>
+                 <td><a href='../proc/deserialize_char_nd_c.html'>deserialize_char_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_char.f90.html'>f42_serde_arrays_deserialize_char.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to deserialize a flat character array from a file.
-Deserializes the array into a flat buffer.</p><a href="../proc/deserialize_char_nd_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C binding for the subroutine to deserialize a flat character array from a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_complex_1d.html'>deserialize_complex_1d</a></td>
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Deserialize a flat complex array from a file
-Directly deserialize a 1D complex array from a file</p></td>
+                 <td><p>Directly deserialize a 1D complex array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_complex_2d.html'>deserialize_complex_2d</a></td>
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 2D complex array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_complex_3d.html'>deserialize_complex_3d</a></td>
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 3D complex array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_complex_4d.html'>deserialize_complex_4d</a></td>
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 4D complex array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_complex_5d.html'>deserialize_complex_5d</a></td>
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 5D complex array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_complex_flat.html'>deserialize_complex_flat</a></td>
-                 <td><a href='../module/f42_deserialize_complex.html'>f42_deserialize_complex</a></td>
+                 <td><a href='../proc/deserialize_complex_helper.html'>deserialize_complex_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Deserializes any array inot a flat array</p></td>
+                 <td><p>Deserialize a flat complex array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_complex_nd_c.html'>deserialize_complex_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_complex.f90.html'>f42_deserialize_complex.F90</a></td>
+                 <td><a href='../proc/deserialize_complex_nd_c.html'>deserialize_complex_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_complex.f90.html'>f42_serde_arrays_deserialize_complex.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to deserialize a complex array from a file.
- The array is read into a flat buffer and reshaped in the calling language.</p><a href="../proc/deserialize_complex_nd_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C binding for the subroutine to deserialize a complex array from a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_int_1d.html'>deserialize_int_1d</a></td>
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Deserialize a flat integer array from a file
-Directly deserialize a 1D integer array from a file</p></td>
+                 <td><p>Directly deserialize a 1D integer array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_int_2d.html'>deserialize_int_2d</a></td>
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 2D integer array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_int_3d.html'>deserialize_int_3d</a></td>
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 3D integer array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_int_4d.html'>deserialize_int_4d</a></td>
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 4D integer array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_int_5d.html'>deserialize_int_5d</a></td>
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 5D integer array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_int_flat.html'>deserialize_int_flat</a></td>
-                 <td><a href='../module/f42_deserialize_int.html'>f42_deserialize_int</a></td>
+                 <td><a href='../proc/deserialize_int_helper.html'>deserialize_int_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Deserializes any array inot a flat array</p></td>
+                 <td><p>Deserialize a flat integer array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_int_nd_c.html'>deserialize_int_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_int.f90.html'>f42_deserialize_int.F90</a></td>
+                 <td><a href='../proc/deserialize_int_nd_c.html'>deserialize_int_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_int.f90.html'>f42_serde_arrays_deserialize_int.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to deserialize an integer array from a file
- Deserializes an array of any dimension into a flat buffer.</p><a href="../proc/deserialize_int_nd_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C binding for the subroutine to deserialize a integer array from a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_logical_1d.html'>deserialize_logical_1d</a></td>
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Deserialize a flat logical array from a file
-Directly deserialize a 1D logical array from a file</p></td>
+                 <td><p>Directly deserialize a 1D logical array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_logical_2d.html'>deserialize_logical_2d</a></td>
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 2D logical array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_logical_3d.html'>deserialize_logical_3d</a></td>
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 3D logical array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_logical_4d.html'>deserialize_logical_4d</a></td>
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 4D logical array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_logical_5d.html'>deserialize_logical_5d</a></td>
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
                  <td>Subroutine</td>
                  <td><p>Directly deserialize a 5D logical array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_logical_flat.html'>deserialize_logical_flat</a></td>
-                 <td><a href='../module/f42_deserialize_logical.html'>f42_deserialize_logical</a></td>
+                 <td><a href='../proc/deserialize_logical_helper.html'>deserialize_logical_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Deserialize a flat logical array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_logical_nd_c.html'>deserialize_logical_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_logical.f90.html'>f42_deserialize_logical.F90</a></td>
+                 <td><a href='../proc/deserialize_logical_nd_c.html'>deserialize_logical_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_logical.f90.html'>f42_serde_arrays_deserialize_logical.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to deserialize a logical array from a file.
- Deserializes an array of any dimension into a flat buffer.</p><a href="../proc/deserialize_logical_nd_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C binding for the subroutine to deserialize a logical array from a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_real_1d.html'>deserialize_real_1d</a></td>
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Directly deserialize a 1D real array from a file (array already allocated)</p></td>
+                 <td><p>Directly deserialize a 1D real array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_real_2d.html'>deserialize_real_2d</a></td>
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Directly deserialize a 2D real array from a file (array already allocated)</p></td>
+                 <td><p>Directly deserialize a 2D real array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_real_3d.html'>deserialize_real_3d</a></td>
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Directly deserialize a 3D real array from a file (array already allocated)</p></td>
+                 <td><p>Directly deserialize a 3D real array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_real_4d.html'>deserialize_real_4d</a></td>
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Directly deserialize a 4D real array from a file (array already allocated)</p></td>
+                 <td><p>Directly deserialize a 4D real array from a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/deserialize_real_5d.html'>deserialize_real_5d</a></td>
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Directly deserialize a 5D real array from a file (array already allocated)</p></td>
+                 <td><p>Directly deserialize a 5D real array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_real_flat.html'>deserialize_real_flat</a></td>
-                 <td><a href='../module/f42_deserialize_real.html'>f42_deserialize_real</a></td>
+                 <td><a href='../proc/deserialize_real_helper.html'>deserialize_real_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Deserializes any array into a flat real array</p></td>
+                 <td><p>Deserialize a flat real array from a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/deserialize_real_nd_c.html'>deserialize_real_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_deserialize_real.f90.html'>f42_deserialize_real.F90</a></td>
+                 <td><a href='../proc/deserialize_real_nd_c.html'>deserialize_real_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_real.f90.html'>f42_serde_arrays_deserialize_real.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to deserialize a real array from a file.
-Deserializes an array of any dimension into a flat buffer.</p><a href="../proc/deserialize_real_nd_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>C binding for the subroutine to deserialize a real array from a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/detect_dosage_effect.html'>detect_dosage_effect</a></td>
@@ -1085,7 +1175,11 @@ Deserializes an array of any dimension into a flat buffer.</p><a href="../proc/d
                  <td><a href='../proc/detect_outliers.html'>detect_outliers</a></td>
                  <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
                  <td>Subroutine</td>
-                 <td><p>Main routine to detect outliers using RDI and LOESS-based scaling.</p></td>
+                 <td><p>Main routine to detect outliers using RDI and LOESS-based scaling.
+Orchestrates the full pipeline: computes per-family scaling factors via
+<a href="../proc/compute_family_scaling_alloc.html">compute_family_scaling_alloc</a>, derives the RDI per gene via
+<a href="../proc/compute_rdi.html">compute_rdi</a>, then flags outliers via
+<a href="../proc/identify_outliers.html">identify_outliers</a>.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/detect_outliers_c.html'>detect_outliers_c</a></td>
@@ -1157,11 +1251,18 @@ For each gene, extracts its expression vector and the centroid of its assigned f
 Exposes distance_to_centroid to C via iso_c_binding types.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/distance_to_centroid_helper.html'>distance_to_centroid_helper</a></td>
+                 <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Compute distance from each gene to its corresponding family centroid.
+For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/euclidean_distance.html'>euclidean_distance</a></td>
                  <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
                  <td>Subroutine</td>
                  <td><p>Compute the Euclidean distance between two vectors.
-Calculates the L2 norm: result = sqrt(sum((vec1_i - vec2_i)^2))</p></td>
+Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/euclidean_distance_c.html'>euclidean_distance_c</a></td>
@@ -1171,26 +1272,34 @@ Calculates the L2 norm: result = sqrt(sum((vec1_i - vec2_i)^2))</p></td>
 Exposes euclidean_distance to C via iso_c_binding types.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/euclidean_distance_helper.html'>euclidean_distance_helper</a></td>
+                 <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Compute the Euclidean distance between two vectors.
+Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/extract_and_parse_manifest.html'>extract_and_parse_manifest</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Extract and parse the manifest file for generic key-value pairs.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/extract_file_from_zip.html'>extract_file_from_zip</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Extracts a single named entry from an open ZIP archive to a file of the same name on disk,
+streaming it through a fixed-size buffer rather than reading it into memory whole.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/extract_zip_archive.html'>extract_zip_archive</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Extract a zip archive and return all key-value pairs from manifest</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/extract_zip_archive_c.html'>extract_zip_archive_c</a></td>
-                 <td><a href='../sourcefile/tox_archive.f90.html'>tox_archive.F90</a></td>
+                 <td><a href='../sourcefile/tox_data_archive.f90.html'>tox_data_archive.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for extract_zip_archive - can be called directly from Python via ctypes</p></td>
                </tr>
@@ -1233,7 +1342,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
                  <td><p>C-compatible wrapper for <code>filter_paralogs_by_pattern_subfunctionalization</code></p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/filter_unassigned_genes_c.html'>filter_unassigned_genes_C</a></td>
+                 <td><a href='../proc/filter_unassigned_genes_c.html'>filter_unassigned_genes_c</a></td>
                  <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for filtering unassigned genes</p></td>
@@ -1242,7 +1351,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
                  <td><a href='../interface/fjct_compute_contribution_scores.html'>fjct_compute_contribution_scores</a></td>
                  <td><a href='../module/tox_data_integration.html'>tox_data_integration</a></td>
                  <td>Interface</td>
-                 <td></td>
+                 <td><p>Computes the per-family/per-sub-neighborhood contribution score that combines</p><a href="../interface/fjct_compute_contribution_scores.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/fjct_compute_contribution_scores_c.html'>fjct_compute_contribution_scores_c</a></td>
@@ -1282,7 +1391,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
                </tr>
 			   <tr>
                  <td><a href='../interface/free.html'>free</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
@@ -1296,13 +1405,13 @@ others will be added to the work array, either as new active subset that will be
                </tr>
 			   <tr>
                  <td><a href='../proc/get_array_metadata.html'>get_array_metadata</a></td>
-                 <td><a href='../module/f42_array_utils.html'>f42_array_utils</a></td>
+                 <td><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></td>
                  <td>Subroutine</td>
                  <td><p>Get the metadata of an array file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/get_array_metadata_c.html'>get_array_metadata_C</a></td>
-                 <td><a href='../sourcefile/f42_array_utils.f90.html'>f42_array_utils.F90</a></td>
+                 <td><a href='../proc/get_array_metadata_c.html'>get_array_metadata_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_utils.f90.html'>f42_serde_arrays_utils.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for the subroutine to get the dimensions of an array file</p></td>
                </tr>
@@ -1310,7 +1419,7 @@ others will be added to the work array, either as new active subset that will be
                  <td><a href='../proc/get_baseline_mode.html'>get_baseline_mode</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
-                 <td><p>Helper to map baseline mode string ("min", "mean", "raw") to integer constant</p></td>
+                 <td><p>Helper to map baseline baseline_mode string ("min", "mean", "raw") to integer constant</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_cluster_data_linkage_helper.html'>get_cluster_data_linkage_helper</a></td>
@@ -1320,40 +1429,58 @@ others will be added to the work array, either as new active subset that will be
 by using the self-distance as indicator in which iteration the cluster was merged</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/get_err_arg_pos.html'>get_err_arg_pos</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>Extracts the argument position from the error code</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/get_err_code.html'>get_err_code</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Function</td>
+                 <td><p>Extracts the error from the error code</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/get_expression_vector.html'>get_expression_vector</a></td>
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td>Subroutine</td>
-                 <td><p>get expression vector for a specific gene id</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+get expression vector for a specific gene id</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_family_centroid.html'>get_family_centroid</a></td>
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td>Subroutine</td>
-                 <td><p>get family centroid for a specific family index</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+get family centroid for a specific family index</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_family_for_gene_index.html'>get_family_for_gene_index</a></td>
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td>Subroutine</td>
-                 <td><p>returns family index for gene index</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+returns family index for gene index</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_family_index.html'>get_family_index</a></td>
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td>Function</td>
-                 <td><p>Helper function to find family index</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Helper function to find family index</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_gene_index.html'>get_gene_index</a></td>
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td>Function</td>
-                 <td><p>Helper function to find gene index</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Helper function to find gene index</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_kd_point.html'>get_kd_point</a></td>
                  <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
                  <td>Subroutine</td>
-                 <td><p>Get point from KD index</p></td>
+                 <td><p>Retrieves the coordinate vector of the point stored at a given position of a built k-d
+index, i.e. <code>point_values = points(:, kd_indices(position))</code>.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_min_distance_indices_helper.html'>get_min_distance_indices_helper</a></td>
@@ -1365,7 +1492,8 @@ by using the self-distance as indicator in which iteration the cluster was merge
                  <td><a href='../proc/get_shift_components.html'>get_shift_components</a></td>
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td>Subroutine</td>
-                 <td><p>returns the centroid and the shift of a gene</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+returns the centroid and the shift of a gene</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/get_sorted_value.html'>get_sorted_value</a></td>
@@ -1381,7 +1509,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
                </tr>
 			   <tr>
                  <td><a href='../proc/get_zip_entry_name.html'>get_zip_entry_name</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Helper function to get the name of a ZIP entry</p></td>
                </tr>
@@ -1428,46 +1556,89 @@ by using the self-distance as indicator in which iteration the cluster was merge
                  <td><p>C interface wrapper for group_centroid.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/group_centroid_helper.html'>group_centroid_helper</a></td>
+                 <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Iterates over families, filters gene indices, and computes centroids.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/hashmap_create.html'>hashmap_create</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Subroutine</td>
-                 <td><p>Create the hashmap</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Create the hashmap</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/hashmap_destroy.html'>hashmap_destroy</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Subroutine</td>
-                 <td><p>Destroy the hashmap</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Destroy the hashmap</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/hashmap_get.html'>hashmap_get</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Function</td>
-                 <td><p>Lookup a key</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Lookup a key</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/hashmap_put.html'>hashmap_put</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Subroutine</td>
-                 <td><p>Insert a key-value pair</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Insert a key-value pair</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/hashset_create.html'>hashset_create</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Subroutine</td>
-                 <td><p>Create the hashmap</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Create the hashset</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/hashset_destroy.html'>hashset_destroy</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Subroutine</td>
-                 <td><p>Destroy the set</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Destroy the set</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/hashset_put.html'>hashset_put</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Subroutine</td>
-                 <td><p>Insert a key-value pair</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Insert a key-value pair</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/heapify_character.html'>heapify_character</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Iterative heapify (non-recursive, pure)
+Restore the max-heap property for the subtree rooted at <code>root</code>.
+Heap layout (1-based): left child = 2<em>i, right child = 2</em>i+1.
+We reorder the permutation vector <code>perm</code> (indices) rather than moving
+array values. Guard accesses by checking child indices before indexing.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/heapify_integer.html'>heapify_integer</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Iterative heapify (non-recursive, pure)
+Restore the max-heap property for the subtree rooted at <code>root</code>.
+Heap layout (1-based): left child = 2<em>i, right child = 2</em>i+1.
+We reorder the permutation vector <code>perm</code> (indices) rather than moving
+array values. Guard accesses by checking child indices before indexing.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/heapify_real.html'>heapify_real</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Iterative heapify (non-recursive, pure)
+Restore the max-heap property for the subtree rooted at <code>root</code>.
+Heap layout (1-based): left child = 2<em>i, right child = 2</em>i+1.
+We reorder the permutation vector <code>perm</code> (indices) rather than moving
+array values. Guard accesses by checking child indices before indexing.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/heapsort_character.html'>heapsort_character</a></td>
@@ -1505,6 +1676,12 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
 Calls identify_outliers with C-compatible types for external interface.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/init_perm.html'>init_perm</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Initializes a permutation vector with ascending indices</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/init_random.html'>init_random</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Subroutine</td>
@@ -1526,7 +1703,7 @@ Calls identify_outliers with C-compatible types for external interface.</p></td>
                  <td><a href='../proc/is_close.html'>is_close</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td></td>
+                 <td><p>Checks if two values are close to eachother, using a tolerance of <code>max(1d-12, EPS*max(abs(a), abs(b)))</code> with <code>EPS=epsilon(1.0_real64)</code></p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/is_err.html'>is_err</a></td>
@@ -1538,7 +1715,8 @@ Calls identify_outliers with C-compatible types for external interface.</p></td>
                  <td><a href='../proc/is_in_hashset.html'>is_in_hashset</a></td>
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td>Function</td>
-                 <td></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Checks whether <code>key</code> is a member of <code>hashset</code>.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/is_ok.html'>is_ok</a></td>
@@ -1571,6 +1749,12 @@ Calls identify_outliers with C-compatible types for external interface.</p></td>
                  <td><p>k-means clustering algorithm:</p><a href="../proc/k_means_clustering_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/k_means_clustering_helper.html'>k_means_clustering_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) k-means clustering algorithm:</p><a href="../proc/k_means_clustering_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/k_means_recompute_cluster_centroids_helper.html'>k_means_recompute_cluster_centroids_helper</a></td>
                  <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
                  <td>Subroutine</td>
@@ -1589,40 +1773,52 @@ Calls identify_outliers with C-compatible types for external interface.</p></td>
                  <td><p>C-compatible wrapper for linkage_clustering</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/linkage_clustering_helper.html'>linkage_clustering_helper</a></td>
+                 <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Perform linkage clustering on a distance matrix.</p><a href="../proc/linkage_clustering_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/load_expression_vectors.html'>load_expression_vectors</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for deserialize_real_2D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/load_family_centroids.html'>load_family_centroids</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for deserialize_real_2D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/load_family_ids.html'>load_family_ids</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for deserialize_char_1D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_char_1D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/load_gene_ids.html'>load_gene_ids</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for deserialize_char_1D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_char_1D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/load_gene_to_family.html'>load_gene_to_family</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for deserialize_int_1D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_int_1D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/load_shift_vectors.html'>load_shift_vectors</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for deserialize_real_2D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for deserialize_real_2D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/loess_alloc.html'>loess_alloc</a></td>
@@ -1630,7 +1826,10 @@ Calls identify_outliers with C-compatible types for external interface.</p></td>
                  <td>Subroutine</td>
                  <td><p>Wrapper subroutine for LOESS fitting (plain or robust).
 This subroutine selects between plain and robust LOESS fitting based on the mode.
-It dynamically allocates the required arrays and computes workspace sizes.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+It dynamically allocates the required arrays and computes workspace sizes, and handles
+degenerate inputs (single point, near-constant <code>x</code>, or fewer unique <code>x</code> values than the
+polynomial degree requires) by falling back to an identity/copy mapping instead of calling
+into netlib.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/loess_decomposition.html'>loess_decomposition</a></td>
@@ -1650,7 +1849,9 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
                  <td>Subroutine</td>
                  <td><p>Perform plain LOESS fitting.
 Fits a LOESS model to the data using the specified smoothing parameter.
-Outputs the smoothed response variable array.</p></td>
+Outputs the smoothed response variable array. Caller-provided workspace must already be
+sized via <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>; no input validation
+beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-size bounds is performed here.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/loess_fit_plain_c.html'>loess_fit_plain_c</a></td>
@@ -1697,7 +1898,7 @@ Outputs the smoothed response variable array.</p></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Subroutine</td>
                  <td><p>Performs LOESS smoothing on a set of data points.
-Smooths y_ref at x_query using reference points x_ref, y_ref, and kernel parameters.
+Smooths <code>y_ref</code> at <code>x_query</code> using reference points <code>x_ref</code>, <code>y_ref</code>, and kernel parameters.
 The user must pre-filter data and provide only valid indices in indices_used.</p></td>
                </tr>
 			   <tr>
@@ -1746,16 +1947,23 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><p>Compute logarithm for any base</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/lower_bound_ge.html'>lower_bound_ge</a></td>
+                 <td><a href='../proc/logx_helper.html'>logx_helper</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
-                 <td>Function</td>
-                 <td><p>First position pos in [1..n] such that sorted_rdi(perm(pos)) &gt;= x. Returns n+1 if none.</p></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Compute logarithm for any base: <code>log_base(val) = log(val)/log(base)</code>.
+Ensure <code>val &gt; 0</code>, <code>base &gt; 0</code> and <code>base /= 1</code>, yields a NaN/Inf result otherwise.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/malloc.html'>malloc</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/map_err_arg_pos.html'>map_err_arg_pos</a></td>
+                 <td><a href='../module/tox_errors.html'>tox_errors</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/mask_check_state.html'>mask_check_state</a></td>
@@ -1797,7 +2005,7 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><a href='../proc/mean.html'>mean</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td></td>
+                 <td><p>Calculates the arithmetic mean of vector</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/mean_vector.html'>mean_vector</a></td>
@@ -1810,6 +2018,12 @@ non-portable <code>log2</code> intrinsic for compatibility with WebAssembly (WAS
                  <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C interface wrapper for mean_vector.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/mean_vector_helper.html'>mean_vector_helper</a></td>
+                 <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Computes the element-wise mean for a given set of vectors.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/merge_distances_ward_linkage_helper.html'>merge_distances_ward_linkage_helper</a></td>
@@ -1850,18 +2064,18 @@ Final result is in log_transformed_expr. If fold change is needed, call calc_fch
                  <td><p>C wrapper for <a href="../proc/normalization_pipeline_alloc.html">normalization_pipeline_alloc</a></p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/normalize_all_trajectories.html'>normalize_all_trajectories</a></td>
+                 <td><a href='../proc/normalize_all_trajectories_alloc.html'>normalize_all_trajectories_alloc</a></td>
                  <td><a href='../module/tox_trajectory_normalization.html'>tox_trajectory_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Normalize all trajectories across multiple entities
-Input: trajectories(n_factors, n_samples, n_timepoints)
+Input: <code>trajectories(n_factors, n_samples, n_timepoints)</code>
 Normalizes each factor independently across time for each sample</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/normalize_all_trajectories_c.html'>normalize_all_trajectories_C</a></td>
+                 <td><a href='../proc/normalize_all_trajectories_c.html'>normalize_all_trajectories_c</a></td>
                  <td><a href='../sourcefile/tox_trajectory_normalization.f90.html'>tox_trajectory_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>C wrapper for normalize_all_trajectories_alloc.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_by_std_dev_alloc.html'>normalize_by_std_dev_alloc</a></td>
@@ -1890,13 +2104,13 @@ gene-wise mean expression and empirical standard deviation.</p></td>
                  <td><a href='../module/tox_trajectory_normalization.html'>tox_trajectory_normalization</a></td>
                  <td>Subroutine</td>
                  <td><p>Normalize all factors in a single trajectory independently across time
-Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
+Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/normalize_single_trajectory_c.html'>normalize_single_trajectory_C</a></td>
+                 <td><a href='../proc/normalize_single_trajectory_c.html'>normalize_single_trajectory_c</a></td>
                  <td><a href='../sourcefile/tox_trajectory_normalization.f90.html'>tox_trajectory_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>C wrapper for normalize_single_trajectory.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/normalize_unit_length.html'>normalize_unit_length</a></td>
@@ -1917,10 +2131,10 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
                  <td><p>Normalize a single variable across time using min-max scaling</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/normalize_variable_timeseries_c.html'>normalize_variable_timeseries_C</a></td>
+                 <td><a href='../proc/normalize_variable_timeseries_c.html'>normalize_variable_timeseries_c</a></td>
                  <td><a href='../sourcefile/tox_trajectory_normalization.f90.html'>tox_trajectory_normalization.F90</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>C wrapper for normalize_variable_timeseries.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/omics_field_rap_projection.html'>omics_field_RAP_projection</a></td>
@@ -1935,6 +2149,12 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
                  <td><p>C/Python wrapper for omics_field_RAP_projection</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/omics_field_rap_projection_helper.html'>omics_field_RAP_projection_helper</a></td>
+                 <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/omics_vector_rap_projection.html'>omics_vector_RAP_projection</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
                  <td>Subroutine</td>
@@ -1947,6 +2167,42 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
                  <td><p>C/Python wrapper for omics_vector_RAP_projection</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/omics_vector_rap_projection_helper.html'>omics_vector_RAP_projection_helper</a></td>
+                 <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/operator(.greaterthan.).html'>operator(.greaterthan.)</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Interface</td>
+                 <td><p>NaN-aware <code>&gt;</code> comparison operator for <code>real(real64)</code>; see <a href="../proc/real_greater.html">real_greater</a>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/operator(.isclose.).html'>operator(.isclose.)</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Interface</td>
+                 <td><p>Tolerance-based approximate equality operator for <code>real(real64)</code>; see <a href="../proc/is_close.html">is_close</a>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../interface/operator(.lessthan.).html'>operator(.lessthan.)</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Interface</td>
+                 <td><p>NaN-aware <code>&lt;</code> comparison operator for <code>real(real64)</code>; see <a href="../proc/real_less.html">real_less</a>.</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/partial_sort_by_dimension.html'>partial_sort_by_dimension</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/partial_sort_by_dimension_helper.html'>partial_sort_by_dimension_helper</a></td>
+                 <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:))</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/perform_permutation_test.html'>perform_permutation_test</a></td>
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
                  <td>Subroutine</td>
@@ -1957,6 +2213,12 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
                  <td><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C-compatible wrapper for <a href="../proc/perform_permutation_test.html">perform_permutation_test</a></p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/perform_permutation_test_helper.html'>perform_permutation_test_helper</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>(no input validation) For a given factor-dependent pair, this subroutine calculates the contributions by taking the same dependent but from a random different sample.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/pool_means.html'>pool_means</a></td>
@@ -1995,7 +2257,7 @@ Input: trajectory(n_factors, n_timepoints) for ONE sample/entity</p></td>
                  <td><p>Helper for doing last updates after merge: disable merged cluster, update self-distance to current iteration</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/project_selected_vecs_onto_rap.html'>project_selected_vecs_onto_rap</a></td>
+                 <td><a href='../proc/project_selected_vecs_onto_rap_helper.html'>project_selected_vecs_onto_rap_helper</a></td>
                  <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
                  <td>Subroutine</td>
                  <td><p>Projects selected vectors onto its RAP</p></td>
@@ -2061,14 +2323,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><p>Read expression vectors from csv/tsv files</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/read_expression_vectors_tsv_c.html'>read_expression_vectors_tsv_C</a></td>
+                 <td><a href='../proc/read_expression_vectors_tsv_c.html'>read_expression_vectors_tsv_c</a></td>
                  <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for reading expression vectors from files</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/read_file_header.html'>read_file_header</a></td>
-                 <td><a href='../module/f42_array_utils.html'>f42_array_utils</a></td>
+                 <td><a href='../proc/read_file_header_helper.html'>read_file_header_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></td>
                  <td>Subroutine</td>
                  <td><p>Opens unit and reads file header with all metadata from given file</p></td>
                </tr>
@@ -2079,14 +2341,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><p>Only read the gene ids from a tsv file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/read_gene_ids_from_tsv_file_c.html'>read_gene_ids_from_tsv_file_C</a></td>
+                 <td><a href='../proc/read_gene_ids_from_tsv_file_c.html'>read_gene_ids_from_tsv_file_c</a></td>
                  <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for reading gene IDs from a gene expression tsv file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/read_manifest_generic.html'>read_manifest_generic</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Read manifest file and return key-value pairs</p></td>
                </tr>
@@ -2097,14 +2359,14 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><p>Read a family file (Orthofinder)</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/read_orthofinder_file_c.html'>read_orthofinder_file_C</a></td>
+                 <td><a href='../proc/read_orthofinder_file_c.html'>read_orthofinder_file_c</a></td>
                  <td><a href='../sourcefile/tox_data_tools.f90.html'>tox_data_tools.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding for reading family file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/read_tox_data.html'>read_tox_data</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Read standard tox from a zip archive</p></td>
                </tr>
@@ -2112,17 +2374,13 @@ Sorts indirectly using the permutation vector <code>perm</code>. Manual stack re
                  <td><a href='../proc/real_greater.html'>real_greater</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td><p>NaN-aware greater-than comparison for real(real64).
-NaN is treated as greater than any finite number.
-Two NaNs are treated as equal.</p></td>
+                 <td></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/real_less.html'>real_less</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td><p>NaN-aware less-than comparison for real(real64).
-Finite values are always considered smaller than NaN.
-Two NaNs are treated as equal (neither less nor greater).</p></td>
+                 <td></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/recover_distance_matrix_helper.html'>recover_distance_matrix_helper</a></td>
@@ -2180,43 +2438,55 @@ across tissues (not classical standard deviation).</p></td>
                  <td><a href='../proc/save_expression_vectors.html'>save_expression_vectors</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for serialize_real_2D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_family_centroids.html'>save_family_centroids</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for serialize_real_2D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_family_ids.html'>save_family_ids</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for serialize_char_1D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_char_1D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_gene_ids.html'>save_gene_ids</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for serialize_char_1D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_char_1D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_gene_to_family.html'>save_gene_to_family</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for serialize_int_1D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_int_1D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_shift_vectors.html'>save_shift_vectors</a></td>
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td>Subroutine</td>
-                 <td><p>Wrapper for serialize_real_2D function</p></td>
+                 <td><p>AUTHOR_AARON_SCHROEDER
+Wrapper for serialize_real_2D function</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/save_tox_data.html'>save_tox_data</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Save standard tox data</p></td>
+               </tr>
+			   <tr>
+                 <td><a href='../proc/select_random_sample.html'>select_random_sample</a></td>
+                 <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Selects a random sample different to <code>current_sample</code>. For reproducibility call <a href="../proc/init_random.html">init_random</a> beforehand.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/select_random_sample_helper.html'>select_random_sample_helper</a></td>
@@ -2226,245 +2496,219 @@ across tissues (not classical standard deviation).</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_char_1d.html'>serialize_char_1d</a></td>
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 1D character array to a binary file.
-The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+                 <td><p>Directly serialize a 1D character array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_char_2d.html'>serialize_char_2d</a></td>
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 2D character array to a binary file.
-The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+                 <td><p>Directly serialize a 2D character array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_char_3d.html'>serialize_char_3d</a></td>
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 3D character array to a binary file.
-The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+                 <td><p>Directly serialize a 3D character array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_char_4d.html'>serialize_char_4d</a></td>
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 4D character array to a binary file.
-The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+                 <td><p>Directly serialize a 4D character array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_char_5d.html'>serialize_char_5d</a></td>
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 5D character array to a binary file.
-The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p></td>
+                 <td><p>Directly serialize a 5D character array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_char_nd.html'>serialize_char_nd</a></td>
-                 <td><a href='../module/f42_serialize_char.html'>f42_serialize_char</a></td>
+                 <td><a href='../proc/serialize_char_helper.html'>serialize_char_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_char.html'>f42_serde_arrays_serialize_char</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a character array of arbitrary dimensions to a binary file.
-The file will contain a magic number, type code, dimension, shape, character length, and the array data.</p><a href="../proc/serialize_char_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Subroutine to serialize a flat character array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_char_nd_c.html'>serialize_char_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_serialize_char.f90.html'>f42_serialize_char.F90</a></td>
+                 <td><a href='../proc/serialize_char_nd_c.html'>serialize_char_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_char.f90.html'>f42_serde_arrays_serialize_char.F90</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>C binding for the subroutine to serialize a flat character array into a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_complex_1d.html'>serialize_complex_1d</a></td>
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 1D complex(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 1D complex array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_complex_2d.html'>serialize_complex_2d</a></td>
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 2D complex(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 2D complex array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_complex_3d.html'>serialize_complex_3d</a></td>
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 3D complex(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 3D complex array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_complex_4d.html'>serialize_complex_4d</a></td>
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 4D complex(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 4D complex array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_complex_5d.html'>serialize_complex_5d</a></td>
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 5D complex(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 5D complex array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_complex_nd.html'>serialize_complex_nd</a></td>
-                 <td><a href='../module/f42_serialize_complex.html'>f42_serialize_complex</a></td>
+                 <td><a href='../proc/serialize_complex_helper.html'>serialize_complex_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a flat complex array with specified dimensions and number of dimensions to a binary file.</p><a href="../proc/serialize_complex_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Subroutine to serialize a flat complex array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_complex_nd_c.html'>serialize_complex_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_serialize_complex.f90.html'>f42_serialize_complex.F90</a></td>
+                 <td><a href='../proc/serialize_complex_nd_c.html'>serialize_complex_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_complex.f90.html'>f42_serde_arrays_serialize_complex.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to serialize a flat complex array to a binary file.</p></td>
+                 <td><p>C binding for the subroutine to serialize a flat complex array into a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_int_1d.html'>serialize_int_1d</a></td>
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 1D integer(int32) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 1D integer array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_int_2d.html'>serialize_int_2d</a></td>
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 2D integer(int32) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 2D integer array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_int_3d.html'>serialize_int_3d</a></td>
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 3D integer(int32) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 3D integer array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_int_4d.html'>serialize_int_4d</a></td>
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 4D integer(int32) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 4D integer array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_int_5d.html'>serialize_int_5d</a></td>
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 5D integer(int32) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 5D integer array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_int_nd.html'>serialize_int_nd</a></td>
-                 <td><a href='../module/f42_serialize_int.html'>f42_serialize_int</a></td>
+                 <td><a href='../proc/serialize_int_helper.html'>serialize_int_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a flat integer array with specified dimensions and number of dimensions to a binary file.</p><a href="../proc/serialize_int_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Subroutine to serialize a flat integer array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_int_nd_c.html'>serialize_int_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_serialize_int.f90.html'>f42_serialize_int.F90</a></td>
+                 <td><a href='../proc/serialize_int_nd_c.html'>serialize_int_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_int.f90.html'>f42_serde_arrays_serialize_int.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to serialize a flat integer array to a binary file.</p></td>
+                 <td><p>C binding for the subroutine to serialize a flat integer array into a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_logical_1d.html'>serialize_logical_1d</a></td>
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 1D logical array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 1D logical array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_logical_2d.html'>serialize_logical_2d</a></td>
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 2D logical array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 2D logical array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_logical_3d.html'>serialize_logical_3d</a></td>
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 3D logical array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 3D logical array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_logical_4d.html'>serialize_logical_4d</a></td>
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 4D logical array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 4D logical array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_logical_5d.html'>serialize_logical_5d</a></td>
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 5D logical array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 5D logical array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_logical_nd.html'>serialize_logical_nd</a></td>
-                 <td><a href='../module/f42_serialize_logical.html'>f42_serialize_logical</a></td>
+                 <td><a href='../proc/serialize_logical_helper.html'>serialize_logical_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a flat logical array with specified dimensions and number of dimensions to a binary file.</p><a href="../proc/serialize_logical_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Subroutine to serialize a flat logical array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_logical_nd_c.html'>serialize_logical_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_serialize_logical.f90.html'>f42_serialize_logical.F90</a></td>
+                 <td><a href='../proc/serialize_logical_nd_c.html'>serialize_logical_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_logical.f90.html'>f42_serde_arrays_serialize_logical.F90</a></td>
                  <td>Subroutine</td>
-                 <td><p>C binding for the subroutine to serialize a flat logical array to a binary file.</p></td>
+                 <td><p>C binding for the subroutine to serialize a flat logical array into a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_real_1d.html'>serialize_real_1d</a></td>
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 1D real(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 1D real array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_real_2d.html'>serialize_real_2d</a></td>
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 2D real(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 2D real array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_real_3d.html'>serialize_real_3d</a></td>
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 3D real(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 3D real array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_real_4d.html'>serialize_real_4d</a></td>
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 4D real(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 4D real array into a file</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/serialize_real_5d.html'>serialize_real_5d</a></td>
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Serialize a 5D real(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p></td>
+                 <td><p>Directly serialize a 5D real array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_real_nd.html'>serialize_real_nd</a></td>
-                 <td><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></td>
+                 <td><a href='../proc/serialize_real_helper.html'>serialize_real_helper</a></td>
+                 <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
                  <td>Subroutine</td>
-                 <td><p>Writes serialized real array from R to file with metdata.</p><a href="../proc/serialize_real_nd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Subroutine to serialize a flat real array into a file</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/serialize_real_nd_c.html'>serialize_real_nd_C</a></td>
-                 <td><a href='../sourcefile/f42_serialize_real.f90.html'>f42_serialize_real.F90</a></td>
+                 <td><a href='../proc/serialize_real_nd_c.html'>serialize_real_nd_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_real.f90.html'>f42_serde_arrays_serialize_real.F90</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>C binding for the subroutine to serialize a flat real array into a file.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/set_err.html'>set_err</a></td>
                  <td><a href='../module/tox_errors.html'>tox_errors</a></td>
                  <td>Subroutine</td>
-                 <td><p>set the error code to specific code</p></td>
+                 <td><p>set the error code to specific error</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/set_err_once.html'>set_err_once</a></td>
@@ -2488,7 +2732,7 @@ The file will contain a magic number, type code, dimension, shape, and the array
                  <td><a href='../interface/shuffle_vector.html'>shuffle_vector</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Interface</td>
-                 <td></td>
+                 <td><p>Generic in-place Fisher-Yates shuffle, dispatches on the vector's element type.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/shuffle_vector_int.html'>shuffle_vector_int</a></td>
@@ -2506,13 +2750,18 @@ The file will contain a magic number, type code, dimension, shape, and the array
                  <td><a href='../interface/sort_array.html'>sort_array</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Interface</td>
-                 <td></td>
+                 <td><p>Generic indirect (permutation-based) sort, dispatches on the array's element type.
+See <a href="../proc/sort_real.html">sort_real</a>, <a href="../proc/sort_integer.html">sort_integer</a>,
+<a href="../proc/sort_character.html">sort_character</a> for the implementations. Uses quicksort.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/sort_array_heapsort.html'>sort_array_heapsort</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Interface</td>
-                 <td></td>
+                 <td><p>Generic indirect (permutation-based) heapsort, dispatches on the array's element type.
+Prefer this over <a href="../interface/sort_array.html">sort_array</a> when a worst-case O(n log n)
+guarantee is needed (quicksort's manual-stack partitioning can degrade on adversarial input),
+or when the temporary quicksort stack workspace should be avoided.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/sort_character.html'>sort_character</a></td>
@@ -2557,6 +2806,13 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
 Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/sort_real_heapsort_expl_size.html'>sort_real_heapsort_expl_size</a></td>
+                 <td><a href='../module/f42_utils.html'>f42_utils</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Sort a real explicit-size array indirectly using heapsort.
+Creates a sorted version of the array by reordering the <code>perm</code> vector. The original data in <code>array</code> remains unchanged.</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/split_string.html'>split_string</a></td>
                  <td><a href='../module/tox_data_tools.html'>tox_data_tools</a></td>
                  <td>Subroutine</td>
@@ -2566,16 +2822,10 @@ Creates a sorted version of the array by reordering the <code>perm</code> vector
                  <td><a href='../proc/std_dev.html'>std_dev</a></td>
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td>Function</td>
-                 <td></td>
+                 <td><p>Calculates the standard deviation of vector, with or without Bessel's correction</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/string_as_c_char_1d.html'>string_as_c_char_1d</a></td>
-                 <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
-                 <td>Subroutine</td>
-                 <td><p>Converts a string to 1D c_char array</p></td>
-               </tr>
-			   <tr>
-                 <td><a href='../proc/string_as_c_char_1d_r.html'>string_as_c_char_1d_r</a></td>
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td>Subroutine</td>
                  <td><p>Converts a string to 1D c_char array</p></td>
@@ -2641,7 +2891,7 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
                  <td><p>Comprehensive validation routine, combining all checks</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_all_data_c.html'>validate_all_data_C</a></td>
+                 <td><a href='../proc/validate_all_data_c.html'>validate_all_data_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C Binding to validate all data</p></td>
@@ -2665,7 +2915,7 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
                  <td><p>Validate full data structure</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_data_structure_c.html'>validate_data_structure_C</a></td>
+                 <td><a href='../proc/validate_data_structure_c.html'>validate_data_structure_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C Binding to validate data structure</p></td>
@@ -2674,7 +2924,8 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
                  <td><a href='../proc/validate_dimension_size.html'>validate_dimension_size</a></td>
                  <td><a href='../module/tox_errors.html'>tox_errors</a></td>
                  <td>Subroutine</td>
-                 <td></td>
+                 <td><p>Validates that a dimension size is non-negative and non-zero.
+Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPUT</code> if <code>n==0</code>.</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/validate_distance_matrix.html'>validate_distance_matrix</a></td>
@@ -2697,7 +2948,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
                  <td><p>Validate expresssion data</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_expression_data_c.html'>validate_expression_data_C</a></td>
+                 <td><a href='../proc/validate_expression_data_c.html'>validate_expression_data_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C Binding to validate expression data</p></td>
@@ -2709,7 +2960,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
                  <td><p>Validate the family centroids</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_family_centroids_c.html'>validate_family_centroids_C</a></td>
+                 <td><a href='../proc/validate_family_centroids_c.html'>validate_family_centroids_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding to validate family centroids</p></td>
@@ -2721,7 +2972,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
                  <td><p>Validate gene to family mapping</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_gene_to_family_mapping_c.html'>validate_gene_to_family_mapping_C</a></td>
+                 <td><a href='../proc/validate_gene_to_family_mapping_c.html'>validate_gene_to_family_mapping_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C binding to validate gene to family mapping</p></td>
@@ -2739,13 +2990,19 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
                  <td><p>Validates min&lt;=e&lt;=max AND e/=NaN for all elements e of an array.</p><a href="../proc/validate_in_range_real.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 			   <tr>
+                 <td><a href='../proc/validate_selected_axes_for_signed_helper.html'>validate_selected_axes_for_signed_helper</a></td>
+                 <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
+                 <td>Subroutine</td>
+                 <td><p>Does the validation of the <code>selected_axes_for_signed</code> input</p></td>
+               </tr>
+			   <tr>
                  <td><a href='../proc/validate_shift_vectors.html'>validate_shift_vectors</a></td>
                  <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
                  <td>Subroutine</td>
                  <td><p>Validates shift vectors</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_shift_vectors_c.html'>validate_shift_vectors_C</a></td>
+                 <td><a href='../proc/validate_shift_vectors_c.html'>validate_shift_vectors_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C Binding to validate shift vectors</p></td>
@@ -2757,7 +3014,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
                  <td><p>Validate that no string appears more than once</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/validate_string_array_uniqueness_c.html'>validate_string_array_uniqueness_C</a></td>
+                 <td><a href='../proc/validate_string_array_uniqueness_c.html'>validate_string_array_uniqueness_c</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td>Subroutine</td>
                  <td><p>C Binding to validate string array uniqueness</p></td>
@@ -2766,7 +3023,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p></td>
                  <td><a href='../proc/validate_type_code.html'>validate_type_code</a></td>
                  <td><a href='../module/tox_errors.html'>tox_errors</a></td>
                  <td>Subroutine</td>
-                 <td><p>validate that the actual type code matches the expected type code
+                 <td><p>validate that the actual type error matches the expected type error
 Closes the connected unit in case of an error</p></td>
                </tr>
 			   <tr>
@@ -2776,87 +3033,80 @@ Closes the connected unit in case of an error</p></td>
                  <td><p>Finds the indices of the true values in a logical mask.</p></td>
                </tr>
 			   <tr>
-                 <td><a href='../proc/which_c.html'>which_c</a></td>
-                 <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
-                 <td>Subroutine</td>
-                 <td><p>C wrapper for which.
-Converts integer mask to logical and calls which.</p></td>
-               </tr>
-			   <tr>
                  <td><a href='../proc/write_file_header.html'>write_file_header</a></td>
-                 <td><a href='../module/f42_array_utils.html'>f42_array_utils</a></td>
+                 <td><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></td>
                  <td>Subroutine</td>
                  <td><p>Opens unit and writes fileheader with all metadata to the given filename</p></td>
                </tr>
 			   <tr>
                  <td><a href='../proc/write_manifest.html'>write_manifest</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Subroutine</td>
                  <td><p>Write manifest from given key-value pairs</p></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_close.html'>zip_close</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_fclose.html'>zip_fclose</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_file_add.html'>zip_file_add</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_fopen.html'>zip_fopen</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_fread.html'>zip_fread</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_get_name.html'>zip_get_name</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_get_num_entries.html'>zip_get_num_entries</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_open.html'>zip_open</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_set_file_compression.html'>zip_set_file_compression</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_source_buffer.html'>zip_source_buffer</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
 			   <tr>
                  <td><a href='../interface/zip_source_free.html'>zip_source_free</a></td>
-                 <td><a href='../module/tox_archive.html'>tox_archive</a></td>
+                 <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td>Interface</td>
                  <td></td>
                </tr>
@@ -2872,14 +3122,14 @@ Converts integer mask to logical and calls which.</p></td>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

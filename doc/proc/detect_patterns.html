@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>detect_patterns &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">68 statements</a>
+                 title=" 0.5% of total for procedures.">67 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,21 +151,9 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine detect_patterns(ancestor, genes, n_genes, n_dims, pattern, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, temp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, subfunc_temp_work_array, ierr)  
+    <h2>public pure subroutine detect_patterns(ancestor, genes, n_genes, n_dims, pattern, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)  
 </h2>
-        <div class="card mb-4">
-      <h3 class="card-header card-title bg-light">Uses</h3>
-      <div class="card-body">
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item">
-              <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
-              </ul>
-            </li>
-        </ul>
-      </div>
-    </div>
-
+    
 
     <p>Identifies subsets of paralogs where dosage effect or subfunctionalization applies, depending on <code>pattern</code></p>
 
@@ -196,7 +186,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~7"></span>
+              <span class="anchor" id="variable-genes~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -211,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~57"></span>
+              <span class="anchor" id="variable-n_genes~68"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -226,7 +216,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~18"></span>
+              <span class="anchor" id="variable-n_dims~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -262,11 +252,11 @@
 <tbody>
 <tr>
 <td>Dosage Effect</td>
-<td>0</td>
+<td>0_int32</td>
 </tr>
 <tr>
 <td>Subfunctionalization</td>
-<td>1</td>
+<td>1_int32</td>
 </tr>
 </tbody>
 </table>
@@ -347,7 +337,7 @@
                 <p>working array to hold bitmask encoded subsets for detection.</p>
 <div class="alert alert-info">
 <p class="alert-title h4">Note</p>
-<p>Each bitmask is built of 32 bit chunks. <code>(n_genes + 31) / 32</code> is equivalent to <code>ceil(n_genes / 32)</code> and represents the number of chunks</p>
+<p>Each bitmask is built of 32 bit chunks. <code>(n_genes + 31) / 32</code> is equivalent to <code>ceil(n_genes / 32.0_real64)</code> and represents the number of chunks</p>
 </div>
             </td>
         </tr>
@@ -368,7 +358,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-active_mask~3"></span>
+              <span class="anchor" id="variable-tmp_active_mask~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -376,14 +366,14 @@
               dimension(n_mask_chunks)
             </td>
             <td>::</td>
-            <td><strong>active_mask</strong></td>
+            <td><strong>tmp_active_mask</strong></td>
             <td>
                 <p>working array to hold the extended subsets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_paralog_vector~3"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -391,7 +381,7 @@
               dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>temp_paralog_vector</strong></td>
+            <td><strong>tmp_paralog_vector</strong></td>
             <td>
                 <p>vector used for pruning subsets</p>
             </td>
@@ -473,7 +463,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_temp_work_array"></span>
+              <span class="anchor" id="variable-tmp_subfunc_work_array"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -481,14 +471,14 @@
               dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>subfunc_temp_work_array</strong></td>
+            <td><strong>tmp_subfunc_work_array</strong></td>
             <td>
                 <p>in subfunctionalization mode needed for efficient check of minimum value after a certain index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~286"></span>
+              <span class="anchor" id="variable-ierr~302"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -498,7 +488,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>error code</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -528,14 +518,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

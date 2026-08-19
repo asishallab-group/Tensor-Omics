@@ -15,6 +15,24 @@ cat("✓ TensorOmics Rcpp functions loaded successfully\n")
 
 source("rcpp/error_handling.R")
 
+#> tox_data_integration:calc_neighborhood_size_c: Compute neighborhood size
+#' Calculate neighborhood size for JSD calculation
+#'
+#' @param n_pool Integer number of pooled genes to consider for neighborhood construction
+#' @param n_points Integer number of reference points
+#' @param n_genes_S Integer number of genes in the dataset
+#' @param mean_S Numeric vector of mean expression values for each gene
+#' @param desired_size Integer desired neighborhood size (if 0, the function will determine the optimal size)
+#' @return List with calculated neighborhood size
+tox_calc_neighborhood_size_rcpp <- function(n_pool, n_points, n_genes_S, mean_S, desired_size = 0) {
+    result <- calc_neighborhood_size_rcpp(n_pool, n_points, n_genes_S, mean_S, desired_size);
+
+    check_err_code(result$ierr)
+
+    return(result)
+}
+
+
 # ===================================================================
 # EUCLIDEAN DISTANCE FUNCTIONS
 # ===================================================================
@@ -49,32 +67,25 @@ tox_euclidean_distance <- function(vec1, vec2) {
 #' @param genes Matrix of gene expression data (genes as columns, dimensions as rows)
 #' @param centroids Matrix of family centroids (families as columns, dimensions as rows) 
 #' @param gene_to_fam Integer vector mapping each gene to its family index (1-based)
-#' @param d Integer number of dimensions
 #' 
 #' @return Numeric vector of distances from each gene to its family centroid
 #' 
-tox_distance_to_centroid <- function(genes, centroids, gene_to_fam, d) {
+tox_distance_to_centroid <- function(genes, centroids, gene_to_fam) {
   # Input Validation
-  validate_numeric_vector(genes)
-  validate_numeric_vector(centroids)
-  validate_positive_integer_scalar(d)
-
-  # Validate flattened lengths are compatible with d
-  validate_divisible_length(genes, d)
-  validate_divisible_length(centroids, d)
+  validate_numeric_matrix(genes)
+  validate_numeric_matrix(centroids)
 
   # Calculate dimensions
-  n_genes <- as.integer(length(genes) / d)
-  n_families <- as.integer(length(centroids) / d)
-  validate_gene_to_family_centroid(gene_to_fam, n_genes, n_families)
-  validate_length_equals_n(gene_to_fam, n_genes)
+  validate_length_equals_n(gene_to_fam, ncol(genes))
+  validate_integer_vector(gene_to_fam, expected_length=ncol(genes))
 
   # Call the Rcpp forwarder
   result <- tox_distance_to_centroid_rcpp(genes,
                                           centroids,
-                                          gene_to_fam,
-                                          d
+                                          gene_to_fam
   )
+
+  check_err_code(result$ierr)
 
   # Return distance vector
   return(result)
@@ -138,13 +149,7 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
   check_err_code(result$ierr)
   
   # Return structured result 
-  return(list(
-    tissue_versatilities = result$tissue_versatilities,
-    tissue_angles_deg = result$tissue_angles_deg,
-    n_selected_vectors = result$n_selected_vectors,
-    n_selected_axes = result$n_selected_axes
-  ))
-
+  return(result)
 }
 
 # ===================================================================
@@ -162,16 +167,17 @@ tox_calculate_tissue_versatility <- function(expression_vectors, vector_selectio
 #' @param distances Numeric vector of gene distances
 #' @param gene_to_fam Integer vector mapping genes to family indices
 #' @param n_families Integer number of families
-#' @param percentile Percentile threshold for outlier detection (default: 95.0)
+#' @param percentile Percentile threshold in [0,1] for outlier detection (default: 0.95)
 #' @return A list with:
 #' \describe{
 #'   \item{is_outlier}{Logical vector indicating outliers}
 #'   \item{loess_x}{Numeric vector of family median distances}
 #'   \item{loess_y}{Numeric vector of family standard deviations}
 #'   \item{loess_n}{Integer vector of number of genes used per family}
+#'   \item{quantile}{Numeric vector of empirical quantiles (effect-size measure) per gene}
 #'   \item{ierr}{Integer status code from backend routine}
 #' }
-tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 95.0) {
+tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile = 0.95) {
 
   # Input Validation
   validate_numeric_vector(distances)
@@ -200,7 +206,7 @@ tox_detect_outliers <- function(distances, gene_to_fam, n_families, percentile =
     loess_x = result$loess_x,
     loess_y = result$loess_y,
     loess_n = result$loess_n,
-    p_values = result$p_values
+    quantile = result$quantile
   ))
 
 }
@@ -345,13 +351,14 @@ tox_compute_rdi <- function(distances, gene_to_fam, dscale) {
 #' against a percentile threshold of the sorted RDI distribution.
 #'
 #' @param rdi Numeric vector of RDI values
-#' @param percentile Percentile threshold (default: 95.0)
+#' @param percentile Percentile threshold in [0,1] (default: 0.95)
 #' @return A list with:
 #' \describe{
 #'   \item{is_outlier}{Logical vector indicating outliers}
 #'   \item{threshold}{Numeric RDI threshold value used}
+#'   \item{quantile}{Numeric vector of empirical quantiles (effect-size measure) per gene}
 #' }
-tox_identify_outliers <- function(rdi, percentile = 95.0) {
+tox_identify_outliers <- function(rdi, percentile = 0.95) {
 
   # Input Validation
   validate_numeric_vector(rdi)
@@ -462,6 +469,28 @@ tox_log2_transformation <- function(expr) {
   check_err_code(result$ierr)
 
   return(result$transformed_expr)
+}
+
+#> tox_normalization:normalize_unit_length_c: Normalize a vector to unit length
+#' Normalize a numeric vector to unit length
+#'
+#' @param vector Numeric vector
+#' @return Numeric vector with unit norm
+#' 
+tox_normalize_unit_length <- function(vector) {
+  
+  # Input Validation
+  validate_numeric_vector(vector)
+  validate_nonempty(vector)
+
+  # Call the Rcpp forwarder
+  result <- tox_normalize_unit_length_rcpp(vector)
+  
+  # Check for errors
+  check_err_code(result$ierr)
+
+  # Return the normalized vector
+  return(result$vector)
 }
 
 #> tox_normalization:calc_tiss_avg_c: Calculate average expression across replicates for each tissue group
@@ -1164,11 +1193,11 @@ tox_mean_vector <- function(expression_vectors, gene_indices) {
 #'
 #' @param residual_pool Numeric vector of absolute residuals (NaNs removed)
 #' @param residual_pool_perm Integer vector giving the permutation that sorts `residual_pool`
-#' @param residual_range_quantile Numeric scalar (default 95.0)
+#' @param residual_range_quantile Numeric scalar, quantile in [0,1] (default 0.95)
 #'
 #' @return Numeric scalar: the shared residual range R
 #'
-tox_determine_shared_residual_range_expert <- function(residual_pool, residual_pool_perm, residual_range_quantile = 95.0) {
+tox_determine_shared_residual_range_expert <- function(residual_pool, residual_pool_perm, residual_range_quantile = 0.95) {
   # Input Validation
   validate_numeric_vector(residual_pool)
   validate_integer_vector(residual_pool_perm)
@@ -1198,11 +1227,11 @@ tox_determine_shared_residual_range_expert <- function(residual_pool, residual_p
 #'
 #' @param neighborhood_residuals_S1 Numeric array (n_reps x n_neighbors x n_points)
 #' @param neighborhood_residuals_S2 Numeric array (n_reps x n_neighbors x n_points)
-#' @param residual_range_quantile Numeric scalar (default 95.0)
+#' @param residual_range_quantile Numeric scalar, quantile in [0,1] (default 0.95)
 #'
 #' @return Numeric scalar: the shared residual range R
 #'
-tox_determine_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 95.0) {
+tox_determine_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 0.95) {
   # Input Validation
   validate_numeric_array(neighborhood_residuals_S1)
   validate_numeric_array(neighborhood_residuals_S2)
@@ -2126,7 +2155,7 @@ tox_detect_dosage_effect <- function(ancestor, genes,
 # ARRAY UTILITIES FUNCTIONS
 # ============================================================
 
-#> f42_array_utils:get_array_metadata_c: Get array metadata from serialized file
+#> f42_serde_arrays_utils:get_array_metadata_c: Get array metadata from serialized file
 #' Get array metadata from serialized file
 #' @param filename Path to the serialized array file
 #' @param max_dims Maximum number of dimensions to read from the file (default: 5)
@@ -2172,7 +2201,7 @@ tox_get_array_metadata <- function(filename, max_dims = 5L, with_clen = FALSE) {
 # ============================================================
 #  DESERIALIZATION FUNCTIONS 
 # ============================================================
-#> f42_deserialize_int:deserialize_int_nd_C: Deserialize integer array from file
+#> f42_serde_arrays_deserialize_int:deserialize_int_nd_C: Deserialize integer array from file
 #' @param filename Path to the serialized integer array file
 #' @param max_dims Maximum number of dimensions to read from the file (default: 5)
 #' @return An integer array with dimensions as specified in the file
@@ -2193,7 +2222,7 @@ tox_deserialize_int_array <- function(filename, max_dims = 5L) {
   return(array(result$values, dim = result$dims[1:result$ndim]))
 }
 
-#> f42_deserialize_real:deserialize_real_nd_C: Deserialize real/double array from file
+#> f42_serde_arrays_deserialize_real:deserialize_real_nd_C: Deserialize real/double array from file
 #' @param filename Path to the serialized real array file
 #' @param max_dims Maximum number of dimensions to read from the file (default: 5)
 #' @return A numeric array with dimensions as specified in the file
@@ -2215,7 +2244,7 @@ tox_deserialize_real_array <- function(filename, max_dims = 5L) {
   return(array(result$values, dim = result$dims[1:result$ndim]))
 }
 
-#> f42_deserialize_char:deserialize_char_nd_C: Deserialize character array from file
+#> f42_serde_arrays_deserialize_char:deserialize_char_nd_C: Deserialize character array from file
 #' @param filename Path to the serialized character array file
 #' @param max_dims Maximum number of dimensions to read from the file (default: 5)
 #' @return A character array with dimensions as specified in the file
@@ -2234,7 +2263,7 @@ tox_deserialize_char_array <- function(filename, max_dims = 5L) {
   # Return deserialized array
   return(array(result$values, dim = result$dims[1:result$ndim]))
 }
-#> f42_deserialize_logical:deserialize_logical_nd_C: Deserialize logical array from file
+#> f42_serde_arrays_deserialize_logical:deserialize_logical_nd_C: Deserialize logical array from file
 #' @param filename Path to the serialized logical array file
 #' @param max_dims Maximum number of dimensions to read from the file (default: 5)
 #' @return A logical array with dimensions as specified in the file
@@ -2255,7 +2284,7 @@ tox_deserialize_logical_array <- function(filename, max_dims = 5L) {
   return(array(result$values, dim = result$dims[1:result$ndim]))
 }
 
-#> f42_deserialize_complex:deserialize_complex_nd_C: Deserialize complex array from file
+#> f42_serde_arrays_deserialize_complex:deserialize_complex_nd_C: Deserialize complex array from file
 #' @param filename Path to the serialized complex array file
 #' @param max_dims Maximum number of dimensions to read from the file (default: 5)
 #' @return A complex array with dimensions as specified in the file
@@ -2280,7 +2309,7 @@ tox_deserialize_complex_array <- function(filename, max_dims = 5L) {
 #  SERIALIZATION FUNCTIONS 
 # ============================================================
 
-#> f42_serialize_int:serialize_int_nd_C: Serialize integer array to file
+#> f42_serde_arrays_serialize_int:serialize_int_nd_C: Serialize integer array to file
 #' @param arr An integer array to serialize
 #' @param filename Path to the output file where the array will be serialized
 #' @return NULL (invisible) - the function is called for its side effect of writing to a file
@@ -2300,7 +2329,7 @@ tox_serialize_int_array <- function(arr, filename) {
   return(invisible(NULL))
 }
 
-#> f42_serialize_real:serialize_real_nd_C: Serialize real/double array to file
+#> f42_serde_arrays_serialize_real:serialize_real_nd_C: Serialize real/double array to file
 #' @param arr A numeric array to serialize
 #' @param filename Path to the output file where the array will be serialized
 #' @return NULL (invisible) - the function is called for its side effect of writing to a file
@@ -2321,7 +2350,7 @@ tox_serialize_real_array <- function(arr, filename) {
   return(invisible(NULL))
 }
 
-#> f42_serialize_char:serialize_char_nd_C: Serialize character array to file
+#> f42_serde_arrays_serialize_char:serialize_char_nd_C: Serialize character array to file
 #' Serialize character array to file
 #'
 #' @param arr A character array to serialize
@@ -2344,7 +2373,7 @@ tox_serialize_char_array <- function(arr, filename) {
   return(invisible(NULL))
 }
 
-#> f42_serialize_logical:serialize_logical_nd_C: Serialize logical array to file
+#> f42_serde_arrays_serialize_logical:serialize_logical_nd_C: Serialize logical array to file
 #' @param arr A logical array to serialize
 #' @param filename Path to the output file where the array will be serialized
 #' @return NULL (invisible) - the function is called for its side effect of writing to a file
@@ -2365,7 +2394,7 @@ tox_serialize_logical_array <- function(arr, filename) {
   return(invisible(NULL))
 }
 
-#> f42_serialize_complex:serialize_complex_nd_C: Serialize complex array to file
+#> f42_serde_arrays_serialize_complex:serialize_complex_nd_C: Serialize complex array to file
 #' @param arr A complex array to serialize
 #' @param filename Path to the output file where the array will be serialized
 #' @return NULL (invisible) - the function is called for its side effect of writing to a file
@@ -2478,6 +2507,8 @@ build_bst_index <- function(x) {
 
   # Call the Rcpp forwarder
   result <- tox_build_bst_index_rcpp(x)
+
+  check_err_code(result$ierr)
 
   # Return index vector
   return(result)
@@ -2663,22 +2694,15 @@ tox_clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signe
 
   n_dims <- length(v1)
 
-  if (missing(selected_axes_for_signed)) {
-    if (n_dims <= 1L) {
-      selected_axes_for_signed <- c(1L, 1L, 1L)
-    } else if (n_dims == 2L) {
-      selected_axes_for_signed <- c(1L, 2L, 1L)
-    } else {
-      selected_axes_for_signed <- c(1L, 2L, 3L)
-    }
-  }
-
   # Accept numeric index triplets and normalize to integer for backend.
   validate_logical_or_index_vector(selected_axes_for_signed, expected_length = 3, name = "selected_axes_for_signed")
   selected_axes_for_signed <- as.integer(selected_axes_for_signed)
 
   validate_length_equals_n(selected_axes_for_signed, 3)
-  validate_index_bounds(selected_axes_for_signed, low = 1, high = n_dims)
+
+  if (n_dims > 3) {
+    validate_index_bounds(selected_axes_for_signed, low = 1, high = n_dims)
+  }
 
   # Call the Rcpp forwarder
   result <- tox_clock_hand_angle_between_vectors_rcpp(v1,
@@ -2696,48 +2720,36 @@ tox_clock_hand_angle_between_vectors <- function(v1, v2, selected_axes_for_signe
 #> tox_relative_axis_plane_tools:clock_hand_angles_for_shift_vectors_c: Compute signed rotation angles for vector pairs
 #' Compute signed rotation angles for pairs of RAP-projected and normalized vectors
 #'
-#' @param origins Numeric matrix (n_dims x n_vecs), first set of vectors.
 #' @param targets Numeric matrix (n_dims x n_vecs), second set of vectors.
-#' @param vecs_selection_mask Integer or logical vector (length n_vecs).
+#' @param origins Numeric 3D array (n_dims, 2, n_vecs), with `fields[:,1,i_vec]` referring to the shift vector's origin and `fields[:,2,i_vec]` to the target
+#' @param fields_selection_mask Integer or logical vector (length n_fields).
 #'   Default: `rep(1, ncol(origins))` (all vectors selected).
 #' @param selected_axes_for_signed Integer vector of length 3 (axes for directionality).
 #'   Default: `c(1, 2, 3)`.
 #' @return Numeric vector of signed angles (radians).
 #' 
-tox_clock_hand_angles_for_shift_vectors <- function(origins, targets, vecs_selection_mask = rep(1L, ncol(origins)), selected_axes_for_signed = c(1L, 2L, 3L)) {
+tox_clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask = rep(1L, dim(fields)[[3]]), selected_axes_for_signed = c(1L, 2L, 3L)) {
   # Input Validation
-  validate_numeric_matrix(origins)
-  validate_numeric_matrix(targets)
-  validate_matching_rows(origins, targets)
-  validate_matching_cols(origins, targets)
+  validate_numeric_array(fields)
 
-  n_vecs <- ncol(origins)
-  validate_logical_or_index_vector(vecs_selection_mask, expected_length = n_vecs, name = "vecs_selection_mask")
-  vecs_selection_mask <- as.integer(as.logical(vecs_selection_mask))
+  n_fields <- dim(fields)[[3]]
+  validate_logical_or_index_vector(fields_selection_mask, expected_length = n_fields, name = "fields_selection_mask")
+  fields_selection_mask <- as.integer(as.logical(fields_selection_mask))
 
-  n_dims <- nrow(origins)
+  n_dims <- dim(fields)[[1]]
 
-  if (missing(selected_axes_for_signed)) {
-    if (n_dims <= 1L) {
-      selected_axes_for_signed <- c(1L, 1L, 1L)
-    } else if (n_dims == 2L) {
-      selected_axes_for_signed <- c(1L, 2L, 1L)
-    } else {
-      selected_axes_for_signed <- c(1L, 2L, 3L)
-    }
+  validate_length_equals_n(selected_axes_for_signed, 3)
+
+  if (n_dims > 3) {
+    validate_logical_or_index_vector(selected_axes_for_signed, expected_length = 3, name = "selected_axes_for_signed")
+    validate_index_bounds(selected_axes_for_signed, low = 1, high = n_dims)
   }
 
   # Accept numeric index triplets and normalize to integer for backend.
-  validate_logical_or_index_vector(selected_axes_for_signed, expected_length = 3, name = "selected_axes_for_signed")
   selected_axes_for_signed <- as.integer(selected_axes_for_signed)
-
-  validate_length_equals_n(selected_axes_for_signed, 3)
-  validate_index_bounds(selected_axes_for_signed, low = 1, high = n_dims)
-
   # Call the Rcpp forwarder
-  result <- tox_clock_hand_angles_for_shift_vectors_rcpp(origins,
-                                                         targets,
-                                                         vecs_selection_mask,
+  result <- tox_clock_hand_angles_for_shift_vectors_rcpp(fields,
+                                                         fields_selection_mask,
                                                          selected_axes_for_signed
   )
 
@@ -2825,11 +2837,7 @@ tox_cluster_factor_trajectories_k_means <- function(n_clusters, trajectories, n_
   check_err_code(result$ierr)
 
   # Return structured result
-  return(list(
-    centroids = result$centroids,
-    labels = result$labels,
-    label_counts = result$label_counts
-  ))
+  return(result)
 }
 
 #> tox_clustering:k_means_clustering_c: K-means clustering (general)
@@ -2877,11 +2885,7 @@ tox_k_means_clustering <- function(n_clusters, data_points, n_points, n_dims, ce
   check_err_code(result$ierr)
 
   # Return structured result
-  return(list(
-    centroids = result$centroids,
-    labels = result$labels,
-    label_counts = result$label_counts
-  ))
+  return(result)
 }
 
 #> tox_clustering:linkage_clustering_c: Hierarchical linkage clustering
@@ -3475,37 +3479,6 @@ tox_compute_edf_expert <- function(values, perm) {
   ))
 }
 
-#> f42_utils:which_c: Get indices of TRUE or non-zero elements in a mask
-#' This function takes a logical or integer mask and returns the indices of the TRUE or non-zero elements, up to a specified maximum.
-#' @param mask A logical or integer vector serving as the mask for which to find indices.
-#' @param m_max An integer scalar specifying the maximum number of indices to return (default: length of mask).
-#' @return An integer vector of indices corresponding to TRUE or non-zero elements in `mask`.
-#' 
-tox_which <- function(mask, m_max = length(mask)) {
-  # Input Validation
-
-  if (is.logical(mask)) {
-    mask <- as.integer(mask)
-  }
-  validate_integer_vector(mask)
-  validate_positive_integer_scalar(m_max)
-
-  # Call the Rcpp forwarder
-  result <- tox_which_rcpp(mask = mask, m_max = m_max)
-
-  # Check for errors
-  check_err_code(result$ierr)
-
-  # Return indices of TRUE/non-zero elements (capped by m_max)
-  m_out <- as.integer(result$m_out)
-  n_take <- min(m_out, m_max, length(result$idx_out))
-  if (n_take <= 0L) {
-    return(integer(0))
-  }
-
-  return(result$idx_out[seq_len(n_take)])
-}
-
 #> tox_loess:tox_loess_required_workspace_c: Recommend workspace sizes based on Netlib exact formulas
 #' Recommend workspace sizes based on Netlib exact formulas
 #'
@@ -3597,21 +3570,25 @@ tox_loess <- function(x, y, span = 0.7, degree = 2, mode = 1, n_iters = 3) {
   return(result$yhat)
 }
 
-#> f42_utils:compute_empirical_p_values_c: Compute empirical p-values
-#' Calculate empirical p-values for a given distribution
-#' Because distances are non-negative, a one-sided upper-tail empirical p-value is used.
+#> f42_utils:compute_scaled_distance_quantile_c: Compute the empirical quantile (effect-size measure) of a distribution
+#' Calculate the empirical quantile (effect-size measure) for a given distribution
+#'
+#' This is NOT a null-hypothesis-testing p-value: each value is compared against the observed
+#' distribution it was drawn from, not an independently generated null distribution. It measures
+#' how extreme an observed value is relative to all observed values.
+#' Because distances are non-negative, a one-sided upper-tail quantile is used.
 #' @param distribution A numeric vector representing the distribution of values.
 #' @param c_const A constant used in the computation, typically 1.
 #'
-#' @return A numeric vector of p-values corresponding to the input distribution.
+#' @return A numeric vector of empirical quantiles corresponding to the input distribution.
 #' @export
 #'
 #' @examples
 #' distribution <- c(0.5, 1.2, 0.8, 0.3)
 #' c_const <- 1
-#' p_values <- compute_empirical_p_values(distribution, c_const)
-#' print(p_values)
-compute_empirical_p_values <- function(distribution, c_const) {
-  result <- tox_empirical_p_values_rcpp(distribution, c_const)
+#' quantile <- compute_scaled_distance_quantile(distribution, c_const)
+#' print(quantile)
+compute_scaled_distance_quantile <- function(distribution, c_const) {
+  result <- tox_scaled_distance_quantile_rcpp(distribution, c_const)
   return(result)
 }

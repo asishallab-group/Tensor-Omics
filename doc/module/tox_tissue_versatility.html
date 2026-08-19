@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_tissue_versatility &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for modules and submodules.">65 statements</a>
+                 title=" 0.9% of total for modules and submodules.">74 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -141,6 +142,7 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_tissue_versatility.html#proc-compute_tissue_versatility">compute_tissue_versatility</a>
+            <a class="list-group-item" href="../module/tox_tissue_versatility.html#proc-compute_tissue_versatility_helper">compute_tissue_versatility_helper</a>
         </div>
       </div>
     </div>
@@ -168,6 +170,7 @@ quantifying how uniformly a gene is expressed across selected axes (tissues).</p
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
@@ -193,7 +196,11 @@ quantifying how uniformly a gene is expressed across selected axes (tissues).</p
     <div class="card-header codesum"><span class="anchor" id="proc-compute_tissue_versatility"></span> <h3>public pure subroutine <a href='../proc/compute_tissue_versatility.html'>compute_tissue_versatility</a>(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Computes normalized tissue versatility for selected expression vectors.
 The metric is based on the angle between each gene expression vector and the space diagonal.
 Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p>
@@ -211,7 +218,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes"></span>
+              <span class="anchor" id="variable-n_axes~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -226,7 +233,7 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vectors"></span>
+              <span class="anchor" id="variable-n_vectors~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -241,15 +248,15 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~2"></span>
+              <span class="anchor" id="variable-expression_vectors~11"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_axes, n_vectors)
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(n_axes,n_vectors)</td>
+            <td><strong>expression_vectors</strong></td>
             <td>
 <p>2D array (n_axes, n_vectors), each column is a gene expression vector</p>
             </td>
@@ -259,12 +266,12 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-exp_vecs_selection_index"></span>
               logical,
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_vectors)
             </td>
             <td>::</td>
-            <td><strong>exp_vecs_selection_index</strong>(n_vectors)</td>
+            <td><strong>exp_vecs_selection_index</strong></td>
             <td>
 <p>Logical array (n_vectors), .TRUE. for vectors to process</p>
             </td>
@@ -289,12 +296,12 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-axes_selection"></span>
               logical,
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_axes)
             </td>
             <td>::</td>
-            <td><strong>axes_selection</strong>(n_axes)</td>
+            <td><strong>axes_selection</strong></td>
             <td>
 <p>Logical array (n_axes), .TRUE. for axes to include in calculation</p>
             </td>
@@ -319,12 +326,12 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-tissue_versatilities"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_selected_vectors)
             </td>
             <td>::</td>
-            <td><strong>tissue_versatilities</strong>(n_selected_vectors)</td>
+            <td><strong>tissue_versatilities</strong></td>
             <td>
 <p>Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities</p>
             </td>
@@ -334,19 +341,19 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
               <span class="anchor" id="variable-tissue_angles_deg"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_selected_vectors)
             </td>
             <td>::</td>
-            <td><strong>tissue_angles_deg</strong>(n_selected_vectors)</td>
+            <td><strong>tissue_angles_deg</strong></td>
             <td>
 <p>Output, real array, length = n_selected_vectors, stores the calculated angles in degrees</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~123"></span>
+              <span class="anchor" id="variable-ierr~162"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -356,7 +363,173 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code: 0 = success, non-zero = error</p>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_tissue_versatility_helper"></span> <h3>public pure subroutine <a href='../proc/compute_tissue_versatility_helper.html'>compute_tissue_versatility_helper</a>(n_axes, n_vectors, expression_vectors, exp_vecs_selection_index, n_selected_vectors, axes_selection, n_selected_axes, tissue_versatilities, tissue_angles_deg)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Computes normalized tissue versatility for selected expression vectors.
+The metric is based on the angle between each gene expression vector and the space diagonal.
+Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>Number of axes (tissues/dimensions)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_vectors~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_vectors</strong></td>
+            <td>
+<p>Number of expression vectors (genes)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_vectors~12"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes, n_vectors)
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong></td>
+            <td>
+<p>2D array (n_axes, n_vectors), each column is a gene expression vector</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-exp_vecs_selection_index~2"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_vectors)
+            </td>
+            <td>::</td>
+            <td><strong>exp_vecs_selection_index</strong></td>
+            <td>
+<p>Logical array (n_vectors), .TRUE. for vectors to process</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_vectors~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_vectors</strong></td>
+            <td>
+<p>Number of selected expression vectors (count of .TRUE. in exp_vecs_selection_index)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-axes_selection~2"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>axes_selection</strong></td>
+            <td>
+<p>Logical array (n_axes), .TRUE. for axes to include in calculation</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_axes~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_axes</strong></td>
+            <td>
+<p>Number of selected axes (count of .TRUE. in axes_selection)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tissue_versatilities~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_selected_vectors)
+            </td>
+            <td>::</td>
+            <td><strong>tissue_versatilities</strong></td>
+            <td>
+<p>Output, real array, length = n_selected_vectors, stores the calculated tissue versatilities</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tissue_angles_deg~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_selected_vectors)
+            </td>
+            <td>::</td>
+            <td><strong>tissue_angles_deg</strong></td>
+            <td>
+<p>Output, real array, length = n_selected_vectors, stores the calculated angles in degrees</p>
             </td>
         </tr>
     </tbody>
@@ -382,14 +555,14 @@ Versatility is normalized to [0, 1], where 0 means uniform expression and 1 mean
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_relative_axis_plane_tools &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.6% of total for modules and submodules.">228 statements</a>
+                 title=" 3.2% of total for modules and submodules.">271 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -152,11 +153,17 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-omics_vector_rap_projection">omics_vector_RAP_projection</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-omics_vector_rap_projection_helper">omics_vector_RAP_projection_helper</a>
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-omics_field_rap_projection">omics_field_RAP_projection</a>
-            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-project_selected_vecs_onto_rap">project_selected_vecs_onto_rap</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-omics_field_rap_projection_helper">omics_field_RAP_projection_helper</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-project_selected_vecs_onto_rap_helper">project_selected_vecs_onto_rap_helper</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-validate_selected_axes_for_signed_helper">validate_selected_axes_for_signed_helper</a>
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-clock_hand_angle_between_vectors">clock_hand_angle_between_vectors</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-clock_hand_angle_between_vectors_helper">clock_hand_angle_between_vectors_helper</a>
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-clock_hand_angles_for_shift_vectors">clock_hand_angles_for_shift_vectors</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-clock_hand_angles_for_shift_vectors_helper">clock_hand_angles_for_shift_vectors_helper</a>
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-compute_relative_axis_contributions">compute_relative_axis_contributions</a>
+            <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-compute_relative_axis_contributions_helper">compute_relative_axis_contributions_helper</a>
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-relative_axes_changes_from_shift_vector">relative_axes_changes_from_shift_vector</a>
             <a class="list-group-item" href="../module/tox_relative_axis_plane_tools.html#proc-relative_axes_expression_from_expression_vector">relative_axes_expression_from_expression_vector</a>
         </div>
@@ -184,7 +191,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
+                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
@@ -209,7 +216,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-cross_product_orientation_sign"></span> <h3>public pure function <a href='../proc/cross_product_orientation_sign.html'>cross_product_orientation_sign</a>(a, b, n_dims, selected_axes) result(orientation_sign)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute orientation sign from cross product of two vectors, using selected axes</p>
 
   <h4>Arguments</h4>
@@ -225,7 +236,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-a"></span>
+              <span class="anchor" id="variable-a~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -235,12 +246,12 @@
             <td>::</td>
             <td><strong>a</strong>(n_dims)</td>
             <td>
-
+<p>First vector</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-b"></span>
+              <span class="anchor" id="variable-b~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -250,12 +261,12 @@
             <td>::</td>
             <td><strong>b</strong>(n_dims)</td>
             <td>
-
+<p>Second vector</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~9"></span>
+              <span class="anchor" id="variable-n_dims~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -265,7 +276,7 @@
             <td>::</td>
             <td><strong>n_dims</strong></td>
             <td>
-
+<p>Dimension of both vectors <code>a</code> and <code>b</code></p>
             </td>
         </tr>
         <tr>
@@ -280,7 +291,7 @@
             <td>::</td>
             <td><strong>selected_axes</strong>(3)</td>
             <td>
-
+<p>Indices of the 3 axes of <code>a</code>/<code>b</code> to project onto for the cross product (all must be unique)</p>
             </td>
         </tr>
     </tbody>
@@ -290,7 +301,7 @@
     Return Value
     <small>real(kind=real64)</small>
     </h4>
-    
+    <p><code>+1.0</code> or <code>-1.0</code>, the sign of the (selected-axes) cross product <code>a x b</code></p>
 
     </div>
   </div>
@@ -304,7 +315,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-omics_vector_rap_projection"></span> <h3>public pure subroutine <a href='../proc/omics_vector_rap_projection.html'>omics_vector_RAP_projection</a>(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.</p>
 
   <h4>Arguments</h4>
@@ -335,7 +350,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~3"></span>
+              <span class="anchor" id="variable-n_axes~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -410,7 +425,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~3"></span>
+              <span class="anchor" id="variable-n_selected_axes~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -440,7 +455,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~190"></span>
+              <span class="anchor" id="variable-ierr~284"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -461,11 +476,15 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-omics_field_rap_projection"></span> <h3>public pure subroutine <a href='../proc/omics_field_rap_projection.html'>omics_field_RAP_projection</a>(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-omics_vector_rap_projection_helper"></span> <h3>public pure subroutine <a href='../proc/omics_vector_rap_projection_helper.html'>omics_vector_RAP_projection_helper</a>(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Project selected vectors (e.g. expression vectors) onto the RAP constructed from a selected set of axes.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -485,17 +504,17 @@
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(2 * n_axes, n_vecs)
+              dimension(n_axes, n_vecs)
             </td>
             <td>::</td>
             <td><strong>vecs</strong></td>
             <td>
-<p>matrix with vector fields, first n rows mean vector origin, last n rows vector targets</p>
+<p>matrix with expression vectors</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~4"></span>
+              <span class="anchor" id="variable-n_axes~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -570,7 +589,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~4"></span>
+              <span class="anchor" id="variable-n_selected_axes~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -598,9 +617,158 @@
 <p>projected vectors</p>
             </td>
         </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-omics_field_rap_projection"></span> <h3>public pure subroutine <a href='../proc/omics_field_rap_projection.html'>omics_field_RAP_projection</a>(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~191"></span>
+              <span class="anchor" id="variable-fields~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes, 2, n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields</strong></td>
+            <td>
+<p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>number of axes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_fields"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_fields</strong></td>
+            <td>
+<p>number of vectors per axis</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fields_selection_mask"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields_selection_mask</strong></td>
+            <td>
+<p><code>.true.</code> for vectors where projection is to be computed</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_fields"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_fields</strong></td>
+            <td>
+<p>count of <code>.true.</code> values in <code>fields_selection_mask</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-axes_selection_mask~3"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>axes_selection_mask</strong></td>
+            <td>
+<p><code>.true.</code> for axes to be included in RAP</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_axes~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_axes</strong></td>
+            <td>
+<p>count of <code>.true.</code> values in <code>axes_selection_mask</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-projections~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_selected_axes, n_selected_fields)
+            </td>
+            <td>::</td>
+            <td><strong>projections</strong></td>
+            <td>
+<p>projected vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~285"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -621,10 +789,163 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-project_selected_vecs_onto_rap"></span> <h3>public pure subroutine <a href='../proc/project_selected_vecs_onto_rap.html'>project_selected_vecs_onto_rap</a>(selected_vecs, n_selected_axes, n_selected_vecs)  
+    <div class="card-header codesum"><span class="anchor" id="proc-omics_field_rap_projection_helper"></span> <h3>public pure subroutine <a href='../proc/omics_field_rap_projection_helper.html'>omics_field_RAP_projection_helper</a>(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fields~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes, 2, n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields</strong></td>
+            <td>
+<p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~13"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>number of axes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_fields~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_fields</strong></td>
+            <td>
+<p>number of vectors per axis</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fields_selection_mask~2"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields_selection_mask</strong></td>
+            <td>
+<p><code>.true.</code> for vectors where projection is to be computed</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_fields~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_fields</strong></td>
+            <td>
+<p>count of <code>.true.</code> values in <code>fields_selection_mask</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-axes_selection_mask~4"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>axes_selection_mask</strong></td>
+            <td>
+<p><code>.true.</code> for axes to be included in RAP</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_axes~7"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_axes</strong></td>
+            <td>
+<p>count of <code>.true.</code> values in <code>axes_selection_mask</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-projections~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_selected_axes, n_selected_fields)
+            </td>
+            <td>::</td>
+            <td><strong>projections</strong></td>
+            <td>
+<p>projected vectors</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-project_selected_vecs_onto_rap_helper"></span> <h3>public pure subroutine <a href='../proc/project_selected_vecs_onto_rap_helper.html'>project_selected_vecs_onto_rap_helper</a>(selected_vecs, n_selected_axes, n_selected_vecs)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Projects selected vectors onto its RAP</p>
 
   <h4>Arguments</h4>
@@ -655,7 +976,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~5"></span>
+              <span class="anchor" id="variable-n_selected_axes~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -691,10 +1012,103 @@
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_selected_axes_for_signed_helper"></span> <h3>public pure subroutine <a href='../proc/validate_selected_axes_for_signed_helper.html'>validate_selected_axes_for_signed_helper</a>(selected_axes_for_signed, ierr, n_dims, arg_pos)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Does the validation of the <code>selected_axes_for_signed</code> input</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-selected_axes_for_signed"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(3)
+            </td>
+            <td>::</td>
+            <td><strong>selected_axes_for_signed</strong></td>
+            <td>
+<p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~286"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~19"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>Dimension of both vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angle_between_vectors"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angle_between_vectors.html'>clock_hand_angle_between_vectors</a>(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.
 Calculates the signed rotation angle between two normalized vectors in RAP space.
 For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes for directionality.</p>
@@ -712,7 +1126,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1"></span>
+              <span class="anchor" id="variable-v1~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -727,7 +1141,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2"></span>
+              <span class="anchor" id="variable-v2~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -742,7 +1156,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~7"></span>
+              <span class="anchor" id="variable-n_dims~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -772,7 +1186,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed"></span>
+              <span class="anchor" id="variable-selected_axes_for_signed~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -782,12 +1196,12 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
             <td>::</td>
             <td><strong>selected_axes_for_signed</strong></td>
             <td>
-<p>Indices of 3 axes to use for directionality calculation (ignored if n_dims &lt;= 3)</p>
+<p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~192"></span>
+              <span class="anchor" id="variable-ierr~287"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -808,13 +1222,17 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angles_for_shift_vectors"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angles_for_shift_vectors.html'>clock_hand_angles_for_shift_vectors</a>(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angle_between_vectors_helper"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angle_between_vectors_helper.html'>clock_hand_angle_between_vectors_helper</a>(v1, v2, n_dims, signed_angle, selected_axes_for_signed)  
 </h3></div>
     <div class="card-body">
-          
-  <p>Compute signed rotation angles between RAP-projected and normalized vector pairs.
-Takes separate arrays of RAP-projected and normalized vectors (e.g. expression centroids and paralogs) and computes the signed rotation angle between corresponding pairs.
-This measures both magnitude and directionality of angular separation in RAP space.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+Calculates the signed rotation angle between two normalized vectors in RAP space.
+For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes for directionality.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -829,37 +1247,126 @@ This measures both magnitude and directionality of angular separation in RAP spa
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-origins"></span>
+              <span class="anchor" id="variable-v1~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_dims, n_vecs)
+              dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>origins</strong></td>
+            <td><strong>v1</strong></td>
             <td>
-<p>First set of RAP-projected, normalized vectors (e.g. expression centroids)</p>
+<p>First normalized vector in RAP space</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-targets"></span>
+              <span class="anchor" id="variable-v2~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_dims, n_vecs)
+              dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>targets</strong></td>
+            <td><strong>v2</strong></td>
             <td>
-<p>Second set of RAP-projected, normalized vectors (e.g. paralogs)</p>
+<p>Second normalized vector in RAP space</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~8"></span>
+              <span class="anchor" id="variable-n_dims~21"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>Dimension of both vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-signed_angle~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>signed_angle</strong></td>
+            <td>
+<p>Signed angle between vectors in radians [-π, π]</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-selected_axes_for_signed~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(3)
+            </td>
+            <td>::</td>
+            <td><strong>selected_axes_for_signed</strong></td>
+            <td>
+<p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angles_for_shift_vectors"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angles_for_shift_vectors.html'>clock_hand_angles_for_shift_vectors</a>(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, selected_axes_for_signed, signed_angles, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute signed rotation angles between for shift vectors, so between their origin and target</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fields~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims, 2, n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields</strong></td>
+            <td>
+<p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -874,7 +1381,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vecs~3"></span>
+              <span class="anchor" id="variable-n_fields~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -882,29 +1389,29 @@ This measures both magnitude and directionality of angular separation in RAP spa
               
             </td>
             <td>::</td>
-            <td><strong>n_vecs</strong></td>
+            <td><strong>n_fields</strong></td>
             <td>
-<p>Number of vector pairs</p>
+<p>Number of vector fields</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs_selection_mask~3"></span>
+              <span class="anchor" id="variable-fields_selection_mask~3"></span>
               logical,
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_vecs)
+              dimension(n_fields)
             </td>
             <td>::</td>
-            <td><strong>vecs_selection_mask</strong></td>
+            <td><strong>fields_selection_mask</strong></td>
             <td>
 <p>.true. for vector pairs where angle should be computed</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vecs~4"></span>
+              <span class="anchor" id="variable-n_selected_fields~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -912,14 +1419,14 @@ This measures both magnitude and directionality of angular separation in RAP spa
               
             </td>
             <td>::</td>
-            <td><strong>n_selected_vecs</strong></td>
+            <td><strong>n_selected_fields</strong></td>
             <td>
-<p>Count of .true. values in vecs_selection_mask</p>
+<p>Count of .true. values in fields_selection_mask</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed~2"></span>
+              <span class="anchor" id="variable-selected_axes_for_signed~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -929,7 +1436,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
             <td>::</td>
             <td><strong>selected_axes_for_signed</strong></td>
             <td>
-<p>Indices of 3 axes to use for directionality calculation (ignored if n_dims &lt;= 3)</p>
+<p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
             </td>
         </tr>
         <tr>
@@ -939,7 +1446,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_selected_vecs)
+              dimension(n_selected_fields)
             </td>
             <td>::</td>
             <td><strong>signed_angles</strong></td>
@@ -949,7 +1456,7 @@ This measures both magnitude and directionality of angular separation in RAP spa
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~193"></span>
+              <span class="anchor" id="variable-ierr~288"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -970,10 +1477,148 @@ This measures both magnitude and directionality of angular separation in RAP spa
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-clock_hand_angles_for_shift_vectors_helper"></span> <h3>public pure subroutine <a href='../proc/clock_hand_angles_for_shift_vectors_helper.html'>clock_hand_angles_for_shift_vectors_helper</a>(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, selected_axes_for_signed, signed_angles)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Compute signed rotation angles between for shift vectors, so between their origin and target</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fields~7"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims, 2, n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields</strong></td>
+            <td>
+<p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_dims~23"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_dims</strong></td>
+            <td>
+<p>Dimension of each vector in RAP space</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_fields~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_fields</strong></td>
+            <td>
+<p>Number of vector pairs</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fields_selection_mask~4"></span>
+              logical,
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_fields)
+            </td>
+            <td>::</td>
+            <td><strong>fields_selection_mask</strong></td>
+            <td>
+<p>.true. for vector pairs where angle should be computed</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_selected_fields~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_selected_fields</strong></td>
+            <td>
+<p>Count of .true. values in fields_selection_mask</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-selected_axes_for_signed~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(3)
+            </td>
+            <td>::</td>
+            <td><strong>selected_axes_for_signed</strong></td>
+            <td>
+<p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-signed_angles~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_selected_fields)
+            </td>
+            <td>::</td>
+            <td><strong>signed_angles</strong></td>
+            <td>
+<p>Signed rotation angles between vector pairs in radians [-π, π]</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-compute_relative_axis_contributions"></span> <h3>public pure subroutine <a href='../proc/compute_relative_axis_contributions.html'>compute_relative_axis_contributions</a>(vec, n_axes, contributions, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
 Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.</p>
 
@@ -990,7 +1635,7 @@ Shared utility: computes fractional contribution of each axis to a RAP-projected
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec"></span>
+              <span class="anchor" id="variable-vec~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1005,7 +1650,7 @@ Shared utility: computes fractional contribution of each axis to a RAP-projected
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~5"></span>
+              <span class="anchor" id="variable-n_axes~14"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1035,7 +1680,97 @@ Shared utility: computes fractional contribution of each axis to a RAP-projected
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~194"></span>
+              <span class="anchor" id="variable-ierr~289"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_relative_axis_contributions_helper"></span> <h3>public pure subroutine <a href='../proc/compute_relative_axis_contributions_helper.html'>compute_relative_axis_contributions_helper</a>(vec, n_axes, contributions, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>(no input validation) Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+Shared utility: computes fractional contribution of each axis to a RAP-projected and normalized vector.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>RAP-projected and normalized vector (expression or shift)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~15"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>Number of axes (length of vec and contributions)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-contributions~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>contributions</strong></td>
+            <td>
+<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~290"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1059,7 +1794,11 @@ Shared utility: computes fractional contribution of each axis to a RAP-projected
     <div class="card-header codesum"><span class="anchor" id="proc-relative_axes_changes_from_shift_vector"></span> <h3>public pure subroutine <a href='../proc/relative_axes_changes_from_shift_vector.html'>relative_axes_changes_from_shift_vector</a>(vec, n_axes, contributions, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
 Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)</p>
 
@@ -1076,7 +1815,7 @@ Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)</p
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vec~2"></span>
+              <span class="anchor" id="variable-vec~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1091,93 +1830,7 @@ Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_axes</strong></td>
-            <td>
-<p>Number of axes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-contributions~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_axes)
-            </td>
-            <td>::</td>
-            <td><strong>contributions</strong></td>
-            <td>
-<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~195"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-relative_axes_expression_from_expression_vector"></span> <h3>public pure subroutine <a href='../proc/relative_axes_expression_from_expression_vector.html'>relative_axes_expression_from_expression_vector</a>(vec, n_axes, contributions, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
-Wrapper for single RAP-projected expression vectors</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-vec~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_axes)
-            </td>
-            <td>::</td>
-            <td><strong>vec</strong></td>
-            <td>
-<p>RAP-projected and normalized expression vector</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_axes~7"></span>
+              <span class="anchor" id="variable-n_axes~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1207,7 +1860,97 @@ Wrapper for single RAP-projected expression vectors</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~196"></span>
+              <span class="anchor" id="variable-ierr~291"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-relative_axes_expression_from_expression_vector"></span> <h3>public pure subroutine <a href='../proc/relative_axes_expression_from_expression_vector.html'>relative_axes_expression_from_expression_vector</a>(vec, n_axes, contributions, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+Wrapper for single RAP-projected expression vectors</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-vec~8"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>vec</strong></td>
+            <td>
+<p>RAP-projected and normalized expression vector</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_axes~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_axes</strong></td>
+            <td>
+<p>Number of axes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-contributions~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_axes)
+            </td>
+            <td>::</td>
+            <td><strong>contributions</strong></td>
+            <td>
+<p>Fractional contribution of each axis (output), values in [0,1], sum to 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~292"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1243,14 +1986,14 @@ Wrapper for single RAP-projected expression vectors</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

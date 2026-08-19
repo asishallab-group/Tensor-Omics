@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="./favicon.png">
 
     <title> TensorOmics </title>
@@ -79,24 +79,28 @@
   <!-- Main component for a primary marketing message or call to action -->
 
       <div class="row" id='text'>
-        <div class=col-md-8>
+        <div class=col-md-12>
           <h1>TensorOmics</h1>
-          
+          <p>Tensor Omics is a high-performance framework for explainable, geometry-based analysis of multimodal omics and related high-dimensional datasets. Instead of relying on black-box models, it treats expression profiles, clinical measures, or socioeconomic indicators as vectors in semantically meaningful spaces (e.g. tissues, disease stages, conditions). By measuring distances, angles, projections, and trajectories in these spaces, Tensor Omics enables direct comparison of activity across genes, paralogs, sexes, species, or patient groups. This geometric approach makes complex multivariate patterns interpretable and reproducible while remaining robust to sparsity and noise.</p>
+<p>Designed for distributed high-performance computing, Tensor Omics is implemented in Fortran and C with OpenMP parallelisation, SIMD optimisation, and Fortran Coarrays, making the algorithms embarrassingly parallel and suitable for federated datasets where privacy and efficiency are critical. Scientific use cases include: detecting disease biomarkers and subtype-specific trajectories in medical data; quantifying divergence and neofunctionalization of gene duplicates in plant and animal transcriptomes; and reconstructing global gender-equality trajectories from socioeconomic indicators. Across these domains, Tensor Omics provides a unified, geometry-driven methodology for discovering explanatory patterns in heterogeneous, high-dimensional data.</p>
+<h2>Key Features</h2>
+<ul>
+<li><strong>Geometry-based analysis</strong>: distances, angles, projections, and trajectory shifts are used as primary primitives.</li>
+<li><strong>Explainable outputs</strong>: results are interpretable in terms of vector geometry rather than opaque model coefficients.</li>
+<li><strong>Multi-modal integration</strong>: unifies transcriptomics, proteomics, metabolomics, clinical, or socioeconomic data within one framework.</li>
+<li><strong>Parallel and federated</strong>: implemented in Fortran/C with OpenMP, SIMD, and coarrays for efficient large-scale computation on distributed datasets.</li>
+<li><strong>Robust to sparsity and noise</strong>: percentile-based empirical thresholds and local geometric measures enable stability.</li>
+<li><strong>Broad applications</strong>: demonstrated on medical biomarker discovery, gene duplication outcomes, developmental trajectories, and socioeconomic indicators.</li>
+</ul>
+<p><em>Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.</em></p>
         </div>
-          <div class="col-md-4">
-            <div class="card card-body bg-light">
-              <h2 class="card-title">Developer Info</h2>
-              <h4 class="card-text">TensorOmics Developers</h4>
-              <p class="card-text"></p>
-            </div>
-          </div>
       </div>
         <div class="row">
           <hr>
           <div class="col-xs-6 col-sm-3">
             <div>
               <h3>Source Files</h3>
-              <ul><li><a href='sourcefile/config.f90.html'>config.F90</a></li><li><a href='sourcefile/f42_array_utils.f90.html'>f42_array_utils.F90</a></li><li><a href='sourcefile/f42_binary_search_tree.f90.html'>f42_binary_search_tree.F90</a></li><li><a href='sourcefile/f42_deserialize_char.f90.html'>f42_deserialize_char.F90</a></li><li><a href='sourcefile/f42_deserialize_complex.f90.html'>f42_deserialize_complex.F90</a></li><li><a href='sourcefile/f42_deserialize_int.f90.html'>f42_deserialize_int.F90</a></li><li><a href='sourcefile/f42_deserialize_logical.f90.html'>f42_deserialize_logical.F90</a></li><li><a href='sourcefile/f42_deserialize_real.f90.html'>f42_deserialize_real.F90</a></li><li><a href='sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></li><li><a href='sourcefile/f42_serialize_char.f90.html'>f42_serialize_char.F90</a></li></ul>
+              <ul><li><a href='sourcefile/config.f90.html'>config.F90</a></li><li><a href='sourcefile/f42_binary_search_tree.f90.html'>f42_binary_search_tree.F90</a></li><li><a href='sourcefile/f42_kd_tree.f90.html'>f42_kd_tree.F90</a></li><li><a href='sourcefile/f42_serde_arrays_deserialize.f90.html'>f42_serde_arrays_deserialize.F90</a></li><li><a href='sourcefile/f42_serde_arrays_deserialize_char.f90.html'>f42_serde_arrays_deserialize_char.F90</a></li><li><a href='sourcefile/f42_serde_arrays_deserialize_complex.f90.html'>f42_serde_arrays_deserialize_complex.F90</a></li><li><a href='sourcefile/f42_serde_arrays_deserialize_int.f90.html'>f42_serde_arrays_deserialize_int.F90</a></li><li><a href='sourcefile/f42_serde_arrays_deserialize_logical.f90.html'>f42_serde_arrays_deserialize_logical.F90</a></li><li><a href='sourcefile/f42_serde_arrays_deserialize_real.f90.html'>f42_serde_arrays_deserialize_real.F90</a></li><li><a href='sourcefile/f42_serde_arrays_serialize.f90.html'>f42_serde_arrays_serialize.F90</a></li></ul>
             </div>
             <div>
               <ul>
@@ -107,7 +111,7 @@
           <div class="col-xs-6 col-sm-3">
             <div>
               <h3>Modules</h3>
-              <ul><li><a href='module/config.html'>config</a></li><li><a href='module/f42_array_utils.html'>f42_array_utils</a></li><li><a href='module/f42_binary_search_tree.html'>f42_binary_search_tree</a></li><li><a href='module/f42_deserialize_char.html'>f42_deserialize_char</a></li><li><a href='module/f42_deserialize_complex.html'>f42_deserialize_complex</a></li><li><a href='module/f42_deserialize_int.html'>f42_deserialize_int</a></li><li><a href='module/f42_deserialize_logical.html'>f42_deserialize_logical</a></li><li><a href='module/f42_deserialize_real.html'>f42_deserialize_real</a></li><li><a href='module/f42_kd_tree.html'>f42_kd_tree</a></li><li><a href='module/f42_serialize_char.html'>f42_serialize_char</a></li></ul>
+              <ul><li><a href='module/config.html'>config</a></li><li><a href='module/f42_binary_search_tree.html'>f42_binary_search_tree</a></li><li><a href='module/f42_kd_tree.html'>f42_kd_tree</a></li><li><a href='module/f42_serde_arrays_deserialize.html'>f42_serde_arrays_deserialize</a></li><li><a href='module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></li><li><a href='module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></li><li><a href='module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></li><li><a href='module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></li><li><a href='module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></li><li><a href='module/f42_serde_arrays_serialize.html'>f42_serde_arrays_serialize</a></li></ul>
             </div>
             <div>
               <ul>
@@ -118,7 +122,7 @@
           <div class="col-xs-6 col-sm-3">
             <div>
               <h3>Procedures</h3>
-              <ul><li><a href='proc/above.html'>above</a></li><li><a href='proc/add_data_to_zip.html'>add_data_to_zip</a></li><li><a href='proc/add_new_active_mask_helper.html'>add_new_active_mask_helper</a></li><li><a href='proc/add_to_results_helper.html'>add_to_results_helper</a></li><li><a href='proc/add_vector.html'>add_vector</a></li><li><a href='proc/angle_between.html'>angle_between</a></li><li><a href='proc/apply_unassigned_mask.html'>apply_unassigned_mask</a></li><li><a href='proc/below.html'>below</a></li><li><a href='proc/bst_range_query.html'>bst_range_query</a></li><li><a href='proc/bst_range_query_c.html'>bst_range_query_C</a></li></ul>
+              <ul><li><a href='proc/above.html'>above</a></li><li><a href='proc/add_data_to_zip.html'>add_data_to_zip</a></li><li><a href='proc/add_new_active_mask_helper.html'>add_new_active_mask_helper</a></li><li><a href='proc/add_to_results_helper.html'>add_to_results_helper</a></li><li><a href='proc/add_vector.html'>add_vector</a></li><li><a href='proc/angle_between.html'>angle_between</a></li><li><a href='proc/apply_unassigned_mask.html'>apply_unassigned_mask</a></li><li><a href='proc/below.html'>below</a></li><li><a href='proc/binary_search.html'>binary_search</a></li><li><a href='proc/binary_search_insertion.html'>binary_search_insertion</a></li></ul>
             </div>
             <div>
               <ul>
@@ -146,14 +150,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

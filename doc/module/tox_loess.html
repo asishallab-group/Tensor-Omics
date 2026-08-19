@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_loess &ndash; TensorOmics</title>
@@ -85,11 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.1% of total for modules and submodules.">273 statements</a>
+                 title=" 3.2% of total for modules and submodules.">273 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -188,7 +188,13 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Wraps the netlib LOESS (<code>dloess</code>/<code>lowesd</code> family) Fortran routines for local polynomial regression smoothing.
+This module exposes the netlib subroutines through Fortran interfaces (see below) and provides
+higher-level wrappers (<a href="../proc/loess_fit_plain.html">loess_fit_plain</a>, <a href="../proc/loess_fit_robust.html">loess_fit_robust</a>,
+<a href="../proc/loess_alloc.html">loess_alloc</a>) that size the required integer/real workspace and
+handle degenerate inputs (a single data point, a near-constant <code>x</code>, or too few unique <code>x</code> values for
+the requested polynomial degree) before delegating to the netlib fitting/evaluation routines. The
+netlib routines themselves are not re-documented here beyond their calling convention.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
@@ -234,7 +240,9 @@ parameter
 <td> =</td>
                 <td>1.0e-12_real64</td>
             <td>
-                
+                <p>Minimum allowed LOESS <code>span</code> and a general-purpose small epsilon used across this module
+(and by callers such as <a href="../proc/compute_family_scaling.html">compute_family_scaling</a>) to
+guard against division/log by (near-)zero.</p>
             </td>
         </tr>
     </tbody>
@@ -255,7 +263,7 @@ parameter
     <ul class="list-group">
           <li class="list-group-item">
                 <h3>
-    public  subroutine lowesd(mode, int_workspace, int_workspace_size, real_workspace_size, real_workspace, dim, n, span, degree, nvmax, setlf)  
+    public  subroutine lowesd(iv19_code, int_workspace, int_workspace_size, real_workspace_size, real_workspace, n_dim, n, span, degree, max_neighborhood_size, save_factorization)  
 
     </h3>
   <p>Perform LOESS decomposition.
@@ -275,7 +283,7 @@ It initializes the integer and real workspace arrays based on the input paramete
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~4"></span>
+              <span class="anchor" id="variable-iv19_code"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -283,9 +291,10 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>iv19_code</strong></td>
             <td>
-                <p>Mode of operation</p>
+                <p>Packed netlib <code>iv(19)</code> model-selection code (family/surface/statistics digits); see
+<a href="../proc/loess_fit_plain.html">loess_fit_plain</a> for the fixed value used by this codebase.</p>
             </td>
         </tr>
         <tr>
@@ -350,7 +359,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dim"></span>
+              <span class="anchor" id="variable-n_dim"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -358,14 +367,14 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>dim</strong></td>
+            <td><strong>n_dim</strong></td>
             <td>
                 <p>Dimensionality of the data</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n"></span>
+              <span class="anchor" id="variable-n~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -380,7 +389,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~4"></span>
+              <span class="anchor" id="variable-span~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -395,7 +404,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~4"></span>
+              <span class="anchor" id="variable-degree~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -410,7 +419,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax"></span>
+              <span class="anchor" id="variable-max_neighborhood_size"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -418,14 +427,14 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
                 <p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~2"></span>
+              <span class="anchor" id="variable-save_factorization"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -433,7 +442,7 @@ It initializes the integer and real workspace arrays based on the input paramete
               
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
                 <p>Save matrix factorization flag</p>
             </td>
@@ -455,7 +464,7 @@ It initializes the integer and real workspace arrays based on the input paramete
     <ul class="list-group">
           <li class="list-group-item">
                 <h3>
-    public  subroutine lowesb(x, y, w, diagl, infl, int_workspace, int_workspace_size, real_workspace_size, real_workspace)  
+    public  subroutine lowesb(x, y, weights, hat_diag, compute_influence, int_workspace, int_workspace_size, real_workspace_size, real_workspace)  
 
     </h3>
   <p>Perform LOESS fitting.
@@ -475,7 +484,7 @@ It uses the input predictor and response variables to compute the diagonal eleme
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-x"></span>
+              <span class="anchor" id="variable-x~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -505,7 +514,7 @@ It uses the input predictor and response variables to compute the diagonal eleme
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-w"></span>
+              <span class="anchor" id="variable-weights~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -513,14 +522,14 @@ It uses the input predictor and response variables to compute the diagonal eleme
               
             </td>
             <td>::</td>
-            <td><strong>w</strong>(*)</td>
+            <td><strong>weights</strong>(*)</td>
             <td>
                 <p>Weight array for data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-diagl"></span>
+              <span class="anchor" id="variable-hat_diag"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -528,14 +537,14 @@ It uses the input predictor and response variables to compute the diagonal eleme
               
             </td>
             <td>::</td>
-            <td><strong>diagl</strong>(*)</td>
+            <td><strong>hat_diag</strong>(*)</td>
             <td>
                 <p>Diagonal elements of the hat matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-infl"></span>
+              <span class="anchor" id="variable-compute_influence"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -543,7 +552,7 @@ It uses the input predictor and response variables to compute the diagonal eleme
               
             </td>
             <td>::</td>
-            <td><strong>infl</strong></td>
+            <td><strong>compute_influence</strong></td>
             <td>
                 <p>Influence calculation flag</p>
             </td>
@@ -553,7 +562,7 @@ It uses the input predictor and response variables to compute the diagonal eleme
               <span class="anchor" id="variable-int_workspace~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(inout)</td>
               <td></td>            <td>
               
             </td>
@@ -705,7 +714,7 @@ It computes the smoothed response variable array based on the input predictor va
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~2"></span>
+              <span class="anchor" id="variable-n~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -800,7 +809,7 @@ It uses the residuals to update the weights for robust fitting.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~3"></span>
+              <span class="anchor" id="variable-n~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -860,10 +869,14 @@ It uses the residuals to update the weights for robust fitting.</p>
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-tox_loess_required_workspace"></span> <h3>public  subroutine <a href='../proc/tox_loess_required_workspace.html'>tox_loess_required_workspace</a>(d, nvmax, int_workspace_size, real_workspace_size, setlf)  
+    <div class="card-header codesum"><span class="anchor" id="proc-tox_loess_required_workspace"></span> <h3>public  subroutine <a href='../proc/tox_loess_required_workspace.html'>tox_loess_required_workspace</a>(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Recommend workspace sizes based on Netlib exact formulas.
 Computes the required sizes for integer and real workspace arrays.
 These sizes depend on the dimensionality of the data and the maximum neighborhood size.</p>
@@ -881,7 +894,7 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-d~2"></span>
+              <span class="anchor" id="variable-n_dim~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -889,14 +902,14 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
               
             </td>
             <td>::</td>
-            <td><strong>d</strong></td>
+            <td><strong>n_dim</strong></td>
             <td>
 <p>Dimensionality of the data</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax~2"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -904,7 +917,7 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
               
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
 <p>Maximum neighborhood size</p>
             </td>
@@ -941,7 +954,7 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~3"></span>
+              <span class="anchor" id="variable-save_factorization~2"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -949,7 +962,7 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
               
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
 <p>Save matrix factorization flag</p>
             </td>
@@ -962,13 +975,19 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_plain"></span> <h3>public  subroutine <a href='../proc/loess_fit_plain.html'>loess_fit_plain</a>(n, x, y, w, eval_points, span, degree, nvmax, infl, setlf, int_workspace, int_workspace_size, real_workspace, real_workspace_size, diagl, fitted_values, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_plain"></span> <h3>public  subroutine <a href='../proc/loess_fit_plain.html'>loess_fit_plain</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Perform plain LOESS fitting.
 Fits a LOESS model to the data using the specified smoothing parameter.
-Outputs the smoothed response variable array.</p>
+Outputs the smoothed response variable array. Caller-provided workspace must already be
+sized via <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>; no input validation
+beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-size bounds is performed here.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -983,7 +1002,7 @@ Outputs the smoothed response variable array.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~4"></span>
+              <span class="anchor" id="variable-n~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -998,7 +1017,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~2"></span>
+              <span class="anchor" id="variable-x~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1028,7 +1047,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-w~2"></span>
+              <span class="anchor" id="variable-weights~15"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1036,7 +1055,7 @@ Outputs the smoothed response variable array.</p>
               
             </td>
             <td>::</td>
-            <td><strong>w</strong>(n)</td>
+            <td><strong>weights</strong>(n)</td>
             <td>
 <p>Weight array for data points</p>
             </td>
@@ -1058,7 +1077,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~5"></span>
+              <span class="anchor" id="variable-span~10"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1073,7 +1092,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~5"></span>
+              <span class="anchor" id="variable-degree~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1088,7 +1107,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax~3"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1096,14 +1115,14 @@ Outputs the smoothed response variable array.</p>
               
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
 <p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-infl~2"></span>
+              <span class="anchor" id="variable-compute_influence~2"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -1111,14 +1130,14 @@ Outputs the smoothed response variable array.</p>
               
             </td>
             <td>::</td>
-            <td><strong>infl</strong></td>
+            <td><strong>compute_influence</strong></td>
             <td>
 <p>Influence calculation flag</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~4"></span>
+              <span class="anchor" id="variable-save_factorization~3"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -1126,7 +1145,7 @@ Outputs the smoothed response variable array.</p>
               
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
 <p>Save matrix factorization flag</p>
             </td>
@@ -1193,7 +1212,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-diagl~2"></span>
+              <span class="anchor" id="variable-hat_diag~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -1201,7 +1220,7 @@ Outputs the smoothed response variable array.</p>
               
             </td>
             <td>::</td>
-            <td><strong>diagl</strong>(n)</td>
+            <td><strong>hat_diag</strong>(n)</td>
             <td>
 <p>Diagonal elements of the hat matrix</p>
             </td>
@@ -1223,7 +1242,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~60"></span>
+              <span class="anchor" id="variable-ierr~278"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1244,10 +1263,14 @@ Outputs the smoothed response variable array.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_robust"></span> <h3>public  subroutine <a href='../proc/loess_fit_robust.html'>loess_fit_robust</a>(n, x, y, w, eval_points, span, degree, nvmax, infl, setlf, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, diagl, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_robust"></span> <h3>public  subroutine <a href='../proc/loess_fit_robust.html'>loess_fit_robust</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Perform robust LOESS fitting with bisquare reweighting.
 Fits a LOESS model to the data using robust iterations to handle outliers.
 The robust fitting process iterates n_iters times, each iteration:
@@ -1269,7 +1292,7 @@ The robust fitting process iterates n_iters times, each iteration:
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~5"></span>
+              <span class="anchor" id="variable-n~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1284,7 +1307,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~3"></span>
+              <span class="anchor" id="variable-x~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1314,7 +1337,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-w~3"></span>
+              <span class="anchor" id="variable-weights~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1322,7 +1345,7 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>w</strong>(n)</td>
+            <td><strong>weights</strong>(n)</td>
             <td>
 <p>Weight array for data points</p>
             </td>
@@ -1344,7 +1367,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~6"></span>
+              <span class="anchor" id="variable-span~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1359,7 +1382,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~6"></span>
+              <span class="anchor" id="variable-degree~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1374,7 +1397,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax~4"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1382,14 +1405,14 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
 <p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-infl~3"></span>
+              <span class="anchor" id="variable-compute_influence~3"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -1397,14 +1420,14 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>infl</strong></td>
+            <td><strong>compute_influence</strong></td>
             <td>
 <p>Influence calculation flag</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~5"></span>
+              <span class="anchor" id="variable-save_factorization~4"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -1412,7 +1435,7 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
 <p>Save matrix factorization flag</p>
             </td>
@@ -1494,7 +1517,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-diagl~3"></span>
+              <span class="anchor" id="variable-hat_diag~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -1502,7 +1525,7 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>diagl</strong>(n)</td>
+            <td><strong>hat_diag</strong>(n)</td>
             <td>
 <p>Diagonal elements of the hat matrix</p>
             </td>
@@ -1534,7 +1557,7 @@ The robust fitting process iterates n_iters times, each iteration:
             <td>::</td>
             <td><strong>combined_weights</strong>(n)</td>
             <td>
-<p>Combined weights: product of user weights and robust weights (w(i) * robust_weights(i))</p>
+<p>Combined weights: product of user weights and robust weights (weights(i) * robust_weights(i))</p>
             </td>
         </tr>
         <tr>
@@ -1584,7 +1607,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~61"></span>
+              <span class="anchor" id="variable-ierr~279"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1608,10 +1631,17 @@ The robust fitting process iterates n_iters times, each iteration:
     <div class="card-header codesum"><span class="anchor" id="proc-loess_alloc"></span> <h3>public  subroutine <a href='../proc/loess_alloc.html'>loess_alloc</a>(x, y, span, degree, fitted_values, mode, n_iters, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Wrapper subroutine for LOESS fitting (plain or robust).
 This subroutine selects between plain and robust LOESS fitting based on the mode.
-It dynamically allocates the required arrays and computes workspace sizes.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+It dynamically allocates the required arrays and computes workspace sizes, and handles
+degenerate inputs (single point, near-constant <code>x</code>, or fewer unique <code>x</code> values than the
+polynomial degree requires) by falling back to an identity/copy mapping instead of calling
+into netlib.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1626,7 +1656,7 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~4"></span>
+              <span class="anchor" id="variable-x~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1656,7 +1686,7 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~7"></span>
+              <span class="anchor" id="variable-span~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1671,7 +1701,7 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~7"></span>
+              <span class="anchor" id="variable-degree~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1701,7 +1731,7 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~5"></span>
+              <span class="anchor" id="variable-mode~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1731,7 +1761,7 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~62"></span>
+              <span class="anchor" id="variable-ierr~280"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1767,14 +1797,14 @@ It dynamically allocates the required arrays and computes workspace sizes.</p><a
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

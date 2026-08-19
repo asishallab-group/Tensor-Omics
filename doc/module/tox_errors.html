@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_errors &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.2% of total for modules and submodules.">189 statements</a>
+                 title=" 2.8% of total for modules and submodules.">243 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -145,7 +146,6 @@
             <a class="list-group-item" href="../module/tox_errors.html#variable-err_write_data">ERR_WRITE_DATA</a>
             <a class="list-group-item" href="../module/tox_errors.html#variable-err_file_add">ERR_FILE_ADD</a>
             <a class="list-group-item" href="../module/tox_errors.html#variable-err_file_extract">ERR_FILE_EXTRACT</a>
-            <a class="list-group-item" href="../module/tox_errors.html#variable-err_missing_manifest">ERR_MISSING_MANIFEST</a>
             <a class="list-group-item" href="../module/tox_errors.html#variable-err_file_close">ERR_FILE_CLOSE</a>
             <a class="list-group-item" href="../module/tox_errors.html#variable-err_invalid_format">ERR_INVALID_FORMAT</a>
             <a class="list-group-item" href="../module/tox_errors.html#variable-err_invalid_input">ERR_INVALID_INPUT</a>
@@ -183,6 +183,9 @@
       </a>
       <div id="funcs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_errors.html#proc-create_err_code">create_err_code</a>
+            <a class="list-group-item" href="../module/tox_errors.html#proc-get_err_code">get_err_code</a>
+            <a class="list-group-item" href="../module/tox_errors.html#proc-get_err_arg_pos">get_err_arg_pos</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-is_err">is_err</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-is_ok">is_ok</a>
         </div>
@@ -196,11 +199,11 @@
       </a>
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_errors.html#proc-map_err_arg_pos">map_err_arg_pos</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_ok">set_ok</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_err">set_err</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_err_once">set_err_once</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-check_io_stat">check_io_stat</a>
-            <a class="list-group-item" href="../module/tox_errors.html#proc-check_alloc_stat">check_alloc_stat</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-validate_dimension_size">validate_dimension_size</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-validate_type_code">validate_type_code</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-validate_in_range_int">validate_in_range_int</a>
@@ -233,8 +236,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
               </ul>
             </li>
         </ul>
@@ -322,7 +325,7 @@ parameter
 <td> =</td>
                 <td>103</td>
             <td>
-                <p>could not read array type code</p>
+                <p>could not read array type error</p>
             </td>
         </tr>
         <tr>
@@ -424,7 +427,7 @@ parameter
 <td> =</td>
                 <td>113</td>
             <td>
-                <p>could not write array type code</p>
+                <p>could not write array type error</p>
             </td>
         </tr>
         <tr>
@@ -531,23 +534,6 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-err_missing_manifest"></span>
-              integer(kind=int32),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>ERR_MISSING_MANIFEST</strong></td>
-<td> =</td>
-                <td>123</td>
-            <td>
-                <p>Manifest in zip file is missing</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
               <span class="anchor" id="variable-err_file_close"></span>
               integer(kind=int32),
             </td>
@@ -558,7 +544,7 @@ parameter
             <td>::</td>
             <td><strong>ERR_FILE_CLOSE</strong></td>
 <td> =</td>
-                <td>124</td>
+                <td>123</td>
             <td>
                 <p>Failed to close the file</p>
             </td>
@@ -848,6 +834,156 @@ parameter
         <section>
           <h2>Functions</h2>
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-create_err_code"></span> <h3>public pure function <a href='../proc/create_err_code.html'>create_err_code</a>(error, arg_pos) result(ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Creates the error code for an error and a specific argument position (if argument related)</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-error~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>error</strong></td>
+            <td>
+<p><code>ERR_*</code> error code from module constants</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-get_err_code"></span> <h3>public pure function <a href='../proc/get_err_code.html'>get_err_code</a>(ierr) result(error)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Extracts the error from the error code</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~87"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-get_err_arg_pos"></span> <h3>public pure function <a href='../proc/get_err_arg_pos.html'>get_err_arg_pos</a>(ierr) result(arg_pos)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Extracts the argument position from the error code</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~88"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>integer(kind=int32)</small>
+    </h4>
+    
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-is_err"></span> <h3>public pure function <a href='../proc/is_err.html'>is_err</a>(ierr) result(not_ok)  
 </h3></div>
     <div class="card-body">
@@ -867,7 +1003,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~238"></span>
+              <span class="anchor" id="variable-ierr~93"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -877,7 +1013,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -912,7 +1048,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~239"></span>
+              <span class="anchor" id="variable-ierr~94"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -922,7 +1058,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -943,7 +1079,77 @@ parameter
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-set_ok"></span> <h3>public pure subroutine <a href='../proc/set_ok.html'>set_ok</a>(ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-map_err_arg_pos"></span> <h3>public pure subroutine <a href='../proc/map_err_arg_pos.html'>map_err_arg_pos</a>(ierr, old, new)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~89"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-old"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>old</strong></td>
+            <td>
+<p>Argument position that should be mapped</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-new"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>new</strong></td>
+            <td>
+<p>New argument position</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-set_ok"></span> <h3>public elemental subroutine <a href='../proc/set_ok.html'>set_ok</a>(ierr)  
 </h3></div>
     <div class="card-body">
           
@@ -962,7 +1168,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~235"></span>
+              <span class="anchor" id="variable-ierr~90"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -972,7 +1178,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -983,11 +1189,11 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-set_err"></span> <h3>public pure subroutine <a href='../proc/set_err.html'>set_err</a>(ierr, code)  
+    <div class="card-header codesum"><span class="anchor" id="proc-set_err"></span> <h3>public pure subroutine <a href='../proc/set_err.html'>set_err</a>(ierr, error, arg_pos)  
 </h3></div>
     <div class="card-body">
           
-  <p>set the error code to specific code</p>
+  <p>set the error code to specific error</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1002,7 +1208,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~236"></span>
+              <span class="anchor" id="variable-ierr~91"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1012,12 +1218,12 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-code"></span>
+              <span class="anchor" id="variable-error~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1025,9 +1231,24 @@ parameter
               
             </td>
             <td>::</td>
-            <td><strong>code</strong></td>
+            <td><strong>error</strong></td>
             <td>
-
+<p><code>ERR_*</code> error code from module constants</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
             </td>
         </tr>
     </tbody>
@@ -1038,7 +1259,7 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-set_err_once"></span> <h3>public pure subroutine <a href='../proc/set_err_once.html'>set_err_once</a>(ierr, code)  
+    <div class="card-header codesum"><span class="anchor" id="proc-set_err_once"></span> <h3>public pure subroutine <a href='../proc/set_err_once.html'>set_err_once</a>(ierr, error, arg_pos)  
 </h3></div>
     <div class="card-body">
           
@@ -1057,7 +1278,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~237"></span>
+              <span class="anchor" id="variable-ierr~92"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1067,12 +1288,12 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-code~2"></span>
+              <span class="anchor" id="variable-error~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1080,9 +1301,24 @@ parameter
               
             </td>
             <td>::</td>
-            <td><strong>code</strong></td>
+            <td><strong>error</strong></td>
             <td>
-
+<p><code>ERR_*</code> error code from module constants</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
             </td>
         </tr>
     </tbody>
@@ -1097,7 +1333,7 @@ parameter
 </h3></div>
     <div class="card-body">
           
-  
+  <p>Checks if allocation is successful</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1112,7 +1348,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ios~4"></span>
+              <span class="anchor" id="variable-ios"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1127,62 +1363,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~240"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-check_alloc_stat"></span> <h3>public pure subroutine <a href='../proc/check_alloc_stat.html'>check_alloc_stat</a>(stat, ierr)  
-</h3></div>
-    <div class="card-body">
-          
-  
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-stat"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>stat</strong></td>
-            <td>
-
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~241"></span>
+              <span class="anchor" id="variable-ierr~95"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1192,7 +1373,7 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -1203,11 +1384,12 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_dimension_size"></span> <h3>public pure subroutine <a href='../proc/validate_dimension_size.html'>validate_dimension_size</a>(n, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_dimension_size"></span> <h3>public pure subroutine <a href='../proc/validate_dimension_size.html'>validate_dimension_size</a>(n, ierr, arg_pos)  
 </h3></div>
     <div class="card-body">
           
-  
+  <p>Validates that a dimension size is non-negative and non-zero.
+Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPUT</code> if <code>n==0</code>.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1222,7 +1404,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~11"></span>
+              <span class="anchor" id="variable-n~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1232,12 +1414,12 @@ parameter
             <td>::</td>
             <td><strong>n</strong></td>
             <td>
-
+<p>dimension size to be validated</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~242"></span>
+              <span class="anchor" id="variable-ierr~96"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1247,7 +1429,22 @@ parameter
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
             </td>
         </tr>
     </tbody>
@@ -1258,11 +1455,11 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_type_code"></span> <h3>public  subroutine <a href='../proc/validate_type_code.html'>validate_type_code</a>(actual, expected, unit, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_type_code"></span> <h3>public  subroutine <a href='../proc/validate_type_code.html'>validate_type_code</a>(actual, expected, unit, ierr, arg_pos)  
 </h3></div>
     <div class="card-body">
           
-  <p>validate that the actual type code matches the expected type code
+  <p>validate that the actual type error matches the expected type error
 Closes the connected unit in case of an error</p>
 
   <h4>Arguments</h4>
@@ -1288,7 +1485,7 @@ Closes the connected unit in case of an error</p>
             <td>::</td>
             <td><strong>actual</strong></td>
             <td>
-<p>Actual type code read from file</p>
+<p>Actual type error read from file</p>
             </td>
         </tr>
         <tr>
@@ -1303,12 +1500,12 @@ Closes the connected unit in case of an error</p>
             <td>::</td>
             <td><strong>expected</strong></td>
             <td>
-<p>Expected type code</p>
+<p>Expected type error</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unit~61"></span>
+              <span class="anchor" id="variable-unit~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1323,10 +1520,10 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~243"></span>
+              <span class="anchor" id="variable-ierr~97"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(inout)</td>
               <td></td>            <td>
               
             </td>
@@ -1334,6 +1531,21 @@ Closes the connected unit in case of an error</p>
             <td><strong>ierr</strong></td>
             <td>
 <p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
             </td>
         </tr>
     </tbody>
@@ -1344,7 +1556,7 @@ Closes the connected unit in case of an error</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_in_range_int"></span> <h3>public pure subroutine <a href='../proc/validate_in_range_int.html'>validate_in_range_int</a>(val, ierr, min, max)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_in_range_int"></span> <h3>public pure subroutine <a href='../proc/validate_in_range_int.html'>validate_in_range_int</a>(val, ierr, arg_pos, min, max, sentinel)  
 </h3></div>
     <div class="card-body">
           
@@ -1363,7 +1575,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val"></span>
+              <span class="anchor" id="variable-val~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1378,7 +1590,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~244"></span>
+              <span class="anchor" id="variable-ierr~98"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1393,7 +1605,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min"></span>
+              <span class="anchor" id="variable-arg_pos~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1401,94 +1613,9 @@ Closes the connected unit in case of an error</p>
               
             </td>
             <td>::</td>
-            <td><strong>min</strong></td>
+            <td><strong>arg_pos</strong></td>
             <td>
-<p>lower bound for a value, default is lowest 32-bit integer -&gt; -huge(1_int32)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>max</strong></td>
-            <td>
-<p>upper bound for a value, default is largest 32-bit integer -&gt; huge(1_int32)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_all_in_range_int"></span> <h3>public pure subroutine <a href='../proc/validate_all_in_range_int.html'>validate_all_in_range_int</a>(array, n_elements, ierr, min, max)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates min&lt;=e&lt;=max for all elements e of an array</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-array~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional,</td>            <td>
-              dimension(n_elements)
-            </td>
-            <td>::</td>
-            <td><strong>array</strong></td>
-            <td>
-<p>Array to be validated</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_elements"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_elements</strong></td>
-            <td>
-<p>Size of <code>array</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~245"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
             </td>
         </tr>
         <tr>
@@ -1521,6 +1648,21 @@ Closes the connected unit in case of an error</p>
 <p>upper bound for a value, default is largest 32-bit integer -&gt; huge(1_int32)</p>
             </td>
         </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sentinel"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sentinel</strong></td>
+            <td>
+<p>Optional sentinel value to allow additionally</p>
+            </td>
+        </tr>
     </tbody>
   </table>
 
@@ -1529,7 +1671,137 @@ Closes the connected unit in case of an error</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_in_range_real.html'>validate_in_range_real</a>(val, ierr, min, max)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_all_in_range_int"></span> <h3>public pure subroutine <a href='../proc/validate_all_in_range_int.html'>validate_all_in_range_int</a>(array, n_elements, ierr, arg_pos, min, max, sentinel)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates min&lt;=e&lt;=max for all elements e of an array</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~20"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_elements)
+            </td>
+            <td>::</td>
+            <td><strong>array</strong></td>
+            <td>
+<p>Array to be validated</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_elements~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_elements</strong></td>
+            <td>
+<p>Size of <code>array</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~99"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min</strong></td>
+            <td>
+<p>lower bound for a value, default is lowest 32-bit integer -&gt; -huge(1_int32)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max</strong></td>
+            <td>
+<p>upper bound for a value, default is largest 32-bit integer -&gt; huge(1_int32)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sentinel~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sentinel</strong></td>
+            <td>
+<p>Optional sentinel value to allow additionally</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_in_range_real.html'>validate_in_range_real</a>(val, ierr, arg_pos, min, max, sentinel)  
 </h3></div>
     <div class="card-body">
           
@@ -1548,7 +1820,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-val~2"></span>
+              <span class="anchor" id="variable-val~8"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1563,7 +1835,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~246"></span>
+              <span class="anchor" id="variable-ierr~100"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1578,102 +1850,17 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~3"></span>
-              real(kind=real64),
+              <span class="anchor" id="variable-arg_pos~9"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in),</td>
               <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>min</strong></td>
+            <td><strong>arg_pos</strong></td>
             <td>
-<p>lower bound for a value, default is lowest 64-bit float -&gt; -huge(1.0_real64)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>max</strong></td>
-            <td>
-<p>upper bound for a value, default is largest 64-bit float -&gt; huge(1.0_real64)</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_all_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_all_in_range_real.html'>validate_all_in_range_real</a>(array, n_elements, ierr, min, max)  
-</h3></div>
-    <div class="card-body">
-          
-  <p>Validates min&lt;=e&lt;=max AND e/=NaN for all elements e of an array</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-array~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional,</td>            <td>
-              dimension(n_elements)
-            </td>
-            <td>::</td>
-            <td><strong>array</strong></td>
-            <td>
-<p>Array to be validated</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_elements~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_elements</strong></td>
-            <td>
-<p>Size of <code>array</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~247"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
             </td>
         </tr>
         <tr>
@@ -1706,6 +1893,21 @@ Closes the connected unit in case of an error</p>
 <p>upper bound for a value, default is largest 64-bit float -&gt; huge(1.0_real64)</p>
             </td>
         </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sentinel~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sentinel</strong></td>
+            <td>
+<p>Optional sentinel value to allow additionally</p>
+            </td>
+        </tr>
     </tbody>
   </table>
 
@@ -1714,7 +1916,137 @@ Closes the connected unit in case of an error</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_distance_matrix"></span> <h3>public pure subroutine <a href='../proc/validate_distance_matrix.html'>validate_distance_matrix</a>(distances, n, ierr, min, max)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_all_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_all_in_range_real.html'>validate_all_in_range_real</a>(array, n_elements, ierr, arg_pos, min, max, sentinel)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates min&lt;=e&lt;=max AND e/=NaN for all elements e of an array</p>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-array~21"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_elements)
+            </td>
+            <td>::</td>
+            <td><strong>array</strong></td>
+            <td>
+<p>Array to be validated</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_elements~6"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_elements</strong></td>
+            <td>
+<p>Size of <code>array</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~101"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-arg_pos~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>min</strong></td>
+            <td>
+<p>lower bound for a value, default is lowest 64-bit float -&gt; -huge(1.0_real64)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-max~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>max</strong></td>
+            <td>
+<p>upper bound for a value, default is largest 64-bit float -&gt; huge(1.0_real64)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-sentinel~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>sentinel</strong></td>
+            <td>
+<p>Optional sentinel value to allow additionally</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_distance_matrix"></span> <h3>public pure subroutine <a href='../proc/validate_distance_matrix.html'>validate_distance_matrix</a>(distances, n, ierr, arg_pos, min, max)  
 </h3></div>
     <div class="card-body">
           
@@ -1735,7 +2067,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~19"></span>
+              <span class="anchor" id="variable-distances"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1750,7 +2082,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~12"></span>
+              <span class="anchor" id="variable-n~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1765,7 +2097,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~248"></span>
+              <span class="anchor" id="variable-ierr~102"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1780,7 +2112,22 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-min~5"></span>
+              <span class="anchor" id="variable-arg_pos~11"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>arg_pos</strong></td>
+            <td>
+<p>Position of the validated argument that triggered the error, default: 0 -&gt; not argument related</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-min~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1795,7 +2142,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max~5"></span>
+              <span class="anchor" id="variable-max~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1831,14 +2178,14 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

@@ -12,6 +12,9 @@ on:
         description: 'The git ref (branch, tag, commit SHA) to run the tests on'
         required: true
         type: string
+      extra_build_args:
+        description: 'Extra flags to pass to the build script, like --skip-kinds-test or --max-performance'
+        type: string
 
 jobs:
   run_tests:
@@ -30,7 +33,7 @@ jobs:
           compiler: ${{ inputs.compiler }}
 
       - name: Run Fortran Tests
-        run: FC="${{ inputs.compiler }}" bash test_runner.sh
+        run: bash test_runner.sh ${{ inputs.extra_build_args }} --compiler="${{ inputs.compiler }}"
 
       - name: Install R
         uses: ./.github/actions/install-R

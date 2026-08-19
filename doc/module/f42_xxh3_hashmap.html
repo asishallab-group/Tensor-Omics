@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>f42_xxh3_hashmap &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.2% of total for modules and submodules.">276 statements</a>
+                 title=" 3.2% of total for modules and submodules.">271 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -188,19 +189,24 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>AUTHOR_AARON_SCHROEDER
+String-keyed hashmap (<code>character -&gt; integer(int32)</code>) and hashset (<code>character</code> membership),
+implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
+algorithm for hashing. Both containers grow automatically via <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>
+/ <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a> once the load factor exceeds
+<a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='config.html'>config</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
                   <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='config.html'>config</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -221,96 +227,14 @@
     <div class="card-header codesum">
       <span class="anchor" id="type-hashmap_type"></span>
       <h3>
-        type, public&nbsp;::&nbsp;
+        type, public, extends(../../hashmap_base)&nbsp;::&nbsp;
         <a href='../type/hashmap_type.html'>hashmap_type</a>
         
       </h3>
     </div>
     <div class="card-body">
-      
-
-        <h4>Components</h4>
-          <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-<th></th><th scope="col">Initial</th>        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-size~2"></span>
-              integer(kind=int32),
-            </td>
-              <td>public</td>
-            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>size</strong></td>
-<td> =</td>
-                <td>0</td>
-            <td>
-
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-count~2"></span>
-              integer(kind=int32),
-            </td>
-              <td>public</td>
-            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>count</strong></td>
-<td> =</td>
-                <td>0</td>
-            <td>
-
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-buckets"></span>
-              type(hashmap_node_type),
-            </td>
-              <td>public,</td>
-            <td>
-              pointer
-            </td>
-            <td>::</td>
-            <td><strong>buckets</strong>(:)</td>
-<td>=&gt; </td>
-                <td>null()</td>
-            <td>
-
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum">
-      <span class="anchor" id="type-hashset_type"></span>
-      <h3>
-        type, public&nbsp;::&nbsp;
-        <a href='../type/hashset_type.html'>hashset_type</a>
-        
-      </h3>
-    </div>
-    <div class="card-body">
-      
+      <p>Hashmap of <code>character</code> keys to <code>integer(int32)</code> values, using separate chaining over a
+power-of-two-sized bucket array.</p>
 
         <h4>Components</h4>
           <table class="table table-striped varlist">
@@ -337,7 +261,7 @@
 <td> =</td>
                 <td>0</td>
             <td>
-
+<p>Number of buckets (always a power of two, see <a href="../proc/next_power_of_two.html">next_power_of_two</a>).</p>
             </td>
         </tr>
         <tr>
@@ -354,7 +278,91 @@
 <td> =</td>
                 <td>0</td>
             <td>
+<p>Number of key-value pairs currently stored.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-buckets"></span>
+              type(hashmap_node_type),
+            </td>
+              <td>public,</td>
+            <td>
+              pointer
+            </td>
+            <td>::</td>
+            <td><strong>buckets</strong>(:)</td>
+<td>=&gt; </td>
+                <td>null()</td>
+            <td>
+<p>Bucket array; <code>buckets(i)%next</code> heads the chain for bucket <code>i</code> (the bucket
+elements themselves only ever use their <code>next</code> pointer, never <code>key</code>/<code>value</code>).</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
 
+
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum">
+      <span class="anchor" id="type-hashset_type"></span>
+      <h3>
+        type, public, extends(../../hashmap_base)&nbsp;::&nbsp;
+        <a href='../type/hashset_type.html'>hashset_type</a>
+        
+      </h3>
+    </div>
+    <div class="card-body">
+      <p>Hashset of <code>character</code> keys, using separate chaining over a power-of-two-sized bucket array.</p>
+
+        <h4>Components</h4>
+          <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+<th></th><th scope="col">Initial</th>        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-size~3"></span>
+              integer(kind=int32),
+            </td>
+              <td>public</td>
+            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>size</strong></td>
+<td> =</td>
+                <td>0</td>
+            <td>
+<p>Number of buckets (always a power of two, see <a href="../proc/next_power_of_two.html">next_power_of_two</a>).</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-count~3"></span>
+              integer(kind=int32),
+            </td>
+              <td>public</td>
+            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>count</strong></td>
+<td> =</td>
+                <td>0</td>
+            <td>
+<p>Number of key-value pairs currently stored.</p>
             </td>
         </tr>
         <tr>
@@ -371,7 +379,8 @@
 <td>=&gt; </td>
                 <td>null()</td>
             <td>
-
+<p>Bucket array; <code>buckets(i)%next</code> heads the chain for bucket <code>i</code> (the bucket
+elements themselves only ever use their <code>next</code> pointer, never <code>key</code>/<code>value</code>).</p>
             </td>
         </tr>
     </tbody>
@@ -393,7 +402,8 @@
 </h3></div>
     <div class="card-body">
           
-  
+  <p>AUTHOR_AARON_SCHROEDER
+Checks whether <code>key</code> is a member of <code>hashset</code>.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -418,7 +428,7 @@
             <td>::</td>
             <td><strong>hashset</strong></td>
             <td>
-
+<p>Hashset to query</p>
             </td>
         </tr>
         <tr>
@@ -433,7 +443,7 @@
             <td>::</td>
             <td><strong>key</strong></td>
             <td>
-
+<p>Key to look for</p>
             </td>
         </tr>
     </tbody>
@@ -453,7 +463,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Lookup a key</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Lookup a key</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -518,7 +529,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Create the hashmap</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Create the hashmap</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -558,7 +570,9 @@
             <td>::</td>
             <td><strong>initial_size</strong></td>
             <td>
-<p>Size of the hashmap</p>
+<p>Desired initial element capacity; the actual bucket count is derived from this
+(scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
+default: 1024 buckets</p>
             </td>
         </tr>
     </tbody>
@@ -569,11 +583,12 @@
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-hashset_create"></span> <h3>public  subroutine <a href='../proc/hashset_create.html'>hashset_create</a>(map, initial_size)  
+    <div class="card-header codesum"><span class="anchor" id="proc-hashset_create"></span> <h3>public  subroutine <a href='../proc/hashset_create.html'>hashset_create</a>(set, initial_size)  
 </h3></div>
     <div class="card-body">
           
-  <p>Create the hashmap</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Create the hashset</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -588,7 +603,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-map~2"></span>
+              <span class="anchor" id="variable-set"></span>
               type(<a href='../type/hashset_type.html'>hashset_type</a>),
             </td>
 <td>intent(out)</td>
@@ -596,9 +611,9 @@
               
             </td>
             <td>::</td>
-            <td><strong>map</strong></td>
+            <td><strong>set</strong></td>
             <td>
-<p>Hashmap object to create</p>
+<p>Hashset object to create</p>
             </td>
         </tr>
         <tr>
@@ -613,7 +628,9 @@
             <td>::</td>
             <td><strong>initial_size</strong></td>
             <td>
-<p>Size of the hashmap</p>
+<p>Desired initial element capacity; the actual bucket count is derived from this
+(scaled by MAX_LOAD_FACTOR and rounded up to a power of two, floored at 128),
+default: 1024 buckets</p>
             </td>
         </tr>
     </tbody>
@@ -628,7 +645,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Destroy the hashmap</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Destroy the hashmap</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -668,7 +686,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Destroy the set</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Destroy the set</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -683,7 +702,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-set"></span>
+              <span class="anchor" id="variable-set~2"></span>
               type(<a href='../type/hashset_type.html'>hashset_type</a>),
             </td>
 <td>intent(inout)</td>
@@ -708,7 +727,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Insert a key-value pair</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Insert a key-value pair</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -753,7 +773,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~2"></span>
+              <span class="anchor" id="variable-value~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -778,7 +798,8 @@
 </h3></div>
     <div class="card-body">
           
-  <p>Insert a key-value pair</p>
+  <p>AUTHOR_AARON_SCHROEDER
+Insert a key-value pair</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -793,7 +814,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-set~2"></span>
+              <span class="anchor" id="variable-set~3"></span>
               type(<a href='../type/hashset_type.html'>hashset_type</a>),
             </td>
 <td>intent(inout)</td>
@@ -823,7 +844,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~158"></span>
+              <span class="anchor" id="variable-ierr~145"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -859,14 +880,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

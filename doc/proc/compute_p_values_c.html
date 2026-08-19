@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_p_values_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_p_values_c(local_contributions_observed, total_contribution_observed, local_contributions_perm, total_contributions_perm, n_timepoints, n_permutations, local_p_values, total_p_value, ierr) bind(C, name="compute_p_values_c")  
+    <h2>pure subroutine compute_p_values_c(local_contributions_observed, total_contribution_observed, local_contributions_perm_test, total_contributions_perm_test, n_timepoints, n_permutations, local_p_values, total_p_value, ierr) bind(C, name="compute_p_values_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,9 +157,9 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -182,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions_observed~2"></span>
+              <span class="anchor" id="variable-local_contributions_observed~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -197,7 +198,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_contribution_observed~2"></span>
+              <span class="anchor" id="variable-total_contribution_observed~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -212,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions_perm~2"></span>
+              <span class="anchor" id="variable-local_contributions_perm_test~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -220,14 +221,14 @@
               dimension(n_timepoints, n_permutations), target
             </td>
             <td>::</td>
-            <td><strong>local_contributions_perm</strong></td>
+            <td><strong>local_contributions_perm_test</strong></td>
             <td>
                 <p>permutation local contributions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_contributions_perm~2"></span>
+              <span class="anchor" id="variable-total_contributions_perm_test~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -235,14 +236,14 @@
               dimension(n_permutations), target
             </td>
             <td>::</td>
-            <td><strong>total_contributions_perm</strong></td>
+            <td><strong>total_contributions_perm_test</strong></td>
             <td>
                 <p>permutation total contributions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~24"></span>
+              <span class="anchor" id="variable-n_timepoints~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -257,7 +258,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_permutations~7"></span>
+              <span class="anchor" id="variable-n_permutations~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -272,7 +273,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_p_values~2"></span>
+              <span class="anchor" id="variable-local_p_values~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -287,7 +288,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_p_value~2"></span>
+              <span class="anchor" id="variable-total_p_value~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -302,7 +303,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~221"></span>
+              <span class="anchor" id="variable-ierr~260"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -342,14 +343,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

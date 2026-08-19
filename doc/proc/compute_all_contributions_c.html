@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_all_contributions_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_all_contributions_c(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, mode, local_contributions, total_contributions, temp_factors, temp_dependent, ierr) bind(C, name="compute_all_contributions_c")  
+    <h2>pure subroutine compute_all_contributions_c(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr) bind(C, name="compute_all_contributions_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,10 +157,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +184,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~12"></span>
+              <span class="anchor" id="variable-trajectories~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -198,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~16"></span>
+              <span class="anchor" id="variable-n_factors~17"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~23"></span>
+              <span class="anchor" id="variable-n_samples~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -228,7 +229,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~21"></span>
+              <span class="anchor" id="variable-n_timepoints~23"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -303,7 +304,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~15"></span>
+              <span class="anchor" id="variable-baseline_mode~10"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -311,14 +312,14 @@
               dimension(*), target
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>baseline_mode</strong></td>
             <td>
                 <p>Baseline mode: "raw", "min", "mean"</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions~5"></span>
+              <span class="anchor" id="variable-local_contributions~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -333,7 +334,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_contributions~3"></span>
+              <span class="anchor" id="variable-total_contributions~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -348,7 +349,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_factors~2"></span>
+              <span class="anchor" id="variable-tmp_factors~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -356,14 +357,14 @@
               dimension(n_timepoints, n_selected_factors), target
             </td>
             <td>::</td>
-            <td><strong>temp_factors</strong></td>
+            <td><strong>tmp_factors</strong></td>
             <td>
                 <p>Working array to hold the currently handled sample's factors in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_dependent~3"></span>
+              <span class="anchor" id="variable-tmp_dependent~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -371,14 +372,14 @@
               dimension(n_timepoints), target
             </td>
             <td>::</td>
-            <td><strong>temp_dependent</strong></td>
+            <td><strong>tmp_dependent</strong></td>
             <td>
                 <p>Working array to hold the currently handled dependent in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~217"></span>
+              <span class="anchor" id="variable-ierr~256"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -418,14 +419,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

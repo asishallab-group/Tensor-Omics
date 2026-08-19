@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>serialize_real_5d &ndash; TensorOmics</title>
@@ -85,23 +85,25 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">18 statements</a>
+                 title=" 0.0% of total for procedures.">6 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_serialize_real.F90"> Source File</a>
+              <a href="../src/f42_serde_arrays_serialize_real.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_serialize_real.f90.html'>f42_serialize_real.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_serialize_real.html'>f42_serialize_real</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_serde_arrays_serialize_real.f90.html'>f42_serde_arrays_serialize_real.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></li>
             <li class="breadcrumb-item active" aria-current="page">serialize_real_5d</li>
           </ol>
         </nav>
@@ -153,8 +155,7 @@
 </h2>
     
 
-    <p>Serialize a 5D real(real64) array to a binary file.
-The file will contain a magic number, type code, dimension, shape, and the array data.</p>
+    <p>Directly serialize a 5D real array into a file</p>
 
 
     <h3>Arguments</h3>
@@ -170,22 +171,22 @@ The file will contain a magic number, type code, dimension, shape, and the array
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-arr~5"></span>
+              <span class="anchor" id="variable-arr~28"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(:, :, :, :, :), contiguous
             </td>
             <td>::</td>
-            <td><strong>arr</strong>(:,:,:,:,:)</td>
+            <td><strong>arr</strong></td>
             <td>
-                <p>array to save</p>
+                <p>Array to be serialized</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~5"></span>
+              <span class="anchor" id="variable-filename~32"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -195,12 +196,12 @@ The file will contain a magic number, type code, dimension, shape, and the array
             <td>::</td>
             <td><strong>filename</strong></td>
             <td>
-                <p>filename</p>
+                <p>Name of the file to write to</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~5"></span>
+              <span class="anchor" id="variable-ierr~120"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -210,7 +211,7 @@ The file will contain a magic number, type code, dimension, shape, and the array
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>error code</p>
+                <p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -240,14 +241,14 @@ The file will contain a magic number, type code, dimension, shape, and the array
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

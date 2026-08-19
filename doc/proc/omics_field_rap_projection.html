@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>omics_field_RAP_projection &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">37 statements</a>
+                 title=" 0.2% of total for procedures.">22 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine omics_field_RAP_projection(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr)  
+    <h2>public pure subroutine omics_field_RAP_projection(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections, ierr)  
 </h2>
     
 
@@ -169,22 +171,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs~2"></span>
+              <span class="anchor" id="variable-fields~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(2 * n_axes, n_vecs)
+              dimension(n_axes, 2, n_fields)
             </td>
             <td>::</td>
-            <td><strong>vecs</strong></td>
+            <td><strong>fields</strong></td>
             <td>
-                <p>matrix with vector fields, first n rows mean vector origin, last n rows vector targets</p>
+                <p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~4"></span>
+              <span class="anchor" id="variable-n_axes~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -199,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vecs~2"></span>
+              <span class="anchor" id="variable-n_fields"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -207,29 +209,29 @@
               
             </td>
             <td>::</td>
-            <td><strong>n_vecs</strong></td>
+            <td><strong>n_fields</strong></td>
             <td>
                 <p>number of vectors per axis</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs_selection_mask~2"></span>
+              <span class="anchor" id="variable-fields_selection_mask"></span>
               logical,
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_vecs)
+              dimension(n_fields)
             </td>
             <td>::</td>
-            <td><strong>vecs_selection_mask</strong></td>
+            <td><strong>fields_selection_mask</strong></td>
             <td>
                 <p><code>.true.</code> for vectors where projection is to be computed</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vecs~2"></span>
+              <span class="anchor" id="variable-n_selected_fields"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -237,14 +239,14 @@
               
             </td>
             <td>::</td>
-            <td><strong>n_selected_vecs</strong></td>
+            <td><strong>n_selected_fields</strong></td>
             <td>
-                <p>count of <code>.true.</code> values in <code>vecs_selection_mask</code></p>
+                <p>count of <code>.true.</code> values in <code>fields_selection_mask</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection_mask~2"></span>
+              <span class="anchor" id="variable-axes_selection_mask~3"></span>
               logical,
             </td>
 <td>intent(in),</td>
@@ -259,7 +261,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~4"></span>
+              <span class="anchor" id="variable-n_selected_axes~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -274,12 +276,12 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-projections~2"></span>
+              <span class="anchor" id="variable-projections~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_selected_axes, n_selected_vecs)
+              dimension(n_selected_axes, n_selected_fields)
             </td>
             <td>::</td>
             <td><strong>projections</strong></td>
@@ -289,7 +291,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~191"></span>
+              <span class="anchor" id="variable-ierr~285"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -329,14 +331,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>loess_fit_robust &ndash; TensorOmics</title>
@@ -85,6 +85,8 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public  subroutine loess_fit_robust(n, x, y, w, eval_points, span, degree, nvmax, infl, setlf, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, diagl, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)  
+    <h2>public  subroutine loess_fit_robust(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)  
 </h2>
     
 
@@ -175,7 +177,7 @@ The robust fitting process iterates n_iters times, each iteration:
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~5"></span>
+              <span class="anchor" id="variable-n~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -190,7 +192,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~3"></span>
+              <span class="anchor" id="variable-x~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -220,7 +222,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-w~3"></span>
+              <span class="anchor" id="variable-weights~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -228,7 +230,7 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>w</strong>(n)</td>
+            <td><strong>weights</strong>(n)</td>
             <td>
                 <p>Weight array for data points</p>
             </td>
@@ -250,7 +252,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~6"></span>
+              <span class="anchor" id="variable-span~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -265,7 +267,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~6"></span>
+              <span class="anchor" id="variable-degree~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -280,7 +282,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-nvmax~4"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -288,14 +290,14 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>nvmax</strong></td>
+            <td><strong>max_neighborhood_size</strong></td>
             <td>
                 <p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-infl~3"></span>
+              <span class="anchor" id="variable-compute_influence~3"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -303,14 +305,14 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>infl</strong></td>
+            <td><strong>compute_influence</strong></td>
             <td>
                 <p>Influence calculation flag</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-setlf~5"></span>
+              <span class="anchor" id="variable-save_factorization~4"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -318,7 +320,7 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>setlf</strong></td>
+            <td><strong>save_factorization</strong></td>
             <td>
                 <p>Save matrix factorization flag</p>
             </td>
@@ -400,7 +402,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-diagl~3"></span>
+              <span class="anchor" id="variable-hat_diag~3"></span>
               real(kind=real64),
             </td>
 <td>intent(inout)</td>
@@ -408,7 +410,7 @@ The robust fitting process iterates n_iters times, each iteration:
               
             </td>
             <td>::</td>
-            <td><strong>diagl</strong>(n)</td>
+            <td><strong>hat_diag</strong>(n)</td>
             <td>
                 <p>Diagonal elements of the hat matrix</p>
             </td>
@@ -440,7 +442,7 @@ The robust fitting process iterates n_iters times, each iteration:
             <td>::</td>
             <td><strong>combined_weights</strong>(n)</td>
             <td>
-                <p>Combined weights: product of user weights and robust weights (w(i) * robust_weights(i))</p>
+                <p>Combined weights: product of user weights and robust weights (weights(i) * robust_weights(i))</p>
             </td>
         </tr>
         <tr>
@@ -490,7 +492,7 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~61"></span>
+              <span class="anchor" id="variable-ierr~279"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -530,14 +532,14 @@ The robust fitting process iterates n_iters times, each iteration:
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>build_kd_index &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">59 statements</a>
+                 title=" 0.1% of total for procedures.">18 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,16 +151,11 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine build_kd_index(points, num_dimensions, num_points, kd_indices, dimension_order, workspace, value_buffer, permutation, left_stack, right_stack, recursion_stack, ierr)  
+    <h2>public pure subroutine build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
 </h2>
     
 
-    <p>Build a k-d tree index using a stack-based, non-recursive approach.
-Initialize kd_indices to 1:num_points (original indices)
-Choose split dimension by cycling through dimension_order
-Find median index
-Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
-Push right and left intervals onto stack</p>
+    <p>Build a k-d tree index using a stack-based, non-recursive approach.</p>
 
 
     <h3>Arguments</h3>
@@ -174,22 +171,22 @@ Push right and left intervals onto stack</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points"></span>
+              <span class="anchor" id="variable-points~2"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_dimensions, n_points)
             </td>
             <td>::</td>
-            <td><strong>points</strong>(num_dimensions,num_points)</td>
+            <td><strong>points</strong></td>
             <td>
                 <p>Data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_dimensions"></span>
+              <span class="anchor" id="variable-n_dimensions~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -197,14 +194,14 @@ Push right and left intervals onto stack</p>
               
             </td>
             <td>::</td>
-            <td><strong>num_dimensions</strong></td>
+            <td><strong>n_dimensions</strong></td>
             <td>
                 <p>Number of dimensions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-num_points"></span>
+              <span class="anchor" id="variable-n_points~51"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -212,134 +209,104 @@ Push right and left intervals onto stack</p>
               
             </td>
             <td>::</td>
-            <td><strong>num_points</strong></td>
+            <td><strong>n_points</strong></td>
             <td>
                 <p>Number of points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices"></span>
+              <span class="anchor" id="variable-kd_indices~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>kd_indices</strong>(num_points)</td>
+            <td><strong>kd_indices</strong></td>
             <td>
                 <p>Output index array (k-d tree order)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order"></span>
+              <span class="anchor" id="variable-dimension_order~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_dimensions)
             </td>
             <td>::</td>
-            <td><strong>dimension_order</strong>(num_dimensions)</td>
+            <td><strong>dimension_order</strong></td>
             <td>
                 <p>Dimension order (by variance)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-workspace"></span>
+              <span class="anchor" id="variable-tmp_workspace~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>workspace</strong>(num_points)</td>
+            <td><strong>tmp_workspace</strong></td>
             <td>
                 <p>Workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value_buffer"></span>
+              <span class="anchor" id="variable-tmp_value_buffer~2"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>value_buffer</strong>(num_points)</td>
+            <td><strong>tmp_value_buffer</strong></td>
             <td>
                 <p>Workspace for sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation"></span>
+              <span class="anchor" id="variable-tmp_permutation~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>permutation</strong>(num_points)</td>
+            <td><strong>tmp_permutation</strong></td>
             <td>
                 <p>Workspace for sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-left_stack~3"></span>
+              <span class="anchor" id="variable-tmp_recursion_stack~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(3, n_points)
             </td>
             <td>::</td>
-            <td><strong>left_stack</strong>(num_points)</td>
-            <td>
-                <p>Workspace for sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-right_stack~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>right_stack</strong>(num_points)</td>
-            <td>
-                <p>Workspace for sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-recursion_stack"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>recursion_stack</strong>(3,num_points)</td>
+            <td><strong>tmp_recursion_stack</strong></td>
             <td>
                 <p>Stack for l, r, depth</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~140"></span>
+              <span class="anchor" id="variable-ierr~148"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -379,14 +346,14 @@ Push right and left intervals onto stack</p>
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

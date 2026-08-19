@@ -11,7 +11,7 @@ module tox_shatter_cluster_data
                           validate_all_in_range_int, validate_in_range_int, ERR_ALLOC_FAIL, &
                           ERR_DIM_MISMATCH, ERR_INVALID_INPUT, validate_all_in_range_real
     use tox_gene_centroids, only: mean_vector
-    use tox_euclidean_distance, only: euclidean_distance
+    use tox_euclidean_distance, only: euclidean_distance_helper
     use f42_utils, only: sort_real_heapsort, calc_percentile, calc_percentile_helper
     use f42_kd_tree, only: vicinity_vectors_helper, vicinity_vectors_count_helper, &
                            KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH
@@ -156,7 +156,8 @@ contains
 
         ! Calculating each vector distance to mean vector
         do concurrent(i_vec=1:n_vectors) shared(vectors, tmp_mean_vec, n_dimensions, tmp_distances)
-            call euclidean_distance(tmp_mean_vec, vectors(:, i_vec), n_dimensions, tmp_distances(i_vec))
+            call euclidean_distance_helper(tmp_mean_vec, vectors(:, i_vec), &
+                                           n_dimensions, tmp_distances(i_vec))
         end do
 
         !Sorting perm according to distance
@@ -500,8 +501,8 @@ contains
             do concurrent(i_vec=1:n_vectors) &
                 shared(vectors, n_dimensions, candidate_idx, tmp_distances)
 
-                call euclidean_distance(vectors(:, candidate_idx), vectors(:, i_vec), &
-                                        n_dimensions, tmp_distances(i_vec))
+                call euclidean_distance_helper(vectors(:, candidate_idx), vectors(:, i_vec), &
+                                               n_dimensions, tmp_distances(i_vec))
             end do
 
             do concurrent(i_vec=1:n_vectors) shared(tmp_perm)

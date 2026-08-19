@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>tox_data_validation &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.2% of total for modules and submodules.">281 statements</a>
+                 title=" 3.6% of total for modules and submodules.">303 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -167,17 +168,23 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      
+      <p>Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
+and cross-array consistency).</p>
+<p>Complements <a href="../module/tox_errors.html">tox_errors</a>'s generic per-argument validators
+(<code>validate_dimension_size</code>, <code>validate_in_range_int/real</code>, ...) with checks specific to the
+TensorOmics gene/family/expression/centroid/shift-vector data model, such as verifying that
+<code>shift_vectors</code> was actually derived from <code>expression_vectors</code> and <code>family_centroids</code> as
+expected. <a href="../proc/validate_all_data.html">validate_all_data</a> runs the full suite.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='config.html'>config</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='config.html'>config</a></li>
               </ul>
             </li>
         </ul>
@@ -200,7 +207,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_data_structure"></span> <h3>public  subroutine <a href='../proc/validate_data_structure.html'>validate_data_structure</a>(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validate full data structure</p>
 
   <h4>Arguments</h4>
@@ -231,7 +242,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~12"></span>
+              <span class="anchor" id="variable-n_families~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -246,7 +257,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~5"></span>
+              <span class="anchor" id="variable-n_samples~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -261,7 +272,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~6"></span>
+              <span class="anchor" id="variable-gene_ids~11"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -291,7 +302,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~14"></span>
+              <span class="anchor" id="variable-gene_to_fam~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -306,7 +317,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~8"></span>
+              <span class="anchor" id="variable-expression_vectors~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -321,7 +332,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~8"></span>
+              <span class="anchor" id="variable-family_centroids~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -336,7 +347,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~8"></span>
+              <span class="anchor" id="variable-shift_vectors~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -351,7 +362,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~167"></span>
+              <span class="anchor" id="variable-ierr~183"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -375,7 +386,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_gene_to_family_mapping"></span> <h3>public  subroutine <a href='../proc/validate_gene_to_family_mapping.html'>validate_gene_to_family_mapping</a>(gene_to_fam, n_families, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validate gene to family mapping</p>
 
   <h4>Arguments</h4>
@@ -391,7 +406,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~15"></span>
+              <span class="anchor" id="variable-gene_to_fam~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -406,7 +421,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~13"></span>
+              <span class="anchor" id="variable-n_families~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -421,7 +436,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~168"></span>
+              <span class="anchor" id="variable-ierr~184"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -445,7 +460,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_expression_data"></span> <h3>public  subroutine <a href='../proc/validate_expression_data.html'>validate_expression_data</a>(expression_vectors, check_non_negative, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validate expresssion data</p>
 
   <h4>Arguments</h4>
@@ -461,7 +480,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~9"></span>
+              <span class="anchor" id="variable-expression_vectors~15"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -491,7 +510,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~169"></span>
+              <span class="anchor" id="variable-ierr~185"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -515,7 +534,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_family_centroids"></span> <h3>public  subroutine <a href='../proc/validate_family_centroids.html'>validate_family_centroids</a>(family_centroids, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validate the family centroids</p>
 
   <h4>Arguments</h4>
@@ -531,7 +554,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~9"></span>
+              <span class="anchor" id="variable-family_centroids~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -546,7 +569,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~170"></span>
+              <span class="anchor" id="variable-ierr~186"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -570,7 +593,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_shift_vectors"></span> <h3>public  subroutine <a href='../proc/validate_shift_vectors.html'>validate_shift_vectors</a>(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validates shift vectors</p>
 
   <h4>Arguments</h4>
@@ -586,7 +613,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~9"></span>
+              <span class="anchor" id="variable-shift_vectors~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -601,7 +628,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~10"></span>
+              <span class="anchor" id="variable-expression_vectors~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -616,7 +643,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~10"></span>
+              <span class="anchor" id="variable-family_centroids~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -631,7 +658,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~16"></span>
+              <span class="anchor" id="variable-gene_to_fam~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -646,7 +673,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~6"></span>
+              <span class="anchor" id="variable-n_samples~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -661,7 +688,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~171"></span>
+              <span class="anchor" id="variable-ierr~187"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -685,7 +712,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-check_for_nan_inf"></span> <h3>public  subroutine <a href='../proc/check_for_nan_inf.html'>check_for_nan_inf</a>(array, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Check if an array of type real contains NaN or Inf values</p>
 
   <h4>Arguments</h4>
@@ -701,7 +732,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array"></span>
+              <span class="anchor" id="variable-array~22"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -716,7 +747,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~172"></span>
+              <span class="anchor" id="variable-ierr~188"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -740,7 +771,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_string_array_uniqueness"></span> <h3>public  subroutine <a href='../proc/validate_string_array_uniqueness.html'>validate_string_array_uniqueness</a>(str_arr, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validate that no string appears more than once</p>
 
   <h4>Arguments</h4>
@@ -771,7 +806,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~173"></span>
+              <span class="anchor" id="variable-ierr~189"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -795,7 +830,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_empty_strings"></span> <h3>public  subroutine <a href='../proc/validate_empty_strings.html'>validate_empty_strings</a>(string_array, array_name, ierr)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Validate that strings in an array are not empty</p>
 
   <h4>Arguments</h4>
@@ -841,7 +880,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~174"></span>
+              <span class="anchor" id="variable-ierr~190"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -865,7 +904,11 @@
     <div class="card-header codesum"><span class="anchor" id="proc-validate_all_data"></span> <h3>public  subroutine <a href='../proc/validate_all_data.html'>validate_all_data</a>(n_genes, n_families, n_samples, gene_ids, gene_family_ids, gene_to_fam, expression_vectors, family_centroids, shift_vectors, ierr, check_uniqueness, check_shift_consistency)  
 </h3></div>
     <div class="card-body">
-          
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
   <p>Comprehensive validation routine, combining all checks</p>
 
   <h4>Arguments</h4>
@@ -896,7 +939,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~14"></span>
+              <span class="anchor" id="variable-n_families~18"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -911,7 +954,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~7"></span>
+              <span class="anchor" id="variable-n_samples~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -926,7 +969,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~7"></span>
+              <span class="anchor" id="variable-gene_ids~12"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -956,7 +999,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~17"></span>
+              <span class="anchor" id="variable-gene_to_fam~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -971,7 +1014,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~11"></span>
+              <span class="anchor" id="variable-expression_vectors~17"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -986,7 +1029,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~11"></span>
+              <span class="anchor" id="variable-family_centroids~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1001,7 +1044,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~10"></span>
+              <span class="anchor" id="variable-shift_vectors~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1016,7 +1059,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~175"></span>
+              <span class="anchor" id="variable-ierr~191"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1082,14 +1125,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

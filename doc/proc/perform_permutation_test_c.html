@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>perform_permutation_test_c &ndash; TensorOmics</title>
@@ -85,6 +85,7 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine perform_permutation_test_c(trajectories, n_factors, n_samples, n_timepoints, factor_idx, dependent_idx, sample_idx, mode, n_permutations, local_contributions, total_contributions, temp_factor, temp_dependent, ierr, random_seed) bind(C, name="perform_permutation_test_c")  
+    <h2> subroutine perform_permutation_test_c(trajectories, n_factors, n_samples, n_timepoints, factor_idx, dependent_idx, sample_idx, baseline_mode, n_permutations, local_contributions, total_contributions, tmp_factor, tmp_dependent, ierr, random_seed) bind(C, name="perform_permutation_test_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,10 +157,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -183,7 +184,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~13"></span>
+              <span class="anchor" id="variable-trajectories~14"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -198,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~17"></span>
+              <span class="anchor" id="variable-n_factors~18"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~24"></span>
+              <span class="anchor" id="variable-n_samples~28"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -228,7 +229,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~23"></span>
+              <span class="anchor" id="variable-n_timepoints~25"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -243,7 +244,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-factor_idx~3"></span>
+              <span class="anchor" id="variable-factor_idx~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -258,7 +259,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dependent_idx~2"></span>
+              <span class="anchor" id="variable-dependent_idx~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -273,7 +274,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sample_idx~3"></span>
+              <span class="anchor" id="variable-sample_idx~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -288,7 +289,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~18"></span>
+              <span class="anchor" id="variable-baseline_mode~13"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -296,14 +297,35 @@
               dimension(*), target
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>baseline_mode</strong></td>
             <td>
-                <p>Baseline mode: 1=RAW, 2=MIN, 3=MEAN</p>
+                <table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw/zero baseline</td>
+<td>1_int32</td>
+</tr>
+<tr>
+<td>arithmetic mean</td>
+<td>3_int32</td>
+</tr>
+<tr>
+<td>minimum value</td>
+<td>2_int32</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_permutations~6"></span>
+              <span class="anchor" id="variable-n_permutations~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -318,7 +340,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions~7"></span>
+              <span class="anchor" id="variable-local_contributions~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -333,7 +355,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_contributions~4"></span>
+              <span class="anchor" id="variable-total_contributions~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -348,7 +370,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_factor~2"></span>
+              <span class="anchor" id="variable-tmp_factor~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -356,14 +378,14 @@
               dimension(n_timepoints), target
             </td>
             <td>::</td>
-            <td><strong>temp_factor</strong></td>
+            <td><strong>tmp_factor</strong></td>
             <td>
                 <p>Working array to hold the factor in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_dependent~4"></span>
+              <span class="anchor" id="variable-tmp_dependent~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -371,14 +393,14 @@
               dimension(n_timepoints), target
             </td>
             <td>::</td>
-            <td><strong>temp_dependent</strong></td>
+            <td><strong>tmp_dependent</strong></td>
             <td>
                 <p>Working array to hold the random dependent in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~220"></span>
+              <span class="anchor" id="variable-ierr~259"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -393,7 +415,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-random_seed~5"></span>
+              <span class="anchor" id="variable-random_seed~11"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -433,14 +455,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

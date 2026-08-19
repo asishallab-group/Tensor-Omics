@@ -105,8 +105,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), label_densities(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, i_chk
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, i_chk
         character(len=128) :: assert_msg
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -123,7 +123,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_basic: tree construction check")
 
@@ -237,8 +237,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), label_densities(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, i_chk
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, i_chk
         character(len=128) :: assert_msg
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -255,7 +255,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_small_radius: tree construction check")
 
@@ -275,14 +275,14 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), label_densities(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
 
         vectors(:, 1) = [1.0_real64, 2.0_real64]
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_single_vector: tree build check")
 
@@ -300,8 +300,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), label_densities(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, i_chk
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, i_chk
         character(len=128) :: assert_msg
 
         do i_chk = 1, n_vecs
@@ -310,7 +310,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_identical_vectors: tree build check")
 
@@ -349,8 +349,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), label_densities(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, i_chk
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, i_chk
         character(len=128) :: assert_msg
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -367,7 +367,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_density_labels_alloc: tree build check")
 
@@ -395,8 +395,8 @@ contains
         real(real64) :: tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
         logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -411,7 +411,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_basic: tree build")
 
@@ -453,8 +453,8 @@ contains
         real(real64) :: tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds_small, n_seeds_large, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
         logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs)
         logical :: seed_mask_small(n_vecs), seed_mask_large(n_vecs)
 
@@ -470,7 +470,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_k_seeding_effect: tree build")
 
@@ -551,8 +551,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), sorted_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), n_seeds, ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), n_seeds, ierr
         logical :: seed_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -567,7 +567,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_identify_ensemble_seeds_alloc: tree build")
 
@@ -675,8 +675,8 @@ contains
         real(real64) :: tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64)
         integer(int32) :: tmp_perm(n_vecs), sorted_perm(n_vecs), n_seeds, ierr
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
         logical :: tmp_visited_mask(n_vecs), tmp_newly_covered_mask(n_vecs), seed_mask(n_vecs)
 
         vectors = 5.0_real64
@@ -684,7 +684,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, &
                               "test_identify_ensemble_seeds_identical_vectors: tree build")
@@ -719,8 +719,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs), tmp_abs_diff(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs), tmp_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs, n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -733,7 +733,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_basic: tree construction check")
 
@@ -754,8 +754,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs), tmp_abs_diff(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs), tmp_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs, n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -767,7 +767,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
 
         call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
@@ -814,8 +814,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -826,7 +826,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
         call assert_equal_int(ierr, ERR_OK, "test_grow_ensemble_alloc: build tree check")
 
@@ -865,8 +865,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -878,7 +878,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
 
         call grow_ensemble_alloc(vectors, n_dims, n_vecs, ensemble_mask, &
@@ -899,8 +899,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs), tmp_abs_diff(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs), tmp_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs, n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -911,7 +911,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
 
         ensemble_mask = [.true., .false., .false.]
@@ -935,8 +935,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs), tmp_abs_diff(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs), tmp_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs, n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -948,7 +948,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
 
         call grow_ensemble(vectors, n_dims, n_vecs, ensemble_mask, 0.6_real64, &
@@ -966,8 +966,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs), tmp_abs_diff(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs), tmp_stack(3, 64, n_vecs), tmp_perm(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr
         logical :: ensemble_mask(n_vecs), tmp_vicinity_mask(n_vecs, n_vecs)
 
         vectors(:, 1) = [0.0_real64, 0.0_real64]
@@ -978,7 +978,7 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, tmp_r_stack, &
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
                             tmp_rec_stack, ierr)
 
         ensemble_mask = [.false., .false., .false.]
@@ -1253,8 +1253,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs), ierr, n_raw, n_merged
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs), ierr, n_raw, n_merged
         integer(int32) :: seed_indices(n_seeds)
         logical, allocatable :: raw_matrix(:, :), merged_matrix(:, :)
 
@@ -1270,8 +1270,8 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, &
-                            tmp_r_stack, tmp_rec_stack, ierr)
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
+                            tmp_rec_stack, ierr)
 
         seed_indices = [1_int32, 3_int32]
 
@@ -1303,8 +1303,8 @@ contains
 
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
         integer(int32) :: seed_indices(n_seeds), ierr, n_ensembles
         logical :: ensemble_matrix(n_vecs, n_seeds)
 
@@ -1318,8 +1318,8 @@ contains
         seed_indices = [1_int32, 2_int32, 3_int32, 4_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, &
-                            tmp_r_stack, tmp_rec_stack, ierr)
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
+                            tmp_rec_stack, ierr)
 
         call obtain_ensembles_alloc(vectors, n_dims, n_vecs, dimension_order, kd_indices, &
                                     density_labels, seed_indices, n_seeds, &
@@ -1413,8 +1413,8 @@ contains
         real(real64) :: vectors(n_dims, n_vecs), density_labels(n_vecs), tmp_val_buf(n_vecs)
         real(real64) :: angle, radius
         integer(int32) :: dimension_order(n_dims), kd_indices(n_vecs)
-        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs), tmp_l_stack(n_vecs)
-        integer(int32) :: tmp_r_stack(n_vecs), tmp_rec_stack(3, n_vecs)
+        integer(int32) :: tmp_workspace(n_vecs), tmp_perm_kd(n_vecs)
+        integer(int32) :: tmp_rec_stack(3, n_vecs)
         integer(int32) :: ierr, n_raw, n_merged, i_vec
         integer(int32) :: seed_indices(n_seeds)
         logical, allocatable :: raw_matrix(:, :), merged_matrix(:, :)
@@ -1451,8 +1451,8 @@ contains
         dimension_order = [1_int32, 2_int32]
 
         call build_kd_index(vectors, n_dims, n_vecs, kd_indices, dimension_order, &
-                            tmp_workspace, tmp_val_buf, tmp_perm_kd, tmp_l_stack, &
-                            tmp_r_stack, tmp_rec_stack, ierr)
+                            tmp_workspace, tmp_val_buf, tmp_perm_kd, &
+                            tmp_rec_stack, ierr)
 
         call calculate_labels_as_density_alloc(vectors, n_dims, n_vecs, 0.5_real64, &
                                                dimension_order, kd_indices, &

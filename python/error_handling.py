@@ -1,6 +1,8 @@
 #> tox_helper: throw error in error case
-def check_err_code(ierr: int) -> None:
-    if ierr == 0:
+def check_err_code(ierr: int, arg_pos_map: dict = {}) -> None:
+    arg_pos, code = divmod(ierr, 10000)
+
+    if code == 0:
         return
     msg = {
         # I/O errors
@@ -19,8 +21,7 @@ def check_err_code(ierr: int) -> None:
         117: "Could not write array data",
         121: "Could not add file to archive.",
         122: "Could not extract file from archive.",
-        123: "Manifest in zip file is missing.",
-        124: "Failed to close the file.",
+        123: "Failed to close the file.",
 
         # FORMAT ERRORS
         200: "Invalid format detected.",
@@ -30,9 +31,10 @@ def check_err_code(ierr: int) -> None:
         204: "NaN or Inf found in input data.",
         205: "Unsupported data type encountered.",
         206: "Array size mismatch detected",
-        207: "String exceeds buffer size.",
-        208: "Array index out of bounds",
-        209: "Division by Zero",
+        207: "Array type read does not match expected type.",
+        208: "String exceeds buffer size.",
+        209: "Array index out of bounds",
+        210: "Division by Zero",
 
         # MEMORY ERRORS
         301: "Memory allocation failed.",
@@ -44,5 +46,14 @@ def check_err_code(ierr: int) -> None:
         # Internal errors
         9001: "Internal error: unexpected state.",
         9999: "Unknown error.",
-    }.get(ierr, f"Unmapped error code: {ierr}")
-    raise RuntimeError(msg)
+    }.get(code)
+
+    if msg is not None:
+        if (arg := arg_pos_map.get(arg_pos)) is not None:
+            raise RuntimeError(f"Argument '{arg}', the {arg_pos}. argument of the called Fortran function, triggered: {msg}")
+        elif arg_pos == 0:
+            raise RuntimeError(msg)
+        else:
+            raise RuntimeError(f"The {arg_pos}. argument of the called Fortran function triggered: {msg}")
+    else:
+        raise Warning(f"Unmapped error code: {ierr}")

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>compute_all_contributions &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">45 statements</a>
+                 title=" 0.3% of total for procedures.">46 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, mode, local_contributions, total_contributions, temp_factors, temp_dependent, ierr)  
+    <h2>public pure subroutine compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr)  
 </h2>
     
 
@@ -169,7 +171,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~6"></span>
+              <span class="anchor" id="variable-trajectories~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -184,7 +186,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~8"></span>
+              <span class="anchor" id="variable-n_factors~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -199,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~15"></span>
+              <span class="anchor" id="variable-n_samples~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -214,7 +216,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~9"></span>
+              <span class="anchor" id="variable-n_timepoints~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -289,7 +291,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~10"></span>
+              <span class="anchor" id="variable-baseline_mode~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -297,14 +299,35 @@
               
             </td>
             <td>::</td>
-            <td><strong>mode</strong></td>
+            <td><strong>baseline_mode</strong></td>
             <td>
-                <p>Baseline mode: 1=RAW, 2=MIN, 3=MEAN</p>
+                <table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Raw/zero baseline</td>
+<td>1_int32</td>
+</tr>
+<tr>
+<td>arithmetic mean</td>
+<td>3_int32</td>
+</tr>
+<tr>
+<td>minimum value</td>
+<td>2_int32</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions~4"></span>
+              <span class="anchor" id="variable-local_contributions~5"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -319,7 +342,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_contributions~2"></span>
+              <span class="anchor" id="variable-total_contributions~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -334,7 +357,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_factors"></span>
+              <span class="anchor" id="variable-tmp_factors"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -342,14 +365,14 @@
               dimension(n_timepoints, n_selected_factors)
             </td>
             <td>::</td>
-            <td><strong>temp_factors</strong></td>
+            <td><strong>tmp_factors</strong></td>
             <td>
                 <p>Working array to hold the currently handled sample's factors in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-temp_dependent~2"></span>
+              <span class="anchor" id="variable-tmp_dependent~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -357,14 +380,14 @@
               dimension(n_timepoints)
             </td>
             <td>::</td>
-            <td><strong>temp_dependent</strong></td>
+            <td><strong>tmp_dependent</strong></td>
             <td>
                 <p>Working array to hold the currently handled dependent in contiguous memory</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~208"></span>
+              <span class="anchor" id="variable-ierr~247"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -404,14 +427,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

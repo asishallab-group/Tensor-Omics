@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>clock_hand_angles_for_shift_vectors_c &ndash; TensorOmics</title>
@@ -85,10 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">53 statements</a>
+                 title=" 0.4% of total for procedures.">54 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -148,7 +149,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine clock_hand_angles_for_shift_vectors_c(origins, targets, n_dims, n_vecs, vecs_selection_mask, n_selected_vecs, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")  
+    <h2>pure subroutine clock_hand_angles_for_shift_vectors_c(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, selected_axes_for_signed, signed_angles, ierr) bind(C, name="clock_hand_angles_for_shift_vectors_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -156,10 +157,10 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></li>
                   <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -182,37 +183,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-origins~2"></span>
+              <span class="anchor" id="variable-fields~8"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_dims, n_vecs), target
+              dimension(n_dims, 2, n_fields), target
             </td>
             <td>::</td>
-            <td><strong>origins</strong></td>
+            <td><strong>fields</strong></td>
             <td>
-                <p>First set of RAP-projected, normalized vectors (e.g. expression centroids)</p>
+                <p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-targets~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_vecs), target
-            </td>
-            <td>::</td>
-            <td><strong>targets</strong></td>
-            <td>
-                <p>Second set of RAP-projected, normalized vectors (e.g. paralogs)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dims~11"></span>
+              <span class="anchor" id="variable-n_dims~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -227,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vecs~4"></span>
+              <span class="anchor" id="variable-n_fields~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -235,29 +221,29 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_vecs</strong></td>
+            <td><strong>n_fields</strong></td>
             <td>
                 <p>Number of vector pairs</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs_selection_mask~4"></span>
+              <span class="anchor" id="variable-fields_selection_mask~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_vecs), target
+              dimension(n_fields), target
             </td>
             <td>::</td>
-            <td><strong>vecs_selection_mask</strong></td>
+            <td><strong>fields_selection_mask</strong></td>
             <td>
                 <p>.true. for vector pairs where angle should be computed</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vecs~5"></span>
+              <span class="anchor" id="variable-n_selected_fields~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -265,14 +251,14 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_selected_vecs</strong></td>
+            <td><strong>n_selected_fields</strong></td>
             <td>
-                <p>Count of .true. values in vecs_selection_mask</p>
+                <p>Count of .true. values in fields_selection_mask</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed~4"></span>
+              <span class="anchor" id="variable-selected_axes_for_signed~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -282,17 +268,17 @@
             <td>::</td>
             <td><strong>selected_axes_for_signed</strong></td>
             <td>
-                <p>Indices of 3 axes to use for directionality calculation (ignored if n_dims &lt;= 3)</p>
+                <p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angles~2"></span>
+              <span class="anchor" id="variable-signed_angles~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_selected_vecs), target
+              dimension(n_selected_fields), target
             </td>
             <td>::</td>
             <td><strong>signed_angles</strong></td>
@@ -302,7 +288,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~198"></span>
+              <span class="anchor" id="variable-ierr~294"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -342,14 +328,14 @@
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

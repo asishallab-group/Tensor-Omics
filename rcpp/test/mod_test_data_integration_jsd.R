@@ -22,11 +22,11 @@ test_determine_shared_residual_range <- function() {
     9,0,1,2
   ), dim = c(3, 2, 2))
 
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- tox_determine_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 10.65), "Test 1 failed: expected ~10.65")
 
   # Test 2 — Custom quantile
-  R <- tox_determine_shared_residual_range(S1, S2, 50)
+  R <- tox_determine_shared_residual_range(S1, S2, 0.5)
   assert_true(approx_equal(R, 4.0), "Test 2 failed: expected ~4.0")
 
   # Test 3 — Quantile < 0 → error
@@ -35,10 +35,10 @@ test_determine_shared_residual_range <- function() {
     "Test 3 failed: expected error for negative quantile"
   )
 
-  # Test 4 — Quantile > 100 → error
+  # Test 4 — Quantile > 1 → error
   assert_error(
-    tox_determine_shared_residual_range(S1, S2, 150),
-    "Test 4 failed: expected error for quantile > 100"
+    tox_determine_shared_residual_range(S1, S2, 1.5),
+    "Test 4 failed: expected error for quantile > 1"
   )
 
   # Test 5 — NaNs ignored
@@ -56,19 +56,19 @@ test_determine_shared_residual_range <- function() {
     9,10,NA_real_
   ), dim = c(3,2,2))
 
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- tox_determine_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 11.0), "Test 5 failed: expected ~11.0")
 
   # Test 6 — All zeros
   S1 <- array(0, dim = c(4,2,2))
   S2 <- array(0, dim = c(3,2,2))
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- tox_determine_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 0.0), "Test 6 failed: expected 0")
 
   # Test 7 — Single residual
   S1 <- array(3, dim = c(1, 1, 1))
   S2 <- array(-4, dim = c(1, 1, 1))
-  R <- tox_determine_shared_residual_range(S1, S2, 95)
+  R <- tox_determine_shared_residual_range(S1, S2, 0.95)
   assert_true(approx_equal(R, 3.95), "Test 7 failed: expected ~3.95")
 }
 
@@ -98,11 +98,11 @@ test_determine_shared_residual_range_expert <- function() {
   pp <- make_pool(S1, S2)
 
   # Test 1
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 10.65), "Test 1 failed")
 
   # Test 2
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 50)
+  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 0.5)
   assert_true(approx_equal(R, 4.0), "Test 2 failed")
 
   # Test 3
@@ -113,7 +113,7 @@ test_determine_shared_residual_range_expert <- function() {
 
   # Test 4
   assert_error(
-    tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 150),
+    tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 1.5),
     "Test 4 failed"
   )
 
@@ -133,21 +133,21 @@ test_determine_shared_residual_range_expert <- function() {
   ), dim = c(3,2,2))
 
   pp <- make_pool(S1, S2)
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 11.0), "Test 5 failed")
 
   # Test 6 — All zeros
   S1 <- array(0, dim = c(4,2,2))
   S2 <- array(0, dim = c(3,2,2))
   pp <- make_pool(S1, S2)
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 0.0), "Test 6 failed")
 
   # Test 7 — Single residual
   S1 <- array(3, dim = c(1, 1, 1))
   S2 <- array(-4, dim = c(1, 1, 1))
   pp <- make_pool(S1, S2)
-  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 95)
+  R <- tox_determine_shared_residual_range_expert(pp$pool, pp$perm, 0.95)
   assert_true(approx_equal(R, 3.95), "Test 7 failed")
 }
 
@@ -473,7 +473,6 @@ test_gjct_permutation_test <- function() {
   )
 
   assert_true(abs(res_p1$p_value - 1/3) < 1e-12, "Test 3A: p-value should be 1 when for huge observed JSD and without included residuals")
-  print(args(tox_gjct_permutation_test_filtered))
   filtered <- function(S1_arr, S2_arr, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed) {
       tox_gjct_permutation_test_filtered(
           S1_arr,

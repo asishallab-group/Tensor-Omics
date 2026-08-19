@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
       <meta name="description" content="Documentation for TensorOmics">
-    <meta name="author" content="TensorOmics Developers" >
+    <meta name="author" content="" >
     <link rel="icon" href="../favicon.png">
 
     <title>identify_outliers &ndash; TensorOmics</title>
@@ -85,10 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">27 statements</a>
+                 title=" 0.2% of total for procedures.">31 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -149,7 +151,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, p_values, percentile)  
+    <h2>public pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)  
 </h2>
     
 
@@ -171,7 +173,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~4"></span>
+              <span class="anchor" id="variable-n_genes~28"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -186,7 +188,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~2"></span>
+              <span class="anchor" id="variable-rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -201,7 +203,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~2"></span>
+              <span class="anchor" id="variable-sorted_rdi~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -216,7 +218,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~2"></span>
+              <span class="anchor" id="variable-perm~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -261,7 +263,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-p_values"></span>
+              <span class="anchor" id="variable-quantile~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -269,14 +271,17 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
               
             </td>
             <td>::</td>
-            <td><strong>p_values</strong>(n_genes)</td>
+            <td><strong>quantile</strong>(n_genes)</td>
             <td>
-                <p>Empirical one-sided upper-tail p-values for each gene. Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided upper-tail empirical p-value is used.</p>
+                <p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
+Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
+upper-tail quantile is used.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile"></span>
+              <span class="anchor" id="variable-percentile~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -286,7 +291,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
             <td>::</td>
             <td><strong>percentile</strong></td>
             <td>
-                <p>(optional) Percentile threshold (default: 95 for top 5%)</p>
+                <p>(optional) Percentile threshold as a fraction in [0,1] (default: 0.95 for top 5%)</p>
             </td>
         </tr>
     </tbody>
@@ -316,14 +321,14 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
           <div class="col">
             <p>
               TensorOmics
- was developed by TensorOmics Developers<br>              &copy; 2026 
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
 </p>
           </div>
           <div class="col">
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on "2026-05-21 12:09 +0000"             </p>
+ on 2026-08-18 09:58 +0000             </p>
           </div>
         </div>
         <br>

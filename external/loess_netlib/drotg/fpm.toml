@@ -1,0 +1,9 @@
+name = "loess-netlib-drotg"
+version = "0.1.0"
+license = "MIT"
+
+[install]
+library = true
+
+[library]
+type = "static" 
