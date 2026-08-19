@@ -336,6 +336,7 @@ contains
     !> Test computation of shift vectors
     subroutine test_compute_shift_vectors()
         integer(int32) :: i
+        real(real64) :: expected_shift(total_samples)
 
         call assert_true(allocated(shift_vectors), "Shift vectors should be allocated")
         call assert_equal_int(size(shift_vectors, 1), 2*total_samples, "Shift vectors should have 2*d rows")
@@ -354,8 +355,9 @@ contains
         ! Verify shift vectors are correctly computed
         do i = 1, n_genes
             if (gene_to_fam(i) >= 1 .and. gene_to_fam(i) <= n_families) then
+                expected_shift = kallisto_expr(:, i) - family_centroids(:, gene_to_fam(i))
                 call assert_equal_array_real(shift_vectors(total_samples + 1:2*total_samples, i), &
-                                             kallisto_expr(:, i) - family_centroids(:, gene_to_fam(i)), &
+                                             expected_shift, &
                                              total_samples, 1e-12_real64, &
                                              "Shift vector should be expression minus centroid")
             end if

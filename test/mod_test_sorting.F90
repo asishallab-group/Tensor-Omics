@@ -1,4 +1,8 @@
 !> Unit test suite for the f42_sort_impl module.
+!| Every assertion helper takes explicit-shape dummies, so a vector subscript like `data(perm)`
+!| cannot be passed directly: the compiler has to gather it into an array temporary first, and
+!| `-check arg_temp_created` reports every one of them, which buries the test output. The sorted
+!| values are therefore gathered into a declared local and that local is what gets asserted on.
 module mod_test_sorting
     use f42_utils_impl
     use asserts
@@ -82,19 +86,22 @@ contains
     subroutine test_sort_integer_ascending()
         integer(int32), dimension(5) :: data = [5, 2, 9, 1, 6]
         integer(int32), dimension(5) :: perm, expected_sorted = [1, 2, 5, 6, 9]
+        integer(int32), dimension(5) :: sorted_data
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_array(data, perm, stack_left, stack_right)
 
-        call assert_equal_array_int(data(perm), expected_sorted, 5, "test_sort_integer_ascending: sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected_sorted, 5, "test_sort_integer_ascending: sorted values mismatch")
     end subroutine test_sort_integer_ascending
 
     !> Test that sorted values are in ascending order for reals.
     subroutine test_sort_real_descending()
         real(real64), dimension(5) :: data = [3.5d0, 2.2d0, 8.8d0, 1.1d0, 7.7d0]
         real(real64), dimension(5) :: expected_sorted = [1.1d0, 2.2d0, 3.5d0, 7.7d0, 8.8d0]
+        real(real64), dimension(5) :: sorted_data
         integer(int32), dimension(5) :: perm
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
@@ -102,7 +109,8 @@ contains
         perm = [(i, i=1, 5)]
         call sort_array(data, perm, stack_left, stack_right)
 
-        call assert_equal_array_real(data(perm), expected_sorted, 5, 1d-12, &
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected_sorted, 5, 1d-12, &
                                      "test_sort_real_descending: sorted values mismatch")
     end subroutine test_sort_real_descending
 
@@ -125,13 +133,15 @@ contains
         integer(int32), dimension(5) :: data = [1, 2, 3, 4, 5]
         integer(int32), dimension(5) :: expected = [1, 2, 3, 4, 5]
         integer(int32), dimension(5) :: perm
+        integer(int32), dimension(5) :: sorted_data
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_array(data, perm, stack_left, stack_right)
 
-        call assert_equal_array_int(data(perm), expected, 5, "test_sort_sorted_stability: sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected, 5, "test_sort_sorted_stability: sorted values mismatch")
     end subroutine test_sort_sorted_stability
 
     !> Test sorting with empty array (edge case).
@@ -149,14 +159,14 @@ contains
     !> Test sorting with large random array for performance and correctness.
     subroutine test_sort_large_random()
         real(real64), allocatable :: rdata(:)
-        integer(int32), allocatable :: data(:), perm(:), sorted(:)
+        integer(int32), allocatable :: data(:), perm(:), sorted(:), sorted_data(:)
         integer(int32) :: n
         integer(int32), allocatable :: stack_left(:), stack_right(:), dummy_perm(:)
         integer(int32) :: i
         integer(int32) :: n_seed
         integer(int32), allocatable :: seed_array(:)
         n = 1000
-        allocate (rdata(n), data(n), perm(n), sorted(n))
+        allocate (rdata(n), data(n), perm(n), sorted(n), sorted_data(n))
         allocate (stack_left(64), stack_right(64))
         allocate (dummy_perm(n))
         ! For reproducibility: initialize the random number generator seed
@@ -175,8 +185,9 @@ contains
         ! Test our sorting
         perm = [(i, i=1, n)]
         call sort_array(data, perm, stack_left, stack_right)
-        call assert_equal_array_int(data(perm), sorted, n, "test_sort_large_random: sorted values mismatch")
-        deallocate (rdata, data, perm, sorted, stack_left, stack_right, dummy_perm)
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, sorted, n, "test_sort_large_random: sorted values mismatch")
+        deallocate (rdata, data, perm, sorted, sorted_data, stack_left, stack_right, dummy_perm)
     end subroutine test_sort_large_random
 
     !> Test heapsort implementation for real arrays (uses f42_sort_impl heapsort)
@@ -184,22 +195,26 @@ contains
         real(real64), dimension(5) :: data = [5.0d0, 3.0d0, 4.0d0, 1.0d0, 2.0d0]
         integer(int32), dimension(5) :: perm
         real(real64), dimension(5) :: expected = [1.0d0, 2.0d0, 3.0d0, 4.0d0, 5.0d0]
+        real(real64), dimension(5) :: sorted_data
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_real_heapsort(data, perm)
-        call assert_equal_array_real(data(perm), expected, 5, 1d-12, "test_heapsort_real: values not sorted")
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected, 5, 1d-12, "test_heapsort_real: values not sorted")
     end subroutine test_heapsort_real
 
     !> Test heapsort implementation for integer arrays
     subroutine test_heapsort_integer()
         integer(int32), dimension(5) :: data = [5, 3, 4, 1, 2]
         integer(int32), dimension(5) :: perm, expected = [1, 2, 3, 4, 5]
+        integer(int32), dimension(5) :: sorted_data
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_integer_heapsort(data, perm)
-        call assert_equal_array_int(data(perm), expected, 5, "test_heapsort_integer: values not sorted")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected, 5, "test_heapsort_integer: values not sorted")
     end subroutine test_heapsort_integer
 
     !> Test heapsort implementation for character arrays
@@ -207,34 +222,40 @@ contains
         character(len=1), dimension(5) :: data = ["d", "b", "c", "a", "e"]
         integer(int32), dimension(5) :: perm
         character(len=1), dimension(5) :: expected = ["a", "b", "c", "d", "e"]
+        character(len=1), dimension(5) :: sorted_data
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_character_heapsort(data, perm)
-        call assert_equal_array_char(data(perm), expected, 1, 5, "test_heapsort_character: values not sorted")
+        sorted_data = data(perm)
+        call assert_equal_array_char(sorted_data, expected, 1, 5, "test_heapsort_character: values not sorted")
     end subroutine test_heapsort_character
 
     !> Heapsort variant: integer ascending (mirrors test_sort_integer_ascending)
     subroutine test_heapsort_integer_ascending()
         integer(int32), dimension(5) :: data = [5, 2, 9, 1, 6]
         integer(int32), dimension(5) :: perm, expected_sorted = [1, 2, 5, 6, 9]
+        integer(int32), dimension(5) :: sorted_data
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_integer_heapsort(data, perm)
-        call assert_equal_array_int(data(perm), expected_sorted, 5, "test_heapsort_integer_ascending: sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected_sorted, 5, "test_heapsort_integer_ascending: sorted values mismatch")
     end subroutine test_heapsort_integer_ascending
 
     !> Heapsort variant: real descending (mirrors test_sort_real_descending)
     subroutine test_heapsort_real_descending()
         real(real64), dimension(5) :: data = [3.5d0, 2.2d0, 8.8d0, 1.1d0, 7.7d0]
         real(real64), dimension(5) :: expected_sorted = [1.1d0, 2.2d0, 3.5d0, 7.7d0, 8.8d0]
+        real(real64), dimension(5) :: sorted_data
         integer(int32), dimension(5) :: perm
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_real_heapsort(data, perm)
-        call assert_equal_array_real(data(perm), expected_sorted, 5, 1d-12, "test_heapsort_real_descending: sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected_sorted, 5, 1d-12, "test_heapsort_real_descending: sorted values mismatch")
     end subroutine test_heapsort_real_descending
 
     !> Heapsort variant: character random (mirrors test_sort_char_random)
@@ -254,11 +275,13 @@ contains
         integer(int32), dimension(5) :: data = [1, 2, 3, 4, 5]
         integer(int32), dimension(5) :: expected = [1, 2, 3, 4, 5]
         integer(int32), dimension(5) :: perm
+        integer(int32), dimension(5) :: sorted_data
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_integer_heapsort(data, perm)
-        call assert_equal_array_int(data(perm), expected, 5, "test_heapsort_sorted_stability: sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected, 5, "test_heapsort_sorted_stability: sorted values mismatch")
     end subroutine test_heapsort_sorted_stability
 
     !> Heapsort variant: empty array (mirrors test_sort_empty_array)
@@ -274,14 +297,14 @@ contains
     !> Heapsort variant: large random (mirrors test_sort_large_random)
     subroutine test_heapsort_large_random()
         real(real64), allocatable :: rdata(:)
-        integer(int32), allocatable :: data(:), perm(:), sorted(:)
+        integer(int32), allocatable :: data(:), perm(:), sorted(:), sorted_data(:)
         integer(int32) :: n
         integer(int32), allocatable :: stack_left(:), stack_right(:), dummy_perm(:)
         integer(int32) :: i
         integer(int32) :: n_seed
         integer(int32), allocatable :: seed_array(:)
         n = 1000
-        allocate (rdata(n), data(n), perm(n), sorted(n))
+        allocate (rdata(n), data(n), perm(n), sorted(n), sorted_data(n))
         allocate (dummy_perm(n))
         allocate (stack_left(64), stack_right(64))
         ! For reproducibility: initialize the random number generator seed
@@ -298,41 +321,48 @@ contains
         sorted = sorted(dummy_perm)
         perm = [(i, i=1, n)]
         call sort_integer_heapsort(data, perm)
-        call assert_equal_array_int(data(perm), sorted, n, "test_heapsort_large_random: sorted values mismatch")
-        deallocate (rdata, data, perm, sorted, stack_left, stack_right, dummy_perm)
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, sorted, n, "test_heapsort_large_random: sorted values mismatch")
+        deallocate (rdata, data, perm, sorted, sorted_data, stack_left, stack_right, dummy_perm)
     end subroutine test_heapsort_large_random
 
     !> Test sorting when the input contains duplicate values for integers.
     subroutine test_sort_duplicates()
         integer(int32), dimension(6) :: data = [2, 1, 2, 4, 2, 3]
         integer(int32), dimension(6) :: perm, expected_sorted = [1, 2, 2, 2, 3, 4]
+        integer(int32), dimension(6) :: sorted_data
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
 
         perm = [(i, i=1, 6)]
         call sort_array(data, perm, stack_left, stack_right)
-        call assert_equal_array_int(data(perm), expected_sorted, 6, "test_sort_duplicates (quicksort): sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected_sorted, 6, "test_sort_duplicates (quicksort): sorted values mismatch")
 
         ! Also exercise heapsort implementation on the same data
         perm = [(i, i=1, 6)]
         call sort_integer_heapsort(data, perm)
-        call assert_equal_array_int(data(perm), expected_sorted, 6, "test_sort_duplicates (heapsort): sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected_sorted, 6, "test_sort_duplicates (heapsort): sorted values mismatch")
     end subroutine test_sort_duplicates
 
     !> Test sorting with negative numbers for integers.
     subroutine test_sort_negatives()
         integer(int32), dimension(5) :: data = [3, -1, 5, 0, -10]
         integer(int32), dimension(5) :: perm, expected_sorted = [-10, -1, 0, 3, 5]
+        integer(int32), dimension(5) :: sorted_data
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_array(data, perm, stack_left, stack_right)
-        call assert_equal_array_int(data(perm), expected_sorted, 5, "test_sort_negatives (quicksort): sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected_sorted, 5, "test_sort_negatives (quicksort): sorted values mismatch")
 
         perm = [(i, i=1, 5)]
         call sort_integer_heapsort(data, perm)
-        call assert_equal_array_int(data(perm), expected_sorted, 5, "test_sort_negatives (heapsort): sorted values mismatch")
+        sorted_data = data(perm)
+        call assert_equal_array_int(sorted_data, expected_sorted, 5, "test_sort_negatives (heapsort): sorted values mismatch")
     end subroutine test_sort_negatives
 
     !> Test sorting when the input contains duplicate values for reals.
@@ -340,17 +370,20 @@ contains
         real(real64), dimension(6) :: data = [2.0d0, 1.0d0, 2.0d0, 4.0d0, 2.0d0, 3.0d0]
         integer(int32), dimension(6) :: perm
         real(real64), dimension(6) :: expected_sorted = [1.0d0, 2.0d0, 2.0d0, 2.0d0, 3.0d0, 4.0d0]
+        real(real64), dimension(6) :: sorted_data
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
 
         perm = [(i, i=1, 6)]
         call sort_array(data, perm, stack_left, stack_right)
-        call assert_equal_array_real(data(perm), expected_sorted, 6, 1d-12, &
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected_sorted, 6, 1d-12, &
                                      "test_sort_duplicates_real (quicksort): sorted values mismatch")
 
         perm = [(i, i=1, 6)]
         call sort_real_heapsort(data, perm)
-        call assert_equal_array_real(data(perm), expected_sorted, 6, 1d-12, &
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected_sorted, 6, 1d-12, &
                                      "test_sort_duplicates_real (heapsort): sorted values mismatch")
     end subroutine test_sort_duplicates_real
 
@@ -359,17 +392,20 @@ contains
         real(real64), dimension(5) :: data = [3.0d0, -1.0d0, 5.0d0, 0.0d0, -10.0d0]
         integer(int32), dimension(5) :: perm
         real(real64), dimension(5) :: expected_sorted = [-10.0d0, -1.0d0, 0.0d0, 3.0d0, 5.0d0]
+        real(real64), dimension(5) :: sorted_data
         integer(int32) :: stack_left(20), stack_right(20)
         integer(int32) :: i
 
         perm = [(i, i=1, 5)]
         call sort_array(data, perm, stack_left, stack_right)
-        call assert_equal_array_real(data(perm), expected_sorted, 5, 1d-12, &
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected_sorted, 5, 1d-12, &
                                      "test_sort_negatives_real (quicksort): sorted values mismatch")
 
         perm = [(i, i=1, 5)]
         call sort_real_heapsort(data, perm)
-        call assert_equal_array_real(data(perm), expected_sorted, 5, 1d-12, &
+        sorted_data = data(perm)
+        call assert_equal_array_real(sorted_data, expected_sorted, 5, 1d-12, &
                                      "test_sort_negatives_real (heapsort): sorted values mismatch")
     end subroutine test_sort_negatives_real
 
@@ -378,6 +414,7 @@ contains
         use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_is_nan, ieee_quiet_nan
         real(real64), dimension(4) :: data
         real(real64), dimension(3) :: expected_non_nan = [1.0d0, 2.0d0, 3.0d0]
+        real(real64), dimension(3) :: sorted_non_nan
         integer(int32), dimension(4) :: perm
         integer(int32) :: stack_left(20), stack_right(20)
         real(real64) :: nanval
@@ -392,7 +429,8 @@ contains
         perm = [(i, i=1, n)]
         call sort_array(data, perm, stack_left, stack_right)
         call assert_true(ieee_is_nan(data(perm(n))), "test_sort_nan (quicksort): NaN not last")
-        call assert_equal_array_real(data(perm(1:n - 1)), expected_non_nan, n - 1, 1d-12, &
+        sorted_non_nan = data(perm(1:n - 1))
+        call assert_equal_array_real(sorted_non_nan, expected_non_nan, n - 1, 1d-12, &
                                      "test_sort_nan (quicksort): non-NaN values not sorted")
 
         ! Heapsort variant
@@ -400,7 +438,8 @@ contains
         perm = [(i, i=1, n)]
         call sort_real_heapsort(data, perm)
         call assert_true(ieee_is_nan(data(perm(n))), "test_sort_nan (heapsort): NaN not last")
-        call assert_equal_array_real(data(perm(1:n - 1)), expected_non_nan, n - 1, 1d-12, &
+        sorted_non_nan = data(perm(1:n - 1))
+        call assert_equal_array_real(sorted_non_nan, expected_non_nan, n - 1, 1d-12, &
                                      "test_sort_nan (heapsort): non-NaN values not sorted")
     end subroutine test_sort_nan
 

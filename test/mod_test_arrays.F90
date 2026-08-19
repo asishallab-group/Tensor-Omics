@@ -321,6 +321,7 @@ contains
         character(len=3) :: arr(3), arr2(3)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
+        integer(int32) :: expected_dims(1)
         call set_ok(ierr)
         arr = ['foo', 'bar', 'baz']
         fname = "carr1d.test.bin"
@@ -331,7 +332,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_int(type_code, len(arr), "Type code mismatch")
         call assert_equal_int(ndims, rank(arr), "ndims mismatch")
-        call assert_equal_array_int(dims, shape(arr), rank(arr), "shape mismatch")
+        expected_dims = shape(arr)
+        call assert_equal_array_int(dims, expected_dims, rank(arr), "shape mismatch")
 
         call deserialize_char_1d(arr2, fname, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
@@ -343,6 +345,7 @@ contains
         character(len=5) :: arr(2, 2), arr2(2, 2)
         character(len=100) :: fname
         integer(int32) :: ierr, type_code, ndims, dims(5)
+        integer(int32) :: expected_dims(2)
         call set_ok(ierr)
 
         arr = reshape(['foo  ', 'bar  ', 'baz  ', 'quxxx'], [2, 2])
@@ -354,7 +357,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_int(type_code, len(arr), "Type code mismatch")
         call assert_equal_int(ndims, rank(arr), "ndims mismatch")
-        call assert_equal_array_int(dims, shape(arr), rank(arr), "shape mismatch")
+        expected_dims = shape(arr)
+        call assert_equal_array_int(dims, expected_dims, rank(arr), "shape mismatch")
 
         call deserialize_char_2d(arr2, fname, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")

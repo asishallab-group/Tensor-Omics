@@ -966,8 +966,10 @@ contains
         call compute_residuals(n_genes, n_reps, expr, means, resid, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_residuals_basic: should succeed")
-        call assert_allclose_array_real(reshape(resid, [n_reps*n_genes]), &
-                                        reshape(expected_resid, [n_reps*n_genes]), &
+        ! Both are contiguous whole arrays, so they sequence-associate with the assertion's
+        ! rank-1 explicit-shape dummy as they stand -- flattening them with `reshape` first
+        ! would only buy an array temporary per argument.
+        call assert_allclose_array_real(resid, expected_resid, &
                                         n_reps*n_genes, 0.0_real64, TOL, &
                                         "test_compute_residuals_basic: residuals")
     end subroutine test_compute_residuals_basic
@@ -1120,6 +1122,7 @@ contains
         integer(int32) :: tmp_distances_perm(n_genes_S)
         real(real64) :: neighborhood_residuals(n_reps_S, n_neighbors, n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points)
+        integer(int32) :: expected_indices(n_neighbors)
 
         ! -----------------------------
         ! Inputs
@@ -1157,10 +1160,12 @@ contains
         !   sorted → gene 4, gene 3
         ! -----------------------------
 
-        call assert_equal_array_int(neighborhood_indices(:, 1), [2, 1], n_neighbors, &
+        expected_indices = [2, 1]
+        call assert_equal_array_int(neighborhood_indices(:, 1), expected_indices, n_neighbors, &
                                     "test_construct_neighborhoods_basic: Incorrect neighborhood indices for point 1")
 
-        call assert_equal_array_int(neighborhood_indices(:, 2), [4, 3], n_neighbors, &
+        expected_indices = [4, 3]
+        call assert_equal_array_int(neighborhood_indices(:, 2), expected_indices, n_neighbors, &
                                     "test_construct_neighborhoods_basic: Incorrect neighborhood indices for point 2")
 
         ! -----------------------------
@@ -1228,6 +1233,7 @@ contains
         integer(int32) :: tmp_distances_perm(n_genes_S)
         real(real64) :: neighborhood_residuals(n_reps_S, n_neighbors, n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points)
+        integer(int32) :: expected_indices(n_neighbors)
 
         x_star = [5.0_real64]
         mean_S = [4.0_real64, ieee_value(1.0_real64, ieee_quiet_nan), 6.0_real64, ieee_value(1.0_real64, ieee_quiet_nan)]
@@ -1246,7 +1252,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr must be ERR_OK")
 
         ! Only genes 1 and 3 are valid (non-NaN)
-        call assert_equal_array_int(neighborhood_indices(:, 1), [1, 3], n_neighbors, &
+        expected_indices = [1, 3]
+        call assert_equal_array_int(neighborhood_indices(:, 1), expected_indices, n_neighbors, &
                                     "test_construct_neighborhoods_nan_means: NaN mean handling incorrect")
     end subroutine test_construct_neighborhoods_nan_means
 

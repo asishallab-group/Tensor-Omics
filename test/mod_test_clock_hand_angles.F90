@@ -196,7 +196,7 @@ contains
 
     !> The reference is what picks the orientation: reverse it and the sign reverses.
     subroutine test_high_dimensional_reference_orients()
-        real(real64) :: v1(7), v2(7), reference(7), one_way, the_other
+        real(real64) :: v1(7), v2(7), reference(7), reversed_reference(7), one_way, the_other
         integer :: ierr
         v1 = 0.0_real64; v1(3) = 1.0_real64
         v2 = 0.0_real64; v2(5) = 1.0_real64
@@ -206,7 +206,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: oriented rotation")
         call assert_equal_real(one_way, PI/2.0_real64, TOL, "the reference makes this turn positive")
 
-        call clock_hand_angle_between_vectors(v1, v2, 7, -reference, the_other, ierr)
+        reversed_reference = -reference
+        call clock_hand_angle_between_vectors(v1, v2, 7, reversed_reference, the_other, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: reversed reference")
         call assert_equal_real(the_other, -PI/2.0_real64, TOL, "and reversing it makes the same turn negative")
     end subroutine test_high_dimensional_reference_orients

@@ -112,6 +112,7 @@ contains
         real(real64) :: tmp(n_genes), means(n_genes)
         integer(int32) :: perm(n_genes), ierr
         real(real64) :: sorted(n_genes)
+        real(real64) :: norm_sorted(n_genes)
 
         expr = reshape([3.0, 1.0, 4.0, 2.0], [1,n_genes])
 
@@ -122,7 +123,8 @@ contains
         call assert_equal_array_real(means, sorted, n_genes, TOL, "1×N: rank_means must equal sorted row")
 
         ! Each tissue must be permutation of rank_means
-        call assert_equal_array_real(norm(1,[2,4,1,3]), means, n_genes, TOL, "1×N: result must match rank_means")
+        norm_sorted = norm(1,[2,4,1,3])
+        call assert_equal_array_real(norm_sorted, means, n_genes, TOL, "1×N: result must match rank_means")
     end subroutine
 
 
@@ -134,6 +136,7 @@ contains
         real(real64) :: expr(n_tissues,1), norm(n_tissues,1)
         real(real64) :: tmp(1), means(1)
         integer(int32) :: perm(1), ierr
+        real(real64) :: expected_column(n_tissues)
 
         expr(:,1) = [10.0_real64, 20.0_real64, 30.0_real64, 40.0_real64]
 
@@ -142,7 +145,8 @@ contains
 
         ! All tissues get the same single rank mean
         call assert_equal_real(means(1), sum(expr(:,1))/n_tissues, TOL, "N×1: rank mean must be average")
-        call assert_equal_array_real(norm(:,1), [means(1),means(1),means(1),means(1)], &
+        expected_column = means(1)
+        call assert_equal_array_real(norm(:,1), expected_column, &
                                      n_tissues, TOL, "N×1: normalized column must be constant")
     end subroutine
 
@@ -211,6 +215,7 @@ contains
         real(real64) :: tmp(n_genes), means(n_genes)
         integer(int32) :: perm(n_genes), ierr
         real(real64) :: sorted(n_genes)
+        real(real64) :: row(n_genes)
 
         sorted = [1.0,2.0,3.0,4.0,5.0]
         expr(1,:) = sorted
@@ -221,9 +226,12 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "already normalized: ierr must be OK")
 
         call assert_equal_array_real(means, sorted, n_genes, TOL, "already normalized: rank_means unchanged")
-        call assert_equal_array_real(norm(1,:), sorted, n_genes, TOL, "already normalized: row 1 unchanged")
-        call assert_equal_array_real(norm(2,:), sorted, n_genes, TOL, "already normalized: row 2 unchanged")
-        call assert_equal_array_real(norm(3,:), sorted, n_genes, TOL, "already normalized: row 3 unchanged")
+        row = norm(1,:)
+        call assert_equal_array_real(row, sorted, n_genes, TOL, "already normalized: row 1 unchanged")
+        row = norm(2,:)
+        call assert_equal_array_real(row, sorted, n_genes, TOL, "already normalized: row 2 unchanged")
+        row = norm(3,:)
+        call assert_equal_array_real(row, sorted, n_genes, TOL, "already normalized: row 3 unchanged")
     end subroutine
 
 

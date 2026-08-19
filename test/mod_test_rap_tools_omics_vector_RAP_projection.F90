@@ -140,6 +140,7 @@ contains
         real(real64), dimension(3, 3) :: vecs
         real(real64), allocatable :: projections(:, :)
         logical(c_bool) :: axes_mask(3), vecs_mask(3)
+        real(real64) :: expected_projection(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
         vecs = 0.0_real64
@@ -154,9 +155,10 @@ contains
 
         call omics_vector_RAP_projection(vecs, 3, 3, vecs_mask, n_selected_vecs, axes_mask, n_selected_axes, projections, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "ierr should be 0 for valid input: constant vector")
+        expected_projection = 0.0_real64
         call assert_equal_array_real( &
             projections(:, 1), &
-            [0.0_real64, 0.0_real64, 0.0_real64], &
+            expected_projection, &
             3, &
             1d-12, &
             "test_omics_vector_RAP_projection_constant_vector: Expected zero vector" &

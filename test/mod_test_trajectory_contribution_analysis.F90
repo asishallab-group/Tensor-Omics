@@ -251,20 +251,19 @@ contains
                                                                C_vel_plain, series_vel_plain, C_acc_plain, series_acc_plain, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "compute_velocity_acceleration_contributions (plain tier): expected OK status")
 
-        call assert_equal_array_real(reshape(C_vel_plain, [size(C_vel_plain)]), &
-                                     reshape(C_vel_ref, [size(C_vel_ref)]), size(C_vel_plain), TOL, &
+        ! Each of these is a contiguous whole array compared element for element, so it
+        ! sequence-associates with the assertion's rank-1 explicit-shape dummy as it stands.
+        ! Flattening it with `reshape` first would only buy an array temporary per argument.
+        call assert_equal_array_real(C_vel_plain, C_vel_ref, size(C_vel_plain), TOL, &
                                      "compute_velocity_acceleration_contributions (plain tier): velocity totals")
 
-        call assert_equal_array_real(reshape(series_vel_plain, [size(series_vel_plain)]), &
-                                     reshape(series_vel_ref, [size(series_vel_ref)]), size(series_vel_plain), TOL, &
+        call assert_equal_array_real(series_vel_plain, series_vel_ref, size(series_vel_plain), TOL, &
                                      "compute_velocity_acceleration_contributions (plain tier): velocity series")
 
-        call assert_equal_array_real(reshape(C_acc_plain, [size(C_acc_plain)]), &
-                                     reshape(C_acc_ref, [size(C_acc_ref)]), size(C_acc_plain), TOL, &
+        call assert_equal_array_real(C_acc_plain, C_acc_ref, size(C_acc_plain), TOL, &
                                      "compute_velocity_acceleration_contributions (plain tier): acceleration totals")
 
-        call assert_equal_array_real(reshape(series_acc_plain, [size(series_acc_plain)]), &
-                                     reshape(series_acc_ref, [size(series_acc_ref)]), size(series_acc_plain), TOL, &
+        call assert_equal_array_real(series_acc_plain, series_acc_ref, size(series_acc_plain), TOL, &
                                      "compute_velocity_acceleration_contributions (plain tier): acceleration series")
     end subroutine test_compute_velocity_acceleration_contribs_plain
 
