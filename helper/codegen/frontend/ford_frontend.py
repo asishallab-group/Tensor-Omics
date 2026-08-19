@@ -324,7 +324,10 @@ class FordFrontend:
     def _argument(self, variable, path: Path, procedure: str, is_result: bool = False) -> Argument:
         name = variable.name
         location = self.index.argument(path, procedure, name)
-        doc_line = self.index.argument_doc(path, procedure, name)
+        # The doc block starts on the line after the declaration, and `location` has just
+        # found that declaration -- asking the index again repeats the search and gives the
+        # two numbers a way to disagree.
+        doc_line = None if location.line is None else location.line + 1
 
         doc, directives = self._documentation(variable.doc_list, location, doc_line)
 
@@ -345,7 +348,9 @@ class FordFrontend:
         name = variable.name
         location = self.index.variable(path, name)
         doc, _ = self._documentation(
-            variable.doc_list, location, self.index.variable_doc(path, name)
+            variable.doc_list,
+            location,
+            None if location.line is None else location.line + 1,
         )
         return Parameter(
             name=name,
