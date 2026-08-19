@@ -103,6 +103,16 @@ def generate(
 
     binding = build_project(project, diagnostics, conventions)
 
+    # Every emitter below assumes what validation and the ABI build have just checked: that
+    # an argument has an intent, that its type maps to C, that a DM_OUTPUT_FROM resolved.
+    # Emitting anyway does not produce a better error -- it produces a Python traceback from
+    # inside an emitter, in place of the diagnostic that was already recorded for exactly
+    # this, pointing at exactly the right line. Nothing is written when there are errors in
+    # any case, so stopping here costs a run nothing. The ABI build above still runs first,
+    # so its diagnostics are collected and reported in the same pass as validation's.
+    if diagnostics.errors:
+        return Result(diagnostics=diagnostics, files=[])
+
     files: list[GeneratedFile] = []
     if "fortran" in targets:
         files += _fortran_files(project, synthesis, paths, conventions)

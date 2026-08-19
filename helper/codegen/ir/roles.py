@@ -184,7 +184,9 @@ class ArgumentRoles:
                 # its extents travel in a shape argument, so the count is their product
                 # whichever way the array itself flows
                 return True
-            return owner.intent.is_input
+            # a missing intent is `validate`'s to report, and `validate` runs after this;
+            # dereferencing it here ends the run in a traceback instead
+            return owner.intent is not None and owner.intent.is_input
 
         return any(readable(owner) for owner in self.extent_of)
 
@@ -199,7 +201,11 @@ class ArgumentRoles:
         Only when that array is an input. Describing an `intent(out)` array, the shape is
         what the caller states the result should be, so it has to be asked for.
         """
-        return self.shape_of is not None and self.shape_of.intent.is_input
+        return (
+            self.shape_of is not None
+            and self.shape_of.intent is not None
+            and self.shape_of.intent.is_input
+        )
 
     @property
     def has_shape_arg(self) -> bool:
@@ -328,7 +334,9 @@ def _resolve_output_from(consumer: Procedure, project, diagnostics: DiagnosticBa
         inputs = []
         unmatched = []
         for producer_input in producer.arguments:
-            if producer_input is output or not producer_input.intent.is_input:
+            if producer_input is output or producer_input.intent is None:
+                continue
+            if not producer_input.intent.is_input:
                 continue
             if producer_input.name.lower() == "ierr":
                 continue

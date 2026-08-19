@@ -11,6 +11,7 @@ from pathlib import Path
 from codegen.diagnostics import SourceLocation
 from codegen.ir.validate import (
     _within_one_edit,
+    check_c_kinds_depend_on_the_safeguard,
     check_doc_links,
     validate_module,
     validate_procedure,
@@ -1256,5 +1257,104 @@ class TestTheWhitelistIsAllocationFree:
         nothing is fine: the import rule already refuses an implementation that reaches for a
         module that does not exist."""
         validate_project(b.project(), bag)
+
+        assert bag.errors == ()
+
+
+class TestCKindsDependOnTheSafeguard:
+    """The rule that orders the build, and the one check nothing exercised.
+
+    `iso_c_binding` reports a kind the platform lacks as -1 rather than failing, so
+    `f42_safeguard`'s guards are what name the missing kind -- and they only speak if the
+    safeguard is compiled first, which a dependency is the only way to arrange. The rule
+    has regressed once already (the `c_bool` sweep put C kinds in 39 more units and left
+    the `use` behind), and until now it was enforced only by the sources happening to obey
+    it: removing the check outright kept the suite green.
+    """
+
+    def _project(self, *, uses=(), kind="c_bool"):
+        return b.project(
+            b.module("f42_safeguard"),
+            b.module(
+                "m",
+                b.procedure("p", b.logical("flag", Intent.IN, kind=kind), b.ierr()),
+                uses=uses,
+            ),
+        )
+
+    def test_naming_a_c_kind_without_the_safeguard_is_an_error(self, bag):
+        check_c_kinds_depend_on_the_safeguard(self._project(), bag)
+
+        error = only_error(bag)
+        assert "without using 'f42_safeguard'" in error.message
+        assert "'c_bool'" in error.message
+
+    def test_the_dependency_satisfies_it(self, bag):
+        check_c_kinds_depend_on_the_safeguard(self._project(uses=["f42_safeguard"]), bag)
+
+        assert bag.errors == ()
+
+    def test_a_use_on_the_procedure_counts_too(self, bag):
+        # the `use` may sit on the procedure rather than the module
+        project = b.project(
+            b.module("f42_safeguard"),
+            b.module(
+                "m",
+                b.procedure(
+                    "p", b.logical("flag", Intent.IN, kind="c_bool"), b.ierr(),
+                    uses=["f42_safeguard"],
+                ),
+            ),
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        assert bag.errors == ()
+
+    def test_a_kind_that_is_not_a_c_kind_is_not_required_to(self, bag):
+        check_c_kinds_depend_on_the_safeguard(self._project(kind="int32"), bag)
+
+        assert bag.errors == ()
+
+    def test_every_offending_kind_is_named_once(self, bag):
+        project = b.project(
+            b.module("f42_safeguard"),
+            b.module(
+                "m",
+                b.procedure(
+                    "p",
+                    b.logical("flag", Intent.IN, kind="c_bool"),
+                    b.logical("other", Intent.IN, kind="c_bool"),
+                    b.integer("count", Intent.IN, kind="c_size_t"),
+                    b.ierr(),
+                ),
+            ),
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        message = only_error(bag).message
+        assert "'c_bool', 'c_size_t'" in message
+
+    def test_a_project_without_the_safeguard_is_left_alone(self, bag):
+        # a fixture tree that never parsed the safeguard cannot depend on it
+        project = b.project(
+            b.module("m", b.procedure("p", b.logical("flag", Intent.IN, kind="c_bool")))
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        assert bag.errors == ()
+
+    def test_a_synthesized_wrapper_is_the_emitters_to_answer_for(self, bag):
+        # `m` is generated beside `m_impl`; its `use` list is written by the emitter and is
+        # not in the IR, so checking it here would report what the emitter already handles
+        project = b.project(
+            b.module("f42_safeguard"),
+            b.module("m_impl", b.procedure("p_impl", b.ierr())),
+            b.module("m", b.procedure("p", b.logical("flag", Intent.IN, kind="c_bool"))),
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
 
         assert bag.errors == ()

@@ -74,6 +74,11 @@ class ParsedProject:
     arg_pos_factor: int
 
 
+#: Ford prefixes what it gives up on with `Warning:`/`Error:`; its progress narration
+#: (already suppressed by FORD_DEBUGGING) does not match.
+_FORD_COMPLAINT_RE = re.compile(r"^(?:warning|error)\b", re.IGNORECASE)
+
+
 class FordFrontend:
     def __init__(
         self,
@@ -163,15 +168,43 @@ class FordFrontend:
         # absolute path containing a space -- as this repository's does -- would arrive
         # as several broken arguments. So honour the project's own `-I.` by giving it the
         # directory it is written against.
+        captured = io.StringIO()
         with contextlib.chdir(root.resolve()):
             # Ford narrates its progress to stdout and warns freely; neither is this
-            # generator's output, and both drown its diagnostics.
+            # generator's output, and both drown its diagnostics. The buffer is read
+            # afterwards rather than discarded -- see `_report_unparsed`.
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                with contextlib.redirect_stdout(io.StringIO()):
+                with contextlib.redirect_stdout(captured):
                     project = FordProject(settings)
                     project.correlate()
+        self._report_unparsed(captured.getvalue())
         return project
+
+    def _report_unparsed(self, captured: str) -> None:
+        """Turn a file Ford gave up on into a diagnostic instead of silence.
+
+        `ford.fortran_project.Project.__init__` wraps each file in `except Exception` and,
+        when `dbg` is set -- it is, by default -- calls `ford.console.warn` and moves on.
+        That warning goes through a module-level `rich.Console()` bound to whatever
+        `sys.stdout` happens to be, which is the buffer opened above. Discarding it meant
+        the file simply left the project: its module, its wrapper and its C, Python and R
+        bindings all stopped being generated, `Result.ok` stayed true, the CLI reported a
+        smaller file count as success, and `--check` printed "up to date" because it only
+        ever looks at files the run *did* produce. Five outputs could disappear with
+        nothing to see in CI.
+        """
+        for line in captured.splitlines():
+            text = line.strip()
+            if not text or not _FORD_COMPLAINT_RE.match(text):
+                continue
+            self.diagnostics.error(
+                f"Ford could not read a source file, so it is not in the project: {text}",
+                note=(
+                    "everything generated from it -- its Fortran wrapper, its C binding "
+                    "and its Python and R bindings -- is silently missing from this run"
+                ),
+            )
 
     # -- entities ---------------------------------------------------------------
 
