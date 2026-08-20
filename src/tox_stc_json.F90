@@ -50,7 +50,8 @@ module tox_stc_json
     use f42_json, only: json_object, json_array, json_value, serialize_json_object
     use f42_io, only: open_file
     use tox_errors, only: is_err, set_ok, validate_dimension_size, validate_in_range_int
-    use tox_stc_html_assets, only: REPORT_TEMPLATE_HEAD, REPORT_TEMPLATE_MID, REPORT_TEMPLATE_TAIL, D3_JS
+    use tox_stc_html_assets, only: REPORT_TEMPLATE_HEAD, REPORT_TEMPLATE_MID1, REPORT_TEMPLATE_MID2, &
+        REPORT_TEMPLATE_TAIL, D3_JS, BABYLON_JS
     use tox_shape_truthful_clustering_impl, only: STOP_REASON_MAX_SIZE, STOP_REASON_REJECTED_AFTER_STABLE, &
         STOP_REASON_REJECTED_IMMEDIATELY, STOP_REASON_FIXED_POINT
     use tox_shape_truthful_clustering_reconciliation_impl, only: MODE_REPORT, MODE_MERGE_OVERLAP_COEFFICIENT, &
@@ -63,7 +64,7 @@ module tox_stc_json
     public :: serialize_stc_results_as_json
     public :: write_stc_interactive_html_report
 
-    integer(int32), parameter :: STC_JSON_MAX_ENSEMBLE_KEYS = 20_int32
+    integer(int32), parameter :: STC_JSON_MAX_ENSEMBLE_KEYS = 22_int32
     integer(int32), parameter :: STC_JSON_MAX_POINT_KEYS = 7_int32
     integer(int32), parameter :: STC_JSON_MAX_PARAM_KEYS = 27_int32
 
@@ -432,7 +433,9 @@ contains
 
         write (unit, "(A)", advance="no") REPORT_TEMPLATE_HEAD
         write (unit, "(A)", advance="no") D3_JS
-        write (unit, "(A)", advance="no") REPORT_TEMPLATE_MID
+        write (unit, "(A)", advance="no") REPORT_TEMPLATE_MID1
+        write (unit, "(A)", advance="no") BABYLON_JS
+        write (unit, "(A)", advance="no") REPORT_TEMPLATE_MID2
 
         call stc_build_and_serialize_json(unit, &
             n_dimensions, n_vectors, n_selected_seed, o, max_group_size, n_super_ensembles, &
@@ -685,6 +688,7 @@ contains
         type(json_array), target :: ensemble_mu_arr(n_selected_seed)
         type(json_array), target :: ensemble_u1_arr(n_selected_seed)
         type(json_array), target :: ensemble_u2_arr(n_selected_seed)
+        type(json_array), target :: ensemble_u3_arr(n_selected_seed)
         real(real64), target :: ensemble_line_start_buf(n_dimensions, n_selected_seed)
         real(real64), target :: ensemble_line_end_buf(n_dimensions, n_selected_seed)
         type(json_array), target :: ensemble_line_start_arr(n_selected_seed)
@@ -978,6 +982,14 @@ contains
 
                     slot = slot + 1; ensemble_keys(slot, s) = 's2'
                     ensemble_values(slot, s)%value => ensemble_S_final(2, s)
+                end if
+                if (d_val >= 3) then
+                    slot = slot + 1; ensemble_keys(slot, s) = 'u3'
+                    ensemble_u3_arr(s)%elements => ensemble_U_final(:, 3, s)
+                    ensemble_values(slot, s)%value => ensemble_u3_arr(s)
+
+                    slot = slot + 1; ensemble_keys(slot, s) = 's3'
+                    ensemble_values(slot, s)%value => ensemble_S_final(3, s)
                 end if
 
                 ! -- observable_history: iteration/G/rmse/consecutive-drift per retained column --

@@ -620,5 +620,59 @@ def test_json_reconciliation_eligible_and_excluded_by_exact_strings():
     assert 'reconciliation_excluded_by' not in content
 
 
+def test_json_three_dimensional_tangent_basis():
+    """D=3, single ensemble, d=3 (tangent subspace spans the whole ambient space, so
+    normal_error is the empty sum -- irrelevant here, which only checks that u1/s1, u2/s2, and
+    the new u3/s3 all appear with the right values). A clean identity-like basis keeps the
+    expected substrings simple; o=1 is the simplest fixture shape that can express d=3 at all."""
+    vectors = np.asfortranarray([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0]], dtype=np.float64)
+    dim_names = ['x', 'y', 'z']
+    seed_selection_mask = np.array([True, False], dtype=np.bool_)
+    ensemble_masks = np.asfortranarray([[True], [True]], dtype=np.bool_)
+    ensemble_stop_reason = np.array([STOP_REASON_FIXED_POINT], dtype=np.int32)
+    ensemble_growth_radii = np.array([1.0], dtype=np.float64)
+
+    ensemble_k_history = np.asfortranarray([[4]], dtype=np.int32)
+    ensemble_d_history = np.asfortranarray([[3]], dtype=np.int32)
+    ensemble_G_history = np.asfortranarray([[1.0]], dtype=np.float64)
+    ensemble_mu_history = np.zeros((3, 1, 1), dtype=np.float64, order='F')
+
+    ensemble_S_history = np.zeros((3, 1, 1), dtype=np.float64, order='F')
+    ensemble_S_history[:, 0, 0] = [3.0, 2.0, 1.0]
+
+    ensemble_U_history = np.zeros((3, 3, 1, 1), dtype=np.float64, order='F')
+    ensemble_U_history[:, 0, 0, 0] = [1.0, 0.0, 0.0]
+    ensemble_U_history[:, 1, 0, 0] = [0.0, 1.0, 0.0]
+    ensemble_U_history[:, 2, 0, 0] = [0.0, 0.0, 1.0]
+
+    ensemble_accepted_history = np.ones((1, 1), dtype=np.bool_, order='F')
+    ensemble_member_added_at_step = np.asfortranarray([[0], [1]], dtype=np.int32)
+
+    ensemble_U_first = np.zeros((3, 3, 1), dtype=np.float64, order='F')
+    ensemble_U_first[:, :, 0] = ensemble_U_history[:, :, 0, 0]
+    ensemble_d_first = np.array([3], dtype=np.int32)
+    ensemble_low_confidence_masks = np.zeros((2, 1), dtype=np.bool_, order='F')
+    super_ensembles = np.zeros((1, 0), dtype=np.int32, order='F')
+
+    filename = "test_stc_three_d_tangent_py.json"
+    serialize_stc_results_as_json(
+        filename, 0, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason,
+        ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history,
+        ensemble_G_history, ensemble_mu_history, ensemble_k_history,
+        ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks,
+        ensemble_U_first, ensemble_d_first, super_ensembles, **_common_kwargs(), **_all_eligible_kwargs(1))
+
+    with open(filename, "r") as f:
+        content = f.read()
+    os.remove(filename)
+
+    assert ('"u1":[1.0000000000000000E+000,0.0000000000000000E+000,0.0000000000000000E+000],'
+            '"s1":3.0000000000000000E+000') in content
+    assert ('"u2":[0.0000000000000000E+000,1.0000000000000000E+000,0.0000000000000000E+000],'
+            '"s2":2.0000000000000000E+000') in content
+    assert ('"u3":[0.0000000000000000E+000,0.0000000000000000E+000,1.0000000000000000E+000],'
+            '"s3":1.0000000000000000E+000') in content
+
+
 if __name__ == "__main__":
     run_all_tests(globals().values())

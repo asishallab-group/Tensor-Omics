@@ -21,7 +21,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_shape_truthful_clustering_json() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(11))
+        allocate (all_tests(12))
 
         all_tests(1) = test_case("test_json_two_ensembles_with_overlap", test_json_two_ensembles_with_overlap)
         all_tests(2) = test_case("test_json_estimated_params_included", test_json_estimated_params_included)
@@ -40,6 +40,7 @@ contains
                                   test_json_stop_reason_filter_excludes_pair)
         all_tests(11) = test_case("test_json_reconciliation_eligible_and_excluded_by_exact_strings", &
                                   test_json_reconciliation_eligible_and_excluded_by_exact_strings)
+        all_tests(12) = test_case("test_json_three_dimensional_tangent_basis", test_json_three_dimensional_tangent_basis)
     end function get_all_tests_shape_truthful_clustering_json
 
     !> D=2, N=4, 2 seeds/ensembles: {1,2,3} (seed=1, d=1) and {2,3,4} (seed=4, d=0), which
@@ -1058,5 +1059,95 @@ contains
         call assert_true(index(content, 'reconciliation_excluded_by') == 0, &
                          "eligible/excluded_by: the truncated 27-char key name never appears")
     end subroutine test_json_reconciliation_eligible_and_excluded_by_exact_strings
+
+    !> D=3, single ensemble, d=3 (the tangent subspace spans the whole ambient space here, so
+    !| normal_error is the empty sum, 0 -- irrelevant to this test, which only exercises whether
+    !| u1/s1, u2/s2, and the new u3/s3 all appear with the right values). A clean identity-like
+    !| basis (u1=[1,0,0], u2=[0,1,0], u3=[0,0,1]) keeps the expected substrings simple; o=1 (a
+    !| single retained history column, itself the bootstrap) is the simplest fixture shape that
+    !| can express d=3 at all.
+    subroutine test_json_three_dimensional_tangent_basis()
+        real(real64) :: vectors(3, 2)
+        character(len=1) :: dim_names(3)
+        logical(c_bool) :: seed_selection_mask(2)
+        logical(c_bool) :: ensemble_masks(2, 1), ensemble_low_confidence_masks(2, 1), ensemble_accepted_history(1, 1)
+        integer(int32) :: ensemble_stop_reason(1), ensemble_d_history(1, 1), ensemble_k_history(1, 1)
+        integer(int32) :: ensemble_member_added_at_step(2, 1), ensemble_d_first(1)
+        real(real64) :: ensemble_growth_radii(1), ensemble_U_history(3, 3, 1, 1), ensemble_S_history(3, 1, 1)
+        real(real64) :: ensemble_G_history(1, 1), ensemble_mu_history(3, 1, 1), ensemble_U_first(3, 3, 1)
+        integer(int32) :: super_ensembles(1, 0)
+        logical(c_bool) :: ensemble_eligible(1), ensemble_eligible_by_stop_condition(1), ensemble_eligible_by_dimension(1)
+        logical(c_bool) :: ensemble_eligible_by_var_explained(1)
+        character(len=40) :: filename
+        character(len=:), allocatable :: content
+        integer(int32) :: ierr, unit, filesize
+
+        vectors(:, 1) = [0.0d0, 0.0d0, 0.0d0]
+        vectors(:, 2) = [1.0d0, 1.0d0, 1.0d0]
+        dim_names = ['x', 'y', 'z']
+        seed_selection_mask = [.true., .false.]
+        ensemble_masks(:, 1) = [.true., .true.]
+        ensemble_stop_reason(1) = STOP_REASON_FIXED_POINT
+        ensemble_growth_radii(1) = 1.0d0
+
+        ensemble_k_history(:, 1) = [4]
+        ensemble_d_history(:, 1) = [3]
+        ensemble_G_history(:, 1) = [1.0d0]
+        ensemble_mu_history(:, 1, 1) = [0.0d0, 0.0d0, 0.0d0]
+
+        ensemble_S_history(:, 1, 1) = [3.0d0, 2.0d0, 1.0d0]
+
+        ensemble_U_history = 0.0d0
+        ensemble_U_history(:, 1, 1, 1) = [1.0d0, 0.0d0, 0.0d0]
+        ensemble_U_history(:, 2, 1, 1) = [0.0d0, 1.0d0, 0.0d0]
+        ensemble_U_history(:, 3, 1, 1) = [0.0d0, 0.0d0, 1.0d0]
+
+        ensemble_accepted_history(:, 1) = [.true.]
+        ensemble_member_added_at_step(:, 1) = [0, 1]
+
+        ensemble_U_first(:, :, 1) = ensemble_U_history(:, :, 1, 1)
+        ensemble_d_first(1) = ensemble_d_history(1, 1)
+
+        ensemble_low_confidence_masks = .false.
+        ensemble_eligible = .true.
+        ensemble_eligible_by_stop_condition = .true.
+        ensemble_eligible_by_dimension = .true.
+        ensemble_eligible_by_var_explained = .true.
+
+        filename = 'test_stc_three_d_tangent.json'
+        call serialize_stc_results_as_json(filename, &
+            3_int32, 2_int32, 1_int32, 1_int32, 1_int32, 0_int32, &
+            vectors, dim_names, seed_selection_mask, &
+            ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, &
+            ensemble_U_history, ensemble_S_history, ensemble_d_history, &
+            ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
+            ensemble_accepted_history, ensemble_member_added_at_step, &
+            ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
+            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
+            reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
+            ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
+            ensemble_eligible_by_dimension=ensemble_eligible_by_dimension, &
+            ensemble_eligible_by_var_explained=ensemble_eligible_by_var_explained, &
+            ierr=ierr)
+        call assert_true(is_ok(ierr), "3D tangent basis: must not fail")
+
+        inquire (file=trim(filename), size=filesize)
+        open (newunit=unit, file=trim(filename), access='stream', form='formatted', status='old', action='read')
+        allocate (character(len=filesize) :: content)
+        read (unit, '(A)') content
+        close (unit, status='delete')
+
+        call assert_string_contains(content, &
+            '"u1":[1.0000000000000000E+000,0.0000000000000000E+000,0.0000000000000000E+000],'//&
+            '"s1":3.0000000000000000E+000', "3D tangent basis: u1/s1")
+        call assert_string_contains(content, &
+            '"u2":[0.0000000000000000E+000,1.0000000000000000E+000,0.0000000000000000E+000],'//&
+            '"s2":2.0000000000000000E+000', "3D tangent basis: u2/s2")
+        call assert_string_contains(content, &
+            '"u3":[0.0000000000000000E+000,0.0000000000000000E+000,1.0000000000000000E+000],'//&
+            '"s3":1.0000000000000000E+000', "3D tangent basis: u3/s3")
+    end subroutine test_json_three_dimensional_tangent_basis
 
 end module mod_test_shape_truthful_clustering_json

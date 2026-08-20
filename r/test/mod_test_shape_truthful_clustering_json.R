@@ -627,4 +627,71 @@ test_json_reconciliation_eligible_and_excluded_by_exact_strings <- function() {
   assert_true(!grepl("reconciliation_excluded_by", content, fixed = TRUE))
 }
 
+# D=3, single ensemble, d=3 (tangent subspace spans the whole ambient space, so normal_error is
+# the empty sum -- irrelevant here, which only checks that u1/s1, u2/s2, and the new u3/s3 all
+# appear with the right values). A clean identity-like basis keeps the expected substrings
+# simple; o=1 is the simplest fixture shape that can express d=3 at all.
+test_json_three_dimensional_tangent_basis <- function() {
+  vectors <- matrix(c(0, 0, 0, 1, 1, 1), nrow = 3, ncol = 2)
+  dim_names <- c("x", "y", "z")
+  seed_selection_mask <- c(TRUE, FALSE)
+  ensemble_masks <- matrix(c(TRUE, TRUE), nrow = 2, ncol = 1)
+  ensemble_stop_reason <- c(STOP_REASON_FIXED_POINT)
+  ensemble_growth_radii <- c(1.0)
+
+  ensemble_k_history <- matrix(c(4), nrow = 1, ncol = 1)
+  ensemble_d_history <- matrix(c(3), nrow = 1, ncol = 1)
+  ensemble_G_history <- matrix(c(1.0), nrow = 1, ncol = 1)
+  ensemble_mu_history <- array(0.0, dim = c(3, 1, 1))
+
+  ensemble_S_history <- array(0.0, dim = c(3, 1, 1))
+  ensemble_S_history[, 1, 1] <- c(3.0, 2.0, 1.0)
+
+  ensemble_U_history <- array(0.0, dim = c(3, 3, 1, 1))
+  ensemble_U_history[, 1, 1, 1] <- c(1.0, 0.0, 0.0)
+  ensemble_U_history[, 2, 1, 1] <- c(0.0, 1.0, 0.0)
+  ensemble_U_history[, 3, 1, 1] <- c(0.0, 0.0, 1.0)
+
+  ensemble_accepted_history <- array(TRUE, dim = c(1, 1))
+  ensemble_member_added_at_step <- matrix(c(0, 1), nrow = 2, ncol = 1)
+
+  ensemble_U_first <- array(0.0, dim = c(3, 3, 1))
+  ensemble_U_first[, , 1] <- ensemble_U_history[, , 1, 1]
+  ensemble_d_first <- c(3L)
+  ensemble_low_confidence_masks <- matrix(FALSE, nrow = 2, ncol = 1)
+  super_ensembles <- matrix(0L, nrow = 1, ncol = 0)
+
+  filename <- "test_stc_three_d_tangent_r.json"
+  args <- c(list(
+    filename = filename, n_super_ensembles = 0L, vectors = vectors, dim_names = dim_names,
+    seed_selection_mask = seed_selection_mask, ensemble_masks = ensemble_masks,
+    ensemble_stop_reason = ensemble_stop_reason, ensemble_growth_radii = ensemble_growth_radii,
+    ensemble_U_history = ensemble_U_history, ensemble_S_history = ensemble_S_history,
+    ensemble_d_history = ensemble_d_history, ensemble_G_history = ensemble_G_history,
+    ensemble_mu_history = ensemble_mu_history, ensemble_k_history = ensemble_k_history,
+    ensemble_accepted_history = ensemble_accepted_history,
+    ensemble_member_added_at_step = ensemble_member_added_at_step,
+    ensemble_low_confidence_masks = ensemble_low_confidence_masks,
+    ensemble_U_first = ensemble_U_first, ensemble_d_first = ensemble_d_first,
+    super_ensembles = super_ensembles
+  ), common_args, all_eligible_args(1))
+  do.call(serialize_stc_results_as_json, args)
+
+  content <- read_whole_file(filename)
+  file.remove(filename)
+
+  assert_true(grepl(paste0(
+    '"u1":[1.0000000000000000E+000,0.0000000000000000E+000,0.0000000000000000E+000],',
+    '"s1":3.0000000000000000E+000'
+  ), content, fixed = TRUE))
+  assert_true(grepl(paste0(
+    '"u2":[0.0000000000000000E+000,1.0000000000000000E+000,0.0000000000000000E+000],',
+    '"s2":2.0000000000000000E+000'
+  ), content, fixed = TRUE))
+  assert_true(grepl(paste0(
+    '"u3":[0.0000000000000000E+000,0.0000000000000000E+000,1.0000000000000000E+000],',
+    '"s3":1.0000000000000000E+000'
+  ), content, fixed = TRUE))
+}
+
 run_all_tests()

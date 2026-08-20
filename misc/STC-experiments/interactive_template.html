@@ -50,6 +50,8 @@
   .panel-toolbar { display: flex; justify-content: flex-end; margin-bottom: 4px; position: relative; }
   svg { background: var(--bg); max-width: 100%; }
   #scatter { border: 1px solid var(--grid); width: 100%; height: auto; }
+  #scene3d { width: 100%; height: 640px; display: block; outline: none; touch-action: none;
+             background: #1b1f24; border: 1px solid var(--grid); border-radius: 6px; }
   .axis text { font-size: 10px; fill: var(--muted); }
   .axis path, .axis line { stroke: var(--grid); }
   .point { cursor: pointer; }
@@ -206,6 +208,20 @@
 
 <div id="main-layout">
   <div id="controls">
+    <fieldset id="view3d-fieldset" style="display:none;">
+      <legend>3D view</legend>
+      <label><input type="checkbox" id="orbit-mode"> Orbit mode (or press F)</label>
+      <div class="hint">WASD/arrows move, drag rotates, Q/E roll, Space/Shift up/down, F toggles orbit.</div>
+      <div id="axis-picker-wrap" style="display:none;">
+        <div class="hint">Choose 3 of the ambient dimensions to display:</div>
+        <div class="row"><span>X axis</span></div>
+        <select id="axis-x"></select>
+        <div class="row"><span>Y axis</span></div>
+        <select id="axis-y"></select>
+        <div class="row"><span>Z axis</span></div>
+        <select id="axis-z"></select>
+      </div>
+    </fieldset>
     <fieldset>
       <legend>Point color</legend>
       <select id="color-mode">
@@ -229,6 +245,8 @@
       <div class="row"><span>Seed diameter</span></div>
       <input type="range" id="seed-diameter" min="1" max="14" step="0.5" value="4.8">
       <label><input type="checkbox" id="seed-color-link"> Triangle color follows point color (else black)</label>
+      <div class="row"><span>Point opacity</span></div>
+      <input type="range" id="point-opacity" min="1" max="100" step="1" value="85">
     </fieldset>
     <fieldset>
       <legend>Tangent lines</legend>
@@ -237,6 +255,8 @@
       <input type="color" id="tangent-color" value="#b2182b">
       <div class="row"><span>Thickness</span></div>
       <input type="range" id="tangent-thickness" min="0.5" max="6" step="0.5" value="1.6">
+      <div class="row"><span>Opacity</span></div>
+      <input type="range" id="tangent-opacity" min="1" max="100" step="1" value="100">
       <div class="hint">Which ensembles' lines are shown:</div>
       <div id="tangent-line-select"></div>
     </fieldset>
@@ -251,9 +271,15 @@
   </div>
 
   <div id="main-panel">
-    <div class="panel-toolbar" id="scatter-toolbar"></div>
     <button id="undo-link-icon" title="Undo ensemble-link clicks" hidden>&#8630;</button>
-    <svg id="scatter"></svg>
+    <div id="plot2d-wrap">
+      <div class="panel-toolbar" id="scatter-toolbar"></div>
+      <svg id="scatter"></svg>
+    </div>
+    <div id="scene3d-wrap" style="display:none;">
+      <canvas id="scene3d" tabindex="1"></canvas>
+      <div class="hint">WASD/arrows move, drag rotates, Q/E roll, Space/Shift up/down, F toggles orbit mode.</div>
+    </div>
   </div>
 </div>
 
@@ -312,6 +338,12 @@
 /* ---- vendored D3 v7.9.0 (https://d3js.org, BSD-3-Clause), inlined for a self-contained,
    offline-usable report -- no CDN dependency at view time. ---- */
 __STC_D3_JS__
+</script>
+<script>
+/* ---- vendored Babylon.js (https://www.babylonjs.com, Apache-2.0), inlined for the same
+   self-contained, offline-usable reason as D3 above -- used only for 3+D reports (the 2D
+   report never loads/touches BABYLON.*). ---- */
+__STC_BABYLON_JS__
 </script>
 <script>
 /* =====================================================================================
@@ -1069,12 +1101,14 @@ const DATA = __STC_DATA__;
     controlsEl.classList.toggle("collapsed");
   });
 
-  if (!dims2D) {
-    document.getElementById("main-layout").innerHTML =
-      '<p style="color:var(--muted)">The main scatter plot only supports 2-dimensional input data; ' +
-      "this run has " + DATA.dim_names.length + " dimension(s). See the additional plots above instead.</p>";
-  } else {
+  if (dims2D) {
     buildMainPlot();
+  } else if (DATA.dim_names.length >= 3) {
+    init3D();
+  } else {
+    document.getElementById("main-layout").innerHTML =
+      '<p style="color:var(--muted)">The main scatter plot requires at least 2-dimensional input data; ' +
+      "this run has " + DATA.dim_names.length + " dimension(s).</p>";
   }
   buildHeatmap();
   buildTree();
@@ -1299,6 +1333,8 @@ const DATA = __STC_DATA__;
       const diameter = +document.getElementById("point-diameter").value;
       const r = diameter / 2;
       const seedDiameter = +document.getElementById("seed-diameter").value;
+      const pointOpacity = +document.getElementById("point-opacity").value / 100;
+      const tangentOpacity = +document.getElementById("tangent-opacity").value / 100;
       const showPoints = document.getElementById("layer-points").checked;
       const showSeeds = document.getElementById("layer-seeds").checked;
       const showRadii = document.getElementById("layer-radii").checked;
@@ -1314,7 +1350,7 @@ const DATA = __STC_DATA__;
         .attr("cx", d => x(d.coords[0])).attr("cy", d => y(d.coords[1]))
         .attr("r", r)
         .attr("fill", d => pointColor(d))
-        .attr("fill-opacity", 0.85)
+        .attr("fill-opacity", pointOpacity)
         .on("mouseenter", (event, d) => { showTooltip(tooltipHtmlForPoint(d), event); wireTooltipLinks("point"); })
         .on("mousemove", moveTooltip)
         .on("mouseleave", scheduleHideTooltip)
@@ -1357,6 +1393,7 @@ const DATA = __STC_DATA__;
         .attr("x2", d => x(d.line_end[0])).attr("y2", d => y(d.line_end[1]))
         .attr("stroke", d => tangentSingleColor ? tangentColor : ensembleColor(d.id))
         .attr("stroke-width", tangentThickness)
+        .attr("stroke-opacity", tangentOpacity)
         .attr("pointer-events", "stroke")
         .style("cursor", "pointer")
         .on("mouseenter", (event, d) => { showTooltip(tooltipHtmlForTangent(d), event); wireTooltipLinks("tangent"); })
@@ -1431,8 +1468,8 @@ const DATA = __STC_DATA__;
     }
 
     ["color-mode", "point-diameter", "seed-diameter", "layer-points", "layer-seeds", "seed-color-link",
-     "layer-radii", "radii-ensemble-color", "radii-opacity", "layer-tangent", "tangent-single-color",
-     "tangent-color", "tangent-thickness", "single-color"]
+     "point-opacity", "layer-radii", "radii-ensemble-color", "radii-opacity", "layer-tangent",
+     "tangent-single-color", "tangent-color", "tangent-thickness", "tangent-opacity", "single-color"]
       .forEach(id => document.getElementById(id).addEventListener("input", render));
     document.getElementById("color-mode").addEventListener("change", (event) => renderColorModeExtra(event.target.value));
 
@@ -2006,6 +2043,544 @@ const DATA = __STC_DATA__;
     }
     paramsTable("This run's own parameters", inputEntries);
     paramsTable("estimate_stc_parameters (informational, never auto-applied unless --estimate-parameters was used)", estimatedEntries);
+  }
+
+  // ============================================================================
+  // ---- 3+D report: Babylon.js scene, ported from tox_flyer (branch tox_flyer_prototype)
+  // ---- -- see misc/mod_STC.md, "Visualization for 3+ dimensions". Reuses the same
+  // ---- #controls DOM widgets as buildMainPlot() above (point color/shape, ensemble/
+  // ---- tangent-line selection, opacity), driving Babylon thin-instance buffers instead
+  // ---- of D3/SVG attributes. Deliberately does NOT import tox_flyer's own config.js
+  // ---- (a generic reactive store with URL/localStorage persistence and gene/tissue-
+  // ---- specific fields) -- this report stays a single self-contained file, so camera/
+  // ---- compass state lives in a small closure-local object instead.
+  // ============================================================================
+
+  async function init3D() {
+    const nDims = DATA.dim_names.length;
+    document.getElementById("plot2d-wrap").style.display = "none";
+    document.getElementById("scene3d-wrap").style.display = "";
+    document.getElementById("view3d-fieldset").style.display = "";
+    const canPickAxes = nDims >= 4;
+    document.getElementById("axis-picker-wrap").style.display = canPickAxes ? "" : "none";
+
+    // Reverse of points[].ensembles: ensemble id -> member point ids. Built client-side from
+    // data already shipped to the browser -- no new Fortran/JSON field needed (the 2D report's
+    // own line_start/line_end are computed server-side in Fortran since they only need the
+    // *extremes*; the tangent grid below needs every member's own coordinates, which are
+    // already in DATA.points).
+    const membersOf = new Map();
+    DATA.points.forEach(p => p.ensembles.forEach(m => {
+      if (!membersOf.has(m.id)) membersOf.set(m.id, []);
+      membersOf.get(m.id).push(p.id);
+    }));
+
+    // ---- reused ensemble-selector widgets (see makeEnsembleSelectorWidget above) -------------
+    const lineCapableEnsembles3D = nonEmptyEnsembles.filter(e => e.line_start);
+    const pointColorSelector3D = makeEnsembleSelectorWidget(
+      nonEmptyEnsembles, "point color", nonEmptyEnsembles.map(e => e.id), () => render3D());
+    const tangentLineSelector3D = makeEnsembleSelectorWidget(
+      lineCapableEnsembles3D, "tangent lines", lineCapableEnsembles3D.map(e => e.id), () => render3D());
+    pointColorSelector3D.setPeer(tangentLineSelector3D);
+    tangentLineSelector3D.setPeer(pointColorSelector3D);
+    document.getElementById("tangent-line-select").appendChild(tangentLineSelector3D.node);
+
+    const colorModeExtraEl = document.getElementById("color-mode-extra");
+    const singleColorWrapEl = document.getElementById("single-color-wrap");
+    function renderColorModeExtra3D(mode) {
+      colorModeExtraEl.innerHTML = "";
+      singleColorWrapEl.style.display = mode === "single" ? "" : "none";
+      if (mode === "ensemble" || mode === "super_ensemble") {
+        const hint = document.createElement("div");
+        hint.className = "hint";
+        hint.textContent = mode === "ensemble" ? "Ensembles included in coloring:" :
+          "Ensembles included in coloring (colored by their super-ensemble):";
+        colorModeExtraEl.appendChild(hint);
+        colorModeExtraEl.appendChild(pointColorSelector3D.node);
+      }
+    }
+    renderColorModeExtra3D(document.getElementById("color-mode").value);
+    document.getElementById("color-mode").addEventListener("change", (event) => renderColorModeExtra3D(event.target.value));
+
+    // ---- point-color logic, mirroring buildMainPlot's own pointColor() -----------------------
+    const maxNEns = d3.max(DATA.points, d => d.n_ensembles) || 1;
+    const blueRedScale3D = d3.scaleSequential(t => d3.interpolateRdBu(1 - t)).domain([0, maxNEns]);
+    function pointColor3D(p) {
+      const mode = document.getElementById("color-mode").value;
+      switch (mode) {
+        case "intersection":
+          return p.n_ensembles === 0 ? GREY : blueRedScale3D(p.n_ensembles);
+        case "ensemble": {
+          const top = largestEnsembleForPoint(p);
+          if (!top || !pointColorSelector3D.getSelectedIds().has(top.id)) return GREY;
+          return ensembleColor(top.id);
+        }
+        case "super_ensemble": {
+          const top = largestEnsembleForPoint(p);
+          const sid = top ? top.super_ensemble_id : null;
+          if (sid === null || sid === undefined || !top || !pointColorSelector3D.getSelectedIds().has(top.id)) return GREY;
+          return superEnsembleColor(sid);
+        }
+        case "low_confidence": {
+          const cat = p.n_ensembles > 0 ? "retained" : (p.n_low_confidence_ensembles > 0 ? "fallback" : "none");
+          return getComputedStyle(document.documentElement).getPropertyValue("--lc-" + cat).trim();
+        }
+        case "single":
+          return document.getElementById("single-color").value;
+        default:
+          return "#2166ac";
+      }
+    }
+    function toRGB01(colorStr) {
+      const c = d3.rgb(colorStr);
+      return [c.r / 255, c.g / 255, c.b / 255];
+    }
+
+    function tooltipHtmlForPoint3D(p) {
+      const coordRow = DATA.dim_names.map((name, i) => `${name}=${p.coords[i].toFixed(4)}`).join(", ");
+      const rows = [`<b>point ${p.id}</b>`, coordRow];
+      if (p.ensembles.length) {
+        rows.push("ensembles:");
+        p.ensembles.forEach(m => {
+          const e = ensembleById.get(m.id);
+          const eligSuffix = e && !e.reconciliation_eligible ? ", not merge-eligible" : "";
+          rows.push(`&nbsp;&nbsp;<span class="tt-link" data-kind="ensemble" data-id="${m.id}">E${m.id}</span>: ` +
+            `residual=${m.residual_length.toFixed(4)}, stop=${e ? e.stop_reason : "?"}${eligSuffix}`);
+        });
+      } else {
+        rows.push("in no retained ensemble" + (p.n_low_confidence_ensembles ? " (low-confidence fallback only)" : ""));
+      }
+      if (p.seed_of.length) rows.push(`seed of ensemble ${p.seed_of[0]}`);
+      const superIds = [...new Set(p.ensembles.map(m => ensembleById.get(m.id) && ensembleById.get(m.id).super_ensemble_id)
+        .filter(g => g !== null && g !== undefined))];
+      superIds.forEach(sid => {
+        const se = DATA.super_ensembles.find(s => s.group_id === sid);
+        rows.push(`<span class="tt-link" data-kind="super" data-id="${sid}">super-ensemble ${sid}</span>: ` +
+          `ensembles [${se ? se.ensemble_ids.join(",") : ""}]`);
+      });
+      return rows.join("<br>");
+    }
+    let undoSnapshot3D = null;
+    function wireTooltipLinks3D() {
+      tooltip.selectAll(".tt-link")
+        .on("mouseenter", cancelHideTooltip)
+        .on("mouseleave", scheduleHideTooltip)
+        .on("click", function (event) {
+          event.stopPropagation();
+          const kind = this.getAttribute("data-kind");
+          const id = +this.getAttribute("data-id");
+          if (!undoSnapshot3D) { undoSnapshot3D = pointColorSelector3D.getState(); document.getElementById("undo-link-icon").hidden = false; }
+          const s = pointColorSelector3D.getState();
+          s.mode = "manual";
+          const ids = new Set(s.manualIds);
+          if (kind === "ensemble") {
+            if (ids.has(id)) ids.delete(id); else ids.add(id);
+          } else {
+            const se = DATA.super_ensembles.find(sup => sup.group_id === id);
+            if (se) {
+              const allIn = se.ensemble_ids.every(eid => ids.has(eid));
+              se.ensemble_ids.forEach(eid => { if (allIn) ids.delete(eid); else ids.add(eid); });
+            }
+          }
+          s.manualIds = [...ids];
+          pointColorSelector3D.setState(s);
+        });
+    }
+    document.getElementById("undo-link-icon").addEventListener("click", () => {
+      if (undoSnapshot3D) { pointColorSelector3D.setState(undoSnapshot3D); undoSnapshot3D = null; }
+      document.getElementById("undo-link-icon").hidden = true;
+    });
+
+    // ---- axis selection (3 of N dims) ---------------------------------------------------------
+    let axisIdx = [0, 1, Math.min(2, nDims - 1)];
+    const axisSelects = [document.getElementById("axis-x"), document.getElementById("axis-y"), document.getElementById("axis-z")];
+    if (canPickAxes) {
+      axisSelects.forEach((sel, k) => {
+        DATA.dim_names.forEach((name, i) => {
+          const opt = document.createElement("option");
+          opt.value = i; opt.textContent = name;
+          sel.appendChild(opt);
+        });
+        sel.value = axisIdx[k];
+        sel.addEventListener("change", () => {
+          axisIdx[k] = +sel.value;
+          rebuildSpatialIndex();
+          resetCameraToFitData();
+          [...loadedChunks.keys()].forEach(unloadChunk);
+          activeChunkKeys = new Set();
+          updateActiveChunks();
+          render3D();
+        });
+      });
+    }
+
+    // ---- world scale: recenter the selected 3 dims at their own midpoint (the flight/orbit
+    // ---- cameras both start looking at world-origin, per resetCameraToFitData below -- without
+    // ---- this, data sitting away from ambient-coordinate zero would never be in view, and no
+    // ---- chunk would ever load near the starting camera position) and normalize their combined
+    // ---- extent to ~100 world units. --------------------------------------------------------
+    let worldScale = 1;
+    let worldMid = [0, 0, 0];
+    function computeWorldScale() {
+      let maxExtent = 0;
+      axisIdx.forEach((ax, k) => {
+        const ext = d3.extent(DATA.points, p => p.coords[ax]);
+        worldMid[k] = (ext[0] + ext[1]) / 2;
+        maxExtent = Math.max(maxExtent, (ext[1] - ext[0]) || 1);
+      });
+      worldScale = 100 / maxExtent;
+    }
+    computeWorldScale();
+    function worldPos(coords) {
+      return new BABYLON.Vector3(
+        (coords[axisIdx[0]] - worldMid[0]) * worldScale,
+        (coords[axisIdx[1]] - worldMid[1]) * worldScale,
+        (coords[axisIdx[2]] - worldMid[2]) * worldScale);
+    }
+
+    // ---- engine (WebGPU-try / WebGL-fallback, per tox_flyer/app/flyer.js::initializeEngine) ---
+    const canvas = document.getElementById("scene3d");
+    let engine;
+    try {
+      if (!BABYLON.WebGPUEngine || !(await BABYLON.WebGPUEngine.IsSupportedAsync)) throw new Error("WebGPU unsupported");
+      const gpuEngine = new BABYLON.WebGPUEngine(canvas, { antialias: true, stencil: true });
+      await gpuEngine.initAsync();
+      engine = gpuEngine;
+    } catch (err) {
+      engine = new BABYLON.Engine(canvas, true, { antialias: true, stencil: true });
+    }
+    engine.enableOfflineSupport = false;
+
+    const scene = new BABYLON.Scene(engine);
+    scene.clearColor = BABYLON.Color4.FromHexString("#1b1f24ff");
+    new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), scene).intensity = 0.8;
+    new BABYLON.HemisphericLight("light2", new BABYLON.Vector3(0, -1, 0), scene).intensity = 0.5;
+
+    // ---- cameras: flight (UniversalCamera) + orbit (ArcRotateCamera), toggled by "F" or the
+    // ---- "Orbit mode" checkbox -- per tox_flyer/app/flyer/camera.js::setupCamera. -------------
+    const flightCam = new BABYLON.UniversalCamera("camera", new BABYLON.Vector3(0, 0, -85), scene);
+    flightCam.setTarget(BABYLON.Vector3.Zero());
+    flightCam.keysUp = [87, 38]; flightCam.keysDown = [83, 40];
+    flightCam.keysLeft = [65, 37]; flightCam.keysRight = [68, 39];
+    flightCam.keysUpward = [32]; flightCam.keysDownward = [16];
+    flightCam.keysRotateLeft = [81]; flightCam.keysRotateRight = [69];
+    flightCam.speed = 2; flightCam.angularSensibility = 4000; flightCam.minZ = 0.01;
+    flightCam.fov = 1.2; // wide enough that the -85-unit starting distance below still frames the
+    // full ~100-unit normalized data extent (narrower defaults clipped off-center points)
+    const orbitCam = new BABYLON.ArcRotateCamera("orbitCamera", -Math.PI / 2, Math.PI / 2.3, 85, BABYLON.Vector3.Zero(), scene);
+    orbitCam.lowerRadiusLimit = 1; orbitCam.wheelPrecision = 3;
+    scene.switchActiveCamera(flightCam);
+    flightCam.attachControl(canvas, true);
+
+    function resetCameraToFitData() {
+      flightCam.position = new BABYLON.Vector3(0, 0, -85);
+      flightCam.setTarget(BABYLON.Vector3.Zero());
+      orbitCam.setPosition(new BABYLON.Vector3(0, 0, -85));
+      orbitCam.setTarget(BABYLON.Vector3.Zero());
+    }
+
+    const orbitCheckbox = document.getElementById("orbit-mode");
+    function setOrbitMode(on) {
+      if (on && scene.activeCamera !== orbitCam) {
+        orbitCam.setPosition(scene.activeCamera.position.clone());
+        scene.switchActiveCamera(orbitCam);
+        orbitCam.attachControl(canvas, true);
+        flightCam.detachControl();
+      } else if (!on && scene.activeCamera !== flightCam) {
+        flightCam.position = scene.activeCamera.position.clone();
+        scene.switchActiveCamera(flightCam);
+        flightCam.attachControl(canvas, true);
+        orbitCam.detachControl();
+      }
+      orbitCheckbox.checked = on;
+    }
+    orbitCheckbox.addEventListener("change", () => setOrbitMode(orbitCheckbox.checked));
+    canvas.addEventListener("keydown", (evt) => {
+      if (evt.key.toLowerCase() === "f") setOrbitMode(scene.activeCamera !== orbitCam);
+    });
+
+    // ---- 3D compass gizmo (bottom-right mini-scene) -- per tox_flyer/app/flyer.js::add3DCompass
+    const compassScene = new BABYLON.Scene(engine);
+    compassScene.autoClear = false;
+    compassScene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+    const compassCam = new BABYLON.ArcRotateCamera("compassCamera", Math.PI / 2, Math.PI / 2, 10, BABYLON.Vector3.Zero(), compassScene);
+    compassCam.mode = BABYLON.Camera.ORTHOGRAPHIC_CAMERA;
+    compassCam.orthoLeft = -1; compassCam.orthoRight = 1; compassCam.orthoBottom = -1; compassCam.orthoTop = 1;
+    compassCam.viewport = new BABYLON.Viewport(0.85, 0, 0.15, 0.2);
+    new BABYLON.HemisphericLight("compassLight", new BABYLON.Vector3(0, 1, 0), compassScene);
+    const compassCross = new BABYLON.TransformNode("cross", compassScene);
+    const axisArrowSize = 0.8, axisArrowRadius = 0.0375;
+    function makeCompassAxis(dir, hex) {
+      const tube = BABYLON.MeshBuilder.CreateTube(hex, { path: [BABYLON.Vector3.Zero(), dir.scale(axisArrowSize)], radius: axisArrowRadius }, compassScene);
+      const mat = new BABYLON.StandardMaterial(hex + "-mat", compassScene);
+      mat.diffuseColor = BABYLON.Color3.FromHexString(hex);
+      tube.material = mat;
+      tube.parent = compassCross;
+      return tube;
+    }
+    makeCompassAxis(new BABYLON.Vector3(-1, 0, 0), "#e04040");
+    makeCompassAxis(new BABYLON.Vector3(0, 1, 0), "#40b040");
+    makeCompassAxis(new BABYLON.Vector3(0, 0, -1), "#4060e0");
+    const compassOrigin = BABYLON.MeshBuilder.CreateSphere("compassOrigin", { diameter: axisArrowRadius * 5 }, compassScene);
+    compassOrigin.material = new BABYLON.StandardMaterial("compassOriginMat", compassScene);
+    scene.onBeforeRenderObservable.add(() => {
+      const cam = scene.activeCamera;
+      let alpha, beta;
+      if (cam === orbitCam) { alpha = cam.alpha + Math.PI / 2; beta = -cam.beta + Math.PI / 2; }
+      else { alpha = -cam.rotation.y; beta = cam.rotation.x; }
+      compassCross.rotationQuaternion = BABYLON.Quaternion.RotationYawPitchRoll(-alpha, -beta, 0).invert();
+    });
+
+    // ---- spatial chunking of points -- per tox_flyer/app/flyer/plotData/chunks.js, adapted
+    // ---- from its gene/family/tissue model to DATA.points. "Think big": only currently active
+    // ---- chunks (near the camera) ever hold a live thin-instance mesh, so cost scales with the
+    // ---- visible working set, not the full point count -- see CLAUDE.md's STC scaling note. ---
+    const CHUNK_DIAM = 40;
+    const LOAD_RANGE = 2; // sight radius = (LOAD_RANGE+0.5)*CHUNK_DIAM = 100 world units, comfortably
+    // covering the ~100-unit-normalized data extent from the -90-unit starting camera distance set
+    // above (resetCameraToFitData/flightCam/orbitCam) -- a smaller LOAD_RANGE left the starting
+    // camera outside its own sight radius and no chunk ever loaded on first render.
+    function bucketOf(v) { return Math.round(v / CHUNK_DIAM); }
+    function chunkKeyOf(pos) { return bucketOf(pos.x) + "," + bucketOf(pos.y) + "," + bucketOf(pos.z); }
+    let chunkIndex = new Map(); // chunk key -> [point-array index, ...]
+    function rebuildSpatialIndex() {
+      computeWorldScale();
+      chunkIndex = new Map();
+      DATA.points.forEach((p, i) => {
+        const key = chunkKeyOf(worldPos(p.coords));
+        if (!chunkIndex.has(key)) chunkIndex.set(key, []);
+        chunkIndex.get(key).push(i);
+      });
+    }
+    rebuildSpatialIndex();
+
+    const loadedChunks = new Map(); // chunk key -> mesh
+    let activeChunkKeys = new Set();
+    function loadChunk(key) {
+      const idxs = chunkIndex.get(key);
+      if (!idxs || !idxs.length || !document.getElementById("layer-points").checked) return;
+      const diameter = (+document.getElementById("point-diameter").value) * 0.6;
+      const mesh = BABYLON.MeshBuilder.CreateSphere(`chunk_${key}`, { diameter: 1, segments: 8 }, scene);
+      mesh.isPickable = true;
+      mesh.material = new BABYLON.StandardMaterial(`chunk_${key}_mat`, scene);
+      mesh.visibility = (+document.getElementById("point-opacity").value) / 100;
+      mesh.TOX_diameter = diameter;
+      const matrixBuf = new Float32Array(16 * idxs.length);
+      const colorBuf = new Float32Array(4 * idxs.length);
+      const pointIds = new Array(idxs.length);
+      idxs.forEach((pi, k) => {
+        const p = DATA.points[pi];
+        const m = BABYLON.Matrix.Compose(new BABYLON.Vector3(diameter, diameter, diameter),
+          BABYLON.Quaternion.Identity(), worldPos(p.coords));
+        m.copyToArray(matrixBuf, k * 16);
+        const [r, g, b] = toRGB01(pointColor3D(p));
+        colorBuf[k * 4] = r; colorBuf[k * 4 + 1] = g; colorBuf[k * 4 + 2] = b; colorBuf[k * 4 + 3] = 1;
+        pointIds[k] = p.id;
+      });
+      mesh.thinInstanceSetBuffer("matrix", matrixBuf, 16);
+      mesh.thinInstanceSetBuffer("color", colorBuf, 4);
+      mesh.TOX_pointIds = pointIds;
+      loadedChunks.set(key, mesh);
+    }
+    function unloadChunk(key) {
+      const mesh = loadedChunks.get(key);
+      if (mesh) { mesh.dispose(); loadedChunks.delete(key); }
+    }
+    function reloadActiveChunks() {
+      [...loadedChunks.keys()].forEach(unloadChunk);
+      activeChunkKeys.forEach(loadChunk);
+    }
+    function computeActiveChunkKeys(pos) {
+      const cx = bucketOf(pos.x), cy = bucketOf(pos.y), cz = bucketOf(pos.z);
+      const keys = new Set();
+      for (let dx = -LOAD_RANGE; dx <= LOAD_RANGE; dx++)
+        for (let dy = -LOAD_RANGE; dy <= LOAD_RANGE; dy++)
+          for (let dz = -LOAD_RANGE; dz <= LOAD_RANGE; dz++)
+            keys.add((cx + dx) + "," + (cy + dy) + "," + (cz + dz));
+      return keys;
+    }
+    function updateActiveChunks() {
+      const newActive = computeActiveChunkKeys(scene.activeCamera.position);
+      let changed = newActive.size !== activeChunkKeys.size;
+      if (!changed) for (const k of newActive) if (!activeChunkKeys.has(k)) { changed = true; break; }
+      if (!changed) return;
+      for (const k of activeChunkKeys) if (!newActive.has(k)) unloadChunk(k);
+      for (const k of newActive) if (!loadedChunks.has(k)) loadChunk(k);
+      activeChunkKeys = newActive;
+    }
+    scene.registerBeforeRender(updateActiveChunks);
+
+    // ---- seeds (triangles -> octahedra in 3D) and growth radii (transparent spheres) ----------
+    function renderSeeds3D() {
+      const existing = scene.getMeshByName("seedMesh");
+      if (existing) existing.dispose();
+      if (!document.getElementById("layer-seeds").checked || !nonEmptyEnsembles.length) return;
+      const seedDiameter = (+document.getElementById("seed-diameter").value) * 0.7;
+      const linkColor = document.getElementById("seed-color-link").checked;
+      const mesh = BABYLON.MeshBuilder.CreatePolyhedron("seedMesh", { type: 2, size: 0.5 }, scene);
+      mesh.isPickable = false;
+      mesh.material = new BABYLON.StandardMaterial("seedMat", scene);
+      const matrixBuf = new Float32Array(16 * nonEmptyEnsembles.length);
+      const colorBuf = new Float32Array(4 * nonEmptyEnsembles.length);
+      nonEmptyEnsembles.forEach((e, k) => {
+        const p = pointById.get(e.seed_point_id);
+        const pos = p ? worldPos(p.coords) : BABYLON.Vector3.Zero();
+        const m = BABYLON.Matrix.Compose(new BABYLON.Vector3(seedDiameter, seedDiameter, seedDiameter),
+          BABYLON.Quaternion.Identity(), pos);
+        m.copyToArray(matrixBuf, k * 16);
+        const [r, g, b] = toRGB01(linkColor && p ? pointColor3D(p) : "#000000");
+        colorBuf[k * 4] = r; colorBuf[k * 4 + 1] = g; colorBuf[k * 4 + 2] = b; colorBuf[k * 4 + 3] = 1;
+      });
+      mesh.thinInstanceSetBuffer("matrix", matrixBuf, 16);
+      mesh.thinInstanceSetBuffer("color", colorBuf, 4);
+    }
+    function renderRadii3D() {
+      const existing = scene.getMeshByName("radiiMesh");
+      if (existing) existing.dispose();
+      if (!document.getElementById("layer-radii").checked || !nonEmptyEnsembles.length) return;
+      const byEnsembleColor = document.getElementById("radii-ensemble-color").checked;
+      const opacity = +document.getElementById("radii-opacity").value;
+      const mesh = BABYLON.MeshBuilder.CreateSphere("radiiMesh", { diameter: 1, segments: 12 }, scene);
+      mesh.isPickable = false;
+      mesh.material = new BABYLON.StandardMaterial("radiiMat", scene);
+      mesh.material.backFaceCulling = false;
+      mesh.visibility = Math.min(1, opacity * 4);
+      const matrixBuf = new Float32Array(16 * nonEmptyEnsembles.length);
+      const colorBuf = new Float32Array(4 * nonEmptyEnsembles.length);
+      nonEmptyEnsembles.forEach((e, k) => {
+        const p = pointById.get(e.seed_point_id);
+        const pos = p ? worldPos(p.coords) : BABYLON.Vector3.Zero();
+        const diam = Math.max(0.001, e.growth_radius * worldScale * 2);
+        const m = BABYLON.Matrix.Compose(new BABYLON.Vector3(diam, diam, diam), BABYLON.Quaternion.Identity(), pos);
+        m.copyToArray(matrixBuf, k * 16);
+        const [r, g, b] = toRGB01(byEnsembleColor ? ensembleColor(e.id) : "#000000");
+        colorBuf[k * 4] = r; colorBuf[k * 4 + 1] = g; colorBuf[k * 4 + 2] = b; colorBuf[k * 4 + 3] = 1;
+      });
+      mesh.thinInstanceSetBuffer("matrix", matrixBuf, 16);
+      mesh.thinInstanceSetBuffer("color", colorBuf, 4);
+    }
+
+    // ---- local tangent-space grid, per misc/mod_STC.md "Visual Representation of 2D or 3D
+    // ---- local Tangent Spaces": for each ensemble member, project onto the tangent plane at
+    // ---- mu (t_k = u_k . (x - mu), k=1..d), then draw the projected point, one axis-foot point
+    // ---- per tangent axis (mu + t_k*u_k), and a segment from each axis-foot to the projection
+    // ---- -- an "irregular grid" that visualizes local sampling density. Generalizes the
+    // ---- existing d=1 single-line case (still rendered via line_start/line_end in the 2D
+    // ---- report) to d=2/3. Computed entirely client-side from already-shipped u1/u2/u3 (see
+    // ---- task #111) and membersOf (built above) -- no new Fortran/JSON needed. ---------------
+    function tangentGridSegments(e) {
+      // Clamped to 3: the JSON schema only ever exposes u1/u2/u3 (task #111) regardless of an
+      // ensemble's own intrinsic dimension e.d, which can exceed 3 in a 4+D ambient space -- the
+      // grid can only ever draw the axes it actually has a basis vector for, matching the "one,
+      // two or even three, depending on the detected local dimensionality" cap misc/mod_STC.md's
+      // own "Visualization for 3+ dimensions" section already states for the 3D view itself.
+      const d = e.d ? Math.min(e.d, 3) : 0;
+      if (d < 1) return [];
+      const us = [e.u1, e.u2, e.u3].slice(0, d);
+      const mu = e.mu;
+      const memberIds = membersOf.get(e.id) || [];
+      const segments = [];
+      memberIds.forEach(pid => {
+        const p = pointById.get(pid);
+        const x = p.coords;
+        const t = us.map(u => { let s = 0; for (let j = 0; j < u.length; j++) s += u[j] * (x[j] - mu[j]); return s; });
+        const proj = mu.slice();
+        for (let k = 0; k < d; k++) for (let j = 0; j < proj.length; j++) proj[j] += t[k] * us[k][j];
+        for (let k = 0; k < d; k++) {
+          const foot = mu.slice();
+          for (let j = 0; j < foot.length; j++) foot[j] += t[k] * us[k][j];
+          segments.push([foot, proj]);
+        }
+      });
+      return segments;
+    }
+    let tangentMeshes = [];
+    function renderTangentGrids3D() {
+      tangentMeshes.forEach(m => m.dispose());
+      tangentMeshes = [];
+      if (!document.getElementById("layer-tangent").checked) return;
+      const singleColor = document.getElementById("tangent-single-color").checked;
+      const colorHex = document.getElementById("tangent-color").value;
+      const opacity = (+document.getElementById("tangent-opacity").value) / 100;
+      const selected = tangentLineSelector3D.getSelectedIds();
+      lineCapableEnsembles3D.forEach(e => {
+        if (!selected.has(e.id)) return;
+        const segs = tangentGridSegments(e);
+        if (!segs.length) return;
+        const lines = segs.map(([a, b]) => [worldPos(a), worldPos(b)]);
+        const [r, g, b] = toRGB01(singleColor ? colorHex : ensembleColor(e.id));
+        const c4 = new BABYLON.Color4(r, g, b, 1);
+        const colors = lines.map(() => [c4, c4]);
+        const mesh = BABYLON.MeshBuilder.CreateLineSystem(`tangent_${e.id}`, { lines, colors }, scene);
+        mesh.isPickable = false;
+        mesh.visibility = opacity;
+        tangentMeshes.push(mesh);
+      });
+      // Note: Babylon's LineSystem has no native variable line-width (WebGL constrains native
+      // lines to ~1px regardless of stroke-width) -- the "Thickness" slider from the 2D control
+      // panel has no visible effect here. A faithful port would need per-segment tube meshes or
+      // the GreasedLine plugin; left as a follow-up, not core to the grid algorithm itself.
+    }
+
+    // ---- picking: click a point to pin its tooltip (mirrors buildMainPlot's own point click
+    // ---- pinning); manual ray-sphere test against each active chunk's thin instances, since
+    // ---- Babylon's built-in scene.pick() does not resolve individual thin-instance indices. --
+    function raySphereHitDistance(ray, center, radius) {
+      const oc = center.subtract(ray.origin);
+      const proj = BABYLON.Vector3.Dot(oc, ray.direction);
+      if (proj < 0) return null;
+      const closest = ray.origin.add(ray.direction.scale(proj));
+      return BABYLON.Vector3.Distance(closest, center) <= radius ? proj : null;
+    }
+    // Pure screen-coords -> point-id resolver, factored out of the pointer handler below so it
+    // can be exercised directly (see window.__stc3d.pickAt) without depending on Babylon's own
+    // DOM pointer-event/DPI plumbing -- useful for headless verification, not just production.
+    function pickPointIdAt(screenX, screenY) {
+      const ray = scene.createPickingRay(screenX, screenY, BABYLON.Matrix.Identity(), scene.activeCamera);
+      let best = null;
+      for (const mesh of loadedChunks.values()) {
+        const mats = mesh.thinInstanceGetWorldMatrices();
+        mats.forEach((m, idx) => {
+          const hitDist = raySphereHitDistance(ray, m.getTranslation(), mesh.TOX_diameter / 2);
+          if (hitDist !== null && (!best || hitDist < best.dist)) best = { dist: hitDist, pointId: mesh.TOX_pointIds[idx] };
+        });
+      }
+      return best ? best.pointId : null;
+    }
+    scene.onPointerObservable.add((pi) => {
+      if (pi.type !== BABYLON.PointerEventTypes.POINTERTAP) return;
+      const pointId = pickPointIdAt(scene.pointerX, scene.pointerY);
+      if (pointId !== null) {
+        pinTooltip(tooltipHtmlForPoint3D(pointById.get(pointId)), pi.event, canvas, wireTooltipLinks3D);
+      } else if (isPinned()) {
+        unpinTooltip();
+      }
+    });
+
+    // ---- render3D(): rebuilds everything driven by shared #controls state -- wired to the same
+    // ---- control-panel inputs buildMainPlot() wires its own render() to, so both engines react
+    // ---- to the identical widgets (task: "port 2D control widgets to drive the 3D scene"). ----
+    function render3D() {
+      reloadActiveChunks();
+      renderSeeds3D();
+      renderRadii3D();
+      renderTangentGrids3D();
+    }
+    ["color-mode", "point-diameter", "seed-diameter", "layer-points", "layer-seeds", "seed-color-link",
+     "point-opacity", "layer-radii", "radii-ensemble-color", "radii-opacity", "layer-tangent",
+     "tangent-single-color", "tangent-color", "tangent-thickness", "tangent-opacity", "single-color"]
+      .forEach(id => document.getElementById(id).addEventListener("input", render3D));
+
+    updateActiveChunks();
+    render3D();
+
+    engine.runRenderLoop(() => { scene.render(); compassScene.render(); });
+    window.addEventListener("resize", () => engine.resize());
+
+    // Debug/verification hook -- not part of the report's own UI, but harmless and genuinely
+    // useful for headless-browser smoke checks (see C-layer/test_stc_cli.sh's own smoke-test
+    // philosophy: introspect real state, don't just check for the absence of console errors).
+    window.__stc3d = { engine, scene, flightCam, orbitCam, loadedChunks, chunkIndex, pickPointIdAt, get axisIdx() { return axisIdx; } };
   }
 })();
 </script>
