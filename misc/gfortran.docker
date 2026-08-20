@@ -5,7 +5,8 @@ RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
     pacman -Sy --noconfirm gcc-fortran gcc make xxhash libzip python python-pip python-numpy && \
     pacman -Sy --noconfirm r gcc-fortran git && \
-    pacman -Scc --noconfirm
+    pacman -Scc --noconfirm && \
+    pacman -Sy --noconfirm fontconfig ttf-dejavu && fc-cache -f
 
 # Install fpm binary
 RUN curl -L --output /usr/local/bin/fpm \
