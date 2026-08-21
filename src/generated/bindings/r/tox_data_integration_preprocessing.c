@@ -7,8 +7,8 @@
 // the Fortran C-ABI symbols this module calls
 void compute_gene_means_c(const int*, const int*, const double*, double*, int*);
 void compute_residuals_c(const int*, const int*, const double*, const double*, double*, int*);
-void pool_means_expert_c(const double*, const int*, const int*, const int*, int*, double*, int*);
 void pool_means_c(const double*, const int*, const int*, int*, double*, int*);
+void pool_means_expert_c(const double*, const int*, const int*, const int*, int*, double*, int*);
 void pool_study_means_c(const int*, const double*, const int*, const double*, const int*, int*, double*, int*);
 void construct_neighborhoods_c(const int*, const double*, const int*, const double*, const int*, const double*, double*, int*, const int*, int*);
 
@@ -72,7 +72,7 @@ SEXP compute_residuals_call(SEXP expr, SEXP means) {
     return _out;
 }
 
-SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_points) {
+SEXP pool_means_call(SEXP pooled_means, SEXP n_points) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(pooled_means);
@@ -85,9 +85,8 @@ SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_po
     SEXP x_star = PROTECT(Rf_allocVector(REALSXP, n_points_v)); nprot++;
     int ierr = 0;
 
-    pool_means_expert_c(
+    pool_means_c(
         REAL(pooled_means),
-        INTEGER(pooled_means_perm),
         &pool_size,
         &n_points_v,
         &n_pool,
@@ -108,7 +107,7 @@ SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_po
     return _out;
 }
 
-SEXP pool_means_call(SEXP pooled_means, SEXP n_points) {
+SEXP pool_means_expert_call(SEXP pooled_means, SEXP pooled_means_perm, SEXP n_points) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(pooled_means);
@@ -121,8 +120,9 @@ SEXP pool_means_call(SEXP pooled_means, SEXP n_points) {
     SEXP x_star = PROTECT(Rf_allocVector(REALSXP, n_points_v)); nprot++;
     int ierr = 0;
 
-    pool_means_c(
+    pool_means_expert_c(
         REAL(pooled_means),
+        INTEGER(pooled_means_perm),
         &pool_size,
         &n_points_v,
         &n_pool,

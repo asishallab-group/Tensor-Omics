@@ -2,7 +2,19 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_relative_axis_plane_tools(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
+!| what can be read off a vector once it is projected onto one.
+!|
+!| A RAP is picked by selecting axes (tissues) from the full expression space.
+!| `vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+!| field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
+!| between two vectors -- signed by an orientation reference, so the sign means the same thing in
+!| every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
+!| vector field at once.
+!|
+!| `relative_axes_changes_from_shift_vector` and `relative_axes_expression_from_expression_vector`
+!| give the per-axis breakdown instead of the angle: how much of a change, or of an expression
+!| level, falls on each selected axis.
 module tox_relative_axis_plane_tools_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -52,8 +64,6 @@ contains
             !! projected vectors
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_vecs) :: vecs_selection_mask_f
-        logical, dimension(n_axes) :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -66,16 +76,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(axes_selection_mask, n_axes)
         M_CHECK_ARRAY_NON_NULL(projections, n_selected_axes * n_selected_vecs)
 
-        vecs_selection_mask_f = vecs_selection_mask
-        axes_selection_mask_f = axes_selection_mask
-
         call omics_vector_RAP_projection(&
             vecs = vecs,&
             n_axes = n_axes,&
             n_vecs = n_vecs,&
-            vecs_selection_mask = vecs_selection_mask_f,&
+            vecs_selection_mask = vecs_selection_mask,&
             n_selected_vecs = n_selected_vecs,&
-            axes_selection_mask = axes_selection_mask_f,&
+            axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
             projections = projections,&
             ierr = ierr&
@@ -114,8 +121,6 @@ contains
             !! projected vectors
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
-        logical, dimension(n_fields) :: fields_selection_mask_f
-        logical, dimension(n_axes) :: axes_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -128,16 +133,13 @@ contains
         M_CHECK_ARRAY_NON_NULL(axes_selection_mask, n_axes)
         M_CHECK_ARRAY_NON_NULL(projections, n_selected_axes * n_selected_fields)
 
-        fields_selection_mask_f = fields_selection_mask
-        axes_selection_mask_f = axes_selection_mask
-
         call omics_field_RAP_projection(&
             fields = fields,&
             n_axes = n_axes,&
             n_fields = n_fields,&
-            fields_selection_mask = fields_selection_mask_f,&
+            fields_selection_mask = fields_selection_mask,&
             n_selected_fields = n_selected_fields,&
-            axes_selection_mask = axes_selection_mask_f,&
+            axes_selection_mask = axes_selection_mask,&
             n_selected_axes = n_selected_axes,&
             projections = projections,&
             ierr = ierr&
@@ -195,7 +197,7 @@ contains
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angles_for_shift_vectors(subroutine)]]
     !| Each selected field is angled by the rule of
-    !| [[tox_relative_axis_plane_tools_kernel(module):clock_hand_angle_between_vectors_kernel(subroutine)]],
+    !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
     !| with one `orientation_reference` shared by the whole batch. A single field whose rotation
     !| the reference fails to orient fails the call.
     subroutine clock_hand_angles_for_shift_vectors_c(&
@@ -230,7 +232,6 @@ contains
             !! Signed rotation angles between vector pairs in radians [-π, π]
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical, dimension(n_fields) :: fields_selection_mask_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -242,13 +243,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(orientation_reference, n_dims)
         M_CHECK_ARRAY_NON_NULL(signed_angles, n_selected_fields)
 
-        fields_selection_mask_f = fields_selection_mask
-
         call clock_hand_angles_for_shift_vectors(&
             fields = fields,&
             n_dims = n_dims,&
             n_fields = n_fields,&
-            fields_selection_mask = fields_selection_mask_f,&
+            fields_selection_mask = fields_selection_mask,&
             n_selected_fields = n_selected_fields,&
             orientation_reference = orientation_reference,&
             signed_angles = signed_angles,&

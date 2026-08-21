@@ -54,6 +54,38 @@ compute_residuals <- function(expr, means) {
 #' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means}, whose argument names
 #' are the ones an error message reports.
 #'
+#' This entry point seeds \code{pooled_means_perm} and sorts it by \code{pooled_means}.
+#' Call \code{pool_means_expert} to do that yourself.
+#'
+#' @param pooled_means a numeric vector. Pooled means
+#'   NaN is permitted for this value.
+#' @param n_points a integer scalar. Number of reference points to define
+#' @return a named list with elements:
+#'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
+#'   \item{x_star}{a numeric vector. Mean-expression reference points}
+#' @export
+pool_means <- function(pooled_means, n_points) {
+    pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
+    n_points <- .tox_as_integer_scalar(n_points, "n_points")
+    .result <- .Call("pool_means_call", pooled_means, n_points)
+    .arguments <- c("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr")
+    .sources <- c(NA_character_, "pooled_means", "x_star", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        n_pool = .result$n_pool,
+        x_star = .result$x_star
+    )
+}
+
+#' Turn a sorted pool of per-gene mean expression values into reference points
+#'
+#' This takes the pool already built; `pool_study_means` pools the means of two studies
+#' first, if that is what is at hand.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means_expert}, whose argument names
+#' are the ones an error message reports.
+#'
 #' The expert entry point: you supply \code{pooled_means_perm} yourself.
 #' \code{pool_means} seeds \code{pooled_means_perm} and sorts it by \code{pooled_means}.
 #'
@@ -83,44 +115,12 @@ pool_means_expert <- function(pooled_means, pooled_means_perm, n_points) {
     )
 }
 
-#' Turn a sorted pool of per-gene mean expression values into reference points
-#'
-#' This takes the pool already built; `pool_study_means` pools the means of two studies
-#' first, if that is what is at hand.
-#'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_means_alloc}, whose argument names
-#' are the ones an error message reports.
-#'
-#' This entry point seeds \code{pooled_means_perm} and sorts it by \code{pooled_means}.
-#' Call \code{pool_means_expert} to do that yourself.
-#'
-#' @param pooled_means a numeric vector. Pooled means
-#'   NaN is permitted for this value.
-#' @param n_points a integer scalar. Number of reference points to define
-#' @return a named list with elements:
-#'   \item{n_pool}{a integer scalar. Total number of included (non-NaN) pooled mean-expression values}
-#'   \item{x_star}{a numeric vector. Mean-expression reference points}
-#' @export
-pool_means <- function(pooled_means, n_points) {
-    pooled_means <- .tox_as_double_vector(pooled_means, "pooled_means")
-    n_points <- .tox_as_integer_scalar(n_points, "n_points")
-    .result <- .Call("pool_means_call", pooled_means, n_points)
-    .arguments <- c("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr")
-    .sources <- c(NA_character_, "pooled_means", "x_star", NA_character_, NA_character_, NA_character_)
-    .status <- check_err_code(.result$ierr, .arguments, .sources)
-
-    list(
-        n_pool = .result$n_pool,
-        x_star = .result$x_star
-    )
-}
-
 #' Pool the per-gene mean expression values of two studies into reference points
 #'
 #' Concatenates the two studies' means, sorts the pool, and turns it into reference
 #' points exactly as `pool_means` does.
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_study_means_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::pool_study_means}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param mean_S1 a numeric vector. Per-gene mean expression values of study S1
@@ -149,7 +149,7 @@ pool_study_means <- function(mean_S1, mean_S2, n_points) {
 
 #' Construct neighborhood-based residual sets (kNN)
 #'
-#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param x_star a numeric vector. Mean-expression reference points

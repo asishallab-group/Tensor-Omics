@@ -160,6 +160,8 @@ class Procedure(Entity):
         location: SourceLocation = SourceLocation(),
         conventions: Conventions = CONVENTIONS,
         allocatable_locals: Sequence[str] = (),
+        uses: Sequence[str] = (),
+        is_pure: bool = False,
     ):
         self.name = name
         self.arguments = tuple(arguments)
@@ -169,10 +171,21 @@ class Procedure(Entity):
         self.meta = meta
         self.location = location
         self.conventions = conventions
+        #: the modules this procedure `use`s in its own body, which Fortran allows beside the
+        #: module's own imports. Kept separately because a rule about what a module may reach
+        #: is otherwise trivially sidestepped by moving the `use` one scope down
+        #: (`validate._check_impl_imports`).
+        self.uses = tuple(uses)
+        #: whether the procedure is `pure` (or `elemental`, which implies it). Read so a
+        #: generated wrapper can be pure exactly when everything it calls is -- a caller
+        #: who wants one inside `do concurrent` should not have to reach past the wrapper
+        #: to get it. Defaults to False: assuming purity that is not there would be a
+        #: compile error in generated code, while missing it only costs the caller.
+        self.is_pure = is_pure
         #: names of the local variables declared `allocatable`. The body itself is never
-        #: read, so this is how the generator sees that a procedure allocates: an
-        #: `M_ALLOCATE` needs an allocatable to allocate into, and a kernel may not have one
-        #: (`validate._check_kernel_allocates`).
+        #: read, so this is how the generator sees that a procedure allocates: `M_ALLOCATE`
+        #: needs an allocatable to allocate into, and an implementation may not have one
+        #: (`validate._check_impl_allocates`).
         self.allocatable_locals = tuple(allocatable_locals)
         self.parent: Module | None = None
 
@@ -211,27 +224,6 @@ class Procedure(Entity):
     def has_error_argument(self) -> bool:
         return self.argument(self.conventions.error_arg) is not None
 
-    @property
-    def is_alloc_variant(self) -> bool:
-        """Whether this is the allocating half of an `_alloc` / expert pair."""
-        return self.name.lower().endswith(self.conventions.alloc_suffix)
-
-    @property
-    def alloc_sibling(self) -> Procedure | None:
-        """The `<name>_alloc` procedure in the *same module*, if there is one.
-
-        The old generator asked `procedure.find_child(f"{name}_alloc")`, which searches a
-        procedure's own children rather than its module, so it never found the sibling and
-        the `_expert_c` naming rule never fired.
-        """
-        if self.module is None or self.is_alloc_variant:
-            return None
-        return self.module.procedure(f"{self.name}{self.conventions.alloc_suffix}")
-
-    @property
-    def has_alloc_sibling(self) -> bool:
-        return self.alloc_sibling is not None
-
     def __iter__(self) -> Iterator[Argument]:
         return iter(self.arguments)
 
@@ -250,6 +242,32 @@ class Parameter:
     parent: Module | None = None
 
 
+@dataclass
+class Declaration:
+    """A public name the generator carries by name and documentation alone.
+
+    A generic interface (`interface is_close`) and a derived type are both things Ford
+    documents and things author prose links to, and neither is anything a binding can express
+    -- a generic has no one signature, a derived type no C form. So the generator models
+    nothing about them beyond their existence, which is exactly what `validate._check_doc_links`
+    needs to resolve a link *to* one, and their documentation, which is prose that may hold
+    links of its own.
+
+    Only the public ones reach here, because only the public ones reach Ford's own output: a
+    link to a private routine dangles in the HTML as surely as a link to one that never
+    existed.
+    """
+
+    entity_kind: ClassVar[str] = "declaration"
+
+    name: str
+    #: `interface` or `type` -- what the link that names it should be spelled as
+    kind: str = "interface"
+    doc: Doc = field(default_factory=Doc)
+    location: SourceLocation = field(default_factory=SourceLocation)
+    parent: Module | None = None
+
+
 class Module(Entity):
     entity_kind: ClassVar[str] = "module"
 
@@ -262,10 +280,13 @@ class Module(Entity):
         meta: Meta = Meta(),
         location: SourceLocation = SourceLocation(),
         uses: Sequence[str] = (),
+        declarations: Sequence[Declaration] = (),
     ):
         self.name = name
         self.procedures = tuple(procedures)
         self.parameters = tuple(parameters)
+        #: the public generic interfaces and derived types, by name and documentation only
+        self.declarations = tuple(declarations)
         self.doc = doc
         self.meta = meta
         self.location = location
@@ -276,6 +297,7 @@ class Module(Entity):
 
         self._adopt(self.procedures)
         self._adopt(self.parameters)
+        self._adopt(self.declarations)
 
     def procedure(self, name: str) -> Procedure | None:
         lowered = name.lower()
@@ -290,6 +312,20 @@ class Module(Entity):
             if parameter.name.lower() == lowered:
                 return parameter
         return None
+
+    @property
+    def public_names(self) -> set[str]:
+        """Every name this module publishes, lower-cased, as documentation may link to it.
+
+        Procedures, module constants, generic interfaces and derived types -- the four things
+        Ford gives a page. Ford has already filtered by visibility, so a private routine is
+        absent here exactly as it is absent from the rendered documentation.
+        """
+        return {
+            entity.name.lower()
+            for group in (self.procedures, self.parameters, self.declarations)
+            for entity in group
+        }
 
     @property
     def exported_procedures(self) -> tuple[Procedure, ...]:

@@ -1,4 +1,4 @@
-"""f42_serde_arrays_serialize_logical
+r"""f42_serde_arrays_serialize_logical
 
 Module for serializing logical arrays into files
 
@@ -64,7 +64,7 @@ def serialize_logical_helper(
         arr = np.asfortranarray(arr, dtype=np.bool_)
     except (TypeError, ValueError) as error:
         raise TypeError(f"'arr' must be an array of np.bool_: {error}") from None
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     n_elements = arr.size

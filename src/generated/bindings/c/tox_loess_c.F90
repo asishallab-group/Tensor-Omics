@@ -2,7 +2,20 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_loess(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| LOESS local polynomial regression smoothing, over the netlib `dloess`/`lowesd` family.
+!|
+!| Two fits: `loess_fit_plain` and `loess_fit_robust`, the latter reweighting against outliers over
+!| a number of iterations. There is deliberately no combined entry point dispatching on a mode --
+!| a caller chooses the routine, and supplies the weights and the evaluation points it wants.
+!|
+!| A sample too degenerate to fit (fewer distinct points than the degree needs) is answered
+!| directly from the observations rather than handed to netlib, which cannot fit one and dies
+!| inside its decomposition instead of reporting. Nothing about that is visible to a caller
+!| beyond the result.
+!|
+!| `tox_loess_required_workspace` sizes the workspace for a caller that wants to own it; the
+!| mode and iteration constants and `EPS_LOESS` are here for the same reason. The netlib
+!| routines themselves are not re-documented beyond their calling convention.
 module tox_loess_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_double, c_int, c_loc
@@ -10,16 +23,98 @@ module tox_loess_c
     M_IMPLICIT_NONE
     private
 
-    public :: loess_fit_plain_expert_c
     public :: loess_fit_plain_c
-    public :: loess_fit_robust_expert_c
+    public :: loess_fit_plain_expert_c
     public :: loess_fit_robust_c
+    public :: loess_fit_robust_expert_c
 
 contains
 
     !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain(subroutine)]]
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
+    !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
+    !| response array.
+    subroutine loess_fit_plain_c(&
+            n,&
+            x,&
+            y,&
+            weights,&
+            eval_points,&
+            span,&
+            degree,&
+            max_neighborhood_size,&
+            compute_influence,&
+            save_factorization,&
+            fitted_values,&
+            ierr&
+        ) bind(C, name="loess_fit_plain_c")
+        use tox_loess, only: loess_fit_plain
+
+        integer(c_int), intent(in), target :: n
+            !! Total number of data points
+        real(c_double), dimension(n), intent(in), target :: x
+            !! Predictor variable array
+        real(c_double), dimension(n), intent(in), target :: y
+            !! Response variable array
+        real(c_double), dimension(n), intent(in), target :: weights
+            !! Weight array for data points
+        real(c_double), dimension(n, 1), intent(in), target :: eval_points
+            !! Evaluation points (x values at which the fitted curve is computed)
+        real(c_double), intent(in), target :: span
+            !! Smoothing parameter for LOESS
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
+        integer(c_int), intent(in), target :: degree
+            !! Degree of the LOESS polynomial
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
+        integer(c_int), intent(in), target :: max_neighborhood_size
+            !! Maximum neighborhood size
+        logical(c_bool), intent(in), target :: compute_influence
+            !! Influence calculation flag
+            !! The default value is `.false.`.
+        logical(c_bool), intent(in), target :: save_factorization
+            !! Save matrix factorization flag
+            !! The default value is `.false.`.
+        real(c_double), dimension(n), intent(out), target :: fitted_values
+            !! Fitted (smoothed) values of y at the evaluation points
+        integer(c_int), intent(out), target :: ierr
+            !! Error code
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n)
+        M_CHECK_NON_NULL(span)
+        M_CHECK_NON_NULL(degree)
+        M_CHECK_NON_NULL(max_neighborhood_size)
+        M_CHECK_NON_NULL(compute_influence)
+        M_CHECK_NON_NULL(save_factorization)
+        M_CHECK_ARRAY_NON_NULL(x, n)
+        M_CHECK_ARRAY_NON_NULL(y, n)
+        M_CHECK_ARRAY_NON_NULL(weights, n)
+        M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
+        M_CHECK_ARRAY_NON_NULL(fitted_values, n)
+
+        call loess_fit_plain(&
+            n = n,&
+            x = x,&
+            y = y,&
+            weights = weights,&
+            eval_points = eval_points,&
+            span = span,&
+            degree = degree,&
+            max_neighborhood_size = max_neighborhood_size,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
+            fitted_values = fitted_values,&
+            ierr = ierr&
+        )
+    end subroutine loess_fit_plain_c
+
+    !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain_expert(subroutine)]]
+    !| Data too degenerate to fit is answered directly, by the observations themselves; see
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
     !| response array.
     subroutine loess_fit_plain_expert_c(&
@@ -41,13 +136,13 @@ contains
             fitted_values,&
             ierr&
         ) bind(C, name="loess_fit_plain_expert_c")
-        use tox_loess, only: loess_fit_plain
+        use tox_loess, only: loess_fit_plain_expert
 
         integer(c_int), intent(in), target :: n
             !! Total number of data points
         integer(c_int), intent(in), target :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -55,7 +150,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -95,8 +190,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -117,10 +210,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_hat_diag, n)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
-        call loess_fit_plain(&
+        call loess_fit_plain_expert(&
             n = n,&
             x = x,&
             y = y,&
@@ -129,8 +219,8 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
             tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&
             tmp_real_workspace = tmp_real_workspace,&
@@ -141,12 +231,16 @@ contains
         )
     end subroutine loess_fit_plain_expert_c
 
-    !> summary: C-wrapper for [[tox_loess(module):loess_fit_plain_alloc(subroutine)]]
+    !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust(subroutine)]]
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
-    !| Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
-    !| response array.
-    subroutine loess_fit_plain_c(&
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
+    !| Fits a LOESS model to the data using robust iterations to handle outliers.
+    !| The robust fitting process iterates n_iters times, each iteration:
+    !| - Combines original weights with robust weights (down-weights from previous iteration)
+    !| - Runs LOESS fitting with combined weights
+    !| - Computes residuals (y - fitted values)
+    !| - Updates robust weights using bisquare function (suppresses large residuals)
+    subroutine loess_fit_robust_c(&
             n,&
             x,&
             y,&
@@ -157,10 +251,11 @@ contains
             max_neighborhood_size,&
             compute_influence,&
             save_factorization,&
+            n_iters,&
             fitted_values,&
             ierr&
-        ) bind(C, name="loess_fit_plain_c")
-        use tox_loess, only: loess_fit_plain_alloc
+        ) bind(C, name="loess_fit_robust_c")
+        use tox_loess, only: loess_fit_robust
 
         integer(c_int), intent(in), target :: n
             !! Total number of data points
@@ -188,12 +283,14 @@ contains
         logical(c_bool), intent(in), target :: save_factorization
             !! Save matrix factorization flag
             !! The default value is `.false.`.
+        integer(c_int), intent(in), target :: n_iters
+            !! Number of robust iterations
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `3_int32`.
         real(c_double), dimension(n), intent(out), target :: fitted_values
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -203,16 +300,14 @@ contains
         M_CHECK_NON_NULL(max_neighborhood_size)
         M_CHECK_NON_NULL(compute_influence)
         M_CHECK_NON_NULL(save_factorization)
+        M_CHECK_NON_NULL(n_iters)
         M_CHECK_ARRAY_NON_NULL(x, n)
         M_CHECK_ARRAY_NON_NULL(y, n)
         M_CHECK_ARRAY_NON_NULL(weights, n)
         M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
-        call loess_fit_plain_alloc(&
+        call loess_fit_robust(&
             n = n,&
             x = x,&
             y = y,&
@@ -221,16 +316,17 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
+            n_iters = n_iters,&
             fitted_values = fitted_values,&
             ierr = ierr&
         )
-    end subroutine loess_fit_plain_c
+    end subroutine loess_fit_robust_c
 
-    !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust(subroutine)]]
+    !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust_expert(subroutine)]]
     !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
+    !| [[tox_loess_impl(module):loess_degenerate_fit]].
     !| Fits a LOESS model to the data using robust iterations to handle outliers.
     !| The robust fitting process iterates n_iters times, each iteration:
     !| - Combines original weights with robust weights (down-weights from previous iteration)
@@ -261,13 +357,13 @@ contains
             fitted_values,&
             ierr&
         ) bind(C, name="loess_fit_robust_expert_c")
-        use tox_loess, only: loess_fit_robust
+        use tox_loess, only: loess_fit_robust_expert
 
         integer(c_int), intent(in), target :: n
             !! Total number of data points
         integer(c_int), intent(in), target :: int_workspace_size
             !! Required size of the integer workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `int_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `10000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -275,7 +371,7 @@ contains
             !! | n_dim          | 1_int32     |
         integer(c_int), intent(in), target :: real_workspace_size
             !! Required size of the real workspace array
-            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_kernel(module):tox_loess_required_workspace]].
+            !! It is *VERY IMPORTANT* to compute this argument from the `real_workspace_size` output produced by [[tox_loess_impl(module):tox_loess_required_workspace]].
             !! The minimum valid value is `100000_int32`.
             !!
             !! | Producer input | Supplied by |
@@ -327,8 +423,6 @@ contains
             !! Fitted (smoothed) values of y at the evaluation points
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -354,10 +448,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_indices, n)
         M_CHECK_ARRAY_NON_NULL(fitted_values, n)
 
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
-        call loess_fit_robust(&
+        call loess_fit_robust_expert(&
             n = n,&
             x = x,&
             y = y,&
@@ -366,8 +457,8 @@ contains
             span = span,&
             degree = degree,&
             max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
+            compute_influence = compute_influence,&
+            save_factorization = save_factorization,&
             n_iters = n_iters,&
             tmp_int_workspace = tmp_int_workspace,&
             int_workspace_size = int_workspace_size,&
@@ -382,104 +473,6 @@ contains
             ierr = ierr&
         )
     end subroutine loess_fit_robust_expert_c
-
-    !> summary: C-wrapper for [[tox_loess(module):loess_fit_robust_alloc(subroutine)]]
-    !| Data too degenerate to fit is answered directly, by the observations themselves; see
-    !| [[tox_loess_kernel(module):loess_degenerate_fit]].
-    !| Fits a LOESS model to the data using robust iterations to handle outliers.
-    !| The robust fitting process iterates n_iters times, each iteration:
-    !| - Combines original weights with robust weights (down-weights from previous iteration)
-    !| - Runs LOESS fitting with combined weights
-    !| - Computes residuals (y - fitted values)
-    !| - Updates robust weights using bisquare function (suppresses large residuals)
-    subroutine loess_fit_robust_c(&
-            n,&
-            x,&
-            y,&
-            weights,&
-            eval_points,&
-            span,&
-            degree,&
-            max_neighborhood_size,&
-            compute_influence,&
-            save_factorization,&
-            n_iters,&
-            fitted_values,&
-            ierr&
-        ) bind(C, name="loess_fit_robust_c")
-        use tox_loess, only: loess_fit_robust_alloc
-
-        integer(c_int), intent(in), target :: n
-            !! Total number of data points
-        real(c_double), dimension(n), intent(in), target :: x
-            !! Predictor variable array
-        real(c_double), dimension(n), intent(in), target :: y
-            !! Response variable array
-        real(c_double), dimension(n), intent(in), target :: weights
-            !! Weight array for data points
-        real(c_double), dimension(n, 1), intent(in), target :: eval_points
-            !! Evaluation points (x values at which the fitted curve is computed)
-        real(c_double), intent(in), target :: span
-            !! Smoothing parameter for LOESS
-            !! The minimum valid value is `EPS_LOESS`.
-            !! The maximum valid value is `1.0_real64`.
-        integer(c_int), intent(in), target :: degree
-            !! Degree of the LOESS polynomial
-            !! The minimum valid value is `0_int32`.
-            !! The maximum valid value is `2_int32`.
-        integer(c_int), intent(in), target :: max_neighborhood_size
-            !! Maximum neighborhood size
-        logical(c_bool), intent(in), target :: compute_influence
-            !! Influence calculation flag
-            !! The default value is `.false.`.
-        logical(c_bool), intent(in), target :: save_factorization
-            !! Save matrix factorization flag
-            !! The default value is `.false.`.
-        integer(c_int), intent(in), target :: n_iters
-            !! Number of robust iterations
-            !! The minimum valid value is `1_int32`.
-            !! The default value is `3_int32`.
-        real(c_double), dimension(n), intent(out), target :: fitted_values
-            !! Fitted (smoothed) values of y at the evaluation points
-        integer(c_int), intent(out), target :: ierr
-            !! Error code
-        logical :: compute_influence_f
-        logical :: save_factorization_f
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n)
-        M_CHECK_NON_NULL(span)
-        M_CHECK_NON_NULL(degree)
-        M_CHECK_NON_NULL(max_neighborhood_size)
-        M_CHECK_NON_NULL(compute_influence)
-        M_CHECK_NON_NULL(save_factorization)
-        M_CHECK_NON_NULL(n_iters)
-        M_CHECK_ARRAY_NON_NULL(x, n)
-        M_CHECK_ARRAY_NON_NULL(y, n)
-        M_CHECK_ARRAY_NON_NULL(weights, n)
-        M_CHECK_ARRAY_NON_NULL(eval_points, n * 1)
-        M_CHECK_ARRAY_NON_NULL(fitted_values, n)
-
-        compute_influence_f = compute_influence
-        save_factorization_f = save_factorization
-
-        call loess_fit_robust_alloc(&
-            n = n,&
-            x = x,&
-            y = y,&
-            weights = weights,&
-            eval_points = eval_points,&
-            span = span,&
-            degree = degree,&
-            max_neighborhood_size = max_neighborhood_size,&
-            compute_influence = compute_influence_f,&
-            save_factorization = save_factorization_f,&
-            n_iters = n_iters,&
-            fitted_values = fitted_values,&
-            ierr = ierr&
-        )
-    end subroutine loess_fit_robust_c
 
 end module tox_loess_c
 #endif

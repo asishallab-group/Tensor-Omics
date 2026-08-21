@@ -8,9 +8,10 @@ module mod_test_loess_smoothing
   ! the generated wrappers pack the offending argument's position into `ierr`, so the
   ! cases below compare the bare code rather than the packed one
   use tox_errors, only: ERR_INVALID_INPUT, ERR_NAN_INF, ERR_SIZE_MISMATCH, ERR_EMPTY_INPUT, get_err_code
-  use tox_loess,  only: loess_fit_plain_alloc, loess_fit_robust_alloc
-  use f42_utils
+  use tox_loess,  only: loess_fit_plain, loess_fit_robust
+  use f42_utils_impl
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite
   implicit none
   public
@@ -60,7 +61,7 @@ contains
     end do
     y_ref = 10.0_real64
 
-    call loess_fit(x_ref, y_ref, 0.5_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 0.5_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Constant input ierr==0")
     call assert_true(all(abs(yhat - 10.0_real64) < 1.0e-6_real64), "Constant input yhat constant")
@@ -77,7 +78,7 @@ contains
     end do
     y_ref = 0.5_real64 * x_ref
 
-    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Linear trend ierr==0")
     call assert_true(all(abs(yhat - y_ref) < 0.05_real64), "Linear trend approx ok")
@@ -97,7 +98,7 @@ contains
     ! One outlier
     y_ref(50) = 1000.0_real64
 
-    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat, robust=.true., n_iters=3, ierr=ierr)
+    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat, robust=.true._c_bool, n_iters=3, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Robust outlier suppression ierr==0")
     call assert_true(all(abs(yhat - 5.0_real64) < 0.05_real64), "Outlier suppressed (near 5)")
@@ -114,7 +115,7 @@ contains
       y_ref(i) = real(i, real64)
     end do
 
-    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Sparse-like spacing ierr==0")
     call assert_true(all(.not. (yhat /= yhat)), "Sparse-like spacing: no NaNs")  ! NaN check: yhat==yhat
@@ -129,7 +130,7 @@ contains
     x_ref(1) = 0.0_real64
     y_ref(1) = 42.0_real64
 
-    call loess_fit(x_ref, y_ref, 1.0_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 1.0_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
   call assert_equal_int(get_err_code(ierr), 0, "n=1 should return OK (identity fallback)")
   call assert_equal_real(yhat(1), y_ref(1), EPS, "n=1 should return yhat=y")
   end subroutine test_loess_single_point
@@ -146,7 +147,7 @@ contains
     
     y_ref = 1.0_real64
 
-    call loess_fit(x_ref, y_ref, 1.0_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 1.0_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Constant Y ierr==0")
     ! Verificamos que yhat sea 1.0 en todos los puntos
@@ -162,7 +163,7 @@ contains
     x_ref = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64]
     y_ref = [0.0_real64, 1.0_real64, 2.0_real64, 3.0_real64]
 
-    call loess_fit(x_ref, y_ref, 1.0_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 1.0_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Linear interp ierr==0")
     call assert_true(abs(yhat(2) - 1.0_real64) < 1.0e-6_real64, "Linear trend preserved")
@@ -180,7 +181,7 @@ contains
       y_ref(i) = real(i, real64) * 10.0_real64 ! y = 10, 20, ..., 100
     end do
 
-    call loess_fit(x_ref, y_ref, 0.5_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 0.5_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), 0, "Edge query ierr==0")
     call assert_true(abs(yhat(1) - 10.0_real64) < 2.0_real64, "Low edge (x=1) near 10")
     call assert_true(abs(yhat(10) - 100.0_real64) < 2.0_real64, "High edge (x=10) near 100")
@@ -195,7 +196,7 @@ contains
     x_ref = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
     y_ref = [10.0_real64, 20.0_real64, 30.0_real64, 40.0_real64, 50.0_real64]
 
-    call loess_fit(x_ref, y_ref, -1.0_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, -1.0_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "Invalid span -> ERR_INVALID_INPUT")
   end subroutine test_loess_invalid_span
@@ -212,7 +213,7 @@ contains
     y_ref = 7.0_real64
 
 
-    call loess_fit(x_ref, y_ref, 0.7_real64, 0_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x_ref, y_ref, 0.7_real64, 0_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "Degree 0 constant ierr==0")
     call assert_true(all(abs(yhat - 7.0_real64) < 1.0e-6_real64), "Degree 0 constant preserved")
@@ -229,8 +230,8 @@ contains
     end do
     y_ref = 2.0_real64 * x_ref + 1.0_real64
 
-    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat_plain, robust=.false., ierr=ierr1)
-    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat_robust, robust=.true., n_iters=3, ierr=ierr2)
+    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat_plain, robust=.false._c_bool, ierr=ierr1)
+    call loess_fit(x_ref, y_ref, 0.7_real64, 1_int32, yhat_robust, robust=.true._c_bool, n_iters=3, ierr=ierr2)
 
     call assert_equal_int(ierr1, 0, "Plain ierr==0")
     call assert_equal_int(ierr2, 0, "Robust ierr==0")
@@ -243,7 +244,7 @@ contains
     integer(int32) :: ierr
 
     allocate(x(0), y(0), yhat(0))
-    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "n=0 should return ERR_EMPTY_INPUT")
   end subroutine
 
@@ -256,7 +257,7 @@ contains
     x = [(real(i,real64), i=1,n)]
     y = [(real(i,real64), i=1,n)]
 
-    call loess_fit(x, y, 0.5_real64, 3_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.5_real64, 3_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "degree>2 should error")
   end subroutine
 
@@ -268,7 +269,7 @@ contains
     x = [(real(i,real64), i=1,n)]
     y = sin(x)
 
-    call loess_fit(x, y, 0.0_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.0_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "span<=EPS should error")
   end subroutine
 
@@ -281,7 +282,7 @@ contains
     y = sin(x)
 
     ! degree=2 => requiere n_eff >= 5. span=0.01 => n_eff=1
-    call loess_fit(x, y, 0.01_real64, 2_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.01_real64, 2_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "n_eff too small should error")
   end subroutine
 
@@ -293,7 +294,7 @@ contains
     x = [(real(i,real64), i=1,n)]
     y = sin(x)
 
-    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.true., n_iters=0_int32, ierr=ierr)
+    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.true._c_bool, n_iters=0_int32, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "robust with n_iters<1 should error")
   end subroutine
 
@@ -307,7 +308,7 @@ contains
     y = [(real(i,real64), i=1,n)]
     x(5) = ieee_value(x(5), ieee_quiet_nan)
 
-    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "NaN in x should return ERR_NAN_INF")
   end subroutine
 
@@ -322,7 +323,7 @@ contains
       y(i) = real(i, real64)
     end do
 
-    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.5_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "degenerate x should return OK fallback")
     call assert_true(maxval(abs(yhat - y)) == 0.0_real64, "fallback should return yhat=y")
@@ -342,7 +343,7 @@ contains
       y(i) = sin(real(i,real64))
     end do
 
-    call loess_fit(x, y, 0.8_real64, 2_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.8_real64, 2_int32, yhat, robust=.false._c_bool, ierr=ierr)
 
     call assert_equal_int(get_err_code(ierr), 0, "insufficient unique x should OK-fallback")
     call assert_true(maxval(abs(yhat - y)) == 0.0_real64, "fallback should return yhat=y")
@@ -359,7 +360,7 @@ contains
       y(i) = 1.0_real64 + 1.0e-10_real64 * sin(100.0_real64 * x(i))
     end do
 
-    call loess_fit(x, y, 0.3_real64, 1_int32, yhat, robust=.false., ierr=ierr)
+    call loess_fit(x, y, 0.3_real64, 1_int32, yhat, robust=.false._c_bool, ierr=ierr)
     call assert_equal_int(get_err_code(ierr), 0, "low-variance y should still succeed")
 
     ! yhat debería estar muy cerca de y (misma escala)
@@ -379,7 +380,7 @@ contains
     real(real64), intent(in) :: span
     integer(int32), intent(in) :: degree
     real(real64), intent(out) :: yhat(:)
-    logical, intent(in) :: robust
+    logical(c_bool), intent(in) :: robust
     integer(int32), intent(in), optional :: n_iters
     integer(int32), intent(out) :: ierr
 
@@ -392,10 +393,10 @@ contains
     eval_points(:, 1) = x
 
     if (robust) then
-      call loess_fit_robust_alloc(n, x, y, weights, eval_points, span, degree, n, &
+      call loess_fit_robust(n, x, y, weights, eval_points, span, degree, n, &
                                   n_iters=n_iters, fitted_values=yhat, ierr=ierr)
     else
-      call loess_fit_plain_alloc(n, x, y, weights, eval_points, span, degree, n, &
+      call loess_fit_plain(n, x, y, weights, eval_points, span, degree, n, &
                                  fitted_values=yhat, ierr=ierr)
     end if
   end subroutine loess_fit

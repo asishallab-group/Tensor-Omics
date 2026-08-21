@@ -5,20 +5,33 @@
 \usepackage{geometry}
 \geometry{margin=2.5cm}
 
-\usepackage{xcolor}   % for custom link color
-\usepackage{hyperref} % force-load to enable \hypersetup
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{booktabs}
 
-\definecolor{linkblue}{RGB}{0, 0, 238} % classic hyperlink blue
+\definecolor{linkblue}{RGB}{0, 0, 238}
+\definecolor{codegray}{RGB}{245,245,245}
+\definecolor{codered}{RGB}{180,0,0}
+\definecolor{codegreen}{RGB}{0,120,0}
 
 \hypersetup{
-colorlinks=true,
-urlcolor=linkblue,
-linkcolor=linkblue,
-citecolor=black
+  colorlinks=true,
+  urlcolor=linkblue,
+  linkcolor=linkblue,
+  citecolor=black
 }
 
-\title{F42: Fortran coding guides}
-\author{Asis Hallab, ``el Bobito''}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codegray},
+  frame=single,
+  breaklines=true,
+  tabsize=2
+}
+
+\title{Tensor Omics: Team Coding Guidelines}
 
 \begin{document}
 
@@ -28,1781 +41,1048 @@ citecolor=black
 \vspace{1cm}
 
 \newpage
-\section{Use latest gfortran compiler version}
 
-To ensure optimal performance and compatibility, always use the latest stable version of the gfortran compiler (15+). 
+% =============================================================================
+\section{Compiler: Always Use the Latest gfortran}
+% =============================================================================
 
-\noindent We recommend adding a PPA (Personal Package Archive) to your system to easily install the latest version. If you are using Ubuntu, you can do this by running:
-\begin{verbatim}
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-sudo apt-get update
-sudo apt-get install gfortran-<version> # e.g., gfortran-15 
-\end{verbatim}
+Always use \texttt{gfortran} 15 or newer. Newer compiler versions bring improved standard compliance, better auto-vectorization, and improved \texttt{do concurrent} support.
 
-\noindent If gfortran-15 is not available, you can also get the latest version with Docker: 
-{\begin{itemize}
-  \item Install and setup Docker as explained for your operating system in the Docker documentation.
-  \item Use our \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/blob/main/misc/gfortran.docker?ref_type=heads}{Dockerfile gfortran.docker}: 
-  \begin{verbatim}
-    docker build -t arch-gfortran -f gfortran.docker . 
-  \end{verbatim}
-  \item Then build the project with:
-  \begin{verbatim}
-    docker run -it -v `pwd`:/opt arch-gfortran '/opt/build.sh'
-  \end{verbatim}
-\end{itemize}}
+\subsection{Using Docker (Recommended)}
 
-\section{Use of double precision}
+The project provides a pre-built Docker image with gfortran 15 and all required dependencies: no system-level changes are needed. Install Docker as explained for your operating system in the \href{https://docs.docker.com/get-docker/}{Docker documentation}.
 
-Declare in Fortran internal functions and subroutines \texttt{real} variables and constants always using the ISO double precision standard (see below for an example). Do make sure that if you assign values at compile time, so constants, you \emph{must use} the \texttt{\_real64} suffix to guarantee precision (see example below).
+\textbf{Step 1:} Build the image from the \texttt{Dockerfile} in \texttt{misc/}:
 
-\begin{verbatim}
-program double_precision_example
-  use, intrinsic :: iso_fortran_env, only: real64  ! Use explicit ISO-standard double precision
-  implicit none
+\begin{lstlisting}[language=bash]
+cd misc
+docker build -t arch-gfortran -f gfortran.docker .
+cd ..
+\end{lstlisting}
 
-  real(real64) :: x, y, result
+\textbf{Step 2:} Compile the project inside the container:
 
-  ! Assign values
-  x = 3.141592653589793_real64
-  y = 2.718281828459045_real64
+\begin{lstlisting}[language=bash]
+docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
+\end{lstlisting}
 
-  ! Perform computation
-  result = x * y
+\subsection{Native Compilation}
 
-  ! Print with full precision
-  print "(A, F24.16)", "Result = ", result
+If you already have \texttt{gfortran} $\geq$ 15 installed, compile directly with \texttt{build.sh}. It compiles all files in \texttt{src/}, places compiled objects under \texttt{build/<compiler>/}, and creates a symbolic link to the resulting shared library (\texttt{libtensor-omics.so}) so that Python and R always find the same path.
 
-end program double_precision_example
-\end{verbatim}
+\textbf{Arch Linux} (rolling release --- always has the latest GCC):
+\begin{lstlisting}[language=bash]
+sudo pacman -S gcc-fortran
+\end{lstlisting}
 
-\section{Using \texttt{test suite framework} for Testing}
+\textbf{macOS} (via \href{https://brew.sh}{Homebrew}):
+\begin{lstlisting}[language=bash]
+brew install gcc
+\end{lstlisting}
 
-This framework provides a robust and scalable system for organizing and executing unit tests in Fortran. It allows running individual tests, complete test suites, or all project tests with simple and clear syntax.
+On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use the Docker path instead.
 
-\noindent Please check \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/tree/main/test?ref_type=heads}{this readme file} for details.
+\textbf{Default} --- gfortran without optimisation flags:
+\begin{lstlisting}[language=bash]
+./build.sh
+\end{lstlisting}
 
-\subsection{Do not test multiple times}
+\textbf{Maximum performance} --- gfortran with optimisation flags:
+\begin{lstlisting}[language=bash]
+./build.sh --max-performance
+\end{lstlisting}
 
-The correctness of the calculation, the correctness of the implemented algorithm is \emph{only} tested in Fortran.
+\textbf{Intel Fortran Compiler} --- with maximum performance flags:
+\begin{lstlisting}[language=bash]
+./build.sh --max-performance FC=ifx
+\end{lstlisting}
 
-\noindent The API language tests for R, Python, and, if we ever included them, in C should only test that the function can be correctly called and the return values are accessible and of the expected type.
+\subsection{Fortran Standard Reference}
 
-\noindent In other words, do not repeat tests, if avoidable.
+When in doubt about language semantics, consult the official Fortran standard draft:
+\begin{center}
+  \url{https://j3-fortran.org/doc/year/26/26-007.pdf}
+\end{center}
 
-\noindent If your test is created by an AI from the original Fortran code, and you thus do not lose work time on writing the test again in another programming language, please do feel free to do so.
+% =============================================================================
+\section{File Extensions: \texttt{.F90} vs \texttt{.f90}}
+% =============================================================================
 
-
-\section{Obligatory use of \texttt{intent} and \texttt{pure} }
-\begin{itemize}
-  \item Always use \texttt{intent} for function or subroutine arguments.
-    Be aware of the kind of data being passed.
-
-  \begin{itemize}
-    \item \textbf{intent(in)}: Use when the pointer's contents are only read.
-    \item \textbf{intent(out)}: Use when the contents will be entirely overwritten.
-    \item \textbf{intent(inout)}: Use when the subroutine both reads and writes to the data, and the initial values are important.
-  \end{itemize}
-  \item Always use \texttt{pure} where possible.
-\end{itemize}
-
-
-\subsection{Optional Arguments in Fortran}
-
-\subsubsection{Overview}
-
-Fortran (ISO standard, since Fortran 90) supports \texttt{optional} procedure arguments, which allow the caller to omit certain arguments when invoking a subroutine or function. Their presence must be checked explicitly using the intrinsic function \texttt{PRESENT}. Fortran does not support default values in procedure headers. Developers must assign defaults manually.
-
-\subsubsection{Syntax and Usage}
-
-To declare an optional argument:
-
-\begin{verbatim}
-subroutine example(a, b, c)
-  integer, intent(in) :: a
-  real, intent(in), optional :: b, c
-\end{verbatim}
-
-To check whether an optional argument was passed:
-
-\begin{verbatim}
-  if (present(b)) then
-    print *, 'B is provided: ', b
-  else
-    print *, 'B is not provided.'
-  end if
-\end{verbatim}
-
-\subsubsection{Example}
-
-\begin{verbatim}
-program optional_demo
-  call greet("Josef")
-  call greet("Josef", "Mexico")
-contains
-  subroutine greet(name, location)
-    character(len=*), intent(in) :: name
-    character(len=*), intent(in), optional :: location
-
-    print *, "Hello, ", name
-    if (present(location)) then
-      print *, "How is the weather in ", location, "?"
-    end if
-  end subroutine greet
-end program optional_demo
-\end{verbatim}
-
-\subsubsection{Default Value Handling}
-
-Fortran does not support assigning default values directly in the argument list. Instead, assign them manually after a \texttt{PRESENT} check:
-
-\begin{verbatim}
-subroutine greet(name, title)
-  character(len=*), intent(in) :: name
-  character(len=*), intent(in), optional :: title
-  character(len=20) :: effective_title
-
-  if (present(title)) then
-    effective_title = title
-  else
-    effective_title = "Mr./Ms."
-  end if
-
-  print *, "Hello, ", trim(effective_title), " ", trim(name)
-end subroutine greet
-\end{verbatim}
-
-\subsubsection{Workaround: Binding Overloading}
-
-To emulate default arguments, use multiple procedures with an binding:
-
-\begin{verbatim}
-module greeter_mod
-contains
-  subroutine greet1(name)
-    character(len=*), intent(in) :: name
-    call greet2(name, "Mr./Ms.")
-  end subroutine
-
-  subroutine greet2(name, title)
-    character(len=*), intent(in) :: name
-    character(len=*), intent(in) :: title
-    print *, "Hello, ", trim(title), " ", trim(name)
-  end subroutine
-end module
-
-program main
-  use greeter_mod
-  binding greet
-    module procedure greet1, greet2
-  end binding
-
-  call greet("Josef")
-  call greet("Josef", "Dr.")
-end program
-\end{verbatim}
-
-\subsubsection{Best Practices}
+Fortran source files in this project use \emph{two} extensions with a precise meaning:
 
 \begin{itemize}
-  \item Always check optional arguments with \texttt{PRESENT} before accessing them.
-  \item Avoid relying on optional arguments for critical logic without default assignment.
-  \item Use binding overloading to simulate default values if needed for cleaner calling code.
-  \item Do not use optional arguments in \texttt{elemental} procedures (not supported).
-  \item Document the behavior and defaults of optional arguments clearly in the procedure's binding documentation.
+  \item \textbf{\texttt{.F90}} (uppercase F): The file is passed through the C preprocessor before compilation.
+    Use this extension whenever the file contains \texttt{\#include}, \texttt{\#define}, or any other preprocessor directive (e.g., \texttt{\#include "macros.h"}).
+  \item \textbf{\texttt{.f90}} (lowercase f): Plain Fortran, \emph{no} preprocessor. Use this for files that contain no macros or includes.
 \end{itemize}
 
-\section{Documenting Fortran Code with FORD}
+\textbf{Rule:} If in doubt, use \texttt{.F90}. Do not mix files that use macros with the \texttt{.f90} extension, as gfortran will silently skip the preprocessor pass and produce cryptic compilation errors.
 
-\textbf{FORD} (Fortran Documentation Generator) is a modern tool for generating web and PDF documentation from structured comments in Fortran code. It creates navigable documentation with cross-references, module and subroutine descriptions, argument lists, and usage examples.
+% =============================================================================
+\section{Code Formatting}
+% =============================================================================
 
-\subsection{Basic principles}
+\subsection{Indentation}
+
+Use \textbf{4 spaces} per indentation level. Never use tabs. The project formatter is \texttt{fprettify}; run it before committing:
+
+\begin{lstlisting}[language=bash]
+fprettify -i 4 -l 1000 <path-to-file>
+\end{lstlisting}
+
+The \texttt{-l 1000} flag sets a generous line-length limit so that \texttt{fprettify} does not introduce spurious line continuations in long argument lists.
+
+\subsection{One Dummy Argument Declaration Per Line}\label{sec:one-arg-per-line}
+
+Each dummy argument (subroutine/function parameter) must be declared on its own line. This is required so that every argument can carry its own FORD documentation comment:
+
+\begin{lstlisting}[language=Fortran]
+! CORRECT
+integer(int32), intent(in) :: n_genes
+  !! Total number of genes
+real(real64), intent(in) :: expression_vectors(n_axes, n_genes)
+  !! Gene expression matrix (n_axes x n_genes)
+
+! WRONG: two arguments on one line cannot be individually documented
+integer(int32), intent(in) :: n_genes, n_axes
+\end{lstlisting}
+
+For \textbf{local variables} this rule does not apply — grouping related locals on one line is acceptable. Local variables do not need FORD comments, but must still follow the naming conventions (meaningful, descriptive names).
+
+% =============================================================================
+\section{Always Use \texttt{c\_bool} for Logicals}
+% =============================================================================
+
+Every logical that occupies storage --- dummy arguments, locals, module variables, arrays ---
+is declared \texttt{logical(c\_bool)} from \texttt{iso\_c\_binding}, never the default kind.
+
+\begin{lstlisting}[language=Fortran]
+use, intrinsic :: iso_c_binding, only: c_bool
+
+logical(c_bool), intent(in) :: selection_mask(n_genes)
+logical(c_bool) :: found
+\end{lstlisting}
+
+\textbf{Why.} A default \texttt{logical} is four bytes and \texttt{c\_bool} is one, so a mask
+over genes costs a quarter as much --- and it is the kind C, Python and R already use, so a
+mask crosses the boundary with no copy at all. Before this, every generated C wrapper declared
+an automatic array of default \texttt{logical} and converted elementwise on the way in and out.
+
+\textbf{Two exceptions, both because there is no storage to save.} A \texttt{logical,
+parameter} is a named constant. A \texttt{logical function} result is a scalar, and a condition
+accepts any logical kind, so nothing forces it either way. Neither is worth the noise.
+
+\textbf{A literal needs the kind too.} \texttt{.true.} is default kind, and argument
+association does not convert kinds, so passing it to a \texttt{logical(c\_bool)} dummy is a
+compile error --- write \texttt{.true.\_c\_bool}. Assignment is fine and converts silently,
+which is why \texttt{mask = x > 0.0\_real64} needs nothing special.
+
+\textbf{Characters are not the same case, and the reason is worth knowing.} There is no
+matching rule to write \texttt{character(kind=c\_char)} everywhere. \texttt{c\_bool} is a
+different kind from the default logical --- one byte against four --- so declaring it is what
+buys the memory and removes the copy. \texttt{c\_char} \emph{is} the default character kind, so
+writing it out would change nothing generated and cost an \texttt{iso\_c\_binding} import in
+every module. An implementation declares an ordinary \texttt{character(len=*)}, and
+\texttt{c\_char} appears only where a buffer really is a C buffer: the libzip interface and the
+view helper in \texttt{tox\_conversions}.
+
+That equality is asserted rather than assumed. The standard defines \texttt{c\_char} as the kind
+for C's \texttt{char}, or \texttt{-1} where there is none; it does not promise the default kind,
+and a distinct character kind genuinely exists (\texttt{selected\_char\_kind("ISO\_10646")}).
+So \texttt{f42\_safeguard} carries a fourth compile-time guard beside the three for
+\texttt{c\_int}, \texttt{c\_double} and \texttt{c\_double\_complex}, and the kinds test proves it
+fires. Writing the plain spelling is safe \emph{because} the guard is there.
+
+What an implementation \emph{does} need to know about characters is that an argument arrives
+blank-padded to the buffer width rather than trimmed --- see \texttt{codegen\_guide.md}.
+
+% =============================================================================
+\section{Always Use Double Precision}
+% =============================================================================
+
+All real variables and constants must use the ISO Fortran double precision kind \texttt{real64} from \texttt{iso\_fortran\_env}. Never use the default \texttt{real} kind or literal constants without a kind suffix.
+
+\begin{lstlisting}[language=Fortran]
+use, intrinsic :: iso_fortran_env, only: real64, int32
+
+real(real64) :: x, y
+integer(int32) :: n
+
+! Compile-time constants MUST carry the _real64 suffix
+x = 3.141592653589793_real64
+y = 2.718281828459045_real64
+\end{lstlisting}
+
+Omitting the \texttt{\_real64} suffix causes the literal to be evaluated as single precision before being promoted, silently losing bits of accuracy.
+
+% =============================================================================
+\section{Variable and Argument Naming Conventions}
+% =============================================================================
+
+Consistent naming makes the code readable without comments. The following conventions are \textbf{mandatory}.
+
+\subsection{Prefixes and Suffixes}
+
+\begin{tabular}{lll}
+\toprule
+Pattern & Meaning & Example \\
+\midrule
+\texttt{n\_} & Size / count of a dimension & \texttt{n\_genes}, \texttt{n\_axes}, \texttt{n\_families} \\
+\texttt{i\_} & Loop / iteration variable & \texttt{i\_gene}, \texttt{i\_axis}, \texttt{i\_vec} \\
+\texttt{\_idx} & Calculated / derived index & \texttt{family\_idx}, \texttt{out\_idx} \\
+\texttt{tmp\_} & Work array (not input or output) & \texttt{tmp\_perm}, \texttt{tmp\_loess\_y} \\
+\texttt{\_perm} & Permutation vector for \texttt{<name>} & \texttt{sort\_perm}, \texttt{gene\_perm} \\
+\texttt{\_impl} & Core implementation subroutine, and the module holding it & \texttt{k\_means\_assign\_cluster\_impl} \\
+\texttt{\_c} & C-interoperable wrapper (generated) & \texttt{compute\_shift\_vector\_field\_c} \\
+\texttt{\_expert} & Full-control wrapper with all work arrays exposed (generated) & \texttt{compute\_family\_scaling\_expert} \\
+\texttt{ierr} & Error code argument (always this name) & \texttt{integer(int32), intent(out) :: ierr} \\
+\bottomrule
+\end{tabular}
+
+\subsection{Mapping Arrays}
+
+Use a descriptive \texttt{x\_to\_y} pattern for mapping arrays:
+
+\begin{lstlisting}[language=Fortran]
+integer(int32), intent(in) :: gene_to_fam(n_genes)
+! gene_to_fam(i_gene) = family index of gene i_gene
+
+integer(int32) :: family_idx
+family_idx = gene_to_fam(i_gene)
+\end{lstlisting}
+
+\subsection{Boolean / Selection Arrays}
+
+Use the \texttt{\_mask} or \texttt{\_selection} suffix for logical index arrays. Every logical
+that occupies storage is declared \texttt{logical(c\_bool)} --- one byte rather than four, and
+the kind the bindings already use, so a mask crosses to C, Python and R without being copied:
+
+\begin{lstlisting}[language=Fortran]
+logical(c_bool), intent(in) :: vecs_selection_mask(n_vecs)
+logical(c_bool), intent(in) :: axes_selection(n_axes)
+\end{lstlisting}
+
+% =============================================================================
+\section{Writing for the Code Generator}
+% =============================================================================
+
+You write \textbf{one} procedure per computation: the implementation. The code generator reads it
+and writes everything around it — the validating and allocating entry points, the \texttt{bind(C)}
+wrapper, the Python and R bindings, their documentation, and the VS~Code snippets. None of those
+may be edited by hand; a change belongs in the implementation or in its annotations. This section
+is the whole contract. \texttt{codegen\_guide.md} in the repository root works through it case by
+case, with an example for each.
+
+\subsection{The Implementation}
+
 \begin{itemize}
-  \item Use special comments (\texttt{!>} and \texttt{!|}) to annotate modules, subroutines, functions, and variables.
-  \item Comments must be placed immediately before the entity they document.
-  \item It is recommended to document all arguments, the general purpose, and any relevant side effects.
+  \item Name it \texttt{foo\_impl}, in a module whose name ends \texttt{\_impl}. That module name
+        is what triggers generation, and the generated module is written to
+        \texttt{src/generated/} mirroring the implementation's own path.
+  \item It contains the algorithm and nothing else: it \textbf{never validates input} and
+        \textbf{never allocates} — nor may anything else in an \texttt{\_impl} module. It may
+        still report a genuine \emph{runtime} error through \texttt{ierr} (a division by zero, a
+        failed external fit); validation is not its job.
+  \item Accept \emph{everything} as explicit arguments: inputs, outputs, and any work arrays.
+        Declare it \texttt{pure} unless the algorithm genuinely cannot be. Purity is derived, not
+        declared, for everything above it.
+  \item An argument named \texttt{tmp\_<name>} is a \textbf{work array}: the allocating entry point
+        allocates it and drops it from the signature the caller sees.
+  \item An argument named \texttt{<base>\_perm} is a \textbf{sorting permutation} for \texttt{<base>}:
+        the allocating entry point initialises and heapsorts it for you.
 \end{itemize}
+
+\subsection{Documentation Macros (\texttt{DM\_} prefix)}
+
+Every constraint the generated layers need is written as a \texttt{DM\_} macro in the argument's own
+\texttt{!!} comment. They are documentation macros: they expand to the English sentence that ends up
+in the Fortran, C, Python and R documentation, \emph{and} the generator reads them to emit the
+matching validation. One statement, one place, no way for the check and the prose to disagree.
+
+\begin{tabular}{ll}
+\toprule
+Macro & Purpose \\
+\midrule
+\texttt{DM\_MIN(EXPR)} & Lower bound for this argument \\
+\texttt{DM\_MAX(EXPR)} & Upper bound for this argument \\
+\texttt{DM\_SENTINEL(EXPR)} & One extra value accepted outside the bounds \\
+\texttt{DM\_ALLOW\_NAN} & Permit NaN (rejected by default for every real argument) \\
+\texttt{DM\_ALLOW\_INFINITE} & Permit $\pm\infty$ (rejected by default for every real argument) \\
+\texttt{DM\_DEFAULT(VAL)} & Default for an \texttt{optional} argument \\
+\texttt{DM\_RESULT\_SIZE\_IS(ARG)} & Only the first \texttt{ARG} elements of this output are filled \\
+\texttt{DM\_OUTPUT\_FROM(...)} & Compute this argument by calling a sizing routine \\
+\texttt{DM\_REQUIRED\_IF\_MODE(...)} & This optional argument is required in one mode \\
+\texttt{DM\_PROLOGUE(PROC, MOD)} & Run \texttt{PROC} before the implementation, and let it short-circuit \\
+\bottomrule
+\end{tabular}
+
+\medskip
+\noindent\textbf{Finiteness is the default contract}: every real argument is checked for NaN and
+infinity unless it opts out. A bound may be an expression, including another argument
+(\texttt{DM\_MAX(n\_array)}) or an exclusive bound (\texttt{DM\_MIN(above(0.0\_real64))}).
+
+\begin{lstlisting}[language=Fortran]
+pure subroutine quantile_normalization_impl(expr, n_genes, n_replicates, &
+    normalized_expr, rank_means, tmp_col, tmp_perm)
+  integer(int32), intent(in) :: n_genes
+    !! Number of genes (rows)
+  integer(int32), intent(in) :: n_replicates
+    !! Number of replicates per gene
+  real(real64), intent(in)  :: expr(n_replicates, n_genes)
+    !! Gene expression matrix
+    !! DM_ALLOW_NAN
+    !! DM_ALLOW_INFINITE
+  real(real64), intent(out) :: normalized_expr(n_replicates, n_genes)
+    !! Normalized `expr`
+  real(real64), intent(in)  :: rank_means(n_replicates)
+    !! The mean of each rank across tissues
+  real(real64), intent(out) :: tmp_col(n_genes)      ! work array
+  integer(int32), intent(out) :: tmp_perm(n_genes)   ! permutation work array
+  ! ... pure implementation: no ierr, no validation, no allocation ...
+end subroutine
+\end{lstlisting}
+
+\subsection{What Comes Out}
+
+Two Fortran entry points, and the bindings around them:
+
 \begin{itemize}
-  \item Use \texttt{!>} for general descriptions of modules, subroutines, and functions.
-  \item Use \texttt{!|} to document each argument.
-  \item If relevant, add usage examples and warnings with \texttt{!!}.
-  \item Keep documentation up to date when the binding changes.
-  \item Generate documentation with FORD regularly and review the HTML output.
-\end{itemize}
-\subsection{Minimal example}
-\begin{verbatim}
-!> Module for calculating normalized tissue (axis) versatility.
-module avmod
-  use, intrinsic :: iso_fortran_env, only: real64
-  implicit none
-contains
-
-  !> Computes normalized tissue versatility for selected expression vectors.
-  !! The metric is based on the angle between each gene expression vector and the space diagonal.
-  pure subroutine compute_tissue_versatility(n_axes, n_vectors, expression_vectors, &
-                                             exp_vecs_selection_index, axes_selection, &
-                                             tissue_versatilities, tissue_angles_deg)
-    !| Number of axes (tissues/dimensions)
-    integer, intent(in) :: n_axes
-    !| Number of expression vectors (genes)
-    integer, intent(in) :: n_vectors
-    !| 2D array (n_axes, n_vectors), each column is a gene expression vector
-    real(real64), intent(in) :: expression_vectors(n_axes, n_vectors)
-    !| Logical array (n_vectors), .TRUE. for vectors to process
-    logical, intent(in) :: exp_vecs_selection_index(n_vectors)
-    !| Logical array (n_axes), .TRUE. for axes to include in calculation
-    logical, intent(in) :: axes_selection(n_axes)
-    !| Output, real array, length = count(exp_vecs_selection_index), stores the calculated 
-       tissue versatilities
-    real(real64), intent(out) :: tissue_versatilities(count(exp_vecs_selection_index))
-    !| Output, real array, length = count(exp_vecs_selection_index), stores the calculated 
-       angles in degrees
-    real(real64), intent(out) :: tissue_angles_deg(count(exp_vecs_selection_index))
-    ! ...
-  end subroutine compute_tissue_versatility
-end module avmod
-\end{verbatim}
-
-\subsection{How to generate documentation}
-\begin{enumerate}
-  \item Run \texttt{ford ford.yml} in the project root.
-  \item Open the generated HTML file (\texttt{doc/index.html}) in your browser.
-\end{enumerate}
-
-
-
-\section{Fortran to other programming languages Binding}
-
-The Tensor Omics project exposes Fortran functionality to Python and R through a unified architecture that relies exclusively on C bindings. This approach ensures efficiency, portability, and maintainability.
-
-\subsection{Architecture Overview}
-
-The binding follows a three-layer architecture:
-
-\begin{enumerate}
-  \item \textbf{Core Fortran modules:} Pure computational routines implementing the scientific algorithms
-  \item \textbf{C wrappers (\_C suffix):} Fortran subroutines with \texttt{bind(C)} that adapt the core functions to C calling conventions
-  \item \textbf{Language-specific layers:}
-  \begin{itemize}
-    \item \textbf{Python:} Functions in \texttt{tensoromics.py} that call C wrappers via \texttt{ctypes}
-    \item \textbf{R:} Functions in the \texttt{r/} package that call C wrappers via R's C \texttt{.Call} binding
-  \end{itemize}
-\end{enumerate}
-
-\subsection{C Wrapper Implementation Pattern}
-
-All C wrappers follow a consistent pattern designed for safety, efficiency, and zero-copy interoperation:
-
-\begin{verbatim}
-! Core Fortran function in module
-module tox_relative_axis_plane_tools
-contains
-  pure subroutine relative_axes_changes_from_shift_vector(vec, n_axes, &
-                                                         contributions, ierr)
-    real(real64), dimension(n_axes), intent(in) :: vec
-    integer(int32), intent(in) :: n_axes
-    real(real64), dimension(n_axes), intent(out) :: contributions
-    integer(int32), intent(out) :: ierr
-    ! ... implementation ...
-  end subroutine
-end module
-
-! C wrapper with bind(C)
-pure subroutine relative_axes_changes_from_shift_vector_c(vec, n_axes, contributions, ierr) 
-    bind(C, name="relative_axes_changes_from_shift_vector_c")
-   use, intrinsic :: iso_c_binding, only: c_double, c_int
-   use tox_relative_axis_plane_tools, only: relative_axes_changes_from_shift_vector
-   M_USE_NULL_VALIDATION
-   implicit none
-
-   real(c_double), dimension(n_axes), intent(in), target :: vec
-      !! RAP-projected and normalized shift vector
-   integer(c_int), intent(in), target :: n_axes
-      !! Number of axes
-   real(c_double), dimension(n_axes), intent(out), target :: contributions
-      !! Fractional contribution of each axis
-   integer(c_int), intent(out), target :: ierr
-      !! Error code
-
-   M_CHECK_IERR_NON_NULL
-   M_CHECK_NON_NULL(n_axes)
-   M_CHECK_NON_NULL(vec)
-   M_CHECK_NON_NULL(contributions)
-
-   call relative_axes_changes_from_shift_vector(vec(1:n_axes), n_axes, contributions(1:n_axes), ierr)
-end subroutine relative_axes_changes_from_shift_vector_c
-
-\end{verbatim}
-
-\subsection{Key Principles for C Wrappers}
-
-\subsubsection{Use \texttt{iso\_c\_binding} types exclusively}
-
-All C wrappers must use standard C-interoperable types:
-\begin{itemize}
-  \item \texttt{real(c\_double)} for \texttt{real(real64)}
-  \item \texttt{integer(c\_int)} for \texttt{integer(int32)}
-  \item \texttt{character(kind=c\_char)} for character data
+  \item \texttt{foo} — validates, allocates the work arrays, sorts the permutations, and calls the
+        implementation. \textbf{The entry point a caller reaches for first}, and it takes
+        \texttt{ierr} last, after the optional arguments.
+  \item \texttt{foo\_expert} — validates and calls the implementation with what you supply,
+        allocating and preparing nothing. Emitted only where there is something to take over; where
+        there is not, there is a single wrapper and it is called \texttt{foo}.
+  \item \texttt{foo\_c}, the Python \texttt{ctypes} module, the R wrapper and its C \texttt{.Call}
+        shim, and the snippets — all from the same source, with the documentation rendered per
+        language.
 \end{itemize}
 
+\textbf{Your doc comments are the published API.} An implementation's \texttt{!>} and \texttt{!!}
+blocks become the Fortran, C, Python and R documentation verbatim, so write them for a reader of
+those languages rather than as notes to yourself. A \texttt{[[link]]} that names nothing is a build
+error.
 
-\subsubsection{Array arguments: explicit dimensions}
+\subsection{The Workflow}
 
-Arrays must be declared with explicit dimensions matching the C memory layout. Do not use assumed-shape arrays \texttt{(:)} in C wrappers:
-\begin{verbatim}
-! Correct - explicit dimensions
-real(c_double), dimension(n_samples, n_genes), intent(in) :: expression_vectors
-
-! Incorrect - assumed shape not allowed in bind(C)
-real(c_double), dimension(:,:), intent(in) :: expression_vectors
-\end{verbatim}
-
-\subsubsection{Always include error code output}
-
-All C wrappers should accept an \texttt{ierr} parameter:
-\begin{verbatim}
-integer(c_int), intent(out) :: ierr
-\end{verbatim}
-
-Initialize it with \texttt{call set\_ok(ierr)} at the beginning of the wrapper.
-
-\subsubsection{Type conversions for character data}
-
-When Fortran string types are involved, perform explicit conversions:
-\begin{verbatim}
-! Convert C char array to Fortran string
-character(len=:), allocatable :: temp_str
-character(kind=c_char, len=1), intent(in) :: str_arr(str_len, n_strings)
-call c_char_1d_as_string(str_arr(:,i), temp_str, ierr)
-\end{verbatim}
-
-\subsection{Memory Management and Zero-Copy Operation}
-
-\textbf{Critical:} C wrappers operate \emph{directly} on the memory provided by the caller. No copies are made. This is essential for performance with large omics datasets.
-
-The caller (Python or R) must:
-\begin{itemize}
-  \item Allocate arrays with correct dimensions
-  \item Ensure Fortran column-major order (F-contiguous)
-  \item Maintain memory validity throughout the call
-\end{itemize}
-
-\subsection{Python Binding via ctypes}
-
-Python wrappers in \texttt{tensoromics\_functions.py} follow this pattern:
-
-\begin{verbatim}
-#> tox_relative_axis_plane_tools:relative_axes_expression_from_expression_vector_c: Compute relative axis contributions from an expression vector (RAP space)
-def relative_axes_expression_from_expression_vector(expression_vector):
-    """
-    Compute relative axis contributions from an expression vector (RAP space).
-
-    Args:
-        expression_vector: Input vector (1D).
-
-    Returns:
-        element1: Relative axis contributions (sum to 1).
-    """
-    # Input validation and conversion
-    vec = np.ascontiguousarray(expression_vector, dtype=np.float64)  # Expression vector
-    n_dims = len(vec)
-    # Convert scalar parameters
-    n_dims_c = ctypes.c_int(n_dims)
-
-    # Prepare output and error code
-    contrib = np.zeros(n_dims, dtype=np.float64)
-    ierr = ctypes.c_int(0)
-    # Setup C wrapper
-    relative_axes_changes = lib.relative_axes_expression_from_expression_vector_c
-    relative_axes_changes.argtypes = [
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # expression_vector
-        ctypes.POINTER(ctypes.c_int),  # n_dims
-        np.ctypeslib.ndpointer(dtype=np.float64, flags="C_CONTIGUOUS"),  # contrib
-        ctypes.POINTER(ctypes.c_int)  # ierr
-    ]
-    relative_axes_changes.restype = None
-    # Call Fortran routine
-    relative_axes_changes(vec, ctypes.byref(n_dims_c), contrib, ctypes.byref(ierr))
-    # Check for errors
-    check_err_code(ierr.value)
-    # Mark output as read-only
-    _readonly(contrib)
-    return contrib
-
-\end{verbatim}
-
-\subsection{R Binding via C \texttt{.Call}}
-
-R wrappers in \texttt{tensoromics\_functions.cpp} follow this pattern:
-
-\begin{verbatim}
-extern "C" {
-    void relative_axes_expression_from_expression_vector_c(
-      const double* vec,
-      const int* n_axes,
-      double* contributions,
-      int* ierr
-    );
-
-}
-
-/* Pure-C .Call shim (registered in init.c), called from R via
-   .Call("relative_axes_expression_from_expression_vector_call", vec) */
-SEXP relative_axes_expression_from_expression_vector_call(SEXP vec) {
-    int nprot = 0;
-    int n_axes = (int) Rf_length(vec);
-    SEXP contributions = PROTECT(Rf_allocVector(REALSXP, n_axes)); nprot++;
-    int ierr = 0;
-
-    relative_axes_expression_from_expression_vector_c(REAL(vec),  /* zero-copy */
-                                                      &n_axes,
-                                                      REAL(contributions),
-                                                      &ierr);
-
-    SEXP out = PROTECT(Rf_allocVector(VECSXP, 2)); nprot++;
-    SET_VECTOR_ELT(out, 0, contributions);
-    SET_VECTOR_ELT(out, 1, Rf_ScalarInteger(ierr));
-    SEXP nms = PROTECT(Rf_allocVector(STRSXP, 2)); nprot++;
-    SET_STRING_ELT(nms, 0, Rf_mkChar("contributions"));
-    SET_STRING_ELT(nms, 1, Rf_mkChar("ierr"));
-    Rf_setAttrib(out, R_NamesSymbol, nms);
-    UNPROTECT(nprot);
-    return out;
-}
-
-\end{verbatim}
-
-Key points:
-\begin{itemize}
-  \item All functions must be documented with Roxygen comments for automatic documentation generation.
-  \item All data validation is on the R side, not the C marshalling layer
-  \item In python all outputs must be converted to read-only to prevent accidental modification while Fortran is accessing them. 
-  \item Errors are handled by checking the \texttt{ierr} code by using the tox\_errors functions. 
-\end{itemize}
-
-\subsection{When to Write Wrappers}
-
-Only create C wrappers for functions that provide essential scientific functionality. Generic utilities (sorting, I/O helpers) should not be wrapped unless they are core to the Tensor Omics workflow.
-
-\subsection{Development Workflow: Mandatory Wrappers and Documentation}
-
-To maintain API parity across Python and R, the following steps are \textbf{mandatory} when implementing new functionality:
+When implementing new scientific functionality, complete these steps \emph{in order} and include all
+of them in the same Merge Request:
 
 \begin{enumerate}
-    \item \textbf{Core Implementation:} Write the pure Fortran function in the appropriate module
-    \item \textbf{C Wrapper:} Create a \texttt{\_C} wrapper with \texttt{bind(C)}
-    \item \textbf{Python and R bindings:} Run the code generator (\texttt{helper/generate\_code.py}); it emits the Python \texttt{ctypes} module (\texttt{python/tensor\_omics/}) and the R C \texttt{.Call} shim under an R wrapper (\texttt{r/tensor\_omics/}) from the documented Fortran source --- these are not hand-written
-    \item \textbf{Documentation:} Update user manual with:
-    \begin{itemize}
-        \item Description of functionality
-        \item Parameter explanations
-        \item Usage examples for Fortran, Python and R
-        \item Memory considerations (if arrays are modified in-place)
-    \end{itemize}
-    \item \textbf{Tests:} Write unit tests in Fortran, and test callings in Python/R
+  \item \textbf{Implementation.} Write the annotated \texttt{foo\_impl} as above. This is the only
+        layer you write.
+  \item \textbf{Generate.} Run \texttt{python helper/generate\_code.py}; every \texttt{./build.sh}
+        does it for you unless \texttt{--skip-code-generation} is passed. Commit the regenerated
+        files with your change. If a published procedure was renamed, also run
+        \texttt{--target snippets}, which is not one of the default targets.
+  \item \textbf{Tests.} Fortran unit tests for numerical correctness, plus Python and R tests — see
+        the Testing section. These stay hand-written.
 \end{enumerate}
 
-\textbf{Memory Safety Warning:} When using direct array access from Python or R, users must ensure that arrays are not modified by other libraries (e.g., matplotlib, numpy, ggplot2) while Fortran code is accessing them. This can lead to undefined behavior or memory corruption.
+\subsection{When Not to Write a Procedure At All}
 
+Only add functionality that is genuinely absent in Python and R. Do not wrap:
 
-\subsection{Safe and Efficient Binding Design for \texttt{bind(C)} in Tensor Omics}
-
-
-To expose Tensor Omics routines safely and portably, we use minimal \texttt{bind(C)} wrappers around internal Fortran procedures. Each wrapper is designed for ABI stability, no-copy interop, and zero semantic loss.
-
-\subsubsection{Keep \texttt{bind(C)} wrappers minimal}
-
-Wrap only, no computation.
-
-\begin{verbatim}
-subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
-  use iso_c_binding
-  real(c_double) :: x(*)
-  integer(c_int) :: n
-  call project_vector_core(x, n)
-end subroutine
-\end{verbatim}
-
-
-\subsubsection{Avoid optional arguments}
-
-Optional arguments are not allowed in R and C wrappers because \texttt{bind(C)} is not compatible with them. If optional arguments are needed, they should only be used in core subroutines that are called directly from Fortran. 
-
-\subsubsection{Pass all arguments by reference}
-
-Do not use \texttt{value}; pass pointers from caller (Python, Lua, etc.).
-
-\begin{verbatim}
-real(c_double) :: x(*)
-integer(c_int) :: n
-\end{verbatim}
-
-\subsubsection{Preserve SIMD and optimization pathways}
-
-Call computational logic in a separate routine that uses full Fortran features.
-
-\begin{verbatim}
-subroutine project_vector_core(x, n)
-  real(real64), intent(inout) :: x(n)
-  integer, intent(in) :: n
-  ! fast loop, vectorizable
-end subroutine
-\end{verbatim}
-
-\subsubsection{Use stable symbol names}
-
-Avoid compiler-dependent mangling by specifying names explicitly.
-
-\begin{verbatim}
-subroutine project_vector_C(x, n) bind(C, name="project_vector_C")
-\end{verbatim}
-
-\subsubsection{Ensure ABI compatibility with all consumers}
-
-Expose only basic types: scalars and flat arrays.
-
-\begin{verbatim}
-real(c_double) :: vec(*)
-integer(c_int) :: n
-! No derived types, assumed-shape arrays, or allocatables
-\end{verbatim}
-
-\subsubsection{Verify type equivalence when calling core Fortran routines}
-
-Make sure internal types match \texttt{iso\_c\_binding} externally.
-
-\begin{verbatim}
-use iso_c_binding
-real(real64) :: x(n)
-! Ensure real(real64) == real(c_double) on your compiler
-\end{verbatim}
-
-\subsubsection{Avoid aliasing in calls to \texttt{bind(C)} routines}
-
-Do not pass the same variable twice under different names.
-
-\begin{verbatim}
-! DON'T - Unsafe aliasing: same memory twice
-call project_vector_C(x, x, n)
-
-! OK - Pass unique memory regions only
-call project_vector_C(x, y, n)
-\end{verbatim}
-
-This structure ensures maximum compatibility and reproducibility across calling environments without compromising Fortran-native performance.
-
-\subsection{Argument Passing Conventions in C Wrappers}
-
-All arguments in C wrappers are passed \textbf{by reference}, including scalar values. This is the standard Fortran calling convention and ensures zero-copy operation.
-
-\subsubsection{Example of by-reference passing}
-
-\begin{verbatim}
-! Even scalars are passed by reference
-integer(c_int), intent(in), value :: n_genes     ! INCORRECT
-integer(c_int), intent(in), target :: n_genes     ! CORRECT - by reference
-
-! Arrays always by reference
-real(c_double), dimension(n_samples, n_genes), intent(in) :: expression_vectors
-\end{verbatim}
-
-
-\subsection{Null Pointer Validation}
-
-All C wrappers \textbf{must validate} that pointers are not null before use. This is done using preprocessor macros defined in \texttt{src/macros.h}.
-
-\subsubsection{Required macros for null validation}
-
-\begin{verbatim}
-#include "macros.h"
-
-subroutine my_function_c(..., ierr) bind(C, name="my_function_c")
-  use, intrinsic :: iso_c_binding, only: c_int, c_double
-  M_USE_NULL_VALIDATION
-  implicit none
-  
-  integer(c_int), intent(in), target :: n_genes
-  real(c_double), dimension(n_genes), intent(in), target :: data
-  integer(c_int), intent(out), target :: ierr
-  
-  ! ALWAYS check ierr first
-  M_CHECK_IERR_NON_NULL
-  
-  ! Then check all other arguments
-  M_CHECK_NON_NULL(n_genes)
-  M_CHECK_NON_NULL(data)
-  
-  ! Rest of wrapper code...
-end subroutine
-\end{verbatim}
-
-\textbf{Key macros:}
 \begin{itemize}
-  \item \texttt{M\_USE\_NULL\_VALIDATION}: Include at top of wrapper to import required modules
-  \item \texttt{M\_CHECK\_IERR\_NON\_NULL}: Always first check - validates \texttt{ierr} pointer
-  \item \texttt{M\_CHECK\_NON\_NULL(arg)}: Validates each argument pointer, sets \texttt{ierr = ERR\_POINTER\_NULL} if null
+  \item Sorting routines (Python \texttt{numpy.sort}, R \texttt{order()} already exist).
+  \item Generic I/O or string utilities.
 \end{itemize}
 
-\textbf{Note:} All arguments in C wrappers must have the \texttt{target} attribute to allow pointer validation with \texttt{c\_loc()}.
+\subsection{If the Generator Cannot Express It}
 
-\subsection{Utility Macros for C Wrappers}
+The annotation vocabulary is deliberately about language structure, never about domain concepts. If
+a procedure's contract cannot be expressed in it, that is a sign the \emph{procedure} needs
+rethinking rather than the generator needing a special case. Raise it rather than working around it.
 
-The \texttt{src/macros.h} file provides several useful preprocessor macros to simplify common patterns in C wrappers.
+% =============================================================================
+\section{Error Handling}
+% =============================================================================
 
-\subsubsection{Default value handling}
+All errors are communicated through a single integer output argument \texttt{ierr}. The \texttt{tox\_errors} module defines all error codes and the functions to set and check them.
 
-Use \texttt{M\_DEFAULT\_VAL} to handle optional parameters with default values:
+\subsection{Error Code Categories}
 
-\begin{verbatim}
-pure subroutine my_function_c(..., max_angle, gain_gamma, ierr) bind(C)
-  real(c_double), intent(in), target :: max_angle
-  real(c_double), intent(in), target :: gain_gamma
-  
-  real(real64) :: local_max_angle, local_gain
-  
-  ! Set default if value matches sentinel (e.g., NaN or -1)
-  M_DEFAULT_VAL(max_angle, local_max_angle, PI)
-  M_DEFAULT_VAL(gain_gamma, local_gain, 0.1_real64)
-  
-  ! Use local_max_angle and local_gain in computation
-end subroutine
-\end{verbatim}
+\begin{tabular}{lll}
+\toprule
+Range & Category & Example constant \\
+\midrule
+0 & Success & \texttt{ERR\_OK} \\
+1xx & I/O and file errors & \texttt{ERR\_FILE\_OPEN}, \texttt{ERR\_READ\_DATA} \\
+2xx & Input validation & \texttt{ERR\_INVALID\_INPUT}, \texttt{ERR\_DIM\_MISMATCH}, \texttt{ERR\_NAN\_INF} \\
+3xx & Memory & \texttt{ERR\_ALLOC\_FAIL}, \texttt{ERR\_POINTER\_NULL} \\
+5xxx & Fortran runtime & \texttt{ERR\_UNIT\_NOT\_CONNECTED} \\
+9xxx & Internal / unknown & \texttt{ERR\_INTERNAL}, \texttt{ERR\_UNKNOWN} \\
+\bottomrule
+\end{tabular}
 
-\subsubsection{Safe allocation with error checking}
+\subsection{Always Initialise \texttt{ierr} First}
 
-Use \texttt{M\_ALLOCATE} to allocate with automatic error handling:
+Call \texttt{set\_ok(ierr)} at the start of every subroutine that uses \texttt{ierr}:
 
-\begin{verbatim}
-logical, dimension(:,:), allocatable :: neofunc_f
+\begin{lstlisting}[language=Fortran]
+use tox_errors, only: set_ok, set_err, set_err_once, is_err, ERR_INVALID_INPUT
 
-! This expands to:
-! allocate(neofunc_f(n_genes, n_axes), stat=ierr)
-! if (is_err(ierr)) then
-!   call set_err(ierr, ERR_ALLOC_FAIL)
-!   return
-! endif
-M_ALLOCATE(neofunc_f(n_genes, n_axes))
-\end{verbatim}
+call set_ok(ierr)   ! ierr = ERR_OK = 0
+\end{lstlisting}
 
-\subsubsection{Special floating-point values}
+\subsection{Return Early on Error}
 
-Macros for IEEE special values:
+Check \texttt{ierr} after every operation that can fail, and return immediately:
 
-\begin{verbatim}
-real(real64) :: nan_value, pos_inf, neg_inf
-
-nan_value = M_NAN          ! IEEE quiet NaN
-pos_inf = M_POS_INF        ! Positive infinity
-neg_inf = M_NEG_INF        ! Negative infinity
-\end{verbatim}
-
-\subsubsection{Complete macro reference}
-
-\begin{verbatim}
-! From src/macros.h:
-
-M_USE_NULL_VALIDATION          ! Import modules for null checking
-M_CHECK_IERR_NON_NULL          ! Validate ierr pointer
-M_CHECK_NON_NULL(ARG)          ! Validate argument pointer
-M_DEFAULT_VAL(OPT, VAR, DEF)   ! Set default value
-M_ALLOCATE(VAR_DECL)           ! Allocate with error check
-M_NAN                          ! IEEE quiet NaN
-M_POS_INF                      ! Positive infinity
-M_NEG_INF                      ! Negative infinity
-\end{verbatim}
-
-\subsection{Error Handling with tox\_errors}
-
-Tensor Omics uses a standardized error handling system defined in \texttt{src/tox\_errors.F90}. All functions must follow this convention.
-
-\subsubsection{Error codes}
-
-The \texttt{tox\_errors} module defines standard error codes:
-
-\begin{verbatim}
-! Success
-ERR_OK = 0
-
-! I/O errors (1xx)
-ERR_FILE_OPEN = 101
-ERR_READ_DATA = 107
-ERR_WRITE_DATA = 117
-
-! Validation errors (2xx)
-ERR_INVALID_INPUT = 201
-ERR_EMPTY_INPUT = 202
-ERR_DIM_MISMATCH = 203
-ERR_NAN_INF = 204
-ERR_SIZE_MISMATCH = 206
-
-! Memory errors (3xx)
-ERR_ALLOC_FAIL = 301
-ERR_POINTER_NULL = 302
-\end{verbatim}
-
-\subsubsection{Error handling pattern}
-
-\begin{verbatim}
-subroutine my_function(..., ierr)
-  use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT
-  
-  integer(int32), intent(out) :: ierr
-  
-  ! 1. Initialize error to OK
-  call set_ok(ierr)
-  
-  ! 2. Validate inputs
-  if (n < 1) then
-    call set_err(ierr, ERR_INVALID_INPUT)
-    return
-  end if
-  
-  ! 3. Check error before proceeding
-  if (is_err(ierr)) return
-  
-  ! 4. Core logic...
-  
-end subroutine
-\end{verbatim}
-
-\subsubsection{Validation helper functions}
-
-The \texttt{tox\_errors} module provides validation helpers:
-
-\begin{verbatim}
-! Validate dimension is positive and non-zero
+\begin{lstlisting}[language=Fortran]
 call validate_dimension_size(n_genes, ierr)
+call validate_all_in_range_real(data, n_genes, ierr)
+if (is_err(ierr)) return
+\end{lstlisting}
 
-! Validate value is in range
-call validate_in_range_int(value, ierr, min=0_int32, max=100_int32)
-call validate_in_range_real(angle, ierr, min=0.0_real64, max=PI)
+\subsection{Reporting the Failing Argument (\texttt{arg\_pos})}\label{sec:argpos}
 
-! Validate entire array
-call validate_all_in_range_real(expression_vectors, n_total, ierr, &
-                                min=-1.0_real64, max=1.0_real64)
-\end{verbatim}
+The generated entry points do all input validation, and number the argument positions for you. On
+the rare occasion that something has to be validated by hand, use the \texttt{tox\_errors}
+validators rather than an ad-hoc check, and pass \texttt{arg\_pos}:
 
-\subsubsection{Error propagation}
+\begin{lstlisting}[language=Fortran]
+call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
+call validate_in_range_real(span, ierr, min=0.0_real64, max=1.0_real64, arg_pos=6_int32)
+call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
+\end{lstlisting}
 
-Errors should propagate up the call stack without modification:
+\texttt{arg\_pos} must match the argument's position in the public (non-\texttt{\_impl}) subroutine
+that callers actually invoke, never its position in whichever internal routine happens to run the
+check — Python and R index their argument-name tuple with it.
 
-\begin{verbatim}
-subroutine caller(ierr)
-  call worker_a(ierr)
-  if (is_err(ierr)) return  ! Propagate error immediately
-  
-  call worker_b(ierr)
-  if (is_err(ierr)) return  ! Propagate error immediately
-end subroutine
-\end{verbatim}
+When the valid range of an argument is itself defined by \texttt{CM\_} macros
+(Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the
+validated range can never disagree.
 
-Use \texttt{set\_err\_once()} to set error only if not already set:
+\subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
 
-\begin{verbatim}
-call set_err_once(ierr, ERR_INVALID_INPUT)  ! Won't overwrite existing error
-\end{verbatim}
-
-\section{Fortran Array Notation Cheat-Sheet}
-
-This section summarizes the three common ways to declare array arguments in Fortran procedures, with a focus on their use, safety, and suitability in modern code.
-
-\subsection{1. Assumed-Size Arrays \texttt{(*)}}
-
-\begin{verbatim}
-subroutine example(a, n)
-  real(real64), intent(in) :: a(*)
-  integer, intent(in) :: n
-  integer :: i
-  do i = 1, n
-    print *, a(i)
-  end do
-end subroutine
-\end{verbatim}
-
-\textbf{Meaning:} \texttt{a(*)} is an assumed-size array. The subroutine does not know the array bounds and must be told explicitly via a separate argument (e.g., \texttt{n}). This is the lowest-level array form and maps closely to a raw pointer in C.
-
-\textbf{Limitations:}
 \begin{itemize}
-  \item No bounds checking
-  \item \texttt{size(a)} and \texttt{lbound(a)} are illegal
-  \item Cannot use array operations like \texttt{matmul} or \texttt{sum}
-  \item Unsafe for slicing (\texttt{a(2:5)} is undefined)
+  \item \texttt{set\_err(ierr, code)}: \emph{Unconditionally} sets \texttt{ierr} to \texttt{code}, overwriting any error already stored. Use it only when \texttt{ierr} is known to be \texttt{ERR\_OK} (e.g.\ the first check after \texttt{set\_ok}), or when you deliberately want the new code to take precedence.
+  \item \texttt{set\_err\_once(ierr, code)}: Sets \texttt{ierr} to \texttt{code} \emph{only if \texttt{ierr} is currently \texttt{ERR\_OK}}, preserving the first error encountered. This is the safe default when chaining multiple fallible calls, and is exactly what the \texttt{validate\_*} routines use internally.
 \end{itemize}
 
-\textbf{Use case:} C interoperability, legacy code, low-level memory kernels.
+\subsection{Never Silent Errors}
 
+Do not ignore \texttt{ierr}. If a callee sets an error, the caller must either propagate it or handle it explicitly. Every downstream caller that receives an \texttt{ierr} must check it.
 
-\subsection{2. Assumed-Shape Arrays \texttt{(:)}}
+\subsection{Avoid GOTO}
 
-\begin{verbatim}
-subroutine example(a)
-  real(real64), intent(in) :: a(:)
-  integer :: i
-  do i = 1, size(a)
-    print *, a(i)
-  end do
-end subroutine
-\end{verbatim}
-
-\textbf{Meaning:} \texttt{a(:)} is an assumed-shape array. The compiler receives size and bounds information at runtime. Requires an explicit binding (typically via a module or \texttt{binding} block).
-
-\textbf{Advantages:}
+\textbf{Never use \texttt{GOTO}.} It is prohibited in all new code for the following reasons:
 \begin{itemize}
-  \item Safe: \texttt{size(a)} is available
-  \item Supports slicing, broadcasting, and array intrinsics
-  \item Can use \texttt{matmul}, \texttt{dot\_product}, etc.
+  \item It creates non-local control flow that is impossible to follow, making error paths untraceable.
+  \item It defeats the structured error model built around \texttt{ierr} and early returns.
+  \item It prevents the compiler from performing flow analysis, blocking optimizations and \texttt{pure} qualification.
+  \item It is incompatible with \texttt{do concurrent}, which requires structured concurrency regions.
 \end{itemize}
 
-\textbf{Use case:} Recommended default for most modern Fortran code.
+\textbf{How to replace \texttt{GOTO} correctly:}
 
-
-\subsection{3. Multidimensional Arrays \texttt{(:,:)} and Higher}
-
-\begin{verbatim}
-subroutine process_matrix(A)
-  real(real64), intent(in) :: A(:, :)
-  print *, size(A, 1), size(A, 2)
-end subroutine
-\end{verbatim}
-
-\textbf{Meaning:} Each colon represents a dimension of unknown size. Like 1D assumed-shape arrays, this requires an explicit binding and passes shape info at runtime.
-
-\textbf{Features:}
-\begin{itemize}
-  \item Full array operations: \texttt{transpose}, \texttt{matmul}, etc.
-  \item Safer and clearer semantics for tensors and matrices
-\end{itemize}
-
-\textbf{Use case:} Tensor Omics vector spaces, image/matrix processing, linear algebra routines.
-
-\vspace{1em}
-
-\noindent\textbf{Summary Table}
-
-\begin{tabular}{|l|l|l|l|}
-\hline
-Notation & Bounds Known? & Safe? & Use Case \\
-\hline
-\texttt{(*)} & No  & No  & C interop, low-level \\
-\texttt{(:)} & Yes & Yes & Modern Fortran arrays \\
-\texttt{(:,:)} & Yes & Yes & Matrices, tensors \\
-\hline
+\begin{tabular}{ll}
+\toprule
+Pattern to replace & Correct Fortran replacement \\
+\midrule
+Forward jump to error label & \texttt{call set\_err(ierr, ...); return} \\
+Loop exit (\texttt{GOTO after loop}) & \texttt{exit} or \texttt{cycle} inside a \texttt{do} loop \\
+Conditional skip block & \texttt{if (...) then ... end if} \\
+Multi-level exit & Refactor into a subroutine with early \texttt{return} \\
+\bottomrule
 \end{tabular}
 
-\noindent For all assumed-shape forms (\texttt{(:)}, \texttt{(:,:)}), ensure the subroutine has an explicit binding or is in a module.
+\begin{lstlisting}[language=Fortran]
+! WRONG
+if (n <= 0) goto 99
+call compute(n)
+99 continue
 
-
-\section{Memory Passing Behavior in Fortran (F42 Standard for Tensor Omics)}
-
-\subsection{General Principles}
-
-In Fortran (standards 77--2018), arguments to subroutines and functions are, by default, passed \textbf{by reference} rather than by copying.  
-This applies to scalars, arrays, and derived types.
-
-Thus:
-
-\begin{itemize}
-    \item Scalars (e.g., \texttt{integer}, \texttt{real}) are passed by reference.
-    \item Arrays (e.g., \texttt{integer, dimension(:)}, \texttt{real, dimension(:,:)}) are passed by reference.
-    \item Derived types are passed by reference.
-\end{itemize}
-
-\subsection{When Copies Are Made}
-
-Despite the default pass-by-reference behavior, hidden copies may be generated by the compiler in the following situations:
-
-\begin{itemize}
-    \item \textbf{Passing expressions}: e.g., \texttt{call process(a+b)} requires evaluation and temporary storage.
-    \item \textbf{Passing strided array sections}: e.g., \texttt{array(1:10:2)} is non-contiguous and may trigger copying.
-    \item \textbf{Passing non-contiguous slices}: particularly relevant for rows in a 2D array.
-\end{itemize}
-
-\subsection{Tensor Omics DataTables: Column and Row Passing}
-
-Tensor Omics DataTables store typed data in 2D Fortran arrays of the form:
-
-\begin{itemize}
-    \item \texttt{real\_array(n\_rows, n\_real\_columns)}
-    \item \texttt{int\_array(n\_rows, n\_int\_columns)}
-    \item \texttt{char\_array(n\_rows, n\_char\_columns)}
-\end{itemize}
-
-\textbf{Accessing Columns}:
-
-\begin{itemize}
-    \item Example: \texttt{real\_array(:, j)}
-    \item Behavior: Passed by reference, \textbf{no copy made}.
-    \item Reason: Slicing across the first index in column-major layout yields contiguous memory.
-\end{itemize}
-
-\textbf{Accessing Rows}:
-
-\begin{itemize}
-    \item Example: \texttt{real\_array(i, :)}
-    \item Behavior: Typically triggers a hidden copy.
-    \item Reason: Slicing across the second index accesses non-contiguous memory addresses, requiring packing into a contiguous temporary.
-\end{itemize}
-
-\subsection{Summary Tables}
-
-\subsubsection{General Fortran Behavior}
-
-\begin{center}
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Action} & \textbf{Example} & \textbf{Copy Made?} \\
-\hline
-Pass full array & \texttt{array} & No \\
-Pass contiguous slice & \texttt{array(:, j)} & No \\
-Pass strided slice & \texttt{array(1:10:2, j)} & Yes \\
-Pass expression & \texttt{array(:, j) * 2.0} & Yes \\
-\hline
-\end{tabular}
-\end{center}
-
-\subsubsection{Tensor Omics DataTables Specifics}
-
-\begin{center}
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Access Type} & \textbf{Example} & \textbf{Copy Made?} \\
-\hline
-Access full column & \texttt{real\_array(:, j)} & No \\
-Access full row & \texttt{real\_array(i, :)} & Yes \\
-\hline
-\end{tabular}
-\end{center}
-
-\subsection{Best Practice Recommendation for Tensor Omics}
-
-\begin{itemize}
-    \item Always design core functions to work with columns if possible.
-    \item Avoid passing strided slices or expressions directly to subroutines.
-    \item Treat rows carefully: copy manually if absolutely needed, otherwise prefer per-element processing.
-\end{itemize}
-
-\subsection{Conclusion}
-
-Efficient memory handling is critical for Tensor Omics.  
-Understanding Fortran's passing conventions allows maximization of speed, minimization of hidden temporaries, and preservation of F42 computational standards.
-
-\section{Critical Practices in TOX Binding and Control Flow}
-
-This section consolidates key implementation standards for TOX and F42 compliance: prohibition of \texttt{GOTO} and manual memory cleanup.
-
-\subsection{Why \texttt{GOTO} Is Forbidden in F42 and TOX}
-
-\texttt{GOTO} is a low-level control structure that violates the principles of structured, readable, and verifiable code. While allowed by Fortran, its use is incompatible with both modern software engineering and WebAssembly (WASM) compilation.
-
-\subsubsection*{Reasons for Prohibition}
-\begin{itemize}
-  \item \textbf{Non-Structured Control Flow:} Makes code hard to reason about and maintain.
-  \item \textbf{Incompatible With WASM:} WebAssembly requires structured control graphs.
-  \item \textbf{Opaque for Debugging:} Introduces implicit jump logic that hinders traceability.
-  \item \textbf{Fails F42 Goals:} Violates statelessness, modularity, and verifiability.
-\end{itemize}
-
-\subsection{How to Replace \texttt{GOTO} Correctly}
-
-\subsubsection*{1. Use \texttt{exit} to break out of a loop}
-\begin{verbatim}
-do i = 1, n
-  if (array(i) < 0.0) then
-    exit
-  end if
-end do
-\end{verbatim}
-
-\subsubsection*{2. Use \texttt{cycle} to skip to next iteration}
-\begin{verbatim}
-do i = 1, n
-  if (.not. valid(i)) cycle
-  call process(i)
-end do
-\end{verbatim}
-
-\subsubsection*{3. Use \texttt{select case} for structured branching}
-\begin{verbatim}
-select case(code)
-case(1)
-  call handle_case1()
-case(2)
-  call handle_case2()
-case default
-  call handle_default()
-end select
-\end{verbatim}
-
-\subsection{Memory Cleanup: Manual Destructors}
-
-Since Fortran has no \texttt{try/finally} construct and F42 disallows \texttt{final ::} destructors due to their opacity, all memory cleanup must be performed manually.
-
-\subsubsection*{Pattern: Explicit Cleanup Subroutine}
-\begin{verbatim}
-subroutine deallocate_datatable(dt)
-  type(DataTable), intent(inout) :: dt
-
-  if (allocated(dt%real_array)) deallocate(dt%real_array)
-  if (allocated(dt%char_array)) deallocate(dt%char_array)
-  if (allocated(dt%int_array))  deallocate(dt%int_array)
-  if (allocated(dt%column_names)) deallocate(dt%column_names)
-end subroutine
-\end{verbatim}
-
-\subsubsection*{Pattern: Simulated try-finally via logical block}
-\begin{verbatim}
-logical :: success
-success = .false.
-
-call allocate_datatable(dt, ierr)
-if (ierr == 0) then
-  call compute(dt)
-  success = .true.
+! CORRECT
+if (n <= 0) then
+  call set_err(ierr, ERR_INVALID_INPUT)
+  return
 end if
+call compute(n)
+\end{lstlisting}
 
-call deallocate_datatable(dt)
-\end{verbatim}
+% =============================================================================
+\section{Use of \texttt{intent} and \texttt{pure}}
+% =============================================================================
 
-\subsection*{Conclusion}
+\subsection{Mandatory \texttt{intent}}
 
-All control flow and memory management in TOX must follow F42 principles:
-\begin{itemize}
-  \item Never use \texttt{GOTO} — always use structured constructs.
-  \item Always provide manual cleanup subroutines for types containing allocatables.
-  \item Use C wrappers with \texttt{bind(C)} for binding with Python and R.
-  \item Ensure proper error handling via \texttt{ierr} parameter in all API functions.
-\end{itemize}
-
-These principles ensure safety, readability, WASM compatibility, and long-term maintainability.
-
-\section{Scientific Kernel and API Design Specification}
-
-\subsection{Scope}
-This specification defines the design principles, coding conventions, and binding structure for the Tensor Omics Scientific Kernel (SK) and its associated API helper layers. The aim is to ensure performance, reproducibility, portability, and clarity of responsibility between computational components.
-
-\subsection{Scientific Kernel (SK)}
-
-\subsubsection{Definition}
-The Scientific Kernel consists exclusively of pure Fortran subroutines and functions implementing the numerical and geometric methods of Tensor Omics.
-
-\subsubsection{Core Properties}
-\begin{enumerate}
-  \item \textbf{Purity:} SK routines must have no side effects beyond modifying their output arguments.
-  \item \textbf{No I/O:} SK routines must not perform any file or console I/O.
-  \item \textbf{No Dynamic Allocation:} SK routines must not contain any \texttt{allocate} or \texttt{deallocate} statements.
-  \item \textbf{Memory Alignment:} All array arguments must be Fortran \texttt{allocatable} arrays to ensure alignment and contiguity.
-  \item \textbf{Transient Memory:} Any intermediate (scratch) memory must be preallocated by the caller and passed as arguments.
-  \item \textbf{Determinism:} Given the same inputs, SK routines must always return identical outputs.
-\end{enumerate}
-
-\subsubsection{Argument Requirements}
-\begin{enumerate}
-  \item Arrays must be \texttt{allocatable} and contiguous.
-  \item All intent must be explicitly declared (\texttt{intent(in)}, \texttt{intent(out)}, \texttt{intent(inout)}).
-  \item Kind parameters for floating-point arguments must be specified using \texttt{real64} from \texttt{iso\_fortran\_env}.
-\end{enumerate}
-
-\subsection{Helper Routines}
-
-\subsubsection{Purpose}
-Helper routines manage memory allocation, type handling, and API exposure for SK routines. They may have side effects such as allocation or type conversion.
-
-\subsubsection{Naming Convention}
-Helper routines follow suffix-based naming to indicate their role:
-\begin{itemize}
-  \item \textbf{No suffix:} Pure SK routine.
-  \item \textbf{\_alloc:} Allocation helper that computes required sizes and allocates memory.
-  \item \textbf{\_C:} C-facing API wrapper exposing SK routines via \texttt{bind(C)} and \texttt{iso\_c\_binding}.
-  \item \textbf{\_R:} R-facing API wrapper calling SK routines via \texttt{.Fortran} or \texttt{.Call}.
-  \item \textbf{\_tox:} Helper operating on the \texttt{tox\_data} derived type.
-  \item \textbf{\_tox\_C:} C-facing API wrapper for a \_tox helper.
-  \item \textbf{\_helper:} General-purpose orchestration helper not bound to a specific API.
-\end{itemize}
-
-\subsubsection{Module Organization}
-\begin{enumerate}
-  \item All SK and helper routines reside in the same Fortran module for discoverability.
-  \item Naming conventions are strictly enforced to distinguish pure SK code from helpers.
-  \item Helpers may call SK routines or other helpers but must not duplicate SK logic.
-\end{enumerate}
-
-\subsection{API Exposure Layers}
-
-\subsubsection{C API (\_C, \_tox\_C)}
-\begin{enumerate}
-  \item Implemented using \texttt{bind(C)} and \texttt{iso\_c\_binding}.
-  \item Accept and return only C-interoperable types.
-  \item May perform allocation if required.
-  \item Designed to be callable directly from C, Python (via \texttt{ctypes} or \texttt{cffi}), and other C-compatible languages.
-\end{enumerate}
-
-\subsubsection{R API (\_R)}
-\begin{enumerate}
-  \item Implemented as R functions calling \texttt{.Fortran} for direct array access.
-  \item \texttt{.Fortran} calls may incur data copying and cannot pass pointers directly.
-  \item \textbf{Note} that we will implement a thin \texttt{C glue layer} to
-    expose the above `\_tox\_C` helpers to R and enable pointer passing.
-\end{enumerate}
-
-\subsection{tox\_data Type}
-
-\subsubsection{Purpose}
-A Fortran derived type \texttt{tox\_data} serves as a container for all related Tensor Omics datasets, ensuring data integrity and preventing unintentional modification from higher-level languages.
-
-\subsubsection{Access Policy}
-\begin{enumerate}
-  \item Access to \texttt{tox\_data} contents is via getter functions.
-  \item Setter functions might be provided but discouraged for normal use. As
-    we expose the scientific kernel functions directly, users who want to be
-    able to modify expression-vectors, family-centroids, or similar will be
-    required to manage memory and their data manually.
-  \item Rich querying is provided via a GraphQL binding. We might implement a
-    `jq` binding on top of that, too.
-\end{enumerate}
-
-\subsection{Coarray Considerations}
-\begin{enumerate}
-  \item SK routines are compatible with coarrays as they operate on preallocated, caller-provided memory.
-  \item C API wrappers do not expose coarrays; coarray usage requires direct Fortran coding by the user.
-\end{enumerate}
-
-\subsection{WebAssembly (WASM) Considerations}
-\begin{enumerate}
-  \item SK routines are compilable to WASM as they are pure and self-contained.
-  \item API helpers may require adaptation or (most likely) exclusion depending
-    on WASM environment capabilities. This can be done via Fortran precompiler
-    flag usage:
-\begin{verbatim}
-#ifndef WASM
-subroutine family_centroid_alloc(...)
-  ! ...
-end subroutine family_centroid_alloc
-#endif
-\end{verbatim}
-\end{enumerate}
-
-\subsection{Enforcement}
-\textbf{Naming conventions must be validated during peer revision.}
-
-\section{High-Performance Fortran Compilation and Memory Alignment}
-
-\textbf{Note that this section is largely deprecated, except the Coarray
-section and the content on how to optimize for certain compilers and hardware.
-But we likely want to avoid such manual optimizations.}
-
-This section provides practical guidelines for scientific programmers to write memory-efficient and performance-optimized Fortran code using OpenMP, SIMD, and compiler-specific features. It also includes instructions on compiler configuration and memory alignment strategies suitable for AVX2 and AVX-512 systems.
-
-\subsection{Precompiler include file for constants}
-
-We need a precompiler macros file that needs to be included in all Fortran
-files that use macros.
-
-\vspace{1em}%
-\noindent{}File \texttt{precompiler\_constants.F90}:
-\begin{verbatim}
-#ifndef DEFAULT_ALIGNMENT
-#define DEFAULT_ALIGNMENT 32
-#endif
-\end{verbatim}
-
-\subsection{OpenMP and SIMD: Double Parallelization}
-\label{thread_and_vectorized_parallelization}
-Modern Fortran compilers support combined OpenMP threading and SIMD vectorization through a single directive:
-
-\begin{verbatim}
-!$omp parallel do simd schedule(static) private(i)
-do i = 1, n
-a(i) = b(i) + c(i)
-end do
-!$omp end parallel do simd
-\end{verbatim}
-
-This pragma enables:
-\begin{itemize}
-\item \textbf{Thread-level parallelism} via OpenMP.
-\item \textbf{Instruction-level parallelism} via SIMD (Single Instruction, Multiple Data).
-\end{itemize}
-
-This combination splits loop iterations across threads, and each thread processes elements in SIMD fashion. It is ideal for dense numerical operations.
-
-\subsection{Compiler-Specific Pragmas and Flags}
-
-To \emph{ensure} the above OpenMP \emph{and} vectorized parallelization (see
-\ref{thread_and_vectorized_parallelization}) works with maximum efficiency, we
-need to use compiler pragmas for Intel and gfortran compilers. See this example
-that tells both compilers that the Arrays used in the \texttt{do}-loop actually
-are setup correctly for vectorized (\texttt{SIMD}) parallelization on the level
-of the CPU:
-
-\begin{verbatim}
-!DIR$ ASSUME_ALIGNED a:64, b:64, c:64
-!$omp parallel do simd schedule(static) private(i) aligned(a, b, c:64)
-do i = 1, n
-  a(i) = b(i) + c(i)
-end do
-!$omp end parallel do simd
-\end{verbatim}
-
-The above ensures most efficient compilation, if and only if the right compiler
-flags are set (see below sections \ref{intel_flags} and \ref{gfortran_flags}),
-too.
-
-\subsubsection{How to optimize for all CPU architectures?}
-\label{simd_architecture_macros}
-
-The problem here is that the above \texttt{memory alignment boundary in bytes}
-set to 64 depends on the CPU vectorized instruction set, i.e. \texttt{AVX2},
-\texttt{AVX512}, etc. So, we need to do some macro magic to squeeze the last
-bit of maximum efficency out of our code for any hardware it is compiled on:
-
-\begin{verbatim}
-! The below line should likely be the first line
-! in any Fortran file that has macros.
-#include "precompiler_constants.F90"
-
-! This included module sets the correct memory alignment boundary in bytes
-! and ensures that when allocating arrays in Fortran they are correctly aligned.
-use config
-
-#if DEFAULT_ALIGNMENT == 16
-!DIR$ ASSUME_ALIGNED a:16, b:16, c:16
-!$omp parallel do simd schedule(static) private(i) aligned(a, b, c:16)
-#elif DEFAULT_ALIGNMENT == 32
-!DIR$ ASSUME_ALIGNED a:32, b:32, c:32
-!$omp parallel do simd schedule(static) private(i) aligned(a, b, c:32)
-#elif DEFAULT_ALIGNMENT == 64
-!DIR$ ASSUME_ALIGNED a:64, b:64, c:64
-!$omp parallel do simd schedule(static) private(i) aligned(a, b, c:64)
-#elif DEFAULT_ALIGNMENT == 128
-!DIR$ ASSUME_ALIGNED a:128, b:128, c:128
-!$omp parallel do simd schedule(static) private(i) aligned(a, b, c:128)
-#else
-!$omp parallel do simd schedule(static) private(i)
-#endif
-
-do i = 1, n
-  a(i) = b(i) + c(i)
-end do
-!$omp end parallel do simd
-\end{verbatim}
-
-\emph{Note} see section \ref{fortran_config_module} for the above
-\texttt{config} module, please.
-
-\subsubsection{OpenMP Variable Scoping: \texttt{private} and \texttt{reduction}}
-
-When using OpenMP parallel loops, it is essential to correctly declare the scope of all variables used within the loop body. This ensures thread safety and avoids unintended data races or compiler misoptimizations.
-
-Most importantly:
+Every argument in every subroutine and function must carry an \texttt{intent} attribute:
 
 \begin{itemize}
-  \item \textbf{Loop indices} must be declared as \texttt{private}, e.g., \texttt{private(i)}.
-  \item \textbf{Temporary variables or accumulators} introduced inside the loop body must also be marked \texttt{private}, unless they are used in a reduction.
-  \item \textbf{Reduction variables} (e.g., sums or maxima computed across threads) must be declared using the \texttt{reduction(...)} clause.
+  \item \texttt{intent(in)}: The routine only reads this argument.
+  \item \texttt{intent(out)}: The routine completely overwrites this argument.
+  \item \texttt{intent(inout)}: The routine both reads and modifies the argument, and the incoming value matters.
 \end{itemize}
 
-\noindent
-Example:
-\begin{verbatim}
-real(real64) :: tmp
-real(real64) :: sum
+Omitting \texttt{intent} disables aliasing checks and is forbidden.
 
-!$omp parallel do simd private(i, tmp) reduction(+:sum) schedule(static)
-do i = 1, n
-  tmp = compute(i)
-  sum = sum + tmp
-end do
-!$omp end parallel do simd
-\end{verbatim}
+\subsection{Mandatory \texttt{pure} for Core Routines}
 
-In this example:
+All \emph{helper} and core subroutines must be declared \texttt{pure}. A \texttt{pure} procedure:
+
 \begin{itemize}
-  \item \texttt{i} is the loop counter and must be private.
-  \item \texttt{tmp} is a per-iteration local value and must be private to avoid race conditions.
-  \item \texttt{sum} is a global accumulator and must be declared as a reduction variable with the \texttt{+} operator.
+  \item Has no side effects (no I/O, no global state changes).
+  \item Is eligible for auto-vectorization and threading by the compiler.
+  \item Allows the compiler to schedule calls more aggressively.
 \end{itemize}
 
-Failing to properly scope these variables may lead to undefined behavior, wrong results, or silent compiler fallbacks to scalar execution. Always carefully inspect variable use when applying OpenMP to numerical loops.
+Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure.
 
-\subsubsection{Reduction Operations in OpenMP SIMD Loops}
+\subsection{Optional Arguments}
 
-When performing numerical or logical accumulation in parallel regions, OpenMP provides \texttt{reduction} clauses that ensure correctness and performance across threads. These clauses combine thread-local results using an associative operation into a final value at the end of the parallel loop.
+Fortran does not support default values in argument lists. Use the \texttt{M\_DEFAULT\_VAL} macro to assign defaults after a \texttt{PRESENT} check:
 
-\vspace{1em}
-\noindent
-\textbf{Supported Reduction Operations in OpenMP:}
+\begin{lstlisting}[language=Fortran]
+#include "macros.h"
+subroutine my_routine(data, n, span, degree)
+  real(real64), intent(in), optional :: span
+  integer(int32), intent(in), optional :: degree
+  real(real64) :: actual_span
+  integer(int32) :: actual_degree
 
-\begin{center}
-\begin{tabular}{|l|l|l|}
-\hline
-\textbf{Operation} & \textbf{Description} & \textbf{Example} \\
-\hline
-\texttt{+} & Sum & \texttt{reduction(+:sum)} \\
-\texttt{*} & Product & \texttt{reduction(*:prod)} \\
-\texttt{max} & Maximum value & \texttt{reduction(max:maxval)} \\
-\texttt{min} & Minimum value & \texttt{reduction(min:minval)} \\
-\texttt{-} & Subtraction\textsuperscript{*} & \texttt{reduction(-:diff)} \\
-\hline
-\texttt{iand} & Bitwise AND (integers) & \texttt{reduction(iand:mask)} \\
-\texttt{ior} & Bitwise OR (integers) & \texttt{reduction(ior:flag)} \\
-\texttt{ieor} & Bitwise XOR (integers) & \texttt{reduction(ieor:flag)} \\
-\hline
-\texttt{.and.} & Logical AND (booleans) & \texttt{reduction(.and.:ok)} \\
-\texttt{.or.} & Logical OR (booleans) & \texttt{reduction(.or.:status)} \\
-\hline
+  M_DEFAULT_VAL(span, actual_span, 0.7_real64)
+  M_DEFAULT_VAL(degree, actual_degree, 2_int32)
+\end{lstlisting}
+
+\textbf{Never} use optional arguments in C wrappers; \texttt{bind(C)} is incompatible with them.
+
+% =============================================================================
+\section{Parallelisation: \texttt{do concurrent}}
+% =============================================================================
+
+Prefer \texttt{do concurrent} over plain \texttt{do} loops whenever the iterations are independent. This is the primary parallelisation mechanism in this project. Do not use OpenMP pragma loops — let the compiler exploit \texttt{do concurrent} through its own vectorisation and threading back-ends.
+
+\subsection{Locality Specifications}
+
+Every variable used inside a \texttt{do concurrent} loop \textbf{must} carry an explicit locality specification. Do not rely on the compiler's assumption — leaving it implicit makes the intent ambiguous and can produce incorrect results with aggressive optimisers.
+
+\begin{tabular}{lp{9cm}}
+\toprule
+Specification & Meaning \\
+\midrule
+\texttt{shared(\ldots vars)} & All iterations read/write the \emph{same} instance of the variable. Use for arrays being filled element-wise or for read-only scalars. \\
+\texttt{local(\ldots vars)} & Each iteration gets its own \emph{private} copy, uninitialised at entry. Use for loop-local temporaries. \\
+\texttt{local\_init(\ldots vars)} & Like \texttt{local}, but each copy is initialised to the value the variable had before the loop. \\
+\texttt{reduce(op:\ldots vars)} & Each iteration contributes to a scalar accumulator via \texttt{op}. The final result is the reduction of all per-iteration contributions. \\
+\bottomrule
 \end{tabular}
-\end{center}
 
-\vspace{1em}
-\noindent
-\textbf{Note:}
+\vspace{0.5em}
+\noindent Supported \texttt{reduce} operators: \texttt{+}, \texttt{*}, \texttt{max}, \texttt{min}, \texttt{iand}, \texttt{ieor}, \texttt{ior}, \texttt{.and.}, \texttt{.or.}, \texttt{.eqv.}, \texttt{.neqv.}
+
+\begin{lstlisting}[language=Fortran]
+! Element-wise: array filled in parallel, scalar read-only
+do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
+  vector(i_dim) = vector(i_dim) / vector_norm
+end do
+
+! Reduction: accumulate a sum over independent iterations
+means_sum = 0.0_real64
+do concurrent (i_gene = 1:n_genes) shared(gene_means) reduce(+:means_sum)
+  means_sum = means_sum + gene_means(i_gene)
+end do
+
+! Local temporary: each iteration owns its own scratch variable
+do concurrent (i_vec = 1:n_vectors) shared(mat, norms) local(tmp_norm)
+  tmp_norm = norm2(mat(:, i_vec))
+  norms(i_vec) = tmp_norm
+end do
+\end{lstlisting}
+
+\textbf{When to use \texttt{do concurrent}:}
 \begin{itemize}
-\item Most common are \texttt{+}, \texttt{max}, and \texttt{min} for numerical accumulations.
-\item The subtraction operator \texttt{-} is supported, but caution is advised: subtraction is not associative, so the result may depend on thread order. Use only if mathematically justified.
-\item Logical and bitwise reductions are especially useful for flags, masks, and status checks.
+  \item Element-wise array operations.
+  \item Independent distance or dot-product computations over gene/axis indices.
+  \item Any loop where iteration order does not affect correctness.
 \end{itemize}
 
-\noindent
-\textbf{Best practice:} Always declare temporary or accumulator variables as \texttt{private(...)} or \texttt{reduction(...)} depending on their intended aggregation behavior. This prevents race conditions and ensures correctness.
+\textbf{When NOT to use \texttt{do concurrent}:}
+\begin{itemize}
+  \item Loops with data-dependent control flow across iterations (e.g., early-exit on error found inside a loop — in that case, validate before the loop).
+  \item Sequential algorithms like merge steps of merge-sort.
+\end{itemize}
 
-\subsubsection{Intel Compiler (\texttt{ifort} or \texttt{ifx})}
-\label{intel_flags}
-Recommended flags:
-\begin{verbatim}
--O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul -fPIC
-\end{verbatim}
+% =============================================================================
+\section{Memory Model: No Copies, No Allocations in Cores}
+% =============================================================================
 
-\subsubsection{GNU Compiler (\texttt{gfortran})}
-\label{gfortran_flags}
-Recommended flags:
-\begin{verbatim}
--O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize 
--fassociative-math -fPIC
-\end{verbatim}
+\subsection{No Allocations in Core Routines}
 
-\subsection{Configuring \texttt{fpm.toml}}
+\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point, and the generator enforces this. This rule:
+\begin{itemize}
+  \item Keeps core routines \texttt{pure} and deterministic.
+  \item Allows callers to reuse pre-allocated work arrays across multiple calls, avoiding repeated \texttt{malloc}/\texttt{free} cycles over large datasets.
+\end{itemize}
 
-\begin{verbatim}
-name = "tensor-omics"
-version = "0.1.0"
-license = "MIT"
+\subsection{No Defensive Copies}
 
-[install]
-library = true
+Avoid creating copies of input arrays. For large omics datasets (tens of thousands of genes, hundreds of tissues), an unexpected copy easily exceeds available memory. Design algorithms to work on slices and views of the original data.
 
-[library]
-type = "shared" 
-\end{verbatim}
+\subsection{Logical Masks}
 
-\subsection{Compile Script with Hardware-Dependent Defaults}
-Use a compile script to choose the optimal alignment at runtime and apply the appropriate compiler profile:
+A logical mask is a \texttt{logical} array with the same shape as the data it describes: \texttt{.true.} marks an element to include, \texttt{.false.} marks it to exclude. Passing a mask alongside the full array lets a routine include or exclude elements in place — with a plain \texttt{if (mask(...))} check — instead of first allocating a smaller array and copying the kept elements into it. This saves both the allocation and the copy, which matters at big scale.
 
-\begin{verbatim}
-#!/bin/bash
-# build.sh | Optimized build script for FPM with dynamic alignment
-# Default fallback alignment for the most likely situation:
-ALIGN=32
-# Detect capabilities in order of descending priority:
-if lscpu | grep -q amx; then
-ALIGN=128
-elif lscpu | grep -q avx512; then
-ALIGN=64
-elif lscpu | grep -q avx2; then
-ALIGN=32
-elif lscpu | grep -q sse2; then
-ALIGN=16
-fi
-# Detect compiler and choose appropriate profile:
-if [[ "$FC" == "ifx" || "$FC" == "ifort" ]]; then
-  FLAGS="-O3 -qopenmp -xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul 
-  -fPIC"
-  COMPILER="ifx"
-else
-  FLAGS="-O3 -march=native -mtune=native -fopenmp -ffast-math -funroll-loops -ftree-vectorize 
-  -fassociative-math -fPIC"
-  COMPILER="gfortran"
-fi
+Prefer adding a mask argument over asking the caller to pre-filter their data into a separate array. In \texttt{tox\_relative\_axis\_plane\_tools.F90}, \texttt{omics\_vector\_RAP\_projection} takes the full \texttt{vecs} matrix together with a \texttt{vecs\_selection\_mask}/\texttt{axes\_selection\_mask}, and only writes the selected entries into the (exactly-sized) output — the input matrix itself is never copied or filtered:
 
-# Detect --max-performance flag
-MAX_PERF_FLAG=""
-for arg in "$@"; do
-  if [[ "$arg" == "--max-performance" ]]; then
-    MAX_PERF_FLAG="-DMAX_PERFORMANCE"
-  fi
-done
+\begin{lstlisting}[language=Fortran]
+logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
+    !! `.true.` for vectors where projection is to be computed
+...
+do i_vec = 1, n_vecs
+    if (vecs_selection_mask(i_vec)) then
+        ...
+        if (axes_selection_mask(i_axis)) then
+            projections(i_axis_proj, i_vec_proj) = vecs(i_axis, i_vec)
+            ...
+\end{lstlisting}
 
-# Informative output:
-# Build with selected profile and alignment parameter:
-export FC
-fpm build --compiler $COMPILER --flag "$FLAGS" --flag "-DDEFAULT_ALIGNMENT=$ALIGN" 
-          --flag "$MAX_PERF_FLAG"
+Similarly, in \texttt{tox\_data\_integration\_jsd\_impl.F90}, an optional \texttt{neighbor\_mask} lets \texttt{build\_residual\_histograms\_impl} skip specific neighbors while iterating the original, unfiltered array:
 
-echo "Build complete with compiler: $COMPILER, alignment: $ALIGN bytes, optimization flags: $FLAGS, 
-      max performance: $MAX_PERF_FLAG"
+\begin{lstlisting}[language=Fortran]
+logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
+    !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
+...
+filter_neighbors = present(neighbor_mask)
+...
+if (filter_neighbors) then
+    if (.not. neighbor_mask(i_neighbor, i_point)) cycle
+end if
+\end{lstlisting}
 
-# Find .so file in the build directory
-sofile=$(find build -name 'libtensor-omics.so' | head -n 1)
+No subset of \texttt{neighborhood\_residuals} is ever built — the mask only decides which iterations contribute.
 
-# Create symbolic link in the build directory with relative path
-if [[ -n "$sofile" ]]; then
-  # Extract the relative path from build/ directory
-  relative_path=$(realpath --relative-to=build "$sofile")
-  ln -sf "$relative_path" build/libtensor-omics.so
-  echo "Created symlink: build/libtensor-omics.so -> $relative_path"
-else
-  echo "Warning: libtensor-omics.so not found in build directory"
-fi
-\end{verbatim}
+When a smaller, compacted array genuinely has to be produced (e.g. to hand a reduced gene list downstream), use \texttt{count(mask)} to size the allocation exactly once, rather than over-allocating or growing it as elements are found, as in \texttt{tox\_data\_tools.F90}:
 
-\subsection{Contiguous and Aligned Arrays in Fortran}
-A \texttt{contiguous} array is one whose elements are stored sequentially in memory. An \texttt{aligned} array is one that starts at a memory address that is a multiple of the desired alignment boundary (e.g., 32 or 64 bytes).
+\begin{lstlisting}[language=Fortran]
+n_genes_kept = count(mask)
+allocate(temp_gene_ids(n_genes_kept), stat=ios)
+...
+do i = 1, n_genes_total
+    if (mask(i)) then
+        temp_gene_ids(j) = gene_ids(i)
+        ...
+        j = j + 1
+    end if
+end do
+\end{lstlisting}
 
-\textbf{All \texttt{allocatable} arrays in Fortran are inherently contiguous.} Aligned allocation ensures that SIMD instructions can operate efficiently.
+Use masks wherever a routine only needs to act on part of its input: they are cheaper than copying, and they keep the calling convention uniform (same array, same shape, one extra \texttt{logical} argument) whether or not filtering is requested.
 
-\subsection{Configuration Module}
-\label{fortran_config_module}
-\begin{verbatim}
-#include "precompiler_constants.F90"
+\subsection{Work Arrays (\texttt{tmp\_})}
 
-module config
-implicit none
-#ifdef DEFAULT_ALIGNMENT
-integer, parameter :: alignment = DEFAULT_ALIGNMENT
-#endif
-end module config
-\end{verbatim}
+Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention.
 
-\subsection{Alignment-Aware Padding Function}
-This helper computes padded sizes for any array dimension:
+\begin{lstlisting}[language=Fortran]
+! tmp_perm holds the reusable sort permutation
+integer(int32), intent(out) :: tmp_perm(n_genes)
+real(real64),   intent(out) :: tmp_loess_y(n_genes)
+\end{lstlisting}
 
-\begin{verbatim}
-module alignment_utils
-use config
-implicit none
+\subsection{Reusing Output Buffers as Work Arrays (Pointer Reshaping)}
+
+When a routine has already been handed a large enough output (or other pre-allocated) buffer, reuse it as scratch space via Fortran pointer bounds-remapping instead of allocating a separate temporary. This is a zero-copy \emph{reshape} of contiguous storage: the pointer sees the same memory under new bounds.
+
+\begin{lstlisting}[language=Fortran]
+! Reinterpret a contiguous buffer as a 2-D work view (no copy, no allocation)
+real(real64), dimension(:, :), pointer :: work_view
+work_view(1:n_genes, 1:n_tissues) => output_buffer
+! A column slice can then serve as a work pointer
+tmp_col_ptr => work_view(:, 1)
+\end{lstlisting}
+
+\textbf{This reshapes; it does not transpose.} Bounds-remapping reinterprets the linear, column-major storage under the new shape: \texttt{work\_view(i, j)} is element \texttt{(j-1)*n\_genes + i} of \texttt{output\_buffer}, \emph{not} \texttt{output\_buffer(j, i)}. A genuine transpose reorders elements and therefore requires moving data (e.g.\ \texttt{transpose} into a separate buffer); a pointer view can never transpose. The target must be contiguous.
+
+Only reuse a buffer as scratch when its final output value is not needed until after the scratch use has finished — otherwise the scratch writes corrupt the output.
+
+% =============================================================================
+\section{Macro Usage (\texttt{src/macros.h})}
+% =============================================================================
+
+All source files that use macros must start with:
+\begin{lstlisting}[language=Fortran]
+#include <src/macros.h>
+\end{lstlisting}
+
+\textbf{Never write a bare \texttt{implicit none}}: every module uses \texttt{M\_IMPLICIT\_NONE}
+instead. It expands to \texttt{implicit none (type, external)}, the F2018 form, which additionally
+requires an explicit interface for every external procedure — so calling one that the compiler has
+never seen becomes a compile error at the call site rather than a link-time surprise or, worse, a
+silently wrong ABI.
+
+\subsection{Available Macros}
+
+\begin{tabular}{ll}
+\toprule
+Macro & Purpose \\
+\midrule
+\texttt{M\_IMPLICIT\_NONE} & \texttt{implicit none (type, external)}; use it in every module \\
+\texttt{M\_USE\_NULL\_VALIDATION} & Imports modules needed for \texttt{c\_loc}/null checks in C wrappers \\
+\texttt{M\_CHECK\_IERR\_NON\_NULL} & Silently returns if \texttt{ierr} pointer is null (always first check) \\
+\texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ierr} to \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
+\texttt{M\_DEFAULT\_VAL(OPT,LOC,DEF)} & Assigns \texttt{OPT} to \texttt{LOC} if present, else assigns \texttt{DEF} \\
+\texttt{M\_ALLOCATE(DECL)} & Allocates \texttt{DECL}; sets \texttt{ERR\_ALLOC\_FAIL} and returns on failure \\
+\texttt{M\_NAN} & IEEE quiet NaN (double) \\
+\texttt{M\_NEG\_INF} & IEEE negative infinity (double) \\
+\texttt{M\_POS\_INF} & IEEE positive infinity (double) \\
+\bottomrule
+\end{tabular}
+
+\subsection{Module-Local Constants via \texttt{\#define} (\texttt{CM\_} prefix)}\label{sec:cm-macros}
+
+Global, reusable macros live in \texttt{macros.h} with the \texttt{M\_} prefix. A constant that only makes sense within a single module does not belong there — adding it would clutter a file meant for cross-module reuse. Instead, define it locally, immediately after the \texttt{\#include} line, using the \texttt{CM\_} prefix (``Custom Macro''), and keep it next to the module's other constants (its \texttt{parameter} declarations):
+
+\begin{lstlisting}[language=Fortran]
+#define CM_METHOD_AVERAGE 0
+#define CM_METHOD_WEIGHTED 1
+#define CM_METHOD_WARD 2
+
+integer(int32), parameter :: METHOD_AVERAGE  = CM_METHOD_AVERAGE
+integer(int32), parameter :: METHOD_WEIGHTED = CM_METHOD_WEIGHTED
+integer(int32), parameter :: METHOD_WARD     = CM_METHOD_WARD
+\end{lstlisting}
+
+\paragraph{Keeping FORD documentation in sync.} FORD does not resolve Fortran \texttt{parameter} values, but it does run the C preprocessor before generating docs, so a \texttt{CM\_} macro referenced inside a doc comment renders as-is. This lets a mode/method table stay anchored to the code instead of to a literal that can drift:
+
+\begin{lstlisting}[language=Fortran]
+!! |      Method      |          Value         |
+!! |------------------|------------------------|
+!! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
+!! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
+!! |      Ward        |   CM_METHOD_WARD       |
+\end{lstlisting}
+
+\paragraph{Use the macro in validation too.} When a \texttt{CM\_} macro defines the valid values or bounds of an argument, pass the macro itself to the corresponding \texttt{validate\_*} call instead of repeating the literal:
+
+\begin{lstlisting}[language=Fortran]
+call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
+\end{lstlisting}
+
+This keeps the default/bound, the validation, and the documentation all traceable to one definition — if a mode is added or reordered, only the \texttt{\#define} block needs to change.
+
+% =============================================================================
+\section{Derived Types (\texttt{type}): Use with Care}
+% =============================================================================
+
+Derived types (\texttt{type :: ...}) are a powerful Fortran feature but must be used with restraint in this project:
+
+\begin{itemize}
+  \item \textbf{Prohibited} in any subroutine or function that has a C wrapper or is otherwise called from Python or R.
+    C, Python \texttt{ctypes}, and R's C interface cannot represent Fortran derived types; passing them across the language boundary is undefined behaviour.
+  \item \textbf{Permitted} for pure-Fortran data structures where the extra abstraction genuinely improves readability or correctness (e.g., hash maps, JSON serialisation helpers).
+  \item \textbf{Avoid by default} in the main TOX scientific routines, which operate exclusively on plain arrays and matrices.
+\end{itemize}
+
+If you need a compound structure that must cross the language boundary, decompose it into flat arrays and pass its components individually.
+
+% =============================================================================
+\section{The \texttt{f42\_utils} Utility Module}
+% =============================================================================
+
+\texttt{src/f42/utils/} contains general-purpose helper functions shared across the project, split
+by topic into \texttt{f42\_math\_impl}, \texttt{f42\_sort\_impl}, \texttt{f42\_random\_impl},
+\texttt{f42\_vector\_impl} and \texttt{f42\_stats\_impl}: \texttt{mean}, \texttt{std\_dev},
+\texttt{norm}, \texttt{clamp}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close},
+\texttt{logx}, \texttt{compute\_edf}, etc. \texttt{f42\_utils\_impl} re-exports all five, so one
+\texttt{use} reaches everything.
+
+\textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether
+the family already provides it. If you write a function that is genuinely reusable across modules,
+add it there rather than creating a module-local copy. This prevents duplication and keeps utility
+logic in one place. Import from the module that \emph{defines} the helper where you know it, and
+from the parent where you do not:
+
+\begin{lstlisting}[language=Fortran]
+use f42_math_impl, only: norm, is_close, logx, mean, std_dev
+use f42_sort_impl, only: sort_array
+\end{lstlisting}
+
+% =============================================================================
+\section{The \texttt{f42\_safeguard} Module}
+% =============================================================================
+
+\textbf{Any module that names a C kind must \texttt{use f42\_safeguard}} --- any
+\texttt{c\_bool}, \texttt{c\_int}, \texttt{c\_char} or the rest, whether or not the module has a
+\texttt{bind(C)} interface of its own. The code generator enforces this; a module that names one
+without the \texttt{use} is a build error.
+
+\begin{lstlisting}[language=Fortran]
+module tox_thing_impl
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
+\end{lstlisting}
+
+\subsection{What it guards, and against what}
+
+Eight compile-time assertions, of two kinds, because there are two ways a platform can let us
+down.
+
+\textbf{Four equalities} --- \texttt{c\_int == int32}, \texttt{c\_double == real64},
+\texttt{c\_double\_complex == real64}, \texttt{c\_char ==} the default character kind. This is
+the dangerous case: the kind exists, so every declaration compiles, and data crossing a wrapper
+is silently misinterpreted. Nothing else in the build would say a word. These assertions are
+also what let the framework write \texttt{real64} and plain \texttt{character(len=*)} rather than
+converting at the boundary --- the equality is the licence for the cheap spelling.
+
+\textbf{Four existence checks} --- \texttt{c\_bool}, \texttt{c\_size\_t}, \texttt{c\_int64\_t},
+\texttt{c\_signed\_char} are each asserted positive. \texttt{iso\_c\_binding} gives a C kind the
+value \texttt{-1} where the platform has no counterpart, and a negative kind is a compile error
+at every single declaration naming it. For \texttt{c\_bool} that is 152 errors in files that did
+nothing wrong, instead of one here naming the kind that is missing.
+
+\subsection{Why the \texttt{use} is not optional}
+
+The guards fire when \emph{this} module compiles, not when yours does --- so the \texttt{use} is
+not what makes them run. It is what makes them run \emph{first}. A dependency is the only way to
+order a Fortran build, and a module compiled before the safeguard that names a missing kind
+fails with the compiler's message about that kind rather than the guard's message about which
+kind is missing.
+
+That is also why \texttt{f42\_safeguard} depends on nothing but the intrinsic modules, and must
+stay that way. It is a load-bearing property, not tidiness: it is what puts the module at the
+front of every build, and what makes each of the eight guards reachable by the kinds test, which
+forces each mismatch in turn and requires the build to fail.
+
+The rule was learned the hard way. Before logicals moved to \texttt{c\_bool}, the only modules
+naming a C kind were the generated wrappers, every one of which had the \texttt{use}; the sweep
+put C kinds into 39 more compilation units and left the dependency behind. Nothing noticed,
+because on this platform every kind is present and correct.
+
+% =============================================================================
+\section{FORD Documentation}
+% =============================================================================
+
+\textbf{FORD} (Fortran Documentation Generator) produces HTML documentation directly from structured comments. All public procedures and modules must be documented.
+
+\subsection{Comment Syntax}
+
+\begin{itemize}
+  \item \texttt{!>} — Starts the description of a module, subroutine, or function.
+  \item \texttt{!|} — Continues or extends a description (e.g.\ a second line after \texttt{!>}); also used to document an argument when placed \textbf{before} the declaration.
+  \item \texttt{!!} — Trail comment placed \textbf{after} the declaration (on the following line, indented). This is the preferred way to document individual arguments in this codebase.
+\end{itemize}
+
+\noindent In summary: \texttt{!|} before, \texttt{!!} after. Both are valid FORD syntax; the template below uses \texttt{!!} consistently.
+
+\subsection{Module and Subroutine Template}
+
+\begin{lstlisting}[language=Fortran]
+!> Module for computing expression centroids of gene families.
+!| Contains the core scientific kernel. C and language wrappers are defined
+!| outside the module for compatibility.
+module tox_gene_centroids
+  use, intrinsic :: iso_fortran_env, only: real64, int32
+  M_IMPLICIT_NONE
 contains
 
-integer function padded_size(n)
-integer, intent(in) :: n
-padded_size = alignment * ceiling(real(n) / alignment)
-end function padded_size
+  !> Computes the element-wise mean for a given set of gene expression vectors.
+  !| Returns a single centroid vector of length n_axes.
+  pure subroutine mean_vector(expression_vectors, n_axes, n_genes, &
+      gene_indices, n_selected_genes, centroid, ierr)
+    integer(int32), intent(in) :: n_axes
+      !! Number of axes (dimensions)
+    integer(int32), intent(in) :: n_genes
+      !! Total number of genes in the expression matrix
+    real(real64), intent(in) :: expression_vectors(n_axes, n_genes)
+      !! Gene expression matrix (n_axes x n_genes)
+    integer(int32), intent(in) :: n_selected_genes
+      !! Number of genes to include in the centroid
+    integer(int32), intent(in) :: gene_indices(n_selected_genes)
+      !! Column indices of selected genes in expression_vectors
+    real(real64), intent(out) :: centroid(n_axes)
+      !! Output centroid vector (n_axes)
+    integer(int32), intent(out) :: ierr
+      !! Error code: 0 = success
+    ! ... implementation ...
+  end subroutine mean_vector
 
-end module alignment_utils
-\end{verbatim}
+end module tox_gene_centroids
+\end{lstlisting}
 
-Use this in your allocation logic:
+\noindent Note the use of \texttt{!!} (two exclamation marks) to place the documentation comment on the line \emph{after} the declaration. This is the FORD convention used throughout the codebase.
 
-\begin{verbatim}
-use alignment_utils
-integer :: m, padded_m
-real(real64), allocatable :: A(:)
+\subsection{Generating Documentation}
 
-m = 1000
-padded_m = padded_size(m)
-allocate(A(padded_m))
-\end{verbatim}
+Documentation is generated automatically by the CI/CD workflow on every merge to the main branch. \textbf{You do not need to run FORD manually.} However, if you want to preview the output locally before submitting an MR:
 
-This ensures alignment across 1D, 2D, or ND arrays by applying padding logic to each dimension before allocation.
+\begin{lstlisting}[language=bash]
+ford ford.yml        # run from project root
+open doc/index.html  # review in browser
+\end{lstlisting}
 
-\subsection{Alignment-Aware Allocation for ND Arrays}
+% =============================================================================
+\section{Testing}
+% =============================================================================
 
-To ensure all dimensions are padded and aligned, wrap padding in a helper procedure or macro-like pattern per array rank. Example for 2D:
+The project provides a structured test suite framework. See the \href{https://gitlab.rlp.net/a.hallab/tensor-omics/-/tree/main/test?ref_type=heads}{test directory README} for full details on how to add and run tests.
 
-\begin{verbatim}
-integer :: nx, ny, px, py
-real(real64), allocatable :: A(:,:)
-
-nx = 800
-ny = 600
-px = padded_size(nx)
-py = padded_size(ny)
-allocate(A(px, py))
-\end{verbatim}
-
-Repeat this pattern for higher-dimensional arrays.
-
-\subsection{Note on Using Single Helper for Arbitrary Ranks}
-
-It is not possible to pass arbitrary-rank assumed-shape arrays into a single routine that allocates them, because Fortran does not support polymorphic allocatable shapes. Instead, compute and apply padding for each dimension prior to allocation, using `padded\_size`.
-
-Thus, the best practice is to:
-\begin{itemize}
-\item Store dimension sizes in variables.
-\item Use \texttt{padded\_size()} for each.
-\item Allocate directly in the relevant context.
-\item Optionally provide \texttt{allocate\_padded\_1D()}, \texttt{...2D()} helpers per rank for clarity.
-\end{itemize}
-
-\subsection{Best Practice Summary}
+\subsection{Where to Test What}
 
 \begin{itemize}
-\item Use \texttt{!\$omp parallel do simd schedule(static)} to enable both thread and instruction-level parallelism.
-\item Use compiler-specific alignment and vectorization flags in \texttt{fpm.toml}.
-\item Dynamically set alignment to 32 or 64 via a shell script based on CPU capabilities.
-\item Use \texttt{padded\_size()} to round up all dimensions to nearest alignment multiple.
-\item Allocate arrays explicitly using padded sizes to ensure SIMD-safe alignment.
-\item Maintain a \texttt{config} module to centralize the alignment parameter.
+  \item \textbf{Algorithm correctness}: Fortran unit tests only.
+    The Fortran test suite is the single source of truth for numerical correctness.
+  \item \textbf{Python / R wrappers}: Test only that the function can be called, that the return value is of the correct type and shape, and that reasonable input produces a non-error result.
 \end{itemize}
 
-\subsection{Verifying Alignment at Runtime (Possible but \emph{not} practical)}
+The wrappers themselves are generated, but \textbf{their tests are not} — a generated binding is
+exactly the place where a mistake is uniform and invisible, so every published procedure needs a
+Python and an R test that actually calls it. Run everything with \texttt{./run\_all\_tests.sh}.
 
-Intel and GNU compilers do not provide standard runtime alignment checks. For
-debugging, one may use C interoperability and POSIX memory alignment checks
-(advanced). For practical purposes, correct use of allocation and compiler
-flags suffices.
+\subsection{Test Naming Convention}
 
-\subsection{Conclusion: Thread-Level and CPU-Local Vectorized Parallelization}
+Each test file is named \texttt{mod\_test\_<module\_name>.\{f90|F90|py|R\}}.
+Each test function is named \texttt{test\_<description>}.
 
-By combining OpenMP, SIMD, and alignment-aware allocation, scientific Fortran code can achieve modern HPC-level efficiency while maintaining clarity and portability. This setup enables seamless transition to C bindings, WebAssembly targets, and multi-threaded environments such as browser-based Tensor Omics visualizations or clustered batch jobs.
-
-\emph{Importantly}, the following Fortran code template enables \textbf{double parallelization}: first at the \textbf{thread level}, where array chunks are distributed across cores using the \texttt{!\$omp parallel do simd schedule(static)} directive; and second at the \textbf{instruction level}, where each thread processes its assigned chunk using vectorized CPU instructions enabled by the \texttt{simd} clause.
-
-\subsection{Best Practice: SIMD in Leaf Loops, OpenMP in Top-Level Loops}
-
-In Tensor Omics, it is crucial to distinguish between two levels of parallelization:
+% =============================================================================
+\section{Merge Request and Collaboration Conventions}
+% =============================================================================
 
 \begin{itemize}
-\item \textbf{Thread-level parallelism}: achieved via \texttt{!\$omp parallel do} at the top level, typically when iterating over gene families or other large-scale, independent units of computation.
-\item \textbf{Vector-level (SIMD) parallelism}: achieved via \texttt{!\$omp simd} within inner loops that perform the actual arithmetic operations, e.g., normalization, centroid computation, tensor updates.
+  \item \textbf{Do not merge your own MR.} Always request at least one reviewer and wait for approval before merging.
+  \item \textbf{Always assign experienced developers as reviewers.} Add at least Franz or Aaron as a reviewer on every MR. They have deep knowledge of the codebase and can catch issues early.
+  \item \textbf{Do not close review threads yourself.} Only the person who opened a thread (the reviewer) should close it after it has been resolved to their satisfaction.
+  \item \textbf{Resolve conflicts before requesting review.} Rebase onto the target branch and fix conflicts yourself.
+  \item \textbf{Keep MRs focused.} One logical change per MR. Large refactors should be discussed in an issue before starting the MR.
+  \item \textbf{Link to the relevant issue} in the MR description.
+  \item \textbf{Update FORD documentation} and tests as part of the same MR as the implementation.
+  \item \textbf{Check the CI/CD workflow.} After pushing or updating an MR, always verify that the automated workflow (tests, build, documentation generation) passes. If it fails, \emph{fix it yourself} — do not wait to be told. A failing pipeline blocks the merge and means the code is not yet ready for review.
+  \item \textbf{Use GitHub, not GitLab.} Since May 2026 the project is developed exclusively on GitHub. Do not open issues, branches, or MRs on the old GitLab repository — those will not be seen or merged.
 \end{itemize}
 
-\paragraph{Key rule:} \emph{Apply \texttt{!\$omp simd} only at the level of the loop that does the actual vector arithmetic. This is the most nested loop — the ``leaf'' loop.}
+% =============================================================================
+\section{Getting Help: The ask-for-help Channel}
+% =============================================================================
 
-\paragraph{And:} \emph{Apply \texttt{!\$omp parallel do} only at the top level, for instance over gene families or modules.} This should be confirmed and coordinated with the software architect (Vivian or Asis) to ensure it aligns with the design of the specific routine.
+The ask-for-help channel is the right place for \textbf{any question} — not just programming. Whether it is about scientific context, workflow setup, naming decisions, tooling, or general project conventions, there will always be someone available to help. Do not hesitate to ask.
 
-\subsubsection{Why?}
+For \emph{technical problems} (especially compilation errors), do not spend more than 30 minutes debugging alone. Post in the channel with:
 
-Nested use of \texttt{simd} inside a loop that is already marked with \texttt{parallel do simd} leads to undefined or inefficient behavior. While technically allowed by OpenMP, compilers may:
+\begin{enumerate}
+  \item The exact compiler command and full error message (copy-paste, do not paraphrase).
+  \item The minimal code snippet that triggers the error.
+  \item What you have already tried.
+\end{enumerate}
+
+Many gfortran errors for \texttt{bind(C)}, \texttt{pure}, or kind-mismatch issues are non-obvious; the team has likely encountered the same problem before.
+
+% =============================================================================
+\section{Integrating External Fortran Code from Netlib}
+% =============================================================================
+
+Netlib is the canonical archive for legacy scientific Fortran (BLAS, LINPACK, LOESS, etc.). This section explains how to extract, compile, and link Netlib packages so they can be added to \texttt{external/}.
+
+\subsection{Shell Archives (shar)}
+
+Netlib sometimes distributes packages as \textbf{Shell Archives} (\texttt{.shar}): self-extracting shell scripts that reconstruct source files when executed. Each line of actual source is prefixed with a hyphen; the script uses \texttt{sed} to strip those prefixes during extraction and write the real files. This format dates to the 1980s and was also a safety measure against accidental execution of embedded shell commands.
+
+Do not copy-paste the text manually. Save it to a file and run it:
+
+\begin{lstlisting}[language=bash]
+wget https://netlib.org/a/loess
+sh loess          # extracts README, loessf.f, lowesf.f, lowescp.f, ...
+\end{lstlisting}
+
+Perform extraction in a \textbf{temporary directory outside the project}. Once compilation is confirmed working, move the relevant files into \texttt{external/}.
+
+\subsection{Checking Dependencies}
+
+After extraction, read the \texttt{README}. Many Netlib packages omit routines they assumed were already present on the target system. LOESS, for example, depends on LINPACK routines (\texttt{dqrsl}, \texttt{dsvdc}) that are not included in the distributed archive. Missing symbols cause linker errors such as:
+
+\begin{lstlisting}[language=bash]
+undefined reference to 'dqrsl'
+undefined reference to 'dsvdc'
+\end{lstlisting}
+
+Fetch the missing \texttt{.f} files from Netlib and add them to the compilation.
+
+\subsection{Compiling Legacy Fortran Sources}
+
+Old Fortran (fixed-form, F77) requires special flags:
+
+\begin{lstlisting}[language=bash]
+gfortran -O2 -std=legacy -ffixed-line-length-none \
+         -fallow-argument-mismatch -fPIC -w \
+         -c file1.f file2.f file3.f
+\end{lstlisting}
+
+\begin{tabular}{lp{9.5cm}}
+\toprule
+Flag & Purpose \\
+\midrule
+\texttt{-O2} & Standard optimisations. \\
+\texttt{-std=legacy} & Accepts F77 constructs no longer valid in modern standards. \\
+\texttt{-ffixed-line-length-none} & Removes the 72-character column limit of fixed-form source. \\
+\texttt{-fallow-argument-mismatch} & Suppresses fatal errors from implicit-interface argument-type mismatches common in old code. \\
+\texttt{-fPIC} & Position-independent code; required when object files will be linked into a shared library (\texttt{.so}). \\
+\texttt{-w} & Suppresses warnings. Use it only after the initial integration is stable; omit it while diagnosing problems. \\
+\texttt{-c} & Compile only (produce \texttt{.o} files); do not link. \\
+\bottomrule
+\end{tabular}
+
+\subsection{Linking}
+
+To build a \textbf{static library} for inclusion in Tensor-Omics:
+
+\begin{lstlisting}[language=bash]
+ar rcs libname.a *.o
+\end{lstlisting}
+
+To build a standalone \textbf{executable} for testing:
+
+\begin{lstlisting}[language=bash]
+gfortran -o program_name file1.o file2.o file3.o
+\end{lstlisting}
+
+If \texttt{undefined reference} errors appear at link time, a dependency is missing. Classic culprits in Netlib packages are additional routines from \textbf{BLAS}, \textbf{LINPACK}, or utility functions such as \texttt{d1mach} — fetch and compile those as well.
+
+% =============================================================================
+\section{Further Reading}
+% =============================================================================
+
+This guide states the conventions. Four documents in the repository go deeper, and each is kept in
+step with the code:
 
 \begin{itemize}
-\item silently ignore the inner \texttt{simd} region,
-\item fail to vectorize at all,
-\item or generate scalar fallback code.
+  \item \textbf{\texttt{codegen\_guide.md}} (repository root) — the author's guide to the code
+        generator, case by case: ranges, masks, work arrays, permutations, sizing routines, modes
+        and mode splits, prologues, runtime errors, split families. Every case has a real snippet
+        and shows what comes out. \textbf{Read this before adding a procedure.}
+  \item \textbf{\texttt{helper/codegen/README.md}} — what the generator produces and how to run it,
+        including what it refuses and why.
+  \item \textbf{\texttt{helper/codegen/emit/README.md}} — the language layers: every question the
+        Python and R bindings had to answer (array layout, ownership of \texttt{intent(inout)},
+        null-as-absent, missing values, derived arguments, decoding \texttt{ierr}) and what each
+        chose. Written so a third language decides rows instead of rediscovering them.
+  \item \textbf{\texttt{helper/codegen/design/}} — the design of record, including every rejected
+        alternative.
 \end{itemize}
 
-Hence, we \emph{do not} use both \texttt{parallel do simd} and inner \texttt{simd} together — unless there is a specific, performance-tested reason.
+% =============================================================================
+\section{Quick-Reference Checklist}
+% =============================================================================
 
-\subsubsection{Incorrect (nested SIMD, should be avoided)}
+Use this checklist when reviewing or submitting any Fortran code contribution:
 
-\begin{verbatim}
-subroutine family_centroids(...)
-  !$omp simd aligned(a, b, c:64)
-  do j = 1, ndim
-    ...
-  end do
-end subroutine
-
-!The below repeated 'simd' is the problem here:
-!$omp parallel do simd schedule(static) private(i)
-do i = 1, nfam
-  call family_centroids(...)
-end do
-\end{verbatim}
-
-\textbf{Problems:}
-\begin{itemize}
-\item The outer loop redundantly specifies both \texttt{parallel do} and \texttt{simd}, causing potential nested vectorization issues.
-\item The alignment is hardcoded (\texttt{64}) instead of using the macro defined in our configuration header.
+\begin{itemize}[label=$\square$]
+  \item File extension is \texttt{.F90} (macros used) or \texttt{.f90} (no macros).
+  \item \texttt{\#include <src/macros.h>} is present, and the module declares \texttt{M\_IMPLICIT\_NONE} rather than a bare \texttt{implicit none}.
+  \item All \texttt{real} variables use \texttt{real(real64)}; all constants carry \texttt{\_real64}.
+  \item Every argument has \texttt{intent(in|out|inout)}.
+  \item The implementation is named \texttt{foo\_impl}, in a module ending \texttt{\_impl}, and is declared \texttt{pure}.
+  \item \texttt{do concurrent} is used for independent loops.
+  \item No \texttt{GOTO} anywhere.
+  \item The implementation validates nothing and allocates nothing; where it does report a runtime error, \texttt{ierr} is initialised with \texttt{set\_ok(ierr)} and every failure path returns immediately.
+  \item Every constraint is stated as a \texttt{DM\_} macro on the argument it constrains, and every work array is named \texttt{tmp\_}.
+  \item No unexplained copies of large arrays.
+  \item No derived types in anything that reaches C, Python or R.
+  \item All utility functions are in the \texttt{f42\_utils} family (or re-use existing ones).
+  \item FORD comments (\texttt{!>}, \texttt{!|}, \texttt{!!}) are present for the module and every public procedure, written as API prose — they are what Python and R users read.
+  \item The generator was run and its output committed (\texttt{./build.sh}, plus \texttt{--target snippets} if a published name changed).
+  \item Fortran tests cover the new logic.
+  \item Python/R tests verify call-ability and return type.
+  \item MR does not self-merge and review threads are not self-closed.
 \end{itemize}
-
-\subsubsection{Correct and recommended pattern in Tensor Omics}
-
-\begin{verbatim}
-subroutine family_centroids(...)
-  !$omp simd aligned(a, b, c:64) private(j)
-  do j = 1, ndim
-    ...
-  end do
-end subroutine
-
-!$omp parallel do schedule(static) private(i) aligned(...)
-do i = 1, nfam
-  call family_centroids(...)
-end do
-\end{verbatim}
-
-\emph{Note}, see section \ref{simd_architecture_macros} for details on how to
-set the correct memory alignment boundary in bytes, e.g. ``\texttt{aligned(a,
-b, c:64}'' and ``\texttt{!DIR\$ ASSUME\_ALIGNED a:64, b:64, c:64}'' to 16, 32,
-64, or 128, using precompiler macros.
-
-\textbf{This is the canonical Tensor Omics pattern:}
-\begin{itemize}
-\item The leaf loop that performs arithmetic (e.g., element-wise ops) uses \texttt{simd} and the \texttt{aligned(...:DEFAULT\_ALIGNMENT)} directive. This macro is defined in the precompiler header \texttt{precompiler\_constants.F90}.
-\item The outer loop over independent entities (e.g., gene families) uses \texttt{parallel do} for thread-level parallelism.
-\end{itemize}
-
-\paragraph{Important:} Always use \texttt{\#include "precompiler\_constants.F90"} if alignment is to be ensured. This file defines \texttt{DEFAULT\_ALIGNMENT}, which is passed at compile time via the build script depending on AVX512, AVX2, or baseline SIMD capabilities. Using this macro ensures correct alignment in both \texttt{!DIR\$ ASSUME\_ALIGNED} and \texttt{aligned(...)} clauses.
-
-\subsubsection{Summary}
-
-\begin{itemize}
-\item \textbf{Use \texttt{!\$omp simd} only in the leaf loop doing actual vector math.}
-\item \textbf{Use \texttt{!\$omp parallel do} only in top-level outer loops.}
-\item \textbf{Avoid using \texttt{parallel do simd} in Tensor Omics unless explicitly reviewed.}
-\item \textbf{Always include \texttt{precompiler\_constants.F90} if using alignment directives.}
-\item \textbf{Use correct directives to keep hardware compatibility across
-  compilers and targets:}
-  \begin{itemize}
-    \item \texttt{aligned(...:<DEFAULT\_ALIGNMENT>)} \emph{and}
-    \item \texttt{!DIR\$ ASSUME\_ALIGNED a:<DEFAULT\_ALIGNMENT>,
-      b:<DEFAULT\_ALIGNMENT>, c:<DEFAULT\_ALIGNMENT>}.
-  \end{itemize}
-\end{itemize}
-
-\subsection{Distributed Parallelism with Coarrays and OpenMP SIMD Loops}
-
-This section describes how Tensor Omics achieves \textbf{triple parallelization} on distributed systems by combining:
-
-\begin{itemize}
-  \item \textbf{Coarrays} for inter-node (inter-image) parallelism,
-  \item \textbf{OpenMP threads} for intra-node (core-level) parallelism,
-  \item and \textbf{SIMD vectorization} for CPU-instruction-level efficiency.
-\end{itemize}
-
-This hybrid model enables high-throughput omics analysis on SLURM clusters with minimal programming overhead and near-optimal hardware utilization.
-
-\subsubsection{Local Data Strategy in Coarrays}
-Coarrays in Fortran natively represent distributed memory: each \emph{image} is conceptually an independent process with its own memory space. This makes them ideal for Tensor Omics, where data can be split into families and processed independently. 
-
-The key principle is:
-\begin{quote}
-\textbf{Each image works on its own local subset of gene families.} Data from other images is only accessed explicitly when needed.
-\end{quote}
-
-Within each image, we apply the previously described memory-optimized loops with:
-\begin{itemize}
-\item \texttt{!\$omp parallel do simd} — enabling OpenMP threading and SIMD vectorization.
-\item Intel pragmas and \texttt{aligned(...)} clauses — ensuring memory is aligned to AVX boundaries.
-\end{itemize}
-
-Crucially, \textbf{looping over coarrays automatically refers to the local image's data}, without additional indexing or copying, unless explicitly accessing remote images (e.g., \texttt{b[2]} to read from image 2).
-
-\subsection{Brief summary: Declaring and Accessing Coarrays}
-
-A coarray is declared in Fortran by appending square brackets with \texttt{[*]} to the variable declaration. For example:
-
-\begin{verbatim}
-real(real64), allocatable :: a(:)[:], b(:)[:], c(:)[:]
-\end{verbatim}
-
-The colon \texttt{:} indicates a deferred-shape (allocatable) array, and the brackets \texttt{[:]} declare the variable as a coarray, with one instance per image.
-
-\textbf{Local image access} is performed without brackets:
-\begin{verbatim}
-a(i) = b(i) + c(i)        ! Local access: all references are to this_image()
-\end{verbatim}
-
-\textbf{Remote image access} uses explicit brackets with an image number:
-\begin{verbatim}
-a(i) = b(i)[2] + c(i)     ! Reads from image 2 (remote access)
-\end{verbatim}
-
-Remote access should be minimized for performance and memory locality. Tensor Omics encourages access to remote images only in explicitly synchronized stages.
-
-Memory-aligned OpenMP SIMD loops work identically with coarrays when accessing only local data. The compiler automatically uses the correct memory region without copying:
-
-\begin{verbatim}
-!DIR$ ASSUME_ALIGNED a:64, b:64, c:64
-!$omp parallel do simd schedule(static) aligned(a, b, c:64)
-do i = 1, n
-  a(i) = b(i) + c(i)       ! Local data access on this_image()
-end do
-!$omp end parallel do simd
-\end{verbatim}
-
-\subsubsection{Data Loading Based on Image ID}
-The image-specific data loading follows a simple naming convention: each image loads its own chunk from a directory or file pattern like \texttt{<base>\_<image\_no>}.
-
-Example:
-\begin{verbatim}
-integer :: me
-me = this_image()
-
-! Allocate coarrays as needed (e.g., expression vectors)
-! Each image loads only its own data:
-call load_txdata(me, base_file_name, expression_vecs, ...)
-\end{verbatim}
-
-This pattern supports full scalability with large gene family datasets. For best performance:
-\begin{itemize}
-\item Split data by gene family.
-\item Assign families evenly to images during pre-processing.
-\item Avoid inter-image data transfer unless strictly required.
-\end{itemize}
-
-\subsubsection{Synchronization and Remote Data Access}
-Coarray images execute asynchronously by default. To coordinate across images:
-
-\begin{itemize}
-\item Use \texttt{sync all} to wait for all images at the same code line.
-\item Use \texttt{sync images(*)} or \texttt{sync images(img)} for partial synchronization.
-\item Access remote coarray data using bracket syntax (e.g., \texttt{vec(1:n)[2]}).
-\end{itemize}
-
-If cross-image data is required for analysis (e.g., inter-family comparisons):
-\begin{itemize}
-\item \textbf{Fetch remote data explicitly} using coarray brackets.
-\item \textbf{Copy into aligned local arrays} before processing, preserving SIMD efficiency.
-\item Perform \texttt{sync all} if necessary.
-\end{itemize}
-
-Memory budgeting must ensure that any fetched data fits into local memory.
-
-\subsubsection{Compiling for Coarrays}
-Compilation differs slightly depending on compiler:
-
-\paragraph{With Intel (ifx/ifort):}
-\begin{verbatim}
-ifx -coarray=distributed -fopenmp -O3 -qopenmp -align array64byte -c file.f90
-\end{verbatim}
-
-\paragraph{With GNU gfortran + OpenCoarrays:}
-\begin{verbatim}
-caf -fcoarray=single -fopenmp -O3 -march=native -c file.f90
-\end{verbatim}
-
-Linking must include coarray runtimes, especially when using OpenCoarrays (\texttt{caf} handles this).
-
-\subsubsection{SLURM Setup for Coarray Execution}
-
-Below is a complete SLURM job script to run Tensor Omics with \textbf{3 Coarray images}, each using \textbf{40 OpenMP threads}. Adjust resource counts to your system and dataset.
-
-\begin{verbatim}
-#!/bin/bash
-#SBATCH --job-name=tensor-omics
-#SBATCH --nodes=3
-#SBATCH --ntasks-per-node=1            # One Coarray image per node
-#SBATCH --cpus-per-task=40             # 40 threads per image
-#SBATCH --time=02:00:00
-#SBATCH --partition=compute
-#SBATCH --exclusive                    # Optional: gets full nodes
-#SBATCH --output=slurm-%j.out
-#SBATCH --error=slurm-%j.err
-
-# Load modules (adjust to your environment)
-module load intel/2023.1
-module load openmpi/4.1.5              # or Intel MPI if using ifx/ifort
-
-# Set OpenMP thread count
-export OMP_NUM_THREADS=40
-export FOR_COARRAY_NUM_IMAGES=3        # Optional: Intel Coarrays only
-
-# Optional: pin threads for reproducibility and performance
-export KMP_AFFINITY=granularity=fine,compact,1,0
-export KMP_STACKSIZE=2g
-
-# Run executable with MPI wrapper
-srun ./tensor_omics_exe
-\end{verbatim}
-
-\paragraph{Notes:}
-\begin{itemize}
-\item Each image automatically processes only its local data.
-\item Use \texttt{this\_image()} and \texttt{num\_images()} to manage indexing.
-\item Combined with alignment-aware OpenMP SIMD loops, this setup provides maximal throughput.
-\end{itemize}
-
-\subsubsection{Conclusion}
-The coarray-enabled, tripple-parallel architecture of Tensor Omics allows scalable, memory-aligned, and instruction-optimized analysis on both laptops and HPC clusters. Minimal code changes are needed to move from serial to multi-node execution. This enables true geometric tensor-based biology at scale.
 
 \end{document}

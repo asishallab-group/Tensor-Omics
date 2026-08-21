@@ -78,7 +78,7 @@ the Fortran wrappers' `#ifndef NO_C_BINDING`. So:
 
 A third switch, `NO_INPUT_VALIDATION`, drops the *generated wrappers'* input checks rather than
 any binding layer; it is the same kind of whole-build decision and is designed in
-[`kernel-layer.md`](kernel-layer.md). It deliberately leaves the null checks here alone: those
+[`impl-layer.md`](impl-layer.md). It deliberately leaves the null checks here alone: those
 prevent a segfault rather than reject a bad value.
 
 The R headers reach the C compiler through fpm's `--c-flag` (its `--flag` is Fortran only);
@@ -170,7 +170,7 @@ caller-visible source keeps its Fortran name alone.
 `map_err_arg_pos` in `tox_errors` stays for hand-written code where two dummy lists really are
 known to correspond. What a *generated* wrapper does with an inherited position is the opposite
 and is decided elsewhere: see "The argument position an `ierr` carries" in
-[`kernel-layer.md`](kernel-layer.md).
+[`impl-layer.md`](impl-layer.md).
 
 ## Decision: nullable optionals are `OPTIONAL`, not pointers
 
@@ -205,13 +205,239 @@ design would not have been available.
 
 C passes a real `bool`, so Python and R hand over a boolean rather than a 0/1 integer.
 
-The copy into a default `logical` stays — `c_bool` is one byte, a default `logical` is
-four — but it is one copy rather than a conversion at both ends, and it is a plain
-intrinsic assignment (`flag_f = flag`) rather than a call into `tox_conversions`. A dummy
-already declared `logical(c_bool)` needs no copy at all.
+**And since 2026-08-14 the sources are `logical(c_bool)` too**, so there is no copy at all:
+the wrapper hands the caller's buffer straight to the implementation. It used to declare an
+automatic array of default `logical` and convert elementwise, because `c_bool` is one byte and
+a default `logical` is four. 31 such array temporaries across 16 wrappers are now one — a
+scalar, and only because `mask_check_state` is a `logical function` whose *result* stays
+default-kind, where there is no memory to win and a condition accepts any kind anyway.
+
+The decision was memory, not speed: no boundary buffer, and a quarter of the bytes for every
+mask in the library. `misc/bench/logical-kinds/RESULTS.md` has the measurements, and they point the same way
+— at the sizes where the memory argument bites, `c_bool` is *faster* for the same reason it is
+smaller.
 
 *Rejected:* passing `integer(c_int)` 0/1 and converting with `c_int_as_logical`, as the
 previous generator did. It makes every caller in every language do bool→int→logical.
+
+**The lesson the switch taught, which cost four defects to learn: "does Fortran need a copy"
+and "does R need a copy" are different questions, and the code had one flag for both.**
+`CArgument.needs_conversion` answers the first, and it goes false the moment a dummy is
+`logical(c_bool)`. The R emitter had keyed four sites on it — because while every logical was
+default-kind the two questions had the same answer. R's logical vector is `LGLSXP`, an array
+of 4-byte `int`, whatever kind the Fortran declares, so R *always* rebuilds the bytes. Three
+sites then emitted `REAL()` on a logical SEXP, which R rejects at run time, and one crashed the
+generator outright. `c_call._r_marshals` is now the single definition all of them ask.
+
+Adding `LGLSXP` to the `R_SEXPTYPE` table would have silenced the crash and been wrong: the
+pointer path would then have handed `LOGICAL(sexp)` — an `int*` — to an `unsigned char*`
+parameter, and corrupted quietly instead of failing loudly.
+
+Two smaller ones from the same change, both in the Fortran wrapper emitter: kind constants have
+to be imported from the module that owns them (`c_bool` is `iso_c_binding`, not
+`iso_fortran_env`), and a literal the *emitter itself* writes needs its kind too —
+`allow_nan=.true.` against a `logical(c_bool)` dummy is a compile error, because argument
+association does not convert kinds. The second means the import list cannot be built from the
+arguments alone; `_emitted_literal_kinds` exists for the kinds no argument carries.
+
+---
+
+## Decision: a converted local is allocated, never automatic
+
+A wrapper that converts an argument needs somewhere to convert into, and the obvious spelling
+is an automatic array:
+
+```fortran
+logical, dimension(n_vectors) :: vectors_selection_mask_f   ! what this used to emit
+```
+
+That is stack storage sized by whatever C passed. At 10 000 000 elements a logical mask is
+40 MB, and **ifx segfaults on exactly this construct** against a default 8 MB stack; gfortran
+survives only because it quietly rehouses large automatics on the heap. It is reachable from
+the published API, not a theoretical size: `serialize_logical` takes `arr(n_elements)` of the
+caller's choosing, and `is_outlier(n_genes)` is an output copy of the same shape.
+
+Every such local is now `allocatable` and reaches the heap through `M_ALLOCATE`, which is the
+same macro the generated Fortran wrappers already use for their work arrays. That fixes the
+storage on every compiler, and it turns an allocation failure into `ERR_ALLOC_FAIL` returned
+to the caller instead of a crash inside a wrapper whose whole job is to report errors. The
+bare `allocate(...)` calls this replaced had no `stat=` at all, so they aborted too.
+
+A scalar `logical` local stays automatic: four bytes, and not a size the caller chooses. A
+character local is not allocated at all — it is a pointer view of the caller's buffer, see
+*a fixed-length character view* below — so as of that change the real project's C layer
+contains no `M_ALLOCATE` at all, and `test_generate.py` asserts exactly that.
+
+*Rejected:* `-heap-arrays` in the ifx profile. It fixes the crash, but per compiler, by a flag
+anyone can drop, and it leaves the failure unchecked — an allocation that fails still aborts
+rather than returning `ERR_ALLOC_FAIL`. The allocation belongs in the emitted code, where it
+can be reasoned about, not in a build flag.
+
+The measured cost of the copies these locals exist for is in `misc/bench/logical-kinds/RESULTS.md`; it is
+small, and the stack is the reason this changed, not the speed.
+
+---
+
+## Decision: a string array crosses as a fixed-width char matrix, not `char**`
+
+A Fortran `character(len=n), dimension(m)` is **one contiguous block** of `n*m` bytes. C's
+idiomatic `char*[]` is an array of *pointers* to scattered blocks. There is no zero-copy
+bridge between those two memory models, so the wire format is the shape both languages can
+express contiguously: a column-major `strlen x n_strings` matrix of
+`character(len=1, kind=c_char)`, one column per string, plus `strlen` as its own argument
+because a `char*` carries no length.
+
+Each binding pays a different price for that, and neither pays much. NumPy's fixed-width `S`
+dtype *is* the layout, byte for byte, so Python passes `arr.itemsize` as the `strlen` and
+copies nothing. R's `STRSXP` is an array of pointers to scattered `CHARSXP`s, so `tox_char_in`
+genuinely packs it into a `len x n` buffer.
+
+The cost is padding to the longest string, which is why a ragged array of mostly-short IDs
+carries the longest one's width throughout. That is inherent to the format; the alternative is
+an offsets array, which is a different and much larger design.
+
+**Fixed-width padded blocks are the normal C representation for bulk string data**, not an
+oddity of this project: HDF5 fixed-length string datatypes, Arrow's `FixedSizeBinary`, tar and
+FITS headers, `sockaddr_un.sun_path`, and NumPy's own `S`/`U` dtypes are all exactly this. For
+*arrays* of strings it is essentially the only zero-copy option in C too.
+
+---
+
+## Decision: a string crosses as a fixed-length pointer view, blank-padded, and is never converted
+
+### Multibyte characters: the width is right, the encoding flag is not
+
+Checked 2026-08-14, because a fixed-width format truncates the moment the width is measured in
+different units from the payload.
+
+**It is not.** Both bindings measure bytes, which is the same unit the buffer is filled in, so a
+UTF-8 string is never truncated by the sizing. R's `tox_max_strlen` uses `LENGTH()` on a
+`CHARSXP`, which is the byte length and not the character count (`nchar()` would have been the
+bug). Python builds the buffer with `.encode()` — UTF-8 bytes — into a NumPy `S` dtype whose
+`itemsize` is likewise bytes. Fortran agrees: `character(len=n)` of kind `c_char` is n bytes.
+
+**What is lost is the encoding flag, not the content.** `tox_char_out` rebuilds R strings with
+`Rf_mkCharLen`, which marks the result native/unknown. A UTF-8 string handed in comes back
+byte-identical but with its `Encoding()` reset, which is harmless in a UTF-8 locale and wrong
+outside one. `Rf_mkCharLenCE(p, m, CE_UTF8)` is the fix, and it needs a decision rather than a
+patch: the shim would be asserting an encoding for bytes Fortran may have built itself, so the
+honest version marks UTF-8 only where the input was UTF-8, or the API declares that it always
+is.
+
+**For the pointer view specifically, blank padding is safe.** No UTF-8 continuation byte is
+`0x20` — they are all `0x80`-`0xBF` — so `trim` and `len_trim` cannot split a character, and
+neither could the NUL scan they replaced. What can split one is any *byte-index* slice of a
+`character(len=n)` (`s(1:k)`), but that is inherent to Fortran character handling and no worse
+under a pointer view than it was before.
+
+
+The wrapper used to convert the matrix into `character(len=:), allocatable, dimension(:)` with
+`c_char_2d_as_string`, which scanned each column for `c_null_char` and copied. That conversion
+is now a pointer remap costing nothing: `character(len=n), dimension(m)` and
+`character(len=1), dimension(n, m)` have **identical layout** -- contiguous, column-major,
+string *i* at bytes `[(i-1)n+1 .. i*n]` -- so the view is pure reinterpretation.
+
+Probed on 2026-08-14 against gfortran 16.1 and ifx 2026.1, at default, `-std=f2018`/`-stand
+f18` and `-std=f2023`/`-stand f23`:
+
+| form | gfortran | ifx |
+|---|---|---|
+| `c_f_pointer` to `character(len=n), pointer` (scalar) | OK, no diagnostics | OK, no diagnostics |
+| `c_f_pointer` to `character(len=n), pointer :: v(:)` from an assumed-size `dimension(strlen,*)` dummy, `intent(in)` and `intent(out)` | OK, no diagnostics | OK, no diagnostics |
+| `c_f_pointer` to `character(len=:), pointer` (deferred) | compiles, **empty string** | compiles, **SIGSEGV** |
+| `c_f_strpointer` (F2023) | **absent from `iso_c_binding`** | works, but warns #8893 even at `-stand f23` |
+
+**Never remap onto a deferred-length pointer.** It compiles clean on both compilers at every
+standard level, with no warning, and then produces two different wrong answers. If this shape
+is ever written it must be caught by review, because no compiler will catch it.
+
+`c_f_strpointer` is the route F2023 added for exactly this, and it is not usable: the current
+gfortran release does not have it at all, and ifx does not consider it standard even under its
+own F2023 flag.
+
+**On conformance.** By the letter of F2018 a `character(len=n)` scalar with `n > 1` is not an
+interoperable *type*, so `c_f_pointer` onto one is arguably outside the standard. The reason is
+not NUL-termination -- C has no string type at all, and `char[n]` and `character(len=n)` have
+exactly the same layout. It is that C's type system has no length parameter, so the
+correspondence is one Fortran object to *n* C objects, and interoperability is defined between
+types. That is why the len>1 allowance exists only as a **dummy-argument** rule for `bind(C)`
+procedures, which `c_f_pointer` cannot reach. There is no ABI question here, only a formal one,
+which is why every compiler does the obvious thing.
+
+The fully conforming fallback, if that ever matters, is for the implementation to take the 2-D
+`character(len=1)` buffer directly -- no pointer, no remap, and no conversion either, at the
+cost of clumsier string handling inside the kernel.
+
+### What adopting it required
+
+**The wire format is blank-padded, both ways.** The conversion trimmed at the first NUL; a
+remap yields the full padded width, so whatever pads a short string *is* part of the value.
+Fortran's own convention is *blank* padding -- `trim`, `len_trim` and string comparison all
+work on blanks, not NULs -- so the bindings blank-pad instead: `memset(buf, ' ', total)` in
+`tox_char_in` and `tox_char_alloc`, `bytes.ljust(width)` on the NumPy side, and
+`tox_char_out` / `.rstrip(' ')` trimming blanks rather than scanning for a NUL. The trade is
+that a value genuinely ending in blanks stops round-tripping, which for gene and family IDs
+is no loss.
+
+**For arrays that is behaviour-preserving.** `c_char_2d_as_string` already allocated
+`character(len=strlen) :: str_out(n)` and assigned each string into it, which blank-pads to
+the full width. So implementations were already receiving blank-padded fixed-width arrays of
+exactly this width, and every consumer already trims. For *scalars* the length changes from
+trimmed to blank-padded, which is safe because 17 of the 21 boundary character arguments are
+filenames and `FILE=` removes trailing blanks (F2018 12.5.6.10) -- safer padded than
+NUL-terminated -- and because nothing in `src/` ever reads `len()` of a boundary scalar.
+
+**The published C ABI is byte-identical and its semantics are not.** The symbol set and the
+prototypes do not move, but a direct C caller must now blank-pad rather than NUL-terminate:
+`char buf[16] = "genes.tsv"` used to work and now yields a filename with embedded NULs, and a
+`method` buffer holding `"ward\0\0\0\0"` now matches no `case` and returns
+`ERR_INVALID_INPUT`. Nothing in-tree does that -- Python and R are the only callers -- but it
+is the one thing `NO_R_BINDING`'s direct-C audience has to be told.
+
+**A nullable optional needs a target and an explicit `nullify`.** `c_loc` requires TARGET,
+which an optional was deliberately not given; the eight optional characters of
+`save_tox_data_c` now carry `optional, target`, which is legal on a `bind(C)` dummy and costs
+the ABI nothing. The absent case is a *disassociated* pointer, which F2018 15.5.2.12 makes an
+absent optional dummy -- the same rule the unallocated allocatable used. It must be a
+`nullify` statement and never `=> null()`: an initialiser gives the local an implicit SAVE,
+which is both thread-unsafe and formally impossible on an automatic-length object, and both
+compilers accept the spelling silently.
+
+**Zero-size buffers are fine, and were probed rather than guarded.** `M_CHECK_ARRAY_NON_NULL`
+lets an empty array through unchecked, so the remap is the first place the wrapper takes an
+unguarded `c_loc` -- and `read_tox_data_into` on a partial archive really does reach it with
+`family_id_len == 0, n_family_ids == 0`, where R's `R_alloc(0, 1)` hands back NULL. Probed
+2026-08-14: `strlen=0, n=0` and `strlen=0, n=2`, both over a NULL buffer, give a well-behaved
+zero-size/zero-length view on gfortran 16.1 and ifx 2026.1 under `-fcheck=all` / `-check all`.
+A guard would not have helped anyway: a non-optional dummy cannot receive a disassociated
+pointer. This is the same class of formal-only objection as the `len>1` point above.
+
+**Only `Conversion.MODE` still converts.** It is a fixed-width `select case` lookup, and
+`c_char_1d_as_string` on a blank-padded buffer simply returns the full width, which
+`select case` matches because a Fortran character comparison blank-pads the shorter operand.
+So the mode path was left exactly as it was. That, and one hand-written caller, are why
+`c_char_1d_as_string` survives: `get_zip_entry_name` maps a fixed 4096-byte window over
+libzip's `zip_get_name` and has no bound to remap against, so the NUL scan is the only thing
+that can find the length. The other three -- `c_char_2d_as_string` and
+`string_as_c_char_{1d,2d}` -- are gone, with their 42 call sites.
+
+The probe, reduced to the case that decides it:
+
+```fortran
+subroutine take_in(strlen, n_strings, arr)
+    integer(c_int), intent(in) :: strlen, n_strings
+    character(kind=c_char, len=1), dimension(strlen, *), intent(in), target :: arr
+    character(len=strlen), pointer :: view(:)
+    integer :: i
+
+    call c_f_pointer(c_loc(arr), view, [n_strings])
+    do i = 1, n_strings
+        print '(a,i0,3a)', 'in', i, '=[', trim(view(i)), ']'
+    end do
+end subroutine take_in
+```
+
+Re-run it against any new compiler before relying on this.
 
 ---
 

@@ -1,0 +1,30 @@
+# Generated. Do not edit.
+
+#' Calculate the number of neighbors to be used for constructing neighborhoods
+#'
+#' The `desired_size` works as upper limit, as the actual neighborhood size might be lower
+#' due to few genes with non-NaN mean.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing_impl::calc_neighborhood_size}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param n_pool a integer scalar. Total number of pooled mean-expression values across both studies
+#' @param n_points a integer scalar. Number of reference points
+#' @param mean_S a numeric vector. Per-gene mean expression values
+#'   NaN is permitted for this value.
+#' @param desired_size a integer scalar. Optional desired neighborhood size
+#'   The default value is `1000`.
+#' @return a integer scalar. Calculated neighborhood size
+#' @export
+calc_neighborhood_size <- function(n_pool, n_points, mean_S, desired_size = 1000L) {
+    n_pool <- .tox_as_integer_scalar(n_pool, "n_pool")
+    n_points <- .tox_as_integer_scalar(n_points, "n_points")
+    mean_S <- .tox_as_double_vector(mean_S, "mean_S")
+    desired_size <- .tox_as_integer_scalar(desired_size, "desired_size")
+    .result <- .Call("calc_neighborhood_size_call", n_pool, n_points, mean_S, desired_size)
+    .arguments <- c("n_pool", "n_points", "n_genes_S", "mean_S", "desired_size")
+    .sources <- c(NA_character_, NA_character_, "mean_S", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$n_neighbors
+}

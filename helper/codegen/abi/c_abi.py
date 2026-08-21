@@ -98,23 +98,28 @@ def build_wrapper(procedure: Procedure, diagnostics: DiagnosticBag,
 
 
 def c_symbol_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
-    """The exported symbol for `procedure`.
-
-    `<p>_alloc` is the one callers want, so it takes the plain name `<p>_c`. Its
-    non-allocating twin `<p>` is the expert entry point and becomes `<p>_expert_c` -- but
-    only where such a twin exists, otherwise a lone `<p>` would be needlessly renamed.
-    """
+    """The exported symbol for `procedure`: what the bindings call it, plus `_c`."""
     return f"{stripped_name(procedure, conventions)}{conventions.c_suffix}"
 
 
 def stripped_name(procedure: Procedure, conventions: Conventions = CONVENTIONS) -> str:
-    """The wrapper name without the `_c` suffix, as the binding languages call it."""
-    name = procedure.name
-    if procedure.is_alloc_variant:
-        return name[: -len(conventions.alloc_suffix)]
-    if procedure.has_alloc_sibling:
-        return f"{name}{conventions.expert_infix}"
-    return name
+    """The wrapper name without the `_c` suffix, as the binding languages call it.
+
+    Which is the Fortran name, unchanged. Synthesis names the tiers `foo` and `foo_expert`
+    outright, and a hand-written export is published as written.
+
+    It was not always the identity. Until f42 converted (2026-08-11) this translated a
+    hand-written `foo` / `foo_alloc` pair into the published `foo` / `foo_expert`, which is
+    how the framework spelled the two tiers before any of them were generated. No source
+    writes that pair now, so the translation went with it: a rule that renames procedures
+    behind the author's back has to earn its keep, and one with no remaining customer cannot.
+    An author who writes `foo_alloc` today gets a procedure published as `foo_alloc`.
+
+    `Conventions.alloc_suffix` outlives this. `validate` still refuses an implementation whose
+    base name ends in it, which is what stops the shape being reintroduced where it would do
+    real damage -- beside a generated `foo` that already means the allocating tier.
+    """
+    return procedure.name
 
 
 class _Builder:

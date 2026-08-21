@@ -260,7 +260,7 @@ class TestDirectivesTogether:
 
     def test_a_default_and_a_required_if_mode_are_both_parsed(self, macros, parser):
         # whether the pairing contradicts depends on the mode table (it does not when the
-        # kernel splits per mode), which the parser cannot see -- the semantic pass decides
+        # impl splits per mode), which the parser cannot see -- the semantic pass decides
         doc = documented(
             macros,
             "DM_DEFAULT(1_int32)",

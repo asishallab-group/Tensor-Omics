@@ -2,7 +2,11 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_trajectory_normalization(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Min-max normalization of factor trajectories over time.
+!|
+!| Each factor's time series is rescaled to `[0,1]` independently, per sample -- so trajectories
+!| of very different magnitudes can be compared by shape. `normalize_single_trajectory` does one;
+!| `normalize_all_trajectories` does a whole tensor of them in one call.
 module tox_trajectory_normalization_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_double, c_int, c_loc
@@ -12,8 +16,8 @@ module tox_trajectory_normalization_c
 
     public :: normalize_variable_timeseries_c
     public :: normalize_single_trajectory_c
-    public :: normalize_all_trajectories_expert_c
     public :: normalize_all_trajectories_c
+    public :: normalize_all_trajectories_expert_c
 
 contains
 
@@ -98,6 +102,54 @@ contains
 
     !> summary: C-wrapper for [[tox_trajectory_normalization(module):normalize_all_trajectories(subroutine)]]
     !| independently across time for each sample.
+    subroutine normalize_all_trajectories_c(&
+            trajectories,&
+            trajectories_norm,&
+            n_factors,&
+            n_samples,&
+            n_timepoints,&
+            status,&
+            ierr&
+        ) bind(C, name="normalize_all_trajectories_c")
+        use tox_trajectory_normalization, only: normalize_all_trajectories
+
+        integer(c_int), intent(in), target :: n_factors
+            !! Number of factors
+        integer(c_int), intent(in), target :: n_samples
+            !! Number of samples/entities
+        integer(c_int), intent(in), target :: n_timepoints
+            !! Number of time points
+        real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
+            !! Original trajectories
+        real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(out), target :: trajectories_norm
+            !! Normalized trajectories
+        integer(c_int), dimension(n_factors, n_samples), intent(out), target :: status
+            !! Status code for specific warnings, one per factor per sample
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_factors)
+        M_CHECK_NON_NULL(n_samples)
+        M_CHECK_NON_NULL(n_timepoints)
+        M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
+        M_CHECK_ARRAY_NON_NULL(trajectories_norm, n_factors * n_samples * n_timepoints)
+        M_CHECK_ARRAY_NON_NULL(status, n_factors * n_samples)
+
+        call normalize_all_trajectories(&
+            trajectories = trajectories,&
+            trajectories_norm = trajectories_norm,&
+            n_factors = n_factors,&
+            n_samples = n_samples,&
+            n_timepoints = n_timepoints,&
+            status = status,&
+            ierr = ierr&
+        )
+    end subroutine normalize_all_trajectories_c
+
+    !> summary: C-wrapper for [[tox_trajectory_normalization(module):normalize_all_trajectories_expert(subroutine)]]
+    !| independently across time for each sample.
     subroutine normalize_all_trajectories_expert_c(&
             trajectories,&
             trajectories_norm,&
@@ -109,7 +161,7 @@ contains
             status,&
             ierr&
         ) bind(C, name="normalize_all_trajectories_expert_c")
-        use tox_trajectory_normalization, only: normalize_all_trajectories
+        use tox_trajectory_normalization, only: normalize_all_trajectories_expert
 
         integer(c_int), intent(in), target :: n_factors
             !! Number of factors
@@ -141,7 +193,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_series_norm, n_timepoints)
         M_CHECK_ARRAY_NON_NULL(status, n_factors * n_samples)
 
-        call normalize_all_trajectories(&
+        call normalize_all_trajectories_expert(&
             trajectories = trajectories,&
             trajectories_norm = trajectories_norm,&
             n_factors = n_factors,&
@@ -153,54 +205,6 @@ contains
             ierr = ierr&
         )
     end subroutine normalize_all_trajectories_expert_c
-
-    !> summary: C-wrapper for [[tox_trajectory_normalization(module):normalize_all_trajectories_alloc(subroutine)]]
-    !| independently across time for each sample.
-    subroutine normalize_all_trajectories_c(&
-            trajectories,&
-            trajectories_norm,&
-            n_factors,&
-            n_samples,&
-            n_timepoints,&
-            status,&
-            ierr&
-        ) bind(C, name="normalize_all_trajectories_c")
-        use tox_trajectory_normalization, only: normalize_all_trajectories_alloc
-
-        integer(c_int), intent(in), target :: n_factors
-            !! Number of factors
-        integer(c_int), intent(in), target :: n_samples
-            !! Number of samples/entities
-        integer(c_int), intent(in), target :: n_timepoints
-            !! Number of time points
-        real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(in), target :: trajectories
-            !! Original trajectories
-        real(c_double), dimension(n_factors, n_samples, n_timepoints), intent(out), target :: trajectories_norm
-            !! Normalized trajectories
-        integer(c_int), dimension(n_factors, n_samples), intent(out), target :: status
-            !! Status code for specific warnings, one per factor per sample
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(n_factors)
-        M_CHECK_NON_NULL(n_samples)
-        M_CHECK_NON_NULL(n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(trajectories, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(trajectories_norm, n_factors * n_samples * n_timepoints)
-        M_CHECK_ARRAY_NON_NULL(status, n_factors * n_samples)
-
-        call normalize_all_trajectories_alloc(&
-            trajectories = trajectories,&
-            trajectories_norm = trajectories_norm,&
-            n_factors = n_factors,&
-            n_samples = n_samples,&
-            n_timepoints = n_timepoints,&
-            status = status,&
-            ierr = ierr&
-        )
-    end subroutine normalize_all_trajectories_c
 
 end module tox_trajectory_normalization_c
 #endif

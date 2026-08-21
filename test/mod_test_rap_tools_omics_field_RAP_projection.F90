@@ -3,6 +3,7 @@ module mod_test_rap_tools_omics_field_RAP_projection
     use asserts
     use tox_relative_axis_plane_tools
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     use tox_errors
     implicit none
@@ -33,7 +34,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs, i_vec
         real(real64), allocatable :: projections(:, :)
 
@@ -64,7 +65,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -86,7 +87,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -109,7 +110,7 @@ contains
 
         real(real64), dimension(3, 2, 3) :: vecs
         real(real64), allocatable :: projections(:, :)
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
 
         vecs = 0.0_real64
@@ -139,7 +140,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -162,7 +163,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -184,7 +185,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -206,7 +207,7 @@ contains
         implicit none
 
         real(real64), dimension(3, 2, 3) :: vecs
-        logical :: axes_mask(3), vecs_mask(3)
+        logical(c_bool) :: axes_mask(3), vecs_mask(3)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -226,7 +227,7 @@ contains
     !> Test non-square vecs
     subroutine test_non_square_vecs()
         real(real64), dimension(4, 2, 1) :: vecs
-        logical :: axes_mask(4), vecs_mask(1)
+        logical(c_bool) :: axes_mask(4), vecs_mask(1)
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs
         real(real64), allocatable :: projections(:, :)
 
@@ -247,7 +248,7 @@ contains
     !> Test concrete example
     subroutine test_concrete_example()
         real(real64), dimension(3, 2, 1) :: vecs
-        logical :: axes_mask(3), vecs_mask(1)
+        logical(c_bool) :: axes_mask(3), vecs_mask(1)
         real(real64), allocatable :: projections(:, :)
         real(real64), dimension(3) :: expected_projection_vec
         integer(int32) :: ierr, n_selected_axes, n_selected_vecs

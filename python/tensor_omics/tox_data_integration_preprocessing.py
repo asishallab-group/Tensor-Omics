@@ -1,6 +1,13 @@
-"""tox_data_integration_preprocessing
+r"""tox_data_integration_preprocessing
 
-Generated from the kernel; do not edit -- regenerate instead.
+# Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing
+
+The step that turns expression vectors into the neighborhood residuals the rest of the test
+consumes: gene-wise means, the signed deviation of each replicate from them, and the
+neighborhoods of reference points those residuals are grouped into so the comparison is
+conditioned on expression level rather than pooled across it.
+
+`calc_neighborhood_size` sizes a neighborhood for a caller that allocates its own.
 
 Python binding, generated from tox_data_integration_preprocessing. Do not edit.
 """
@@ -44,6 +51,21 @@ _COMPUTE_RESIDUALS_ARGUMENTS = ("n_genes", "n_reps", "expr", "means", "resid", "
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_RESIDUALS_ARGUMENT_SOURCES = ("expr", "expr", None, None, None, None,)
 
+_lib.pool_means_c.restype = None
+_lib.pool_means_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_POOL_MEANS_ARGUMENTS = ("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_POOL_MEANS_ARGUMENT_SOURCES = (None, "pooled_means", "x_star", None, None, None,)
+
 _lib.pool_means_expert_c.restype = None
 _lib.pool_means_expert_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
@@ -59,21 +81,6 @@ _lib.pool_means_expert_c.argtypes = (
 _POOL_MEANS_EXPERT_ARGUMENTS = ("pooled_means", "pooled_means_perm", "pool_size", "n_points", "n_pool", "x_star", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _POOL_MEANS_EXPERT_ARGUMENT_SOURCES = (None, None, "pooled_means", "x_star", None, None, None,)
-
-_lib.pool_means_c.restype = None
-_lib.pool_means_c.argtypes = (
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
-    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
-    ctypes.POINTER(ctypes.c_int),
-)
-
-#: The wrapped procedure's arguments, so an error can name one
-_POOL_MEANS_ARGUMENTS = ("pooled_means", "pool_size", "n_points", "n_pool", "x_star", "ierr",)
-#: For a derived argument, the one the caller passed it in
-_POOL_MEANS_ARGUMENT_SOURCES = (None, "pooled_means", "x_star", None, None, None,)
 
 _lib.pool_study_means_c.restype = None
 _lib.pool_study_means_c.argtypes = (
@@ -246,6 +253,79 @@ def compute_residuals(
 
     return resid
 
+def pool_means(
+        pooled_means,
+        n_points,
+):
+    r"""Turn a sorted pool of per-gene mean expression values into reference points
+
+    Parameters
+    ----------
+    pooled_means : np.ndarray[np.float64] of shape (pool_size,)
+        Pooled means
+        NaN is permitted for this value.
+    n_points : int
+        Number of reference points to define
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        n_pool : int
+            Total number of included (non-NaN) pooled mean-expression values
+        x_star : np.ndarray[np.float64] of shape (n_points,), read-only
+            Mean-expression reference points
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means`, whose argument names are
+    the ones an error message reports.
+
+    This entry point seeds `pooled_means_perm` and sorts it by `pooled_means`.
+    Call `pool_means_expert` to do that yourself.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        pooled_means = np.ascontiguousarray(pooled_means, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'pooled_means' must be an array of np.float64: {error}") from None
+    if pooled_means.ndim != 1:
+        raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    pool_size = pooled_means.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    n_pool = ctypes.c_int(0)
+    x_star = np.empty((n_points,), dtype=np.float64, order='C')
+    ierr = ctypes.c_int(0)
+
+    _lib.pool_means_c(
+        pooled_means,
+        ctypes.byref(ctypes.c_int(pool_size)),
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(n_pool),
+        x_star,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    x_star.flags.writeable = False
+
+    return {
+        "n_pool": n_pool.value,
+        "x_star": x_star,
+    }
+
 def pool_means_expert(
         pooled_means,
         pooled_means_perm,
@@ -281,7 +361,7 @@ def pool_means_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means_expert`, whose argument names are
     the ones an error message reports.
 
     The expert entry point: you supply `pooled_means_perm` yourself.
@@ -335,79 +415,6 @@ def pool_means_expert(
         "x_star": x_star,
     }
 
-def pool_means(
-        pooled_means,
-        n_points,
-):
-    r"""Turn a sorted pool of per-gene mean expression values into reference points
-
-    Parameters
-    ----------
-    pooled_means : np.ndarray[np.float64] of shape (pool_size,)
-        Pooled means
-        NaN is permitted for this value.
-    n_points : int
-        Number of reference points to define
-
-    Returns
-    -------
-    dict
-        with keys:
-
-        n_pool : int
-            Total number of included (non-NaN) pooled mean-expression values
-        x_star : np.ndarray[np.float64] of shape (n_points,), read-only
-            Mean-expression reference points
-            A result is a value; call `.copy()` to obtain a modifiable array.
-
-    Raises
-    ------
-    ToxError
-        If the underlying Fortran reports an error.
-
-    Notes
-    -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_means_alloc`, whose argument names are
-    the ones an error message reports.
-
-    This entry point seeds `pooled_means_perm` and sorts it by `pooled_means`.
-    Call `pool_means_expert` to do that yourself.
-    """
-    # accept anything array-like, converting only when C needs it
-    try:
-        pooled_means = np.ascontiguousarray(pooled_means, dtype=np.float64)
-    except (TypeError, ValueError) as error:
-        raise TypeError(f"'pooled_means' must be an array of np.float64: {error}") from None
-    if pooled_means.ndim != 1:
-        raise ValueError(f"'pooled_means' must have 1 dimension, but has {pooled_means.ndim}")
-
-    # what the inputs already say, rather than asking for it again
-    pool_size = pooled_means.shape[0]
-
-    # outputs and work arrays, which the caller never sees
-    n_pool = ctypes.c_int(0)
-    x_star = np.empty((n_points,), dtype=np.float64, order='C')
-    ierr = ctypes.c_int(0)
-
-    _lib.pool_means_c(
-        pooled_means,
-        ctypes.byref(ctypes.c_int(pool_size)),
-        ctypes.byref(ctypes.c_int(n_points)),
-        ctypes.byref(n_pool),
-        x_star,
-        ctypes.byref(ierr),
-    )
-
-    check_err_code(ierr.value, _POOL_MEANS_ARGUMENTS, _POOL_MEANS_ARGUMENT_SOURCES)
-
-    # a result is a value: modify a copy, not this
-    x_star.flags.writeable = False
-
-    return {
-        "n_pool": n_pool.value,
-        "x_star": x_star,
-    }
-
 def pool_study_means(
         mean_S1,
         mean_S2,
@@ -444,7 +451,7 @@ def pool_study_means(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_study_means_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::pool_study_means`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -537,7 +544,7 @@ def construct_neighborhoods(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

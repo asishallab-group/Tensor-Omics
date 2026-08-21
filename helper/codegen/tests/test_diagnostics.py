@@ -10,6 +10,7 @@ from codegen.diagnostics import (
     Severity,
     SourceLocation,
 )
+from codegen.ir.entities import Module, Project
 
 
 class Entity:
@@ -66,6 +67,29 @@ def test_context_skips_entities_without_a_kind():
     child = Entity("procedure", "p", parent=anonymous)
 
     assert Context.of(child).entities == (("procedure", "p"),)
+
+
+def test_context_names_the_project_it_reaches():
+    """A real diagnostic is raised on a module the project has adopted, not a loose one.
+
+    The name is `[extra.ford] project` in fpm.toml, which the Ford frontend passes on.
+    """
+    module = Module(name="tox_thing")
+    Project([module], name="TensorOmics")
+
+    assert str(Context.of(module)) == "module 'tox_thing' in project 'TensorOmics'"
+
+
+def test_context_skips_an_unnamed_project():
+    """Hand-built IR has no project name, and must not be reported `in project ''`.
+
+    Which is what every module-level diagnostic said until the frontend was taught to pass
+    the name on -- `Project.name` existed and no caller had ever filled it.
+    """
+    module = Module(name="tox_thing")
+    Project([module])
+
+    assert str(Context.of(module)) == "module 'tox_thing'"
 
 
 def test_empty_context_is_falsy():

@@ -1,6 +1,10 @@
-"""tox_euclidean_distance
+r"""tox_euclidean_distance
 
-Generated from the kernel; do not edit -- regenerate instead.
+Euclidean distances in gene expression space.
+
+`euclidean_distance` between two expression vectors, and `distance_to_centroid` from every
+gene of a family to that family's centroid -- the distance the outlier detection and the
+relative-distance index are built on.
 
 Python binding, generated from tox_euclidean_distance. Do not edit.
 """

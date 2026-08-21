@@ -334,7 +334,7 @@ class TestMathIntrinsics:
     @pytest.mark.parametrize(
         "expression, expected",
         [
-            # PI is a module parameter defined this way in f42_utils; evaluating its own
+            # PI is a module parameter defined this way in f42_math_impl; evaluating its own
             # initialiser is what lets DM_DEFAULT(PI) resolve without injecting a value
             ("4.0_real64*atan(1.0_real64)", math.pi),
             ("atan(1.0_real64)", math.pi / 4),

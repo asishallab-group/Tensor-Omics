@@ -4,7 +4,7 @@
 #'
 #' Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_family_scaling}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
@@ -12,14 +12,16 @@
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
-#' @param span a numeric scalar. Span parameter for LOESS smoothing
+#' @param span a numeric scalar. Span parameter for LOESS smoothing, passed straight to
+#'   \code{\link{loess_fit_plain}}, so it is held to that
+#'   procedure's own range rather than to the NaN tolerance the distance data carries.
 #'   The default value is `0.7`.
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
 #'   The default value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
-#'   The default value is `1`.
+#'   The default value is `"robust"`.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
 #'   The default value is `3`.
 #' @return a named list with elements:
@@ -60,7 +62,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #'
 #' RDI = Euclidean distance / family scaling factor
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_get_outliers::compute_rdi}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
@@ -109,8 +111,10 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param perm a integer vector. Permutation array with sorted indices
-#' @param percentile a numeric scalar. Percentile threshold (top 5% for the default).
-#'   The default value is `95.0`.
+#' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] (top 5% for the default).
+#'   The default value is `0.95`.
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{threshold}{a numeric scalar. Output threshold value used for detection}
@@ -119,7 +123,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
 #'     upper-tail quantile is used.}
 #' @export
-identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
+identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     perm <- .tox_as_integer_vector(perm, "perm")
@@ -148,7 +152,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #' \code{\link{compute_rdi}}, then flags outliers via
 #' \code{\link{identify_outliers}}.
 #'
-#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_get_outliers::detect_outliers}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param n_families a integer scalar. Total number of gene families
@@ -156,8 +160,10 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
-#' @param percentile a numeric scalar. Percentile threshold for outlier detection.
-#'   The default value is `95.0`.
+#' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] for outlier detection.
+#'   The default value is `0.95`.
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{loess_x}{a numeric vector. Reference x-coordinates.}
@@ -168,7 +174,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 95.0) {
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
 #'     upper-tail quantile is used.}
 #' @export
-detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 95.0) {
+detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 0.95) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     distances <- .tox_as_double_vector(distances, "distances")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")

@@ -1,6 +1,10 @@
-"""tox_trajectory_normalization
+r"""tox_trajectory_normalization
 
-Generated from the kernel; do not edit -- regenerate instead.
+Min-max normalization of factor trajectories over time.
+
+Each factor's time series is rescaled to `[0,1]` independently, per sample -- so trajectories
+of very different magnitudes can be compared by shape. `normalize_single_trajectory` does one;
+`normalize_all_trajectories` does a whole tensor of them in one call.
 
 Python binding, generated from tox_trajectory_normalization. Do not edit.
 """
@@ -223,7 +227,7 @@ def normalize_all_trajectories(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_trajectory_normalization::normalize_all_trajectories`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

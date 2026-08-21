@@ -14,9 +14,8 @@
 !| contiguous block by the type-specific serializers.
 module f42_serde_arrays_utils_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -60,7 +59,7 @@ contains
             !! | character | string length |
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable :: filename_f
+        character(len=filename_strlen), pointer :: filename_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -71,8 +70,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
         M_CHECK_ARRAY_NON_NULL(dims_out, dims_out_capacity)
 
-        call c_char_1d_as_string(filename, filename_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(filename), filename_f)
 
         call get_array_metadata(&
             filename = filename_f,&

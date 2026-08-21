@@ -5,6 +5,7 @@ dirty one does not, that `--check` reports without writing. The emitters themsel
 tested elsewhere; here the question is only that they are wired together correctly.
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -20,7 +21,7 @@ from conftest import REPO_ROOT
 FIXTURE_SRC = Path("helper/codegen/tests/fixtures/src")
 #: the real tox_errors lives here, so a full generate can build the error module
 # The whole source tree: a DM_DEFAULT may reference a parameter from another package
-# (max_angle's default is f42_utils's PI), and constant resolution only sees the modules
+# (max_angle's default is f42_math_impl's PI), and constant resolution only sees the modules
 # that are parsed. The generator is always run on the full tree, so these end-to-end tests
 # are too. Parsing it per test is slow, so the `real_project` fixture parses it once and the
 # tests reuse it through generate(parsed=...); only the CLI tests, which go through argv,
@@ -84,6 +85,27 @@ class TestGenerate:
         result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
 
         assert not any("DM_OUTPUT_FROM" in w.message for w in result.diagnostics.warnings)
+
+    def test_the_python_module_docstring_carries_the_whole_module_doc(self, real_project):
+        """Not just its first line. A generated module is the published API, and taking the
+        summary alone reduced every module in the package to one sentence."""
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
+        written = {f.path.name: f.content for f in result.files}
+
+        docstring = written["tox_loess.py"].split('"""')[1]
+        impl = (REPO_ROOT / REAL_SRC / "tox" / "tox_loess_impl.F90").read_text()
+        for line in impl.splitlines():
+            if line.startswith("!| ") and len(line) > 20:
+                assert line[3:] in docstring
+
+    def test_the_python_module_docstring_says_do_not_edit_once(self, real_project):
+        """The Fortran wrapper's own "generated from" note is added by its emitter, not
+        carried in the IR -- carried, every language would print it beside their own."""
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("python",), parsed=real_project)
+        written = {f.path.name: f.content for f in result.files}
+
+        docstring = written["tox_loess.py"].split('"""')[1]
+        assert docstring.lower().count("do not edit") == 1
 
     def test_files_are_not_written_by_generate(self, isolated_repo, real_project):
         result = generate(paths(isolated_repo, REAL_SRC), targets=("python",), parsed=real_project)
@@ -267,7 +289,7 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
         for spec in synthesis.specs:
             for wrapper in (spec.validating, spec.allocating):
                 if wrapper is not None:
-                    info[wrapper.name.lower()] = WrapperInfo(spec.kernel.name, spec.mode_fix)
+                    info[wrapper.name.lower()] = WrapperInfo(spec.impl.name, spec.mode_fix)
         emitter = FortranWrapperEmitter(project=synthesis.project)
         for spec in synthesis.specs:
             if spec.allocating is None:
@@ -278,17 +300,17 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
             yield spec, text
 
     def exposed(self, spec):
-        """What this wrapper pair exposes of the kernel.
+        """What this wrapper pair exposes of the implementation.
 
-        Read off the validating wrapper rather than off the kernel, because a mode-split
-        variant exposes less: the mode argument is fixed in the kernel call and dropped, and
+        Read off the validating wrapper rather than off the implementation, because a mode-split
+        variant exposes less: the mode argument is fixed in the implementation call and dropped, and
         an argument scoped to another mode is absent entirely. `foo` is exactly that set,
         plus the `ierr` the wrapper may have synthesised.
         """
         return [
             argument
             for argument in spec.validating.arguments
-            if spec.kernel.argument(argument.name) is not None
+            if spec.impl.argument(argument.name) is not None
         ]
 
     def test_every_exposed_argument_is_a_dummy_or_a_local_and_never_both(self, real_project):
@@ -305,33 +327,33 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
                 )
                 assert argument.name not in signature, spec.allocating.name
 
-    def test_every_exposed_argument_still_reaches_the_kernel(self, real_project):
+    def test_every_exposed_argument_still_reaches_the_impl(self, real_project):
         for spec, text in self.wrappers(real_project):
-            call = text[text.index(f"call {spec.kernel.name}(") :]
+            call = text[text.index(f"call {spec.impl.name}(") :]
             for argument in self.exposed(spec):
                 assert f"{argument.name} = " in call, (
-                    f"{spec.allocating.name}: '{argument.name}' is not passed to the kernel"
+                    f"{spec.allocating.name}: '{argument.name}' is not passed to the implementation"
                 )
 
     def test_every_allocating_dummy_is_accounted_for(self, real_project):
-        # the other direction: nothing reaches that signature except the kernel's arguments,
+        # the other direction: nothing reaches that signature except the implementation's arguments,
         # the prologue's own, and ierr. Asserting only over the *exposed* set would miss a
         # prologue argument entirely, since it is on the allocating wrapper alone.
         from codegen.config import CONVENTIONS
         from codegen.synthesize import prologue_only_arguments
 
         for spec, _ in self.wrappers(real_project):
-            allowed = {a.name.lower() for a in spec.kernel.arguments}
+            allowed = {a.name.lower() for a in spec.impl.arguments}
             allowed |= {
                 a.name.lower()
                 for a in prologue_only_arguments(
-                    spec.prologue, spec.kernel.arguments, CONVENTIONS
+                    spec.prologue, spec.impl.arguments, CONVENTIONS
                 )
             }
             allowed.add(CONVENTIONS.error_arg.lower())
             for argument in spec.allocating.arguments:
                 assert argument.name.lower() in allowed, (
-                    f"{spec.allocating.name}: '{argument.name}' is neither the kernel's, "
+                    f"{spec.allocating.name}: '{argument.name}' is neither the implementation's, "
                     f"the prologue's, nor ierr"
                 )
 
@@ -340,3 +362,103 @@ class TestTheAllocatingSignatureAndItsBodyAgree:
         specs = [spec for spec, _ in self.wrappers(real_project)]
         assert len(specs) >= 10
         assert any(spec.mode_fix is not None for spec in specs), "no mode-split wrapper seen"
+
+
+class TestAModeDefaultSpeaksEachLayersLanguage:
+    """`DM_DEFAULT` on a mode argument quotes back the author's Fortran, and that is an
+    integer. Every layer that types the mode as a string has to say the string instead --
+    and the one layer that keeps the integer has to go on saying the integer.
+
+    `fx_modes`' `link_method` is what exercises it: optional, carrying a mode table, and
+    `DM_DEFAULT(METHOD_WARD)`. Nothing in the tree had that combination before, which is how
+    a Python docstring came to read `default 'ward'` on one line and ``The default value is
+    `METHOD_WARD`.`` on the next.
+    """
+
+    @pytest.fixture(scope="class")
+    def written(self):
+        # the fixture tree has no tox_errors, so the run is not ok; the files are still built
+        result = generate(paths(REPO_ROOT), targets=("c", "python", "r"))
+        return {file.path.name: file.content for file in result.files}
+
+    def test_python_says_the_mode_string(self, written):
+        assert "The default value is `'ward'`." in written["fx_basics.py"]
+        assert "METHOD_WARD" not in written["fx_basics.py"]
+
+    def test_r_quotes_it_the_way_r_does(self, written):
+        # matching its own type line, which lists the modes as "ward", "single"
+        assert 'The default value is `"ward"`.' in written["fx_basics.R"]
+        assert "METHOD_WARD" not in written["fx_basics.R"]
+
+    def test_the_c_wrapper_says_it_too(self, written):
+        # its dummy is character(len=1, kind=c_char), so the parameter names a value no
+        # caller of this layer can pass. Its mode table still cites the parameter by name.
+        assert "The default value is `'ward'`." in written["fx_basics_c.F90"]
+        assert "The default value is `METHOD_WARD`." not in written["fx_basics_c.F90"]
+
+    def test_the_fortran_wrapper_keeps_the_integer(self, real_project):
+        """The negative control. There the dummy really is an integer, so the author's own
+        literal is the right thing to print and rewriting it would be the same bug pointing
+        the other way."""
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("fortran",), parsed=real_project)
+        written = {file.path.name: file.content for file in result.files}
+
+        wrapper = written["tox_get_outliers.F90"]
+        assert "integer(int32), intent(in), optional :: mode" in wrapper
+        assert "The default value is `1_int32`." in wrapper
+        assert "The default value is `'robust'`." not in wrapper
+
+
+class TestTheCLayerAllocatesNothingOnTheStack:
+    """A converted local sized by something C supplied is an automatic array unless the
+    emitter is careful, and an automatic array is stack storage. At 10 million elements a
+    logical mask is 40 MB: ifx segfaults on it against a default 8 MB stack, and gfortran
+    escapes only by quietly rehousing large automatics. It is reachable from the published
+    API -- `serialize_logical` takes `arr(n_elements)` of the caller's choosing.
+
+    So the rule is a property of the whole emitted layer, not of one wrapper: every such
+    local is `allocatable` and reaches the heap through `M_ALLOCATE`, whose failure path
+    returns `ERR_ALLOC_FAIL` to the caller instead of crashing inside the wrapper.
+
+    Since strings became pointer views the real project reaches something stronger still:
+    no wrapper allocates anything at all, on either the stack or the heap. The two rules
+    below are what keeps that from silently becoming an automatic array again if a new
+    conversion ever needs a local.
+    """
+
+    #: `<type> ... dimension(<something that is not just ':'>) :: name` on a local, i.e. an
+    #: automatic array. Dummies are excluded by the `intent(` they all carry.
+    AUTOMATIC = re.compile(
+        r"^\s+(?:logical|character|integer|real|complex)[^:\n]*dimension\([^:)]", re.M
+    )
+
+    @pytest.fixture(scope="class")
+    def c_wrappers(self, real_project):
+        result = generate(paths(REPO_ROOT, REAL_SRC), targets=("c",), parsed=real_project)
+        return {f.path.name: f.content for f in result.files if f.path.suffix == ".F90"}
+
+    def test_no_wrapper_allocates_at_all(self, c_wrappers):
+        # It was 16 wrappers, then 3 when logicals moved to c_bool, then none when strings
+        # became pointer views of the caller's buffer. Nothing the emitter can express now
+        # needs storage of its own: this is the strongest form of the rule, and the two
+        # tests below are what will catch a new conversion reaching for the stack instead.
+        offenders = [name for name, text in c_wrappers.items() if "M_ALLOCATE" in text]
+        assert offenders == []
+
+    def test_no_wrapper_declares_a_runtime_sized_automatic_local(self, c_wrappers):
+        offenders = []
+        for name, text in c_wrappers.items():
+            for line in text.splitlines():
+                if "intent(" in line or "allocatable" in line:
+                    continue
+                if self.AUTOMATIC.match(line):
+                    offenders.append(f"{name}: {line.strip()}")
+        assert offenders == []
+
+    def test_every_allocation_goes_through_the_checked_macro(self, c_wrappers):
+        # a bare `allocate(` has no stat=, so a failure aborts instead of returning ierr
+        bare = [f"{name}: {line.strip()}"
+                for name, text in c_wrappers.items()
+                for line in text.splitlines()
+                if line.strip().startswith("allocate(")]
+        assert bare == []

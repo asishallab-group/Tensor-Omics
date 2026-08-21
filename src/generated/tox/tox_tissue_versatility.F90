@@ -1,9 +1,17 @@
 #include <src/macros.h>
 
-!> summary: Wrappers for [[tox_tissue_versatility_kernel(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!> Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.
+!|
+!| An angle-based metric. A gene expressed equally across every selected axis points along the
+!| diagonal of that subspace and scores maximally versatile; one confined to a single tissue
+!| points along that axis and scores minimally. Normalized, so scores over different numbers of
+!| selected axes are comparable.
+!|
+!| Generated from [[tox_tissue_versatility_impl(module)]]; do not edit -- regenerate instead.
 module tox_tissue_versatility
-    use tox_tissue_versatility_kernel, only: compute_tissue_versatility_kernel
+    use f42_safeguard
+    use tox_tissue_versatility_impl, only: compute_tissue_versatility_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, is_err, ERR_INVALID_INPUT, set_err_once
     use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int
@@ -14,13 +22,13 @@ module tox_tissue_versatility
 
 contains
 
-    !> summary: Validates its inputs, then calls [[tox_tissue_versatility_kernel(module):compute_tissue_versatility_kernel]].
+    !> summary: Validates its inputs, then calls [[tox_tissue_versatility_impl(module):compute_tissue_versatility_impl]].
     !| The metric is based on the angle between each gene expression vector and the space diagonal.
     !| Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
     !|
     !| The masks follow the `n_selected_` convention, so the generated wrapper validates that each
     !| selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
-    subroutine compute_tissue_versatility(&
+    pure subroutine compute_tissue_versatility(&
             n_axes,&
             n_vectors,&
             expression_vectors,&
@@ -40,9 +48,9 @@ contains
             !! Number of selected expression vectors (count of .TRUE. in vectors_selection_mask)
         real(real64), dimension(n_axes, n_vectors), intent(in) :: expression_vectors
             !! 2D array (n_axes, n_vectors), each column is a gene expression vector
-        logical, dimension(n_vectors), intent(in) :: vectors_selection_mask
+        logical(c_bool), dimension(n_vectors), intent(in) :: vectors_selection_mask
             !! Logical array (n_vectors), .TRUE. for vectors to process
-        logical, dimension(n_axes), intent(in) :: axes_selection_mask
+        logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
             !! Logical array (n_axes), .TRUE. for axes to include in calculation
         integer(int32), intent(in) :: n_selected_axes
             !! Number of selected axes (count of .TRUE. in axes_selection_mask)
@@ -66,7 +74,7 @@ contains
         if (is_err(ierr)) return
 #endif
 
-        call compute_tissue_versatility_kernel(&
+        call compute_tissue_versatility_impl(&
             n_axes = n_axes,&
             n_vectors = n_vectors,&
             expression_vectors = expression_vectors,&

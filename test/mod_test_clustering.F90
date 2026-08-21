@@ -5,7 +5,7 @@ module mod_test_clustering
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_clustering
     ! the method parameters and the k-means compute helpers are the kernel's, not the wrappers'
-    use tox_clustering_kernel, only: METHOD_AVERAGE, METHOD_WEIGHTED, METHOD_WARD, &
+    use tox_clustering_impl, only: METHOD_AVERAGE, METHOD_WEIGHTED, METHOD_WARD, &
                                      k_means_assign_cluster_helper, k_means_recompute_cluster_centroids_helper, &
                                      get_min_distance_indices_helper, merge_distances_xpgma_linkage_helper, &
                                      merge_distances_ward_linkage_helper

@@ -7,7 +7,7 @@
 #' Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
 #' response array.
 #'
-#' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_loess::loess_fit_plain}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param x a numeric vector. Predictor variable array
@@ -63,7 +63,7 @@ loess_fit_plain <- function(x, y, weights, eval_points, span, degree, max_neighb
 #' - Computes residuals (y - fitted values)
 #' - Updates robust weights using bisquare function (suppresses large residuals)
 #'
-#' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_loess::loess_fit_robust}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param x a numeric vector. Predictor variable array

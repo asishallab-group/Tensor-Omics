@@ -18,25 +18,25 @@ test_compute_baselines_factor_dependent <- function() {
   dependent <- c(5.0, 7.0, 6.0, 8.0)
   
   # RAW baseline_mode = > zero baselines
-  res_raw <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "raw")
+  res_raw <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "baseline_raw")
   assert_true(abs(res_raw$factor_baseline - 0.0) < TOL)
   assert_true(abs(res_raw$dependent_baseline - 0.0) < TOL)
   
   # MIN baseline_mode = > min values
-  res_min <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "min")
+  res_min <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "baseline_min")
   assert_true(abs(res_min$factor_baseline - min(factor)) < TOL)
   assert_true(abs(res_min$dependent_baseline - min(dependent)) < TOL)
   
   # MEAN baseline_mode = > arithmetic mean
-  res_mean <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "mean")
+  res_mean <- compute_baselines_factor_dependent(factor, dependent, baseline_mode = "baseline_mean")
   assert_true(abs(res_mean$factor_baseline - mean(factor)) < TOL)
   assert_true(abs(res_mean$dependent_baseline - mean(dependent)) < TOL)
   
   # Mismatched lengths should raise error
-  assert_error(compute_baselines_factor_dependent(factor, dependent[-length(dependent)], baseline_mode = "raw"), "Should have raised error for mismatched lengths")
+  assert_error(compute_baselines_factor_dependent(factor, dependent[-length(dependent)], baseline_mode = "baseline_raw"), "Should have raised error for mismatched lengths")
   
   # Invalid mode should raise error
-  assert_error(compute_baselines_factor_dependent(factor, dependent, baseline_mode = "unknown_mode"), "Should have raised error for invalid mode")
+  assert_error(compute_baselines_factor_dependent(factor, dependent, baseline_mode = "baseline_unknown_mode"), "Should have raised error for invalid mode")
   
 }
 
@@ -49,7 +49,7 @@ test_compute_contributions <- function() {
   # Case 1: RAW baseline
   factor <- c(1.0, 2.0, 3.0, 4.0)
   dependent <- c(2.0, 1.0, 0.0, -1.0)
-  result <- compute_contributions(factor, dependent, baseline_mode = "raw")
+  result <- compute_contributions(factor, dependent, baseline_mode = "baseline_raw")
   
   expected_local <- factor * dependent
   expected_total <- sum(expected_local)
@@ -59,7 +59,7 @@ test_compute_contributions <- function() {
   # Case 2: MIN baseline
   factor <- c(3.0, 5.0, 2.0, 4.0)
   dependent <- c(1.0, 2.0, 0.0, -1.0)
-  result <- compute_contributions(factor, dependent, baseline_mode = "min")
+  result <- compute_contributions(factor, dependent, baseline_mode = "baseline_min")
   
   expected_local <- (factor - min(factor)) * (dependent - min(dependent))
   expected_total <- sum(expected_local)
@@ -69,7 +69,7 @@ test_compute_contributions <- function() {
   # Case 3: MEAN baseline
   factor <- c(1.0, 2.0, 3.0, 4.0)
   dependent <- c(4.0, 3.0, 2.0, 1.0)
-  result <- compute_contributions(factor, dependent, baseline_mode = "mean")
+  result <- compute_contributions(factor, dependent, baseline_mode = "baseline_mean")
   
   expected_local <- (factor - mean(factor)) * (dependent - mean(dependent))
   expected_total <- sum(expected_local)
@@ -89,7 +89,7 @@ test_compute_all_contributions <- function() {
   factor_indices <- c(1L)
   dependent_indices <- c(2L)
   
-  result <- compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode = "mean")
+  result <- compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode = "baseline_mean")
   expected_local <- c(1.0, 0.0, 1.0)
   expected_total <- 2.0
   # Update indexing to match actual shape
@@ -109,7 +109,7 @@ test_compute_all_contributions <- function() {
   
   # Case 2: MIN baseline
   trajectories <- array(c(2.0, 5.0, 4.0, 3.0, 6.0, 5.0), dim = c(2L, 1L, 3L))  # 3D array
-  result <- compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode = "min")
+  result <- compute_all_contributions(trajectories, factor_indices, dependent_indices, baseline_mode = "baseline_min")
   expected_local <- c(0.0, 0.0, 8.0)
   expected_total <- 8.0
   assert_true(all(abs(result$local_contributions[,1,1,1] - expected_local) < TOL))
@@ -138,7 +138,7 @@ test_perform_permutation_test <- function() {
   factor_idx <- 1L
   dependent_idx <- 2L
   sample_idx <- 1L
-  mode <- "mean"  # MEAN baseline
+  mode <- "baseline_mean"  # MEAN baseline
   random_seed <- 12345L
   trajectories <- array(trajectories, dim = dims)
   result <- perform_permutation_test(
@@ -305,7 +305,7 @@ test_compute_velocity_acceleration_contributions <- function() {
   # Factor 2, Sample 1
   trajectories[2, 1, ] <- c(1.0, 2.0, 2.0, 1.0)
 
-  mode <- "raw"
+  mode <- "baseline_raw"
 
   # Defensive shape and value checks
   assert_true(length(dim(trajectories)) == 3)
@@ -365,9 +365,9 @@ test_compute_velocity_acceleration_contributions <- function() {
 # =====================================================
 # Test: compute_velocity_acceleration_contributions
 # =====================================================
-test_compute_velocity_acceleration_contributions_alloc <- function() {
+test_compute_velocity_acceleration_contributions_plain <- function() {
 
-  # Same input as non-alloc test so outputs should match
+  # Same input as the expert test so outputs should match
   trajectories <- array(0.0, dim = c(2L, 1L, 4L))
 
   # Factor 1, Sample 1
@@ -376,7 +376,7 @@ test_compute_velocity_acceleration_contributions_alloc <- function() {
   # Factor 2, Sample 1
   trajectories[2, 1, ] <- c(1.0, 2.0, 2.0, 1.0)
 
-  mode <- "raw"
+  mode <- "baseline_raw"
 
 
   result <- compute_velocity_acceleration_contributions(trajectories, baseline_mode = mode)

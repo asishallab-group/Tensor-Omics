@@ -2,12 +2,18 @@
 #include <src/macros.h>
 
 !> summary: C-wrappers for [[tox_clustering(module)]]
-!| Generated from the kernel; do not edit -- regenerate instead.
+!| Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+!| (agglomerative) linkage clustering over a precomputed distance matrix.
+!|
+!| `k_means_clustering` partitions points in n dimensions; `cluster_factor_trajectories_k_means`
+!| applies the same to whole time series, treating each factor's trajectory as one point.
+!| `linkage_clustering` takes the distances already computed and merges under the linkage
+!| criterion asked for, so the same matrix can be re-clustered without recomputing it.
 module tox_clustering_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
+    use tox_conversions, only: c_char_as_view
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_INVALID_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -171,7 +177,7 @@ contains
             ierr&
         ) bind(C, name="linkage_clustering_c")
         use tox_clustering, only: linkage_clustering
-        use tox_clustering_kernel, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED
+        use tox_clustering_impl, only: METHOD_AVERAGE, METHOD_WARD, METHOD_WEIGHTED
 
         integer(c_int), intent(in), target :: n_points
             !! number of points to cluster
@@ -199,11 +205,11 @@ contains
             !! The minimum valid value is `0_int32`.
             !! The maximum valid value is `2_int32`.
             !!
-            !! | Method           | Value                                                       |
-            !! |------------------|-------------------------------------------------------------|
-            !! | Average / UPGMA  | [[tox_clustering_kernel(module):METHOD_AVERAGE(variable)]]  |
-            !! | Weighted / WPGMA | [[tox_clustering_kernel(module):METHOD_WEIGHTED(variable)]] |
-            !! | Ward             | [[tox_clustering_kernel(module):METHOD_WARD(variable)]]     |
+            !! | Method           | Value                                                     |
+            !! |------------------|-----------------------------------------------------------|
+            !! | Average / UPGMA  | [[tox_clustering_impl(module):METHOD_AVERAGE(variable)]]  |
+            !! | Weighted / WPGMA | [[tox_clustering_impl(module):METHOD_WEIGHTED(variable)]] |
+            !! | Ward             | [[tox_clustering_impl(module):METHOD_WARD(variable)]]     |
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32) :: method_mode_f
@@ -219,9 +225,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(method, 8)
 
         block
-            character(len=:), allocatable :: method_f
-            call c_char_1d_as_string(method, method_f, ierr)
-            if (is_err(ierr)) return
+            character(len=:), pointer :: method_f
+            method_f => c_char_as_view(method)
 
             select case (method_f)
                 case ("average")

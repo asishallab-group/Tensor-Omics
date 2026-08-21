@@ -1,7 +1,7 @@
 #include <src/macros.h>
 
 !> summary: Fixture module covering the awkward cases
-!| Characters, shapes, masks, alloc/expert pairs and the directives that need resolving.
+!| Characters, shapes, masks, a two-tier pair and the directives that need resolving.
 module fx_edges
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
@@ -119,6 +119,27 @@ contains
     end subroutine fx_count_matching
 
     !> M_EXPORT_C
+    !| summary: Strings the caller may omit, which C passes as a null pointer
+    !| author: A Developer
+    subroutine fx_optional_strings(tag, extras, n_given, ierr)
+        character(len=*), intent(in), optional :: tag
+            !! a scalar string the caller may leave out
+        character(len=*), dimension(:), intent(in), optional :: extras
+            !! a vector of strings the caller may leave out
+        integer(int32), intent(out) :: n_given
+            !! `tag`, if given and not blank, plus one per element of `extras`
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+        n_given = 0
+        if (present(tag)) then
+            if (len_trim(tag) > 0) n_given = n_given + 1
+        end if
+        if (present(extras)) n_given = n_given + int(size(extras), int32)
+    end subroutine fx_optional_strings
+
+    !> M_EXPORT_C
     !| summary: An already interoperable logical, which needs no conversion
     !| author: A Developer
     subroutine fx_c_bool_flag(flag, ierr)
@@ -129,9 +150,9 @@ contains
     end subroutine fx_c_bool_flag
 
     !> M_EXPORT_C
-    !| summary: The allocating half of a pair
+    !| summary: The entry point of a two-tier pair, which allocates
     !| author: A Developer
-    subroutine fx_cluster_alloc(values, n_values, n_clusters, ierr)
+    subroutine fx_cluster(values, n_values, n_clusters, ierr)
         integer(int32), intent(in) :: n_values
             !! elements of `values`
         real(real64), dimension(n_values), intent(in) :: values
@@ -143,12 +164,12 @@ contains
 
         call set_ok(ierr)
         n_clusters = count(values > 0.0_real64)
-    end subroutine fx_cluster_alloc
+    end subroutine fx_cluster
 
     !> M_EXPORT_C
-    !| summary: The expert half of a pair, which owns no allocation
+    !| summary: The expert tier of the pair, handed the work array instead of allocating it
     !| author: A Developer
-    subroutine fx_cluster(values, n_values, tmp_work, n_work, n_clusters, ierr)
+    subroutine fx_cluster_expert(values, n_values, tmp_work, n_work, n_clusters, ierr)
         integer(int32), intent(in) :: n_values
             !! elements of `values`
         real(real64), dimension(n_values), intent(in) :: values
@@ -171,7 +192,7 @@ contains
             tmp_work(i) = values(i)
         end do
         n_clusters = count(values > 0.0_real64)
-    end subroutine fx_cluster
+    end subroutine fx_cluster_expert
 
     !> M_EXPORT_C
     !| summary: A consumer whose producer names its input differently
@@ -240,7 +261,7 @@ contains
     end subroutine fx_scaled_size
 
     !> M_EXPORT_C
-    !| summary: Works out the work array size for fx_cluster
+    !| summary: Works out the work array size for fx_cluster_expert
     !| author: A Developer
     subroutine fx_work_size(n_values, n_work, ierr)
         integer(int32), intent(in) :: n_values

@@ -27,40 +27,37 @@ def wrap_in_module(module, name, bag):
 
 
 class TestNaming:
-    def test_an_alloc_procedure_takes_the_plain_name(self, bag):
-        module = b.module("m", b.procedure("cluster_alloc", b.ierr()), b.procedure("cluster", b.ierr()))
+    """A procedure is published under its Fortran name, whatever that name is.
 
-        wrapper = wrap_in_module(module, "cluster_alloc", bag)
+    There used to be one exception: a hand-written `foo` / `foo_alloc` pair was republished
+    as `foo` / `foo_expert`. Nothing writes that pair since f42 converted, so the translation
+    was retired with it -- an author who writes `foo_alloc` now gets `foo_alloc`.
+    """
+
+    def test_a_procedure_keeps_its_own_name(self, bag):
+        module = b.module("m", b.procedure("cluster", b.ierr()))
+
+        wrapper = wrap_in_module(module, "cluster", bag)
 
         assert wrapper.name == "cluster_c"
         assert wrapper.stripped_name == "cluster"
 
-    def test_the_non_alloc_twin_becomes_expert(self, bag):
-        module = b.module("m", b.procedure("cluster_alloc", b.ierr()), b.procedure("cluster", b.ierr()))
-
-        wrapper = wrap_in_module(module, "cluster", bag)
-
-        assert wrapper.name == "cluster_expert_c"
-        assert wrapper.stripped_name == "cluster_expert"
-
-    def test_a_procedure_without_an_alloc_twin_keeps_its_name(self, bag):
-        # a lone procedure must not be needlessly renamed to _expert
-        module = b.module("m", b.procedure("cluster", b.ierr()))
-
-        assert wrap_in_module(module, "cluster", bag).name == "cluster_c"
-
-    def test_a_twin_in_another_module_does_not_count(self, bag):
-        project = b.project(
-            b.module("a", b.procedure("cluster", b.ierr())),
-            b.module("b", b.procedure("cluster_alloc", b.ierr())),
+    def test_the_generated_expert_tier_keeps_its_suffix(self, bag):
+        # synthesis names the two tiers outright; nothing here adds or removes a suffix
+        module = b.module(
+            "m", b.procedure("cluster", b.ierr()), b.procedure("cluster_expert", b.ierr())
         )
-        for module in project:
-            for procedure in module.exported_procedures:
-                analyse(procedure, bag)
 
-        binding = build_project(project, bag)
+        assert wrap_in_module(module, "cluster", bag).stripped_name == "cluster"
+        assert wrap_in_module(module, "cluster_expert", bag).stripped_name == "cluster_expert"
 
-        assert binding.module("a_c").wrappers[0].name == "cluster_c"
+    def test_an_alloc_named_procedure_is_no_longer_translated(self, bag):
+        module = b.module(
+            "m", b.procedure("cluster_alloc", b.ierr()), b.procedure("cluster", b.ierr())
+        )
+
+        assert wrap_in_module(module, "cluster_alloc", bag).stripped_name == "cluster_alloc"
+        assert wrap_in_module(module, "cluster", bag).stripped_name == "cluster"
 
     def test_the_module_gets_a_c_module(self, bag):
         module = b.module("tox_clustering", b.procedure("cluster", b.ierr()))
@@ -68,7 +65,7 @@ class TestNaming:
         assert build_module(module, bag).name == "tox_clustering_c"
 
     def test_stripped_name_is_available_without_building(self):
-        assert stripped_name(b.procedure("cluster_alloc")) == "cluster"
+        assert stripped_name(b.procedure("cluster")) == "cluster"
 
 
 class TestModuleSelection:

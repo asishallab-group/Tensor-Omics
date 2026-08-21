@@ -1,6 +1,13 @@
-"""tox_get_outliers
+r"""tox_get_outliers
 
-Generated from the kernel; do not edit -- regenerate instead.
+Gene outliers, from how far each gene sits from its family's centroid.
+
+The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
+a relative distance index, scaled per family so families of different spread are comparable.
+`compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
+applies the threshold and reports which genes exceed it.
+
+`detect_outliers` runs all three in one call, and is the entry point to reach for first.
 
 Python binding, generated from tox_get_outliers. Do not edit.
 """
@@ -117,16 +124,18 @@ def compute_family_scaling(
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Mapping of each gene to its family (1-based)
     span : float, optional, default 0.7
-        Span parameter for LOESS smoothing
+        Span parameter for LOESS smoothing, passed straight to
+        :func:`tensor_omics.loess_fit_plain`, so it is held to that
+        procedure's own range rather than to the NaN tolerance the distance data carries.
         The default value is `0.7`.
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
+        The minimum valid value is `EPS_LOESS`.
+        The maximum valid value is `1.0`.
     degree : int, optional, default 2
         Degree of the LOESS polynomial
         The default value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
-        The default value is `1`.
+        The default value is `'robust'`.
 
     n_iters : int, optional, default 3
         Number of iterations for robust LOESS fitting
@@ -162,7 +171,7 @@ def compute_family_scaling(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_get_outliers::compute_family_scaling_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_get_outliers::compute_family_scaling`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -178,7 +187,7 @@ def compute_family_scaling(
         raise TypeError(f"'gene_to_fam' must be an array of np.int32: {error}") from None
     if gene_to_fam.ndim != 1:
         raise ValueError(f"'gene_to_fam' must have 1 dimension, but has {gene_to_fam.ndim}")
-    mode = np.array([str(mode).lower().encode()], dtype="S6")
+    mode = np.array([str(mode).lower().encode().ljust(6)], dtype="S6")
 
     # what the inputs already say, rather than asking for it again
     n_genes = distances.shape[0]
@@ -276,7 +285,7 @@ def compute_rdi(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_get_outliers::compute_rdi_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_get_outliers::compute_rdi`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -344,7 +353,7 @@ def identify_outliers(
         rdi,
         sorted_rdi,
         perm,
-        percentile=95.0,
+        percentile=0.95,
 ):
     r"""Identify gene outliers based on the top percentile of RDI values
 
@@ -360,9 +369,11 @@ def identify_outliers(
         Infinite values are permitted for this value.
     perm : np.ndarray[np.int32] of shape (n_genes,)
         Permutation array with sorted indices
-    percentile : float, optional, default 95.0
-        Percentile threshold (top 5% for the default).
-        The default value is `95.0`.
+    percentile : float, optional, default 0.95
+        Percentile threshold as a fraction in [0,1] (top 5% for the default).
+        The default value is `0.95`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
 
     Returns
     -------
@@ -458,7 +469,7 @@ def detect_outliers(
         n_families,
         distances,
         gene_to_fam,
-        percentile=95.0,
+        percentile=0.95,
 ):
     r"""Main routine to detect outliers using RDI and LOESS-based scaling
 
@@ -472,9 +483,11 @@ def detect_outliers(
         Infinite values are permitted for this value.
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Gene-to-family mapping (1-based indexing)
-    percentile : float, optional, default 95.0
-        Percentile threshold for outlier detection.
-        The default value is `95.0`.
+    percentile : float, optional, default 0.95
+        Percentile threshold as a fraction in [0,1] for outlier detection.
+        The default value is `0.95`.
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
 
     Returns
     -------
@@ -507,7 +520,7 @@ def detect_outliers(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_get_outliers::detect_outliers_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_get_outliers::detect_outliers`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

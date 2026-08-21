@@ -5,14 +5,14 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void determine_shared_residual_range_expert_c(const double*, const int*, const int*, double*, const double*, int*);
 void determine_shared_residual_range_c(const double*, const int*, double*, const double*, int*);
+void determine_shared_residual_range_expert_c(const double*, const int*, const int*, double*, const double*, int*);
 void determine_study_shared_residual_range_c(const double*, const double*, const int*, const int*, const int*, const int*, double*, const double*, int*);
 void build_residual_histograms_c(const double*, const int*, const int*, const int*, const double*, const int*, int*, double*, int*, const unsigned char*, int*);
 void compute_divergence_per_reference_point_c(const double*, const double*, const int*, const int*, double*, int*);
 void compute_weighted_global_divergence_c(const double*, const int*, const int*, const int*, double*, double*, int*);
 
-SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP abs_residual_pool_perm, SEXP residual_range_quantile) {
+SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_range_quantile) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(abs_residual_pool);
@@ -24,9 +24,8 @@ SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP ab
     double shared_residual_range = 0;
     int ierr = 0;
 
-    determine_shared_residual_range_expert_c(
+    determine_shared_residual_range_c(
         REAL(abs_residual_pool),
-        INTEGER(abs_residual_pool_perm),
         &pool_size,
         &shared_residual_range,
         &residual_range_quantile_v,
@@ -44,7 +43,7 @@ SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP ab
     return _out;
 }
 
-SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_range_quantile) {
+SEXP determine_shared_residual_range_expert_call(SEXP abs_residual_pool, SEXP abs_residual_pool_perm, SEXP residual_range_quantile) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int pool_size = (int) Rf_length(abs_residual_pool);
@@ -56,8 +55,9 @@ SEXP determine_shared_residual_range_call(SEXP abs_residual_pool, SEXP residual_
     double shared_residual_range = 0;
     int ierr = 0;
 
-    determine_shared_residual_range_c(
+    determine_shared_residual_range_expert_c(
         REAL(abs_residual_pool),
+        INTEGER(abs_residual_pool_perm),
         &pool_size,
         &shared_residual_range,
         &residual_range_quantile_v,

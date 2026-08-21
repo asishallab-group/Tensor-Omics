@@ -26,7 +26,7 @@ normalize_unit_length <- function(vector) {
 #'
 #' Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
 #'
-#' Generated from the Fortran procedure \code{tox_normalization::normalization_pipeline_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_normalization::normalization_pipeline}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
@@ -61,7 +61,7 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #' This procedure applies a global stabilization based on the relationship between
 #' gene-wise mean expression and empirical standard deviation.
 #'
-#' Generated from the Fortran procedure \code{tox_normalization::normalize_by_std_dev_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_normalization::normalize_by_std_dev}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
@@ -111,7 +111,7 @@ root_mean_sq_normalization <- function(expr) {
 #'
 #' Computes average expression per rank across tissues.
 #'
-#' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization_alloc}, whose argument names
+#' Generated from the Fortran procedure \code{tox_normalization::quantile_normalization}, whose argument names
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix

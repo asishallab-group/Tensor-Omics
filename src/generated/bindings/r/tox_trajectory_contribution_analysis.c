@@ -38,7 +38,7 @@ SEXP perform_permutation_test_call(SEXP trajectories, SEXP factor_idx, SEXP depe
     int n_permutations_v = Rf_asInteger(n_permutations);
 
     // convert what Fortran cannot take from R directly
-    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+    char* baseline_mode_c = tox_char_in(baseline_mode, 13);
 
     // outputs and work space
     SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_timepoints * n_permutations_v)); nprot++;
@@ -120,7 +120,7 @@ SEXP compute_contributions_call(SEXP factor, SEXP dependent, SEXP baseline_mode)
     int n_dims = (int) Rf_length(factor);
 
     // convert what Fortran cannot take from R directly
-    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+    char* baseline_mode_c = tox_char_in(baseline_mode, 13);
 
     // outputs and work space
     SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_dims)); nprot++;
@@ -160,7 +160,7 @@ SEXP compute_all_contributions_call(SEXP trajectories, SEXP factor_indices, SEXP
     int n_selected_dependents = (int) Rf_length(dependent_indices);
 
     // convert what Fortran cannot take from R directly
-    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+    char* baseline_mode_c = tox_char_in(baseline_mode, 13);
 
     // outputs and work space
     SEXP local_contributions = PROTECT(Rf_allocVector(REALSXP, n_timepoints * n_selected_factors * n_selected_dependents * n_samples)); nprot++;
@@ -203,7 +203,7 @@ SEXP compute_baselines_factor_dependent_call(SEXP factor, SEXP dependent, SEXP b
     int n_timepoints = (int) Rf_length(factor);
 
     // convert what Fortran cannot take from R directly
-    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+    char* baseline_mode_c = tox_char_in(baseline_mode, 13);
 
     // outputs and work space
     double factor_baseline = 0;
@@ -361,7 +361,7 @@ SEXP compute_velocity_acceleration_contributions_call(SEXP trajectories, SEXP ba
     int n_timepoints = INTEGER(Rf_getAttrib(trajectories, R_DimSymbol))[2];
 
     // convert what Fortran cannot take from R directly
-    char* baseline_mode_c = tox_char_in(baseline_mode, 4);
+    char* baseline_mode_c = tox_char_in(baseline_mode, 13);
 
     // outputs and work space
     SEXP contrib_velocity = PROTECT(Rf_allocVector(REALSXP, n_factors * n_factors * n_samples)); nprot++;

@@ -1,6 +1,6 @@
-!> Unit test suite for f42_utils module.
+!> Unit test suite for the f42_sort_impl module.
 module mod_test_sorting
-    use f42_utils
+    use f42_utils_impl
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use test_suite, only: test_case
@@ -23,7 +23,7 @@ contains
         all_tests(7) = test_case("test_sort_sorted_stability", test_sort_sorted_stability)
         all_tests(8) = test_case("test_sort_empty_array", test_sort_empty_array)
         all_tests(9) = test_case("test_sort_large_random", test_sort_large_random)
-        ! Heapsort tests (exercise heapsort implementations in f42_utils)
+        ! Heapsort tests (exercise heapsort implementations in f42_sort_impl)
         all_tests(10) = test_case("test_heapsort_real", test_heapsort_real)
         all_tests(11) = test_case("test_heapsort_integer", test_heapsort_integer)
         all_tests(12) = test_case("test_heapsort_character", test_heapsort_character)
@@ -179,7 +179,7 @@ contains
         deallocate (rdata, data, perm, sorted, stack_left, stack_right, dummy_perm)
     end subroutine test_sort_large_random
 
-    !> Test heapsort implementation for real arrays (uses f42_utils heapsort)
+    !> Test heapsort implementation for real arrays (uses f42_sort_impl heapsort)
     subroutine test_heapsort_real()
         real(real64), dimension(5) :: data = [5.0d0, 3.0d0, 4.0d0, 1.0d0, 2.0d0]
         integer(int32), dimension(5) :: perm

@@ -1,17 +1,19 @@
-"""Synthesise the wrappers a kernel implies.
+"""Synthesise the wrappers an implementation implies.
 
-An author writes only the kernel -- `loess_fit_kernel` in module `tox_loess_kernel`, with
-no `ierr` and no input validation. From it the generator builds the validating wrapper
-`loess_fit` (validate the inputs, then call the kernel) and, when the kernel needs work
-arrays, the allocating wrapper `loess_fit_alloc` (allocate the work arrays, build and sort
-the permutations, call the recommend routines, then call the kernel). Both land in a
-generated module `tox_loess`, carry the export category, and the rest of the pipeline
-wraps them to C/Python/R exactly as it does any procedure read from source.
+An author writes only the implementation -- `loess_fit_impl` in module `tox_loess_impl`,
+with no `ierr` and no input validation. From it the generator builds the entry point
+`loess_fit`: validate the inputs, then call the implementation. Where the implementation
+has work arrays to take over, that entry point does more -- allocate them, call the
+recommend routines, build and sort the permutations, run the prologue -- and the plain
+validate-and-call wrapper becomes `loess_fit_expert`, for a caller who wants to supply all
+of that themselves. Both land in a generated module `tox_loess`, carry the export category,
+and the rest of the pipeline wraps them to C/Python/R exactly as it does any procedure read
+from source.
 
-The wrappers are built here as IR and injected into the project *before* the semantic
-pass, so a single parse of the kernel is the one source of truth: the Fortran wrappers and
-their bindings both come from it, with no round-trip through Ford. The kernel modules stay
-in the project but are inert -- nothing generates from an unexported procedure.
+The wrappers are built here as IR and injected into the project *before* the semantic pass,
+so a single parse of the implementation is the one source of truth: the Fortran wrappers and
+their bindings both come from it, with no round-trip through Ford. The implementation
+modules stay in the project but are inert -- nothing generates from an unexported procedure.
 """
 
 from __future__ import annotations
@@ -28,37 +30,70 @@ from .ir.entities import Argument, Meta, Module, Procedure, Project
 from .ir.roles import analyse
 from .ir.types import BaseType, FortranType, Intent
 
-#: Documentation for the `ierr` a wrapper carries when the kernel declares none
+#: Documentation for the `ierr` a wrapper carries when the implementation declares none
 _ERROR_DOC = "Error code; zero on success, non-zero on failure."
-#: Documentation body of a generated wrapper module (the emitter adds the summary above it)
-_MODULE_DOC = "Generated from the kernel; do not edit -- regenerate instead."
-#: Documentation body of a generated re-export module
-_REEXPORT_DOC = (
-    "Generated from the kernel tree; do not edit -- regenerate instead. "
-    "Use this module to reach the whole family; the split into the modules below is an "
-    "implementation detail."
-)
+
+
+def generated_path_for(
+    source: Path, paths: Paths, conventions: Conventions = CONVENTIONS
+) -> Path | None:
+    """Where the wrappers for the implementation file `source` are written, or None.
+
+    The rule is a mirror: `src/<rest>/<module>_impl.F90` generates
+    `src/generated/<rest>/<module>.F90`. Nothing in it knows about `tox` or `f42`, so an
+    implementation anywhere under `src/` generates beside its own layer rather than into one
+    directory the rule would have to name -- which is what lets f42 write implementations
+    without the generator learning a second case.
+
+    None where `source` is not an implementation at all, or lies outside the source tree
+    (a hand-built test project, whose modules have no file). A file already under
+    `generated_dir` is never claimed: that is the generator's own output.
+
+    `source` may be either spelling. The IR carries paths relative to the root, so that a
+    diagnostic can quote one; a caller holding an absolute path should not have to know
+    that, so both are accepted and joined the one way `Paths` joins anything.
+    """
+    src = paths.resolve(paths.src_dir)
+    out = paths.resolve(paths.generated_dir)
+    suffix = conventions.impl_suffix
+    if not source.stem.lower().endswith(suffix):
+        return None
+    source = paths.resolve(source)
+    try:
+        # both sides resolved: the frontend hands back paths from Ford's own resolution,
+        # while `paths.resolve` only joins -- so on a checkout reached through a symlink (or
+        # this repository's `/mnt/c` mount) the two spellings of the same directory would
+        # not compare equal and every wrapper would look misplaced
+        relative = source.resolve().relative_to(src.resolve())
+    except (ValueError, OSError):
+        return None
+    if out.resolve() in source.resolve().parents:
+        return None
+    return out / relative.parent / f"{source.stem[: -len(suffix)]}.F90"
 
 
 def generated_wrapper_paths(
     paths: Paths, conventions: Conventions = CONVENTIONS
 ) -> list[Path]:
-    """The `src/generated/tox` files the generator owns, one per kernel module on disk.
+    """Every file under `generated_dir` this generator owns, one per implementation module.
 
-    Derived from the kernel tree so the Ford frontend (which excludes them from the parse)
-    and the cleaner (which removes them before rewriting) agree on the set without parsing
-    -- without either of them having to parse anything.
+    Derived from the source tree so the Ford frontend (which excludes the generated tree from
+    the parse) and the cleaner (which removes these before rewriting) agree on the set --
+    without either of them having to parse anything.
+
+    Read off file names, while synthesis triggers on module names. The two agree because a
+    Fortran file here is named for the module it holds, which `validate` checks for every
+    implementation module rather than leaving to assumption: were they to disagree, the
+    cleaner would delete one path and the emitter write another.
     """
-    kernel_dir = paths.resolve(paths.kernel_src_dir)
-    out_dir = paths.resolve(paths.tox_out_dir)
-    suffix = conventions.kernel_suffix
-    if not kernel_dir.is_dir():
+    src = paths.resolve(paths.src_dir)
+    if not src.is_dir():
         return []
-    generated = []
-    for path in sorted(kernel_dir.rglob("*.[Ff]90")):
-        stem = path.stem
-        if stem.lower().endswith(suffix):
-            generated.append(out_dir / f"{stem[: -len(suffix)]}.F90")
+    generated = [
+        path
+        for source in sorted(src.rglob("*.[Ff]90"))
+        if (path := generated_path_for(source, paths, conventions)) is not None
+    ]
     return generated
 
 
@@ -113,12 +148,12 @@ def _sizes_a_kept_argument(
 
 
 def is_prologue_produced(argument: Argument, prologue=None) -> bool:
-    """Whether the prologue writes this argument and the kernel only reads it.
+    """Whether the prologue writes this argument and the implementation only reads it.
 
-    Then nobody outside the wrapper is involved: the prologue produces the value, the kernel
-    consumes it, and the caller neither supplies nor receives it. Both intents say so
-    already, so this needs no naming convention on top -- and unlike a `tmp_` name, it lets
-    the kernel keep the honest `intent(in)` for something it only reads.
+    Then nobody outside the wrapper is involved: the prologue produces the value, the
+    implementation consumes it, and the caller neither supplies nor receives it. Both intents
+    say so already, so this needs no naming convention on top -- and unlike a `tmp_` name, it
+    lets the implementation keep the honest `intent(in)` for something it only reads.
 
     `foo` still takes it, because `foo` has no prologue: the expert tier is where a caller
     supplies the value themselves. Exactly the relation `<base>_perm` and the recommend-sized
@@ -135,16 +170,17 @@ def taken_over_arguments(
     conventions: Conventions = CONVENTIONS,
     prologue=None,
 ) -> list[Argument]:
-    """The arguments the allocating wrapper prepares itself, rather than taking from the caller.
+    """The arguments the allocating wrapper prepares itself, rather than taking from the
+    caller.
 
     Work arrays always qualify -- they are scratch. A `<base>_perm` qualifies only while the
     wrapper can actually build it, which means the `<base>` it orders is an argument too:
     `values_perm` is seeded and sorted against `values`, but a name that merely ends in `_perm`
-    and orders something the kernel never receives is the caller's own data. A recommend-sized
-    value qualifies as well, and so does one the prologue produces for the kernel to read --
-    both only while nothing the caller still sees depends on them: an argument that also gives
-    an extent of a returned array has to stay in the signature, or neither the caller nor the
-    binding could size what comes back.
+    and orders something the implementation never receives is the caller's own data. A
+    recommend-sized value qualifies as well, and so does one the prologue produces for the
+    implementation to read -- both only while nothing the caller still sees depends on them: an
+    argument that also gives an extent of a returned array has to stay in the signature, or
+    neither the caller nor the binding could size what comes back.
     """
     names = {argument.name.lower() for argument in arguments}
     taken = []
@@ -169,7 +205,7 @@ def sorted_permutations(
 
     Every `<base>_perm` it took over, except the ones something else builds:
 
-    - a `tmp_` permutation is the kernel's own scratch, seeded and ordered inside it;
+    - a `tmp_` permutation is the implementation's own scratch, seeded and ordered inside it;
     - a permutation the prologue declares `intent(out)` is the prologue's. That is what makes
       a non-default ordering expressible without giving up the expert tier: name the argument
       `<base>_perm` so an expert caller can still supply their own order, and let the prologue
@@ -197,9 +233,9 @@ def sorted_permutations(
 class ModeFix:
     """The mode a per-mode wrapper fixes: the argument dropped, and what it is set to."""
 
-    #: The kernel's mode argument, dropped from the wrapper's signature
+    #: The implementation's mode argument, dropped from the wrapper's signature
     argument: str
-    #: The parameter the mode is fixed to in the kernel call, e.g. `MODE_DOSAGE_PATTERN`
+    #: The parameter the mode is fixed to in the call, e.g. `MODE_DOSAGE_PATTERN`
     parameter: str
     #: The module the parameter lives in, so the wrapper can import it
     module: str
@@ -207,16 +243,21 @@ class ModeFix:
 
 @dataclass(frozen=True)
 class WrapperSpec:
-    """A synthesised wrapper set and the kernel it came from."""
+    """A synthesised wrapper set and the implementation it came from."""
 
-    kernel: Procedure
+    impl: Procedure
     #: The generated module the wrappers live in
     module_name: str
+    #: The wrapper that only validates. Named `<base>_expert` when `allocating` exists, and
+    #: `<base>` when it is the only wrapper -- there being no second tier to distinguish it
+    #: from. Read the name off the procedure; do not assume the suffix either way.
     validating: Procedure
+    #: The wrapper that also allocates, when there is anything to take over. Always named
+    #: `<base>`: the plain name belongs to the entry point a caller should reach for first.
     allocating: Procedure | None = None
-    #: Set when this is one of a mode-split kernel's per-mode wrappers
+    #: Set when this is one of a mode-split impl's per-mode wrappers
     mode_fix: ModeFix | None = None
-    #: The procedure this kernel's `DM_PROLOGUE` names, resolved
+    #: The procedure this implementation's `DM_PROLOGUE` names, resolved
     prologue: Procedure | None = None
     #: Whether the allocating wrapper does anything beyond validating and allocating --
     #: builds a permutation, or runs a prologue. That is what an expert caller would be
@@ -235,14 +276,13 @@ class SynthesisResult:
 
     @property
     def expert_only_in_fortran(self) -> set[str]:
-        """The validating wrappers whose expert tier is Fortran-and-C only.
+        """The names of the `foo_expert` wrappers that stay Fortran-and-C only.
 
-        `foo` is published to Python and R as `foo_expert`, and the name promises control
-        over what reaches the kernel. It can only keep that promise where `foo_alloc` does
-        something an expert caller would want to do differently -- sort a permutation, run a
-        prologue. Where it merely validates and allocates, the binding languages allocate for
-        *both* tiers anyway, so `foo_expert` would be the same call under a name claiming
-        otherwise.
+        The name `foo_expert` promises control over what reaches the implementation. It can
+        only keep that promise where `foo` does something an expert caller would want to do
+        differently -- sort a permutation, run a prologue. Where `foo` merely validates and
+        allocates, the binding languages allocate for *both* tiers anyway, so `foo_expert`
+        would be the same call under a name claiming otherwise.
 
         Fortran and C keep both: there the expert tier really does hand the buffers over, so
         a caller who wants to reuse them still can.
@@ -264,45 +304,49 @@ def synthesize_wrappers(
     conventions: Conventions = CONVENTIONS,
     diagnostics: DiagnosticBag | None = None,
 ) -> SynthesisResult:
-    """Build the wrappers every kernel implies and inject them into `project`.
+    """Build the wrappers every implementation implies and inject them into `project`.
 
-    A kernel is a `<name>_kernel` procedure in a `<module>_kernel` module. Its wrappers go
-    into a generated module named by dropping the module's `_kernel` suffix, so
-    `tox_loess_kernel` yields `tox_loess`.
+    An implementation is a `<name>_impl` procedure in a `<module>_impl` module. Its wrappers
+    go into a generated module named by dropping the module's `_impl` suffix, so
+    `tox_loess_impl` yields `tox_loess`. The module name is the whole trigger -- where the
+    file sits decides only where its wrappers are *written* (`generated_path_for`), which is
+    what lets an implementation live under any layer of `src/`.
 
-    A kernel is analysed here, before its wrappers are built, so its mode table is known: a
-    mode argument whose table names a procedure per mode makes the kernel expand into one
-    wrapper (pair) per mode instead of a single procedure taking the mode. The kernel is not
+    It is analysed here, before its wrappers are built, so its mode table is known: a mode
+    argument whose table names a procedure per mode makes it expand into one wrapper (pair)
+    per mode instead of a single procedure taking the mode. The implementation is not
     exported, so the later project-wide pass leaves it alone; the wrappers, cloned from it,
     are analysed there like any procedure.
     """
     diagnostics = diagnostics if diagnostics is not None else DiagnosticBag()
-    suffix = conventions.kernel_suffix
+    suffix = conventions.impl_suffix
     by_module: dict[str, list[Procedure]] = {}
     sources: dict[str, Module] = {}
     specs: list[WrapperSpec] = []
-    kernel_modules = [m for m in project if m.name.lower().endswith(suffix)]
+    impl_modules = [m for m in project if m.name.lower().endswith(suffix)]
 
-    for module in kernel_modules:
+    for module in impl_modules:
         generated_name = module.name[: -len(suffix)]
-        for kernel in module.procedures:
-            if not kernel.name.lower().endswith(suffix):
-                continue  # a recommend routine or private helper, not a kernel
+        for impl in module.procedures:
+            if not impl.name.lower().endswith(suffix):
+                continue  # a recommend routine or private helper, not an implementation
 
-            analyse(kernel, diagnostics, conventions)
-            prologue = _prologue_of(kernel, project)
-            mode_argument = _split_mode_argument(kernel)
+            analyse(impl, diagnostics, conventions)
+            prologue = _prologue_of(impl, project)
+            mode_argument = _split_mode_argument(impl)
 
-            for base, arguments, mode_fix in _variants(kernel, mode_argument, conventions):
+            for base, arguments, mode_fix in _variants(impl, mode_argument, conventions):
                 validating, allocating = _wrappers_for(
-                    base, arguments, kernel, conventions, prologue
+                    base, arguments, impl, conventions, prologue
                 )
-                wrappers = [validating] + ([allocating] if allocating is not None else [])
+                # the plain entry point first: it leads the generated `public ::` block
+                # and the subroutine order, which is the order a reader meets the tiers in
+                wrappers = ([allocating] if allocating is not None else []) + [validating]
                 by_module.setdefault(generated_name, []).extend(wrappers)
                 sources[generated_name] = module
                 specs.append(
                     WrapperSpec(
-                        kernel=kernel,
+                        impl=impl,
                         module_name=generated_name,
                         validating=validating,
                         allocating=allocating,
@@ -316,15 +360,20 @@ def synthesize_wrappers(
         Module(
             name,
             procedures=procedures,
-            # a fresh doc rather than the kernel module's own, which describes the kernel and
-            # not this API; the emitter adds a "Wrappers for <kernel>" summary above it
-            doc=Doc.parse([_MODULE_DOC]),
-            meta=Meta(),
+            # the implementation module's own documentation, verbatim. A generated module is
+            # the published API -- what Python imports, what the R help pages are built from,
+            # what a Fortran caller `use`s -- so what the author wrote about the family is what
+            # a reader of any of those gets. It used to get a "do not edit" banner instead, on
+            # the argument that an implementation module's doc describes the implementation;
+            # the answer to that is that the doc has to be written as API prose, not that the
+            # API should go undocumented. Each emitter adds its own generated-from note.
+            doc=sources[name].doc,
+            meta=sources[name].meta,
             location=sources[name].location,
         )
         for name, procedures in by_module.items()
     ]
-    reexports = _reexport_modules(kernel_modules, set(by_module), conventions)
+    reexports = _reexport_modules(impl_modules, set(by_module), conventions)
     generated_modules += reexports
 
     augmented = Project(list(project.modules) + generated_modules, name=project.name)
@@ -336,21 +385,21 @@ def synthesize_wrappers(
 
 
 def _reexport_modules(
-    kernel_modules: Sequence[Module], wrapper_modules: set[str], conventions: Conventions
+    impl_modules: Sequence[Module], wrapper_modules: set[str], conventions: Conventions
 ) -> list[Module]:
-    """The generated counterparts of the kernel tree's re-export modules.
+    """The generated counterparts of the implementation tree's re-export modules.
 
-    A family too big for one file is split into several kernel modules and gathered by a
-    parent that holds no procedures of its own and only `use`s its children -- the shape f42
-    uses for its serde tree. That parent generates the matching parent over the *wrappers*,
-    so `use tox_data_integration` still reaches the whole family and the split stays an
-    implementation detail of the kernel tree.
+    A family too big for one file is split into several implementation modules and gathered by
+    a parent that holds no procedures of its own and only `use`s its children -- the shape f42
+    uses for its serde tree. That parent generates the matching parent over the *wrappers*, so
+    `use tox_data_integration` still reaches the whole family and the split stays an
+    implementation detail of the implementation tree.
 
-    Only children that generate something are re-exported: a kernel module used for its
-    constants or its recommend routines has no generated counterpart to `use`. Parents are
+    Only children that generate something are re-exported: an implementation module used for
+    its constants or its recommend routines has no generated counterpart to `use`. Parents are
     resolved to a fixed point, so a parent may gather other parents.
     """
-    suffix = conventions.kernel_suffix
+    suffix = conventions.impl_suffix
     candidates = {
         module.name[: -len(suffix)]: sorted(
             {
@@ -359,15 +408,13 @@ def _reexport_modules(
                 if used.lower().endswith(suffix)
             }
         )
-        for module in kernel_modules
+        for module in impl_modules
         if not module.procedures and module.uses
     }
     if not candidates:
         return []
 
-    locations = {
-        module.name[: -len(suffix)]: module.location for module in kernel_modules
-    }
+    parents = {module.name[: -len(suffix)]: module for module in impl_modules}
     generated = set(wrapper_modules)
     while True:
         resolved = {
@@ -382,9 +429,9 @@ def _reexport_modules(
     return [
         Module(
             name,
-            doc=Doc.parse([_REEXPORT_DOC]),
-            meta=Meta(),
-            location=locations[name],
+            doc=parents[name].doc,
+            meta=parents[name].meta,
+            location=parents[name].location,
             uses=[child for child in children if child in generated],
         )
         for name, children in sorted(candidates.items())
@@ -407,31 +454,31 @@ def _alloc_does_more(
     return prologue is not None or bool(sorted_permutations(taken, prologue, conventions))
 
 
-def _prologue_of(kernel: Procedure, project: Project):
-    """The procedure a kernel's `DM_PROLOGUE` names, or None.
+def _prologue_of(impl: Procedure, project: Project):
+    """The procedure an implementation's `DM_PROLOGUE` names, or None.
 
     Resolved here as well as in the emitter, because the drop set depends on it and the
     signature is shaped here while the body is written there -- both call
     `taken_over_arguments` with it, so the two cannot disagree about what the caller passes.
     A name that resolves to nothing is `validate`'s to report; here it simply means no
-    prologue, which is what an unannotated kernel gets anyway.
+    prologue, which is what an unannotated impl gets anyway.
     """
-    directive = kernel.directives.prologue
+    directive = impl.directives.prologue
     if directive is None:
         return None
     return project.procedure(directive.module, directive.procedure)
 
 
-def _base_name(kernel: Procedure, conventions: Conventions) -> str:
-    return kernel.name[: -len(conventions.kernel_suffix)]
+def _base_name(impl: Procedure, conventions: Conventions) -> str:
+    return impl.name[: -len(conventions.impl_suffix)]
 
 
-def _split_mode_argument(kernel: Procedure) -> Argument | None:
-    """The kernel's mode argument whose table opts into per-mode splitting, or None.
+def _split_mode_argument(impl: Procedure) -> Argument | None:
+    """The implementation's mode argument whose table opts into per-mode splitting, or None.
 
-    Requires the kernel to have been analysed, so the mode table is on its roles.
+    Requires the implementation to have been analysed, so the mode table is on its roles.
     """
-    for argument in kernel.arguments:
+    for argument in impl.arguments:
         roles = argument.roles
         if roles is not None and roles.mode is not None and roles.mode.is_split:
             return argument
@@ -439,18 +486,18 @@ def _split_mode_argument(kernel: Procedure) -> Argument | None:
 
 
 def _variants(
-    kernel: Procedure, mode_argument: Argument | None, conventions: Conventions
+    impl: Procedure, mode_argument: Argument | None, conventions: Conventions
 ) -> list[tuple[str, list[Argument], ModeFix | None]]:
-    """The (base name, exposed kernel arguments, mode fix) of each wrapper to generate.
+    """The (base name, exposed impl arguments, mode fix) of each wrapper to generate.
 
-    One entry for an ordinary kernel; one per mode value for a mode-split kernel.
+    One entry for an ordinary impl; one per mode value for a mode-split impl.
     """
     if mode_argument is None:
-        return [(_base_name(kernel, conventions), list(kernel.arguments), None)]
+        return [(_base_name(impl, conventions), list(impl.arguments), None)]
     return [
         (
             value.procedure_name,
-            _mode_kept_arguments(kernel, mode_argument, value, conventions),
+            _mode_kept_arguments(impl, mode_argument, value, conventions),
             ModeFix(mode_argument.name, value.parameter, value.module),
         )
         for value in mode_argument.roles.mode.values
@@ -458,16 +505,16 @@ def _variants(
 
 
 def _mode_kept_arguments(
-    kernel: Procedure, mode_argument: Argument, value, conventions: Conventions
+    impl: Procedure, mode_argument: Argument, value, conventions: Conventions
 ) -> list[Argument]:
-    """The kernel arguments a per-mode wrapper exposes.
+    """The implementation arguments a per-mode wrapper exposes.
 
     The mode argument is dropped (fixed to `value.parameter` in the call). An argument that
     `DM_REQUIRED_IF_MODE` ties to this mode becomes a mandatory dummy; one tied to another
     mode is dropped; everything else is carried through.
     """
     kept: list[Argument] = []
-    for argument in kernel.arguments:
+    for argument in impl.arguments:
         if argument is mode_argument:
             continue
         required = argument.directives.required_if_mode
@@ -527,13 +574,14 @@ def _as_required(argument: Argument) -> Argument:
 def prologue_only_arguments(
     prologue, arguments: Sequence[Argument], conventions: Conventions = CONVENTIONS
 ) -> list[Argument]:
-    """The prologue's own dummies -- the ones the kernel knows nothing about.
+    """The prologue's own dummies -- the ones the implementation knows nothing about.
 
-    A prologue derives something for the kernel, and what it derives it *from* is often not
-    the kernel's business: a threshold comes from a percentile, and the kernel takes the
-    threshold. That percentile has to come from somewhere, so it becomes an argument of the
-    allocating wrapper -- of that one alone, because only it runs the prologue. The expert
-    tier takes the derived value directly and would have no use for it.
+    A prologue derives something for the implementation, and what it derives it *from* is often
+    not the implementation's business: a threshold comes from a percentile, and the
+    implementation takes the threshold. That percentile has to come from somewhere, so it
+    becomes an argument of the allocating wrapper -- of that one alone, because only it runs
+    the prologue. The expert tier takes the derived value directly and would have no use for
+    it.
 
     `handled` and `ierr` are the wrapper's own and never count.
     """
@@ -549,7 +597,7 @@ def prologue_only_arguments(
 
 
 def _wrappers_for(
-    base: str, arguments: list[Argument], kernel: Procedure, conventions: Conventions,
+    base: str, arguments: list[Argument], impl: Procedure, conventions: Conventions,
     prologue=None,
 ) -> tuple[Procedure, Procedure | None]:
     """The validating wrapper, and the allocating one when the two would differ.
@@ -558,50 +606,57 @@ def _wrappers_for(
     recommend-sized value) or when the prologue asks for something of its own. Either way the
     caller sees a different signature, which is the whole reason for two entry points; where
     neither happens there is one wrapper and nothing to choose between.
-    """
-    foo_arguments = [argument.with_name(argument.name) for argument in arguments]
-    _append_error(foo_arguments, kernel, conventions)
-    validating = _wrapper(
-        base + conventions.validating_suffix, foo_arguments, kernel, conventions
-    )
 
+    **The plain name always goes to the entry point a caller should reach for first.** With
+    two of them that is the allocating one, and the validating one becomes `<base>_expert`;
+    with one it is the validating one, because there is no second tier for the name to
+    distinguish it from. Naming the lone wrapper `<base>_expert` unconditionally would
+    generate, compile and bind perfectly well -- and quietly rename every entry point that
+    has no work arrays to take over.
+    """
     taken = taken_over_arguments(arguments, conventions, prologue)
-    kept = [a for a in arguments if a not in taken]
     extra = prologue_only_arguments(prologue, arguments, conventions)
-    allocating = None
-    if taken or extra:
-        # the prologue's own arguments go after the kernel's, before `ierr`: they are the
-        # allocating tier's own vocabulary, not part of what the kernel was asked for
-        alloc_arguments = [a.with_name(a.name) for a in kept] + extra
-        _append_error(alloc_arguments, kernel, conventions)
-        allocating = _wrapper(
-            base + conventions.alloc_suffix, alloc_arguments, kernel, conventions
-        )
-    return validating, allocating
+    paired = bool(taken or extra)
+
+    foo_arguments = [argument.with_name(argument.name) for argument in arguments]
+    _append_error(foo_arguments, impl, conventions)
+    validating = _wrapper(
+        base + (conventions.expert_suffix if paired else ""),
+        foo_arguments, impl, conventions,
+    )
+    if not paired:
+        return validating, None
+
+    # the prologue's own arguments go after the implementation's, before `ierr`: they are
+    # the allocating tier's own vocabulary, not part of what the implementation asked for
+    kept = [a for a in arguments if a not in taken]
+    alloc_arguments = [a.with_name(a.name) for a in kept] + extra
+    _append_error(alloc_arguments, impl, conventions)
+    return validating, _wrapper(base, alloc_arguments, impl, conventions)
 
 
 def _wrapper(
-    name: str, arguments: list[Argument], kernel: Procedure, conventions: Conventions
+    name: str, arguments: list[Argument], impl: Procedure, conventions: Conventions
 ) -> Procedure:
     meta = Meta(
-        summary=kernel.meta.summary,
-        author=kernel.meta.author,
+        summary=impl.meta.summary,
+        author=impl.meta.author,
         category=conventions.c_binding_category,
     )
     return Procedure(
         name,
         arguments=arguments,
-        doc=kernel.doc,
+        doc=impl.doc,
         meta=meta,
-        location=kernel.location,
+        location=impl.location,
         conventions=conventions,
     )
 
 
 def _append_error(
-    arguments: list[Argument], kernel: Procedure, conventions: Conventions
+    arguments: list[Argument], impl: Procedure, conventions: Conventions
 ) -> None:
-    if kernel.argument(conventions.error_arg) is None:
+    if impl.argument(conventions.error_arg) is None:
         arguments.append(
             Argument(
                 conventions.error_arg,

@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..abi.model import CArgument, Conversion, CWrapper
 from ..ir.doc import Doc, DocTable
 from .doc_links import render_spans as _spans
-from .doc_literals import is_ford_block_tag, render as _render
+from .doc_literals import is_ford_block_tag, render as _render, render_mode_default
 from ..ir.types import BaseType
 from ..render import Writer
 
@@ -57,10 +57,9 @@ def render_roxygen(wrapper: CWrapper, emitter) -> str:
         writer.line("#'")
 
     # the procedure, not just the module: an error message names an argument from
-    # *its* dummy list -- including extents, work arrays and ierr, which no caller of this
-    # binding passes -- and the suffix mapping is not guessable (`loess_fit_plain` here is
-    # `loess_fit_plain_alloc` there, while `loess_fit_plain_expert` is `loess_fit_plain`).
-    # Naming it is what lets a reader take "(argument 'n_dscale_elements')" back to a signature.
+    # *its* dummy list -- including the extents, work arrays and ierr that no caller of this
+    # binding passes, and, on the expert tier, several this one does not either. Naming it is
+    # what lets a reader take "(argument 'n_dscale_elements')" back to a signature that has one.
     #
     # And it goes here, in the description, rather than after @return: roxygen gives untagged
     # text to whichever tag precedes it, so trailing it after @return filed the provenance
@@ -102,19 +101,21 @@ def _param_lines(argument: CArgument, resolver=None) -> list[str]:
     an R reader.
     """
     type_ = r_type_of(argument)
-    lines = _prose_lines(argument.doc, resolver)
+    lines = _prose_lines(argument.doc, resolver, argument.mode_default)
     if not lines:
         return [type_]
     return [f"{type_}. {lines[0]}", *lines[1:]]
 
 
-def _prose_lines(doc: Doc, resolver=None) -> list[str]:
+def _prose_lines(doc: Doc, resolver=None, mode_default: str | None = None) -> list[str]:
     """Every non-table line of a doc, blanks trimmed from both ends."""
     lines = [
         _render(_spans(block, resolver, "r"), "r")
         for block in doc
         if not isinstance(block, DocTable) and not is_ford_block_tag(block.text)
     ]
+    if mode_default is not None:
+        lines = [render_mode_default(line, mode_default, "r") for line in lines]
     while lines and not lines[0].strip():
         lines.pop(0)
     while lines and not lines[-1].strip():

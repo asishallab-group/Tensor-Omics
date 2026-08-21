@@ -12,9 +12,9 @@
 !| expected. [[tox_data_validation(module):validate_all_data(subroutine)]] runs the full suite.
 module tox_data_validation_c
     use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_int, c_loc
-    use tox_conversions, only: c_char_2d_as_string
-    use tox_errors, only: set_ok, set_err, is_err, ERR_POINTER_NULL
+    use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
+    use, intrinsic :: iso_c_binding, only: c_loc
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
     M_IMPLICIT_NONE
     private
 
@@ -96,8 +96,8 @@ contains
             !! Shift vectors
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=:), allocatable, dimension(:) :: gene_family_ids_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        character(len=gene_family_ids_strlen), pointer, dimension(:) :: gene_family_ids_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -122,10 +122,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_centroids, n_family_centroids_elements_dim_1 * n_family_centroids_elements_dim_2)
         M_CHECK_ARRAY_NON_NULL(shift_vectors, n_shift_vectors_elements_dim_1 * n_shift_vectors_elements_dim_2)
 
-        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(gene_family_ids, gene_family_ids_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        call c_f_pointer(c_loc(gene_family_ids), gene_family_ids_f, [n_gene_family_ids_elements])
 
         call validate_data_structure(&
             n_genes = n_genes,&
@@ -192,7 +190,6 @@ contains
             !! Defines if non negative should be checked
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        logical :: check_non_negative_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -201,11 +198,9 @@ contains
         M_CHECK_NON_NULL(check_non_negative)
         M_CHECK_ARRAY_NON_NULL(expression_vectors, n_expression_vectors_elements_dim_1 * n_expression_vectors_elements_dim_2)
 
-        check_non_negative_f = check_non_negative
-
         call validate_expression_data(&
             expression_vectors = expression_vectors,&
-            check_non_negative = check_non_negative_f,&
+            check_non_negative = check_non_negative,&
             ierr = ierr&
         )
     end subroutine validate_expression_data_c
@@ -327,7 +322,7 @@ contains
             !! string array
         integer(c_int), intent(out), target :: ierr
             !! Error code
-        character(len=:), allocatable, dimension(:) :: str_arr_f
+        character(len=str_arr_strlen), pointer, dimension(:) :: str_arr_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -335,8 +330,7 @@ contains
         M_CHECK_NON_NULL(n_str_arr_elements)
         M_CHECK_ARRAY_NON_NULL(str_arr, str_arr_strlen * n_str_arr_elements)
 
-        call c_char_2d_as_string(str_arr, str_arr_f, ierr)
-        if (is_err(ierr)) return
+        call c_f_pointer(c_loc(str_arr), str_arr_f, [n_str_arr_elements])
 
         call validate_string_array_uniqueness(&
             str_arr = str_arr_f,&
@@ -420,10 +414,8 @@ contains
         logical(c_bool), intent(in), target :: check_shift_consistency
             !! Check consitency of shift array.
             !! The default value is `.true.`.
-        character(len=:), allocatable, dimension(:) :: gene_ids_f
-        character(len=:), allocatable, dimension(:) :: gene_family_ids_f
-        logical :: check_uniqueness_f
-        logical :: check_shift_consistency_f
+        character(len=gene_ids_strlen), pointer, dimension(:) :: gene_ids_f
+        character(len=gene_family_ids_strlen), pointer, dimension(:) :: gene_family_ids_f
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
@@ -450,12 +442,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_centroids, n_family_centroids_elements_dim_1 * n_family_centroids_elements_dim_2)
         M_CHECK_ARRAY_NON_NULL(shift_vectors, n_shift_vectors_elements_dim_1 * n_shift_vectors_elements_dim_2)
 
-        call c_char_2d_as_string(gene_ids, gene_ids_f, ierr)
-        if (is_err(ierr)) return
-        call c_char_2d_as_string(gene_family_ids, gene_family_ids_f, ierr)
-        if (is_err(ierr)) return
-        check_uniqueness_f = check_uniqueness
-        check_shift_consistency_f = check_shift_consistency
+        call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        call c_f_pointer(c_loc(gene_family_ids), gene_family_ids_f, [n_gene_family_ids_elements])
 
         call validate_all_data(&
             n_genes = n_genes,&
@@ -468,8 +456,8 @@ contains
             family_centroids = family_centroids,&
             shift_vectors = shift_vectors,&
             ierr = ierr,&
-            check_uniqueness = check_uniqueness_f,&
-            check_shift_consistency = check_shift_consistency_f&
+            check_uniqueness = check_uniqueness,&
+            check_shift_consistency = check_shift_consistency&
         )
     end subroutine validate_all_data_c
 

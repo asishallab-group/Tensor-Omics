@@ -1,6 +1,15 @@
-"""tox_normalization
+r"""tox_normalization
 
-Generated from the kernel; do not edit -- regenerate instead.
+Normalization of expression data: putting samples on a comparable scale before anything
+distance-based is computed from them.
+
+Several schemes, each its own entry point rather than a mode: a log2 transformation, scaling
+by standard deviation (LOESS-smoothed against expression level, so the correction follows the
+mean-variance trend rather than assuming one), root-mean-square scaling, quantile
+normalization, and normalization to unit length.
+
+`normalization_pipeline` chains them in the order the analysis expects, and is what most
+callers want. The individual routines are published for a caller assembling their own.
 
 Python binding, generated from tox_normalization. Do not edit.
 """
@@ -226,7 +235,7 @@ def normalization_pipeline(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalization_pipeline_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_normalization::normalization_pipeline`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -305,7 +314,7 @@ def normalize_by_std_dev(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_normalization::normalize_by_std_dev`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
@@ -431,7 +440,7 @@ def quantile_normalization(
 
     Notes
     -----
-    Generated from the Fortran procedure `tox_normalization::quantile_normalization_alloc`, whose argument names are
+    Generated from the Fortran procedure `tox_normalization::quantile_normalization`, whose argument names are
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it

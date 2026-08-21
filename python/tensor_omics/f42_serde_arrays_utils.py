@@ -1,6 +1,15 @@
-"""f42_serde_arrays_utils
+r"""f42_serde_arrays_utils
 
 Module for array utilities.
+
+Defines the shared on-disk binary layout used by all typed array
+serialize/deserialize modules (int/real/complex/logical/char) and the
+header read/write/validate helpers that implement it. The file header is
+a fixed sequence of unformatted stream records, written and read in this
+order: magic number (``ARRAY_FILE_MAGIC``),
+type code, number of dimensions `ndim`, then `ndim` dimension sizes. The
+raw array payload follows immediately after the header, written as one
+contiguous block by the type-specific serializers.
 
 Python binding, generated from f42_serde_arrays_utils. Do not edit.
 """
@@ -67,7 +76,7 @@ def get_array_metadata(
     the ones an error message reports.
     """
     # accept anything array-like, converting only when C needs it
-    filename = np.array([str(filename).encode()], dtype="S")
+    filename = np.array([str(filename).encode().ljust(1)], dtype="S")
 
     # what the inputs already say, rather than asking for it again
     filename_strlen = filename.itemsize

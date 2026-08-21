@@ -1,6 +1,18 @@
-"""tox_relative_axis_plane_tools
+r"""tox_relative_axis_plane_tools
 
-Generated from the kernel; do not edit -- regenerate instead.
+Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
+what can be read off a vector once it is projected onto one.
+
+A RAP is picked by selecting axes (tissues) from the full expression space.
+`vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
+between two vectors -- signed by an orientation reference, so the sign means the same thing in
+every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
+vector field at once.
+
+`relative_axes_changes_from_shift_vector` and `relative_axes_expression_from_expression_vector`
+give the per-axis breakdown instead of the angle: how much of a change, or of an expression
+level, falls on each selected axis.
 
 Python binding, generated from tox_relative_axis_plane_tools. Do not edit.
 """

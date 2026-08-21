@@ -5,7 +5,9 @@
 !| It keeps its `tox_` name because it defines Tensor Omics' error vocabulary, but it lives in
 !| `src/f42/` because f42 itself depends on it: it sits *below* f42 in the stack, not above.
 module tox_errors
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
     M_IMPLICIT_NONE
     public   ! <-- expose all names (constants + procedures)
@@ -326,7 +328,7 @@ contains
     !|
     !| @note
     !| This validation is inclusive: `min<=val<=max`<br>
-    !| To achieve exclusive bounds, us above/below from f42_utils,
+    !| To achieve exclusive bounds, use above/below from f42_math_impl,
     !| like: `validate_in_range_real(x, ierr, min=above(0.0_real64), max=below(100.0_real64))` for `0<x<100`
     !| @endnote
     pure subroutine validate_in_range_real(val, ierr, arg_pos, min, max, sentinel, allow_nan, allow_infinite)
@@ -342,13 +344,13 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
         real(real64), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
-        logical, intent(in), optional :: allow_nan
+        logical(c_bool), intent(in), optional :: allow_nan
             !! Permit NaN, opting out of the default finiteness check. Default `.false.`
-        logical, intent(in), optional :: allow_infinite
+        logical(c_bool), intent(in), optional :: allow_infinite
             !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         real(real64) :: actual_min, actual_max
-        logical :: nan_ok, inf_ok
+        logical(c_bool) :: nan_ok, inf_ok
 
         M_DEFAULT_VAL(allow_nan, nan_ok, .false.)
         M_DEFAULT_VAL(allow_infinite, inf_ok, .false.)
@@ -401,9 +403,9 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
         real(real64), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
-        logical, intent(in), optional :: allow_nan
+        logical(c_bool), intent(in), optional :: allow_nan
             !! Permit NaN, opting out of the default finiteness check. Default `.false.`
-        logical, intent(in), optional :: allow_infinite
+        logical(c_bool), intent(in), optional :: allow_infinite
             !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         integer(int32) :: i_element

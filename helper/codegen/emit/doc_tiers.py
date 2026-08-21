@@ -77,15 +77,15 @@ def build(binding: CBinding, specs=(), conventions=None) -> dict[str, TierNote]:
     from ..config import CONVENTIONS
 
     conventions = conventions or CONVENTIONS
-    by_kernel_name = {spec.validating.name.lower(): spec for spec in specs}
+    by_impl_name = {spec.validating.name.lower(): spec for spec in specs}
     notes: dict[str, TierNote] = {}
     for module in binding:
         published = {wrapper.stripped_name: wrapper for wrapper in module}
         for name, wrapper in published.items():
-            expert = f"{name}{conventions.expert_infix}"
+            expert = f"{name}{conventions.expert_suffix}"
             if expert not in published:
                 continue
-            prepares, how = _prepares(wrapper, published[expert], by_kernel_name, conventions)
+            prepares, how = _prepares(wrapper, published[expert], by_impl_name, conventions)
             if not how:
                 continue
             notes[name] = TierNote(expert, prepares, how, is_expert=False)
@@ -93,23 +93,23 @@ def build(binding: CBinding, specs=(), conventions=None) -> dict[str, TierNote]:
     return notes
 
 
-def _prepares(plain: CWrapper, expert: CWrapper, by_kernel_name, conventions):
+def _prepares(plain: CWrapper, expert: CWrapper, by_impl_name, conventions):
     """What the plain half does that the expert half leaves to the caller.
 
     The arguments only the expert half asks for, named -- and, for a generated pair, what is
     actually done to them, which the signature alone cannot say. A hand-written pair gets the
     argument names only: the generator does not read bodies, so it will not claim to know
-    how an author's own `_alloc` prepares them.
+    how a hand-written entry point prepares them.
     """
     theirs = {argument.name.lower() for argument in expert.arguments}
     ours = {argument.name.lower() for argument in plain.arguments}
     extra = [a.name for a in expert.arguments if a.name.lower() in theirs - ours]
     names = tuple(f"`{name}`" for name in extra)
 
-    spec = by_kernel_name.get(expert.procedure.name.lower())
+    spec = by_impl_name.get(expert.procedure.name.lower())
     if spec is None:
         # a hand-written pair: the generator does not read bodies, so it names the arguments
-        # and will not claim to know how the author's own `_alloc` prepares them
+        # and will not claim to know how the author's own entry point prepares them
         return (names, (f"prepares {_join(names)}",)) if names else ((), ())
 
     how = []

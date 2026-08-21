@@ -43,9 +43,14 @@
 
 // forward declarations of the .Call entry points
 SEXP build_bst_index_call(SEXP);
-SEXP bst_range_query_call(SEXP, SEXP, SEXP, SEXP);
+SEXP bst_range_query_call(SEXP, SEXP, SEXP);
+SEXP bst_range_query_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP build_kd_index_call(SEXP, SEXP);
 SEXP build_spherical_kd_call(SEXP, SEXP);
+SEXP kd_knn_query_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_mask_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_list_call(SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP kd_range_query_count_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP deserialize_char_helper_call(SEXP, SEXP, SEXP);
 SEXP deserialize_complex_helper_call(SEXP, SEXP);
 SEXP deserialize_int_helper_call(SEXP, SEXP);
@@ -58,9 +63,12 @@ SEXP serialize_logical_helper_call(SEXP, SEXP);
 SEXP serialize_real_helper_call(SEXP, SEXP);
 SEXP get_array_metadata_call(SEXP, SEXP);
 SEXP loess_smooth_2d_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP compute_edf_expert_call(SEXP, SEXP);
 SEXP compute_edf_call(SEXP);
-SEXP compute_scaled_distance_quantile_call(SEXP, SEXP, SEXP, SEXP);
+SEXP compute_edf_expert_call(SEXP, SEXP);
+SEXP calc_percentile_call(SEXP, SEXP, SEXP);
+SEXP calc_percentile_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP compute_scaled_distance_quantile_call(SEXP, SEXP, SEXP);
+SEXP compute_scaled_distance_quantile_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP cluster_factor_trajectories_k_means_call(SEXP, SEXP, SEXP);
 SEXP k_means_clustering_call(SEXP, SEXP, SEXP);
 SEXP linkage_clustering_call(SEXP, SEXP);
@@ -68,8 +76,8 @@ SEXP create_zip_archive_call(SEXP, SEXP, SEXP);
 SEXP save_tox_data_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP get_tox_data_dims_call(SEXP);
 SEXP read_tox_data_into_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
+SEXP determine_shared_residual_range_expert_call(SEXP, SEXP, SEXP);
 SEXP determine_study_shared_residual_range_call(SEXP, SEXP, SEXP);
 SEXP build_residual_histograms_call(SEXP, SEXP, SEXP, SEXP);
 SEXP compute_divergence_per_reference_point_call(SEXP, SEXP);
@@ -79,8 +87,8 @@ SEXP fjct_compute_masked_jsd_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP fjct_compute_contribution_scores_call(SEXP, SEXP);
 SEXP compute_gene_means_call(SEXP);
 SEXP compute_residuals_call(SEXP, SEXP);
-SEXP pool_means_expert_call(SEXP, SEXP, SEXP);
 SEXP pool_means_call(SEXP, SEXP);
+SEXP pool_means_expert_call(SEXP, SEXP, SEXP);
 SEXP pool_study_means_call(SEXP, SEXP, SEXP);
 SEXP construct_neighborhoods_call(SEXP, SEXP, SEXP, SEXP);
 SEXP calc_neighborhood_size_call(SEXP, SEXP, SEXP, SEXP);
@@ -149,9 +157,14 @@ SEXP normalize_all_trajectories_call(SEXP);
 
 static const R_CallMethodDef CallEntries[] = {
     {"build_bst_index_call", (DL_FUNC) &build_bst_index_call, 1},
-    {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 4},
+    {"bst_range_query_call", (DL_FUNC) &bst_range_query_call, 3},
+    {"bst_range_query_expert_call", (DL_FUNC) &bst_range_query_expert_call, 4},
     {"build_kd_index_call", (DL_FUNC) &build_kd_index_call, 2},
     {"build_spherical_kd_call", (DL_FUNC) &build_spherical_kd_call, 2},
+    {"kd_knn_query_call", (DL_FUNC) &kd_knn_query_call, 5},
+    {"kd_range_query_mask_call", (DL_FUNC) &kd_range_query_mask_call, 5},
+    {"kd_range_query_list_call", (DL_FUNC) &kd_range_query_list_call, 5},
+    {"kd_range_query_count_call", (DL_FUNC) &kd_range_query_count_call, 5},
     {"deserialize_char_helper_call", (DL_FUNC) &deserialize_char_helper_call, 3},
     {"deserialize_complex_helper_call", (DL_FUNC) &deserialize_complex_helper_call, 2},
     {"deserialize_int_helper_call", (DL_FUNC) &deserialize_int_helper_call, 2},
@@ -164,9 +177,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"serialize_real_helper_call", (DL_FUNC) &serialize_real_helper_call, 2},
     {"get_array_metadata_call", (DL_FUNC) &get_array_metadata_call, 2},
     {"loess_smooth_2d_call", (DL_FUNC) &loess_smooth_2d_call, 6},
-    {"compute_edf_expert_call", (DL_FUNC) &compute_edf_expert_call, 2},
     {"compute_edf_call", (DL_FUNC) &compute_edf_call, 1},
-    {"compute_scaled_distance_quantile_call", (DL_FUNC) &compute_scaled_distance_quantile_call, 4},
+    {"compute_edf_expert_call", (DL_FUNC) &compute_edf_expert_call, 2},
+    {"calc_percentile_call", (DL_FUNC) &calc_percentile_call, 3},
+    {"calc_percentile_expert_call", (DL_FUNC) &calc_percentile_expert_call, 4},
+    {"compute_scaled_distance_quantile_call", (DL_FUNC) &compute_scaled_distance_quantile_call, 3},
+    {"compute_scaled_distance_quantile_expert_call", (DL_FUNC) &compute_scaled_distance_quantile_expert_call, 4},
     {"cluster_factor_trajectories_k_means_call", (DL_FUNC) &cluster_factor_trajectories_k_means_call, 3},
     {"k_means_clustering_call", (DL_FUNC) &k_means_clustering_call, 3},
     {"linkage_clustering_call", (DL_FUNC) &linkage_clustering_call, 2},
@@ -174,8 +190,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"save_tox_data_call", (DL_FUNC) &save_tox_data_call, 13},
     {"get_tox_data_dims_call", (DL_FUNC) &get_tox_data_dims_call, 1},
     {"read_tox_data_into_call", (DL_FUNC) &read_tox_data_into_call, 12},
-    {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},
+    {"determine_shared_residual_range_expert_call", (DL_FUNC) &determine_shared_residual_range_expert_call, 3},
     {"determine_study_shared_residual_range_call", (DL_FUNC) &determine_study_shared_residual_range_call, 3},
     {"build_residual_histograms_call", (DL_FUNC) &build_residual_histograms_call, 4},
     {"compute_divergence_per_reference_point_call", (DL_FUNC) &compute_divergence_per_reference_point_call, 2},
@@ -185,8 +201,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"fjct_compute_contribution_scores_call", (DL_FUNC) &fjct_compute_contribution_scores_call, 2},
     {"compute_gene_means_call", (DL_FUNC) &compute_gene_means_call, 1},
     {"compute_residuals_call", (DL_FUNC) &compute_residuals_call, 2},
-    {"pool_means_expert_call", (DL_FUNC) &pool_means_expert_call, 3},
     {"pool_means_call", (DL_FUNC) &pool_means_call, 2},
+    {"pool_means_expert_call", (DL_FUNC) &pool_means_expert_call, 3},
     {"pool_study_means_call", (DL_FUNC) &pool_study_means_call, 3},
     {"construct_neighborhoods_call", (DL_FUNC) &construct_neighborhoods_call, 4},
     {"calc_neighborhood_size_call", (DL_FUNC) &calc_neighborhood_size_call, 4},
