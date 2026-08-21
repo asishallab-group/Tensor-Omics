@@ -17,6 +17,7 @@ module tox_shape_truthful_clustering_parameter_estimation_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use f42_sort_impl, only: sort_real_heapsort, init_perm
     use f42_stats_impl, only: calc_percentile_impl
+    use f42_math_impl, only: is_close
     use tox_errors, only: set_ok, set_err_once, ERR_INTERNAL
     use tox_shape_truthful_clustering_seeding_impl, only: density_labels_impl
     use tox_shape_truthful_clustering_observable_impl, only: observable_impl, tox_stc_observable_svd_workspace
@@ -78,11 +79,38 @@ contains
         integer(int32), intent(out) :: anchor_indices(n_anchors)
             !! Point indices of the n_anchors estimator anchors, ascending-percentile order
 
-        integer(int32) :: i, rank_idx
+        integer(int32) :: i, rank_idx, run_start, run_end, p, q, tmp_perm_val
         real(real64)   :: rank_real
 
         call init_perm(tmp_sort_perm)
         call sort_real_heapsort(density_labels, tmp_sort_perm)
+
+        ! Canonicalize the tie-break for runs of numerically-equal density values (is_close, not
+        ! exact ==): two values that are mathematically tied by construction -- e.g. a perfectly
+        ! symmetric input -- can still differ in their last bit depending on the summation order
+        ! density_labels_impl's own k-NN traversal happened to take, which is incidental and must
+        ! not be allowed to change which points get picked as estimator anchors. Re-order each
+        ! such run by ascending original point index (insertion sort -- runs are small in
+        ! practice; this whole routine is dominated by the O(n log n) sort above regardless).
+        run_start = 1
+        do while (run_start <= n_vectors)
+            run_end = run_start
+            do while (run_end < n_vectors)
+                if (.not. is_close(density_labels(tmp_sort_perm(run_end + 1)), density_labels(tmp_sort_perm(run_start)))) exit
+                run_end = run_end + 1
+            end do
+            do p = run_start + 1, run_end
+                tmp_perm_val = tmp_sort_perm(p)
+                q = p - 1
+                do while (q >= run_start)
+                    if (tmp_sort_perm(q) <= tmp_perm_val) exit
+                    tmp_sort_perm(q + 1) = tmp_sort_perm(q)
+                    q = q - 1
+                end do
+                tmp_sort_perm(q + 1) = tmp_perm_val
+            end do
+            run_start = run_end + 1
+        end do
 
         do i = 1, n_anchors
             rank_real = real(i, real64)/real(n_anchors, real64)*real(n_vectors - 1, real64) + 1.0_real64

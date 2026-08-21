@@ -16,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_kd_tree() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(21))
+        allocate (all_tests(22))
 
         all_tests(1) = test_case("test_kd_2d_cartesian", test_kd_2d_cartesian)
         all_tests(2) = test_case("test_kd_3d_spherical", test_kd_3d_spherical)
@@ -39,6 +39,7 @@ contains
         all_tests(19) = test_case("test_kd_range_query_list_negative_radius", test_kd_range_query_list_negative_radius)
         all_tests(20) = test_case("test_kd_range_query_count_basic", test_kd_range_query_count_basic)
         all_tests(21) = test_case("test_kd_range_query_count_matches_list", test_kd_range_query_count_matches_list)
+        all_tests(22) = test_case("test_kd_adversarial_duplicates_large", test_kd_adversarial_duplicates_large)
     end function get_all_tests_kd_tree
 
     !> Test 2D Cartesian KD-Tree.
@@ -500,5 +501,48 @@ contains
         write (s, *) i
         s = adjustl(s)
     end function str
+
+    !> Stresses median_select_by_dimension_helper's Hoare-partition-with-ties handling: a large
+    !| (n=500), heavily-duplicated 3D point set (only 7 distinct values per axis, cycling), so
+    !| every partition round leaves a "gap" of several pivot-equal elements the quickselect has
+    !| to narrow through correctly rather than assume already placed. Verifies the tree stays a
+    !| valid permutation and a 1-NN query still matches a brute-force reference.
+    subroutine test_kd_adversarial_duplicates_large()
+        integer(int32), parameter :: d = 3, n = 500
+        real(real64) :: X(d, n)
+        integer(int32) :: kd_ix(n), dim_order(d) = [1, 2, 3]
+        integer(int32) :: work(n), perm(n), ierr
+        real(real64) :: subarray(n)
+        integer(int32) :: recursion_stack(3, n)
+        integer(int32) :: i, j
+        real(real64) :: query_point(d)
+        integer(int32) :: neighbors(1)
+        real(real64) :: distances(1)
+        real(real64) :: brute_best, dist_sq
+
+        call set_ok(ierr)
+
+        do i = 1, n
+            do j = 1, d
+                X(j, i) = real(mod(i*j, 7), real64)
+            end do
+        end do
+
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
+        call assert_permutation(kd_ix, n, "Adversarial duplicate-heavy KD-Tree")
+
+        query_point = X(:, 1)
+        call kd_knn_query(X, d, n, kd_ix, dim_order, query_point, 1_int32, neighbors, distances, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
+
+        brute_best = huge(1.0_real64)
+        do i = 1, n
+            dist_sq = sum((X(:, i) - query_point)**2)
+            if (dist_sq < brute_best) brute_best = dist_sq
+        end do
+
+        call assert_equal_real(distances(1), sqrt(brute_best), 1.0e-9_real64, "1-NN distance matches brute force")
+    end subroutine test_kd_adversarial_duplicates_large
 
 end module mod_test_kd_tree

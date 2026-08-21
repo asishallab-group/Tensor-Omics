@@ -101,11 +101,13 @@ contains
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
         integer(c_int), dimension(n_points), intent(out), target :: tmp_workspace
-            !! Workspace array
+            !! Workspace array, touched only if
+            !! [[f42_kd_tree_impl(module):median_select_by_dimension_helper(subroutine)]] falls
+            !! back to a full sort of a subrange
         real(c_double), dimension(n_points), intent(out), target :: tmp_value_buffer
-            !! Workspace for sorting
+            !! Workspace for the fallback full sort
         integer(c_int), dimension(n_points), intent(out), target :: tmp_permutation
-            !! Workspace for sorting
+            !! Workspace for the fallback full sort
         integer(c_int), dimension(3, n_points), intent(out), target :: tmp_recursion_stack
             !! Stack for l, r, depth
         integer(c_int), intent(out), target :: ierr

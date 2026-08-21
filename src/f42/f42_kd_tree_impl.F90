@@ -35,11 +35,13 @@ contains
         integer(int32), dimension(n_points), intent(out) :: kd_indices
             !! Output index array (k-d tree order)
         integer(int32), dimension(n_points), intent(out) :: tmp_workspace
-            !! Workspace array
+            !! Workspace array, touched only if
+            !! [[f42_kd_tree_impl(module):median_select_by_dimension_helper(subroutine)]] falls
+            !! back to a full sort of a subrange
         real(real64), dimension(n_points), intent(out) :: tmp_value_buffer
-            !! Workspace for sorting
+            !! Workspace for the fallback full sort
         integer(int32), dimension(n_points), intent(out) :: tmp_permutation
-            !! Workspace for sorting
+            !! Workspace for the fallback full sort
 
         integer(int32) :: stack_top
         integer(int32) :: left_idx, right_idx, mid_idx, current_dim, current_depth
@@ -66,13 +68,11 @@ contains
             ! Find median index
             mid_idx = left_idx + (right_idx - left_idx)/2
 
-            !TODO optimize: this fully heapsorts the entire [left_idx:right_idx] subrange just to find the median split
-            !               point, at every level of the recursion. That makes the overall build O(n log^2 n) instead of
-            !               the O(n log n) achievable with a linear-time median-of-medians / quickselect partition (only
-            !               the median element needs to be correctly placed; the two sides don't need to be fully sorted).
-            ! Partition kd_indices(left_idx:right_idx) by points(current_dim, kd_indices(:))
-            call partial_sort_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
-                                           current_dim, tmp_workspace, tmp_value_buffer, tmp_permutation)
+            ! Partition kd_indices(left_idx:right_idx) around its median along
+            ! points(current_dim, kd_indices(:)) -- see median_select_by_dimension_helper for why
+            ! this need not fully sort the subrange the way it used to.
+            call median_select_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
+                                           current_dim, mid_idx, tmp_workspace, tmp_value_buffer, tmp_permutation)
 
             ! Push right and left intervals onto stack
             if (mid_idx < right_idx) then
@@ -90,10 +90,125 @@ contains
         end do
     end subroutine build_kd_index_impl
 
+    !> AUTHOR_ASIS_HALLAB
+    !| Partitions `kd_indices(left_idx:right_idx)` around its median position (`target_idx`)
+    !| along `points(dim, :)`, via iterative Hoare-partition quickselect: after this call, every
+    !| element of `kd_indices(left_idx:target_idx)` is `<=` `points(dim, kd_indices(target_idx))`
+    !| and every element of `kd_indices(target_idx:right_idx)` is `>=` it -- the only invariant
+    !| [[f42_kd_tree_impl(module):build_kd_index_impl(subroutine)]] and every query traversal in
+    !| this module actually rely on, so the two sides are left in whatever order quickselect
+    !| happens to leave them, not fully sorted the way this partition used to be.
+    !|
+    !| Guards quickselect's known weakness on adversarial input (a run of badly-chosen pivots can
+    !| degrade a single partition toward `O(n)` per round) with a round budget of
+    !| `2*ceil(log2(n+1))`: once that many partition rounds have failed to finish narrowing the
+    !| window, the remaining window is handed to
+    !| [[f42_kd_tree_impl(module):full_sort_fallback_by_dimension_helper(subroutine)]] -- this
+    !| partition's previous, full-heapsort implementation -- which places the median correctly
+    !| regardless of input order, just slower. Combined, this bounds the worst case at the same
+    !| `O(n log n)` per level the fallback alone always cost, while the common case (no
+    !| adversarial input) finishes a round in `O(n)`, bringing the whole tree build from
+    !| `O(n log^2 n)` down to average-case `O(n log n)`.
+    pure subroutine median_select_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
+                                                       dim, target_idx, tmp_workspace, tmp_value_buffer, tmp_permutation)
+        integer(int32), intent(in) :: n_dimensions
+            !! Number of dimensions
+        integer(int32), intent(in) :: left_idx
+            !! Left index of subarray
+        integer(int32), intent(in) :: right_idx
+            !! Right index of subarray
+        integer(int32), intent(in) :: dim
+            !! Dimension to partition by
+        integer(int32), intent(in) :: target_idx
+            !! Position within [left_idx, right_idx] to correctly place the median at
+        integer(int32), intent(in) :: n_points
+            !! size of points
+        real(real64), dimension(n_dimensions, n_points), intent(in) :: points
+            !! Input points array
+        integer(int32), dimension(:), intent(out) :: kd_indices
+            !! Index array to modify
+        integer(int32), dimension(:), intent(out) :: tmp_workspace
+            !! Workspace array, used only on fallback
+        real(real64), dimension(:), intent(out) :: tmp_value_buffer
+            !! Buffer for dimension values, used only on fallback
+        integer(int32), dimension(:), intent(out) :: tmp_permutation
+            !! Permutation array, used only on fallback
+
+        integer(int32) :: n_sliced_elements, budget, budget_probe, rounds, lo, hi, i, j, tmp_idx
+        real(real64)   :: pivot_val
+
+        n_sliced_elements = right_idx - left_idx + 1
+        if (n_sliced_elements <= 1) return
+
+        ! Round budget: 2*ceil(log2(n_sliced_elements + 1)), computed without floating point --
+        ! ample for a well-behaved quickselect (whose window roughly halves each round), while
+        ! still bounding the total worst-case work spent here (each round costs at most
+        ! O(window size), so `budget` rounds cost at most O(n log n)) before giving up on it.
+        budget = 0
+        budget_probe = 1
+        do while (budget_probe < n_sliced_elements + 1)
+            budget_probe = budget_probe*2
+            budget = budget + 1
+        end do
+        budget = 2*budget
+
+        rounds = 0
+        lo = left_idx
+        hi = right_idx
+        do while (lo < hi)
+            rounds = rounds + 1
+            if (rounds > budget) then
+                call full_sort_fallback_by_dimension_helper(points, n_points, n_dimensions, kd_indices, lo, hi, &
+                                                             dim, tmp_workspace, tmp_value_buffer, tmp_permutation)
+                return
+            end if
+
+            ! Hoare partition of kd_indices(lo:hi) around a middle-index pivot.
+            pivot_val = points(dim, kd_indices((lo + hi)/2))
+            i = lo
+            j = hi
+            do
+                do while (points(dim, kd_indices(i)) < pivot_val)
+                    i = i + 1
+                end do
+                do while (points(dim, kd_indices(j)) > pivot_val)
+                    j = j - 1
+                end do
+                if (i <= j) then
+                    tmp_idx = kd_indices(i)
+                    kd_indices(i) = kd_indices(j)
+                    kd_indices(j) = tmp_idx
+                    i = i + 1
+                    j = j - 1
+                end if
+                if (i > j) exit
+            end do
+
+            ! Narrow toward whichever side still contains target_idx. A target_idx that falls
+            ! strictly between j and i (possible when i and j cross with a one-element gap) is
+            ! narrowed to that (at most one-element) remainder rather than assumed already
+            ! placed, so this makes no assumption about what value ends up there.
+            if (target_idx <= j) then
+                hi = j
+            else if (target_idx >= i) then
+                lo = i
+            else
+                lo = j + 1
+                hi = i - 1
+            end if
+        end do
+    end subroutine median_select_by_dimension_helper
+
     !> AUTHOR_AARON_SCHROEDER
-    !| Sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)). Internal to the
-    !| index build, which has already validated everything this reads.
-    pure subroutine partial_sort_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
+    !| Fully sorts kd_indices(left_idx:right_idx) by points(dimension, kd_indices(:)), by
+    !| heapsort. Used as
+    !| [[f42_kd_tree_impl(module):median_select_by_dimension_helper(subroutine)]]'s
+    !| worst-case-safe fallback once its own quickselect has spent its round budget without
+    !| finishing -- this is what that partition used to do unconditionally before quickselect,
+    !| and remains correct (if `O(n log n)` rather than average-case `O(n)`) for placing a
+    !| median at any position of the fully-sorted result, regardless of input order. Internal to
+    !| the index build, which has already validated everything this reads.
+    pure subroutine full_sort_fallback_by_dimension_helper(points, n_points, n_dimensions, kd_indices, left_idx, right_idx, &
                                               dim, tmp_workspace, tmp_value_buffer, tmp_permutation)
         integer(int32), intent(in) :: n_dimensions
             !! Number of dimensions
@@ -137,7 +252,7 @@ contains
         do concurrent (i_sliced_element = 1:n_sliced_elements) shared (kd_indices, left_idx, tmp_workspace)
             kd_indices(left_idx + i_sliced_element - 1) = tmp_workspace(i_sliced_element)
         end do
-    end subroutine partial_sort_by_dimension_helper
+    end subroutine full_sort_fallback_by_dimension_helper
 
     !> summary: Build a k-d tree index over points on the unit sphere (unit vectors)
     !| AUTHOR_AARON_SCHROEDER
@@ -190,6 +305,7 @@ contains
         integer(int32), intent(out) :: ierr
             !! Error code
 
+        call set_ok(ierr)
         point_values = points(:, kd_indices(position))
     end subroutine get_kd_point
 

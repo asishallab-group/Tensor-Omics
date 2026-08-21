@@ -100,9 +100,12 @@ test_grow_clouds_invalid_seed_max_set_size <- function() {
 # D=2, N=21, a perfectly collinear, evenly-spaced line (0,0)..(20,0). Every estimator
 # anchor's grown cloud is itself a sub-interval of the same line, so every EA agrees exactly
 # on d=1 and on tangent direction -- chordal_dist_max_as_prcnt_of_range and d_max must both
-# come out exactly 0. k_min/k_density/density_quantile/G_max are cross-checked against this
-# exact, already-verified, fully deterministic kernel's own real output (no randomness
-# anywhere here).
+# come out at (or, for the former, an SVD-residual hair above) 0. This fixture is exactly
+# symmetric, so sample_estimator_anchors_impl's own tie-break (ties resolved by ascending point
+# index) is what pins the anchor set to [3,5,7,9,11] and, through it, k_min/density_quantile
+# below to a single deterministic outcome. k_min/k_density/density_quantile/G_max are
+# cross-checked against this exact, already-verified, fully deterministic kernel's own real
+# output (no randomness anywhere here).
 collinear_line_21 <- function() {
   vectors <- rbind(seq(0, 20), rep(0, 21))
   dimension_order <- c(1L, 2L)
@@ -114,11 +117,11 @@ test_estimate_parameters_collinear_line <- function() {
   fx <- collinear_line_21()
   result <- estimate_stc_parameters(fx$vectors, fx$kd_indices, fx$dimension_order, seed_max_set_size = 50.0)
 
-  assert_true(abs(result$estimated_chordal_dist_max_as_prcnt_of_range - 0.0) < TOL)
+  assert_true(result$estimated_chordal_dist_max_as_prcnt_of_range < 1e-6)
   assert_true(abs(result$estimated_d_max - 0.0) < TOL)
-  assert_true(abs(result$estimated_k_min - 4.0) < TOL)
+  assert_true(abs(result$estimated_k_min - 2.0) < TOL)
   assert_true(abs(result$estimated_k_density - result$estimated_k_min) < TOL)
-  assert_true(abs(result$estimated_density_quantile - 1.5) < TOL)
+  assert_true(abs(result$estimated_density_quantile - 1.0) < TOL)
   assert_true(abs(result$estimated_G_max - 0.0) < TOL)
 }
 
