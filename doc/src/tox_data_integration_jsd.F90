@@ -17,7 +17,7 @@ contains
         integer(int32), intent(in) :: pool_size
             !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+            !! Quantile in [0,1] for determining the residual range, default: 0.95
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -30,7 +30,7 @@ contains
         call set_ok(ierr)
 
         call validate_dimension_size(pool_size, ierr)
-        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(residual_range_quantile, ierr, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_int(abs_residual_pool_perm, pool_size, ierr, min=1_int32, max=pool_size)
 
         if (is_err(ierr)) return
@@ -43,7 +43,7 @@ contains
         integer(int32), intent(in) :: pool_size
             !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+            !! Quantile in [0,1] for determining the residual range, default: 0.95
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -54,7 +54,7 @@ contains
         integer(int32) :: i_pool, last_non_nan
         real(real64) :: actual_quantile
 
-        M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 95.0_real64)
+        M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 0.95_real64)
 
         last_non_nan = pool_size
         ! NaN is always last -> find last non-NaN index for percentile calculation
@@ -89,7 +89,7 @@ contains
         real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
             !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
         real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile for determining the residual range, default: 95.0
+            !! Quantile in [0,1] for determining the residual range, default: 0.95
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         integer(int32), intent(out) :: ierr
@@ -464,7 +464,7 @@ pure subroutine determine_shared_residual_range_expert_c( &
     integer(c_int), intent(in), target :: pool_size
         !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
     real(c_double), intent(in), target :: residual_range_quantile
-        !! Quantile for determining the residual range, default: 95.0
+        !! Quantile in [0,1] for determining the residual range, default: 0.95
     real(c_double), intent(out), target :: shared_residual_range
         !! Computed residual range (R)
     real(c_double), dimension(pool_size), intent(in), target :: abs_residual_pool
@@ -513,7 +513,7 @@ pure subroutine determine_shared_residual_range_c( &
     real(c_double), dimension(n_reps_S2, n_neighbors, n_points), intent(in), target :: neighborhood_residuals_S2
         !! Computed neighborhood residuals for study 2 ([[tox_data_integration(module):construct_neighborhoods(interface)]]), NaN is explicitly allowed for missing values
     real(c_double), intent(in), target :: residual_range_quantile
-        !! Quantile for determining the residual range, default: 95.0
+        !! Quantile in [0,1] for determining the residual range, default: 0.95
     real(c_double), intent(out), target :: shared_residual_range
         !! Computed residual range (R)
     integer(c_int), intent(out), target :: ierr

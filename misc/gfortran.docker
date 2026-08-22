@@ -11,7 +11,7 @@ FROM archlinux:latest
 RUN pacman -Sy --noconfirm archlinux-keyring && \
     pacman -Syu --noconfirm && \
     pacman -Sy --noconfirm \
-        gcc-fortran gcc make git curl \
+        gcc-fortran gcc make git curl gdb \
         xxhash libzip \
         python python-pip \
         r && \
@@ -19,6 +19,7 @@ RUN pacman -Sy --noconfirm archlinux-keyring && \
 
 # gcc-fortran, gcc, make  the build itself
 # git                     build.sh reads the current branch to decide on a clean build
+# gdb                     TOX_DEBUG runs the test binary under `gdb --args` (see build_utils.sh)
 # xxhash, libzip          linked by f42_xxh3_hashmap and tox_data_archive (see fpm.toml)
 # r                       the R test suite, and `R CMD config --cppflags` during the build
 

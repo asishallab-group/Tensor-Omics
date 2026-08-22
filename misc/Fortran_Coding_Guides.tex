@@ -232,9 +232,9 @@ Pattern & Meaning & Example \\
 \texttt{\_idx} & Calculated / derived index & \texttt{family\_idx}, \texttt{out\_idx} \\
 \texttt{tmp\_} & Work array (not input or output) & \texttt{tmp\_perm}, \texttt{tmp\_loess\_y} \\
 \texttt{\_perm} & Permutation vector for \texttt{<name>} & \texttt{sort\_perm}, \texttt{gene\_perm} \\
-\texttt{\_impl} & Core implementation subroutine, and the module holding it & \texttt{k\_means\_assign\_cluster\_impl} \\
-\texttt{\_c} & C-interoperable wrapper (generated) & \texttt{compute\_shift\_vector\_field\_c} \\
-\texttt{\_expert} & Full-control wrapper with all work arrays exposed (generated) & \texttt{compute\_family\_scaling\_expert} \\
+\texttt{\_impl} & Core implementation subroutine, in a \texttt{\_impl} module & \texttt{k\_means\_assign\_cluster\_impl} \\
+\texttt{\_c} & C-interoperable wrapper & \texttt{compute\_shift\_vector\_field\_c} \\
+\texttt{\_expert} & Full-control wrapper with all work arrays exposed & \texttt{compute\_family\_scaling\_expert\_c} \\
 \texttt{ierr} & Error code argument (always this name) & \texttt{integer(int32), intent(out) :: ierr} \\
 \bottomrule
 \end{tabular}
@@ -253,9 +253,7 @@ family_idx = gene_to_fam(i_gene)
 
 \subsection{Boolean / Selection Arrays}
 
-Use the \texttt{\_mask} or \texttt{\_selection} suffix for logical index arrays. Every logical
-that occupies storage is declared \texttt{logical(c\_bool)} --- one byte rather than four, and
-the kind the bindings already use, so a mask crosses to C, Python and R without being copied:
+Use the \texttt{\_mask} or \texttt{\_selection} suffix for logical index arrays:
 
 \begin{lstlisting}[language=Fortran]
 logical(c_bool), intent(in) :: vecs_selection_mask(n_vecs)
@@ -263,7 +261,463 @@ logical(c_bool), intent(in) :: axes_selection(n_axes)
 \end{lstlisting}
 
 % =============================================================================
+\section{Error Handling}
+% =============================================================================
+
+All errors are communicated through a single integer output argument \texttt{ierr}. The \texttt{tox\_errors} module defines all error codes and the functions to set and check them.
+
+\subsection{Error Code Categories}
+
+\begin{tabular}{lll}
+\toprule
+Range & Category & Example constant \\
+\midrule
+0 & Success & \texttt{ERR\_OK} \\
+1xx & I/O and file errors & \texttt{ERR\_FILE\_OPEN}, \texttt{ERR\_READ\_DATA} \\
+2xx & Input validation & \texttt{ERR\_INVALID\_INPUT}, \texttt{ERR\_DIM\_MISMATCH}, \texttt{ERR\_NAN\_INF} \\
+3xx & Memory & \texttt{ERR\_ALLOC\_FAIL}, \texttt{ERR\_POINTER\_NULL} \\
+5xxx & Fortran runtime & \texttt{ERR\_UNIT\_NOT\_CONNECTED} \\
+9xxx & Internal / unknown & \texttt{ERR\_INTERNAL}, \texttt{ERR\_UNKNOWN} \\
+\bottomrule
+\end{tabular}
+
+\subsection{Always Initialise \texttt{ierr} First}
+
+Call \texttt{set\_ok(ierr)} at the start of every subroutine that uses \texttt{ierr}:
+
+\begin{lstlisting}[language=Fortran]
+use tox_errors, only: set_ok, set_err, set_err_once, is_err, ERR_INVALID_INPUT
+
+call set_ok(ierr)   ! ierr = ERR_OK = 0
+\end{lstlisting}
+
+\subsection{Return Early on Error}
+
+Check \texttt{ierr} after every operation that can fail, and return immediately:
+
+\begin{lstlisting}[language=Fortran]
+call validate_dimension_size(n_genes, ierr)
+call validate_all_in_range_real(data, n_genes, ierr)
+if (is_err(ierr)) return
+\end{lstlisting}
+
+\subsection{Reporting the Failing Argument (\texttt{arg\_pos})}\label{sec:argpos}
+
+Every \texttt{validate\_*} routine, as well as \texttt{set\_err}, accepts an optional \texttt{arg\_pos} argument: the 1-based position of the offending argument in the public subroutine's own signature. Passing it lets callers across the language boundary (C, Python, R) report exactly which argument failed, instead of only an error code:
+
+\begin{lstlisting}[language=Fortran]
+call validate_dimension_size(n_clusters, ierr, arg_pos=1_int32)
+call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+call validate_dimension_size(n_dims, ierr, arg_pos=4_int32)
+if (n_clusters > n_points) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=1_int32)
+
+call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
+call validate_all_in_range_real(centroids, size(centroids, kind=int32), ierr, arg_pos=5_int32)
+\end{lstlisting}
+
+\texttt{arg\_pos} must always match the argument's position in the public (non-\texttt{\_impl}) subroutine that callers actually invoke, never its position in whichever internal implementation happens to run the validation.
+
+When the valid range of an argument is itself defined by \texttt{CM\_} macros (Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the validated range can never disagree:
+
+\begin{lstlisting}[language=Fortran]
+call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
+\end{lstlisting}
+
+\subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
+
+\begin{itemize}
+  \item \texttt{set\_err(ierr, code)}: \emph{Unconditionally} sets \texttt{ierr} to \texttt{code}, overwriting any error already stored. Use it only when \texttt{ierr} is known to be \texttt{ERR\_OK} (e.g.\ the first check after \texttt{set\_ok}), or when you deliberately want the new code to take precedence.
+  \item \texttt{set\_err\_once(ierr, code)}: Sets \texttt{ierr} to \texttt{code} \emph{only if \texttt{ierr} is currently \texttt{ERR\_OK}}, preserving the first error encountered. This is the safe default when chaining multiple fallible calls, and is exactly what the \texttt{validate\_*} routines use internally.
+\end{itemize}
+
+\subsection{Never Silent Errors}
+
+Do not ignore \texttt{ierr}. If a callee sets an error, the caller must either propagate it or handle it explicitly. Every downstream caller that receives an \texttt{ierr} must check it.
+
+\subsection{Avoid GOTO}
+
+\textbf{Never use \texttt{GOTO}.} It is prohibited in all new code for the following reasons:
+\begin{itemize}
+  \item It creates non-local control flow that is impossible to follow, making error paths untraceable.
+  \item It defeats the structured error model built around \texttt{ierr} and early returns.
+  \item It prevents the compiler from performing flow analysis, blocking optimizations and \texttt{pure} qualification.
+  \item It is incompatible with \texttt{do concurrent}, which requires structured concurrency regions.
+\end{itemize}
+
+\textbf{How to replace \texttt{GOTO} correctly:}
+
+\begin{tabular}{ll}
+\toprule
+Pattern to replace & Correct Fortran replacement \\
+\midrule
+Forward jump to error label & \texttt{call set\_err(ierr, ...); return} \\
+Loop exit (\texttt{GOTO after loop}) & \texttt{exit} or \texttt{cycle} inside a \texttt{do} loop \\
+Conditional skip block & \texttt{if (...) then ... end if} \\
+Multi-level exit & Refactor into a subroutine with early \texttt{return} \\
+\bottomrule
+\end{tabular}
+
+\begin{lstlisting}[language=Fortran]
+! WRONG
+if (n <= 0) goto 99
+call compute(n)
+99 continue
+
+! CORRECT
+if (n <= 0) then
+  call set_err(ierr, ERR_INVALID_INPUT)
+  return
+end if
+call compute(n)
+\end{lstlisting}
+
+% =============================================================================
+\section{Use of \texttt{intent} and \texttt{pure}}
+% =============================================================================
+
+\subsection{Mandatory \texttt{intent}}
+
+Every argument in every subroutine and function must carry an \texttt{intent} attribute:
+
+\begin{itemize}
+  \item \texttt{intent(in)}: The routine only reads this argument.
+  \item \texttt{intent(out)}: The routine completely overwrites this argument.
+  \item \texttt{intent(inout)}: The routine both reads and modifies the argument, and the incoming value matters.
+\end{itemize}
+
+Omitting \texttt{intent} disables aliasing checks and is forbidden.
+
+\subsection{Mandatory \texttt{pure} for Core Routines}
+
+All \emph{helper} and core subroutines must be declared \texttt{pure}. A \texttt{pure} procedure:
+
+\begin{itemize}
+  \item Has no side effects (no I/O, no global state changes).
+  \item Is eligible for auto-vectorization and threading by the compiler.
+  \item Allows the compiler to schedule calls more aggressively.
+\end{itemize}
+
+Remove \texttt{pure} only when truly necessary (e.g., allocation, I/O), and only in the generated validating/allocating wrapper layer -- never in the \texttt{\_impl} itself.
+
+\subsection{Optional Arguments}
+
+Fortran does not support default values in argument lists. Use the \texttt{M\_DEFAULT\_VAL} macro to assign defaults after a \texttt{PRESENT} check:
+
+\begin{lstlisting}[language=Fortran]
+#include "macros.h"
+subroutine my_routine(data, n, span, degree)
+  real(real64), intent(in), optional :: span
+  integer(int32), intent(in), optional :: degree
+  real(real64) :: actual_span
+  integer(int32) :: actual_degree
+
+  M_DEFAULT_VAL(span, actual_span, 0.7_real64)
+  M_DEFAULT_VAL(degree, actual_degree, 2_int32)
+\end{lstlisting}
+
+\textbf{Never} use optional arguments in C wrappers; \texttt{bind(C)} is incompatible with them.
+
+% =============================================================================
+\section{Parallelisation: \texttt{do concurrent}}
+% =============================================================================
+
+Prefer \texttt{do concurrent} over plain \texttt{do} loops whenever the iterations are independent. This is the primary parallelisation mechanism in this project. Do not use OpenMP pragma loops — let the compiler exploit \texttt{do concurrent} through its own vectorisation and threading back-ends.
+
+\subsection{Locality Specifications}
+
+Every variable used inside a \texttt{do concurrent} loop \textbf{must} carry an explicit locality specification. Do not rely on the compiler's assumption — leaving it implicit makes the intent ambiguous and can produce incorrect results with aggressive optimisers.
+
+\begin{tabular}{lp{9cm}}
+\toprule
+Specification & Meaning \\
+\midrule
+\texttt{shared(\ldots vars)} & All iterations read/write the \emph{same} instance of the variable. Use for arrays being filled element-wise or for read-only scalars. \\
+\texttt{local(\ldots vars)} & Each iteration gets its own \emph{private} copy, uninitialised at entry. Use for loop-local temporaries. \\
+\texttt{local\_init(\ldots vars)} & Like \texttt{local}, but each copy is initialised to the value the variable had before the loop. \\
+\texttt{reduce(op:\ldots vars)} & Each iteration contributes to a scalar accumulator via \texttt{op}. The final result is the reduction of all per-iteration contributions. \\
+\bottomrule
+\end{tabular}
+
+\vspace{0.5em}
+\noindent Supported \texttt{reduce} operators: \texttt{+}, \texttt{*}, \texttt{max}, \texttt{min}, \texttt{iand}, \texttt{ieor}, \texttt{ior}, \texttt{.and.}, \texttt{.or.}, \texttt{.eqv.}, \texttt{.neqv.}
+
+\begin{lstlisting}[language=Fortran]
+! Element-wise: array filled in parallel, scalar read-only
+do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
+  vector(i_dim) = vector(i_dim) / vector_norm
+end do
+
+! Reduction: accumulate a sum over independent iterations
+means_sum = 0.0_real64
+do concurrent (i_gene = 1:n_genes) shared(gene_means) reduce(+:means_sum)
+  means_sum = means_sum + gene_means(i_gene)
+end do
+
+! Local temporary: each iteration owns its own scratch variable
+do concurrent (i_vec = 1:n_vectors) shared(mat, norms) local(tmp_norm)
+  tmp_norm = norm2(mat(:, i_vec))
+  norms(i_vec) = tmp_norm
+end do
+\end{lstlisting}
+
+\textbf{When to use \texttt{do concurrent}:}
+\begin{itemize}
+  \item Element-wise array operations.
+  \item Independent distance or dot-product computations over gene/axis indices.
+  \item Any loop where iteration order does not affect correctness.
+\end{itemize}
+
+\textbf{When NOT to use \texttt{do concurrent}:}
+\begin{itemize}
+  \item Loops with data-dependent control flow across iterations (e.g., early-exit on error found inside a loop — in that case, validate before the loop).
+  \item Sequential algorithms like merge steps of merge-sort.
+\end{itemize}
+
+% =============================================================================
+\section{Memory Model: No Copies, No Allocations in Cores}
+% =============================================================================
+
+\subsection{No Allocations in Core Routines}
+
+\textbf{Core (\texttt{\_impl}) subroutines must not allocate memory.} Allocation is performed exclusively in the generated allocating wrapper layer. This rule:
+\begin{itemize}
+  \item Keeps core routines \texttt{pure} and deterministic.
+  \item Allows callers to reuse pre-allocated work arrays across multiple calls, avoiding repeated \texttt{malloc}/\texttt{free} cycles over large datasets.
+\end{itemize}
+
+\subsection{No Defensive Copies}
+
+Avoid creating copies of input arrays. For large omics datasets (tens of thousands of genes, hundreds of tissues), an unexpected copy easily exceeds available memory. Design algorithms to work on slices and views of the original data.
+
+\subsection{Logical Masks}
+
+A logical mask is a \texttt{logical} array with the same shape as the data it describes: \texttt{.true.} marks an element to include, \texttt{.false.} marks it to exclude. Passing a mask alongside the full array lets a routine include or exclude elements in place — with a plain \texttt{if (mask(...))} check — instead of first allocating a smaller array and copying the kept elements into it. This saves both the allocation and the copy, which matters at big scale.
+
+Prefer adding a mask argument over asking the caller to pre-filter their data into a separate array. In \texttt{tox\_relative\_axis\_plane\_tools\_impl.F90}, \texttt{omics\_vector\_RAP\_projection\_impl} takes the full \texttt{vecs} matrix together with a \texttt{vecs\_selection\_mask}/\texttt{axes\_selection\_mask}, and only writes the selected entries into the (exactly-sized) output — the input matrix itself is never copied or filtered:
+
+\begin{lstlisting}[language=Fortran]
+logical(c_bool), dimension(n_vecs), intent(in) :: vecs_selection_mask
+    !! `.true.` for vectors where projection is to be computed
+...
+do i_vec = 1, n_vecs
+    if (vecs_selection_mask(i_vec)) then
+        ...
+        if (axes_selection_mask(i_axis)) then
+            projections(i_axis_proj, i_vec_proj) = vecs(i_axis, i_vec)
+            ...
+\end{lstlisting}
+
+Similarly, in \texttt{tox\_data\_integration\_jsd\_impl.F90}, an optional \texttt{neighbor\_mask} lets \texttt{build\_residual\_histograms\_impl} skip specific neighbors while iterating the original, unfiltered array:
+
+\begin{lstlisting}[language=Fortran]
+logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
+    !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
+...
+filter_neighbors = present(neighbor_mask)
+...
+if (filter_neighbors) then
+    if (.not. neighbor_mask(i_neighbor, i_point)) cycle
+end if
+\end{lstlisting}
+
+No subset of \texttt{neighborhood\_residuals} is ever built — the mask only decides which iterations contribute.
+
+When a smaller, compacted array genuinely has to be produced (e.g. to hand a reduced gene list downstream), use \texttt{count(mask)} to size the allocation exactly once, rather than over-allocating or growing it as elements are found, as in \texttt{tox\_data\_tools.F90}:
+
+\begin{lstlisting}[language=Fortran]
+n_genes_kept = count(mask)
+allocate(temp_gene_ids(n_genes_kept), stat=ios)
+...
+do i = 1, n_genes_total
+    if (mask(i)) then
+        temp_gene_ids(j) = gene_ids(i)
+        ...
+        j = j + 1
+    end if
+end do
+\end{lstlisting}
+
+Use masks wherever a routine only needs to act on part of its input: they are cheaper than copying, and they keep the calling convention uniform (same array, same shape, one extra \texttt{logical} argument) whether or not filtering is requested.
+
+\subsection{Work Arrays (\texttt{tmp\_})}
+
+Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention.
+
+\begin{lstlisting}[language=Fortran]
+! tmp_perm holds the reusable sort permutation
+integer(int32), intent(out) :: tmp_perm(n_genes)
+real(real64),   intent(out) :: tmp_loess_y(n_genes)
+\end{lstlisting}
+
+\subsection{Reusing Output Buffers as Work Arrays (Pointer Reshaping)}
+
+When a routine has already been handed a large enough output (or other pre-allocated) buffer, reuse it as scratch space via Fortran pointer bounds-remapping instead of allocating a separate temporary. This is a zero-copy \emph{reshape} of contiguous storage: the pointer sees the same memory under new bounds.
+
+\begin{lstlisting}[language=Fortran]
+! Reinterpret a contiguous buffer as a 2-D work view (no copy, no allocation)
+real(real64), dimension(:, :), pointer :: work_view
+work_view(1:n_genes, 1:n_tissues) => output_buffer
+! A column slice can then serve as a work pointer
+tmp_col_ptr => work_view(:, 1)
+\end{lstlisting}
+
+\textbf{This reshapes; it does not transpose.} Bounds-remapping reinterprets the linear, column-major storage under the new shape: \texttt{work\_view(i, j)} is element \texttt{(j-1)*n\_genes + i} of \texttt{output\_buffer}, \emph{not} \texttt{output\_buffer(j, i)}. A genuine transpose reorders elements and therefore requires moving data (e.g.\ \texttt{transpose} into a separate buffer); a pointer view can never transpose. The target must be contiguous.
+
+Only reuse a buffer as scratch when its final output value is not needed until after the scratch use has finished — otherwise the scratch writes corrupt the output.
+
+\subsection{Always Use Pointers, Never Value-Copy Scalars in C Wrappers}
+
+See Section~\ref{sec:cwrappers}.
+
+% =============================================================================
+\section{Macro Usage (\texttt{src/macros.h})}
+% =============================================================================
+
+All source files that use macros must start with:
+\begin{lstlisting}[language=Fortran]
+#include "macros.h"
+\end{lstlisting}
+
+\subsection{Available Macros}
+
+\begin{tabular}{ll}
+\toprule
+Macro & Purpose \\
+\midrule
+\texttt{M\_USE\_NULL\_VALIDATION} & Imports modules needed for \texttt{c\_loc}/null checks in C wrappers \\
+\texttt{M\_CHECK\_IERR\_NON\_NULL} & Silently returns if \texttt{ierr} pointer is null (always first check) \\
+\texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ierr} to \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
+\texttt{M\_DEFAULT\_VAL(OPT,LOC,DEF)} & Assigns \texttt{OPT} to \texttt{LOC} if present, else assigns \texttt{DEF} \\
+\texttt{M\_ALLOCATE(DECL)} & Allocates \texttt{DECL}; sets \texttt{ERR\_ALLOC\_FAIL} and returns on failure \\
+\texttt{M\_NAN} & IEEE quiet NaN (double) \\
+\texttt{M\_NEG\_INF} & IEEE negative infinity (double) \\
+\texttt{M\_POS\_INF} & IEEE positive infinity (double) \\
+\bottomrule
+\end{tabular}
+
+\subsection{Module-Local Constants via \texttt{\#define} (\texttt{CM\_} prefix)}\label{sec:cm-macros}
+
+Global, reusable macros live in \texttt{macros.h} with the \texttt{M\_} prefix. A constant that only makes sense within a single module does not belong there — adding it would clutter a file meant for cross-module reuse. Instead, define it locally, immediately after the \texttt{\#include} line, using the \texttt{CM\_} prefix (``Custom Macro''), and keep it next to the module's other constants (its \texttt{parameter} declarations):
+
+\begin{lstlisting}[language=Fortran]
+#define CM_METHOD_AVERAGE 0
+#define CM_METHOD_WEIGHTED 1
+#define CM_METHOD_WARD 2
+
+integer(int32), parameter :: METHOD_AVERAGE  = CM_METHOD_AVERAGE
+integer(int32), parameter :: METHOD_WEIGHTED = CM_METHOD_WEIGHTED
+integer(int32), parameter :: METHOD_WARD     = CM_METHOD_WARD
+\end{lstlisting}
+
+\paragraph{Keeping FORD documentation in sync.} FORD does not resolve Fortran \texttt{parameter} values, but it does run the C preprocessor before generating docs, so a \texttt{CM\_} macro referenced inside a doc comment renders as-is. This lets a mode/method table stay anchored to the code instead of to a literal that can drift:
+
+\begin{lstlisting}[language=Fortran]
+!! |      Method      |          Value         |
+!! |------------------|------------------------|
+!! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
+!! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
+!! |      Ward        |   CM_METHOD_WARD       |
+\end{lstlisting}
+
+\paragraph{Use the macro in validation too.} When a \texttt{CM\_} macro defines the valid values or bounds of an argument, pass the macro itself to the corresponding \texttt{validate\_*} call instead of repeating the literal:
+
+\begin{lstlisting}[language=Fortran]
+call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
+\end{lstlisting}
+
+This keeps the default/bound, the validation, and the documentation all traceable to one definition — if a mode is added or reordered, only the \texttt{\#define} block needs to change.
+
+% =============================================================================
+\section{Derived Types (\texttt{type}): Use with Care}
+% =============================================================================
+
+Derived types (\texttt{type :: ...}) are a powerful Fortran feature but must be used with restraint in this project:
+
+\begin{itemize}
+  \item \textbf{Prohibited} in any subroutine or function that has a C wrapper or is otherwise called from Python or R.
+    C, Python \texttt{ctypes}, and R's C \texttt{.Call} layer cannot represent Fortran derived types; passing them across the language boundary is undefined behaviour.
+  \item \textbf{Permitted} for pure-Fortran data structures where the extra abstraction genuinely improves readability or correctness (e.g., hash maps, JSON serialisation helpers).
+  \item \textbf{Avoid by default} in the main TOX scientific routines, which operate exclusively on plain arrays and matrices.
+\end{itemize}
+
+If you need a compound structure that must cross the language boundary, decompose it into flat arrays and pass its components individually.
+
+% =============================================================================
+\section{The \texttt{f42\_utils} Utility Module}
+% =============================================================================
+
+\texttt{src/f42/utils/} contains general-purpose helper functions shared across the project, split
+by topic into \texttt{f42\_math\_impl}, \texttt{f42\_sort\_impl}, \texttt{f42\_random\_impl},
+\texttt{f42\_vector\_impl} and \texttt{f42\_stats\_impl}: \texttt{mean}, \texttt{std\_dev},
+\texttt{norm}, \texttt{clamp}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close},
+\texttt{logx}, \texttt{compute\_edf}, etc. \texttt{f42\_utils\_impl} re-exports all five, so one
+\texttt{use} reaches everything.
+
+\textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether
+the family already provides it. If you write a function that is genuinely reusable across modules,
+add it there rather than creating a module-local copy. This prevents duplication and keeps utility
+logic in one place. Import from the module that \emph{defines} the helper where you know it, and
+from the parent where you do not:
+
+\begin{lstlisting}[language=Fortran]
+use f42_math_impl, only: norm, is_close, logx, mean, std_dev
+use f42_sort_impl, only: sort_array
+\end{lstlisting}
+
+% =============================================================================
+\section{The \texttt{f42\_safeguard} Module}
+% =============================================================================
+
+\textbf{Any module that names a C kind must \texttt{use f42\_safeguard}} --- any
+\texttt{c\_bool}, \texttt{c\_int}, \texttt{c\_char} or the rest, whether or not the module has a
+\texttt{bind(C)} interface of its own. The code generator enforces this; a module that names one
+without the \texttt{use} is a build error.
+
+\begin{lstlisting}[language=Fortran]
+module tox_thing_impl
+    use f42_safeguard
+    use, intrinsic :: iso_c_binding, only: c_bool
+\end{lstlisting}
+
+\subsection{What it guards, and against what}
+
+Eight compile-time assertions, of two kinds, because there are two ways a platform can let us
+down.
+
+\textbf{Four equalities} --- \texttt{c\_int == int32}, \texttt{c\_double == real64},
+\texttt{c\_double\_complex == real64}, \texttt{c\_char ==} the default character kind. This is
+the dangerous case: the kind exists, so every declaration compiles, and data crossing a wrapper
+is silently misinterpreted. Nothing else in the build would say a word. These assertions are
+also what let the framework write \texttt{real64} and plain \texttt{character(len=*)} rather than
+converting at the boundary --- the equality is the licence for the cheap spelling.
+
+\textbf{Four existence checks} --- \texttt{c\_bool}, \texttt{c\_size\_t}, \texttt{c\_int64\_t},
+\texttt{c\_signed\_char} are each asserted positive. \texttt{iso\_c\_binding} gives a C kind the
+value \texttt{-1} where the platform has no counterpart, and a negative kind is a compile error
+at every single declaration naming it. For \texttt{c\_bool} that is 152 errors in files that did
+nothing wrong, instead of one here naming the kind that is missing.
+
+\subsection{Why the \texttt{use} is not optional}
+
+The guards fire when \emph{this} module compiles, not when yours does --- so the \texttt{use} is
+not what makes them run. It is what makes them run \emph{first}. A dependency is the only way to
+order a Fortran build, and a module compiled before the safeguard that names a missing kind
+fails with the compiler's message about that kind rather than the guard's message about which
+kind is missing.
+
+That is also why \texttt{f42\_safeguard} depends on nothing but the intrinsic modules, and must
+stay that way. It is a load-bearing property, not tidiness: it is what puts the module at the
+front of every build, and what makes each of the eight guards reachable by the kinds test, which
+forces each mismatch in turn and requires the build to fail.
+
+The rule was learned the hard way. Before logicals moved to \texttt{c\_bool}, the only modules
+naming a C kind were the generated wrappers, every one of which had the \texttt{use}; the sweep
+put C kinds into 39 more compilation units and left the dependency behind. Nothing noticed,
+because on this platform every kind is present and correct.
+
+% =============================================================================
 \section{Writing for the Code Generator}
+\label{sec:cwrappers}
 % =============================================================================
 
 You write \textbf{one} procedure per computation: the implementation. The code generator reads it
@@ -395,462 +849,6 @@ a procedure's contract cannot be expressed in it, that is a sign the \emph{proce
 rethinking rather than the generator needing a special case. Raise it rather than working around it.
 
 % =============================================================================
-\section{Error Handling}
-% =============================================================================
-
-All errors are communicated through a single integer output argument \texttt{ierr}. The \texttt{tox\_errors} module defines all error codes and the functions to set and check them.
-
-\subsection{Error Code Categories}
-
-\begin{tabular}{lll}
-\toprule
-Range & Category & Example constant \\
-\midrule
-0 & Success & \texttt{ERR\_OK} \\
-1xx & I/O and file errors & \texttt{ERR\_FILE\_OPEN}, \texttt{ERR\_READ\_DATA} \\
-2xx & Input validation & \texttt{ERR\_INVALID\_INPUT}, \texttt{ERR\_DIM\_MISMATCH}, \texttt{ERR\_NAN\_INF} \\
-3xx & Memory & \texttt{ERR\_ALLOC\_FAIL}, \texttt{ERR\_POINTER\_NULL} \\
-5xxx & Fortran runtime & \texttt{ERR\_UNIT\_NOT\_CONNECTED} \\
-9xxx & Internal / unknown & \texttt{ERR\_INTERNAL}, \texttt{ERR\_UNKNOWN} \\
-\bottomrule
-\end{tabular}
-
-\subsection{Always Initialise \texttt{ierr} First}
-
-Call \texttt{set\_ok(ierr)} at the start of every subroutine that uses \texttt{ierr}:
-
-\begin{lstlisting}[language=Fortran]
-use tox_errors, only: set_ok, set_err, set_err_once, is_err, ERR_INVALID_INPUT
-
-call set_ok(ierr)   ! ierr = ERR_OK = 0
-\end{lstlisting}
-
-\subsection{Return Early on Error}
-
-Check \texttt{ierr} after every operation that can fail, and return immediately:
-
-\begin{lstlisting}[language=Fortran]
-call validate_dimension_size(n_genes, ierr)
-call validate_all_in_range_real(data, n_genes, ierr)
-if (is_err(ierr)) return
-\end{lstlisting}
-
-\subsection{Reporting the Failing Argument (\texttt{arg\_pos})}\label{sec:argpos}
-
-The generated entry points do all input validation, and number the argument positions for you. On
-the rare occasion that something has to be validated by hand, use the \texttt{tox\_errors}
-validators rather than an ad-hoc check, and pass \texttt{arg\_pos}:
-
-\begin{lstlisting}[language=Fortran]
-call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-call validate_in_range_real(span, ierr, min=0.0_real64, max=1.0_real64, arg_pos=6_int32)
-call validate_all_in_range_real(data_points, size(data_points, kind=int32), ierr, arg_pos=2_int32)
-\end{lstlisting}
-
-\texttt{arg\_pos} must match the argument's position in the public (non-\texttt{\_impl}) subroutine
-that callers actually invoke, never its position in whichever internal routine happens to run the
-check — Python and R index their argument-name tuple with it.
-
-When the valid range of an argument is itself defined by \texttt{CM\_} macros
-(Section~\ref{sec:cm-macros}), pass those macros as the bounds, so the reported range and the
-validated range can never disagree.
-
-\subsection{\texttt{set\_err} vs \texttt{set\_err\_once}}
-
-\begin{itemize}
-  \item \texttt{set\_err(ierr, code)}: \emph{Unconditionally} sets \texttt{ierr} to \texttt{code}, overwriting any error already stored. Use it only when \texttt{ierr} is known to be \texttt{ERR\_OK} (e.g.\ the first check after \texttt{set\_ok}), or when you deliberately want the new code to take precedence.
-  \item \texttt{set\_err\_once(ierr, code)}: Sets \texttt{ierr} to \texttt{code} \emph{only if \texttt{ierr} is currently \texttt{ERR\_OK}}, preserving the first error encountered. This is the safe default when chaining multiple fallible calls, and is exactly what the \texttt{validate\_*} routines use internally.
-\end{itemize}
-
-\subsection{Never Silent Errors}
-
-Do not ignore \texttt{ierr}. If a callee sets an error, the caller must either propagate it or handle it explicitly. Every downstream caller that receives an \texttt{ierr} must check it.
-
-\subsection{Avoid GOTO}
-
-\textbf{Never use \texttt{GOTO}.} It is prohibited in all new code for the following reasons:
-\begin{itemize}
-  \item It creates non-local control flow that is impossible to follow, making error paths untraceable.
-  \item It defeats the structured error model built around \texttt{ierr} and early returns.
-  \item It prevents the compiler from performing flow analysis, blocking optimizations and \texttt{pure} qualification.
-  \item It is incompatible with \texttt{do concurrent}, which requires structured concurrency regions.
-\end{itemize}
-
-\textbf{How to replace \texttt{GOTO} correctly:}
-
-\begin{tabular}{ll}
-\toprule
-Pattern to replace & Correct Fortran replacement \\
-\midrule
-Forward jump to error label & \texttt{call set\_err(ierr, ...); return} \\
-Loop exit (\texttt{GOTO after loop}) & \texttt{exit} or \texttt{cycle} inside a \texttt{do} loop \\
-Conditional skip block & \texttt{if (...) then ... end if} \\
-Multi-level exit & Refactor into a subroutine with early \texttt{return} \\
-\bottomrule
-\end{tabular}
-
-\begin{lstlisting}[language=Fortran]
-! WRONG
-if (n <= 0) goto 99
-call compute(n)
-99 continue
-
-! CORRECT
-if (n <= 0) then
-  call set_err(ierr, ERR_INVALID_INPUT)
-  return
-end if
-call compute(n)
-\end{lstlisting}
-
-% =============================================================================
-\section{Use of \texttt{intent} and \texttt{pure}}
-% =============================================================================
-
-\subsection{Mandatory \texttt{intent}}
-
-Every argument in every subroutine and function must carry an \texttt{intent} attribute:
-
-\begin{itemize}
-  \item \texttt{intent(in)}: The routine only reads this argument.
-  \item \texttt{intent(out)}: The routine completely overwrites this argument.
-  \item \texttt{intent(inout)}: The routine both reads and modifies the argument, and the incoming value matters.
-\end{itemize}
-
-Omitting \texttt{intent} disables aliasing checks and is forbidden.
-
-\subsection{Mandatory \texttt{pure} for Core Routines}
-
-All \emph{helper} and core subroutines must be declared \texttt{pure}. A \texttt{pure} procedure:
-
-\begin{itemize}
-  \item Has no side effects (no I/O, no global state changes).
-  \item Is eligible for auto-vectorization and threading by the compiler.
-  \item Allows the compiler to schedule calls more aggressively.
-\end{itemize}
-
-Remove \texttt{pure} only when truly necessary (e.g., I/O, or an impure external library). Allocation is not a reason: \texttt{allocate(..., stat=)} is legal in a pure procedure.
-
-\subsection{Optional Arguments}
-
-Fortran does not support default values in argument lists. Use the \texttt{M\_DEFAULT\_VAL} macro to assign defaults after a \texttt{PRESENT} check:
-
-\begin{lstlisting}[language=Fortran]
-#include "macros.h"
-subroutine my_routine(data, n, span, degree)
-  real(real64), intent(in), optional :: span
-  integer(int32), intent(in), optional :: degree
-  real(real64) :: actual_span
-  integer(int32) :: actual_degree
-
-  M_DEFAULT_VAL(span, actual_span, 0.7_real64)
-  M_DEFAULT_VAL(degree, actual_degree, 2_int32)
-\end{lstlisting}
-
-\textbf{Never} use optional arguments in C wrappers; \texttt{bind(C)} is incompatible with them.
-
-% =============================================================================
-\section{Parallelisation: \texttt{do concurrent}}
-% =============================================================================
-
-Prefer \texttt{do concurrent} over plain \texttt{do} loops whenever the iterations are independent. This is the primary parallelisation mechanism in this project. Do not use OpenMP pragma loops — let the compiler exploit \texttt{do concurrent} through its own vectorisation and threading back-ends.
-
-\subsection{Locality Specifications}
-
-Every variable used inside a \texttt{do concurrent} loop \textbf{must} carry an explicit locality specification. Do not rely on the compiler's assumption — leaving it implicit makes the intent ambiguous and can produce incorrect results with aggressive optimisers.
-
-\begin{tabular}{lp{9cm}}
-\toprule
-Specification & Meaning \\
-\midrule
-\texttt{shared(\ldots vars)} & All iterations read/write the \emph{same} instance of the variable. Use for arrays being filled element-wise or for read-only scalars. \\
-\texttt{local(\ldots vars)} & Each iteration gets its own \emph{private} copy, uninitialised at entry. Use for loop-local temporaries. \\
-\texttt{local\_init(\ldots vars)} & Like \texttt{local}, but each copy is initialised to the value the variable had before the loop. \\
-\texttt{reduce(op:\ldots vars)} & Each iteration contributes to a scalar accumulator via \texttt{op}. The final result is the reduction of all per-iteration contributions. \\
-\bottomrule
-\end{tabular}
-
-\vspace{0.5em}
-\noindent Supported \texttt{reduce} operators: \texttt{+}, \texttt{*}, \texttt{max}, \texttt{min}, \texttt{iand}, \texttt{ieor}, \texttt{ior}, \texttt{.and.}, \texttt{.or.}, \texttt{.eqv.}, \texttt{.neqv.}
-
-\begin{lstlisting}[language=Fortran]
-! Element-wise: array filled in parallel, scalar read-only
-do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
-  vector(i_dim) = vector(i_dim) / vector_norm
-end do
-
-! Reduction: accumulate a sum over independent iterations
-means_sum = 0.0_real64
-do concurrent (i_gene = 1:n_genes) shared(gene_means) reduce(+:means_sum)
-  means_sum = means_sum + gene_means(i_gene)
-end do
-
-! Local temporary: each iteration owns its own scratch variable
-do concurrent (i_vec = 1:n_vectors) shared(mat, norms) local(tmp_norm)
-  tmp_norm = norm2(mat(:, i_vec))
-  norms(i_vec) = tmp_norm
-end do
-\end{lstlisting}
-
-\textbf{When to use \texttt{do concurrent}:}
-\begin{itemize}
-  \item Element-wise array operations.
-  \item Independent distance or dot-product computations over gene/axis indices.
-  \item Any loop where iteration order does not affect correctness.
-\end{itemize}
-
-\textbf{When NOT to use \texttt{do concurrent}:}
-\begin{itemize}
-  \item Loops with data-dependent control flow across iterations (e.g., early-exit on error found inside a loop — in that case, validate before the loop).
-  \item Sequential algorithms like merge steps of merge-sort.
-\end{itemize}
-
-% =============================================================================
-\section{Memory Model: No Copies, No Allocations in Cores}
-% =============================================================================
-
-\subsection{No Allocations in Core Routines}
-
-\textbf{Nothing in an \texttt{\_impl} module may allocate memory}, helpers included. Allocation is performed exclusively in the generated allocating entry point, and the generator enforces this. This rule:
-\begin{itemize}
-  \item Keeps core routines \texttt{pure} and deterministic.
-  \item Allows callers to reuse pre-allocated work arrays across multiple calls, avoiding repeated \texttt{malloc}/\texttt{free} cycles over large datasets.
-\end{itemize}
-
-\subsection{No Defensive Copies}
-
-Avoid creating copies of input arrays. For large omics datasets (tens of thousands of genes, hundreds of tissues), an unexpected copy easily exceeds available memory. Design algorithms to work on slices and views of the original data.
-
-\subsection{Logical Masks}
-
-A logical mask is a \texttt{logical} array with the same shape as the data it describes: \texttt{.true.} marks an element to include, \texttt{.false.} marks it to exclude. Passing a mask alongside the full array lets a routine include or exclude elements in place — with a plain \texttt{if (mask(...))} check — instead of first allocating a smaller array and copying the kept elements into it. This saves both the allocation and the copy, which matters at big scale.
-
-Prefer adding a mask argument over asking the caller to pre-filter their data into a separate array. In \texttt{tox\_relative\_axis\_plane\_tools.F90}, \texttt{omics\_vector\_RAP\_projection} takes the full \texttt{vecs} matrix together with a \texttt{vecs\_selection\_mask}/\texttt{axes\_selection\_mask}, and only writes the selected entries into the (exactly-sized) output — the input matrix itself is never copied or filtered:
-
-\begin{lstlisting}[language=Fortran]
-logical, dimension(n_vecs), intent(in) :: vecs_selection_mask
-    !! `.true.` for vectors where projection is to be computed
-...
-do i_vec = 1, n_vecs
-    if (vecs_selection_mask(i_vec)) then
-        ...
-        if (axes_selection_mask(i_axis)) then
-            projections(i_axis_proj, i_vec_proj) = vecs(i_axis, i_vec)
-            ...
-\end{lstlisting}
-
-Similarly, in \texttt{tox\_data\_integration\_jsd\_impl.F90}, an optional \texttt{neighbor\_mask} lets \texttt{build\_residual\_histograms\_impl} skip specific neighbors while iterating the original, unfiltered array:
-
-\begin{lstlisting}[language=Fortran]
-logical, dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask
-    !! Optional mask to exclude specific neighbors (e.g. for family-wise analysis)
-...
-filter_neighbors = present(neighbor_mask)
-...
-if (filter_neighbors) then
-    if (.not. neighbor_mask(i_neighbor, i_point)) cycle
-end if
-\end{lstlisting}
-
-No subset of \texttt{neighborhood\_residuals} is ever built — the mask only decides which iterations contribute.
-
-When a smaller, compacted array genuinely has to be produced (e.g. to hand a reduced gene list downstream), use \texttt{count(mask)} to size the allocation exactly once, rather than over-allocating or growing it as elements are found, as in \texttt{tox\_data\_tools.F90}:
-
-\begin{lstlisting}[language=Fortran]
-n_genes_kept = count(mask)
-allocate(temp_gene_ids(n_genes_kept), stat=ios)
-...
-do i = 1, n_genes_total
-    if (mask(i)) then
-        temp_gene_ids(j) = gene_ids(i)
-        ...
-        j = j + 1
-    end if
-end do
-\end{lstlisting}
-
-Use masks wherever a routine only needs to act on part of its input: they are cheaper than copying, and they keep the calling convention uniform (same array, same shape, one extra \texttt{logical} argument) whether or not filtering is requested.
-
-\subsection{Work Arrays (\texttt{tmp\_})}
-
-Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention.
-
-\begin{lstlisting}[language=Fortran]
-! tmp_perm holds the reusable sort permutation
-integer(int32), intent(out) :: tmp_perm(n_genes)
-real(real64),   intent(out) :: tmp_loess_y(n_genes)
-\end{lstlisting}
-
-\subsection{Reusing Output Buffers as Work Arrays (Pointer Reshaping)}
-
-When a routine has already been handed a large enough output (or other pre-allocated) buffer, reuse it as scratch space via Fortran pointer bounds-remapping instead of allocating a separate temporary. This is a zero-copy \emph{reshape} of contiguous storage: the pointer sees the same memory under new bounds.
-
-\begin{lstlisting}[language=Fortran]
-! Reinterpret a contiguous buffer as a 2-D work view (no copy, no allocation)
-real(real64), dimension(:, :), pointer :: work_view
-work_view(1:n_genes, 1:n_tissues) => output_buffer
-! A column slice can then serve as a work pointer
-tmp_col_ptr => work_view(:, 1)
-\end{lstlisting}
-
-\textbf{This reshapes; it does not transpose.} Bounds-remapping reinterprets the linear, column-major storage under the new shape: \texttt{work\_view(i, j)} is element \texttt{(j-1)*n\_genes + i} of \texttt{output\_buffer}, \emph{not} \texttt{output\_buffer(j, i)}. A genuine transpose reorders elements and therefore requires moving data (e.g.\ \texttt{transpose} into a separate buffer); a pointer view can never transpose. The target must be contiguous.
-
-Only reuse a buffer as scratch when its final output value is not needed until after the scratch use has finished — otherwise the scratch writes corrupt the output.
-
-% =============================================================================
-\section{Macro Usage (\texttt{src/macros.h})}
-% =============================================================================
-
-All source files that use macros must start with:
-\begin{lstlisting}[language=Fortran]
-#include <src/macros.h>
-\end{lstlisting}
-
-\textbf{Never write a bare \texttt{implicit none}}: every module uses \texttt{M\_IMPLICIT\_NONE}
-instead. It expands to \texttt{implicit none (type, external)}, the F2018 form, which additionally
-requires an explicit interface for every external procedure — so calling one that the compiler has
-never seen becomes a compile error at the call site rather than a link-time surprise or, worse, a
-silently wrong ABI.
-
-\subsection{Available Macros}
-
-\begin{tabular}{ll}
-\toprule
-Macro & Purpose \\
-\midrule
-\texttt{M\_IMPLICIT\_NONE} & \texttt{implicit none (type, external)}; use it in every module \\
-\texttt{M\_USE\_NULL\_VALIDATION} & Imports modules needed for \texttt{c\_loc}/null checks in C wrappers \\
-\texttt{M\_CHECK\_IERR\_NON\_NULL} & Silently returns if \texttt{ierr} pointer is null (always first check) \\
-\texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ierr} to \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
-\texttt{M\_DEFAULT\_VAL(OPT,LOC,DEF)} & Assigns \texttt{OPT} to \texttt{LOC} if present, else assigns \texttt{DEF} \\
-\texttt{M\_ALLOCATE(DECL)} & Allocates \texttt{DECL}; sets \texttt{ERR\_ALLOC\_FAIL} and returns on failure \\
-\texttt{M\_NAN} & IEEE quiet NaN (double) \\
-\texttt{M\_NEG\_INF} & IEEE negative infinity (double) \\
-\texttt{M\_POS\_INF} & IEEE positive infinity (double) \\
-\bottomrule
-\end{tabular}
-
-\subsection{Module-Local Constants via \texttt{\#define} (\texttt{CM\_} prefix)}\label{sec:cm-macros}
-
-Global, reusable macros live in \texttt{macros.h} with the \texttt{M\_} prefix. A constant that only makes sense within a single module does not belong there — adding it would clutter a file meant for cross-module reuse. Instead, define it locally, immediately after the \texttt{\#include} line, using the \texttt{CM\_} prefix (``Custom Macro''), and keep it next to the module's other constants (its \texttt{parameter} declarations):
-
-\begin{lstlisting}[language=Fortran]
-#define CM_METHOD_AVERAGE 0
-#define CM_METHOD_WEIGHTED 1
-#define CM_METHOD_WARD 2
-
-integer(int32), parameter :: METHOD_AVERAGE  = CM_METHOD_AVERAGE
-integer(int32), parameter :: METHOD_WEIGHTED = CM_METHOD_WEIGHTED
-integer(int32), parameter :: METHOD_WARD     = CM_METHOD_WARD
-\end{lstlisting}
-
-\paragraph{Keeping FORD documentation in sync.} FORD does not resolve Fortran \texttt{parameter} values, but it does run the C preprocessor before generating docs, so a \texttt{CM\_} macro referenced inside a doc comment renders as-is. This lets a mode/method table stay anchored to the code instead of to a literal that can drift:
-
-\begin{lstlisting}[language=Fortran]
-!! |      Method      |          Value         |
-!! |------------------|------------------------|
-!! | Average / UPGMA  |   CM_METHOD_AVERAGE    |
-!! | Weighted / WPGMA |   CM_METHOD_WEIGHTED   |
-!! |      Ward        |   CM_METHOD_WARD       |
-\end{lstlisting}
-
-\paragraph{Use the macro in validation too.} When a \texttt{CM\_} macro defines the valid values or bounds of an argument, pass the macro itself to the corresponding \texttt{validate\_*} call instead of repeating the literal:
-
-\begin{lstlisting}[language=Fortran]
-call validate_in_range_int(method, ierr, min=CM_METHOD_AVERAGE, max=CM_METHOD_WARD, arg_pos=7_int32)
-\end{lstlisting}
-
-This keeps the default/bound, the validation, and the documentation all traceable to one definition — if a mode is added or reordered, only the \texttt{\#define} block needs to change.
-
-% =============================================================================
-\section{Derived Types (\texttt{type}): Use with Care}
-% =============================================================================
-
-Derived types (\texttt{type :: ...}) are a powerful Fortran feature but must be used with restraint in this project:
-
-\begin{itemize}
-  \item \textbf{Prohibited} in any subroutine or function that has a C wrapper or is otherwise called from Python or R.
-    C, Python \texttt{ctypes}, and R's C interface cannot represent Fortran derived types; passing them across the language boundary is undefined behaviour.
-  \item \textbf{Permitted} for pure-Fortran data structures where the extra abstraction genuinely improves readability or correctness (e.g., hash maps, JSON serialisation helpers).
-  \item \textbf{Avoid by default} in the main TOX scientific routines, which operate exclusively on plain arrays and matrices.
-\end{itemize}
-
-If you need a compound structure that must cross the language boundary, decompose it into flat arrays and pass its components individually.
-
-% =============================================================================
-\section{The \texttt{f42\_utils} Utility Module}
-% =============================================================================
-
-\texttt{src/f42/utils/} contains general-purpose helper functions shared across the project, split
-by topic into \texttt{f42\_math\_impl}, \texttt{f42\_sort\_impl}, \texttt{f42\_random\_impl},
-\texttt{f42\_vector\_impl} and \texttt{f42\_stats\_impl}: \texttt{mean}, \texttt{std\_dev},
-\texttt{norm}, \texttt{clamp}, \texttt{sort\_array}, \texttt{angle\_between}, \texttt{is\_close},
-\texttt{logx}, \texttt{compute\_edf}, etc. \texttt{f42\_utils\_impl} re-exports all five, so one
-\texttt{use} reaches everything.
-
-\textbf{Rule:} Before implementing a new helper function anywhere else in the codebase, check whether
-the family already provides it. If you write a function that is genuinely reusable across modules,
-add it there rather than creating a module-local copy. This prevents duplication and keeps utility
-logic in one place. Import from the module that \emph{defines} the helper where you know it, and
-from the parent where you do not:
-
-\begin{lstlisting}[language=Fortran]
-use f42_math_impl, only: norm, is_close, logx, mean, std_dev
-use f42_sort_impl, only: sort_array
-\end{lstlisting}
-
-% =============================================================================
-\section{The \texttt{f42\_safeguard} Module}
-% =============================================================================
-
-\textbf{Any module that names a C kind must \texttt{use f42\_safeguard}} --- any
-\texttt{c\_bool}, \texttt{c\_int}, \texttt{c\_char} or the rest, whether or not the module has a
-\texttt{bind(C)} interface of its own. The code generator enforces this; a module that names one
-without the \texttt{use} is a build error.
-
-\begin{lstlisting}[language=Fortran]
-module tox_thing_impl
-    use f42_safeguard
-    use, intrinsic :: iso_c_binding, only: c_bool
-\end{lstlisting}
-
-\subsection{What it guards, and against what}
-
-Eight compile-time assertions, of two kinds, because there are two ways a platform can let us
-down.
-
-\textbf{Four equalities} --- \texttt{c\_int == int32}, \texttt{c\_double == real64},
-\texttt{c\_double\_complex == real64}, \texttt{c\_char ==} the default character kind. This is
-the dangerous case: the kind exists, so every declaration compiles, and data crossing a wrapper
-is silently misinterpreted. Nothing else in the build would say a word. These assertions are
-also what let the framework write \texttt{real64} and plain \texttt{character(len=*)} rather than
-converting at the boundary --- the equality is the licence for the cheap spelling.
-
-\textbf{Four existence checks} --- \texttt{c\_bool}, \texttt{c\_size\_t}, \texttt{c\_int64\_t},
-\texttt{c\_signed\_char} are each asserted positive. \texttt{iso\_c\_binding} gives a C kind the
-value \texttt{-1} where the platform has no counterpart, and a negative kind is a compile error
-at every single declaration naming it. For \texttt{c\_bool} that is 152 errors in files that did
-nothing wrong, instead of one here naming the kind that is missing.
-
-\subsection{Why the \texttt{use} is not optional}
-
-The guards fire when \emph{this} module compiles, not when yours does --- so the \texttt{use} is
-not what makes them run. It is what makes them run \emph{first}. A dependency is the only way to
-order a Fortran build, and a module compiled before the safeguard that names a missing kind
-fails with the compiler's message about that kind rather than the guard's message about which
-kind is missing.
-
-That is also why \texttt{f42\_safeguard} depends on nothing but the intrinsic modules, and must
-stay that way. It is a load-bearing property, not tidiness: it is what puts the module at the
-front of every build, and what makes each of the eight guards reachable by the kinds test, which
-forces each mismatch in turn and requires the build to fail.
-
-The rule was learned the hard way. Before logicals moved to \texttt{c\_bool}, the only modules
-naming a C kind were the generated wrappers, every one of which had the \texttt{use}; the sweep
-put C kinds into 39 more compilation units and left the dependency behind. Nothing noticed,
-because on this platform every kind is present and correct.
-
-% =============================================================================
 \section{FORD Documentation}
 % =============================================================================
 
@@ -874,7 +872,7 @@ because on this platform every kind is present and correct.
 !| outside the module for compatibility.
 module tox_gene_centroids
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  M_IMPLICIT_NONE
+  implicit none
 contains
 
   !> Computes the element-wise mean for a given set of gene expression vectors.
@@ -926,10 +924,6 @@ The project provides a structured test suite framework. See the \href{https://gi
   \item \textbf{Python / R wrappers}: Test only that the function can be called, that the return value is of the correct type and shape, and that reasonable input produces a non-error result.
 \end{itemize}
 
-The wrappers themselves are generated, but \textbf{their tests are not} — a generated binding is
-exactly the place where a mistake is uniform and invisible, so every published procedure needs a
-Python and an R test that actually calls it. Run everything with \texttt{./run\_all\_tests.sh}.
-
 \subsection{Test Naming Convention}
 
 Each test file is named \texttt{mod\_test\_<module\_name>.\{f90|F90|py|R\}}.
@@ -966,6 +960,12 @@ For \emph{technical problems} (especially compilation errors), do not spend more
 \end{enumerate}
 
 Many gfortran errors for \texttt{bind(C)}, \texttt{pure}, or kind-mismatch issues are non-obvious; the team has likely encountered the same problem before.
+
+% =============================================================================
+\section{Code Snippets}
+% =============================================================================
+
+Snippets for Fortran, Python, and R are \textbf{auto-generated} by the code generator (\texttt{python helper/generate\_code.py}, target \texttt{snippets}) straight from each \texttt{\_impl} procedure's own documentation, and written to \texttt{snippets/}. You should never edit the generated files by hand -- the one hand-written exception is \texttt{snippets/toxdev\_snippets.json}, development-convenience snippets unrelated to any particular procedure. See \textbf{Writing for the Code Generator} above for what to write to get a procedure a snippet, and \texttt{helper/codegen/README.md} for the generator itself.
 
 % =============================================================================
 \section{Integrating External Fortran Code from Netlib}
@@ -1038,28 +1038,6 @@ gfortran -o program_name file1.o file2.o file3.o
 If \texttt{undefined reference} errors appear at link time, a dependency is missing. Classic culprits in Netlib packages are additional routines from \textbf{BLAS}, \textbf{LINPACK}, or utility functions such as \texttt{d1mach} — fetch and compile those as well.
 
 % =============================================================================
-\section{Further Reading}
-% =============================================================================
-
-This guide states the conventions. Four documents in the repository go deeper, and each is kept in
-step with the code:
-
-\begin{itemize}
-  \item \textbf{\texttt{codegen\_guide.md}} (repository root) — the author's guide to the code
-        generator, case by case: ranges, masks, work arrays, permutations, sizing routines, modes
-        and mode splits, prologues, runtime errors, split families. Every case has a real snippet
-        and shows what comes out. \textbf{Read this before adding a procedure.}
-  \item \textbf{\texttt{helper/codegen/README.md}} — what the generator produces and how to run it,
-        including what it refuses and why.
-  \item \textbf{\texttt{helper/codegen/emit/README.md}} — the language layers: every question the
-        Python and R bindings had to answer (array layout, ownership of \texttt{intent(inout)},
-        null-as-absent, missing values, derived arguments, decoding \texttt{ierr}) and what each
-        chose. Written so a third language decides rows instead of rediscovering them.
-  \item \textbf{\texttt{helper/codegen/design/}} — the design of record, including every rejected
-        alternative.
-\end{itemize}
-
-% =============================================================================
 \section{Quick-Reference Checklist}
 % =============================================================================
 
@@ -1067,19 +1045,19 @@ Use this checklist when reviewing or submitting any Fortran code contribution:
 
 \begin{itemize}[label=$\square$]
   \item File extension is \texttt{.F90} (macros used) or \texttt{.f90} (no macros).
-  \item \texttt{\#include <src/macros.h>} is present, and the module declares \texttt{M\_IMPLICIT\_NONE} rather than a bare \texttt{implicit none}.
+  \item \texttt{\#include <src/macros.h>} is present if any \texttt{M\_*} macro is used.
   \item All \texttt{real} variables use \texttt{real(real64)}; all constants carry \texttt{\_real64}.
+  \item All \texttt{logical} that occupy storage use \texttt{logical(c\_bool)}.
   \item Every argument has \texttt{intent(in|out|inout)}.
-  \item The implementation is named \texttt{foo\_impl}, in a module ending \texttt{\_impl}, and is declared \texttt{pure}.
+  \item The \texttt{\_impl} is declared \texttt{pure}, never validates input, and never allocates.
+  \item Every constraint on an \texttt{\_impl} argument is a \texttt{DM\_*} macro in its \texttt{!!} comment, not prose alone.
   \item \texttt{do concurrent} is used for independent loops.
   \item No \texttt{GOTO} anywhere.
-  \item The implementation validates nothing and allocates nothing; where it does report a runtime error, \texttt{ierr} is initialised with \texttt{set\_ok(ierr)} and every failure path returns immediately.
-  \item Every constraint is stated as a \texttt{DM\_} macro on the argument it constrains, and every work array is named \texttt{tmp\_}.
-  \item No unexplained copies of large arrays.
-  \item No derived types in anything that reaches C, Python or R.
-  \item All utility functions are in the \texttt{f42\_utils} family (or re-use existing ones).
-  \item FORD comments (\texttt{!>}, \texttt{!|}, \texttt{!!}) are present for the module and every public procedure, written as API prose — they are what Python and R users read.
-  \item The generator was run and its output committed (\texttt{./build.sh}, plus \texttt{--target snippets} if a published name changed).
+  \item Any module naming a C kind (\texttt{c\_bool}, \texttt{c\_int}, ...) has \texttt{use f42\_safeguard}.
+  \item No derived types in any procedure the generator wraps.
+  \item Reusable helpers are added to the \texttt{f42\_utils} family (\texttt{f42\_math\_impl}, \texttt{f42\_sort\_impl}, etc.) rather than duplicated.
+  \item FORD comments (\texttt{!>}, \texttt{!|}, \texttt{!!}) are present for all public procedures -- they become the generated C/Python/R documentation verbatim.
+  \item The code generator was run (\texttt{./build.sh}, or \texttt{helper/generate\_code.py} directly) and the regenerated files under \texttt{src/generated/}, \texttt{python/tensor\_omics/}, \texttt{r/tensor\_omics/} and \texttt{snippets/} are committed alongside the change.
   \item Fortran tests cover the new logic.
   \item Python/R tests verify call-ability and return type.
   \item MR does not self-merge and review threads are not self-closed.
