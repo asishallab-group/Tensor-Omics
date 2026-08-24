@@ -10,7 +10,8 @@ module bench_kernels
     use, intrinsic :: iso_c_binding, only: c_bool
     implicit none
     private
-    public :: marshal_in, marshal_out, marshal_automatic, make_default, make_cbool, read_mask
+    public :: marshal_in, marshal_out, marshal_automatic, make_default, make_cbool
+    public :: read_mask, read_mask_cbool, branch_default, branch_cbool
 
 contains
 
@@ -49,7 +50,7 @@ contains
     end subroutine marshal_automatic
 
     !> Computing a mask into a default logical, and into c_bool: the second-order cost of
-    !| moving the kernels to c_bool, where every comparison then needs converting.
+    !| moving the implementations to c_bool, where every comparison then needs converting.
     subroutine make_default(n, x, threshold, mask, sink)
         integer(int32), intent(in) :: n
         real(real64), intent(in) :: x(n), threshold
@@ -70,7 +71,10 @@ contains
         sink = sink + count(mask)
     end subroutine make_cbool
 
-    !> Reading a mask, for scale: what the kernels do with one once it is there.
+    !> Reading a mask with `count`, in both kinds. This is the pair that matters now that
+    !| every mask in the framework is `logical(c_bool)`: the marshalling columns measure a
+    !| copy that no longer exists, and `mk:` only covers writing one. A whole-array
+    !| reduction is the vectorisable read, where a quarter of the bytes should show.
     subroutine read_mask(n, mask, sink)
         integer(int32), intent(in) :: n
         logical, intent(in) :: mask(n)
@@ -78,5 +82,47 @@ contains
 
         sink = sink + count(mask)
     end subroutine read_mask
+
+    subroutine read_mask_cbool(n, mask, sink)
+        integer(int32), intent(in) :: n
+        logical(c_bool), intent(in) :: mask(n)
+        integer(int64), intent(inout) :: sink
+
+        sink = sink + count(mask)
+    end subroutine read_mask_cbool
+
+    !> The read the implementations actually perform: a scalar element test per iteration,
+    !| guarding work on the selected elements (`if (vectors_selection_mask(i_vec))`,
+    !| `if (.not. neighbor_mask(i_neighbor, i_point)) cycle`). Branch behaviour, not
+    !| bandwidth, may dominate here -- which is the point of measuring it separately.
+    subroutine branch_default(n, mask, x, sink)
+        integer(int32), intent(in) :: n
+        logical, intent(in) :: mask(n)
+        real(real64), intent(in) :: x(n)
+        integer(int64), intent(inout) :: sink
+        integer(int32) :: i
+        real(real64) :: acc
+
+        acc = 0.0_real64
+        do i = 1, n
+            if (mask(i)) acc = acc + x(i)
+        end do
+        sink = sink + int(acc, int64)
+    end subroutine branch_default
+
+    subroutine branch_cbool(n, mask, x, sink)
+        integer(int32), intent(in) :: n
+        logical(c_bool), intent(in) :: mask(n)
+        real(real64), intent(in) :: x(n)
+        integer(int64), intent(inout) :: sink
+        integer(int32) :: i
+        real(real64) :: acc
+
+        acc = 0.0_real64
+        do i = 1, n
+            if (mask(i)) acc = acc + x(i)
+        end do
+        sink = sink + int(acc, int64)
+    end subroutine branch_cbool
 
 end module bench_kernels

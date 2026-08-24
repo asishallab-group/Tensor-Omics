@@ -6,7 +6,7 @@ machine rather than re-argued.
 
 | directory | question |
 |---|---|
-| [`logical-kinds/`](logical-kinds/) | What does the `c_bool` marshalling copy at the C boundary cost, and does computing a mask in `c_bool` cost more than in the default kind? |
+| [`logical-kinds/`](logical-kinds/) | What does the `c_bool` marshalling copy at the C boundary cost, and does holding a mask in `c_bool` rather than the default kind cost anything to write or to read? |
 | [`r-binding-backend/`](r-binding-backend/) | Should the R binding go through Rcpp, cpp11, pure C `.Call`, or `.C`? |
 
 ## Layout of a benchmark
@@ -38,12 +38,20 @@ With everything in one program, ifx saw that a copied mask was only ever counted
 that a copy *with* an allocation came out faster than the same copy without one. A separately
 compiled callee is also the more honest model, since that is what a real caller faces.
 
-**Take the best of several trials and discard non-positive results.** Partly the usual noise
-floor: the single-shot `-O0` figures came out three times too high. But it is also necessary
-for correctness on this toolchain, because **ifx's `system_clock` is wall-clock based** — its
-count is the Unix epoch in microseconds, where gfortran's is monotonic uptime — so an NTP step
-lands as a jump backwards in the middle of a measurement. On WSL2 that happens often enough to
-see in a single run.
+**Time with `cpu_time`, not `system_clock`, and take the best of several trials.** The trials
+are the usual noise floor — the single-shot `-O0` figures came out three times too high. The
+clock is a correctness matter: **ifx's `system_clock` is wall-clock based**, its count being
+the Unix epoch in microseconds where gfortran's is monotonic uptime, so an NTP step lands as a
+jump backwards in the middle of a measurement. On WSL2 that happens often enough to see in a
+single run.
+
+That combination is worse than either part alone, and it is the trap: a backwards jump makes a
+trial look *faster*, so best-of-N does not reject the corrupted trial — it selects it.
+Discarding non-positive elapsed times catches only the jumps large enough to invert the
+interval; a smaller step survives as a plausible number. It showed in `logical-kinds/` as
+single ifx cells an order of magnitude below both their neighbours, landing in a different cell
+on every run. `cpu_time` is monotonic on both compilers and is the same quantity as wall time
+for a single-threaded benchmark whose measurements each run for 0.1 s or more.
 
 Two smaller ones worth repeating:
 
