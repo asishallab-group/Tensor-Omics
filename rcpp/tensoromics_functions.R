@@ -3613,6 +3613,8 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 #' @param k_step Integer adaptive increment.
 #' @param k_max Integer maximum neighborhood size.
 #' @param tau Numeric adaptive stopping threshold.
+#' @param trim_frac Numeric symmetric per-tail residual-pool trim fraction in
+#'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0). 0 = off.
 #' @param max_pool_size Integer maximum residual pool size.
 #'
 #' @return A list with pvalues_own, n_success, three neighborhood sizes
@@ -3630,6 +3632,7 @@ tox_compute_noise_pvalues_pipeline <- function(
     k_step = 100L,
     k_max = 1000L,
     tau = 0.01,
+    trim_frac = 0.0,
     max_pool_size
 ) {
 
@@ -3645,6 +3648,7 @@ tox_compute_noise_pvalues_pipeline <- function(
         k_step = as.integer(k_step),
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
+        trim_frac = as.numeric(trim_frac),
         max_pool_size = as.integer(max_pool_size)
     )
     return(result)
@@ -3675,6 +3679,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     k_step = 100L,
     k_max = 1000L,
     tau = 0.01,
+    trim_frac = 0.0,
     max_pool_size
 ) {
 
@@ -3690,6 +3695,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
         k_step = as.integer(k_step),
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
+        trim_frac = as.numeric(trim_frac),
         max_pool_size = as.integer(max_pool_size)
     )
     return(result)

@@ -1187,6 +1187,7 @@ void compute_noise_pvalues_pipeline_c(
   const int* k_step,
   const int* k_max,
   const double* tau,
+  const double* trim_frac,
   double* pvalues_own,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
@@ -1215,6 +1216,7 @@ void compute_noise_pvalues_pipeline_exact_c(
   const int* k_step,
   const int* k_max,
   const double* tau,
+  const double* trim_frac,
   double* pvalues_own,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
@@ -4723,12 +4725,11 @@ NumericVector tox_scaled_distance_quantile_rcpp(
     return quantile;
 }
 
-// Shared marshalling for the three noise-model pipeline bindings. The baseline
-// (bootstrap mean-difference null), the exact (sorted binary-search + sqrt(n)
-// scaling), and the LFCseq (within-neighbourhood unioned mean comparisons) Fortran
-// entry points all have an identical ABI, so only the C function invoked differs —
-// selected by `model_variant` (0 = baseline, 1 = exact, 2 = LFCseq). Keeping one
-// driver guarantees all three bindings stay in lock-step.
+// Shared marshalling for the two noise-model pipeline bindings. The baseline
+// (bootstrap mean-difference null) and the exact (sorted binary-search + sqrt(n)
+// scaling) Fortran entry points have an identical ABI, so only the C function
+// invoked differs — selected by `model_variant` (1 = exact, otherwise baseline).
+// Keeping one driver guarantees both bindings stay in lock-step.
 static Rcpp::List run_noise_pvalues_pipeline(
     int model_variant,
     Rcpp::NumericVector case_means,
@@ -4742,6 +4743,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
     int k_step,
     int k_max,
     double tau,
+    double trim_frac,
     int max_pool_size) {
 
     int case_n_samples = case_replicates.nrow();
@@ -4769,7 +4771,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
             obs_own.begin(), valid_genes_own.begin(),
             &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau,
+            &k_start, &k_step, &k_max, &tau, &trim_frac,
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
@@ -4780,7 +4782,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
             obs_own.begin(), valid_genes_own.begin(),
             &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau,
+            &k_start, &k_step, &k_max, &tau, &trim_frac,
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
@@ -4815,6 +4817,8 @@ static Rcpp::List run_noise_pvalues_pipeline(
 //' @param k_step Integer adaptive growth step
 //' @param k_max Integer maximum pool size
 //' @param tau Double adaptive stopping threshold
+//' @param trim_frac Double symmetric per-tail residual-pool trim fraction in
+//'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0). 0 = off.
 //' @param max_pool_size Integer maximum neighborhood pool size
 //'
 //' @return List with pvalues_own, success count, three neighborhood sizes
@@ -4832,13 +4836,14 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
     int k_step,
     int k_max,
     double tau,
+    double trim_frac,
     int max_pool_size) {
 
     return run_noise_pvalues_pipeline(
         0,  // baseline (bootstrap mean-difference null)
         case_means, case_replicates, control_means, control_replicates,
         obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, max_pool_size);
+        norm_method, k_start, k_step, k_max, tau, trim_frac, max_pool_size);
 }
 
 //' Compute noise-model p-values (EXACT variant, gene-vs-own comparison)
@@ -4864,12 +4869,13 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
     int k_step,
     int k_max,
     double tau,
+    double trim_frac,
     int max_pool_size) {
 
     return run_noise_pvalues_pipeline(
         1,  // exact (sorted binary-search + sqrt(n) scaling)
         case_means, case_replicates, control_means, control_replicates,
         obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, max_pool_size);
+        norm_method, k_start, k_step, k_max, tau, trim_frac, max_pool_size);
 }
 

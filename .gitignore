@@ -12,7 +12,7 @@
 !test_runner.sh
 !run_all_tests.sh
 !fpm.toml
-!*.md
+!README.md
 !LICENSE
 
 # test
