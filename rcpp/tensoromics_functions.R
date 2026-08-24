@@ -3616,7 +3616,7 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 #' @param max_pool_size Integer maximum residual pool size.
 #'
 #' @return A list with pvalues_own, n_success, three neighborhood sizes
-#'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and ierr.
+#'   (own_case, own_control, case), and ierr.
 #' @export
 tox_compute_noise_pvalues_pipeline <- function(
     case_means,
@@ -3661,7 +3661,7 @@ tox_compute_noise_pvalues_pipeline <- function(
 #' @inheritParams tox_compute_noise_pvalues_pipeline
 #'
 #' @return A list with pvalues_own, n_success, three neighborhood sizes
-#'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and ierr.
+#'   (own_case, own_control, case), and ierr.
 #' @export
 tox_compute_noise_pvalues_pipeline_exact <- function(
     case_means,

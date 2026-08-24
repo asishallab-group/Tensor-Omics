@@ -8,8 +8,8 @@
 !| there is no family cache, no family/ortholog p-values, and the pipeline takes
 !| only the `own` statistic. The exact/Monte-Carlo pairwise p-value has likewise
 !| been replaced by the bootstrap mean-difference null
-!| (`compute_pvalue_bootstrap_mean_helper`); variance stratification now uses a
-!| single 1-bin schedule (STRATA_BIN_COUNT_SCHEDULE = [1]).
+!| (`compute_pvalue_bootstrap_mean_helper`), and variance stratification has been
+!| removed — the `own` null is built directly from the gathered kNN pool.
 module mod_test_noise_model
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -30,16 +30,14 @@ contains
     function get_all_tests_noise_model() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate(all_tests(9))
+        allocate(all_tests(7))
         all_tests(1) = test_case("test_prepare_sorted_data",               test_prepare_sorted_data)
         all_tests(2) = test_case("test_gather_residuals_helper",           test_gather_residuals_helper)
-        all_tests(3) = test_case("test_stratify_residuals",                test_stratify_residuals)
-        all_tests(4) = test_case("test_compute_pvalue_bootstrap_mean",     test_compute_pvalue_bootstrap_mean)
-        all_tests(5) = test_case("test_full_pipeline",                     test_full_pipeline)
-        all_tests(6) = test_case("test_both_sides_stratified",             test_both_sides_stratified)
-        all_tests(7) = test_case("test_prepare_sorted_data_log_transform", test_prepare_sorted_data_log_transform)
-        all_tests(8) = test_case("test_residuals_log_transform_centred",   test_residuals_log_transform_centred)
-        all_tests(9) = test_case("test_full_pipeline_all_normalizations",  test_full_pipeline_all_normalizations)
+        all_tests(3) = test_case("test_compute_pvalue_bootstrap_mean",     test_compute_pvalue_bootstrap_mean)
+        all_tests(4) = test_case("test_full_pipeline",                     test_full_pipeline)
+        all_tests(5) = test_case("test_prepare_sorted_data_log_transform", test_prepare_sorted_data_log_transform)
+        all_tests(6) = test_case("test_residuals_log_transform_centred",   test_residuals_log_transform_centred)
+        all_tests(7) = test_case("test_full_pipeline_all_normalizations",  test_full_pipeline_all_normalizations)
     end function get_all_tests_noise_model
 
     ! =========================================================================
@@ -147,7 +145,6 @@ contains
         type(sorted_data_t) :: sorted_data
         integer(int32) :: ierr, i
         real(real64),    allocatable :: pooled(:)
-        integer(int32),  allocatable :: gene_id(:)
         integer(int32) :: n_pooled, max_pool_size
         real(real64)   :: target_mean
         integer(int32), parameter :: k_start = 10, k_step = 5, k_max = 30
@@ -162,12 +159,12 @@ contains
         call assert_equal_int(ierr, ERR_OK, "gather: prepare_sorted_data failed")
 
         max_pool_size = 50
-        allocate(pooled(max_pool_size), gene_id(max_pool_size))
+        allocate(pooled(max_pool_size))
 
         ! Target near gene 5 (mean = 10)
         target_mean = 10.0_real64
         call gather_residuals_helper(target_mean, sorted_data, k_start, k_step, k_max, tau, &
-                                     pooled, gene_id, n_pooled, max_pool_size)
+                                     pooled, n_pooled, max_pool_size)
 
         call assert_true(n_pooled >= k_start, &
                          "pool size should be at least k_start")
@@ -175,81 +172,12 @@ contains
                          "pool size exceeds upper limit")
 
         do i = 1, n_pooled
-            call assert_true(gene_id(i) >= 1 .and. gene_id(i) <= n_genes, &
-                             "gene_id("//str(i)//") out of [1, n_genes]")
             call assert_true(pooled(i) == pooled(i), &
                              "pooled("//str(i)//") is NaN")
         end do
 
-        deallocate(pooled, gene_id)
+        deallocate(pooled)
     end subroutine test_gather_residuals_helper
-
-    ! =========================================================================
-    ! test_stratify_residuals
-    ! =========================================================================
-    !| Variance stratification bins each residual by its SOURCE GENE MEAN
-    !| (`means_sorted(gene_id_per_residual(i))`), not by the residual value, so
-    !| the routine is fed the sorted gene means and the per-residual gene slot.
-    !|
-    !| The schedule is now a single step (STRATA_BIN_COUNT_SCHEDULE = [1]), so the
-    !| chosen bin count is always 1 (the whole pool) and every residual lands in
-    !| bin 1. `criteria_met` reports whether that single bin satisfied the
-    !| acceptance criteria — decisive here is criterion 3: the bin must hold at
-    !| least STRATA_MIN_RESIDUALS_PER_BIN (50) residuals.
-    subroutine test_stratify_residuals()
-        integer(int32), parameter :: n_genes = 5, n_pool_big = 60, n_pool_small = 15
-        real(real64)   :: means_sorted(n_genes)
-        integer(int32) :: gene_id(n_pool_big), bin_idx(n_pool_big), chosen_bin_idx(n_pool_big)
-        integer(int32) :: tmp_c_g(n_pool_big), tmp_touched_gene_slots(n_pool_big)
-        integer(int32) :: tmp_bin_counts(STRATA_BIN_COUNT_SCHEDULE(1))
-        integer(int32) :: tmp_gene_min_bin(n_genes), tmp_gene_max_bin(n_genes)
-        logical        :: tmp_gene_seen(n_genes)
-        real(real64)   :: tmp_bin_edges(STRATA_BIN_COUNT_SCHEDULE(1) + 1)
-        real(real64)   :: chosen_bin_edges(STRATA_BIN_COUNT_SCHEDULE(1) + 1)
-        integer(int32) :: chosen_n_bins, i
-        logical        :: criteria_met
-
-        ! `check_stratification_accepted_helper` requires an all-`.false.` "seen"
-        ! array on entry (and leaves it that way on return).
-        tmp_gene_seen = .false.
-        do i = 1, n_genes
-            means_sorted(i) = real(i, real64) * 10.0_real64   ! ascending gene means
-        end do
-        ! Cycle residuals through the 5 gene slots.
-        do i = 1, n_pool_big
-            gene_id(i) = mod(i - 1, n_genes) + 1
-        end do
-
-        ! --- Large pool (>= 50 residuals): single accepted 1-bin stratum ---------
-        call stratify_residuals_helper(means_sorted, gene_id, n_pool_big, n_genes, &
-                                       bin_idx, tmp_bin_edges, &
-                                       tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, &
-                                       tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
-                                       chosen_n_bins, chosen_bin_idx, chosen_bin_edges, criteria_met)
-
-        call assert_equal_int(chosen_n_bins, 1, &
-                              "single-step schedule must always choose 1 bin")
-        do i = 1, n_pool_big
-            call assert_equal_int(chosen_bin_idx(i), 1, &
-                                  "all residuals must land in bin 1 (chosen_bin_idx "//str(i)//")")
-        end do
-        call assert_true(chosen_bin_edges(2) >= chosen_bin_edges(1), &
-                         "bin edges must be non-decreasing")
-        call assert_true(criteria_met, &
-                         "60 residuals in one bin should satisfy the >= 50-per-bin criterion")
-
-        ! --- Small pool (< 50 residuals): 1 bin (hard floor), criteria NOT met ---
-        call stratify_residuals_helper(means_sorted, gene_id, n_pool_small, n_genes, &
-                                       bin_idx, tmp_bin_edges, &
-                                       tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, &
-                                       tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
-                                       chosen_n_bins, chosen_bin_idx, chosen_bin_edges, criteria_met)
-
-        call assert_equal_int(chosen_n_bins, 1, &
-                              "hard-floor fallback must still be 1 bin")
-        call assert_true(.not. criteria_met, &
-                         "15 residuals cannot meet the >= 50-per-bin criterion (hard-floor fallback)")
-    end subroutine test_stratify_residuals
 
     ! =========================================================================
     ! test_compute_pvalue_bootstrap_mean
@@ -310,7 +238,6 @@ contains
         real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
         integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
-        integer(int32) :: chosen_bins_case(N_GENES), chosen_bins_control(N_GENES)
         integer(int32) :: ierr, i, count_sig_own
 
         integer(int32), parameter :: k_start = 10, k_step = 5, k_max = 50
@@ -336,7 +263,6 @@ contains
             pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
             neigh_own_case, neigh_own_control, neigh_case, &
-            chosen_bins_case, chosen_bins_control, &
             ierr)
 
         call assert_equal_int(ierr, ERR_OK, "pipeline: ierr should be OK")
@@ -360,16 +286,14 @@ contains
         call assert_true(count_sig_own <= 5, &
                          "too many significant own p-values among non-overexpressed genes")
 
-        ! Neighborhood sizes: positive and ≥ k_start when a p-value was produced;
-        ! the chosen bin count is the single 1-bin stratum.
+        ! Neighborhood sizes: positive and ≥ k_start when a p-value was produced.
+        ! The `own` pools are now the full gathered kNN pools (no stratification).
         do i = 1, N_GENES
             if (pvalues_own(i) >= 0.0_real64) then
                 call assert_true(neigh_own_case(i) > 0, &
                                  "neigh_own_case("//str(i)//") should be > 0")
                 call assert_true(neigh_own_control(i) > 0, &
                                  "neigh_own_control("//str(i)//") should be > 0")
-                call assert_equal_int(abs(chosen_bins_case(i)), 1, &
-                                      "chosen_bins_case("//str(i)//") magnitude should be 1")
             end if
             if (neigh_case(i) > 0) then
                 call assert_true(neigh_case(i) >= k_start, &
@@ -377,67 +301,6 @@ contains
             end if
         end do
     end subroutine test_full_pipeline
-
-    ! =========================================================================
-    ! test_both_sides_stratified
-    ! =========================================================================
-    !| Confirms that variance stratification is applied to BOTH the case and the
-    !| control kNN pools for the `own` comparison. For every gene that received a
-    !| valid own p-value:
-    !|   0 < neigh_own_case(i) ≤ neigh_case(i)   and   neigh_own_control(i) > 0
-    !| The upper bound confirms the case pool was reduced to a variance stratum
-    !| (equal only when everything falls in one bin, which it does under the
-    !| single-step schedule).
-    subroutine test_both_sides_stratified()
-        real(real64)   :: means_case(N_GENES), means_control(N_GENES)
-        real(real64)   :: replicates_case(N_SAMPLES, N_GENES)
-        real(real64)   :: replicates_control(N_SAMPLES, N_GENES)
-        integer(int32) :: compute_own(N_GENES)
-        real(real64)   :: observed_own(N_GENES)
-        real(real64)   :: pvalues_own(N_GENES)
-        integer(int32) :: n_genes_with_pvalue
-        integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
-        integer(int32) :: chosen_bins_case(N_GENES), chosen_bins_control(N_GENES)
-        integer(int32) :: ierr, i
-
-        integer(int32), parameter :: k_start = 10, k_step = 5, k_max = 50
-        real(real64),   parameter :: tau = 0.1_real64
-        integer(int32), parameter :: max_pool_size = 100
-
-        call generate_test_data(N_GENES, N_SAMPLES, means_case, means_control, &
-                                replicates_case, replicates_control, &
-                                control_noise_scale=0.8_real64)
-
-        do i = 1, N_GENES
-            observed_own(i) = means_case(i) - means_control(i)
-        end do
-        compute_own = 1
-
-        call compute_noise_pvalue_pipeline( &
-            means_case, replicates_case, N_GENES, N_SAMPLES, &
-            means_control, replicates_control, N_GENES, N_SAMPLES, &
-            observed_own, compute_own, &
-            N_GENES, 0, k_start, k_step, k_max, tau, &
-            pvalues_own, n_genes_with_pvalue, &
-            max_pool_size, &
-            neigh_own_case, neigh_own_control, neigh_case, &
-            chosen_bins_case, chosen_bins_control, &
-            ierr)
-
-        call assert_equal_int(ierr, ERR_OK, "both-sides-stratified: pipeline ierr OK")
-
-        do i = 1, N_GENES
-            if (pvalues_own(i) >= 0.0_real64) then
-                call assert_true(neigh_own_case(i) > 0, &
-                                 "gene "//str(i)//": neigh_own_case should be > 0")
-                call assert_true(neigh_own_case(i) <= neigh_case(i), &
-                                 "gene "//str(i)//": neigh_own_case ("//str(neigh_own_case(i))// &
-                                 ") should be <= neigh_case ("//str(neigh_case(i))//")")
-                call assert_true(neigh_own_control(i) > 0, &
-                                 "gene "//str(i)//": neigh_own_control should be > 0")
-            end if
-        end do
-    end subroutine test_both_sides_stratified
 
     ! =========================================================================
     ! test_prepare_sorted_data_log_transform
@@ -550,7 +413,6 @@ contains
         real(real64)   :: pvalues_own(N_GENES)
         integer(int32) :: n_genes_with_pvalue
         integer(int32) :: neigh_own_case(N_GENES), neigh_own_control(N_GENES), neigh_case(N_GENES)
-        integer(int32) :: chosen_bins_case(N_GENES), chosen_bins_control(N_GENES)
         integer(int32) :: ierr, i, i_method, count_sig_own, count_sig_nonoverexpr
 
         real(real64)   :: rank_means(N_GENES), tmp_genes_row(N_GENES)
@@ -657,7 +519,6 @@ contains
                 pvalues_own, n_genes_with_pvalue, &
                 max_pool_size, &
                 neigh_own_case, neigh_own_control, neigh_case, &
-                chosen_bins_case, chosen_bins_control, &
                 ierr)
 
             call assert_equal_int(ierr, ERR_OK, trim(method_names(i_method))//": pipeline ierr should be OK")

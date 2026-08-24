@@ -1193,8 +1193,6 @@ void compute_noise_pvalues_pipeline_c(
   int* neighborhood_size_own_case,
   int* neighborhood_size_own_control,
   int* neighborhood_size_case,
-  int* chosen_n_bins_own_case,
-  int* chosen_n_bins_own_control,
   int* ierr
 );
 
@@ -1223,8 +1221,6 @@ void compute_noise_pvalues_pipeline_exact_c(
   int* neighborhood_size_own_case,
   int* neighborhood_size_own_control,
   int* neighborhood_size_case,
-  int* chosen_n_bins_own_case,
-  int* chosen_n_bins_own_control,
   int* ierr
 );
 
@@ -4758,16 +4754,11 @@ static Rcpp::List run_noise_pvalues_pipeline(
 
     Rcpp::NumericVector pvalues_own(n_genes);
 
-    // The pipeline reports the own-comparison neighbourhood as two separate stratum
+    // The pipeline reports the own-comparison neighbourhood as two separate kNN-pool
     // sizes (case side and control side), plus the case kNN-pool size.
     Rcpp::IntegerVector neighborhood_size_own_case(n_genes);
     Rcpp::IntegerVector neighborhood_size_own_control(n_genes);
     Rcpp::IntegerVector neighborhood_size_case(n_genes);
-
-    // Diagnostics: sign-encoded chosen stratification bin count per side
-    // (+ = criteria met, - = coarse 2-bin fallback, -1 = not computed).
-    Rcpp::IntegerVector chosen_n_bins_own_case(n_genes);
-    Rcpp::IntegerVector chosen_n_bins_own_control(n_genes);
 
     int n_success = 0;
     int ierr = 0;
@@ -4782,7 +4773,6 @@ static Rcpp::List run_noise_pvalues_pipeline(
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
-            chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     } else {
         compute_noise_pvalues_pipeline_c(
@@ -4794,7 +4784,6 @@ static Rcpp::List run_noise_pvalues_pipeline(
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
-            chosen_n_bins_own_case.begin(), chosen_n_bins_own_control.begin(),
             &ierr);
     }
 
@@ -4804,8 +4793,6 @@ static Rcpp::List run_noise_pvalues_pipeline(
         Rcpp::Named("neighborhood_size_own_case") = neighborhood_size_own_case,
         Rcpp::Named("neighborhood_size_own_control") = neighborhood_size_own_control,
         Rcpp::Named("neighborhood_size_case") = neighborhood_size_case,
-        Rcpp::Named("chosen_n_bins_own_case") = chosen_n_bins_own_case,
-        Rcpp::Named("chosen_n_bins_own_control") = chosen_n_bins_own_control,
         Rcpp::Named("ierr") = ierr);
 }
 
@@ -4831,7 +4818,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
 //' @param max_pool_size Integer maximum neighborhood pool size
 //'
 //' @return List with pvalues_own, success count, three neighborhood sizes
-//'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and error code.
+//'   (own_case, own_control, case), and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
     Rcpp::NumericVector case_means,
@@ -4863,7 +4850,7 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
 //'
 //' @inheritParams tox_compute_noise_pvalues_pipeline_rcpp
 //' @return List with pvalues_own, success count, three neighborhood sizes
-//'   (own_case, own_control, case), the two chosen_n_bins diagnostics, and error code.
+//'   (own_case, own_control, case), and error code.
 // [[Rcpp::export]]
 Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
     Rcpp::NumericVector case_means,

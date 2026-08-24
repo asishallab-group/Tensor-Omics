@@ -22,20 +22,16 @@
 !| Provides routines to:
 !|   - Sort and pack gene expression residuals for efficient neighbourhood lookup
 !|   - Adaptively gather residual pools from the nearest-mean neighbourhood
-!|   - Variance-stratify the gathered pool into quantile intervals so that the
-!|     `own` comparison draws only from the gene's own variance regime, rather
-!|     than from a mixture of regimes across the kNN neighbourhood
 !|   - Compute exact p-values by counting, via sorted-pool binary search, every
 !|     pairwise residual difference that meets or exceeds the observed statistic
 !|     (fully deterministic, no Monte Carlo sampling, exact at all pool sizes)
-!|   - Run the full pipeline over all genes with pre-cached family / ortholog pools
 module noise_model_exact
     use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, int64, real64
     use tox_errors, only: set_ok, set_err, is_err, &
                           ERR_INVALID_INPUT, ERR_EMPTY_INPUT, ERR_NAN_INF, ERR_ALLOC_FAIL, &
                           validate_dimension_size, validate_all_in_range_real, validate_all_in_range_int
-    use f42_utils, only: sort_real, sort_integer, calc_percentile_helper
+    use f42_utils, only: sort_real, sort_integer
     implicit none
 
     !> Sorted gene data: means and packed centred residuals in mean-ascending order.
@@ -54,19 +50,6 @@ module noise_model_exact
         !! Total number of genes in the sorted structure
     end type sorted_data_t
 
-    integer(int32), parameter :: STRATA_N_SCHEDULE_STEPS = 1
-        !! Number of candidate bin-count steps tried by `stratify_residuals_helper`
-    integer(int32), parameter :: STRATA_BIN_COUNT_SCHEDULE(STRATA_N_SCHEDULE_STEPS) = &
-        [1_int32]
-        !! Candidate quantile bin counts, finest (5% per bin) to coarsest first,
-        !! tried in order until a step satisfies all acceptance criteria. The last
-        !! entry (1 bin = no stratification, the whole pool) is a hard floor: it is
-        !! accepted unconditionally if no earlier step succeeds.
-    real(real64), parameter :: STRATA_MAX_C_G_PROB_THRESHOLD = 0.1_real64
-        !! Criterion 2: `Pr(c_g > 2)` must stay below this fraction
-    integer(int32), parameter :: STRATA_MIN_RESIDUALS_PER_BIN = 50_int32
-        !! Criterion 3: every occupied quantile interval must contain at least this
-        !! many residuals to support a stable exact null distribution
     ! Note: this exact variant needs neither MAX_EXACT_COMBINATIONS nor
     ! MONTE_CARLO_SAMPLES — the sorted-pool tail count is exact at every pool size,
     ! so there is no enumeration/Monte-Carlo threshold and no RNG.
@@ -337,19 +320,13 @@ contains
     !| contributes `sorted_data%n_residuals` = n_replicates residuals). The resulting
     !| residual pool holds up to `k_max * n_replicates` values, hard-capped at `max_pool_size`.
     !|
-    !| Alongside the pooled residuals, `gene_id_per_residual` records the sorted-gene-slot
-    !| (index into `sorted_data%means_sorted` / `sorted_data%original_indices`) that each
-    !| pooled residual was taken from. This bookkeeping is required by variance
-    !| stratification (see `stratify_residuals_helper`), which needs to know how many
-    !| distinct genes contribute residuals to a given quantile interval.
-    !|
-    !| No allocation; `pooled_residuals` and `gene_id_per_residual` must be
+    !| No allocation; `pooled_residuals` must be
     !| pre-allocated by the caller to at least `max_pool_size`. Candidate expansions
     !| for a round are staged in place within `pooled_residuals` past the committed
     !| size, so no separate staging buffer is needed.
     pure subroutine gather_residuals_helper(target_mean, sorted_data, &
                                             k_start, k_step, k_max, tau, &
-                                            pooled_residuals, gene_id_per_residual, n_pooled, &
+                                            pooled_residuals, n_pooled, &
                                             max_pool_size)
         real(real64), intent(in) :: target_mean
         !! Mean value for which a matching residual neighbourhood is sought
@@ -365,9 +342,6 @@ contains
         !! Relative-change threshold; expansion stops when the change exceeds this value
         real(real64), intent(out) :: pooled_residuals(:)
         !! Output residual pool (pre-allocated to at least `max_pool_size`)
-        integer(int32), intent(out) :: gene_id_per_residual(:)
-        !! Output: sorted-gene-slot that each entry of `pooled_residuals` was taken from
-        !! (pre-allocated to at least `max_pool_size`)
         integer(int32), intent(out) :: n_pooled
         !! Number of residuals written into `pooled_residuals`
         integer(int32), intent(in) :: max_pool_size
@@ -387,7 +361,6 @@ contains
 
         current_size = min(sorted_data%n_residuals(pos), max_pool_size)
         pooled_residuals(1:current_size) = sorted_data%residuals_packed(1:current_size, pos)
-        gene_id_per_residual(1:current_size) = pos
         n_genes_pool = 1
 
         left_cand = pos - 1
@@ -407,7 +380,6 @@ contains
             call add_residuals_to_pool_helper(pooled_residuals, current_size, &
                                               sorted_data%residuals_packed(:, idx), &
                                               sorted_data%n_residuals(idx), pool_size)
-            call add_gene_id_to_pool_helper(gene_id_per_residual, current_size, idx, pool_size)
             current_size = pool_size
             n_genes_pool = n_genes_pool + 1
         end do
@@ -446,7 +418,6 @@ contains
                 call add_residuals_to_pool_helper(pooled_residuals, current_size + offset, &
                                                   sorted_data%residuals_packed(:, idx), &
                                                   n_resid, pool_size)
-                call add_gene_id_to_pool_helper(gene_id_per_residual, current_size + offset, idx, pool_size)
                 ! Accumulate |residual| over only the residuals actually written this step.
                 do i_new = current_size + offset + 1, pool_size
                     trial_abs_sum = trial_abs_sum + abs(pooled_residuals(i_new))
@@ -502,400 +473,7 @@ contains
             idx = right_cand
             right_cand = right_cand + 1
         end if
-    end subroutine   
-
-    !> Append the sorted-gene-slot id of one gene into `gene_ids`, mirroring the copy
-    !| performed by `add_residuals_to_pool_helper` on the parallel residual pool.
-    !|
-    !| Both helpers must be called together with the same `current_size` / `new_size`
-    !| so the two parallel arrays (`pool` and `gene_ids`) stay index-aligned.
-    pure subroutine add_gene_id_to_pool_helper(gene_ids, current_size, gene_id, new_size)
-        integer(int32), intent(inout) :: gene_ids(:)
-        !! Target gene-id pool (pre-allocated by caller), parallel to a residual pool
-        integer(int32), intent(in) :: current_size
-        !! Number of elements already in `gene_ids`
-        integer(int32), intent(in) :: gene_id
-        !! Sorted-gene-slot id to repeat for every newly appended residual
-        integer(int32), intent(in) :: new_size
-        !! Maximum number of elements allowed in `gene_ids` after the append
-
-        integer(int32) :: n_to_fill
-
-        n_to_fill = new_size - current_size
-        if (n_to_fill > 0) gene_ids(current_size + 1:new_size) = gene_id
-    end subroutine add_gene_id_to_pool_helper
-
-    ! =========================================================================
-    ! stratify_residuals
-    ! =========================================================================
-
-    !> Core implementation: assign each pooled residual to a quantile bin.
-    !|
-    !| Divides the pooled residuals into `n_bins` quantile intervals (equal
-    !| *frequency*, not equal width): cutpoints are placed at the
-    !| `0, 100/n_bins, 200/n_bins, ..., 100` percentiles of `pooled_residuals`,
-    !| computed via `f42_utils`'s `calc_percentile_helper` (linear interpolation,
-    !| matching `numpy.percentile`). Every bin therefore contains the same number of
-    !| residuals (up to ties and interpolation at the edges), regardless of how the
-    !| underlying residual values are distributed — unlike equal-width binning, a
-    !| bin can never come up short on residuals purely because the gene that
-    !| dominates it has a narrow value range.
-    !|
-    !| No allocation; `bin_index_per_residual` must be pre-allocated by the caller.
-    !| The ascending sort permutation `perm` is supplied by the caller
-    !| (`stratify_residuals_helper`) and computed once per pool, since it is
-    !| identical for every candidate bin count — recomputing it here per schedule
-    !| step would repeat the same `O(n log n)` sort up to `STRATA_N_SCHEDULE_STEPS`
-    !| times on identical data.
-    pure subroutine assign_residual_bins_helper(bin_values, perm, n_pooled, n_bins, &
-                                                bin_index_per_residual, bin_edges)
-        integer(int32), intent(in) :: n_pooled
-        !! Number of valid entries in `bin_values`
-        real(real64), dimension(n_pooled), intent(in) :: bin_values
-        !! Per-residual quantity that DEFINES the bins. To stratify by expression /
-        !! variance regime we pass the SOURCE GENE MEAN of each residual (not the
-        !! residual value), so every residual of a gene lands in a single bin
-        !! (c_g == 1 by construction) and the stratum for a target gene can be selected
-        !! by its own mean.
-        integer(int32), dimension(n_pooled), intent(in) :: perm
-        !! Ascending sort permutation of `bin_values` (pre-computed by the caller)
-        integer(int32), intent(in) :: n_bins
-        !! Number of quantile bins to divide the values into
-        integer(int32), dimension(n_pooled), intent(out) :: bin_index_per_residual
-        !! Output: 1-based bin index for each residual
-        real(real64), dimension(n_bins + 1), intent(out) :: bin_edges
-        !! Output: the `n_bins + 1` quantile cutpoints, from the 0th to the 100th percentile
-
-        integer(int32) :: i_resid, i_edge
-        real(real64) :: percentile_step
-
-        percentile_step = 100.0_real64 / real(n_bins, real64)
-        do i_edge = 1, n_bins + 1
-            call calc_percentile_helper(bin_values, perm, &
-                                        percentile_step * real(i_edge - 1, real64), bin_edges(i_edge))
-        end do
-
-        if (bin_edges(n_bins + 1) <= bin_edges(1)) then
-            bin_index_per_residual = 1
-            return
-        end if
-
-        do concurrent(i_resid=1:n_pooled) shared(bin_index_per_residual, bin_values, bin_edges, n_bins)
-            bin_index_per_residual(i_resid) = locate_bin_helper(bin_values(i_resid), bin_edges, n_bins)
-        end do
-    end subroutine assign_residual_bins_helper
-
-    !> Locate the bin that `target_value` falls into, given pre-computed `bin_edges`.
-    !|
-    !| `bin_edges` must be the `n_bins + 1` ascending boundaries produced by
-    !| `assign_residual_bins_helper` for the same stratification. Values outside
-    !| `[bin_edges(1), bin_edges(n_bins+1)]` are clamped to the nearest end bin.
-    pure function locate_bin_helper(target_value, bin_edges, n_bins) result(bin_idx)
-        integer(int32), intent(in) :: n_bins
-        !! Number of bins (i.e. `size(bin_edges) - 1`)
-        real(real64), dimension(n_bins + 1), intent(in) :: bin_edges
-        !! Ascending bin boundaries
-        real(real64), intent(in) :: target_value
-        !! Value to locate within the binning
-        integer(int32) :: bin_idx
-        !! 1-based index of the bin containing `target_value`
-
-        integer(int32) :: i_bin
-
-        if (target_value <= bin_edges(1)) then
-            bin_idx = 1
-            return
-        end if
-        if (target_value >= bin_edges(n_bins + 1)) then
-            bin_idx = n_bins
-            return
-        end if
-
-        bin_idx = n_bins
-        do i_bin = 1, n_bins
-            if (target_value < bin_edges(i_bin + 1)) then
-                bin_idx = i_bin
-                exit
-            end if
-        end do
-    end function locate_bin_helper
-
-    !> Core implementation: evaluate the three stratification acceptance criteria.
-    !|
-    !| Given a per-residual bin assignment and the originating sorted-gene-slot of
-    !| each residual, computes, per distinct gene present in the pool:
-    !|
-    !|   `c_g = max_bin(gene) - min_bin(gene) + 1`
-    !|
-    !| (bins are contiguous in mean-sorted order, so the span between the gene's
-    !| smallest and largest occupied bin equals the count of distinct bins it touches).
-    !| The stratification is accepted when all of the following hold:
-    !|
-    !|   1. `median(c_g) == 1`              (biological coherence)
-    !|   2. `Pr(c_g > 2) < 0.1`              (tail control)
-    !|   3. every occupied bin has >= 50 residuals  (sampling stability)
-    !|
-    !| No allocation; `tmp_gene_min_bin`, `tmp_gene_max_bin`, `tmp_gene_seen`,
-    !| `tmp_touched_gene_slots`, `tmp_c_g`, and `tmp_bin_counts` are work arrays
-    !| pre-allocated by the caller.
-    !|
-    !| `tmp_gene_seen` must be all-`.false.` on entry. Rather than clear and rescan
-    !| the entire `n_genes_total`-length universe on every call (this routine runs
-    !| up to `STRATA_N_SCHEDULE_STEPS` times per pool, per side, per gene — so a full
-    !| clear/scan makes the whole pipeline scale as `O(n_genes^2)`), it records the
-    !| distinct gene slots it touches in `tmp_touched_gene_slots` (at most `n_pooled`
-    !| of them) and, before returning, resets exactly those `tmp_gene_seen` entries
-    !| back to `.false.`. The array is therefore left all-`.false.` again for the
-    !| next call, and every operation here costs `O(n_pooled)`, never `O(n_genes_total)`.
-    pure subroutine check_stratification_accepted_helper( &
-        bin_index_per_residual, gene_id_per_residual, n_pooled, n_bins, n_genes_total, &
-        tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
-        is_accepted)
-        integer(int32), intent(in) :: n_pooled
-        !! Number of pooled residuals
-        integer(int32), intent(in) :: n_bins
-        !! Number of bins in this stratification candidate
-        integer(int32), intent(in) :: n_genes_total
-        !! Total number of genes in the underlying sorted structure (upper bound on gene-slot ids)
-        integer(int32), dimension(n_pooled), intent(in) :: bin_index_per_residual
-        !! 1-based bin index for each pooled residual
-        integer(int32), dimension(n_pooled), intent(in) :: gene_id_per_residual
-        !! Sorted-gene-slot id (1..n_genes_total) that each pooled residual came from
-        integer(int32), dimension(n_genes_total), intent(inout) :: tmp_gene_min_bin
-        !! Work array: smallest occupied bin index seen so far, per gene slot
-        integer(int32), dimension(n_genes_total), intent(inout) :: tmp_gene_max_bin
-        !! Work array: largest occupied bin index seen so far, per gene slot
-        logical, dimension(n_genes_total), intent(inout) :: tmp_gene_seen
-        !! Work array: `.true.` once a gene slot has contributed a residual during this
-        !! call; MUST be all-`.false.` on entry and is left all-`.false.` on return
-        integer(int32), dimension(n_pooled), intent(inout) :: tmp_touched_gene_slots
-        !! Work array: distinct gene slots touched by this pool (first `n_distinct_genes`
-        !! entries valid); used to reset `tmp_gene_seen` without an `O(n_genes_total)` sweep
-        integer(int32), dimension(n_pooled), intent(inout) :: tmp_c_g
-        !! Work array: per-distinct-gene `c_g` values (only the first `n_distinct_genes` entries are used)
-        integer(int32), dimension(n_bins), intent(inout) :: tmp_bin_counts
-        !! Work array: number of residuals occupying each bin
-        logical, intent(out) :: is_accepted
-        !! `.true.` if all three acceptance criteria are satisfied
-
-        integer(int32) :: i_resid, gene_id, bin_id, n_distinct_genes, i_distinct
-        integer(int32) :: n_c_g_gt_2, median_c_g, n_occupied_bins, min_occupied_count
-
-        tmp_bin_counts = 0
-        n_distinct_genes = 0
-
-        do i_resid = 1, n_pooled
-            gene_id = gene_id_per_residual(i_resid)
-            bin_id = bin_index_per_residual(i_resid)
-
-            tmp_bin_counts(bin_id) = tmp_bin_counts(bin_id) + 1
-
-            if (.not. tmp_gene_seen(gene_id)) then
-                tmp_gene_seen(gene_id) = .true.
-                tmp_gene_min_bin(gene_id) = bin_id
-                tmp_gene_max_bin(gene_id) = bin_id
-                n_distinct_genes = n_distinct_genes + 1
-                tmp_touched_gene_slots(n_distinct_genes) = gene_id
-            else
-                tmp_gene_min_bin(gene_id) = min(tmp_gene_min_bin(gene_id), bin_id)
-                tmp_gene_max_bin(gene_id) = max(tmp_gene_max_bin(gene_id), bin_id)
-            end if
-        end do
-
-        ! Build c_g from the touched slots only, and reset tmp_gene_seen for reuse.
-        do i_distinct = 1, n_distinct_genes
-            gene_id = tmp_touched_gene_slots(i_distinct)
-            tmp_c_g(i_distinct) = tmp_gene_max_bin(gene_id) - tmp_gene_min_bin(gene_id) + 1
-            tmp_gene_seen(gene_id) = .false.
-        end do
-
-        ! ── Criterion 1: median(c_g) == 1 ────────────────────────────────────
-        call median_of_int_array_helper(tmp_c_g(1:n_distinct_genes), n_distinct_genes, median_c_g)
-
-        ! ── Criterion 2: Pr(c_g > 2) < 0.1 ───────────────────────────────────
-        n_c_g_gt_2 = count(tmp_c_g(1:n_distinct_genes) > 2)
-
-        ! ── Criterion 3: every occupied bin has >= STRATA_MIN_RESIDUALS_PER_BIN ──
-        n_occupied_bins = count(tmp_bin_counts > 0)
-        if (n_occupied_bins > 0) then
-            min_occupied_count = minval(tmp_bin_counts, mask=(tmp_bin_counts > 0))
-        else
-            min_occupied_count = 0
-        end if
-
-        is_accepted = (median_c_g == 1) .and. &
-                      (real(n_c_g_gt_2, real64) / real(max(n_distinct_genes, 1_int32), real64) &
-                       < STRATA_MAX_C_G_PROB_THRESHOLD) .and. &
-                      (min_occupied_count >= STRATA_MIN_RESIDUALS_PER_BIN)
-    end subroutine check_stratification_accepted_helper
-
-    !> Compute the median of an integer array using a caller-supplied permutation buffer.
-    !|
-    !| Sorts a local copy via the project's `f42_utils` quicksort (indirect, through a
-    !! permutation) rather than re-implementing sorting logic, per the project convention
-    !| of reusing `f42_utils` for general-purpose routines.
-    pure subroutine median_of_int_array_helper(values, n, median_val)
-        integer(int32), intent(in) :: n
-        !! Number of elements in `values`
-        integer(int32), dimension(n), intent(in) :: values
-        !! Input integer array (unsorted)
-        integer(int32), intent(out) :: median_val
-        !! Output: the median value (lower of the two middle values for even `n`)
-
-        integer(int32) :: perm(n), stack_left(n), stack_right(n), i
-
-        if (n == 0) then
-            median_val = 0
-            return
-        end if
-
-        do concurrent(i=1:n) shared(perm)
-            perm(i) = i
-        end do
-
-        call sort_integer(values, perm, stack_left, stack_right)
-        median_val = values(perm((n + 1) / 2))
-    end subroutine median_of_int_array_helper
-
-    !> Core implementation: find the coarsest-to-finest accepted variance stratification.
-    !|
-    !| Tries each candidate bin count in `STRATA_BIN_COUNT_SCHEDULE` (finest/5% first)
-    !| and accepts the first one that satisfies all three criteria in
-    !| `check_stratification_accepted_helper`. If none of the finer steps are accepted,
-    !| the coarsest schedule entry (50%, 2 bins) is used unconditionally as a hard floor.
-    !|
-    !| No allocation; all `tmp_*` arrays are pre-allocated work arrays sized for the
-    !| largest schedule step (`max_bins = STRATA_BIN_COUNT_SCHEDULE(1)`). `tmp_gene_seen`
-    !| must be all-`.false.` on entry (see `check_stratification_accepted_helper`); it is
-    !| left all-`.false.` on return.
-    !|
-    !| The pooled residuals are sorted once, up front: the resulting permutation is
-    !| shared across every candidate bin count, since the quantile cutpoints for all
-    !| schedule steps are read off the same ordering.
-    pure subroutine stratify_residuals_helper( &
-        means_sorted, gene_id_per_residual, n_pooled, n_genes_total, &
-        tmp_bin_index_per_residual, tmp_bin_edges, &
-        tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, tmp_touched_gene_slots, tmp_c_g, tmp_bin_counts, &
-        chosen_n_bins, chosen_bin_index_per_residual, chosen_bin_edges, criteria_met)
-        integer(int32), intent(in) :: n_pooled
-        !! Number of pooled residuals to stratify
-        integer(int32), intent(in) :: n_genes_total
-        !! Total number of genes in the underlying sorted structure
-        real(real64), dimension(n_genes_total), intent(in) :: means_sorted
-        !! Sorted gene means (`sorted_data%means_sorted`). Bins are quantiles of the
-        !! per-residual SOURCE GENE MEAN, so residuals are stratified by expression /
-        !! variance regime rather than by residual value.
-        integer(int32), dimension(n_pooled), intent(in) :: gene_id_per_residual
-        !! Sorted-gene-slot id that each pooled residual came from
-        integer(int32), dimension(n_pooled), intent(inout) :: tmp_bin_index_per_residual
-        !! Work array: bin index per residual for the candidate being evaluated
-        real(real64), dimension(STRATA_BIN_COUNT_SCHEDULE(1) + 1), intent(inout) :: tmp_bin_edges
-        !! Work array: bin edges for the candidate being evaluated
-        integer(int32), dimension(n_genes_total), intent(inout) :: tmp_gene_min_bin
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(n_genes_total), intent(inout) :: tmp_gene_max_bin
-        !! Work array, see `check_stratification_accepted_helper`
-        logical, dimension(n_genes_total), intent(inout) :: tmp_gene_seen
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(n_pooled), intent(inout) :: tmp_touched_gene_slots
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(n_pooled), intent(inout) :: tmp_c_g
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(STRATA_BIN_COUNT_SCHEDULE(1)), intent(inout) :: tmp_bin_counts
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), intent(out) :: chosen_n_bins
-        !! Number of bins in the accepted stratification
-        integer(int32), dimension(n_pooled), intent(out) :: chosen_bin_index_per_residual
-        !! Bin index per residual for the accepted stratification
-        real(real64), dimension(STRATA_BIN_COUNT_SCHEDULE(1) + 1), intent(out) :: chosen_bin_edges
-        !! Bin edges for the accepted stratification (only the first `chosen_n_bins + 1` are valid)
-        logical, intent(out) :: criteria_met
-        !! `.true.` if an earlier (finer) schedule step was accepted on its own merit;
-        !! `.false.` if the coarsest step was used only as a hard floor fallback
-
-        integer(int32) :: i_step, n_bins, i_resid
-        integer(int32) :: perm(n_pooled), stack_left(n_pooled), stack_right(n_pooled)
-        real(real64) :: gene_mean_per_residual(n_pooled)
-        logical :: is_accepted
-
-        criteria_met = .false.
-
-        ! Stratify by the SOURCE GENE MEAN of each residual (its expression / variance
-        ! regime), NOT by the residual value. Every residual of a gene then shares one
-        ! bin (c_g == 1 by construction), so the acceptance criteria become meaningful
-        ! and select_stratum_for_target -- which locates a gene MEAN in these edges -- is
-        ! on the correct scale.
-        do concurrent(i_resid=1:n_pooled) &
-            shared(gene_mean_per_residual, means_sorted, gene_id_per_residual)
-            gene_mean_per_residual(i_resid) = means_sorted(gene_id_per_residual(i_resid))
-        end do
-
-        ! Sort once by gene mean: the permutation is identical for every candidate bin count.
-        do concurrent(i_resid=1:n_pooled) shared(perm)
-            perm(i_resid) = i_resid
-        end do
-        call sort_real(gene_mean_per_residual, perm, stack_left, stack_right)
-
-        do i_step = 1, STRATA_N_SCHEDULE_STEPS
-            n_bins = STRATA_BIN_COUNT_SCHEDULE(i_step)
-
-            call assign_residual_bins_helper(gene_mean_per_residual, perm, n_pooled, n_bins, &
-                                             tmp_bin_index_per_residual, tmp_bin_edges(1:n_bins + 1))
-
-            call check_stratification_accepted_helper( &
-                tmp_bin_index_per_residual, gene_id_per_residual, n_pooled, n_bins, n_genes_total, &
-                tmp_gene_min_bin, tmp_gene_max_bin, tmp_gene_seen, tmp_touched_gene_slots, &
-                tmp_c_g, tmp_bin_counts(1:n_bins), &
-                is_accepted)
-
-            if (is_accepted .or. i_step == STRATA_N_SCHEDULE_STEPS) then
-                chosen_n_bins = n_bins
-                chosen_bin_index_per_residual = tmp_bin_index_per_residual
-                chosen_bin_edges = tmp_bin_edges
-                criteria_met = is_accepted
-                return
-            end if
-        end do
-    end subroutine stratify_residuals_helper
-
-    !> Sample only the residuals from the bin containing `target_value`.
-    !|
-    !| Given an accepted stratification (`bin_index_per_residual`, `bin_edges`,
-    !| `n_bins`), locates which bin `target_value` falls into and copies that bin's
-    !| residuals into `stratum_residuals`. No allocation; `stratum_residuals` must be
-    !| pre-allocated to at least `n_pooled`.
-    pure subroutine select_stratum_for_target_helper( &
-        pooled_residuals, bin_index_per_residual, n_pooled, bin_edges, n_bins, target_value, &
-        stratum_residuals, n_stratum)
-        integer(int32), intent(in) :: n_pooled
-        !! Number of pooled residuals
-        integer(int32), intent(in) :: n_bins
-        !! Number of bins in the stratification
-        real(real64), dimension(n_pooled), intent(in) :: pooled_residuals
-        !! Pooled residual values
-        integer(int32), dimension(n_pooled), intent(in) :: bin_index_per_residual
-        !! Bin index per residual, from `stratify_residuals_helper`
-        real(real64), dimension(n_bins + 1), intent(in) :: bin_edges
-        !! Bin edges, from `stratify_residuals_helper`
-        real(real64), intent(in) :: target_value
-        !! Value (typically the gene's own mean) used to select the stratum
-        real(real64), dimension(n_pooled), intent(out) :: stratum_residuals
-        !! Output: residuals belonging to the selected stratum (first `n_stratum` entries valid)
-        integer(int32), intent(out) :: n_stratum
-        !! Number of residuals written into `stratum_residuals`
-
-        integer(int32) :: target_bin, i_resid
-
-        target_bin = locate_bin_helper(target_value, bin_edges, n_bins)
-
-        n_stratum = 0
-        do i_resid = 1, n_pooled
-            if (bin_index_per_residual(i_resid) == target_bin) then
-                n_stratum = n_stratum + 1
-                stratum_residuals(n_stratum) = pooled_residuals(i_resid)
-            end if
-        end do
-    end subroutine select_stratum_for_target_helper
+    end subroutine
 
     ! =========================================================================
     ! compute_pvalue
@@ -1057,33 +635,20 @@ contains
 
     !> Core pipeline: compute per-gene noise p-values using pre-built data structures.
     !|
-    !| Iterates over all genes and computes up to three p-values each:
-    !|   - `pvalues_own`:  gene vs. its own matched group B neighbourhood, using a
-    !|     variance-stratified residual pool (see `stratify_residuals_helper`) for
-    !|     both case and control pools
-    !|   - `pvalues_family`:  gene vs. its gene-family pool in group B (unchanged kNN pooling)
-    !|   - `pvalues_ortholog`: gene vs. its ortholog pool in control (unchanged kNN pooling)
-    !|
-    !| For the `own` comparison, both the case and control kNN neighbourhoods are
-    !| independently partitioned into variance strata (quantile bins over the
-    !| residual distribution) before computing the p-value. This addresses the loss
-    !| of sensitivity caused by mixing residuals from genes with different variance
-    !| regimes within the same kNN neighbourhood. Only the stratum containing the
-    !| gene's own mean (case mean for case pool, control mean for control pool) is
-    !| used. The `family` and `ortholog` comparisons retain the original whole-pool
-    !| kNN sampling, since family/ortholog-level stratification handling is out of
-    !| scope for this change.
+    !| Iterates over all genes and computes, for each, `pvalues_own`: the gene vs. its
+    !| own matched neighbourhood. For both the case and control sides an adaptive kNN
+    !| residual pool is gathered in mean-expression space (`gather_residuals_helper`);
+    !| each pool is then scaled by `1/sqrt(n_replicates)` to bring an individual-residual
+    !| null onto the mean-difference scale, and the `own` p-value is computed EXACTLY
+    !| from those scaled pools by `compute_pvalue`.
     !|
     !| Requires `sorted_case` and `sorted_control` to already be built (via
-    !| `prepare_sorted_data`) and `cache` to be pre-populated (all `is_cached`
-    !| entries set for families with `family_sizes > 0`).
+    !| `prepare_sorted_data`).
     !|
-    !| No allocation: every work array (the per-gene residual pools and the
-    !| variance-stratification scratch arrays) is pre-allocated by the caller and
-    !| passed in as an `intent(inout)` work array. This exact variant needs no RNG
-    !| and no Monte Carlo buffer — the p-value is computed exactly at every pool
-    !| size by `compute_pvalue` — so unlike the baseline pipeline it takes no
-    !| `rand_array` and makes no `random_number` call.
+    !| No allocation: the two per-gene residual pools are pre-allocated by the caller
+    !| and passed in as `intent(inout)` work arrays. This exact variant needs no RNG
+    !| and no Monte Carlo buffer — the p-value is computed exactly at every pool size
+    !| by `compute_pvalue`.
     subroutine compute_noise_pvalue_pipeline_helper( &
         sorted_case, sorted_control, &
         means_case, means_control, &
@@ -1094,18 +659,7 @@ contains
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_case, &
-        chosen_n_bins_own_case, chosen_n_bins_own_control, &
-        tmp_pool_case, tmp_gene_id_pool_case, &
-        tmp_pool_control_own, tmp_gene_id_pool_control_own, &
-        tmp_strat_bin_index_per_residual_case, tmp_chosen_bin_index_per_residual_case, &
-        tmp_strat_bin_edges_case, tmp_chosen_bin_edges_case, &
-        tmp_strat_gene_min_bin_case, tmp_strat_gene_max_bin_case, &
-        tmp_strat_gene_seen_case, tmp_strat_touched_gene_slots_case, tmp_strat_c_g_case, tmp_strat_bin_counts_case, &
-        tmp_strat_bin_index_per_residual_control, tmp_chosen_bin_index_per_residual_control, &
-        tmp_strat_bin_edges_control, tmp_chosen_bin_edges_control, &
-        tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, &
-        tmp_strat_gene_seen_control, tmp_strat_touched_gene_slots_control, tmp_strat_c_g_control, tmp_strat_bin_counts_control, &
-        tmp_own_stratum_pool_case, tmp_own_stratum_pool_control, &
+        tmp_pool_case, tmp_pool_control_own, &
         ierr)
 
         type(sorted_data_t), intent(in) :: sorted_case
@@ -1137,81 +691,22 @@ contains
         integer(int32), intent(out) :: n_genes_with_pvalue
         !! Number of genes for which the own p-value was computed
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_case
-        !! Stratum size used for the gene-vs-own case pool (-1 if not computed)
+        !! Case kNN-pool size used for the gene-vs-own comparison (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_control
-        !! Stratum size used for the gene-vs-own control pool (-1 if not computed)
+        !! Control kNN-pool size used for the gene-vs-own comparison (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_case
         !! Case pool size used for this gene (-1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_case
-        !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CASE stratification
-        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_control
-        !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CONTROL stratification
-        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
         real(real64), dimension(max_pool_size * 2), intent(inout) :: tmp_pool_case
         !! Work array: output residual pool for this gene's case kNN neighbourhood
-        integer(int32), dimension(max_pool_size * 2), intent(inout) :: tmp_gene_id_pool_case
-        !! Work array: output gene-id pool for this gene's case kNN neighbourhood
         real(real64), dimension(max_pool_size * 2), intent(inout) :: tmp_pool_control_own
         !! Work array: output residual pool for this gene's control kNN neighbourhood
-        !! (the `own` comparison, before variance stratification)
-        integer(int32), dimension(max_pool_size * 2), intent(inout) :: tmp_gene_id_pool_control_own
-        !! Work array: output gene-id pool for this gene's control kNN neighbourhood (the `own` comparison)
-        ! Case stratification work arrays
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_strat_bin_index_per_residual_case
-        !! Work array: bin index per residual for case stratification candidate
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_chosen_bin_index_per_residual_case
-        !! Work array: bin index per residual for accepted case stratification
-        real(real64), dimension(STRATA_BIN_COUNT_SCHEDULE(1) + 1), intent(inout) :: tmp_strat_bin_edges_case
-        !! Work array: bin edges for case stratification candidate
-        real(real64), dimension(STRATA_BIN_COUNT_SCHEDULE(1) + 1), intent(inout) :: tmp_chosen_bin_edges_case
-        !! Work array: bin edges for accepted case stratification
-        integer(int32), dimension(sorted_case%n_genes), intent(inout) :: tmp_strat_gene_min_bin_case
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(sorted_case%n_genes), intent(inout) :: tmp_strat_gene_max_bin_case
-        !! Work array, see `check_stratification_accepted_helper`
-        logical, dimension(sorted_case%n_genes), intent(inout) :: tmp_strat_gene_seen_case
-        !! Work array, see `check_stratification_accepted_helper` (all-`.false.` on entry)
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_strat_touched_gene_slots_case
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_strat_c_g_case
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(STRATA_BIN_COUNT_SCHEDULE(1)), intent(inout) :: tmp_strat_bin_counts_case
-        !! Work array, see `check_stratification_accepted_helper`
-        ! Control stratification work arrays
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_strat_bin_index_per_residual_control
-        !! Work array: bin index per residual for control stratification candidate
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_chosen_bin_index_per_residual_control
-        !! Work array: bin index per residual for accepted control stratification
-        real(real64), dimension(STRATA_BIN_COUNT_SCHEDULE(1) + 1), intent(inout) :: tmp_strat_bin_edges_control
-        !! Work array: bin edges for control stratification candidate
-        real(real64), dimension(STRATA_BIN_COUNT_SCHEDULE(1) + 1), intent(inout) :: tmp_chosen_bin_edges_control
-        !! Work array: bin edges for accepted control stratification
-        integer(int32), dimension(sorted_control%n_genes), intent(inout) :: tmp_strat_gene_min_bin_control
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(sorted_control%n_genes), intent(inout) :: tmp_strat_gene_max_bin_control
-        !! Work array, see `check_stratification_accepted_helper`
-        logical, dimension(sorted_control%n_genes), intent(inout) :: tmp_strat_gene_seen_control
-        !! Work array, see `check_stratification_accepted_helper` (all-`.false.` on entry)
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_strat_touched_gene_slots_control
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(max_pool_size), intent(inout) :: tmp_strat_c_g_control
-        !! Work array, see `check_stratification_accepted_helper`
-        integer(int32), dimension(STRATA_BIN_COUNT_SCHEDULE(1)), intent(inout) :: tmp_strat_bin_counts_control
-        !! Work array, see `check_stratification_accepted_helper`
-        real(real64), dimension(max_pool_size), intent(inout) :: tmp_own_stratum_pool_case
-        !! Work array: case residuals restricted to the stratum containing the gene's own case mean
-        real(real64), dimension(max_pool_size), intent(inout) :: tmp_own_stratum_pool_control
-        !! Work array: control residuals restricted to the stratum containing the gene's own control mean
+        !! (the `own` comparison)
         integer(int32), intent(out) :: ierr
 
         integer(int32) :: i_gene
         real(real64) :: mean_case_val, mean_control_val
         real(real64) :: observed_statistic_own_val
         integer(int32) :: n_pool_case, n_pool_control_own
-        integer(int32) :: case_stratum_count, control_stratum_count
-        integer(int32) :: chosen_n_bins_case, chosen_n_bins_control
-        logical :: strata_criteria_met_case, strata_criteria_met_control
         real(real64) :: own_scale_case, own_scale_control
 
         call set_ok(ierr)
@@ -1231,8 +726,6 @@ contains
         neighborhood_size_own_case = -1
         neighborhood_size_own_control = -1
         neighborhood_size_case = -1
-        chosen_n_bins_own_case = -1
-        chosen_n_bins_own_control = -1
         n_genes_with_pvalue = 0
 
         do i_gene = 1, n_genes
@@ -1241,13 +734,13 @@ contains
 
             call gather_residuals_helper(mean_case_val, sorted_case, &
                                          k_start, k_step, k_max, tau, &
-                                         tmp_pool_case, tmp_gene_id_pool_case, n_pool_case, &
+                                         tmp_pool_case, n_pool_case, &
                                          max_pool_size)
             if (n_pool_case < 10) cycle
 
             call gather_residuals_helper(mean_control_val, sorted_control, &
                                          k_start, k_step, k_max, tau, &
-                                         tmp_pool_control_own, tmp_gene_id_pool_control_own, n_pool_control_own, &
+                                         tmp_pool_control_own, n_pool_control_own, &
                                          max_pool_size)
             if (n_pool_control_own < 10) cycle
 
@@ -1260,77 +753,24 @@ contains
             ! Monte Carlo path here and nothing to pre-seed per gene.
 
             if (compute_pvalue_own(i_gene) == 1) then
-                ! Variance-stratify both case and control `own` neighbourhoods,
-                ! then restrict sampling to the stratum that contains this gene's
-                ! own mean (case mean for case pool, control mean for control pool).
-
-                ! Stratify case pool (bins are quantiles of the source-gene mean).
-                call stratify_residuals_helper( &
-                    sorted_case%means_sorted, &
-                    tmp_gene_id_pool_case(1:n_pool_case), &
-                    n_pool_case, sorted_case%n_genes, &
-                    tmp_strat_bin_index_per_residual_case(1:n_pool_case), tmp_strat_bin_edges_case, &
-                    tmp_strat_gene_min_bin_case, tmp_strat_gene_max_bin_case, tmp_strat_gene_seen_case, &
-                    tmp_strat_touched_gene_slots_case(1:n_pool_case), &
-                    tmp_strat_c_g_case(1:n_pool_case), tmp_strat_bin_counts_case, &
-                    chosen_n_bins_case, tmp_chosen_bin_index_per_residual_case(1:n_pool_case), &
-                    tmp_chosen_bin_edges_case, strata_criteria_met_case)
-
-                call select_stratum_for_target_helper( &
-                    tmp_pool_case(1:n_pool_case), &
-                    tmp_chosen_bin_index_per_residual_case(1:n_pool_case), &
-                    n_pool_case, &
-                    tmp_chosen_bin_edges_case(1:chosen_n_bins_case + 1), chosen_n_bins_case, mean_case_val, &
-                    tmp_own_stratum_pool_case(1:n_pool_case), case_stratum_count)
-
-                ! Stratify control pool (bins are quantiles of the source-gene mean).
-                call stratify_residuals_helper( &
-                    sorted_control%means_sorted, &
-                    tmp_gene_id_pool_control_own(1:n_pool_control_own), &
-                    n_pool_control_own, sorted_control%n_genes, &
-                    tmp_strat_bin_index_per_residual_control(1:n_pool_control_own), tmp_strat_bin_edges_control, &
-                    tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, tmp_strat_gene_seen_control, &
-                    tmp_strat_touched_gene_slots_control(1:n_pool_control_own), &
-                    tmp_strat_c_g_control(1:n_pool_control_own), tmp_strat_bin_counts_control, &
-                    chosen_n_bins_control, tmp_chosen_bin_index_per_residual_control(1:n_pool_control_own), &
-                    tmp_chosen_bin_edges_control, strata_criteria_met_control)
-
-                call select_stratum_for_target_helper( &
-                    tmp_pool_control_own(1:n_pool_control_own), &
-                    tmp_chosen_bin_index_per_residual_control(1:n_pool_control_own), &
-                    n_pool_control_own, &
-                    tmp_chosen_bin_edges_control(1:chosen_n_bins_control + 1), chosen_n_bins_control, mean_control_val, &
-                    tmp_own_stratum_pool_control(1:n_pool_control_own), control_stratum_count)
-
-                ! Diagnostics: record the chosen bin count per side, sign-encoding whether
-                ! the stratification criteria were met (+ = met, - = coarse 2-bin fallback).
-                ! Recorded even if the stratum is then too small to compute a p-value.
-                chosen_n_bins_own_case(i_gene)    = merge(chosen_n_bins_case, &
-                                                          -chosen_n_bins_case, strata_criteria_met_case)
-                chosen_n_bins_own_control(i_gene) = merge(chosen_n_bins_control, &
-                                                          -chosen_n_bins_control, strata_criteria_met_control)
-
-                if (case_stratum_count >= 10 .and. control_stratum_count >= 10) then
-                    ! Scale each own stratum to mean-difference variance (see the
-                    ! own_scale_* definitions above). Observed statistic is left as-is.
-                    tmp_own_stratum_pool_case(1:case_stratum_count) = &
-                        tmp_own_stratum_pool_case(1:case_stratum_count) * own_scale_case
-                    tmp_own_stratum_pool_control(1:control_stratum_count) = &
-                        tmp_own_stratum_pool_control(1:control_stratum_count) * own_scale_control
-                    call compute_pvalue(tmp_own_stratum_pool_case(1:case_stratum_count), case_stratum_count, &
-                                        tmp_own_stratum_pool_control(1:control_stratum_count), &
-                                        control_stratum_count, &
-                                        observed_statistic_own_val, &
-                                        pvalues_own(i_gene), ierr)
-                    if (is_err(ierr)) return
-                    neighborhood_size_own_case(i_gene) = case_stratum_count
-                    neighborhood_size_own_control(i_gene) = control_stratum_count
-                end if
+                ! Scale each gathered kNN pool to mean-difference variance (see the
+                ! own_scale_* definitions above), then compute the exact `own` p-value
+                ! directly from the scaled pools. Observed statistic is left as-is; both
+                ! pools are already gated >= 10 above.
+                tmp_pool_case(1:n_pool_case) = tmp_pool_case(1:n_pool_case) * own_scale_case
+                tmp_pool_control_own(1:n_pool_control_own) = &
+                    tmp_pool_control_own(1:n_pool_control_own) * own_scale_control
+                call compute_pvalue(tmp_pool_case(1:n_pool_case), n_pool_case, &
+                                    tmp_pool_control_own(1:n_pool_control_own), n_pool_control_own, &
+                                    observed_statistic_own_val, &
+                                    pvalues_own(i_gene), ierr)
+                if (is_err(ierr)) return
+                neighborhood_size_own_case(i_gene) = n_pool_case
+                neighborhood_size_own_control(i_gene) = n_pool_control_own
             end if
 
             neighborhood_size_case(i_gene) = n_pool_case
-            ! Count genes that received an own p-value (the stratum gate can still
-            ! skip the `own` computation, and compute_pvalue_own can be 0).
+            ! Count genes that received an own p-value (compute_pvalue_own can be 0).
             if (pvalues_own(i_gene) >= 0.0_real64) &
                 n_genes_with_pvalue = n_genes_with_pvalue + 1
         end do
@@ -1355,7 +795,6 @@ contains
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_case, &
-        chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 
         integer(int32), intent(in) :: n_genes_case
@@ -1397,42 +836,16 @@ contains
         integer(int32), intent(out) :: n_genes_with_pvalue
         !! Number of genes for which the own p-value was computed
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_case
-        !! Case stratum size used for gene-vs-own (-1 if not computed)
+        !! Case kNN-pool size used for gene-vs-own (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_own_control
-        !! Control stratum size used for gene-vs-own (-1 if not computed)
+        !! Control kNN-pool size used for gene-vs-own (-1 if not computed)
         integer(int32), dimension(n_genes), intent(out) :: neighborhood_size_case
         !! Case pool size used for each gene (-1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_case
-        !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CASE stratification
-        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
-        integer(int32), dimension(n_genes), intent(out) :: chosen_n_bins_own_control
-        !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CONTROL stratification
-        !! (+ = criteria met, - = coarse 2-bin fallback; -1 if not computed)
         integer(int32), intent(out) :: ierr
         !! Error code
 
         type(sorted_data_t) :: sorted_case, sorted_control
         real(real64), allocatable :: tmp_pool_case(:), tmp_pool_control_own(:)
-        integer(int32), allocatable :: tmp_gene_id_pool_case(:), tmp_gene_id_pool_control_own(:)
-        ! Case stratification work arrays
-        integer(int32), allocatable :: tmp_strat_bin_index_per_residual_case(:)
-        integer(int32), allocatable :: tmp_chosen_bin_index_per_residual_case(:)
-        real(real64), allocatable :: tmp_strat_bin_edges_case(:), tmp_chosen_bin_edges_case(:)
-        integer(int32), allocatable :: tmp_strat_gene_min_bin_case(:), tmp_strat_gene_max_bin_case(:)
-        logical, allocatable :: tmp_strat_gene_seen_case(:)
-        integer(int32), allocatable :: tmp_strat_touched_gene_slots_case(:)
-        integer(int32), allocatable :: tmp_strat_c_g_case(:)
-        integer(int32), allocatable :: tmp_strat_bin_counts_case(:)
-        ! Control stratification work arrays
-        integer(int32), allocatable :: tmp_strat_bin_index_per_residual_control(:)
-        integer(int32), allocatable :: tmp_chosen_bin_index_per_residual_control(:)
-        real(real64), allocatable :: tmp_strat_bin_edges_control(:), tmp_chosen_bin_edges_control(:)
-        integer(int32), allocatable :: tmp_strat_gene_min_bin_control(:), tmp_strat_gene_max_bin_control(:)
-        logical, allocatable :: tmp_strat_gene_seen_control(:)
-        integer(int32), allocatable :: tmp_strat_touched_gene_slots_control(:)
-        integer(int32), allocatable :: tmp_strat_c_g_control(:)
-        integer(int32), allocatable :: tmp_strat_bin_counts_control(:)
-        real(real64), allocatable :: tmp_own_stratum_pool_case(:), tmp_own_stratum_pool_control(:)
         integer(int32) :: sort_ierr
 
         call set_ok(ierr)
@@ -1464,43 +877,9 @@ contains
         ! Per-gene work arrays for compute_noise_pvalue_pipeline_helper, allocated
         ! once here so the helper itself performs no allocation.
         M_ALLOCATE(tmp_pool_case(max_pool_size * 2))
-        M_ALLOCATE(tmp_gene_id_pool_case(max_pool_size * 2))
         M_ALLOCATE(tmp_pool_control_own(max_pool_size * 2))
-        M_ALLOCATE(tmp_gene_id_pool_control_own(max_pool_size * 2))
-        
-        ! Case stratification work arrays
-        M_ALLOCATE(tmp_strat_bin_index_per_residual_case(max_pool_size))
-        M_ALLOCATE(tmp_chosen_bin_index_per_residual_case(max_pool_size))
-        M_ALLOCATE(tmp_strat_bin_edges_case(STRATA_BIN_COUNT_SCHEDULE(1) + 1))
-        M_ALLOCATE(tmp_chosen_bin_edges_case(STRATA_BIN_COUNT_SCHEDULE(1) + 1))
-        M_ALLOCATE(tmp_strat_gene_min_bin_case(sorted_case%n_genes))
-        M_ALLOCATE(tmp_strat_gene_max_bin_case(sorted_case%n_genes))
-        M_ALLOCATE(tmp_strat_gene_seen_case(sorted_case%n_genes))
-        M_ALLOCATE(tmp_strat_touched_gene_slots_case(max_pool_size))
-        M_ALLOCATE(tmp_strat_c_g_case(max_pool_size))
-        M_ALLOCATE(tmp_strat_bin_counts_case(STRATA_BIN_COUNT_SCHEDULE(1)))
-
-        ! Control stratification work arrays
-        M_ALLOCATE(tmp_strat_bin_index_per_residual_control(max_pool_size))
-        M_ALLOCATE(tmp_chosen_bin_index_per_residual_control(max_pool_size))
-        M_ALLOCATE(tmp_strat_bin_edges_control(STRATA_BIN_COUNT_SCHEDULE(1) + 1))
-        M_ALLOCATE(tmp_chosen_bin_edges_control(STRATA_BIN_COUNT_SCHEDULE(1) + 1))
-        M_ALLOCATE(tmp_strat_gene_min_bin_control(sorted_control%n_genes))
-        M_ALLOCATE(tmp_strat_gene_max_bin_control(sorted_control%n_genes))
-        M_ALLOCATE(tmp_strat_gene_seen_control(sorted_control%n_genes))
-        M_ALLOCATE(tmp_strat_touched_gene_slots_control(max_pool_size))
-        M_ALLOCATE(tmp_strat_c_g_control(max_pool_size))
-        M_ALLOCATE(tmp_strat_bin_counts_control(STRATA_BIN_COUNT_SCHEDULE(1)))
-
-        M_ALLOCATE(tmp_own_stratum_pool_case(max_pool_size))
-        M_ALLOCATE(tmp_own_stratum_pool_control(max_pool_size))
 
         if (is_err(ierr)) return
-
-        ! `check_stratification_accepted_helper` requires an all-`.false.` "seen"
-        ! array on entry and restores it on return, so it only needs zeroing once here.
-        tmp_strat_gene_seen_case = .false.
-        tmp_strat_gene_seen_control = .false.
 
         call compute_noise_pvalue_pipeline_helper( &
             sorted_case, sorted_control, &
@@ -1511,18 +890,7 @@ contains
             max_pool_size, &
             neighborhood_size_own_case, neighborhood_size_own_control, &
             neighborhood_size_case, &
-            chosen_n_bins_own_case, chosen_n_bins_own_control, &
-            tmp_pool_case, tmp_gene_id_pool_case, &
-            tmp_pool_control_own, tmp_gene_id_pool_control_own, &
-            tmp_strat_bin_index_per_residual_case, tmp_chosen_bin_index_per_residual_case, &
-            tmp_strat_bin_edges_case, tmp_chosen_bin_edges_case, &
-            tmp_strat_gene_min_bin_case, tmp_strat_gene_max_bin_case, tmp_strat_gene_seen_case, &
-            tmp_strat_touched_gene_slots_case, tmp_strat_c_g_case, tmp_strat_bin_counts_case, &
-            tmp_strat_bin_index_per_residual_control, tmp_chosen_bin_index_per_residual_control, &
-            tmp_strat_bin_edges_control, tmp_chosen_bin_edges_control, &
-            tmp_strat_gene_min_bin_control, tmp_strat_gene_max_bin_control, tmp_strat_gene_seen_control, &
-            tmp_strat_touched_gene_slots_control, tmp_strat_c_g_control, tmp_strat_bin_counts_control, &
-            tmp_own_stratum_pool_case, tmp_own_stratum_pool_control, &
+            tmp_pool_case, tmp_pool_control_own, &
             ierr)
 
     end subroutine compute_noise_pvalue_pipeline
@@ -1552,7 +920,6 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     max_pool_size, &
     neighborhood_size_own_case, neighborhood_size_own_control, &
     neighborhood_size_case, &
-    chosen_n_bins_own_case, chosen_n_bins_own_control, &
     ierr) bind(C, name="compute_noise_pvalues_pipeline_exact_c")
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
@@ -1600,15 +967,11 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     integer(c_int), intent(out), target :: n_genes_with_pvalue
     !! Number of genes for which at least one p-value was computed
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_own_case
-    !! Case stratum size used for gene-vs-own (-1 if not computed)
+    !! Case kNN-pool size used for gene-vs-own (-1 if not computed)
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_own_control
-    !! Control stratum size used for gene-vs-own (-1 if not computed)
+    !! Control kNN-pool size used for gene-vs-own (-1 if not computed)
     integer(c_int), dimension(n_genes), intent(out), target :: neighborhood_size_case
     !! Case pool size used for each gene (-1 if not computed)
-    integer(c_int), dimension(n_genes), intent(out), target :: chosen_n_bins_own_case
-    !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CASE stratification
-    integer(c_int), dimension(n_genes), intent(out), target :: chosen_n_bins_own_control
-    !! Diagnostic: sign-encoded chosen bin count, gene-vs-own CONTROL stratification
     integer(c_int), intent(out), target :: ierr
     !! Error code: 0 = success
 
@@ -1635,8 +998,6 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     M_CHECK_NON_NULL(neighborhood_size_own_case)
     M_CHECK_NON_NULL(neighborhood_size_own_control)
     M_CHECK_NON_NULL(neighborhood_size_case)
-    M_CHECK_NON_NULL(chosen_n_bins_own_case)
-    M_CHECK_NON_NULL(chosen_n_bins_own_control)
 
     call compute_noise_pvalue_pipeline( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
@@ -1647,7 +1008,6 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_case, &
-        chosen_n_bins_own_case, chosen_n_bins_own_control, &
         ierr)
 
 end subroutine compute_noise_pvalues_pipeline_exact_c
