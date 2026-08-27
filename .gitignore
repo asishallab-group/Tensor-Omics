@@ -24,6 +24,8 @@
 !test/test_suite.[Ff]90
 !test/asserts.[Ff]90
 
+!test/Noise_Model_Test
+
 # src
 !src
 # src all contained dirs

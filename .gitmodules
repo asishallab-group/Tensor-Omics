@@ -1,0 +1,3 @@
+[submodule "test/Noise_Model_Test"]
+	path = test/Noise_Model_Test
+	url = https://github.com/schroederaaron/empirical-noise-model-testing.git
