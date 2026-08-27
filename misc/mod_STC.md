@@ -1548,3 +1548,789 @@ Brand's algorithm's own periodic reorthogonalization reset would let one
 maintenance pass correct both kinds of drift (numerical, in $U$; and
 epistemic, in the assumed $d$) at once, rather than adding a second,
 independently-scheduled correction mechanism.
+
+# Objective Function and Simulated Annealing for Tangent-Space Shape Truthful Clustering
+
+## Overview
+
+Parameters of the tangent-space variant of Shape Truthful Clustering (STC) can be optimized on simulated benchmark datasets for which the underlying true manifolds are known.
+
+Optimization should reward four properties:
+
+1. **Angular agreement** between reconstructed local tangent spaces and the closest true manifold.
+2. **Spatial agreement** between reconstructed ensembles and the closest true manifold.
+3. **Coverage** of the original data by ensembles that become members of accepted super-ensembles.
+4. **Correct recovery of disconnected manifolds as super-ensembles.**
+
+All four components are scaled to $[0,1]$, where
+
+$$
+0 = \text{perfect}
+$$
+
+and
+
+$$
+1 = \text{worst}.
+$$
+
+Only ensembles that are members of accepted super-ensembles participate in evaluation. Provisional, rejected, or otherwise unassigned ensembles are ignored, except indirectly through the coverage loss.
+
+The total objective is minimized.
+
+---
+
+## 1. Angular disagreement
+
+For every accepted ensemble $E_k$, calculate its estimated tangent space and find the closest known true manifold $M_{j(k)}$.
+
+Evaluate the true tangent space of $M_{j(k)}$ at the manifold position closest to the ensemble center.
+
+Let
+
+$$
+\theta_{ki} \in [0,\pi/2]
+$$
+
+be the principal angles between the estimated and true tangent spaces, where $i=1,\ldots,d$ and $d$ is their common intrinsic dimension.
+
+Define the normalized angular loss of ensemble $E_k$ as
+
+$$
+L_{A,k}
+=
+\frac{1}{d}
+\sum_{i=1}^{d}
+\frac{\theta_{ki}}{\pi/2}.
+$$
+
+Thus,
+
+$$
+L_{A,k}\in[0,1].
+$$
+
+For a one-dimensional manifold this reduces to the normalized angle between the estimated and true tangent directions.
+
+The global angular loss $L_A$ is obtained by averaging over accepted ensembles. A point-weighted average can be used so that very small ensembles do not contribute as strongly as ensembles representing many data points:
+
+$$
+L_A
+=
+\frac{
+\sum_k |E_k|L_{A,k}
+}{
+\sum_k |E_k|
+}.
+$$
+
+---
+
+## 2. Center-to-manifold offset
+
+For every accepted ensemble, calculate its center as its mean data point:
+
+$$
+\mu_k
+=
+\frac{1}{|E_k|}
+\sum_{x\in E_k}x.
+$$
+
+Find the orthogonal distance between this center and the closest true manifold:
+
+$$
+d_k
+=
+d(\mu_k,M_{j(k)}).
+$$
+
+The simulated-data generator provides the noise standard deviation used when generating each manifold's points:
+
+$$
+\sigma_j.
+$$
+
+Normalize the ensemble offset by this known, generator-specified noise scale -- not an empirical statistic of the realized sample, which would depend on how many points happened to be drawn:
+
+$$
+L_{D,k}
+=
+\min\left(
+1,
+\frac{d_k}{\sigma_{j(k)}}
+\right).
+$$
+
+Consequently,
+
+$$
+L_{D,k}\in[0,1].
+$$
+
+An ensemble centered directly on the true manifold has loss $0$. An offset of one full generation noise standard deviation or more has loss $1$.
+
+Again, calculate the global loss using a point-weighted average:
+
+$$
+L_D
+=
+\frac{
+\sum_k |E_k|L_{D,k}
+}{
+\sum_k |E_k|
+}.
+$$
+
+The angular and offset losses therefore measure complementary properties:
+
+* $L_A$: **Is the reconstructed local manifold oriented correctly?**
+* $L_D$: **Is the reconstructed local manifold positioned correctly?**
+
+---
+
+## 3. Data-point coverage
+
+Only points belonging to ensembles that are members of accepted super-ensembles count as covered.
+
+Some benchmark datasets deliberately include points with no true manifold at all (see the JSON schema's `true_manifold_id = -1` sentinel below) -- background/unstructured points that a correct STC run should leave uncovered. Both $N$ and $N_{\mathrm{covered}}$ below therefore range only over points with a real (non-sentinel) true manifold; excluding sentinel points from $N$ as well is what lets $L_C=0$ remain achievable by a perfect result. A sentinel point that STC incorrectly *does* absorb into a super-ensemble is not rewarded or penalized by $L_C$ itself (it is excluded from both terms of the fraction either way) -- that mistake is instead penalized by $L_E$/$F$ below, since a covered sentinel point still participates there as its own class and lowers a super-ensemble's purity.
+
+Let
+
+* $N$ be the total number of input data points with a real true manifold (excluding sentinel-labeled points),
+* $N_{\mathrm{covered}}$ be the number of those points represented by accepted super-ensembles.
+
+Define
+
+$$
+C
+=
+\frac{N_{\mathrm{covered}}}{N}
+$$
+
+and the corresponding loss
+
+$$
+L_C=1-C.
+$$
+
+Thus,
+
+$$
+L_C\in[0,1].
+$$
+
+Complete coverage gives $L_C=0$, while no recovered points gives $L_C=1$.
+
+---
+
+## 4. Recovery of disconnected manifolds
+
+Each disconnected true manifold should ideally correspond to exactly one recovered super-ensemble.
+
+For simulated datasets in which every point has exactly one generating manifold, compare the true manifold membership of covered points with their recovered super-ensemble membership using the **Adjusted Rand Index (ARI)**.
+
+ARI simultaneously penalizes:
+
+* splitting one true manifold into several super-ensembles;
+* merging several true manifolds into one super-ensemble;
+* incorrect assignment of points between super-ensembles.
+
+Perfect correspondence gives
+
+$$
+\mathrm{ARI}=1.
+$$
+
+Random correspondence has expected ARI approximately $0$, and ARI can become negative.
+
+Define the bounded loss as
+
+$$
+L_E
+=
+1-\max(0,\mathrm{ARI}).
+$$
+
+Therefore,
+
+$$
+L_E\in[0,1].
+$$
+
+ARI is calculated **only for covered points**. Uncovered points are handled exclusively by $L_C$, avoiding double penalization.
+
+For debugging and detailed evaluation, additionally construct the correspondence matrix
+
+$$
+P_{kj}
+=
+\frac{
+\#\{x\in E_k:\text{true manifold}(x)=M_j\}
+}{
+|E_k|
+}.
+$$
+
+This makes individual merging, fragmentation, and assignment failures directly visible.
+
+If future test-data generators allow points to originate from multiple manifolds, ARI must be replaced by an appropriate soft-membership measure. For the present hard-membership benchmarks, ARI is appropriate.
+
+### Reporting-only: fraction of correctly assigned points
+
+$L_E$ itself remains ARI-based -- ARI's correction for chance agreement matters precisely because benchmark manifolds are not guaranteed to have equal point counts, and a non-chance-corrected fraction would then reward a degenerate single-cluster answer just for matching the largest manifold. Alongside $L_E$, additionally compute and log -- never used in $L$ or in the simulated-annealing acceptance rule, diagnostic only -- the more directly interpretable **fraction of correctly assigned covered points**:
+
+1. Build the correspondence matrix $P_{kj}$ (defined above) at the super-ensemble level: group each ensemble $E_k$'s row into its parent super-ensemble to get one row per super-ensemble.
+2. Solve the optimal one-to-one assignment between super-ensembles and true manifolds that maximizes total matched point count (Hungarian algorithm on the super-ensemble/manifold overlap counts -- the number of super-ensembles and manifolds is always small, so this is computationally trivial regardless of $N$).
+3. Report
+
+$$
+F
+=
+\frac{
+\#\{x\text{ covered}:\text{matched-manifold}(\text{super-ensemble}(x))=\text{true manifold}(x)\}
+}{
+N_{\mathrm{covered}}
+}.
+$$
+
+$F$ is easier to communicate ("82% of covered points ended up in the right super-ensemble") but, unlike ARI, is not corrected for chance agreement -- treat it as a human-readable companion to $L_E$, not a replacement.
+
+---
+
+# Combined objective function
+
+All four losses have the same direction and range:
+
+$$
+L_A,L_D,L_C,L_E\in[0,1].
+$$
+
+Initially use equal weighting:
+
+$$
+L
+=
+\frac{
+L_A+L_D+L_C+L_E
+}{4}.
+$$
+
+Therefore,
+
+$$
+L\in[0,1],
+$$
+
+where
+
+$$
+L=0
+$$
+
+represents perfect reconstruction.
+
+If later experiments demonstrate that individual criteria should receive different importance, introduce weights
+
+$$
+L
+=
+w_A L_A
++
+w_D L_D
++
+w_C L_C
++
+w_E L_E,
+$$
+
+subject to
+
+$$
+w_A+w_D+w_C+w_E=1.
+$$
+
+Equal weighting should be the default unless there is empirical justification for changing it.
+
+## Aggregation across a benchmark suite
+
+Simulated annealing (below) evaluates a candidate parameter vector $\boldsymbol{\phi}$ against a benchmark *suite* of datasets $\{D_1,\ldots,D_m\}$ supplied as a directory of benchmark files, not a single dataset. For each $D_s$, run STC with $\boldsymbol{\phi}$ and compute that dataset's own $(L_{A,s},L_{D,s},L_{C,s},L_{E,s})$ exactly as defined above. Average each component arithmetically across datasets before combining:
+
+$$
+L_A=\frac{1}{m}\sum_{s=1}^{m}L_{A,s},
+\quad
+L_D=\frac{1}{m}\sum_{s=1}^{m}L_{D,s},
+\quad
+L_C=\frac{1}{m}\sum_{s=1}^{m}L_{C,s},
+\quad
+L_E=\frac{1}{m}\sum_{s=1}^{m}L_{E,s},
+$$
+
+then combine as already defined above. This is what makes the resulting $\boldsymbol{\phi}^{*}$ generalize across the suite rather than overfit a single dataset.
+
+Running the identical procedure on a directory containing exactly one dataset ($m=1$) is a valid and intended use, not a degenerate case: comparing the per-dataset-optimal $\boldsymbol{\phi}^{*}$ obtained this way, across several single-dataset runs, against the joint $\boldsymbol{\phi}^{*}$ from a multi-dataset run is the intended method for testing whether STC parameters are stable across datasets (single-dataset optima agree with each other and with the joint optimum -- a fixed set of defaults suffices) or genuinely dataset-dependent (they diverge -- in which case `estimate_stc_parameters` per-dataset matters more than any fixed default).
+
+---
+
+# Simulated annealing
+
+Let
+
+$$
+\boldsymbol{\phi}
+=
+(\phi_1,\phi_2,\ldots,\phi_p)
+$$
+
+denote the STC parameter vector.
+
+Simulated annealing searches for
+
+$$
+\boldsymbol{\phi}^{*}
+=
+\arg\min_{\boldsymbol{\phi}} L(\boldsymbol{\phi}).
+$$
+
+It combines broad exploration at high temperature with increasingly local optimization as temperature decreases.
+
+---
+
+## Chain initialization
+
+Each SA run launches multiple independent chains (see the CLI below), started from different initial parameter vectors so the search does not depend on a single starting point. Exactly one chain is always seeded with the output of `estimate_stc_parameters` -- for $m=1$, its estimate on that one dataset; for $m>1$, `estimate_stc_parameters` run separately on each dataset in the suite, with the resulting six-parameter estimates averaged component-wise into one starting $\boldsymbol{\phi}$. This chain is never randomly perturbed at initialization. Its purpose is as much diagnostic as exploratory: comparing where this chain's best-found $L$ ends up relative to the randomly-initialized chains directly measures whether `estimate_stc_parameters` already lands close to the SA optimum (parameter estimation is working) or far from it (parameter estimation needs revisiting). All remaining chains are initialized by drawing each $\phi_i$ independently and uniformly from its allowed range $[\phi_i^{\min},\phi_i^{\max}]$.
+
+---
+
+## Temperature schedule
+
+Use geometric/exponential cooling:
+
+$$
+T_t=T_0\alpha^t,
+$$
+
+where
+
+$$
+0<\alpha<1.
+$$
+
+Equivalently,
+
+$$
+T_t=T_0e^{-\lambda t}.
+$$
+
+Because the objective itself is constrained to
+
+$$
+L\in[0,1],
+$$
+
+temperature can be chosen directly relative to meaningful objective differences.
+
+A useful way to select $T_0$ is to specify how likely a substantially worse solution should initially be accepted.
+
+For an objective increase $\Delta L>0$,
+
+$$
+P_{\mathrm{accept}}
+=
+\exp\left(
+-\frac{\Delta L}{T}
+\right).
+$$
+
+For example, if an objective deterioration of
+
+$$
+\Delta L=0.1
+$$
+
+should initially have approximately $50%$ acceptance probability, choose
+
+$$
+T_0
+=
+-\frac{0.1}{\ln(0.5)}
+\approx0.144.
+$$
+
+Hence an initial temperature on the order of
+
+$$
+T_0\approx0.1-0.2
+$$
+
+is a reasonable starting range for the normalized objective.
+
+At $T=0.1$:
+
+| $\Delta L$ | Acceptance probability |
+| ---------: | ---------------------: |
+|       0.01 |                  0.905 |
+|       0.05 |                  0.607 |
+|       0.10 |                  0.368 |
+|       0.20 |                  0.135 |
+|       0.50 |                  0.007 |
+
+At a late temperature such as
+
+$$
+T=0.01,
+$$
+
+the corresponding probabilities become:
+
+| $\Delta L$ | Acceptance probability |
+| ---------: | ---------------------: |
+|      0.001 |                  0.905 |
+|      0.005 |                  0.607 |
+|      0.010 |                  0.368 |
+|      0.020 |                  0.135 |
+|      0.050 |                  0.007 |
+
+Thus cooling from approximately $0.1$-$0.2$ toward approximately $0.001$-$0.01$ naturally changes the search from broad exploration to local refinement.
+
+The exact range should be validated empirically by inspecting the distribution of $\Delta L$ generated by initial random parameter perturbations.
+
+---
+
+# Temperature-dependent parameter perturbation
+
+Temperature should control not only acceptance of worse solutions but also the magnitude of proposed parameter changes.
+
+For each continuous parameter $\phi_i$, define a characteristic parameter scale $s_i$. This can, for example, be its allowed range:
+
+$$
+s_i=\phi_i^{\max}-\phi_i^{\min}.
+$$
+
+Generate a proposed parameter value using a normal perturbation:
+
+$$
+\phi_i'
+=
+\phi_i+\epsilon_i,
+$$
+
+with
+
+$$
+\epsilon_i
+\sim
+N(0,\sigma_i(T)^2).
+$$
+
+Let the proposal standard deviation decrease proportionally with normalized temperature:
+
+$$
+\sigma_i(T)
+=
+\sigma_{i,0}
+\frac{T}{T_0}.
+$$
+
+The initial standard deviation can itself be defined relative to the parameter's allowed range:
+
+$$
+\sigma_{i,0}=q\,s_i,
+$$
+
+where $q$ controls the initial exploration radius.
+
+For example,
+
+$$
+q=0.2
+$$
+
+means that at the initial temperature the proposal SD is $20%$ of the parameter range.
+
+Consequently,
+
+$$
+\sigma_i(T)
+=
+0.2\,s_i\frac{T}{T_0}.
+$$
+
+At high temperature, large moves through parameter space are common. As the system cools, proposals become progressively more local.
+
+Parameter-specific values of $q$ can be introduced if some STC parameters require substantially different exploration scales.
+
+For integer-valued parameters, draw the perturbation from the same normal distribution and round the resulting proposal to the nearest valid integer.
+
+All proposals must subsequently be restricted to the parameter's allowed domain.
+
+---
+
+# Acceptance rule
+
+For the current parameter vector $\boldsymbol{\phi}$ and proposed vector $\boldsymbol{\phi}'$, calculate
+
+$$
+\Delta L
+=
+L(\boldsymbol{\phi}')
+-
+L(\boldsymbol{\phi}).
+$$
+
+If
+
+$$
+\Delta L\leq0,
+$$
+
+always accept the proposal.
+
+If
+
+$$
+\Delta L>0,
+$$
+
+accept it with probability
+
+$$
+P_{\mathrm{accept}}
+=
+\exp\left(
+-\frac{\Delta L}{T}
+\right).
+$$
+
+Draw
+
+$$
+u\sim U(0,1).
+$$
+
+Accept the worse solution if
+
+$$
+u<P_{\mathrm{accept}}.
+$$
+
+Otherwise retain the current parameter vector.
+
+Always independently retain the **best parameter vector encountered during the complete run**, since simulated annealing deliberately permits movement away from the best solution.
+
+---
+
+# Algorithm
+
+For each simulated benchmark dataset:
+
+1. Generate the data together with the known true manifolds, generating-manifold identities, true local tangent spaces, and manifold-specific maximum realized noise distances $d_j^{\max}$.
+2. Initialize the STC parameter vector $\boldsymbol{\phi}$.
+3. Run tangent-space STC.
+4. Consider only ensembles belonging to accepted super-ensembles.
+5. Calculate $L_A$, $L_D$, $L_C$, and $L_E$.
+6. Calculate the combined objective $L$.
+7. Set the initial temperature $T_0$.
+8. Propose a new parameter vector using temperature-dependent normally distributed perturbations.
+9. Run STC with the proposed parameters and calculate $L'$.
+10. Always accept if $L'\leq L$.
+11. Otherwise accept with probability
+
+$$
+\exp\left(-\frac{L'-L}{T}\right).
+$$
+
+12. Record the best parameter vector and objective encountered independently of the currently accepted state.
+13. Decrease temperature according to
+
+$$
+T_{t+1}=\alpha T_t.
+$$
+
+14. Repeat until the minimum temperature, maximum iteration count, or another convergence criterion is reached.
+15. Return both the best parameter vector and the individual objective components
+
+$$
+(L_A,L_D,L_C,L_E)
+$$
+
+so that a good aggregate score cannot conceal failure in one component.
+
+The resulting optimization explicitly searches for STC parameters that maximize **local tangent fidelity, spatial fidelity, data coverage, and recovery of the disconnected manifold structure** of the simulated data.
+
+## Parameter scales and proposal step sizes
+
+The STC parameters themselves do **not** need to be normalized to $[0,1]$. They should retain their natural units, types, and allowed ranges.
+
+For each parameter $\phi_i$, define its allowed range as
+
+$$
+R_i=\phi_i^{\max}-\phi_i^{\min}.
+$$
+
+The scale of proposed changes is defined relative to this range rather than to the absolute numerical value of the parameter.
+
+For a continuous parameter, propose
+
+$$
+\phi_i'=\phi_i+\epsilon_i,
+$$
+
+where
+
+$$
+\epsilon_i\sim N(0,\sigma_i(T)^2).
+$$
+
+A simple temperature-dependent proposal standard deviation is
+
+$$
+\sigma_i(T)
+=
+qR_i\frac{T}{T_0},
+$$
+
+where $q$ defines the initial proposal size as a fraction of the complete parameter range.
+
+For example, with
+
+$$
+q=0.2,
+$$
+
+the initial proposal SD is $20\%$ of each parameter's range. Thus parameters with very different numerical scales undergo comparable **relative** changes without requiring normalization of the parameters themselves.
+
+For example:
+
+| Parameter range | Initial proposal SD with $q=0.2$ |
+|---|---:|
+| $[0,1]$ | $0.2$ |
+| $[0,100]$ | $20$ |
+| $[5,10]$ | $1$ |
+
+As temperature decreases, the proposal distribution becomes narrower and optimization changes from broad exploration to increasingly local refinement.
+
+To prevent proposal steps from becoming arbitrarily small at low temperature, an optional minimum relative proposal size can be introduced:
+
+$$
+\sigma_i(T)
+=
+R_i
+\left[
+q_{\min}
++
+(q_{\max}-q_{\min})\frac{T}{T_0}
+\right].
+$$
+
+Here, $q_{\max}$ determines the initial exploration scale and $q_{\min}$ determines the minimum local exploration scale.
+
+Integer-valued parameters can use the same procedure followed by rounding to the nearest valid integer. Categorical parameters require a separate discrete proposal mechanism.
+
+Any proposed value outside its allowed parameter range must be handled consistently, for example by clipping, reflecting it at the boundary, or rejecting the proposal. Reflection is preferable to clipping because clipping can artificially accumulate proposals at parameter boundaries.
+
+Importantly, **parameter scaling and objective-function scaling serve different purposes**:
+
+- Scaling the four objective components to $[0,1]$ gives the simulated-annealing temperature and acceptance probability a consistent interpretation.
+- Scaling parameter proposal steps by their respective ranges ensures comparable exploration of parameters with different natural numerical scales.
+
+The STC parameters themselves therefore remain in their original, interpretable units.
+
+---
+
+# Simulated annealing CLI in C
+
+Implemented in `C-layer/` alongside `stc_cli`, as a separate binary (e.g. `stc_sa_cli.c`) -- not `src/f42/`, for the same reason as `stc_cli` itself: this is orchestration code, not a numeric kernel, and it calls into STC through its existing C bindings rather than reimplementing any part of the pipeline.
+
+Use GNU argp, the same as `stc_cli`. JSON parsing uses `cJSON` (MIT-licensed), linked dynamically as a system dependency the same way `stc_cli` links `libcsv` -- `#include <cjson/cJSON.h>`, `fpm.toml`'s `stc_sa_cli` executable stanza adds `cjson` to its `link` list. On Fedora: `dnf install cjson-devel`; on Arch (see `misc/gfortran.docker`): `pacman -S cjson`; on Debian/Ubuntu: `apt install libcjson-dev`. Arguments:
+
+* `--input-dir`, a directory of benchmark dataset JSON files (schema below). Every file in the directory is one dataset $D_s$ in the benchmark suite; a directory with a single file is the $m=1$ case above.
+* `--chains`, the number of randomly-initialized chains to run in addition to the one chain always seeded from `estimate_stc_parameters` (see "Chain initialization" above).
+* `--output-dir`, where per-chain CSV logs are written.
+* the SA hyperparameters ($T_0$, $\alpha$, $q$ or $q_{\min}/q_{\max}$, minimum temperature or maximum iteration count) as optional arguments with sensible defaults, following the same "expose the heuristic, do not hardcode it" convention as STC's own tunables.
+* a required RNG seed argument -- every chain's proposal draws and acceptance draws must be reproducible from this seed (plus the chain index, so chains do not share a stream), never from an unseeded global generator.
+* `--store-iteration-shatter-results`, optional, off by default -- see below.
+
+## Benchmark dataset JSON schema
+
+Rather than encoding each manifold's shape analytically (which would force per-shape-type geometry code -- circle, swiss roll, sphere, ... -- into the evaluator), every manifold ships a **dense reference point cloud with a true orthonormal tangent basis at every reference point**. Both quantities the objective function needs from the ground truth -- "closest true manifold" (nearest-neighbor lookup of a query point against every manifold's reference cloud) and "true tangent space at the closest position" (the basis stored at the nearest reference point found) -- then reduce to the same generic nearest-neighbor query regardless of what shape the generator actually drew, at the cost of being an approximation: it is only as accurate as the reference cloud is dense relative to $\sigma_j$. This density requirement is a generator-side invariant (the benchmark generator must sample the reference cloud far finer than the noise scale it applies to the actual data points) -- the loader does not and cannot check it, only the generator can guarantee it.
+
+The benchmark generator itself already exists: Vivian's Python data generator, originally written for LoManLe testing, produces exactly these known-manifold-plus-noise datasets already. It only needs a new output flag/mode that additionally emits the reference cloud, tangent bases, and $\sigma_j$ per manifold in this JSON layout -- not a new generator.
+
+```json
+{
+  "dataset_id": "swiss_roll_01",
+  "ambient_dim": 3,
+  "generation_seed": 20260827,
+  "manifolds": [
+    {
+      "manifold_id": 0,
+      "intrinsic_dim": 2,
+      "noise_sd": 0.05,
+      "reference_points": [[0.12, -0.4, 1.02], [0.15, -0.38, 1.05], "..."],
+      "reference_tangent_bases": [
+        [[0.98, 0.02, -0.19], [0.01, 0.99, 0.05]],
+        [[0.97, 0.03, -0.21], [0.02, 0.98, 0.06]],
+        "..."
+      ]
+    },
+    {
+      "manifold_id": 1,
+      "intrinsic_dim": 1,
+      "noise_sd": 0.08,
+      "reference_points": [["..."]],
+      "reference_tangent_bases": [["..."]]
+    }
+  ],
+  "points": {
+    "coordinates": [[0.14, -0.41, 1.01], [2.87, 0.55, -0.33], "..."],
+    "true_manifold_id": [0, 1, "..."]
+  }
+}
+```
+
+Fields:
+
+* `dataset_id` -- free-form string, used as `dataset_id` in the per-chain CSV log.
+* `ambient_dim` -- dimensionality $D$ of `points.coordinates` and of every `reference_points`/`reference_tangent_bases` vector.
+* `generation_seed` -- optional; the seed the benchmark generator itself used, recorded purely so a dataset can be regenerated or debugged, not consumed by `stc_sa_cli`.
+* `manifolds[]` -- one entry per disconnected true manifold:
+  * `manifold_id` -- integer, referenced by `points.true_manifold_id`; need not be contiguous but must be unique within the file.
+  * `intrinsic_dim` -- $d$ for this manifold; manifolds in the same dataset may differ in $d$ (e.g. a benchmark deliberately mixing a curve and a surface).
+  * `noise_sd` -- $\sigma_j$, consumed by $L_D$.
+  * `reference_points` -- $R\times D$ dense, noise-free sample of the manifold ($R$ chosen by the generator, unrelated to $N$).
+  * `reference_tangent_bases` -- $R$ entries, each a $d\times D$ orthonormal basis of the tangent space at the corresponding `reference_points` row.
+* `points.coordinates` -- $N\times D$, the actual (noisy) input data fed to STC.
+* `points.true_manifold_id` -- length $N$, one `manifold_id` per row of `points.coordinates`, or the reserved sentinel $-1$ meaning this point has no true manifold at all (deliberately unstructured background, e.g. one segment of a "mixed" benchmark dataset) -- consumed by $L_C$/$L_E$/$F$ (see their sentinel-handling notes above), never by STC itself.
+
+As with `stc_cli`'s CSV loader, the JSON is parsed and validated in C, then handed to Fortran as zero-copy 2D arrays -- row-per-point in the JSON (the natural, tool-agnostic orientation for Python/R/hand-inspection) is transposed to column-major during that handoff, the same transpose `stc_cli` already performs for its CSV input. Being hand-written IO code, the loader itself is responsible for validating what the schema only documents: `ambient_dim`/`intrinsic_dim` consistency across every array, `intrinsic_dim <= ambient_dim`, basis orthonormality within tolerance, `noise_sd > 0`, and every `true_manifold_id` resolving to either a declared `manifold_id` or the $-1$ sentinel.
+
+The SA loop itself (propose, run STC via the C bindings, evaluate $L$, accept/reject, cool) is implemented directly in C, not Fortran -- it is glue around Fortran-computed numerics, not a numeric kernel, so it does not need to live under the `_impl` discipline, matching `stc_cli`'s own precedent.
+
+## Parallelization
+
+Chains are fully independent by construction, so parallelize with `#pragma omp parallel for` over the chain index as the default and primary source of speedup -- this requires no synchronization beyond each chain owning its own RNG stream and its own output file. Only add a second level of parallelism over the $m$ per-iteration dataset evaluations within a single chain if `--chains` is smaller than the available thread count; nesting both from the start adds scheduling complexity (oversubscription, nested-parallel-region control) not worth paying for until it is actually the bottleneck.
+
+Because each chain runs a serially-dependent Markov chain (iteration $t+1$'s proposal depends on iteration $t$'s accepted state), individual chains are not guaranteed to cost the same wall-clock time per iteration -- STC's own convergence speed (ensemble growth iteration count, number of accepted super-ensembles) varies with the proposed $\boldsymbol{\phi}$. Use `schedule(dynamic)` (or `guided`) on the chains loop rather than `static`, so a handful of slow chains don't leave idle cores waiting behind a static split.
+
+`--chains` must never assume a specific core count -- it defaults to `omp_get_max_threads() - 1` (so, together with the always-present estimator-seeded chain, total chains equal whatever the runtime reports as available, whether that is a laptop's handful of cores or a large cluster node), overridable explicitly for anyone who wants more chains than cores (oversubscribed, relying on the scheduler to time-slice) or fewer (deliberately leaving cores idle). Nothing about the CLI's logic, data structures, or defaults may hardcode a particular thread count such as 64 -- that number was only this conversation's example deployment, not a constant to bake in. Plenty of RAM removes any need to worry about per-chain memory duplication regardless of scale (each chain's private STC working arrays are small relative to available memory; the read-only input point clouds for all $m$ datasets can simply be loaded once and shared read-only across every chain's thread).
+
+One real hazard, worse the more cores are available: STC's own `_impl` kernels use `!$omp parallel do`/`!$omp simd` internally (per F42's OpenMP conventions). If the outer chain-level parallel region and STC's own internal parallel regions are both active with the runtime's full thread count, nesting turns $P$ outer chains into up to $P\times P$ oversubscribed threads. Since the outer chain-level parallelism already saturates every core one-to-one by construction (default `--chains`), every STC call made from inside a chain's thread must run single-threaded -- pin each chain's thread to `omp_set_num_threads(1)` (or an equivalent thread-count override) before calling into STC's C bindings, rather than relying on `OMP_NESTED`/`OMP_MAX_ACTIVE_LEVELS` defaults to prevent it implicitly. This applies identically regardless of how many cores are actually present.
+
+## Logging
+
+Every (dataset, chain) combination writes its own CSV to `--output-dir`, named after the dataset file and the chain number, e.g. `swiss_roll_01_chain03.csv` -- chain `0` is always the `estimate_stc_parameters`-seeded chain (see "Chain initialization" above), chains `1..--chains` are the randomly-initialized ones. One row per iteration, with columns:
+
+$$
+\texttt{iteration},\ \phi_1,\ldots,\phi_p,\ L_A,\ L_D,\ L_C,\ L_E,\ F,\ L,\ T,\ \texttt{accepted}
+$$
+
+where $F$ is the reporting-only fraction of correctly assigned points (see above), $L$/$T$/`accepted` are the *chain's* combined-objective/temperature/accept-decision at that iteration (identical across every dataset's file for that chain and iteration, since acceptance is decided once per iteration on the aggregate $L$, not per dataset -- each file stays self-contained and directly plottable at the cost of that small repetition). This is sufficient to reconstruct, per chain and per dataset, the full trajectory of both individual parameters and every objective component over the run.
+
+## Full per-iteration STC output (`--store-iteration-shatter-results`)
+
+Optional flag, off by default. STC ("Shape Truthful Clustering" -- "SHATTER" is a fun enough backronym for this flag name that it's worth keeping, even if the rest of the codebase keeps calling it STC/`tox_shape_truthful_clustering_*`; this is one CLI flag, not a project-wide rename). When set, in addition to the CSV log above, every individual STC run inside the SA loop also writes its full pipeline output -- exactly what `stc_cli` itself would write for a standalone run (JSON via `serialize_stc_results_as_json`, the interactive HTML report via `write_stc_interactive_html_report`, and the CSV companions via `tox_stc_csv`) -- into its own subdirectory `--output-dir/{dataset_stem}_chain{chain_id}/iter_{iteration:06d}/`.
+
+This reuses `stc_cli`'s existing output-writing call path unchanged, just invoked once per (chain, dataset, iteration) instead of once per CLI invocation -- wiring, not new serialization logic, so it does not meaningfully add code complexity.
+
+It does add real cost, and not only disk space: `tox_stc_html_assets.F90` embeds the full D3 bundle and report template (currently ~8.8MB as Fortran source), and `write_stc_interactive_html_report` re-embeds that same static bundle into every report it writes. Doing that once per iteration -- potentially thousands of iterations across chains and datasets -- means writing the identical multi-megabyte bundle over and over, which costs wall-clock time in the SA loop itself, not just space afterward. `--store-iteration-shatter-results` therefore always writes only the JSON and CSV companions per iteration, never the standalone HTML report. A future bulk-loading version of the interactive D3 visualization (loading many iterations' worth of JSON at once, rather than one self-contained HTML file per iteration) is the intended way to browse these per-iteration results -- out of scope here, tracked as follow-up work once this CLI exists.
