@@ -48,7 +48,7 @@ _lib.density_labels_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DENSITY_LABELS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "labels", "ierr",)
+_DENSITY_LABELS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_min", "bandwidth_percentile", "labels", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DENSITY_LABELS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None,)
 
@@ -67,7 +67,7 @@ _lib.seeds_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_SEEDS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "exclusion_radius_percentile", "is_seed_mask", "ierr",)
+_SEEDS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_min", "bandwidth_percentile", "exclusion_radius_percentile", "is_seed_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _SEEDS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None,)
 
@@ -75,10 +75,10 @@ def density_labels(
         vectors,
         kd_indices,
         dimension_order,
-        k_density=30,
+        k_min=30,
         bandwidth_percentile=68.27,
 ):
-    r"""Per-vector local density label, an adaptive-bandwidth kernel density estimate over each vector's own k_density nearest neighbors
+    r"""Per-vector local density label, an adaptive-bandwidth kernel density estimate over each vector's own k_min nearest neighbors
 
     Parameters
     ----------
@@ -92,13 +92,13 @@ def density_labels(
         Dimension order used to build `kd_indices`
         The minimum valid value is `1`.
         The maximum valid value is `n_dimensions`.
-    k_density : int, optional, default 30
+    k_min : int, optional, default 30
         Neighborhood size the local density estimate is taken over
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
         The default value is `30`.
     bandwidth_percentile : float, optional, default 68.27
-        Percentile (0 to 100) of the k_density neighbor distances used as the local
+        Percentile (0 to 100) of the k_min neighbor distances used as the local
         Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
         see above
         The minimum valid value is `0.0`.
@@ -165,7 +165,7 @@ def density_labels(
         ctypes.byref(ctypes.c_int(n_vectors)),
         kd_indices,
         dimension_order,
-        ctypes.byref(ctypes.c_int(k_density)),
+        ctypes.byref(ctypes.c_int(k_min)),
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         labels,
         ctypes.byref(ierr),
@@ -182,7 +182,7 @@ def seeds(
         vectors,
         kd_indices,
         dimension_order,
-        k_density=30,
+        k_min=30,
         bandwidth_percentile=68.27,
         exclusion_radius_percentile=50.0,
 ):
@@ -200,20 +200,20 @@ def seeds(
         Dimension order used to build `kd_indices`
         The minimum valid value is `1`.
         The maximum valid value is `n_dimensions`.
-    k_density : int, optional, default 30
+    k_min : int, optional, default 30
         Neighborhood size for both the density estimate and the coverage radius, see
         `density_labels` and `calc_ensemble_growth_radius`
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
         The default value is `30`.
     bandwidth_percentile : float, optional, default 68.27
-        Percentile (0 to 100) of the k_density neighbor distances used as the local
+        Percentile (0 to 100) of the k_min neighbor distances used as the local
         Gaussian bandwidth, see `density_labels`
         The minimum valid value is `0.0`.
         The maximum valid value is `100.0`.
         The default value is `68.27`.
     exclusion_radius_percentile : float, optional, default 50.0
-        Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+        Percentile (0 to 100) of the k_min neighbor distances used as each seed's
         coverage/exclusion radius, see above
         The minimum valid value is `0.0`.
         The maximum valid value is `100.0`.
@@ -279,7 +279,7 @@ def seeds(
         ctypes.byref(ctypes.c_int(n_vectors)),
         kd_indices,
         dimension_order,
-        ctypes.byref(ctypes.c_int(k_density)),
+        ctypes.byref(ctypes.c_int(k_min)),
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         ctypes.byref(ctypes.c_double(exclusion_radius_percentile)),
         is_seed_mask,

@@ -194,8 +194,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -308,14 +308,14 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
             ensemble_eligible_by_dimension=ensemble_eligible_by_dimension, &
             ensemble_eligible_by_var_explained=ensemble_eligible_by_var_explained, &
-            estimated_k_min=5_int32, estimated_k_density=6_int32, estimated_density_quantile=0.75d0, &
+            estimated_k_min=5_int32, estimated_density_quantile=0.75d0, &
             estimated_chordal_dist_max_as_prcnt_of_range=0.2d0, estimated_G_max=3.0d0, estimated_d_max=2_int32, &
             ierr=ierr)
         call assert_true(is_ok(ierr), "estimated params: serialize_stc_results_as_json must not fail")
@@ -327,7 +327,6 @@ contains
         close (unit, status='delete')
 
         call assert_string_contains(content, '"estimated_k_min":5', "estimated params: estimated_k_min present")
-        call assert_string_contains(content, '"estimated_k_density":6', "estimated params: estimated_k_density present")
         call assert_string_contains(content, '"estimated_d_max":2', "estimated params: estimated_d_max present")
     end subroutine test_json_estimated_params_included
 
@@ -363,8 +362,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -444,8 +443,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -513,8 +512,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -563,8 +562,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -648,8 +647,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -759,8 +758,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -842,8 +841,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -915,8 +914,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -961,8 +960,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             allowed_stop_reasons=allowed, &
@@ -1034,8 +1033,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &
@@ -1123,8 +1122,8 @@ contains
             ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
             ensemble_accepted_history, ensemble_member_added_at_step, &
             ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, &
-            k_min=3_int32, k_density=4_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
-            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, a=3_int32, &
+            k_min=3_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=1_int32, &
+            G_max=2.0d0, RMSE_change_max=0.5d0, f_max=0.8d0, min_stable_iterations=3_int32, radius_percentile=50.0d0, &
             exclusion_radius_percentile=50.0d0, bandwidth_percentile=68.0d0, &
             reconciliation_mode=MODE_MERGE_OVERLAP_COEFFICIENT, min_overlap_coefficient=0.5d0, &
             ensemble_eligible=ensemble_eligible, ensemble_eligible_by_stop_condition=ensemble_eligible_by_stop_condition, &

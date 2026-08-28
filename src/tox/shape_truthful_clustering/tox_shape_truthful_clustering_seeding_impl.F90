@@ -30,7 +30,7 @@ module tox_shape_truthful_clustering_seeding_impl
     use tox_shape_truthful_clustering_ensemble_growing_impl, only: calc_ensemble_growth_radius_impl
     M_IMPLICIT_NONE
 
-#define CM_DENSITY_K_DEFAULT 30_int32
+#define CM_SEEDING_K_MIN_DEFAULT 30_int32
 #define CM_BANDWIDTH_PERCENTILE_DEFAULT 68.27_real64
 #define CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT 50.0_real64
 
@@ -40,9 +40,9 @@ module tox_shape_truthful_clustering_seeding_impl
 
 contains
 
-    !> summary: Per-vector local density label, an adaptive-bandwidth kernel density estimate over each vector's own k_density nearest neighbors
+    !> summary: Per-vector local density label, an adaptive-bandwidth kernel density estimate over each vector's own k_min nearest neighbors
     !| AUTHOR_ASIS_HALLAB
-    !| For each vector: find its `k_density` nearest neighbors (excluding itself), take the
+    !| For each vector: find its `k_min` nearest neighbors (excluding itself), take the
     !| `bandwidth_percentile` percentile of the distances to them as a per-vector local
     !| bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
     !| normalized by `bandwidth**n_dimensions`. Unlike a single dataset-wide radius, this
@@ -75,7 +75,7 @@ contains
     !| ambient dimension) ties the estimate back to an absolute scale, so a genuinely tighter
     !| neighborhood outscores a genuinely looser one, not just a differently-shaped one.
     pure subroutine density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                          k_density, bandwidth_percentile, &
+                                          k_min, bandwidth_percentile, &
                                           tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                           labels)
         integer(int32), intent(in) :: n_dimensions
@@ -94,13 +94,13 @@ contains
             !! Dimension order used to build `kd_indices`
             !! DM_MIN(1_int32)
             !! DM_MAX(n_dimensions)
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Neighborhood size the local density estimate is taken over
             !! DM_MIN(1_int32)
             !! DM_MAX(n_vectors - 1_int32)
-            !! DM_DEFAULT(CM_DENSITY_K_DEFAULT)
+            !! DM_DEFAULT(CM_SEEDING_K_MIN_DEFAULT)
         real(real64), intent(in), optional :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Percentile (0 to 100) of the k_min neighbor distances used as the local
             !! Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
             !! see above
             !! DM_MIN(0.0_real64)
@@ -113,22 +113,22 @@ contains
         integer(int32), intent(out) :: tmp_range_stack(3, n_vectors)
             !! Workspace: k-d tree traversal stack, see `kd_knn_query`
         integer(int32), intent(out) :: tmp_sort_perm(n_vectors)
-            !! Workspace: ascending sort permutation of the k_density distances
+            !! Workspace: ascending sort permutation of the k_min distances
         real(real64), intent(out) :: labels(n_vectors)
             !! Per-vector local density label
 
-        integer(int32) :: actual_k_density, k_query, self_pos, i_vec, j
+        integer(int32) :: actual_k_min, k_query, self_pos, i_vec, j
         real(real64)   :: actual_bandwidth_percentile, bandwidth
 
-        M_DEFAULT_VAL(k_density, actual_k_density, CM_DENSITY_K_DEFAULT)
+        M_DEFAULT_VAL(k_min, actual_k_min, CM_SEEDING_K_MIN_DEFAULT)
         ! See calc_ensemble_growth_radius_impl's identical clamp and its own comment: an
-        ! *explicit* k_density is already wrapper-validated against DM_MAX(n_vectors - 1); this
-        ! guards CM_DENSITY_K_DEFAULT itself, which the wrapper never validates against a
-        ! runtime-dependent bound when k_density is omitted (misc/code_gen_footgun.md's third
-        ! entry) -- without it, a caller on fewer than 31 points who omits k_density would reach
+        ! *explicit* k_min is already wrapper-validated against DM_MAX(n_vectors - 1); this
+        ! guards CM_SEEDING_K_MIN_DEFAULT itself, which the wrapper never validates against a
+        ! runtime-dependent bound when k_min is omitted (misc/code_gen_footgun.md's third
+        ! entry) -- without it, a caller on fewer than 31 points who omits k_min would reach
         ! the k-NN query below asking for more neighbors than tmp_neighbors/tmp_distances hold.
-        actual_k_density = min(actual_k_density, n_vectors - 1)
-        k_query = actual_k_density + 1
+        actual_k_min = min(actual_k_min, n_vectors - 1)
+        k_query = actual_k_min + 1
 
         M_DEFAULT_VAL(bandwidth_percentile, actual_bandwidth_percentile, CM_BANDWIDTH_PERCENTILE_DEFAULT)
 
@@ -152,16 +152,16 @@ contains
                 tmp_distances(self_pos) = tmp_distances(k_query)
             end if
 
-            do j = 1, actual_k_density
+            do j = 1, actual_k_min
                 tmp_sort_perm(j) = j
             end do
-            call sort_real_heapsort(tmp_distances(1:actual_k_density), tmp_sort_perm(1:actual_k_density))
+            call sort_real_heapsort(tmp_distances(1:actual_k_min), tmp_sort_perm(1:actual_k_min))
 
             ! calc_percentile_impl takes its percentile as a [0,1] fraction; this SKG's own
             ! bandwidth_percentile is documented and validated as 0-100, so it is rescaled at
             ! the call site rather than changing what every caller of this kernel passes.
-            call calc_percentile_impl(tmp_distances(1:actual_k_density), actual_k_density, &
-                                      tmp_sort_perm(1:actual_k_density), &
+            call calc_percentile_impl(tmp_distances(1:actual_k_min), actual_k_min, &
+                                      tmp_sort_perm(1:actual_k_min), &
                                       actual_bandwidth_percentile/100.0_real64, bandwidth)
             ! A percentile of the raw distances is 0 only for genuinely coincident points (the
             ! chosen percentile landing exactly on one or more zero-distance duplicates) --
@@ -169,7 +169,7 @@ contains
             ! drives this to 0 on its own, so this is a last-resort guard, not a routine one.
             bandwidth = max(bandwidth, epsilon(1.0_real64))
 
-            labels(i_vec) = sum(exp(-tmp_distances(1:actual_k_density)**2/(2.0_real64*bandwidth**2))) &
+            labels(i_vec) = sum(exp(-tmp_distances(1:actual_k_min)**2/(2.0_real64*bandwidth**2))) &
                             /bandwidth**n_dimensions
         end do
 
@@ -183,8 +183,8 @@ contains
     !| vector until none remain -- so only genuinely uncovered regions can seed another
     !| ensemble. The coverage radius is
     !| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]'s
-    !| own computation, called on the newly-selected seed with `k_density` in place of
-    !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
+    !| own computation, called on the newly-selected seed with this SKG's own `k_min` --
+    !| not a separate, dataset-wide radius: a fixed global radius can suppress
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
@@ -197,7 +197,7 @@ contains
     !| (peaks, troughs, kinks) that a seed's own later growth cannot actually reach, see
     !| `misc/STC-experiments/README.md`.
     pure subroutine seeds_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                 k_density, bandwidth_percentile, exclusion_radius_percentile, &
+                                 k_min, bandwidth_percentile, exclusion_radius_percentile, &
                                  tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                  tmp_labels, tmp_rank_perm, &
                                  tmp_visited_mask, tmp_newly_covered_mask, &
@@ -218,20 +218,20 @@ contains
             !! Dimension order used to build `kd_indices`
             !! DM_MIN(1_int32)
             !! DM_MAX(n_dimensions)
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Neighborhood size for both the density estimate and the coverage radius, see
             !! `density_labels` and `calc_ensemble_growth_radius`
             !! DM_MIN(1_int32)
             !! DM_MAX(n_vectors - 1_int32)
-            !! DM_DEFAULT(CM_DENSITY_K_DEFAULT)
+            !! DM_DEFAULT(CM_SEEDING_K_MIN_DEFAULT)
         real(real64), intent(in), optional :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Percentile (0 to 100) of the k_min neighbor distances used as the local
             !! Gaussian bandwidth, see `density_labels`
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
             !! DM_DEFAULT(CM_BANDWIDTH_PERCENTILE_DEFAULT)
         real(real64), intent(in), optional :: exclusion_radius_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! Percentile (0 to 100) of the k_min neighbor distances used as each seed's
             !! coverage/exclusion radius, see above
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
@@ -262,7 +262,7 @@ contains
         M_DEFAULT_VAL(exclusion_radius_percentile, actual_exclusion_radius_percentile, CM_EXCLUSION_RADIUS_PERCENTILE_DEFAULT)
 
         call density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                   k_density, bandwidth_percentile, &
+                                   k_min, bandwidth_percentile, &
                                    tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, tmp_labels)
 
         ! Rank vectors by density, descending: heapsort gives ascending order, so reverse the
@@ -284,7 +284,7 @@ contains
             is_seed_mask(candidate) = .true.
 
             call calc_ensemble_growth_radius_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                                    candidate, k_density, &
+                                                    candidate, k_min, &
                                                     radius_percentile=actual_exclusion_radius_percentile, &
                                                     tmp_neighbors=tmp_neighbors, tmp_distances=tmp_distances, &
                                                     tmp_range_stack=tmp_range_stack, tmp_sort_perm=tmp_sort_perm, &

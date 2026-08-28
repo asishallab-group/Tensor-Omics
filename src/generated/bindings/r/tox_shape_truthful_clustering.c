@@ -5,10 +5,10 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void ensemble_identification_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, unsigned char*, double*, int*, int*);
-void ensemble_identification_merged_c(const double*, const int*, const int*, const int*, const int*, const unsigned char*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, unsigned char*, double*, int*, int*);
+void ensemble_identification_c(const double*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const double*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, unsigned char*, double*, int*, int*);
+void ensemble_identification_merged_c(const double*, const int*, const int*, const int*, const int*, const unsigned char*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const double*, const int*, unsigned char*, int*, double*, double*, double*, int*, double*, double*, int*, unsigned char*, int*, unsigned char*, double*, int*, int*);
 
-SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_index, SEXP k_min, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP a, SEXP o) {
+SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_index, SEXP k_min, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP min_stable_iterations, SEXP radius_percentile, SEXP o) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
@@ -22,7 +22,8 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     double G_max_v = Rf_asReal(G_max);
     double RMSE_change_max_v = Rf_asReal(RMSE_change_max);
     double f_max_v = Rf_asReal(f_max);
-    int a_v = Rf_asInteger(a);
+    int min_stable_iterations_v = Rf_asInteger(min_stable_iterations);
+    double radius_percentile_v = Rf_asReal(radius_percentile);
     int o_v = Rf_asInteger(o);
 
     // outputs and work space
@@ -59,7 +60,8 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
         &G_max_v,
         &RMSE_change_max_v,
         &f_max_v,
-        &a_v,
+        &min_stable_iterations_v,
+        &radius_percentile_v,
         &o_v,
         final_ensemble_mask_c,
         &stop_reason,
@@ -120,7 +122,7 @@ SEXP ensemble_identification_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     return _out;
 }
 
-SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_selection_mask, SEXP k_min, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP a, SEXP o) {
+SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP seed_selection_mask, SEXP k_min, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP min_stable_iterations, SEXP radius_percentile, SEXP o) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_dimensions = INTEGER(Rf_getAttrib(vectors, R_DimSymbol))[0];
@@ -134,7 +136,8 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
     double G_max_v = Rf_asReal(G_max);
     double RMSE_change_max_v = Rf_asReal(RMSE_change_max);
     double f_max_v = Rf_asReal(f_max);
-    int a_v = Rf_asInteger(a);
+    int min_stable_iterations_v = Rf_asInteger(min_stable_iterations);
+    double radius_percentile_v = Rf_asReal(radius_percentile);
     int o_v = Rf_asInteger(o);
 
     // convert what Fortran cannot take from R directly
@@ -179,7 +182,8 @@ SEXP ensemble_identification_merged_call(SEXP vectors, SEXP kd_indices, SEXP dim
         &G_max_v,
         &RMSE_change_max_v,
         &f_max_v,
-        &a_v,
+        &min_stable_iterations_v,
+        &radius_percentile_v,
         &o_v,
         ensemble_masks_c,
         INTEGER(ensemble_stop_reason),

@@ -87,13 +87,13 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
@@ -107,7 +107,6 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     nullable(ctypes.POINTER(ctypes.c_int)),
-    nullable(ctypes.POINTER(ctypes.c_int)),
     nullable(ctypes.POINTER(ctypes.c_double)),
     nullable(ctypes.POINTER(ctypes.c_double)),
     nullable(ctypes.POINTER(ctypes.c_double)),
@@ -116,9 +115,9 @@ _lib.serialize_stc_results_as_json_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_SERIALIZE_STC_RESULTS_AS_JSON_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.write_stc_interactive_html_report_c.restype = None
 _lib.write_stc_interactive_html_report_c.argtypes = (
@@ -150,13 +149,13 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     np.ctypeslib.ndpointer(ndim=1),
@@ -170,7 +169,6 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     nullable(ctypes.POINTER(ctypes.c_int)),
-    nullable(ctypes.POINTER(ctypes.c_int)),
     nullable(ctypes.POINTER(ctypes.c_double)),
     nullable(ctypes.POINTER(ctypes.c_double)),
     nullable(ctypes.POINTER(ctypes.c_double)),
@@ -179,9 +177,9 @@ _lib.write_stc_interactive_html_report_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENTS = ("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_WRITE_STC_INTERACTIVE_HTML_REPORT_ARGUMENT_SOURCES = (None, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def serialize_stc_results_as_json(
         filename,
@@ -205,13 +203,13 @@ def serialize_stc_results_as_json(
         ensemble_d_first,
         super_ensembles,
         k_min,
-        k_density,
         chordal_dist_max_as_prcnt_of_range,
         d_max,
         G_max,
         RMSE_change_max,
         f_max,
-        a,
+        min_stable_iterations,
+        radius_percentile,
         exclusion_radius_percentile,
         bandwidth_percentile,
         reconciliation_mode,
@@ -225,7 +223,6 @@ def serialize_stc_results_as_json(
         filter_dim_max=None,
         filter_var_explained_min=None,
         estimated_k_min=None,
-        estimated_k_density=None,
         estimated_density_quantile=None,
         estimated_chordal_dist_max_as_prcnt_of_range=None,
         estimated_G_max=None,
@@ -284,8 +281,6 @@ def serialize_stc_results_as_json(
         One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
     k_min : int
         This run's neighborhood size for each seed's growth radius
-    k_density : int
-        This run's density estimation neighborhood size
     chordal_dist_max_as_prcnt_of_range : float
         This run's maximum tolerated chordal distance between tangent bases
     d_max : int
@@ -296,8 +291,10 @@ def serialize_stc_results_as_json(
         This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
     f_max : float
         This run's ensemble size fraction of N above which growth is abandoned
-    a : int
+    min_stable_iterations : int
         This run's minimum accepted-iteration count for a stable rejection
+    radius_percentile : float
+        This run's growth-radius percentile
     exclusion_radius_percentile : float
         This run's seeding exclusion radius percentile
     bandwidth_percentile : float
@@ -336,8 +333,6 @@ def serialize_stc_results_as_json(
         See `ensemble_reconciliation`'s own `eligible_by_var_explained`
     estimated_k_min : int, optional
         `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-    estimated_k_density : int, optional
-        `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
     estimated_density_quantile : float, optional
         `estimate_stc_parameters`'s proposed density quantile, if estimation was used
     estimated_chordal_dist_max_as_prcnt_of_range : float, optional
@@ -678,13 +673,13 @@ def serialize_stc_results_as_json(
         ensemble_d_first,
         super_ensembles,
         ctypes.byref(ctypes.c_int(k_min)),
-        ctypes.byref(ctypes.c_int(k_density)),
         ctypes.byref(ctypes.c_double(chordal_dist_max_as_prcnt_of_range)),
         ctypes.byref(ctypes.c_int(d_max)),
         ctypes.byref(ctypes.c_double(G_max)),
         ctypes.byref(ctypes.c_double(RMSE_change_max)),
         ctypes.byref(ctypes.c_double(f_max)),
-        ctypes.byref(ctypes.c_int(a)),
+        ctypes.byref(ctypes.c_int(min_stable_iterations)),
+        ctypes.byref(ctypes.c_double(radius_percentile)),
         ctypes.byref(ctypes.c_double(exclusion_radius_percentile)),
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         reconciliation_mode,
@@ -698,7 +693,6 @@ def serialize_stc_results_as_json(
         ensemble_eligible_by_dimension,
         ensemble_eligible_by_var_explained,
         None if estimated_k_min is None else ctypes.byref(ctypes.c_int(estimated_k_min)),
-        None if estimated_k_density is None else ctypes.byref(ctypes.c_int(estimated_k_density)),
         None if estimated_density_quantile is None else ctypes.byref(ctypes.c_double(estimated_density_quantile)),
         None if estimated_chordal_dist_max_as_prcnt_of_range is None else ctypes.byref(ctypes.c_double(estimated_chordal_dist_max_as_prcnt_of_range)),
         None if estimated_G_max is None else ctypes.byref(ctypes.c_double(estimated_G_max)),
@@ -732,13 +726,13 @@ def write_stc_interactive_html_report(
         ensemble_d_first,
         super_ensembles,
         k_min,
-        k_density,
         chordal_dist_max_as_prcnt_of_range,
         d_max,
         G_max,
         RMSE_change_max,
         f_max,
-        a,
+        min_stable_iterations,
+        radius_percentile,
         exclusion_radius_percentile,
         bandwidth_percentile,
         reconciliation_mode,
@@ -752,7 +746,6 @@ def write_stc_interactive_html_report(
         filter_dim_max=None,
         filter_var_explained_min=None,
         estimated_k_min=None,
-        estimated_k_density=None,
         estimated_density_quantile=None,
         estimated_chordal_dist_max_as_prcnt_of_range=None,
         estimated_G_max=None,
@@ -811,8 +804,6 @@ def write_stc_interactive_html_report(
         One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
     k_min : int
         This run's neighborhood size for each seed's growth radius
-    k_density : int
-        This run's density estimation neighborhood size
     chordal_dist_max_as_prcnt_of_range : float
         This run's maximum tolerated chordal distance between tangent bases
     d_max : int
@@ -823,8 +814,10 @@ def write_stc_interactive_html_report(
         This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
     f_max : float
         This run's ensemble size fraction of N above which growth is abandoned
-    a : int
+    min_stable_iterations : int
         This run's minimum accepted-iteration count for a stable rejection
+    radius_percentile : float
+        This run's growth-radius percentile
     exclusion_radius_percentile : float
         This run's seeding exclusion radius percentile
     bandwidth_percentile : float
@@ -863,8 +856,6 @@ def write_stc_interactive_html_report(
         See `ensemble_reconciliation`'s own `eligible_by_var_explained`
     estimated_k_min : int, optional
         `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-    estimated_k_density : int, optional
-        `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
     estimated_density_quantile : float, optional
         `estimate_stc_parameters`'s proposed density quantile, if estimation was used
     estimated_chordal_dist_max_as_prcnt_of_range : float, optional
@@ -1205,13 +1196,13 @@ def write_stc_interactive_html_report(
         ensemble_d_first,
         super_ensembles,
         ctypes.byref(ctypes.c_int(k_min)),
-        ctypes.byref(ctypes.c_int(k_density)),
         ctypes.byref(ctypes.c_double(chordal_dist_max_as_prcnt_of_range)),
         ctypes.byref(ctypes.c_int(d_max)),
         ctypes.byref(ctypes.c_double(G_max)),
         ctypes.byref(ctypes.c_double(RMSE_change_max)),
         ctypes.byref(ctypes.c_double(f_max)),
-        ctypes.byref(ctypes.c_int(a)),
+        ctypes.byref(ctypes.c_int(min_stable_iterations)),
+        ctypes.byref(ctypes.c_double(radius_percentile)),
         ctypes.byref(ctypes.c_double(exclusion_radius_percentile)),
         ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         reconciliation_mode,
@@ -1225,7 +1216,6 @@ def write_stc_interactive_html_report(
         ensemble_eligible_by_dimension,
         ensemble_eligible_by_var_explained,
         None if estimated_k_min is None else ctypes.byref(ctypes.c_int(estimated_k_min)),
-        None if estimated_k_density is None else ctypes.byref(ctypes.c_int(estimated_k_density)),
         None if estimated_density_quantile is None else ctypes.byref(ctypes.c_double(estimated_density_quantile)),
         None if estimated_chordal_dist_max_as_prcnt_of_range is None else ctypes.byref(ctypes.c_double(estimated_chordal_dist_max_as_prcnt_of_range)),
         None if estimated_G_max is None else ctypes.byref(ctypes.c_double(estimated_G_max)),

@@ -33,7 +33,7 @@ function init() {
 # either is set they compile to empty objects that need no R headers; otherwise they need R's
 # include path. If the R layer is wanted but R is not installed, drop it with a warning.
 function get_c_flags() {
-  C_FLAGS="-fPIC $DIRECTIVES"
+  C_FLAGS="-fPIC -fopenmp $DIRECTIVES"
   if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
     return
   fi

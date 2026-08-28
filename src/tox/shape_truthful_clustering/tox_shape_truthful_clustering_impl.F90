@@ -32,8 +32,14 @@ module tox_shape_truthful_clustering_impl
     M_IMPLICIT_NONE
 
 #define CM_STC_GROWTH_RADIUS_K_MIN_DEFAULT 30_int32
+#define CM_STC_GROWTH_RADIUS_PERCENTILE_DEFAULT 50.0_real64
 #define CM_STC_F_MAX_DEFAULT 0.95_real64
-#define CM_STC_A_DEFAULT 2_int32
+#define CM_STC_MIN_STABLE_ITERATIONS_DEFAULT 2_int32
+! |log(1.5)|, i.e. tolerate up to a 50% relative change -- see G_max's own doc comment above.
+#define CM_STC_G_MAX_DEFAULT 0.405465108108164_real64
+! 2*|log(epsilon(1.0_real64))| ~= 72.09, rounded down to a clean, easy-to-verify value -- see
+! G_max's own doc comment above for the derivation. A safety ceiling, not a tuning bound.
+#define CM_STC_G_MAX_CEILING 72.0_real64
 #define CM_STC_STOP_REASON_MAX_SIZE 1_int32
 #define CM_STC_STOP_REASON_REJECTED_AFTER_STABLE 2_int32
 #define CM_STC_STOP_REASON_REJECTED_IMMEDIATELY 3_int32
@@ -47,7 +53,7 @@ module tox_shape_truthful_clustering_impl
     !> Stop Condition 1, see `misc/mod_STC.md`, "Stop Conditions": maximum ensemble size
     !| reached -- no ensemble is returned for the seed.
     integer(int32), parameter, public :: STOP_REASON_MAX_SIZE = CM_STC_STOP_REASON_MAX_SIZE
-    !> Stop Condition 2: rejected after being stably accepted at least `a` times.
+    !> Stop Condition 2: rejected after being stably accepted at least `min_stable_iterations` times.
     integer(int32), parameter, public :: STOP_REASON_REJECTED_AFTER_STABLE = CM_STC_STOP_REASON_REJECTED_AFTER_STABLE
     !> Stop Condition 3: rejected on the very first `accept_ensemble` check.
     integer(int32), parameter, public :: STOP_REASON_REJECTED_IMMEDIATELY = CM_STC_STOP_REASON_REJECTED_IMMEDIATELY
@@ -93,7 +99,7 @@ contains
     !| ever reach the array at all.
     pure subroutine ensemble_identification_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                     seed_index, k_min, chordal_dist_max_as_prcnt_of_range, &
-                                                    d_max, G_max, RMSE_change_max, f_max, a, o, &
+                                                    d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, o, &
                                                     final_ensemble_mask, stop_reason, growth_radius, &
                                                     U_history, S_history, d_history, G_history, mu_history, &
                                                     k_history, accepted_history, member_added_at_step, &
@@ -130,9 +136,25 @@ contains
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! DM_MIN(0_int32)
-        real(real64), intent(in) :: G_max
-            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+        real(real64), intent(in), optional :: G_max
+            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+            !! `RMSE_change_max`'s own documented default (see there): both are a bound on
+            !! `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+            !! `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+            !! applied to the same mathematical shape. The upper bound below is a
+            !! deliberately generous safety ceiling, not a meaningful tuning bound:
+            !! `G_max`/`RMSE_change_max`
+            !! are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+            !! quantities kept strictly positive by an `epsilon(1.0_real64)` guard (see
+            !! `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+            !! denominator of that ratio are bounded below by machine epsilon, no achievable
+            !! ratio's `|log|` can exceed `2*|log(epsilon(1.0_real64))|` (~72.09 for `real64`);
+            !! above that, the criterion is provably vacuous (can never reject) regardless of
+            !! input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+            !! constrain legitimate tuning.
             !! DM_MIN(0.0_real64)
+            !! DM_MAX(CM_STC_G_MAX_CEILING)
+            !! DM_DEFAULT(CM_STC_G_MAX_DEFAULT)
         real(real64), intent(in) :: RMSE_change_max
             !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! DM_MIN(0.0_real64)
@@ -141,11 +163,20 @@ contains
             !! DM_MIN(above(0.0_real64))
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_STC_F_MAX_DEFAULT)
-        integer(int32), intent(in), optional :: a
+        integer(int32), intent(in), optional :: min_stable_iterations
             !! Minimum accepted-iteration count for a later rejection to count as "stable", see
-            !! Stop Condition 2
+            !! Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+            !! unchanged
             !! DM_MIN(1_int32)
-            !! DM_DEFAULT(CM_STC_A_DEFAULT)
+            !! DM_DEFAULT(CM_STC_MIN_STABLE_ITERATIONS_DEFAULT)
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+            !! kernel's own default (50.0, the median) since this parent never passed it
+            !! through; now a real, tunable pass-through
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(100.0_real64)
+            !! DM_DEFAULT(CM_STC_GROWTH_RADIUS_PERCENTILE_DEFAULT)
         integer(int32), intent(in) :: o
             !! Trailing observable-history window depth (`misc/mod_STC.md` suggests 10 as a
             !! sensible default). Always required, never optional with an auto-applied
@@ -243,13 +274,17 @@ contains
         real(real64)   :: accept_tmp_work(max(1_int32, 5_int32*n_dimensions))
 
         real(real64)   :: actual_f_max
-        integer(int32) :: actual_a
+        real(real64)   :: actual_G_max
+        integer(int32) :: actual_min_stable_iterations
+        real(real64)   :: actual_radius_percentile
         integer(int32) :: accepted_count, history_len, t
 
         call set_ok(ierr)
 
         M_DEFAULT_VAL(f_max, actual_f_max, CM_STC_F_MAX_DEFAULT)
-        M_DEFAULT_VAL(a, actual_a, CM_STC_A_DEFAULT)
+        M_DEFAULT_VAL(G_max, actual_G_max, CM_STC_G_MAX_DEFAULT)
+        M_DEFAULT_VAL(min_stable_iterations, actual_min_stable_iterations, CM_STC_MIN_STABLE_ITERATIONS_DEFAULT)
+        M_DEFAULT_VAL(radius_percentile, actual_radius_percentile, CM_STC_GROWTH_RADIUS_PERCENTILE_DEFAULT)
 
         final_ensemble_mask   = .false.
         stop_reason           = STOP_REASON_ERROR
@@ -270,6 +305,7 @@ contains
 
         call calc_ensemble_growth_radius_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                 seed_index, k_min, &
+                                                radius_percentile=actual_radius_percentile, &
                                                 tmp_neighbors=growth_neighbors, tmp_distances=growth_distances, &
                                                 tmp_range_stack=range_stack, tmp_sort_perm=growth_sort_perm, &
                                                 growth_radius=growth_radius)
@@ -406,7 +442,7 @@ contains
                                         U_history, d_history, history_len, &
                                         prev_G, prev_normal_error, &
                                         U_candidate, d_candidate, G_candidate, normal_error_scratch, &
-                                        chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, &
+                                        chordal_dist_max_as_prcnt_of_range, d_max, actual_G_max, RMSE_change_max, &
                                         max(1_int32, 5_int32*n_dimensions), &
                                         accept_tmp_m, accept_tmp_s, accept_tmp_work, is_accepted, accept_ierr)
 
@@ -437,7 +473,7 @@ contains
                                                U_history, S_history, d_history, G_history, mu_history, k_history, &
                                                accepted_history)
 
-                if (accepted_count >= actual_a) then
+                if (accepted_count >= actual_min_stable_iterations) then
                     stop_reason = STOP_REASON_REJECTED_AFTER_STABLE
                 else
                     stop_reason = STOP_REASON_REJECTED_IMMEDIATELY
@@ -472,7 +508,7 @@ contains
     pure subroutine ensemble_identification_merged_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                            seed_selection_mask, n_selected_seed, &
                                                            k_min, chordal_dist_max_as_prcnt_of_range, &
-                                                           d_max, G_max, RMSE_change_max, f_max, a, o, &
+                                                           d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, o, &
                                                            ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, &
                                                            ensemble_U_history, ensemble_S_history, ensemble_d_history, &
                                                            ensemble_G_history, ensemble_mu_history, ensemble_k_history, &
@@ -514,9 +550,25 @@ contains
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! DM_MIN(0_int32)
-        real(real64), intent(in) :: G_max
-            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+        real(real64), intent(in), optional :: G_max
+            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+            !! `RMSE_change_max`'s own documented default (see there): both are a bound on
+            !! `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+            !! `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+            !! applied to the same mathematical shape. The upper bound below is a
+            !! deliberately generous safety ceiling, not a meaningful tuning bound:
+            !! `G_max`/`RMSE_change_max`
+            !! are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+            !! quantities kept strictly positive by an `epsilon(1.0_real64)` guard (see
+            !! `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+            !! denominator of that ratio are bounded below by machine epsilon, no achievable
+            !! ratio's `|log|` can exceed `2*|log(epsilon(1.0_real64))|` (~72.09 for `real64`);
+            !! above that, the criterion is provably vacuous (can never reject) regardless of
+            !! input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+            !! constrain legitimate tuning.
             !! DM_MIN(0.0_real64)
+            !! DM_MAX(CM_STC_G_MAX_CEILING)
+            !! DM_DEFAULT(CM_STC_G_MAX_DEFAULT)
         real(real64), intent(in) :: RMSE_change_max
             !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! DM_MIN(0.0_real64)
@@ -525,11 +577,20 @@ contains
             !! DM_MIN(above(0.0_real64))
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(CM_STC_F_MAX_DEFAULT)
-        integer(int32), intent(in), optional :: a
+        integer(int32), intent(in), optional :: min_stable_iterations
             !! Minimum accepted-iteration count for a later rejection to count as "stable", see
-            !! Stop Condition 2
+            !! Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+            !! unchanged
             !! DM_MIN(1_int32)
-            !! DM_DEFAULT(CM_STC_A_DEFAULT)
+            !! DM_DEFAULT(CM_STC_MIN_STABLE_ITERATIONS_DEFAULT)
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+            !! kernel's own default (50.0, the median) since this parent never passed it
+            !! through; now a real, tunable pass-through
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(100.0_real64)
+            !! DM_DEFAULT(CM_STC_GROWTH_RADIUS_PERCENTILE_DEFAULT)
         integer(int32), intent(in) :: o
             !! Trailing observable-history window depth, see `ensemble_identification`. Always
             !! required, for the same reason as there: it sizes every history output below.
@@ -605,7 +666,7 @@ contains
                                                       ensemble_U_first, ensemble_d_first, ierr_per_seed)
             call ensemble_identification_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
                                                 seed_indices(i_e), k_min, chordal_dist_max_as_prcnt_of_range, &
-                                                d_max, G_max, RMSE_change_max, f_max, a, o, &
+                                                d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, o, &
                                                 ensemble_masks(:, i_e), ensemble_stop_reason(i_e), &
                                                 ensemble_growth_radii(i_e), ensemble_U_history(:, :, :, i_e), &
                                                 ensemble_S_history(:, :, i_e), ensemble_d_history(:, i_e), &

@@ -72,7 +72,7 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
     )
 }
 
-#' Estimate k_min, k_density, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
+#' Estimate k_min, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
 #'
 #' Orchestrates density_labels -> sample_estimator_anchors -> grow_estimator_anchor_clouds
 #' -> observable (once per EA) -> pairwise EA comparisons -> aggregation. See
@@ -99,7 +99,7 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param k_density a integer scalar. Passed through to density_labels
+#' @param k_min a integer scalar. Passed through to density_labels
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors - 1`.
 #' @param bandwidth_percentile a numeric scalar. Passed through to density_labels
@@ -113,43 +113,41 @@ grow_estimator_anchor_clouds <- function(vectors, anchor_indices, seed_max_set_s
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
 #'   The default value is `5.0`.
-#' @param first_quartile_percentile a numeric scalar. Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
+#' @param quantile_pairwise_ea_comparison a numeric scalar. Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
 #'   chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
 #'   The default value is `25.0`.
 #' @return a named list with elements:
 #'   \item{estimated_k_min}{a numeric scalar. Estimated k_min (real-valued; round for direct use as an integer argument)}
-#'   \item{estimated_k_density}{a numeric scalar. Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)}
 #'   \item{estimated_density_quantile}{a numeric scalar. Estimated density_quantile -- a literal radius (data units), not a percentile}
 #'   \item{estimated_chordal_dist_max_as_prcnt_of_range}{a numeric scalar. Estimated chordal_dist_max_as_prcnt_of_range (0 to 1)}
 #'   \item{estimated_G_max}{a numeric scalar. Estimated G_max}
 #'   \item{estimated_d_max}{a numeric scalar. Estimated d_max (real-valued; round for direct use as an integer argument)}
 #' @export
-estimate_stc_parameters <- function(vectors, kd_indices, dimension_order, k_density = NULL, bandwidth_percentile = NULL, n_anchors = 5L, seed_max_set_size = 5.0, first_quartile_percentile = 25.0) {
+estimate_stc_parameters <- function(vectors, kd_indices, dimension_order, k_min = NULL, bandwidth_percentile = NULL, n_anchors = 5L, seed_max_set_size = 5.0, quantile_pairwise_ea_comparison = 25.0) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
-    if (!is.null(k_density))
-        k_density <- .tox_as_integer_scalar(k_density, "k_density")
+    if (!is.null(k_min))
+        k_min <- .tox_as_integer_scalar(k_min, "k_min")
     if (!is.null(bandwidth_percentile))
         bandwidth_percentile <- .tox_as_double_scalar(bandwidth_percentile, "bandwidth_percentile")
     n_anchors <- .tox_as_integer_scalar(n_anchors, "n_anchors")
     seed_max_set_size <- .tox_as_double_scalar(seed_max_set_size, "seed_max_set_size")
-    first_quartile_percentile <- .tox_as_double_scalar(first_quartile_percentile, "first_quartile_percentile")
+    quantile_pairwise_ea_comparison <- .tox_as_double_scalar(quantile_pairwise_ea_comparison, "quantile_pairwise_ea_comparison")
     if (length(dimension_order) != dim(vectors)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "vectors", dim(vectors)[1])
     if (length(kd_indices) != dim(vectors)[2])
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
-    .result <- .Call("estimate_stc_parameters_call", vectors, kd_indices, dimension_order, k_density, bandwidth_percentile, n_anchors, seed_max_set_size, first_quartile_percentile)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "first_quartile_percentile", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("estimate_stc_parameters_call", vectors, kd_indices, dimension_order, k_min, bandwidth_percentile, n_anchors, seed_max_set_size, quantile_pairwise_ea_comparison)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_min", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "quantile_pairwise_ea_comparison", "estimated_k_min", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         estimated_k_min = .result$estimated_k_min,
-        estimated_k_density = .result$estimated_k_density,
         estimated_density_quantile = .result$estimated_density_quantile,
         estimated_chordal_dist_max_as_prcnt_of_range = .result$estimated_chordal_dist_max_as_prcnt_of_range,
         estimated_G_max = .result$estimated_G_max,

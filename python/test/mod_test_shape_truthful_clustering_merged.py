@@ -35,7 +35,7 @@ def test_single_seed_matches_per_seed_impl():
     seed_selection_mask[0] = True
 
     result = ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                            0.1, 0, 1.0e10, 1.0e10, 4, k_min=1)
+                                            chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=4, k_min=1, G_max=70.0)
 
     assert result['ensemble_stop_reason'][0] == STOP_REASON_FIXED_POINT
     assert abs(result['ensemble_growth_radii'][0] - 1.0) < 1e-9
@@ -73,7 +73,7 @@ def test_two_independent_seeds():
     seed_selection_mask[7] = True
 
     result = ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                            0.1, 0, 1.0e10, 1.0e10, 4, k_min=1)
+                                            chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=4, k_min=1, G_max=70.0)
 
     assert result['ensemble_stop_reason'][0] == STOP_REASON_FIXED_POINT
     assert result['ensemble_stop_reason'][1] == STOP_REASON_FIXED_POINT
@@ -114,7 +114,7 @@ def test_zero_seeds():
     seed_selection_mask = np.zeros(7, dtype=np.bool_)
 
     result = ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                            0.1, 0, 1.0e10, 1.0e10, 4, k_min=1)
+                                            chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=4, k_min=1, G_max=70.0)
     assert result['ensemble_masks'].shape == (7, 0)
 
 
@@ -127,7 +127,7 @@ def test_n_dimensions_too_small():
     seed_selection_mask[0] = True
 
     assert_error(lambda: ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                                        0.1, 0, 1.0e10, 1.0e10, 4, k_min=1),
+                                            chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=4, k_min=1, G_max=70.0),
                  "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 
 

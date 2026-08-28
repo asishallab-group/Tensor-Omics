@@ -90,13 +90,13 @@ contains
             ensemble_d_first,&
             super_ensembles,&
             k_min,&
-            k_density,&
             chordal_dist_max_as_prcnt_of_range,&
             d_max,&
             G_max,&
             RMSE_change_max,&
             f_max,&
-            a,&
+            min_stable_iterations,&
+            radius_percentile,&
             exclusion_radius_percentile,&
             bandwidth_percentile,&
             reconciliation_mode,&
@@ -110,7 +110,6 @@ contains
             ensemble_eligible_by_dimension,&
             ensemble_eligible_by_var_explained,&
             estimated_k_min,&
-            estimated_k_density,&
             estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max,&
@@ -183,8 +182,6 @@ contains
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(c_int), intent(in), target :: k_min
             !! This run's neighborhood size for each seed's growth radius
-        integer(c_int), intent(in), target :: k_density
-            !! This run's density estimation neighborhood size
         real(c_double), intent(in), target :: chordal_dist_max_as_prcnt_of_range
             !! This run's maximum tolerated chordal distance between tangent bases
         integer(c_int), intent(in), target :: d_max
@@ -195,8 +192,10 @@ contains
             !! This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
         real(c_double), intent(in), target :: f_max
             !! This run's ensemble size fraction of N above which growth is abandoned
-        integer(c_int), intent(in), target :: a
+        integer(c_int), intent(in), target :: min_stable_iterations
             !! This run's minimum accepted-iteration count for a stable rejection
+        real(c_double), intent(in), target :: radius_percentile
+            !! This run's growth-radius percentile
         real(c_double), intent(in), target :: exclusion_radius_percentile
             !! This run's seeding exclusion radius percentile
         real(c_double), intent(in), target :: bandwidth_percentile
@@ -240,8 +239,6 @@ contains
             !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(c_int), intent(in), optional :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-        integer(c_int), intent(in), optional :: estimated_k_density
-            !! `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
         real(c_double), intent(in), optional :: estimated_density_quantile
             !! `estimate_stc_parameters`'s proposed density quantile, if estimation was used
         real(c_double), intent(in), optional :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -268,13 +265,13 @@ contains
         M_CHECK_NON_NULL(n_super_ensembles)
         M_CHECK_NON_NULL(dim_names_strlen)
         M_CHECK_NON_NULL(k_min)
-        M_CHECK_NON_NULL(k_density)
         M_CHECK_NON_NULL(chordal_dist_max_as_prcnt_of_range)
         M_CHECK_NON_NULL(d_max)
         M_CHECK_NON_NULL(G_max)
         M_CHECK_NON_NULL(RMSE_change_max)
         M_CHECK_NON_NULL(f_max)
-        M_CHECK_NON_NULL(a)
+        M_CHECK_NON_NULL(min_stable_iterations)
+        M_CHECK_NON_NULL(radius_percentile)
         M_CHECK_NON_NULL(exclusion_radius_percentile)
         M_CHECK_NON_NULL(bandwidth_percentile)
         M_CHECK_NON_NULL(min_overlap_coefficient)
@@ -349,13 +346,13 @@ contains
             ensemble_d_first = ensemble_d_first,&
             super_ensembles = super_ensembles,&
             k_min = k_min,&
-            k_density = k_density,&
             chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
             d_max = d_max,&
             G_max = G_max,&
             RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
-            a = a,&
+            min_stable_iterations = min_stable_iterations,&
+            radius_percentile = radius_percentile,&
             exclusion_radius_percentile = exclusion_radius_percentile,&
             bandwidth_percentile = bandwidth_percentile,&
             reconciliation_mode = reconciliation_mode_mode_f,&
@@ -369,7 +366,6 @@ contains
             ensemble_eligible_by_dimension = ensemble_eligible_by_dimension,&
             ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained,&
             estimated_k_min = estimated_k_min,&
-            estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range = estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max = estimated_G_max,&
@@ -410,13 +406,13 @@ contains
             ensemble_d_first,&
             super_ensembles,&
             k_min,&
-            k_density,&
             chordal_dist_max_as_prcnt_of_range,&
             d_max,&
             G_max,&
             RMSE_change_max,&
             f_max,&
-            a,&
+            min_stable_iterations,&
+            radius_percentile,&
             exclusion_radius_percentile,&
             bandwidth_percentile,&
             reconciliation_mode,&
@@ -430,7 +426,6 @@ contains
             ensemble_eligible_by_dimension,&
             ensemble_eligible_by_var_explained,&
             estimated_k_min,&
-            estimated_k_density,&
             estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max,&
@@ -503,8 +498,6 @@ contains
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(c_int), intent(in), target :: k_min
             !! This run's neighborhood size for each seed's growth radius
-        integer(c_int), intent(in), target :: k_density
-            !! This run's density estimation neighborhood size
         real(c_double), intent(in), target :: chordal_dist_max_as_prcnt_of_range
             !! This run's maximum tolerated chordal distance between tangent bases
         integer(c_int), intent(in), target :: d_max
@@ -515,8 +508,10 @@ contains
             !! This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
         real(c_double), intent(in), target :: f_max
             !! This run's ensemble size fraction of N above which growth is abandoned
-        integer(c_int), intent(in), target :: a
+        integer(c_int), intent(in), target :: min_stable_iterations
             !! This run's minimum accepted-iteration count for a stable rejection
+        real(c_double), intent(in), target :: radius_percentile
+            !! This run's growth-radius percentile
         real(c_double), intent(in), target :: exclusion_radius_percentile
             !! This run's seeding exclusion radius percentile
         real(c_double), intent(in), target :: bandwidth_percentile
@@ -560,8 +555,6 @@ contains
             !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(c_int), intent(in), optional :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-        integer(c_int), intent(in), optional :: estimated_k_density
-            !! `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
         real(c_double), intent(in), optional :: estimated_density_quantile
             !! `estimate_stc_parameters`'s proposed density quantile, if estimation was used
         real(c_double), intent(in), optional :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -588,13 +581,13 @@ contains
         M_CHECK_NON_NULL(n_super_ensembles)
         M_CHECK_NON_NULL(dim_names_strlen)
         M_CHECK_NON_NULL(k_min)
-        M_CHECK_NON_NULL(k_density)
         M_CHECK_NON_NULL(chordal_dist_max_as_prcnt_of_range)
         M_CHECK_NON_NULL(d_max)
         M_CHECK_NON_NULL(G_max)
         M_CHECK_NON_NULL(RMSE_change_max)
         M_CHECK_NON_NULL(f_max)
-        M_CHECK_NON_NULL(a)
+        M_CHECK_NON_NULL(min_stable_iterations)
+        M_CHECK_NON_NULL(radius_percentile)
         M_CHECK_NON_NULL(exclusion_radius_percentile)
         M_CHECK_NON_NULL(bandwidth_percentile)
         M_CHECK_NON_NULL(min_overlap_coefficient)
@@ -669,13 +662,13 @@ contains
             ensemble_d_first = ensemble_d_first,&
             super_ensembles = super_ensembles,&
             k_min = k_min,&
-            k_density = k_density,&
             chordal_dist_max_as_prcnt_of_range = chordal_dist_max_as_prcnt_of_range,&
             d_max = d_max,&
             G_max = G_max,&
             RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
-            a = a,&
+            min_stable_iterations = min_stable_iterations,&
+            radius_percentile = radius_percentile,&
             exclusion_radius_percentile = exclusion_radius_percentile,&
             bandwidth_percentile = bandwidth_percentile,&
             reconciliation_mode = reconciliation_mode_mode_f,&
@@ -689,7 +682,6 @@ contains
             ensemble_eligible_by_dimension = ensemble_eligible_by_dimension,&
             ensemble_eligible_by_var_explained = ensemble_eligible_by_var_explained,&
             estimated_k_min = estimated_k_min,&
-            estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range = estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max = estimated_G_max,&

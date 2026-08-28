@@ -120,7 +120,7 @@ def test_grow_clouds_invalid_seed_max_set_size():
 # come out at (or, for the former, an SVD-residual hair above) 0. This fixture is exactly
 # symmetric, so sample_estimator_anchors_impl's own tie-break (ties resolved by ascending point
 # index) is what pins the anchor set to [3,5,7,9,11] and, through it, k_min/density_quantile
-# below to a single deterministic outcome. k_min/k_density/density_quantile/G_max are
+# below to a single deterministic outcome. k_min/density_quantile/G_max are
 # cross-checked against this exact, already-verified, fully deterministic kernel's own real
 # output (no randomness anywhere here).
 def _collinear_line_21():
@@ -138,7 +138,6 @@ def test_estimate_parameters_collinear_line():
     assert result["estimated_chordal_dist_max_as_prcnt_of_range"] < 1e-6
     assert abs(result["estimated_d_max"] - 0.0) < 1e-9
     assert abs(result["estimated_k_min"] - 2.0) < 1e-9
-    assert abs(result["estimated_k_density"] - result["estimated_k_min"]) < 1e-9
     assert abs(result["estimated_density_quantile"] - 1.0) < 1e-9
     assert abs(result["estimated_G_max"] - 0.0) < 1e-9
 

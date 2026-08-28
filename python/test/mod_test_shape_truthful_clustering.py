@@ -62,7 +62,7 @@ def _fixture_c():
 
 def test_natural_fixed_point():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 4,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=4, G_max=70.0,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_FIXED_POINT
@@ -95,7 +95,7 @@ def test_natural_fixed_point():
 
 def test_history_window_shifts():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 2,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=2, G_max=70.0,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_FIXED_POINT
@@ -105,7 +105,7 @@ def test_history_window_shifts():
 
 def test_max_size_at_bootstrap():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=3, G_max=70.0,
                                      k_min=1, f_max=0.2)
 
     assert result['stop_reason'] == STOP_REASON_MAX_SIZE
@@ -122,7 +122,7 @@ def test_max_size_at_bootstrap():
 
 def test_max_size_poisons_prior_accepts():
     vectors, kd_indices, dimension_order = _fixture_a()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=3, G_max=70.0,
                                      k_min=1, f_max=0.35)
 
     assert result['stop_reason'] == STOP_REASON_MAX_SIZE
@@ -144,7 +144,7 @@ def test_max_size_poisons_prior_accepts():
 
 def test_rejected_immediately():
     vectors, kd_indices, dimension_order = _fixture_b()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 2,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=2, G_max=70.0,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_REJECTED_IMMEDIATELY
@@ -164,7 +164,7 @@ def test_rejected_immediately():
 
 def test_rejected_after_stable():
     vectors, kd_indices, dimension_order = _fixture_c()
-    result = ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
+    result = ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=3, G_max=70.0,
                                      k_min=1)
 
     assert result['stop_reason'] == STOP_REASON_REJECTED_AFTER_STABLE
@@ -184,14 +184,14 @@ def test_rejected_after_stable():
 
 def test_seed_index_out_of_range():
     vectors, kd_indices, dimension_order = _fixture_a()
-    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 8, 0.1, 0, 1.0e10, 1.0e10, 3,
+    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, seed_index=8, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=3, G_max=70.0,
                                                  k_min=1),
                  "Expected error for seed_index > n_vectors", ERR_INVALID_INPUT)
 
 
 def test_o_zero():
     vectors, kd_indices, dimension_order = _fixture_a()
-    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 0,
+    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=0, G_max=70.0,
                                                  k_min=1),
                  "Expected error for o=0", ERR_INVALID_INPUT)
 
@@ -202,7 +202,7 @@ def test_n_dimensions_too_small():
     dimension_order = np.array([1], dtype=np.int32)
     kd_indices = build_kd_index(vectors, dimension_order)
 
-    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, 1, 0.1, 0, 1.0e10, 1.0e10, 3,
+    assert_error(lambda: ensemble_identification(vectors, kd_indices, dimension_order, seed_index=1, chordal_dist_max_as_prcnt_of_range=0.1, d_max=0, RMSE_change_max=1.0e10, o=3, G_max=70.0,
                                                  k_min=1),
                  "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 

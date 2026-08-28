@@ -35,13 +35,13 @@
 #' @param ensemble_d_first a integer vector. Per-ensemble intrinsic dimension at the bootstrap iteration
 #' @param super_ensembles a integer matrix. One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
 #' @param k_min a integer scalar. This run's neighborhood size for each seed's growth radius
-#' @param k_density a integer scalar. This run's density estimation neighborhood size
 #' @param chordal_dist_max_as_prcnt_of_range a numeric scalar. This run's maximum tolerated chordal distance between tangent bases
 #' @param d_max a integer scalar. This run's maximum tolerated change in intrinsic dimension
 #' @param G_max a numeric scalar. This run's maximum tolerated |log(G_tp1/G_t)|
 #' @param RMSE_change_max a numeric scalar. This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
 #' @param f_max a numeric scalar. This run's ensemble size fraction of N above which growth is abandoned
-#' @param a a integer scalar. This run's minimum accepted-iteration count for a stable rejection
+#' @param min_stable_iterations a integer scalar. This run's minimum accepted-iteration count for a stable rejection
+#' @param radius_percentile a numeric scalar. This run's growth-radius percentile
 #' @param exclusion_radius_percentile a numeric scalar. This run's seeding exclusion radius percentile
 #' @param bandwidth_percentile a numeric scalar. This run's density-estimate kernel bandwidth percentile
 #' @param reconciliation_mode a string, one of "report", "merge_overlap_coefficient", "merge_any". This run's `ensemble_reconciliation` mode
@@ -66,7 +66,6 @@
 #' @param ensemble_eligible_by_dimension a logical vector. See `ensemble_reconciliation`'s own `eligible_by_dimension`
 #' @param ensemble_eligible_by_var_explained a logical vector. See `ensemble_reconciliation`'s own `eligible_by_var_explained`
 #' @param estimated_k_min a integer scalar. `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-#' @param estimated_k_density a integer scalar. `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
 #' @param estimated_density_quantile a numeric scalar. `estimate_stc_parameters`'s proposed density quantile, if estimation was used
 #' @param estimated_chordal_dist_max_as_prcnt_of_range a numeric scalar. `estimate_stc_parameters`'s proposed `chordal_dist_max_as_prcnt_of_range`, if
 #'   estimation was used
@@ -74,7 +73,7 @@
 #' @param estimated_d_max a integer scalar. `estimate_stc_parameters`'s proposed `d_max`, if estimation was used
 #' @return invisibly `NULL`; called for its effect.
 #' @export
-serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons = NULL, filter_dim_min = NULL, filter_dim_max = NULL, filter_var_explained_min = NULL, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min = NULL, estimated_k_density = NULL, estimated_density_quantile = NULL, estimated_chordal_dist_max_as_prcnt_of_range = NULL, estimated_G_max = NULL, estimated_d_max = NULL) {
+serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons = NULL, filter_dim_min = NULL, filter_dim_max = NULL, filter_var_explained_min = NULL, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min = NULL, estimated_density_quantile = NULL, estimated_chordal_dist_max_as_prcnt_of_range = NULL, estimated_G_max = NULL, estimated_d_max = NULL) {
     filename <- .tox_as_character(filename, "filename")
     n_super_ensembles <- .tox_as_integer_scalar(n_super_ensembles, "n_super_ensembles")
     vectors <- .tox_as_double_matrix(vectors, "vectors")
@@ -96,13 +95,13 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
     ensemble_d_first <- .tox_as_integer_vector(ensemble_d_first, "ensemble_d_first")
     super_ensembles <- .tox_as_integer_matrix(super_ensembles, "super_ensembles")
     k_min <- .tox_as_integer_scalar(k_min, "k_min")
-    k_density <- .tox_as_integer_scalar(k_density, "k_density")
     chordal_dist_max_as_prcnt_of_range <- .tox_as_double_scalar(chordal_dist_max_as_prcnt_of_range, "chordal_dist_max_as_prcnt_of_range")
     d_max <- .tox_as_integer_scalar(d_max, "d_max")
     G_max <- .tox_as_double_scalar(G_max, "G_max")
     RMSE_change_max <- .tox_as_double_scalar(RMSE_change_max, "RMSE_change_max")
     f_max <- .tox_as_double_scalar(f_max, "f_max")
-    a <- .tox_as_integer_scalar(a, "a")
+    min_stable_iterations <- .tox_as_integer_scalar(min_stable_iterations, "min_stable_iterations")
+    radius_percentile <- .tox_as_double_scalar(radius_percentile, "radius_percentile")
     exclusion_radius_percentile <- .tox_as_double_scalar(exclusion_radius_percentile, "exclusion_radius_percentile")
     bandwidth_percentile <- .tox_as_double_scalar(bandwidth_percentile, "bandwidth_percentile")
     reconciliation_mode <- .tox_as_mode(reconciliation_mode, "reconciliation_mode", c("report", "merge_overlap_coefficient", "merge_any"))
@@ -121,8 +120,6 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
     ensemble_eligible_by_var_explained <- .tox_as_logical(ensemble_eligible_by_var_explained, "ensemble_eligible_by_var_explained")
     if (!is.null(estimated_k_min))
         estimated_k_min <- .tox_as_integer_scalar(estimated_k_min, "estimated_k_min")
-    if (!is.null(estimated_k_density))
-        estimated_k_density <- .tox_as_integer_scalar(estimated_k_density, "estimated_k_density")
     if (!is.null(estimated_density_quantile))
         estimated_density_quantile <- .tox_as_double_scalar(estimated_density_quantile, "estimated_density_quantile")
     if (!is.null(estimated_chordal_dist_max_as_prcnt_of_range))
@@ -196,9 +193,9 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
     if (dim(ensemble_accepted_history)[1] != dim(ensemble_U_history)[3])
         .tox_shape_error("ensemble_accepted_history", dim(ensemble_accepted_history)[1], "ensemble_U_history", dim(ensemble_U_history)[3])
 
-    .result <- .Call("serialize_stc_results_as_json_call", filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, filter_dim_min, filter_dim_max, filter_var_explained_min, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min, estimated_k_density, estimated_density_quantile, estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, estimated_d_max)
-    .arguments <- c("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("serialize_stc_results_as_json_call", filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, filter_dim_min, filter_dim_max, filter_var_explained_min, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min, estimated_density_quantile, estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, estimated_d_max)
+    .arguments <- c("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     invisible(NULL)
@@ -240,13 +237,13 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
 #' @param ensemble_d_first a integer vector. Per-ensemble intrinsic dimension at the bootstrap iteration
 #' @param super_ensembles a integer matrix. One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
 #' @param k_min a integer scalar. This run's neighborhood size for each seed's growth radius
-#' @param k_density a integer scalar. This run's density estimation neighborhood size
 #' @param chordal_dist_max_as_prcnt_of_range a numeric scalar. This run's maximum tolerated chordal distance between tangent bases
 #' @param d_max a integer scalar. This run's maximum tolerated change in intrinsic dimension
 #' @param G_max a numeric scalar. This run's maximum tolerated |log(G_tp1/G_t)|
 #' @param RMSE_change_max a numeric scalar. This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
 #' @param f_max a numeric scalar. This run's ensemble size fraction of N above which growth is abandoned
-#' @param a a integer scalar. This run's minimum accepted-iteration count for a stable rejection
+#' @param min_stable_iterations a integer scalar. This run's minimum accepted-iteration count for a stable rejection
+#' @param radius_percentile a numeric scalar. This run's growth-radius percentile
 #' @param exclusion_radius_percentile a numeric scalar. This run's seeding exclusion radius percentile
 #' @param bandwidth_percentile a numeric scalar. This run's density-estimate kernel bandwidth percentile
 #' @param reconciliation_mode a string, one of "report", "merge_overlap_coefficient", "merge_any". This run's `ensemble_reconciliation` mode
@@ -271,7 +268,6 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
 #' @param ensemble_eligible_by_dimension a logical vector. See `ensemble_reconciliation`'s own `eligible_by_dimension`
 #' @param ensemble_eligible_by_var_explained a logical vector. See `ensemble_reconciliation`'s own `eligible_by_var_explained`
 #' @param estimated_k_min a integer scalar. `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-#' @param estimated_k_density a integer scalar. `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
 #' @param estimated_density_quantile a numeric scalar. `estimate_stc_parameters`'s proposed density quantile, if estimation was used
 #' @param estimated_chordal_dist_max_as_prcnt_of_range a numeric scalar. `estimate_stc_parameters`'s proposed `chordal_dist_max_as_prcnt_of_range`, if
 #'   estimation was used
@@ -279,7 +275,7 @@ serialize_stc_results_as_json <- function(filename, n_super_ensembles, vectors, 
 #' @param estimated_d_max a integer scalar. `estimate_stc_parameters`'s proposed `d_max`, if estimation was used
 #' @return invisibly `NULL`; called for its effect.
 #' @export
-write_stc_interactive_html_report <- function(filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons = NULL, filter_dim_min = NULL, filter_dim_max = NULL, filter_var_explained_min = NULL, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min = NULL, estimated_k_density = NULL, estimated_density_quantile = NULL, estimated_chordal_dist_max_as_prcnt_of_range = NULL, estimated_G_max = NULL, estimated_d_max = NULL) {
+write_stc_interactive_html_report <- function(filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons = NULL, filter_dim_min = NULL, filter_dim_max = NULL, filter_var_explained_min = NULL, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min = NULL, estimated_density_quantile = NULL, estimated_chordal_dist_max_as_prcnt_of_range = NULL, estimated_G_max = NULL, estimated_d_max = NULL) {
     filename <- .tox_as_character(filename, "filename")
     n_super_ensembles <- .tox_as_integer_scalar(n_super_ensembles, "n_super_ensembles")
     vectors <- .tox_as_double_matrix(vectors, "vectors")
@@ -301,13 +297,13 @@ write_stc_interactive_html_report <- function(filename, n_super_ensembles, vecto
     ensemble_d_first <- .tox_as_integer_vector(ensemble_d_first, "ensemble_d_first")
     super_ensembles <- .tox_as_integer_matrix(super_ensembles, "super_ensembles")
     k_min <- .tox_as_integer_scalar(k_min, "k_min")
-    k_density <- .tox_as_integer_scalar(k_density, "k_density")
     chordal_dist_max_as_prcnt_of_range <- .tox_as_double_scalar(chordal_dist_max_as_prcnt_of_range, "chordal_dist_max_as_prcnt_of_range")
     d_max <- .tox_as_integer_scalar(d_max, "d_max")
     G_max <- .tox_as_double_scalar(G_max, "G_max")
     RMSE_change_max <- .tox_as_double_scalar(RMSE_change_max, "RMSE_change_max")
     f_max <- .tox_as_double_scalar(f_max, "f_max")
-    a <- .tox_as_integer_scalar(a, "a")
+    min_stable_iterations <- .tox_as_integer_scalar(min_stable_iterations, "min_stable_iterations")
+    radius_percentile <- .tox_as_double_scalar(radius_percentile, "radius_percentile")
     exclusion_radius_percentile <- .tox_as_double_scalar(exclusion_radius_percentile, "exclusion_radius_percentile")
     bandwidth_percentile <- .tox_as_double_scalar(bandwidth_percentile, "bandwidth_percentile")
     reconciliation_mode <- .tox_as_mode(reconciliation_mode, "reconciliation_mode", c("report", "merge_overlap_coefficient", "merge_any"))
@@ -326,8 +322,6 @@ write_stc_interactive_html_report <- function(filename, n_super_ensembles, vecto
     ensemble_eligible_by_var_explained <- .tox_as_logical(ensemble_eligible_by_var_explained, "ensemble_eligible_by_var_explained")
     if (!is.null(estimated_k_min))
         estimated_k_min <- .tox_as_integer_scalar(estimated_k_min, "estimated_k_min")
-    if (!is.null(estimated_k_density))
-        estimated_k_density <- .tox_as_integer_scalar(estimated_k_density, "estimated_k_density")
     if (!is.null(estimated_density_quantile))
         estimated_density_quantile <- .tox_as_double_scalar(estimated_density_quantile, "estimated_density_quantile")
     if (!is.null(estimated_chordal_dist_max_as_prcnt_of_range))
@@ -401,9 +395,9 @@ write_stc_interactive_html_report <- function(filename, n_super_ensembles, vecto
     if (dim(ensemble_accepted_history)[1] != dim(ensemble_U_history)[3])
         .tox_shape_error("ensemble_accepted_history", dim(ensemble_accepted_history)[1], "ensemble_U_history", dim(ensemble_U_history)[3])
 
-    .result <- .Call("write_stc_interactive_html_report_call", filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, filter_dim_min, filter_dim_max, filter_var_explained_min, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min, estimated_k_density, estimated_density_quantile, estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, estimated_d_max)
-    .arguments <- c("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "k_density", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("write_stc_interactive_html_report_call", filename, n_super_ensembles, vectors, dim_names, seed_selection_mask, ensemble_masks, ensemble_stop_reason, ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first, super_ensembles, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, filter_dim_min, filter_dim_max, filter_var_explained_min, ensemble_eligible, ensemble_eligible_by_stop_condition, ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min, estimated_density_quantile, estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, estimated_d_max)
+    .arguments <- c("filename", "n_dimensions", "n_vectors", "n_selected_seed", "o", "max_group_size", "n_super_ensembles", "vectors", "dim_names", "seed_selection_mask", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "super_ensembles", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "exclusion_radius_percentile", "bandwidth_percentile", "reconciliation_mode", "min_overlap_coefficient", "allowed_stop_reasons", "filter_dim_min", "filter_dim_max", "filter_var_explained_min", "ensemble_eligible", "ensemble_eligible_by_stop_condition", "ensemble_eligible_by_dimension", "ensemble_eligible_by_var_explained", "estimated_k_min", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", "ensemble_masks", "ensemble_U_history", "super_ensembles", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     invisible(NULL)

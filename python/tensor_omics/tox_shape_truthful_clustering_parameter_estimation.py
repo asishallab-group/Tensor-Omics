@@ -3,7 +3,7 @@ r"""tox_shape_truthful_clustering_parameter_estimation
 # Shape Truthful Clustering (STC): Parameter Estimation
 
 A separate, optional pipeline step estimating near-optimal starting values for the crucial
-parameters (`k_min`, `k_density`, `density_quantile`,
+parameters (`k_min`, `density_quantile`,
 `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
 fraction of the cost of a grid search or a
 resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local
@@ -74,14 +74,13 @@ _lib.estimate_stc_parameters_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
-    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ESTIMATE_STC_PARAMETERS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "first_quartile_percentile", "estimated_k_min", "estimated_k_density", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
+_ESTIMATE_STC_PARAMETERS_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_min", "bandwidth_percentile", "n_anchors", "seed_max_set_size", "quantile_pairwise_ea_comparison", "estimated_k_min", "estimated_density_quantile", "estimated_chordal_dist_max_as_prcnt_of_range", "estimated_G_max", "estimated_d_max", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ESTIMATE_STC_PARAMETERS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_ESTIMATE_STC_PARAMETERS_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def sample_estimator_anchors(
         density_labels,
@@ -238,13 +237,13 @@ def estimate_stc_parameters(
         vectors,
         kd_indices,
         dimension_order,
-        k_density=None,
+        k_min=None,
         bandwidth_percentile=None,
         n_anchors=5,
         seed_max_set_size=5.0,
-        first_quartile_percentile=25.0,
+        quantile_pairwise_ea_comparison=25.0,
 ):
-    r"""Estimate k_min, k_density, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
+    r"""Estimate k_min, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
 
     Parameters
     ----------
@@ -258,7 +257,7 @@ def estimate_stc_parameters(
         Dimension order used to build `kd_indices`
         The minimum valid value is `1`.
         The maximum valid value is `n_dimensions`.
-    k_density : int, optional
+    k_min : int, optional
         Passed through to density_labels
         The minimum valid value is `1`.
         The maximum valid value is `n_vectors - 1`.
@@ -276,7 +275,7 @@ def estimate_stc_parameters(
         The minimum valid value is `0.0`.
         The maximum valid value is `100.0`.
         The default value is `5.0`.
-    first_quartile_percentile : float, optional, default 25.0
+    quantile_pairwise_ea_comparison : float, optional, default 25.0
         Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
         chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
         The minimum valid value is `0.0`.
@@ -290,8 +289,6 @@ def estimate_stc_parameters(
 
         estimated_k_min : float
             Estimated k_min (real-valued; round for direct use as an integer argument)
-        estimated_k_density : float
-            Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         estimated_density_quantile : float
             Estimated density_quantile -- a literal radius (data units), not a percentile
         estimated_chordal_dist_max_as_prcnt_of_range : float
@@ -347,7 +344,6 @@ def estimate_stc_parameters(
 
     # outputs and work arrays, which the caller never sees
     estimated_k_min = ctypes.c_double(0)
-    estimated_k_density = ctypes.c_double(0)
     estimated_density_quantile = ctypes.c_double(0)
     estimated_chordal_dist_max_as_prcnt_of_range = ctypes.c_double(0)
     estimated_G_max = ctypes.c_double(0)
@@ -360,13 +356,12 @@ def estimate_stc_parameters(
         ctypes.byref(ctypes.c_int(n_vectors)),
         kd_indices,
         dimension_order,
-        None if k_density is None else ctypes.byref(ctypes.c_int(k_density)),
+        None if k_min is None else ctypes.byref(ctypes.c_int(k_min)),
         None if bandwidth_percentile is None else ctypes.byref(ctypes.c_double(bandwidth_percentile)),
         ctypes.byref(ctypes.c_int(n_anchors)),
         ctypes.byref(ctypes.c_double(seed_max_set_size)),
-        ctypes.byref(ctypes.c_double(first_quartile_percentile)),
+        ctypes.byref(ctypes.c_double(quantile_pairwise_ea_comparison)),
         ctypes.byref(estimated_k_min),
-        ctypes.byref(estimated_k_density),
         ctypes.byref(estimated_density_quantile),
         ctypes.byref(estimated_chordal_dist_max_as_prcnt_of_range),
         ctypes.byref(estimated_G_max),
@@ -378,7 +373,6 @@ def estimate_stc_parameters(
 
     return {
         "estimated_k_min": estimated_k_min.value,
-        "estimated_k_density": estimated_k_density.value,
         "estimated_density_quantile": estimated_density_quantile.value,
         "estimated_chordal_dist_max_as_prcnt_of_range": estimated_chordal_dist_max_as_prcnt_of_range.value,
         "estimated_G_max": estimated_G_max.value,

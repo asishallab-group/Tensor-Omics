@@ -251,13 +251,13 @@ contains
     !| not by whatever order upstream floating-point summation happened to leave them in) is
     !| what actually pins the anchor set to [3,5,7,9,11] and, through it, k_min/density_quantile
     !| below to a single deterministic outcome -- not a property of this particular kd-tree
-    !| build. k_min/k_density/density_quantile/G_max are cross-checked against this exact,
+    !| build. k_min/density_quantile/G_max are cross-checked against this exact,
     !| already-verified, fully deterministic kernel's own real output (no randomness anywhere
     !| in this pipeline).
     subroutine test_estimate_parameters_collinear_line()
         real(real64)   :: vectors(2, 21)
         integer(int32) :: kd_indices(21), dim_order(2), ierr, i
-        real(real64)   :: est_k_min, est_k_density, est_density_quantile, est_G_max, est_d_max
+        real(real64)   :: est_k_min, est_density_quantile, est_G_max, est_d_max
         real(real64)   :: est_chordal_dist_max_as_prcnt_of_range
 
         do i = 1, 21
@@ -272,7 +272,7 @@ contains
         end if
 
         call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=50.0d0, &
-                                           estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
+                                           estimated_k_min=est_k_min, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, &
                                            estimated_G_max=est_G_max, estimated_d_max=est_d_max, ierr=ierr)
@@ -286,7 +286,6 @@ contains
                          //"(an SVD residual, not exactly bit-zero)")
         call assert_equal_real(est_d_max, 0.0d0, 1.0d-9, "estimate_stc_parameters: collinear data gives d_max=0")
         call assert_equal_real(est_k_min, 2.0d0, 1.0d-9, "estimate_stc_parameters: k_min")
-        call assert_equal_real(est_k_density, est_k_min, 1.0d-9, "estimate_stc_parameters: k_density equals k_min")
         call assert_equal_real(est_density_quantile, 1.0d0, 1.0d-9, "estimate_stc_parameters: density_quantile")
         call assert_equal_real(est_G_max, 0.0d0, 1.0d-9, "estimate_stc_parameters: G_max")
     end subroutine test_estimate_parameters_collinear_line
@@ -299,7 +298,7 @@ contains
     subroutine test_estimate_parameters_too_few_valid_eas()
         real(real64)   :: vectors(2, 21)
         integer(int32) :: kd_indices(21), dim_order(2), ierr, i
-        real(real64)   :: est_k_min, est_k_density, est_density_quantile, est_G_max, est_d_max
+        real(real64)   :: est_k_min, est_density_quantile, est_G_max, est_d_max
         real(real64)   :: est_chordal_dist_max_as_prcnt_of_range
 
         do i = 1, 21
@@ -314,7 +313,7 @@ contains
         end if
 
         call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=0.0d0, &
-                                           estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
+                                           estimated_k_min=est_k_min, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
                                            estimated_d_max=est_d_max, ierr=ierr)
@@ -324,7 +323,7 @@ contains
     subroutine test_estimate_parameters_invalid_n_anchors()
         real(real64)   :: vectors(2, 21)
         integer(int32) :: kd_indices(21), dim_order(2), ierr, i
-        real(real64)   :: est_k_min, est_k_density, est_density_quantile, est_G_max, est_d_max
+        real(real64)   :: est_k_min, est_density_quantile, est_G_max, est_d_max
         real(real64)   :: est_chordal_dist_max_as_prcnt_of_range
 
         do i = 1, 21
@@ -339,7 +338,7 @@ contains
         end if
 
         call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, n_anchors=50_int32, &
-                                           estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
+                                           estimated_k_min=est_k_min, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
                                            estimated_d_max=est_d_max, ierr=ierr)
@@ -349,7 +348,7 @@ contains
     subroutine test_estimate_parameters_invalid_seed_max_set_size()
         real(real64)   :: vectors(2, 21)
         integer(int32) :: kd_indices(21), dim_order(2), ierr, i
-        real(real64)   :: est_k_min, est_k_density, est_density_quantile, est_G_max, est_d_max
+        real(real64)   :: est_k_min, est_density_quantile, est_G_max, est_d_max
         real(real64)   :: est_chordal_dist_max_as_prcnt_of_range
 
         do i = 1, 21
@@ -364,7 +363,7 @@ contains
         end if
 
         call estimate_stc_parameters(vectors, 2_int32, 21_int32, kd_indices, dim_order, seed_max_set_size=-1.0d0, &
-                                           estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
+                                           estimated_k_min=est_k_min, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
                                            estimated_d_max=est_d_max, ierr=ierr)
@@ -382,7 +381,7 @@ contains
     subroutine test_estimate_parameters_omitted_n_anchors_is_clamped()
         real(real64)   :: vectors(2, 3)
         integer(int32) :: kd_indices(3), dim_order(2), ierr_omitted, ierr_explicit, i
-        real(real64)   :: est_k_min, est_k_density, est_density_quantile, est_G_max, est_d_max
+        real(real64)   :: est_k_min, est_density_quantile, est_G_max, est_d_max
         real(real64)   :: est_chordal_dist_max_as_prcnt_of_range
 
         do i = 1, 3
@@ -397,14 +396,14 @@ contains
         end if
 
         call estimate_stc_parameters(vectors, 2_int32, 3_int32, kd_indices, dim_order, seed_max_set_size=100.0d0, &
-                                           estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
+                                           estimated_k_min=est_k_min, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
                                            estimated_d_max=est_d_max, ierr=ierr_omitted)
 
         call estimate_stc_parameters(vectors, 2_int32, 3_int32, kd_indices, dim_order, n_anchors=3_int32, &
                                            seed_max_set_size=100.0d0, &
-                                           estimated_k_min=est_k_min, estimated_k_density=est_k_density, &
+                                           estimated_k_min=est_k_min, &
                                            estimated_density_quantile=est_density_quantile, &
                                            estimated_chordal_dist_max_as_prcnt_of_range=est_chordal_dist_max_as_prcnt_of_range, estimated_G_max=est_G_max, &
                                            estimated_d_max=est_d_max, ierr=ierr_explicit)

@@ -45,18 +45,42 @@
 #'   The maximum valid value is `1.0`.
 #' @param d_max a integer scalar. Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
 #'   The minimum valid value is `0`.
-#' @param G_max a numeric scalar. Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+#' @param G_max a numeric scalar. Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+#'   `RMSE_change_max`'s own documented default (see there): both are a bound on
+#'   `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+#'   `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+#'   applied to the same mathematical shape. The upper bound below is a
+#'   deliberately generous safety ceiling, not a meaningful tuning bound:
+#'   `G_max`/`RMSE_change_max`
+#'   are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+#'   quantities kept strictly positive by an `epsilon(1.0)` guard (see
+#'   `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+#'   denominator of that ratio are bounded below by machine epsilon, no achievable
+#'   ratio's `|log|` can exceed `2*|log(epsilon(1.0))|` (~72.09 for `real64`);
+#'   above that, the criterion is provably vacuous (can never reject) regardless of
+#'   input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+#'   constrain legitimate tuning.
 #'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `72.0`.
+#'   The default value is `0.405465108108164`.
 #' @param RMSE_change_max a numeric scalar. Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
 #'   The minimum valid value is `0.0`.
 #' @param f_max a numeric scalar. Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
 #'   The minimum valid value is `above(0.0)`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
-#' @param a a integer scalar. Minimum accepted-iteration count for a later rejection to count as "stable", see
-#'   Stop Condition 2
+#' @param min_stable_iterations a integer scalar. Minimum accepted-iteration count for a later rejection to count as "stable", see
+#'   Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+#'   unchanged
 #'   The minimum valid value is `1`.
 #'   The default value is `2`.
+#' @param radius_percentile a numeric scalar. Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+#'   radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+#'   kernel's own default (50.0, the median) since this parent never passed it
+#'   through; now a real, tunable pass-through
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `50.0`.
 #' @param o a integer scalar. Trailing observable-history window depth (`misc/mod_STC.md` suggests 10 as a
 #'   sensible default). Always required, never optional with an auto-applied
 #'   default here: a Fortran array bound cannot depend on a possibly-absent
@@ -106,7 +130,7 @@
 #'   \item{d_first}{a integer scalar. Intrinsic dimension at the bootstrap iteration, see `U_first`. Zero under the
 #'     same all-zero condition as `U_first`.}
 #' @export
-ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_index, k_min = 30L, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max = 0.95, a = 2L, o) {
+ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_index, k_min = 30L, chordal_dist_max_as_prcnt_of_range, d_max, G_max = 0.405465108108164, RMSE_change_max, f_max = 0.95, min_stable_iterations = 2L, radius_percentile = 50.0, o) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
@@ -117,16 +141,17 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
     G_max <- .tox_as_double_scalar(G_max, "G_max")
     RMSE_change_max <- .tox_as_double_scalar(RMSE_change_max, "RMSE_change_max")
     f_max <- .tox_as_double_scalar(f_max, "f_max")
-    a <- .tox_as_integer_scalar(a, "a")
+    min_stable_iterations <- .tox_as_integer_scalar(min_stable_iterations, "min_stable_iterations")
+    radius_percentile <- .tox_as_double_scalar(radius_percentile, "radius_percentile")
     o <- .tox_as_integer_scalar(o, "o")
     if (length(dimension_order) != dim(vectors)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "vectors", dim(vectors)[1])
     if (length(kd_indices) != dim(vectors)[2])
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
-    .result <- .Call("ensemble_identification_call", vectors, kd_indices, dimension_order, seed_index, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, o)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "U_first", "d_first", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("ensemble_identification_call", vectors, kd_indices, dimension_order, seed_index, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, o)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "U_first", "d_first", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -189,18 +214,42 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
 #'   The maximum valid value is `1.0`.
 #' @param d_max a integer scalar. Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
 #'   The minimum valid value is `0`.
-#' @param G_max a numeric scalar. Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+#' @param G_max a numeric scalar. Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+#'   `RMSE_change_max`'s own documented default (see there): both are a bound on
+#'   `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+#'   `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+#'   applied to the same mathematical shape. The upper bound below is a
+#'   deliberately generous safety ceiling, not a meaningful tuning bound:
+#'   `G_max`/`RMSE_change_max`
+#'   are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+#'   quantities kept strictly positive by an `epsilon(1.0)` guard (see
+#'   `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+#'   denominator of that ratio are bounded below by machine epsilon, no achievable
+#'   ratio's `|log|` can exceed `2*|log(epsilon(1.0))|` (~72.09 for `real64`);
+#'   above that, the criterion is provably vacuous (can never reject) regardless of
+#'   input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+#'   constrain legitimate tuning.
 #'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `72.0`.
+#'   The default value is `0.405465108108164`.
 #' @param RMSE_change_max a numeric scalar. Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
 #'   The minimum valid value is `0.0`.
 #' @param f_max a numeric scalar. Ensemble size fraction of N above which growth is abandoned, see Stop Condition 1
 #'   The minimum valid value is `above(0.0)`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
-#' @param a a integer scalar. Minimum accepted-iteration count for a later rejection to count as "stable", see
-#'   Stop Condition 2
+#' @param min_stable_iterations a integer scalar. Minimum accepted-iteration count for a later rejection to count as "stable", see
+#'   Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+#'   unchanged
 #'   The minimum valid value is `1`.
 #'   The default value is `2`.
+#' @param radius_percentile a numeric scalar. Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+#'   radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+#'   kernel's own default (50.0, the median) since this parent never passed it
+#'   through; now a real, tunable pass-through
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `50.0`.
 #' @param o a integer scalar. Trailing observable-history window depth, see `ensemble_identification`. Always
 #'   required, for the same reason as there: it sizes every history output below.
 #'   The minimum valid value is `1`.
@@ -220,7 +269,7 @@ ensemble_identification <- function(vectors, kd_indices, dimension_order, seed_i
 #'   \item{ensemble_U_first}{a numeric array of rank 3. Per-ensemble bootstrap-iteration tangent+normal basis, see `U_first`}
 #'   \item{ensemble_d_first}{a integer vector. Per-ensemble bootstrap-iteration intrinsic dimension, see `d_first`}
 #' @export
-ensemble_identification_merged <- function(vectors, kd_indices, dimension_order, seed_selection_mask, k_min = 30L, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max = 0.95, a = 2L, o) {
+ensemble_identification_merged <- function(vectors, kd_indices, dimension_order, seed_selection_mask, k_min = 30L, chordal_dist_max_as_prcnt_of_range, d_max, G_max = 0.405465108108164, RMSE_change_max, f_max = 0.95, min_stable_iterations = 2L, radius_percentile = 50.0, o) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
@@ -231,7 +280,8 @@ ensemble_identification_merged <- function(vectors, kd_indices, dimension_order,
     G_max <- .tox_as_double_scalar(G_max, "G_max")
     RMSE_change_max <- .tox_as_double_scalar(RMSE_change_max, "RMSE_change_max")
     f_max <- .tox_as_double_scalar(f_max, "f_max")
-    a <- .tox_as_integer_scalar(a, "a")
+    min_stable_iterations <- .tox_as_integer_scalar(min_stable_iterations, "min_stable_iterations")
+    radius_percentile <- .tox_as_double_scalar(radius_percentile, "radius_percentile")
     o <- .tox_as_integer_scalar(o, "o")
     if (length(dimension_order) != dim(vectors)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "vectors", dim(vectors)[1])
@@ -240,9 +290,9 @@ ensemble_identification_merged <- function(vectors, kd_indices, dimension_order,
     if (length(seed_selection_mask) != dim(vectors)[2])
         .tox_shape_error("seed_selection_mask", length(seed_selection_mask), "vectors", dim(vectors)[2])
 
-    .result <- .Call("ensemble_identification_merged_call", vectors, kd_indices, dimension_order, seed_selection_mask, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, o)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "ierr")
-    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("ensemble_identification_merged_call", vectors, kd_indices, dimension_order, seed_selection_mask, k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, o)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "ierr")
+    .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, "ensemble_masks", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, "ensemble_U_history", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(

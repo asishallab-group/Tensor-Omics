@@ -5,10 +5,10 @@
 #include "tox_marshal.h"
 
 // the Fortran C-ABI symbols this module calls
-void serialize_stc_results_as_json_c(const char*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const char*, const int*, const unsigned char*, const unsigned char*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const unsigned char*, const int*, const unsigned char*, const double*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const char*, const double*, const unsigned char*, const int*, const int*, const double*, const unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, const int*, const int*, const double*, const double*, const double*, const int*, int*);
-void write_stc_interactive_html_report_c(const char*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const char*, const int*, const unsigned char*, const unsigned char*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const unsigned char*, const int*, const unsigned char*, const double*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const char*, const double*, const unsigned char*, const int*, const int*, const double*, const unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, const int*, const int*, const double*, const double*, const double*, const int*, int*);
+void serialize_stc_results_as_json_c(const char*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const char*, const int*, const unsigned char*, const unsigned char*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const unsigned char*, const int*, const unsigned char*, const double*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const double*, const char*, const double*, const unsigned char*, const int*, const int*, const double*, const unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, const int*, const double*, const double*, const double*, const int*, int*);
+void write_stc_interactive_html_report_c(const char*, const int*, const int*, const int*, const int*, const int*, const int*, const int*, const double*, const char*, const int*, const unsigned char*, const unsigned char*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const int*, const unsigned char*, const int*, const unsigned char*, const double*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, const double*, const int*, const double*, const double*, const double*, const char*, const double*, const unsigned char*, const int*, const int*, const double*, const unsigned char*, const unsigned char*, const unsigned char*, const unsigned char*, const int*, const double*, const double*, const double*, const int*, int*);
 
-SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, SEXP vectors, SEXP dim_names, SEXP seed_selection_mask, SEXP ensemble_masks, SEXP ensemble_stop_reason, SEXP ensemble_growth_radii, SEXP ensemble_U_history, SEXP ensemble_S_history, SEXP ensemble_d_history, SEXP ensemble_G_history, SEXP ensemble_mu_history, SEXP ensemble_k_history, SEXP ensemble_accepted_history, SEXP ensemble_member_added_at_step, SEXP ensemble_low_confidence_masks, SEXP ensemble_U_first, SEXP ensemble_d_first, SEXP super_ensembles, SEXP k_min, SEXP k_density, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP a, SEXP exclusion_radius_percentile, SEXP bandwidth_percentile, SEXP reconciliation_mode, SEXP min_overlap_coefficient, SEXP allowed_stop_reasons, SEXP filter_dim_min, SEXP filter_dim_max, SEXP filter_var_explained_min, SEXP ensemble_eligible, SEXP ensemble_eligible_by_stop_condition, SEXP ensemble_eligible_by_dimension, SEXP ensemble_eligible_by_var_explained, SEXP estimated_k_min, SEXP estimated_k_density, SEXP estimated_density_quantile, SEXP estimated_chordal_dist_max_as_prcnt_of_range, SEXP estimated_G_max, SEXP estimated_d_max) {
+SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, SEXP vectors, SEXP dim_names, SEXP seed_selection_mask, SEXP ensemble_masks, SEXP ensemble_stop_reason, SEXP ensemble_growth_radii, SEXP ensemble_U_history, SEXP ensemble_S_history, SEXP ensemble_d_history, SEXP ensemble_G_history, SEXP ensemble_mu_history, SEXP ensemble_k_history, SEXP ensemble_accepted_history, SEXP ensemble_member_added_at_step, SEXP ensemble_low_confidence_masks, SEXP ensemble_U_first, SEXP ensemble_d_first, SEXP super_ensembles, SEXP k_min, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP min_stable_iterations, SEXP radius_percentile, SEXP exclusion_radius_percentile, SEXP bandwidth_percentile, SEXP reconciliation_mode, SEXP min_overlap_coefficient, SEXP allowed_stop_reasons, SEXP filter_dim_min, SEXP filter_dim_max, SEXP filter_var_explained_min, SEXP ensemble_eligible, SEXP ensemble_eligible_by_stop_condition, SEXP ensemble_eligible_by_dimension, SEXP ensemble_eligible_by_var_explained, SEXP estimated_k_min, SEXP estimated_density_quantile, SEXP estimated_chordal_dist_max_as_prcnt_of_range, SEXP estimated_G_max, SEXP estimated_d_max) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
     int allowed_stop_reasons_size = 0;
@@ -38,12 +38,6 @@ SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, S
     if (estimated_k_min != R_NilValue) {
         estimated_k_min_size = (int) Rf_length(estimated_k_min);
         estimated_k_min_p = INTEGER(estimated_k_min);
-    }
-    const int* estimated_k_density_p = NULL;
-    int estimated_k_density_size = 0;
-    if (estimated_k_density != R_NilValue) {
-        estimated_k_density_size = (int) Rf_length(estimated_k_density);
-        estimated_k_density_p = INTEGER(estimated_k_density);
     }
     const double* estimated_density_quantile_p = NULL;
     int estimated_density_quantile_size = 0;
@@ -82,13 +76,13 @@ SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, S
     // scalar inputs, pulled from their length-1 vectors
     int n_super_ensembles_v = Rf_asInteger(n_super_ensembles);
     int k_min_v = Rf_asInteger(k_min);
-    int k_density_v = Rf_asInteger(k_density);
     double chordal_dist_max_as_prcnt_of_range_v = Rf_asReal(chordal_dist_max_as_prcnt_of_range);
     int d_max_v = Rf_asInteger(d_max);
     double G_max_v = Rf_asReal(G_max);
     double RMSE_change_max_v = Rf_asReal(RMSE_change_max);
     double f_max_v = Rf_asReal(f_max);
-    int a_v = Rf_asInteger(a);
+    int min_stable_iterations_v = Rf_asInteger(min_stable_iterations);
+    double radius_percentile_v = Rf_asReal(radius_percentile);
     double exclusion_radius_percentile_v = Rf_asReal(exclusion_radius_percentile);
     double bandwidth_percentile_v = Rf_asReal(bandwidth_percentile);
     double min_overlap_coefficient_v = Rf_asReal(min_overlap_coefficient);
@@ -139,13 +133,13 @@ SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, S
         INTEGER(ensemble_d_first),
         INTEGER(super_ensembles),
         &k_min_v,
-        &k_density_v,
         &chordal_dist_max_as_prcnt_of_range_v,
         &d_max_v,
         &G_max_v,
         &RMSE_change_max_v,
         &f_max_v,
-        &a_v,
+        &min_stable_iterations_v,
+        &radius_percentile_v,
         &exclusion_radius_percentile_v,
         &bandwidth_percentile_v,
         reconciliation_mode_c,
@@ -159,7 +153,6 @@ SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, S
         ensemble_eligible_by_dimension_c,
         ensemble_eligible_by_var_explained_c,
         estimated_k_min_p,
-        estimated_k_density_p,
         estimated_density_quantile_p,
         estimated_chordal_dist_max_as_prcnt_of_range_p,
         estimated_G_max_p,
@@ -176,7 +169,7 @@ SEXP serialize_stc_results_as_json_call(SEXP filename, SEXP n_super_ensembles, S
     return _out;
 }
 
-SEXP write_stc_interactive_html_report_call(SEXP filename, SEXP n_super_ensembles, SEXP vectors, SEXP dim_names, SEXP seed_selection_mask, SEXP ensemble_masks, SEXP ensemble_stop_reason, SEXP ensemble_growth_radii, SEXP ensemble_U_history, SEXP ensemble_S_history, SEXP ensemble_d_history, SEXP ensemble_G_history, SEXP ensemble_mu_history, SEXP ensemble_k_history, SEXP ensemble_accepted_history, SEXP ensemble_member_added_at_step, SEXP ensemble_low_confidence_masks, SEXP ensemble_U_first, SEXP ensemble_d_first, SEXP super_ensembles, SEXP k_min, SEXP k_density, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP a, SEXP exclusion_radius_percentile, SEXP bandwidth_percentile, SEXP reconciliation_mode, SEXP min_overlap_coefficient, SEXP allowed_stop_reasons, SEXP filter_dim_min, SEXP filter_dim_max, SEXP filter_var_explained_min, SEXP ensemble_eligible, SEXP ensemble_eligible_by_stop_condition, SEXP ensemble_eligible_by_dimension, SEXP ensemble_eligible_by_var_explained, SEXP estimated_k_min, SEXP estimated_k_density, SEXP estimated_density_quantile, SEXP estimated_chordal_dist_max_as_prcnt_of_range, SEXP estimated_G_max, SEXP estimated_d_max) {
+SEXP write_stc_interactive_html_report_call(SEXP filename, SEXP n_super_ensembles, SEXP vectors, SEXP dim_names, SEXP seed_selection_mask, SEXP ensemble_masks, SEXP ensemble_stop_reason, SEXP ensemble_growth_radii, SEXP ensemble_U_history, SEXP ensemble_S_history, SEXP ensemble_d_history, SEXP ensemble_G_history, SEXP ensemble_mu_history, SEXP ensemble_k_history, SEXP ensemble_accepted_history, SEXP ensemble_member_added_at_step, SEXP ensemble_low_confidence_masks, SEXP ensemble_U_first, SEXP ensemble_d_first, SEXP super_ensembles, SEXP k_min, SEXP chordal_dist_max_as_prcnt_of_range, SEXP d_max, SEXP G_max, SEXP RMSE_change_max, SEXP f_max, SEXP min_stable_iterations, SEXP radius_percentile, SEXP exclusion_radius_percentile, SEXP bandwidth_percentile, SEXP reconciliation_mode, SEXP min_overlap_coefficient, SEXP allowed_stop_reasons, SEXP filter_dim_min, SEXP filter_dim_max, SEXP filter_var_explained_min, SEXP ensemble_eligible, SEXP ensemble_eligible_by_stop_condition, SEXP ensemble_eligible_by_dimension, SEXP ensemble_eligible_by_var_explained, SEXP estimated_k_min, SEXP estimated_density_quantile, SEXP estimated_chordal_dist_max_as_prcnt_of_range, SEXP estimated_G_max, SEXP estimated_d_max) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
     int allowed_stop_reasons_size = 0;
@@ -206,12 +199,6 @@ SEXP write_stc_interactive_html_report_call(SEXP filename, SEXP n_super_ensemble
     if (estimated_k_min != R_NilValue) {
         estimated_k_min_size = (int) Rf_length(estimated_k_min);
         estimated_k_min_p = INTEGER(estimated_k_min);
-    }
-    const int* estimated_k_density_p = NULL;
-    int estimated_k_density_size = 0;
-    if (estimated_k_density != R_NilValue) {
-        estimated_k_density_size = (int) Rf_length(estimated_k_density);
-        estimated_k_density_p = INTEGER(estimated_k_density);
     }
     const double* estimated_density_quantile_p = NULL;
     int estimated_density_quantile_size = 0;
@@ -250,13 +237,13 @@ SEXP write_stc_interactive_html_report_call(SEXP filename, SEXP n_super_ensemble
     // scalar inputs, pulled from their length-1 vectors
     int n_super_ensembles_v = Rf_asInteger(n_super_ensembles);
     int k_min_v = Rf_asInteger(k_min);
-    int k_density_v = Rf_asInteger(k_density);
     double chordal_dist_max_as_prcnt_of_range_v = Rf_asReal(chordal_dist_max_as_prcnt_of_range);
     int d_max_v = Rf_asInteger(d_max);
     double G_max_v = Rf_asReal(G_max);
     double RMSE_change_max_v = Rf_asReal(RMSE_change_max);
     double f_max_v = Rf_asReal(f_max);
-    int a_v = Rf_asInteger(a);
+    int min_stable_iterations_v = Rf_asInteger(min_stable_iterations);
+    double radius_percentile_v = Rf_asReal(radius_percentile);
     double exclusion_radius_percentile_v = Rf_asReal(exclusion_radius_percentile);
     double bandwidth_percentile_v = Rf_asReal(bandwidth_percentile);
     double min_overlap_coefficient_v = Rf_asReal(min_overlap_coefficient);
@@ -307,13 +294,13 @@ SEXP write_stc_interactive_html_report_call(SEXP filename, SEXP n_super_ensemble
         INTEGER(ensemble_d_first),
         INTEGER(super_ensembles),
         &k_min_v,
-        &k_density_v,
         &chordal_dist_max_as_prcnt_of_range_v,
         &d_max_v,
         &G_max_v,
         &RMSE_change_max_v,
         &f_max_v,
-        &a_v,
+        &min_stable_iterations_v,
+        &radius_percentile_v,
         &exclusion_radius_percentile_v,
         &bandwidth_percentile_v,
         reconciliation_mode_c,
@@ -327,7 +314,6 @@ SEXP write_stc_interactive_html_report_call(SEXP filename, SEXP n_super_ensemble
         ensemble_eligible_by_dimension_c,
         ensemble_eligible_by_var_explained_c,
         estimated_k_min_p,
-        estimated_k_density_p,
         estimated_density_quantile_p,
         estimated_chordal_dist_max_as_prcnt_of_range_p,
         estimated_G_max_p,

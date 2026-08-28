@@ -6,21 +6,28 @@
  * companions for post-processing in Python/R/etc., all into --output-dir.
  *
  * Every STC/estimation parameter that has no compile-time-constant kernel default
- * (`chordal_dist_max_as_prcnt_of_range`, `d_max`, `G_max`, `RMSE_change_max`, `o`) is a
- * required flag. Every parameter that does have one (`k_min`, `k_density`,
- * `bandwidth_percentile`, `exclusion_radius_percentile`, `f_max`, `a`,
- * `min_overlap_coefficient`, `n_anchors`, `seed_max_set_size`, `first_quartile_percentile`)
+ * (`chordal_dist_max_as_prcnt_of_range`, `d_max`, `RMSE_change_max`, `o`) is a required flag.
+ * Every parameter that does have one (`k_min`, `radius_percentile`, `bandwidth_percentile`,
+ * `exclusion_radius_percentile`, `G_max`, `f_max`, `min_stable_iterations`,
+ * `min_overlap_coefficient`, `n_anchors`, `seed_max_set_size`, `quantile_pairwise_ea_comparison`)
  * is optional, defaulting to that same value -- the raw `_c` ABI has no notion of "use the
  * Fortran default" for these (see the generated `src/generated/bindings/c/*_c.F90` files:
  * DM_DEFAULT parameters are documented there, but declared non-optional), so this CLI
- * resolves them itself, once, rather than asking Fortran to.
+ * resolves them itself, once, rather than asking Fortran to. `max_group_size` has no CLI flag
+ * at all: it is a pure Fortran-array-sizing safety cap, not a clustering-quality knob (at the
+ * scale of every dataset this pipeline has actually been run against, the auto-computed
+ * default never binds at all) -- this CLI always computes it internally.
+ *
+ * `k_min` is the single neighborhood-size parameter for seeding, density estimation, *and*
+ * growth radius -- `k_density` as a separate parameter has been abolished; every place that
+ * used to take `k_density` now takes `k_min` directly.
  *
  * --estimate-parameters runs `estimate_stc_parameters` first and applies its own
- * `k_min`/`k_density`/`chordal_dist_max_as_prcnt_of_range`/`G_max`/`d_max` as the actual run
- * parameters (rounding the two that come back real-valued from a median). Supplying any of
- * those five flags together with --estimate-parameters is a validation error: the user picks
- * estimation or manual values, never both. `density_quantile`, estimation's sixth output, has
- * no corresponding run parameter to apply to at all -- it is reported in the JSON/HTML output
+ * `k_min`/`chordal_dist_max_as_prcnt_of_range`/`G_max`/`d_max` as the actual run parameters
+ * (rounding the two that come back real-valued from a median). Supplying any of those four
+ * flags together with --estimate-parameters is a validation error: the user picks estimation
+ * or manual values, never both. `density_quantile`, estimation's fifth output, has no
+ * corresponding run parameter to apply to at all -- it is reported in the JSON/HTML output
  * (`estimated_density_quantile`) and nowhere else.
  */
 
@@ -44,16 +51,16 @@ extern void build_kd_index_c(const double *points, const int *n_dimensions, cons
                              int *kd_indices, const int *dimension_order, int *ierr);
 
 extern void seeds_c(const double *vectors, const int *n_dimensions, const int *n_vectors,
-                    const int *kd_indices, const int *dimension_order, const int *k_density,
+                    const int *kd_indices, const int *dimension_order, const int *k_min,
                     const double *bandwidth_percentile, const double *exclusion_radius_percentile,
                     unsigned char *is_seed_mask, int *ierr);
 
 extern void estimate_stc_parameters_c(const double *vectors, const int *n_dimensions, const int *n_vectors,
                                       const int *kd_indices, const int *dimension_order,
-                                      const int *k_density, const double *bandwidth_percentile,
+                                      const int *k_min, const double *bandwidth_percentile,
                                       const int *n_anchors, const double *seed_max_set_size,
-                                      const double *first_quartile_percentile,
-                                      double *estimated_k_min, double *estimated_k_density,
+                                      const double *quantile_pairwise_ea_comparison,
+                                      double *estimated_k_min,
                                       double *estimated_density_quantile,
                                       double *estimated_chordal_dist_max_as_prcnt_of_range,
                                       double *estimated_G_max, double *estimated_d_max, int *ierr);
@@ -62,7 +69,8 @@ extern void ensemble_identification_merged_c(
     const double *vectors, const int *n_dimensions, const int *n_vectors, const int *kd_indices,
     const int *dimension_order, const unsigned char *seed_selection_mask, const int *n_selected_seed,
     const int *k_min, const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
-    const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a, const int *o,
+    const double *G_max, const double *RMSE_change_max, const double *f_max,
+    const int *min_stable_iterations, const double *radius_percentile, const int *o,
     unsigned char *ensemble_masks, int *ensemble_stop_reason, double *ensemble_growth_radii,
     double *ensemble_U_history, double *ensemble_S_history, int *ensemble_d_history,
     double *ensemble_G_history, double *ensemble_mu_history, int *ensemble_k_history,
@@ -100,15 +108,16 @@ extern void serialize_stc_results_as_json_c(
     const unsigned char *ensemble_low_confidence_masks,
     const double *ensemble_U_first, const int *ensemble_d_first,
     const int *super_ensembles, const int *k_min,
-    const int *k_density, const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
-    const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a,
+    const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
+    const double *G_max, const double *RMSE_change_max, const double *f_max,
+    const int *min_stable_iterations, const double *radius_percentile,
     const double *exclusion_radius_percentile, const double *bandwidth_percentile,
     const char *reconciliation_mode, const double *min_overlap_coefficient,
     const unsigned char *allowed_stop_reasons, const int *filter_dim_min, const int *filter_dim_max,
     const double *filter_var_explained_min, const unsigned char *ensemble_eligible,
     const unsigned char *ensemble_eligible_by_stop_condition, const unsigned char *ensemble_eligible_by_dimension,
     const unsigned char *ensemble_eligible_by_var_explained, const int *estimated_k_min,
-    const int *estimated_k_density, const double *estimated_density_quantile,
+    const double *estimated_density_quantile,
     const double *estimated_chordal_dist_max_as_prcnt_of_range, const double *estimated_G_max,
     const int *estimated_d_max, int *ierr);
 
@@ -124,15 +133,16 @@ extern void write_stc_interactive_html_report_c(
     const unsigned char *ensemble_low_confidence_masks,
     const double *ensemble_U_first, const int *ensemble_d_first,
     const int *super_ensembles, const int *k_min,
-    const int *k_density, const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
-    const double *G_max, const double *RMSE_change_max, const double *f_max, const int *a,
+    const double *chordal_dist_max_as_prcnt_of_range, const int *d_max,
+    const double *G_max, const double *RMSE_change_max, const double *f_max,
+    const int *min_stable_iterations, const double *radius_percentile,
     const double *exclusion_radius_percentile, const double *bandwidth_percentile,
     const char *reconciliation_mode, const double *min_overlap_coefficient,
     const unsigned char *allowed_stop_reasons, const int *filter_dim_min, const int *filter_dim_max,
     const double *filter_var_explained_min, const unsigned char *ensemble_eligible,
     const unsigned char *ensemble_eligible_by_stop_condition, const unsigned char *ensemble_eligible_by_dimension,
     const unsigned char *ensemble_eligible_by_var_explained, const int *estimated_k_min,
-    const int *estimated_k_density, const double *estimated_density_quantile,
+    const double *estimated_density_quantile,
     const double *estimated_chordal_dist_max_as_prcnt_of_range, const double *estimated_G_max,
     const int *estimated_d_max, int *ierr);
 
@@ -226,13 +236,13 @@ enum {
     OPT_HEADER,
     OPT_N_RECORDS,
     OPT_K_MIN,
-    OPT_K_DENSITY,
+    OPT_RADIUS_PERCENTILE,
     OPT_CHORDAL,
     OPT_D_MAX,
     OPT_G_MAX,
     OPT_RMSE_CHANGE_MAX,
     OPT_F_MAX,
-    OPT_A,
+    OPT_MIN_STABLE_ITERATIONS,
     OPT_O,
     OPT_EXCLUSION_RADIUS_PERCENTILE,
     OPT_BANDWIDTH_PERCENTILE,
@@ -243,11 +253,10 @@ enum {
     OPT_FILTER_VAR_EXPLAINED_MIN,
     OPT_MIN_OVERLAP_COEFFICIENT,
     OPT_REPORT_OVERLAP_COEFFICIENT,
-    OPT_MAX_GROUP_SIZE,
     OPT_ESTIMATE_PARAMETERS,
     OPT_N_ANCHORS,
     OPT_SEED_MAX_SET_SIZE,
-    OPT_FIRST_QUARTILE_PERCENTILE,
+    OPT_QUANTILE_PAIRWISE_EA_COMPARISON,
 };
 
 struct arguments {
@@ -264,8 +273,6 @@ struct arguments {
     int have_chordal;
     int d_max;
     int have_d_max;
-    double G_max;
-    int have_G_max;
     double RMSE_change_max;
     int have_RMSE_change_max;
     int o;
@@ -274,13 +281,14 @@ struct arguments {
     /* optional: this CLI resolves the same default the kernel documents */
     int k_min;
     int have_k_min;
-    int k_density;
-    int have_k_density;
+    double radius_percentile;
     double bandwidth_percentile;
     int have_bandwidth_percentile;
     double exclusion_radius_percentile;
+    double G_max;
+    int have_G_max;
     double f_max;
-    int a;
+    int min_stable_iterations;
     const char *reconciliation_mode;
     const char *reconciliation_exclude_stop_reasons;
     int have_filter_dim_min;
@@ -291,14 +299,12 @@ struct arguments {
     double filter_var_explained_min;
     double min_overlap_coefficient;
     int report_overlap_coefficient;
-    int max_group_size;
-    int have_max_group_size;
 
     /* --estimate-parameters mode */
     int estimate_parameters;
     int n_anchors;
     double seed_max_set_size;
-    double first_quartile_percentile;
+    double quantile_pairwise_ea_comparison;
 };
 
 static struct argp_option options[] = {
@@ -309,20 +315,24 @@ static struct argp_option options[] = {
      "Number of data rows in the input CSV, excluding the header line if any (required)", 0},
     {"output-dir", 'o', "DIR", 0, "Directory to write report.html/results.json/*.csv/*.tsv into (required)", 0},
 
-    {"k-min", OPT_K_MIN, "N", 0, "Growth radius neighborhood size (default: 30)", 1},
-    {"k-density", OPT_K_DENSITY, "N", 0, "Density estimation neighborhood size (default: 30)", 1},
+    {"k-min", OPT_K_MIN, "N", 0,
+     "Neighborhood size for seeding, density estimation, and the growth radius (default: 30)", 1},
+    {"radius-percentile", OPT_RADIUS_PERCENTILE, "PERCENTILE", 0,
+     "Percentile of k_min neighbor distances used as the growth radius (default: 50.0)", 1},
     {"chordal-dist-max-as-prcnt-of-range", OPT_CHORDAL, "FRACTION", 0,
      "Maximum tolerated chordal distance between tangent bases, as a fraction of its own "
      "range (required unless --estimate-parameters)", 1},
     {"d-max", OPT_D_MAX, "N", 0,
      "Maximum tolerated change in intrinsic dimension (required unless --estimate-parameters)", 1},
     {"g-max", OPT_G_MAX, "REAL", 0,
-     "Maximum tolerated |log(G_tp1/G_t)| (required unless --estimate-parameters)", 1},
+     "Maximum tolerated |log(G_tp1/G_t)| (default: |log(1.5)| ~= 0.4055; conflicts with "
+     "--estimate-parameters)", 1},
     {"rmse-change-max", OPT_RMSE_CHANGE_MAX, "REAL", 0,
      "Maximum tolerated |log(RMSE_tp1/RMSE_t)| (required)", 1},
     {"f-max", OPT_F_MAX, "FRACTION", 0, "Ensemble size fraction of N above which growth is abandoned "
-     "(default: 0.95)", 1},
-    {"a", OPT_A, "N", 0, "Minimum accepted-iteration count for a stable rejection (default: 2)", 1},
+     "(default: 1.0, i.e. disabled)", 1},
+    {"min-stable-iterations", OPT_MIN_STABLE_ITERATIONS, "N", 0,
+     "Minimum accepted-iteration count for a stable rejection (default: 2)", 1},
     {"o", OPT_O, "N", 0, "Trailing observable-history window depth (required)", 1},
     {"exclusion-radius-percentile", OPT_EXCLUSION_RADIUS_PERCENTILE, "PERCENTILE", 0,
      "Seed coverage/exclusion radius percentile (default: 50.0)", 1},
@@ -350,17 +360,15 @@ static struct argp_option options[] = {
      "Minimum Overlap Coefficient for merge_overlap_coefficient mode (default: 0.9)", 2},
     {"report-overlap-coefficient", OPT_REPORT_OVERLAP_COEFFICIENT, 0, 0,
      "Also compute each super-ensemble's own merge-chain Overlap Coefficient (default: off)", 2},
-    {"max-group-size", OPT_MAX_GROUP_SIZE, "N", 0,
-     "Maximum ensembles one super-ensemble can hold (default: min(1024, n_ensembles))", 2},
 
     {"estimate-parameters", OPT_ESTIMATE_PARAMETERS, 0, 0,
-     "Estimate k_min/k_density/chordal_dist_max_as_prcnt_of_range/G_max/d_max from the data and use "
+     "Estimate k_min/chordal_dist_max_as_prcnt_of_range/G_max/d_max from the data and use "
      "them as this run's own values, instead of supplying them by hand -- mutually exclusive with "
-     "--k-min/--k-density/--chordal-dist-max-as-prcnt-of-range/--g-max/--d-max", 3},
+     "--k-min/--chordal-dist-max-as-prcnt-of-range/--g-max/--d-max", 3},
     {"n-anchors", OPT_N_ANCHORS, "N", 0, "Number of estimator anchors (default: 5)", 3},
     {"seed-max-set-size", OPT_SEED_MAX_SET_SIZE, "PERCENTILE", 0,
      "Cap on total estimator-anchor-cloud growth, as a percent of N (default: 5.0)", 3},
-    {"first-quartile-percentile", OPT_FIRST_QUARTILE_PERCENTILE, "PERCENTILE", 0,
+    {"quantile-pairwise-ea-comparison", OPT_QUANTILE_PAIRWISE_EA_COMPARISON, "PERCENTILE", 0,
      "Percentile used to read off the estimated parameters (default: 25.0)", 3},
 
     {0},
@@ -379,7 +387,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
         case OPT_N_RECORDS: args->n_records = atoi(arg); args->have_n_records = 1; break;
 
         case OPT_K_MIN: args->k_min = atoi(arg); args->have_k_min = 1; break;
-        case OPT_K_DENSITY: args->k_density = atoi(arg); args->have_k_density = 1; break;
+        case OPT_RADIUS_PERCENTILE: args->radius_percentile = atof(arg); break;
         case OPT_CHORDAL:
             args->chordal_dist_max_as_prcnt_of_range = atof(arg);
             args->have_chordal = 1;
@@ -391,7 +399,7 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             args->have_RMSE_change_max = 1;
             break;
         case OPT_F_MAX: args->f_max = atof(arg); break;
-        case OPT_A: args->a = atoi(arg); break;
+        case OPT_MIN_STABLE_ITERATIONS: args->min_stable_iterations = atoi(arg); break;
         case OPT_O: args->o = atoi(arg); args->have_o = 1; break;
         case OPT_EXCLUSION_RADIUS_PERCENTILE: args->exclusion_radius_percentile = atof(arg); break;
         case OPT_BANDWIDTH_PERCENTILE:
@@ -409,12 +417,11 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
             break;
         case OPT_MIN_OVERLAP_COEFFICIENT: args->min_overlap_coefficient = atof(arg); break;
         case OPT_REPORT_OVERLAP_COEFFICIENT: args->report_overlap_coefficient = 1; break;
-        case OPT_MAX_GROUP_SIZE: args->max_group_size = atoi(arg); args->have_max_group_size = 1; break;
 
         case OPT_ESTIMATE_PARAMETERS: args->estimate_parameters = 1; break;
         case OPT_N_ANCHORS: args->n_anchors = atoi(arg); break;
         case OPT_SEED_MAX_SET_SIZE: args->seed_max_set_size = atof(arg); break;
-        case OPT_FIRST_QUARTILE_PERCENTILE: args->first_quartile_percentile = atof(arg); break;
+        case OPT_QUANTILE_PAIRWISE_EA_COMPARISON: args->quantile_pairwise_ea_comparison = atof(arg); break;
 
         case ARGP_KEY_END:
             if (args->input == NULL) argp_error(state, "--input is required");
@@ -425,7 +432,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 
             if (args->estimate_parameters) {
                 if (args->have_k_min) argp_error(state, "--k-min conflicts with --estimate-parameters");
-                if (args->have_k_density) argp_error(state, "--k-density conflicts with --estimate-parameters");
                 if (args->have_chordal)
                     argp_error(state, "--chordal-dist-max-as-prcnt-of-range conflicts with --estimate-parameters");
                 if (args->have_G_max) argp_error(state, "--g-max conflicts with --estimate-parameters");
@@ -435,7 +441,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
                     argp_error(state, "--chordal-dist-max-as-prcnt-of-range is required "
                               "(unless --estimate-parameters)");
                 if (!args->have_d_max) argp_error(state, "--d-max is required (unless --estimate-parameters)");
-                if (!args->have_G_max) argp_error(state, "--g-max is required (unless --estimate-parameters)");
             }
             break;
 
@@ -456,16 +461,17 @@ int main(int argc, char **argv) {
     memset(&args, 0, sizeof(args));
     args.separator = ',';
     args.k_min = 30;
-    args.k_density = 30;
+    args.radius_percentile = 50.0;
     args.bandwidth_percentile = 68.27;
     args.exclusion_radius_percentile = 50.0;
-    args.f_max = 0.95;
-    args.a = 2;
+    args.G_max = 0.405465108108164; /* |log(1.5)|, mirroring RMSE_change_max's own reasoning */
+    args.f_max = 1.0;               /* disabled by default: a dataset may legitimately be one cluster */
+    args.min_stable_iterations = 2;
     args.reconciliation_mode = "merge_overlap_coefficient";
     args.min_overlap_coefficient = 0.9;
     args.n_anchors = 5;
     args.seed_max_set_size = 5.0;
-    args.first_quartile_percentile = 25.0;
+    args.quantile_pairwise_ea_comparison = 25.0;
 
     argp_parse(&argp, argc, argv, 0, 0, &args);
 
@@ -532,11 +538,10 @@ int main(int argc, char **argv) {
 
     /* ---- optionally estimate this run's own parameters from the data ---------- */
     int have_estimated = 0;
-    double estimated_k_min = 0, estimated_k_density = 0, estimated_density_quantile = 0;
+    double estimated_k_min = 0, estimated_density_quantile = 0;
     double estimated_chordal = 0, estimated_G_max = 0, estimated_d_max = 0;
 
     int effective_k_min = args.k_min;
-    int effective_k_density = args.k_density;
     double effective_chordal = args.chordal_dist_max_as_prcnt_of_range;
     double effective_G_max = args.G_max;
     int effective_d_max = args.d_max;
@@ -546,16 +551,15 @@ int main(int argc, char **argv) {
             args.have_bandwidth_percentile ? &args.bandwidth_percentile : NULL;
 
         estimate_stc_parameters_c(table.data, &n_dimensions, &n_vectors, kd_indices, dimension_order,
-                                  NULL /* k_density: forbidden as a manual input in this mode */,
+                                  NULL /* k_min: forbidden as a manual input in this mode */,
                                   bandwidth_percentile_p, &args.n_anchors, &args.seed_max_set_size,
-                                  &args.first_quartile_percentile, &estimated_k_min, &estimated_k_density,
+                                  &args.quantile_pairwise_ea_comparison, &estimated_k_min,
                                   &estimated_density_quantile, &estimated_chordal, &estimated_G_max,
                                   &estimated_d_max, &ierr);
         check_ierr(ierr, "estimate_stc_parameters");
         have_estimated = 1;
 
         effective_k_min = (int)lround(estimated_k_min);
-        effective_k_density = (int)lround(estimated_k_density);
         effective_chordal = estimated_chordal;
         effective_G_max = estimated_G_max;
         effective_d_max = (int)lround(estimated_d_max);
@@ -564,7 +568,7 @@ int main(int argc, char **argv) {
     /* ---- seeding ---------------------------------------------------------------- */
     unsigned char *is_seed_mask = malloc((size_t)n_vectors);
     if (is_seed_mask == NULL) die("out of memory allocating is_seed_mask");
-    seeds_c(table.data, &n_dimensions, &n_vectors, kd_indices, dimension_order, &effective_k_density,
+    seeds_c(table.data, &n_dimensions, &n_vectors, kd_indices, dimension_order, &effective_k_min,
            &args.bandwidth_percentile, &args.exclusion_radius_percentile, is_seed_mask, &ierr);
     check_ierr(ierr, "seeds");
 
@@ -573,8 +577,9 @@ int main(int argc, char **argv) {
         if (is_seed_mask[i]) n_selected_seed++;
     }
 
-    int max_group_size = args.have_max_group_size ? args.max_group_size
-                                                   : (n_selected_seed < 1024 ? n_selected_seed : 1024);
+    /* Pure Fortran-array-sizing safety cap, not a clustering-quality knob -- no CLI flag, see
+     * the header comment above. */
+    int max_group_size = n_selected_seed < 1024 ? n_selected_seed : 1024;
     if (max_group_size < 2) max_group_size = 2;
 
     /* ---- ensemble identification -------------------------------------------------- */
@@ -607,7 +612,8 @@ int main(int argc, char **argv) {
     ensemble_identification_merged_c(
         table.data, &n_dimensions, &n_vectors, kd_indices, dimension_order, is_seed_mask,
         &n_selected_seed, &effective_k_min, &effective_chordal, &effective_d_max, &effective_G_max,
-        &args.RMSE_change_max, &args.f_max, &args.a, &args.o, ensemble_masks, ensemble_stop_reason,
+        &args.RMSE_change_max, &args.f_max, &args.min_stable_iterations, &args.radius_percentile, &args.o,
+        ensemble_masks, ensemble_stop_reason,
         ensemble_growth_radii, ensemble_U_history, ensemble_S_history, ensemble_d_history,
         ensemble_G_history, ensemble_mu_history, ensemble_k_history, ensemble_accepted_history,
         ensemble_member_added_at_step, ensemble_low_confidence_masks, ensemble_U_first, ensemble_d_first,
@@ -675,15 +681,13 @@ int main(int argc, char **argv) {
     char mode_buf[25];
     fill_padded_string(mode_buf, sizeof(mode_buf), args.reconciliation_mode);
 
-    const int *estimated_k_min_p = NULL, *estimated_k_density_p = NULL, *estimated_d_max_p = NULL;
+    const int *estimated_k_min_p = NULL, *estimated_d_max_p = NULL;
     const double *estimated_density_quantile_p = NULL, *estimated_chordal_p = NULL, *estimated_G_max_p = NULL;
-    int estimated_k_min_i = 0, estimated_k_density_i = 0, estimated_d_max_i = 0;
+    int estimated_k_min_i = 0, estimated_d_max_i = 0;
     if (have_estimated) {
         estimated_k_min_i = (int)lround(estimated_k_min);
-        estimated_k_density_i = (int)lround(estimated_k_density);
         estimated_d_max_i = (int)lround(estimated_d_max);
         estimated_k_min_p = &estimated_k_min_i;
-        estimated_k_density_p = &estimated_k_density_i;
         estimated_d_max_p = &estimated_d_max_i;
         estimated_density_quantile_p = &estimated_density_quantile;
         estimated_chordal_p = &estimated_chordal;
@@ -699,12 +703,13 @@ int main(int argc, char **argv) {
         ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history,
         ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks,
         ensemble_U_first, ensemble_d_first,
-        super_ensembles, &effective_k_min, &effective_k_density,
+        super_ensembles, &effective_k_min,
         &effective_chordal, &effective_d_max, &effective_G_max, &args.RMSE_change_max, &args.f_max,
-        &args.a, &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
+        &args.min_stable_iterations, &args.radius_percentile,
+        &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
         &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_dim_min_p, filter_dim_max_p,
         filter_var_explained_min_p, ensemble_eligible, ensemble_eligible_by_stop_condition,
-        ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p, estimated_k_density_p,
+        ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p,
         estimated_density_quantile_p, estimated_chordal_p, estimated_G_max_p, estimated_d_max_p, &ierr);
     check_ierr(ierr, "write_stc_interactive_html_report");
     free(html_path);
@@ -718,12 +723,13 @@ int main(int argc, char **argv) {
         ensemble_d_history, ensemble_G_history, ensemble_mu_history, ensemble_k_history,
         ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks,
         ensemble_U_first, ensemble_d_first,
-        super_ensembles, &effective_k_min, &effective_k_density,
+        super_ensembles, &effective_k_min,
         &effective_chordal, &effective_d_max, &effective_G_max, &args.RMSE_change_max, &args.f_max,
-        &args.a, &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
+        &args.min_stable_iterations, &args.radius_percentile,
+        &args.exclusion_radius_percentile, &args.bandwidth_percentile, mode_buf,
         &args.min_overlap_coefficient, allowed_stop_reasons_p, filter_dim_min_p, filter_dim_max_p,
         filter_var_explained_min_p, ensemble_eligible, ensemble_eligible_by_stop_condition,
-        ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p, estimated_k_density_p,
+        ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, estimated_k_min_p,
         estimated_density_quantile_p, estimated_chordal_p, estimated_G_max_p, estimated_d_max_p, &ierr);
     check_ierr(ierr, "serialize_stc_results_as_json");
     free(json_path);

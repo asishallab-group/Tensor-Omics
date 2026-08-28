@@ -70,7 +70,8 @@ contains
             G_max,&
             RMSE_change_max,&
             f_max,&
-            a,&
+            min_stable_iterations,&
+            radius_percentile,&
             o,&
             final_ensemble_mask,&
             stop_reason,&
@@ -126,9 +127,25 @@ contains
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
-        real(real64), intent(in) :: G_max
-            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+        real(real64), intent(in), optional :: G_max
+            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+            !! `RMSE_change_max`'s own documented default (see there): both are a bound on
+            !! `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+            !! `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+            !! applied to the same mathematical shape. The upper bound below is a
+            !! deliberately generous safety ceiling, not a meaningful tuning bound:
+            !! `G_max`/`RMSE_change_max`
+            !! are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+            !! quantities kept strictly positive by an `epsilon(1.0_real64)` guard (see
+            !! `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+            !! denominator of that ratio are bounded below by machine epsilon, no achievable
+            !! ratio's `|log|` can exceed `2*|log(epsilon(1.0_real64))|` (~72.09 for `real64`);
+            !! above that, the criterion is provably vacuous (can never reject) regardless of
+            !! input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+            !! constrain legitimate tuning.
             !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `72.0_real64`.
+            !! The default value is `0.405465108108164_real64`.
         real(real64), intent(in) :: RMSE_change_max
             !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
@@ -137,11 +154,20 @@ contains
             !! The minimum valid value is `above(0.0_real64)`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
-        integer(int32), intent(in), optional :: a
+        integer(int32), intent(in), optional :: min_stable_iterations
             !! Minimum accepted-iteration count for a later rejection to count as "stable", see
-            !! Stop Condition 2
+            !! Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+            !! unchanged
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+            !! kernel's own default (50.0, the median) since this parent never passed it
+            !! through; now a real, tunable pass-through
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         logical(c_bool), dimension(n_vectors), intent(out) :: final_ensemble_mask
             !! The last accepted ensemble's membership. All `.false.` when `stop_reason` is
             !! `STOP_REASON_MAX_SIZE` -- see Stop Condition 1.
@@ -211,11 +237,12 @@ contains
         call validate_in_range_int(k_min, ierr, arg_pos=7_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(chordal_dist_max_as_prcnt_of_range, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(d_max, ierr, arg_pos=9_int32, min=0_int32)
-        call validate_in_range_real(G_max, ierr, arg_pos=10_int32, min=0.0_real64)
+        call validate_in_range_real(G_max, ierr, arg_pos=10_int32, min=0.0_real64, max=72.0_real64)
         call validate_in_range_real(RMSE_change_max, ierr, arg_pos=11_int32, min=0.0_real64)
         call validate_in_range_real(f_max, ierr, arg_pos=12_int32, min=above(0.0_real64), max=1.0_real64)
-        call validate_in_range_int(a, ierr, arg_pos=13_int32, min=1_int32)
-        call validate_in_range_int(o, ierr, arg_pos=14_int32, min=1_int32)
+        call validate_in_range_int(min_stable_iterations, ierr, arg_pos=13_int32, min=1_int32)
+        call validate_in_range_real(radius_percentile, ierr, arg_pos=14_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(o, ierr, arg_pos=15_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -235,7 +262,8 @@ contains
             G_max = G_max,&
             RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
-            a = a,&
+            min_stable_iterations = min_stable_iterations,&
+            radius_percentile = radius_percentile,&
             o = o,&
             final_ensemble_mask = final_ensemble_mask,&
             stop_reason = stop_reason,&
@@ -289,7 +317,8 @@ contains
             G_max,&
             RMSE_change_max,&
             f_max,&
-            a,&
+            min_stable_iterations,&
+            radius_percentile,&
             o,&
             ensemble_masks,&
             ensemble_stop_reason,&
@@ -346,9 +375,25 @@ contains
         integer(int32), intent(in) :: d_max
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
-        real(real64), intent(in) :: G_max
-            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+        real(real64), intent(in), optional :: G_max
+            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+            !! `RMSE_change_max`'s own documented default (see there): both are a bound on
+            !! `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+            !! `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+            !! applied to the same mathematical shape. The upper bound below is a
+            !! deliberately generous safety ceiling, not a meaningful tuning bound:
+            !! `G_max`/`RMSE_change_max`
+            !! are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+            !! quantities kept strictly positive by an `epsilon(1.0_real64)` guard (see
+            !! `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+            !! denominator of that ratio are bounded below by machine epsilon, no achievable
+            !! ratio's `|log|` can exceed `2*|log(epsilon(1.0_real64))|` (~72.09 for `real64`);
+            !! above that, the criterion is provably vacuous (can never reject) regardless of
+            !! input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+            !! constrain legitimate tuning.
             !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `72.0_real64`.
+            !! The default value is `0.405465108108164_real64`.
         real(real64), intent(in) :: RMSE_change_max
             !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
@@ -357,11 +402,20 @@ contains
             !! The minimum valid value is `above(0.0_real64)`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
-        integer(int32), intent(in), optional :: a
+        integer(int32), intent(in), optional :: min_stable_iterations
             !! Minimum accepted-iteration count for a later rejection to count as "stable", see
-            !! Stop Condition 2
+            !! Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+            !! unchanged
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
+        real(real64), intent(in), optional :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+            !! kernel's own default (50.0, the median) since this parent never passed it
+            !! through; now a real, tunable pass-through
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         logical(c_bool), dimension(n_vectors, n_selected_seed), intent(out) :: ensemble_masks
             !! Per-ensemble accepted membership, one column per seed, see `final_ensemble_mask`
         integer(int32), dimension(n_selected_seed), intent(out) :: ensemble_stop_reason
@@ -402,11 +456,12 @@ contains
         call validate_in_range_int(k_min, ierr, arg_pos=8_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(chordal_dist_max_as_prcnt_of_range, ierr, arg_pos=9_int32, min=0.0_real64, max=1.0_real64)
         call validate_in_range_int(d_max, ierr, arg_pos=10_int32, min=0_int32)
-        call validate_in_range_real(G_max, ierr, arg_pos=11_int32, min=0.0_real64)
+        call validate_in_range_real(G_max, ierr, arg_pos=11_int32, min=0.0_real64, max=72.0_real64)
         call validate_in_range_real(RMSE_change_max, ierr, arg_pos=12_int32, min=0.0_real64)
         call validate_in_range_real(f_max, ierr, arg_pos=13_int32, min=above(0.0_real64), max=1.0_real64)
-        call validate_in_range_int(a, ierr, arg_pos=14_int32, min=1_int32)
-        call validate_in_range_int(o, ierr, arg_pos=15_int32, min=1_int32)
+        call validate_in_range_int(min_stable_iterations, ierr, arg_pos=14_int32, min=1_int32)
+        call validate_in_range_real(radius_percentile, ierr, arg_pos=15_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(o, ierr, arg_pos=16_int32, min=1_int32)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -428,7 +483,8 @@ contains
             G_max = G_max,&
             RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
-            a = a,&
+            min_stable_iterations = min_stable_iterations,&
+            radius_percentile = radius_percentile,&
             o = o,&
             ensemble_masks = ensemble_masks,&
             ensemble_stop_reason = ensemble_stop_reason,&

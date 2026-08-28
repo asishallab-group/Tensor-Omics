@@ -73,7 +73,7 @@ contains
         seed_selection_mask(1) = .true.
 
         call ensemble_identification_merged(vectors, 2_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 1_int32, &
-                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -149,7 +149,7 @@ contains
         seed_selection_mask(8) = .true.
 
         call ensemble_identification_merged(vectors, 2_int32, 14_int32, kd_indices, dim_order, seed_selection_mask, 2_int32, &
-                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -217,7 +217,7 @@ contains
         seed_selection_mask = .false.
 
         call ensemble_identification_merged(vectors, 2_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 0_int32, &
-                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -249,7 +249,7 @@ contains
         seed_selection_mask(6) = .true.
 
         call ensemble_identification_merged(vectors, 2_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 1_int32, &
-                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &
@@ -289,7 +289,7 @@ contains
         seed_selection_mask(1) = .true.
 
         call ensemble_identification_merged(vectors, 1_int32, 7_int32, kd_indices, dim_order, seed_selection_mask, 1_int32, &
-                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
+                                            k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=4_int32, &
                                             ensemble_masks=ensemble_masks, ensemble_stop_reason=ensemble_stop_reason, &
                                             ensemble_growth_radii=ensemble_growth_radii, &
                                             ensemble_U_history=ensemble_U_history, ensemble_S_history=ensemble_S_history, &

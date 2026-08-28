@@ -3,7 +3,7 @@ r"""tox_shape_truthful_clustering_parameter_estimation_impl
 # Shape Truthful Clustering (STC): Parameter Estimation
 
 A separate, optional pipeline step estimating near-optimal starting values for the crucial
-parameters (`k_min`, `k_density`, `density_quantile`,
+parameters (`k_min`, `density_quantile`,
 `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
 fraction of the cost of a grid search or a
 resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local

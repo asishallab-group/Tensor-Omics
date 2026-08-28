@@ -46,6 +46,20 @@ main = "stc_cli.c"
 source-dir = "C-layer"
 link = ["csv", "m"]
 
+# Simulated annealing over STC parameters, see misc/mod_STC.md's "Simulated annealing CLI in
+# C" section. cJSON (MIT) is linked dynamically as a system dependency, the JSON counterpart
+# to stc_cli's own libcsv link above (no LGPL dynamic-linking obligation here, cJSON is MIT --
+# linked the same way regardless, for consistency). On Fedora: `dnf install cjson-devel`; on
+# Arch (see misc/gfortran.docker): `pacman -S cjson`; on Debian/Ubuntu: `apt install
+# libcjson-dev`. Also links OpenMP for the chain-level parallelism.
+[[executable]]
+name = "stc_sa_cli"
+main = "stc_sa_cli.c"
+source-dir = "C-layer"
+# `csv` is unused by this executable but required at link time regardless: fpm compiles every
+# .c file under source-dir (including stc_cli's csv_table.c) for every executable sharing it.
+link = ["cjson", "csv", "m", "gomp"]
+
 [extra.ford]
 project = "TensorOmics"
 output_dir = "doc"

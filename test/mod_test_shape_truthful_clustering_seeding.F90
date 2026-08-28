@@ -30,13 +30,13 @@ contains
                                  test_density_labels_uniform_interior_points_agree)
         all_tests(6) = test_case("test_density_labels_dense_vs_sparse", test_density_labels_dense_vs_sparse)
         all_tests(7) = test_case("test_density_labels_invalid_kd_indices", test_density_labels_invalid_kd_indices)
-        all_tests(8) = test_case("test_density_labels_k_density_too_large", test_density_labels_k_density_too_large)
-        all_tests(9) = test_case("test_density_labels_omitted_k_density_is_clamped", &
-                                 test_density_labels_omitted_k_density_is_clamped)
+        all_tests(8) = test_case("test_density_labels_k_min_too_large", test_density_labels_k_min_too_large)
+        all_tests(9) = test_case("test_density_labels_omitted_k_min_is_clamped", &
+                                 test_density_labels_omitted_k_min_is_clamped)
         all_tests(10) = test_case("test_seeds_two_separated_clusters", test_seeds_two_separated_clusters)
         all_tests(11) = test_case("test_seeds_single_cluster_one_seed", test_seeds_single_cluster_one_seed)
-        all_tests(12) = test_case("test_seeds_invalid_k_density", test_seeds_invalid_k_density)
-        all_tests(13) = test_case("test_seeds_omitted_k_density_is_clamped", test_seeds_omitted_k_density_is_clamped)
+        all_tests(12) = test_case("test_seeds_invalid_k_min", test_seeds_invalid_k_min)
+        all_tests(13) = test_case("test_seeds_omitted_k_min_is_clamped", test_seeds_omitted_k_min_is_clamped)
         all_tests(14) = test_case("test_seeds_exclusion_radius_percentile_widens_coverage", &
                                   test_seeds_exclusion_radius_percentile_widens_coverage)
         all_tests(15) = test_case("test_seeds_invalid_exclusion_radius_percentile", &
@@ -45,7 +45,7 @@ contains
 
     ! --- density_labels ---------------------------------------------------------
     !
-    ! 3 points on a line, (0,0),(1,0),(3,0), k_density=2 (every other point), default
+    ! 3 points on a line, (0,0),(1,0),(3,0), k_min=2 (every other point), default
     ! bandwidth_percentile=68.27. Hand-computed (and cross-checked against an independent
     ! Python re-implementation of the same formula, including calc_percentile_impl's own
     ! linear-interpolation rule: rank = (percentile/100)*(n-1) + 1) expected densities:
@@ -69,7 +69,7 @@ contains
             error stop
         end if
 
-        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_min=2_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -101,7 +101,7 @@ contains
             error stop
         end if
 
-        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_min=2_int32, &
                                   bandwidth_percentile=50.0d0, labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -125,12 +125,12 @@ contains
             error stop
         end if
 
-        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 3_int32, kd_indices, dim_order, k_min=2_int32, &
                                   bandwidth_percentile=101.0d0, labels=labels, ierr=ierr)
         call assert_true(is_err(ierr), "density_labels should reject bandwidth_percentile > 100")
     end subroutine test_density_labels_invalid_bandwidth_percentile
 
-    !> The center of an evenly-spaced plus shape has all 4 of its k_density=4 neighbors at
+    !> The center of an evenly-spaced plus shape has all 4 of its k_min=4 neighbors at
     !| the identical distance 0.1 -- any percentile of a constant sample is that same
     !| constant, so the bandwidth here is simply 0.1, not a degenerate value needing a floor
     !| the way the earlier MAD-based formula did (MAD of an all-equal sample is exactly 0).
@@ -151,7 +151,7 @@ contains
             error stop
         end if
 
-        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_min=4_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -161,7 +161,7 @@ contains
         call assert_true(labels(1) > 0.0d0, "density_labels: a perfectly symmetric neighborhood is not exactly 0")
     end subroutine test_density_labels_symmetric_neighborhood_does_not_underflow
 
-    !> On an evenly-spaced 11-point line, every interior point's k_density=4 nearest
+    !> On an evenly-spaced 11-point line, every interior point's k_min=4 nearest
     !| neighbors form the identical distance pattern [1,1,2,2] by translation symmetry, so
     !| all interior points (3..9) must get exactly the same density label -- an
     !| implementation-independent invariance check that does not rely on the exact formula.
@@ -173,7 +173,7 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_min=4_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -186,7 +186,7 @@ contains
     end subroutine test_density_labels_uniform_interior_points_agree
 
     !> A dense cluster (spacing 0.1) and a sparse cluster (spacing 2.0), far enough apart
-    !| that k_density=2 never crosses between them: the dense cluster's adaptive bandwidth is
+    !| that k_min=2 never crosses between them: the dense cluster's adaptive bandwidth is
     !| far smaller, so its members must get a strictly higher density label.
     subroutine test_density_labels_dense_vs_sparse()
         real(real64)   :: vectors(2, 6) = reshape([ &
@@ -202,7 +202,7 @@ contains
             error stop
         end if
 
-        call density_labels(vectors, 2_int32, 6_int32, kd_indices, dim_order, k_density=2_int32, &
+        call density_labels(vectors, 2_int32, 6_int32, kd_indices, dim_order, k_min=2_int32, &
                                   labels=labels, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'density_labels failed unexpectedly: ', ierr
@@ -221,34 +221,34 @@ contains
         call build_line_fixture(vectors, kd_indices, dim_order)
         kd_indices(1) = 12
 
-        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_min=4_int32, &
                                   labels=labels, ierr=ierr)
         call assert_true(is_err(ierr), "density_labels should reject a kd_indices entry > n_vectors")
     end subroutine test_density_labels_invalid_kd_indices
 
-    subroutine test_density_labels_k_density_too_large()
+    subroutine test_density_labels_k_min_too_large()
         real(real64)   :: vectors(2, 11)
         integer(int32) :: kd_indices(11), dim_order(2), ierr
         real(real64)   :: labels(11)
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=11_int32, &
+        call density_labels(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_min=11_int32, &
                                   labels=labels, ierr=ierr)
-        call assert_true(is_err(ierr), "density_labels should reject k_density > n_vectors - 1")
-    end subroutine test_density_labels_k_density_too_large
+        call assert_true(is_err(ierr), "density_labels should reject k_min > n_vectors - 1")
+    end subroutine test_density_labels_k_min_too_large
 
     !> Regression test for a genuine crash: on branch smoothing-onward, calling
-    !| `density_labels`/`seeds` with `k_density` *omitted* on a dataset smaller
+    !| `density_labels`/`seeds` with `k_min` *omitted* on a dataset smaller
     !| than the default (30) corrupted memory (an out-of-bounds k-NN query for 31 neighbors
     !| among 5 points) and crashed later, in unrelated code -- see
     !| `misc/code_gen_footgun.md`'s third entry for the generator-level root cause (an omitted
     !| optional's default is never validated against a runtime-dependent DM_MAX the way an
-    !| explicit value is) and `density_labels_impl`'s own `min(actual_k_density,
+    !| explicit value is) and `density_labels_impl`'s own `min(actual_k_min,
     !| n_vectors - 1)` clamp for the fix. This asserts the fix, not just its absence of a
-    !| crash: omitting `k_density` here must resolve to exactly `n_vectors - 1` -- the same
-    !| result an explicit `k_density = n_vectors - 1` call already produces.
-    subroutine test_density_labels_omitted_k_density_is_clamped()
+    !| crash: omitting `k_min` here must resolve to exactly `n_vectors - 1` -- the same
+    !| result an explicit `k_min = n_vectors - 1` call already produces.
+    subroutine test_density_labels_omitted_k_min_is_clamped()
         real(real64)   :: vectors(2, 5) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
         integer(int32) :: kd_indices(5), dim_order(2), ierr
@@ -257,37 +257,37 @@ contains
         dim_order = [1, 2]
         call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_density_labels_omitted_k_density_is_clamped: build_kd_index failed: ', ierr
+            write (*, *) 'test_density_labels_omitted_k_min_is_clamped: build_kd_index failed: ', ierr
             error stop
         end if
 
         call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, labels=labels_omitted, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'density_labels (k_density omitted) failed unexpectedly: ', ierr
+            write (*, *) 'density_labels (k_min omitted) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call density_labels(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_min=4_int32, &
                                   labels=labels_explicit, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'density_labels (k_density=4) failed unexpectedly: ', ierr
+            write (*, *) 'density_labels (k_min=4) failed unexpectedly: ', ierr
             error stop
         end if
 
         call assert_equal_array_real(labels_omitted, labels_explicit, 5_int32, 1.0d-12, &
-                                     "density_labels: an omitted k_density on N=5 clamps to exactly k_density=4")
-    end subroutine test_density_labels_omitted_k_density_is_clamped
+                                     "density_labels: an omitted k_min on N=5 clamps to exactly k_min=4")
+    end subroutine test_density_labels_omitted_k_min_is_clamped
 
     ! --- seeds -------------------------------------------------------------------
 
-    !> Two separated 2-point clusters, k_density=1: each point's single nearest neighbor is
+    !> Two separated 2-point clusters, k_min=1: each point's single nearest neighbor is
     !| always its own cluster-mate (0.1 apart), never the other cluster (10 apart), so both
     !| the density ranking and the coverage radius (calc_ensemble_growth_radius on
-    !| k_density=1, i.e. simply "distance to that one neighbor") stay entirely local -- and
+    !| k_min=1, i.e. simply "distance to that one neighbor") stay entirely local -- and
     !| covering that one neighbor's exact distance is, by construction, enough to cover the
-    !| whole (2-point) cluster from a single pick. Deliberately k_density=1 and 2-point
+    !| whole (2-point) cluster from a single pick. Deliberately k_min=1 and 2-point
     !| clusters, not the larger, more "natural-looking" symmetric clusters an earlier version
-    !| of this test used: with k_density>1, a cluster member's own median-of-k-neighbors
+    !| of this test used: with k_min>1, a cluster member's own median-of-k-neighbors
     !| coverage radius is generally *smaller* than the cluster's full diameter (a median
     !| undershoots a max), so a single seed does not reliably cover a larger cluster's
     !| farthest member -- see `misc/STC-experiments/README.md` for where this was first
@@ -306,7 +306,7 @@ contains
             error stop
         end if
 
-        call seeds(vectors, 2_int32, 4_int32, kd_indices, dim_order, k_density=1_int32, &
+        call seeds(vectors, 2_int32, 4_int32, kd_indices, dim_order, k_min=1_int32, &
                          is_seed_mask=is_seed_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'seeds failed unexpectedly: ', ierr
@@ -318,7 +318,7 @@ contains
         call assert_true(any(is_seed_mask(3:4)), "seeds: cluster B (indices 3-4) has a seed")
     end subroutine test_seeds_two_separated_clusters
 
-    !> A single tight, 2-point cluster with k_density = n_vectors - 1 = 1: whichever point is
+    !> A single tight, 2-point cluster with k_min = n_vectors - 1 = 1: whichever point is
     !| picked first, its coverage radius (distance to its one neighbor) exactly covers that
     !| neighbor -- the whole cluster -- from a single pick. See
     !| test_seeds_two_separated_clusters above for why this stays a 2-point fixture.
@@ -334,7 +334,7 @@ contains
             error stop
         end if
 
-        call seeds(vectors, 2_int32, 2_int32, kd_indices, dim_order, k_density=1_int32, &
+        call seeds(vectors, 2_int32, 2_int32, kd_indices, dim_order, k_min=1_int32, &
                          is_seed_mask=is_seed_mask, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'seeds failed unexpectedly: ', ierr
@@ -343,8 +343,8 @@ contains
         call assert_equal_int(count(is_seed_mask, kind=int32), 1_int32, "seeds: a single tight cluster gives 1 seed")
     end subroutine test_seeds_single_cluster_one_seed
 
-    !> The shared 11-point line fixture, k_density=4. A wider exclusion radius (100th
-    !| percentile of the k_density distances, i.e. the farthest neighbor -- 2.0, vs. the
+    !> The shared 11-point line fixture, k_min=4. A wider exclusion radius (100th
+    !| percentile of the k_min distances, i.e. the farthest neighbor -- 2.0, vs. the
     !| default 50th-percentile median of 1.5) suppresses more of the line per seed, so fewer
     !| seeds are needed to cover it. Both outcomes cross-checked against the actual Python
     !| binding's output on this exact fixture before being hardcoded here.
@@ -355,14 +355,14 @@ contains
 
         call build_line_fixture(vectors, kd_indices, dim_order)
 
-        call seeds(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_min=4_int32, &
                          is_seed_mask=mask_default, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'seeds (default exclusion_radius_percentile) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call seeds(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 11_int32, kd_indices, dim_order, k_min=4_int32, &
                          exclusion_radius_percentile=100.0d0, is_seed_mask=mask_wide, ierr=ierr)
         if (.not. is_ok(ierr)) then
             write (*, *) 'seeds (exclusion_radius_percentile=100) failed unexpectedly: ', ierr
@@ -395,12 +395,12 @@ contains
             error stop
         end if
 
-        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_min=4_int32, &
                          exclusion_radius_percentile=101.0d0, is_seed_mask=is_seed_mask, ierr=ierr)
         call assert_true(is_err(ierr), "seeds should reject exclusion_radius_percentile > 100")
     end subroutine test_seeds_invalid_exclusion_radius_percentile
 
-    subroutine test_seeds_invalid_k_density()
+    subroutine test_seeds_invalid_k_min()
         real(real64)   :: vectors(2, 5) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
         integer(int32) :: kd_indices(5), dim_order(2), ierr
@@ -409,22 +409,22 @@ contains
         dim_order = [1, 2]
         call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_invalid_k_density: build_kd_index failed: ', ierr
+            write (*, *) 'test_seeds_invalid_k_min: build_kd_index failed: ', ierr
             error stop
         end if
 
-        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=0_int32, &
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_min=0_int32, &
                          is_seed_mask=is_seed_mask, ierr=ierr)
-        call assert_true(is_err(ierr), "seeds should reject k_density < 1")
-    end subroutine test_seeds_invalid_k_density
+        call assert_true(is_err(ierr), "seeds should reject k_min < 1")
+    end subroutine test_seeds_invalid_k_min
 
     !> Regression test for the same crash as
-    !| test_density_labels_omitted_k_density_is_clamped above, exercised through `seeds`
-    !| itself (which resolves `k_density` a second time, independently, for
-    !| `calc_ensemble_growth_radius_impl`'s own coverage-radius call): omitting `k_density`
+    !| test_density_labels_omitted_k_min_is_clamped above, exercised through `seeds`
+    !| itself (which resolves `k_min` a second time, independently, for
+    !| `calc_ensemble_growth_radius_impl`'s own coverage-radius call): omitting `k_min`
     !| on N=5 must produce exactly the same seed selection as explicitly passing
-    !| `k_density = n_vectors - 1 = 4`, not a crash.
-    subroutine test_seeds_omitted_k_density_is_clamped()
+    !| `k_min = n_vectors - 1 = 4`, not a crash.
+    subroutine test_seeds_omitted_k_min_is_clamped()
         real(real64)   :: vectors(2, 5) = reshape([ &
                           0.0d0, 0.0d0, 0.1d0, 0.0d0, 0.0d0, 0.1d0, -0.1d0, 0.0d0, 0.0d0, -0.1d0], [2, 5])
         integer(int32) :: kd_indices(5), dim_order(2), ierr
@@ -433,26 +433,26 @@ contains
         dim_order = [1, 2]
         call build_kd_index(vectors, 2_int32, 5_int32, kd_indices, dim_order, ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'test_seeds_omitted_k_density_is_clamped: build_kd_index failed: ', ierr
+            write (*, *) 'test_seeds_omitted_k_min_is_clamped: build_kd_index failed: ', ierr
             error stop
         end if
 
         call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, is_seed_mask=mask_omitted, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'seeds (k_density omitted) failed unexpectedly: ', ierr
+            write (*, *) 'seeds (k_min omitted) failed unexpectedly: ', ierr
             error stop
         end if
 
-        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_density=4_int32, &
+        call seeds(vectors, 2_int32, 5_int32, kd_indices, dim_order, k_min=4_int32, &
                          is_seed_mask=mask_explicit, ierr=ierr)
         if (.not. is_ok(ierr)) then
-            write (*, *) 'seeds (k_density=4) failed unexpectedly: ', ierr
+            write (*, *) 'seeds (k_min=4) failed unexpectedly: ', ierr
             error stop
         end if
 
         call assert_equal_array_logical(mask_omitted, mask_explicit, 5_int32, &
-                                        "seeds: an omitted k_density on N=5 clamps to exactly k_density=4")
-    end subroutine test_seeds_omitted_k_density_is_clamped
+                                        "seeds: an omitted k_min on N=5 clamps to exactly k_min=4")
+    end subroutine test_seeds_omitted_k_min_is_clamped
 
     !> Build the shared 11-point line fixture and its k-d tree.
     subroutine build_line_fixture(vectors, kd_indices, dim_order)

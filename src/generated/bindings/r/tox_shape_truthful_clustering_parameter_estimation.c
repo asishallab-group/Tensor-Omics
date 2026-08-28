@@ -7,7 +7,7 @@
 // the Fortran C-ABI symbols this module calls
 void sample_estimator_anchors_c(const double*, const int*, const int*, int*, int*);
 void grow_estimator_anchor_clouds_c(const double*, const int*, const int*, const int*, const int*, const double*, unsigned char*, int*, int*);
-void estimate_stc_parameters_c(const double*, const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, double*, double*, double*, double*, double*, double*, int*);
+void estimate_stc_parameters_c(const double*, const int*, const int*, const int*, const int*, const int*, const double*, const int*, const double*, const double*, double*, double*, double*, double*, double*, int*);
 
 SEXP sample_estimator_anchors_call(SEXP density_labels, SEXP n_anchors) {
     int nprot = 0;
@@ -84,14 +84,14 @@ SEXP grow_estimator_anchor_clouds_call(SEXP vectors, SEXP anchor_indices, SEXP s
     return _out;
 }
 
-SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_density, SEXP bandwidth_percentile, SEXP n_anchors, SEXP seed_max_set_size, SEXP first_quartile_percentile) {
+SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_order, SEXP k_min, SEXP bandwidth_percentile, SEXP n_anchors, SEXP seed_max_set_size, SEXP quantile_pairwise_ea_comparison) {
     int nprot = 0;
     // optionals: a null pointer and size 0 when the caller omits them
-    const int* k_density_p = NULL;
-    int k_density_size = 0;
-    if (k_density != R_NilValue) {
-        k_density_size = (int) Rf_length(k_density);
-        k_density_p = INTEGER(k_density);
+    const int* k_min_p = NULL;
+    int k_min_size = 0;
+    if (k_min != R_NilValue) {
+        k_min_size = (int) Rf_length(k_min);
+        k_min_p = INTEGER(k_min);
     }
     const double* bandwidth_percentile_p = NULL;
     int bandwidth_percentile_size = 0;
@@ -107,11 +107,10 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
     // scalar inputs, pulled from their length-1 vectors
     int n_anchors_v = Rf_asInteger(n_anchors);
     double seed_max_set_size_v = Rf_asReal(seed_max_set_size);
-    double first_quartile_percentile_v = Rf_asReal(first_quartile_percentile);
+    double quantile_pairwise_ea_comparison_v = Rf_asReal(quantile_pairwise_ea_comparison);
 
     // outputs and work space
     double estimated_k_min = 0;
-    double estimated_k_density = 0;
     double estimated_density_quantile = 0;
     double estimated_chordal_dist_max_as_prcnt_of_range = 0;
     double estimated_G_max = 0;
@@ -124,13 +123,12 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
         &n_vectors,
         INTEGER(kd_indices),
         INTEGER(dimension_order),
-        k_density_p,
+        k_min_p,
         bandwidth_percentile_p,
         &n_anchors_v,
         &seed_max_set_size_v,
-        &first_quartile_percentile_v,
+        &quantile_pairwise_ea_comparison_v,
         &estimated_k_min,
-        &estimated_k_density,
         &estimated_density_quantile,
         &estimated_chordal_dist_max_as_prcnt_of_range,
         &estimated_G_max,
@@ -138,22 +136,20 @@ SEXP estimate_stc_parameters_call(SEXP vectors, SEXP kd_indices, SEXP dimension_
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 7)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 6)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarReal(estimated_k_min));
-    SET_VECTOR_ELT(_out, 1, Rf_ScalarReal(estimated_k_density));
-    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(estimated_density_quantile));
-    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(estimated_chordal_dist_max_as_prcnt_of_range));
-    SET_VECTOR_ELT(_out, 4, Rf_ScalarReal(estimated_G_max));
-    SET_VECTOR_ELT(_out, 5, Rf_ScalarReal(estimated_d_max));
-    SET_VECTOR_ELT(_out, 6, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 7)); nprot++;
+    SET_VECTOR_ELT(_out, 1, Rf_ScalarReal(estimated_density_quantile));
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(estimated_chordal_dist_max_as_prcnt_of_range));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(estimated_G_max));
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarReal(estimated_d_max));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 6)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("estimated_k_min"));
-    SET_STRING_ELT(_nms, 1, Rf_mkChar("estimated_k_density"));
-    SET_STRING_ELT(_nms, 2, Rf_mkChar("estimated_density_quantile"));
-    SET_STRING_ELT(_nms, 3, Rf_mkChar("estimated_chordal_dist_max_as_prcnt_of_range"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("estimated_G_max"));
-    SET_STRING_ELT(_nms, 5, Rf_mkChar("estimated_d_max"));
-    SET_STRING_ELT(_nms, 6, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("estimated_density_quantile"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("estimated_chordal_dist_max_as_prcnt_of_range"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("estimated_G_max"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("estimated_d_max"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

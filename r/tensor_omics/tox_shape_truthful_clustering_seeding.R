@@ -1,8 +1,8 @@
 # Generated. Do not edit.
 
-#' Per-vector local density label, an adaptive-bandwidth kernel density estimate over each vector's own k_density nearest neighbors
+#' Per-vector local density label, an adaptive-bandwidth kernel density estimate over each vector's own k_min nearest neighbors
 #'
-#' For each vector: find its `k_density` nearest neighbors (excluding itself), take the
+#' For each vector: find its `k_min` nearest neighbors (excluding itself), take the
 #' `bandwidth_percentile` percentile of the distances to them as a per-vector local
 #' bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
 #' normalized by `bandwidth**n_dimensions`. Unlike a single dataset-wide radius, this
@@ -45,11 +45,11 @@
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param k_density a integer scalar. Neighborhood size the local density estimate is taken over
+#' @param k_min a integer scalar. Neighborhood size the local density estimate is taken over
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors - 1`.
 #'   The default value is `30`.
-#' @param bandwidth_percentile a numeric scalar. Percentile (0 to 100) of the k_density neighbor distances used as the local
+#' @param bandwidth_percentile a numeric scalar. Percentile (0 to 100) of the k_min neighbor distances used as the local
 #'   Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
 #'   see above
 #'   The minimum valid value is `0.0`.
@@ -57,19 +57,19 @@
 #'   The default value is `68.27`.
 #' @return a numeric vector. Per-vector local density label
 #' @export
-density_labels <- function(vectors, kd_indices, dimension_order, k_density = 30L, bandwidth_percentile = 68.27) {
+density_labels <- function(vectors, kd_indices, dimension_order, k_min = 30L, bandwidth_percentile = 68.27) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
-    k_density <- .tox_as_integer_scalar(k_density, "k_density")
+    k_min <- .tox_as_integer_scalar(k_min, "k_min")
     bandwidth_percentile <- .tox_as_double_scalar(bandwidth_percentile, "bandwidth_percentile")
     if (length(dimension_order) != dim(vectors)[1])
         .tox_shape_error("dimension_order", length(dimension_order), "vectors", dim(vectors)[1])
     if (length(kd_indices) != dim(vectors)[2])
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
-    .result <- .Call("density_labels_call", vectors, kd_indices, dimension_order, k_density, bandwidth_percentile)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "labels", "ierr")
+    .result <- .Call("density_labels_call", vectors, kd_indices, dimension_order, k_min, bandwidth_percentile)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_min", "bandwidth_percentile", "labels", "ierr")
     .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -84,8 +84,8 @@ density_labels <- function(vectors, kd_indices, dimension_order, k_density = 30L
 #' vector until none remain -- so only genuinely uncovered regions can seed another
 #' ensemble. The coverage radius is
 #' \code{\link{calc_ensemble_growth_radius}}'s
-#' own computation, called on the newly-selected seed with `k_density` in place of
-#' `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
+#' own computation, called on the newly-selected seed with this SKG's own `k_min` --
+#' not a separate, dataset-wide radius: a fixed global radius can suppress
 #' seed placement across a region much larger than what that seed's own ensemble will
 #' ever actually grow into, leaving points "covered" by seed-exclusion but never reached
 #' by any grown ensemble, see `misc/STC-experiments/README.md`.
@@ -108,28 +108,28 @@ density_labels <- function(vectors, kd_indices, dimension_order, k_density = 30L
 #' @param dimension_order a integer vector. Dimension order used to build `kd_indices`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_dimensions`.
-#' @param k_density a integer scalar. Neighborhood size for both the density estimate and the coverage radius, see
+#' @param k_min a integer scalar. Neighborhood size for both the density estimate and the coverage radius, see
 #'   `density_labels` and `calc_ensemble_growth_radius`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_vectors - 1`.
 #'   The default value is `30`.
-#' @param bandwidth_percentile a numeric scalar. Percentile (0 to 100) of the k_density neighbor distances used as the local
+#' @param bandwidth_percentile a numeric scalar. Percentile (0 to 100) of the k_min neighbor distances used as the local
 #'   Gaussian bandwidth, see `density_labels`
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
 #'   The default value is `68.27`.
-#' @param exclusion_radius_percentile a numeric scalar. Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+#' @param exclusion_radius_percentile a numeric scalar. Percentile (0 to 100) of the k_min neighbor distances used as each seed's
 #'   coverage/exclusion radius, see above
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `100.0`.
 #'   The default value is `50.0`.
 #' @return a logical vector. TRUE for points selected as seeds
 #' @export
-seeds <- function(vectors, kd_indices, dimension_order, k_density = 30L, bandwidth_percentile = 68.27, exclusion_radius_percentile = 50.0) {
+seeds <- function(vectors, kd_indices, dimension_order, k_min = 30L, bandwidth_percentile = 68.27, exclusion_radius_percentile = 50.0) {
     vectors <- .tox_as_double_matrix(vectors, "vectors")
     kd_indices <- .tox_as_integer_vector(kd_indices, "kd_indices")
     dimension_order <- .tox_as_integer_vector(dimension_order, "dimension_order")
-    k_density <- .tox_as_integer_scalar(k_density, "k_density")
+    k_min <- .tox_as_integer_scalar(k_min, "k_min")
     bandwidth_percentile <- .tox_as_double_scalar(bandwidth_percentile, "bandwidth_percentile")
     exclusion_radius_percentile <- .tox_as_double_scalar(exclusion_radius_percentile, "exclusion_radius_percentile")
     if (length(dimension_order) != dim(vectors)[1])
@@ -137,8 +137,8 @@ seeds <- function(vectors, kd_indices, dimension_order, k_density = 30L, bandwid
     if (length(kd_indices) != dim(vectors)[2])
         .tox_shape_error("kd_indices", length(kd_indices), "vectors", dim(vectors)[2])
 
-    .result <- .Call("seeds_call", vectors, kd_indices, dimension_order, k_density, bandwidth_percentile, exclusion_radius_percentile)
-    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_density", "bandwidth_percentile", "exclusion_radius_percentile", "is_seed_mask", "ierr")
+    .result <- .Call("seeds_call", vectors, kd_indices, dimension_order, k_min, bandwidth_percentile, exclusion_radius_percentile)
+    .arguments <- c("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "k_min", "bandwidth_percentile", "exclusion_radius_percentile", "is_seed_mask", "ierr")
     .sources <- c(NA_character_, "vectors", "vectors", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 

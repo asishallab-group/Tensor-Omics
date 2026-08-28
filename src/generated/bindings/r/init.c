@@ -140,8 +140,8 @@ SEXP clock_hand_angles_for_shift_vectors_call(SEXP, SEXP, SEXP);
 SEXP compute_relative_axis_contributions_call(SEXP);
 SEXP relative_axes_changes_from_shift_vector_call(SEXP);
 SEXP relative_axes_expression_from_expression_vector_call(SEXP);
-SEXP ensemble_identification_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP ensemble_identification_merged_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP ensemble_identification_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP ensemble_identification_merged_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP accept_ensemble_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP tox_stc_accept_ensemble_svd_workspace_call(SEXP);
 SEXP calc_ensemble_growth_radius_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
@@ -167,8 +167,8 @@ SEXP compute_shift_vector_field_call(SEXP, SEXP, SEXP);
 SEXP serialize_stc_points_as_csv_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP serialize_stc_ensemble_overlap_as_csv_call(SEXP, SEXP);
 SEXP serialize_stc_super_ensembles_as_tsv_call(SEXP, SEXP);
-SEXP serialize_stc_results_as_json_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP write_stc_interactive_html_report_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP serialize_stc_results_as_json_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP write_stc_interactive_html_report_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_tissue_versatility_call(SEXP, SEXP, SEXP);
 SEXP perform_permutation_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_p_values_call(SEXP, SEXP, SEXP, SEXP);
@@ -283,8 +283,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"compute_relative_axis_contributions_call", (DL_FUNC) &compute_relative_axis_contributions_call, 1},
     {"relative_axes_changes_from_shift_vector_call", (DL_FUNC) &relative_axes_changes_from_shift_vector_call, 1},
     {"relative_axes_expression_from_expression_vector_call", (DL_FUNC) &relative_axes_expression_from_expression_vector_call, 1},
-    {"ensemble_identification_call", (DL_FUNC) &ensemble_identification_call, 12},
-    {"ensemble_identification_merged_call", (DL_FUNC) &ensemble_identification_merged_call, 12},
+    {"ensemble_identification_call", (DL_FUNC) &ensemble_identification_call, 13},
+    {"ensemble_identification_merged_call", (DL_FUNC) &ensemble_identification_merged_call, 13},
     {"accept_ensemble_call", (DL_FUNC) &accept_ensemble_call, 15},
     {"tox_stc_accept_ensemble_svd_workspace_call", (DL_FUNC) &tox_stc_accept_ensemble_svd_workspace_call, 1},
     {"calc_ensemble_growth_radius_call", (DL_FUNC) &calc_ensemble_growth_radius_call, 6},
@@ -310,8 +310,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"serialize_stc_points_as_csv_call", (DL_FUNC) &serialize_stc_points_as_csv_call, 6},
     {"serialize_stc_ensemble_overlap_as_csv_call", (DL_FUNC) &serialize_stc_ensemble_overlap_as_csv_call, 2},
     {"serialize_stc_super_ensembles_as_tsv_call", (DL_FUNC) &serialize_stc_super_ensembles_as_tsv_call, 2},
-    {"serialize_stc_results_as_json_call", (DL_FUNC) &serialize_stc_results_as_json_call, 46},
-    {"write_stc_interactive_html_report_call", (DL_FUNC) &write_stc_interactive_html_report_call, 46},
+    {"serialize_stc_results_as_json_call", (DL_FUNC) &serialize_stc_results_as_json_call, 45},
+    {"write_stc_interactive_html_report_call", (DL_FUNC) &write_stc_interactive_html_report_call, 45},
     {"compute_tissue_versatility_call", (DL_FUNC) &compute_tissue_versatility_call, 3},
     {"perform_permutation_test_call", (DL_FUNC) &perform_permutation_test_call, 7},
     {"compute_p_values_call", (DL_FUNC) &compute_p_values_call, 4},

@@ -20,7 +20,7 @@ test_single_seed_matches_per_seed_impl <- function() {
   seed_selection_mask[1] <- TRUE
 
   res <- ensemble_identification_merged(fx$vectors, fx$kd_indices, fx$dimension_order, seed_selection_mask,
-                                        k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 4)
+                                        k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 4)
 
   assert_true(res$ensemble_stop_reason[1] == STOP_REASON_FIXED_POINT)
   assert_true(abs(res$ensemble_growth_radii[1] - 1.0) < 1e-9)
@@ -53,7 +53,7 @@ test_two_independent_seeds <- function() {
   seed_selection_mask[8] <- TRUE
 
   res <- ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                        k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 4)
+                                        k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 4)
 
   assert_true(res$ensemble_stop_reason[1] == STOP_REASON_FIXED_POINT)
   assert_true(res$ensemble_stop_reason[2] == STOP_REASON_FIXED_POINT)
@@ -94,7 +94,7 @@ test_zero_seeds <- function() {
   seed_selection_mask <- rep(FALSE, 7)
 
   res <- ensemble_identification_merged(fx$vectors, fx$kd_indices, fx$dimension_order, seed_selection_mask,
-                                        k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 4)
+                                        k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 4)
   assert_true(all(dim(res$ensemble_masks) == c(7, 0)))
 }
 
@@ -106,7 +106,7 @@ test_n_dimensions_too_small <- function() {
   seed_selection_mask[1] <- TRUE
 
   assert_error(ensemble_identification_merged(vectors, kd_indices, dimension_order, seed_selection_mask,
-                                              k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 4),
+                                              k_min = 1, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 4),
                "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 }
 

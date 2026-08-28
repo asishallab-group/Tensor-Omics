@@ -41,7 +41,7 @@ module tox_shape_truthful_clustering_seeding
 contains
 
     !> summary: Validates its inputs, prepares what [[tox_shape_truthful_clustering_seeding_impl(module):density_labels_impl]] needs, then calls it. The entry point to reach for first; see [[tox_shape_truthful_clustering_seeding(module):density_labels_expert]] to prepare it yourself.
-    !| For each vector: find its `k_density` nearest neighbors (excluding itself), take the
+    !| For each vector: find its `k_min` nearest neighbors (excluding itself), take the
     !| `bandwidth_percentile` percentile of the distances to them as a per-vector local
     !| bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
     !| normalized by `bandwidth**n_dimensions`. Unlike a single dataset-wide radius, this
@@ -79,7 +79,7 @@ contains
             n_vectors,&
             kd_indices,&
             dimension_order,&
-            k_density,&
+            k_min,&
             bandwidth_percentile,&
             labels,&
             ierr&
@@ -100,13 +100,13 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Neighborhood size the local density estimate is taken over
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
         real(real64), intent(in), optional :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Percentile (0 to 100) of the k_min neighbor distances used as the local
             !! Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
             !! see above
             !! The minimum valid value is `0.0_real64`.
@@ -125,7 +125,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
-        call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_int(k_min, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
@@ -144,7 +144,7 @@ contains
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            k_density = k_density,&
+            k_min = k_min,&
             bandwidth_percentile = bandwidth_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
@@ -155,7 +155,7 @@ contains
     end subroutine density_labels
 
     !> summary: Validates its inputs, then calls [[tox_shape_truthful_clustering_seeding_impl(module):density_labels_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_shape_truthful_clustering_seeding(module):density_labels]] does both.
-    !| For each vector: find its `k_density` nearest neighbors (excluding itself), take the
+    !| For each vector: find its `k_min` nearest neighbors (excluding itself), take the
     !| `bandwidth_percentile` percentile of the distances to them as a per-vector local
     !| bandwidth, then sum a Gaussian kernel over those same distances at that bandwidth,
     !| normalized by `bandwidth**n_dimensions`. Unlike a single dataset-wide radius, this
@@ -193,7 +193,7 @@ contains
             n_vectors,&
             kd_indices,&
             dimension_order,&
-            k_density,&
+            k_min,&
             bandwidth_percentile,&
             tmp_neighbors,&
             tmp_distances,&
@@ -218,13 +218,13 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Neighborhood size the local density estimate is taken over
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
         real(real64), intent(in), optional :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Percentile (0 to 100) of the k_min neighbor distances used as the local
             !! Gaussian bandwidth -- a heuristic choice, not a calibrated standard deviation,
             !! see above
             !! The minimum valid value is `0.0_real64`.
@@ -237,7 +237,7 @@ contains
         integer(int32), dimension(3, n_vectors), intent(out) :: tmp_range_stack
             !! Workspace: k-d tree traversal stack, see `kd_knn_query`
         integer(int32), dimension(n_vectors), intent(out) :: tmp_sort_perm
-            !! Workspace: ascending sort permutation of the k_density distances
+            !! Workspace: ascending sort permutation of the k_min distances
         real(real64), dimension(n_vectors), intent(out) :: labels
             !! Per-vector local density label
         integer(int32), intent(out) :: ierr
@@ -247,7 +247,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
-        call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_int(k_min, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
@@ -261,7 +261,7 @@ contains
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            k_density = k_density,&
+            k_min = k_min,&
             bandwidth_percentile = bandwidth_percentile,&
             tmp_neighbors = tmp_neighbors,&
             tmp_distances = tmp_distances,&
@@ -278,8 +278,8 @@ contains
     !| vector until none remain -- so only genuinely uncovered regions can seed another
     !| ensemble. The coverage radius is
     !| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]'s
-    !| own computation, called on the newly-selected seed with `k_density` in place of
-    !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
+    !| own computation, called on the newly-selected seed with this SKG's own `k_min` --
+    !| not a separate, dataset-wide radius: a fixed global radius can suppress
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
@@ -297,7 +297,7 @@ contains
             n_vectors,&
             kd_indices,&
             dimension_order,&
-            k_density,&
+            k_min,&
             bandwidth_percentile,&
             exclusion_radius_percentile,&
             is_seed_mask,&
@@ -319,20 +319,20 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Neighborhood size for both the density estimate and the coverage radius, see
             !! `density_labels` and `calc_ensemble_growth_radius`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
         real(real64), intent(in), optional :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Percentile (0 to 100) of the k_min neighbor distances used as the local
             !! Gaussian bandwidth, see `density_labels`
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
         real(real64), intent(in), optional :: exclusion_radius_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! Percentile (0 to 100) of the k_min neighbor distances used as each seed's
             !! coverage/exclusion radius, see above
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
@@ -354,7 +354,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
-        call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_int(k_min, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
         call validate_in_range_real(exclusion_radius_percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
@@ -378,7 +378,7 @@ contains
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            k_density = k_density,&
+            k_min = k_min,&
             bandwidth_percentile = bandwidth_percentile,&
             exclusion_radius_percentile = exclusion_radius_percentile,&
             tmp_neighbors = tmp_neighbors,&
@@ -400,8 +400,8 @@ contains
     !| vector until none remain -- so only genuinely uncovered regions can seed another
     !| ensemble. The coverage radius is
     !| [[tox_shape_truthful_clustering_ensemble_growing_impl(module):calc_ensemble_growth_radius_impl]]'s
-    !| own computation, called on the newly-selected seed with `k_density` in place of
-    !| `k_min` -- not a separate, dataset-wide radius: a fixed global radius can suppress
+    !| own computation, called on the newly-selected seed with this SKG's own `k_min` --
+    !| not a separate, dataset-wide radius: a fixed global radius can suppress
     !| seed placement across a region much larger than what that seed's own ensemble will
     !| ever actually grow into, leaving points "covered" by seed-exclusion but never reached
     !| by any grown ensemble, see `misc/STC-experiments/README.md`.
@@ -419,7 +419,7 @@ contains
             n_vectors,&
             kd_indices,&
             dimension_order,&
-            k_density,&
+            k_min,&
             bandwidth_percentile,&
             exclusion_radius_percentile,&
             tmp_neighbors,&
@@ -449,20 +449,20 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Neighborhood size for both the density estimate and the coverage radius, see
             !! `density_labels` and `calc_ensemble_growth_radius`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
             !! The default value is `30_int32`.
         real(real64), intent(in), optional :: bandwidth_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as the local
+            !! Percentile (0 to 100) of the k_min neighbor distances used as the local
             !! Gaussian bandwidth, see `density_labels`
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `68.27_real64`.
         real(real64), intent(in), optional :: exclusion_radius_percentile
-            !! Percentile (0 to 100) of the k_density neighbor distances used as each seed's
+            !! Percentile (0 to 100) of the k_min neighbor distances used as each seed's
             !! coverage/exclusion radius, see above
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
@@ -492,7 +492,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dimensions, ierr, arg_pos=2_int32)
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
-        call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_int(k_min, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
         call validate_in_range_real(exclusion_radius_percentile, ierr, arg_pos=8_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
@@ -507,7 +507,7 @@ contains
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            k_density = k_density,&
+            k_min = k_min,&
             bandwidth_percentile = bandwidth_percentile,&
             exclusion_radius_percentile = exclusion_radius_percentile,&
             tmp_neighbors = tmp_neighbors,&

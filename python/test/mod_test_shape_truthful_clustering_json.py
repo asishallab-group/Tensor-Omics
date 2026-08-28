@@ -90,8 +90,8 @@ def _fixture():
 
 def _common_kwargs():
     return dict(
-        k_min=3, k_density=4, chordal_dist_max_as_prcnt_of_range=0.1, d_max=1,
-        G_max=2.0, RMSE_change_max=0.5, f_max=0.8, a=3,
+        k_min=3, chordal_dist_max_as_prcnt_of_range=0.1, d_max=1,
+        G_max=2.0, RMSE_change_max=0.5, f_max=0.8, min_stable_iterations=3, radius_percentile=50.0,
         exclusion_radius_percentile=50.0, bandwidth_percentile=68.0,
         reconciliation_mode='merge_overlap_coefficient', min_overlap_coefficient=0.5,
     )
@@ -195,7 +195,7 @@ def test_json_estimated_params_included():
         ensemble_G_history, ensemble_mu_history, ensemble_k_history,
         ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks,
         ensemble_U_first, ensemble_d_first, super_ensembles,
-        estimated_k_min=5, estimated_k_density=6, estimated_density_quantile=0.75,
+        estimated_k_min=5, estimated_density_quantile=0.75,
         estimated_chordal_dist_max_as_prcnt_of_range=0.2, estimated_G_max=3.0, estimated_d_max=2,
         **_common_kwargs(), **_all_eligible_kwargs(2))
 
@@ -204,7 +204,6 @@ def test_json_estimated_params_included():
     os.remove(filename)
 
     assert '"estimated_k_min":5' in content
-    assert '"estimated_k_density":6' in content
     assert '"estimated_d_max":2' in content
 
 

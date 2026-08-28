@@ -136,15 +136,19 @@ density label, the other to greedily select seeds from those labels.
 
 ### SKG `density_labels`
 
-Receives an optional $k_{\text{density}}$ (default 30 -- the same default
-`calc_ensemble_growth_radius`'s own $k_{\min}$ uses, see "Local Radius
-Identification" below, but a genuinely independent argument: `density_labels`
-and `seeds` are called before `ensemble_identification` in the pipeline, so
-there is no single call through which one value could reach both) and an
+Receives an optional $k_{\min}$ (default 30 -- the same argument, same
+default, `calc_ensemble_growth_radius` uses for its own growth radius, see
+"Local Radius Identification" below: `k_min`/`k_density` were originally two
+separate arguments that merely happened to share a default, but proved
+confusing enough in practice -- despite `density_labels`/`seeds` being called
+before `ensemble_identification` in the pipeline, with no single call through
+which one value could reach both -- that they were consolidated into the one
+shared `k_min` a caller passes to every stage, rather than kept nominally
+independent; see "STC parameter reference"'s own note on this) and an
 optional $p_{\text{bw}}$, `bandwidth_percentile` (default 68.27). For each
 vector $x_i$:
 
-1. Find its $k_{\text{density}}$ nearest neighbors (excluding itself), giving
+1. Find its $k_{\min}$ nearest neighbors (excluding itself), giving
    distances $d_{i,1}, \ldots, d_{i,k}$.
 2. $b_i = \text{percentile}_{p_{\text{bw}}}\big(d_{i,1}, \ldots,
    d_{i,k}\big)$ -- the $p_{\text{bw}}$-th percentile of those distances
@@ -195,9 +199,9 @@ Sort the density labels descending. Start with the highest-density unvisited
 vector and mark it a seed. Its coverage radius is the *same computation*
 `calc_ensemble_growth_radius` uses for its own growth radius -- a percentile
 (`exclusion_radius_percentile`, default 50.0, the median) of the distances to
-its own $k_{\text{density}}$ nearest neighbors -- called directly on the
-newly-selected seed with $k_{\text{density}}$ in place of $k_{\min}$, not a
-separate radius computed some other way. Mask every vector within that radius
+its own $k_{\min}$ nearest neighbors -- called directly on the newly-selected
+seed with this SKG's own $k_{\min}$, not a separate radius computed some
+other way. Mask every vector within that radius
 as visited. Continue with the next highest-density unvisited vector until
 none remain.
 
@@ -422,8 +426,8 @@ For each seed we store the growth radius in a 1D real array called
 `ensemble_growth_radii`.
 
 `seeds` reuses this exact SKG for its own coverage radius (see "Seeding"
-above), called with $k_{\text{density}}$ in place of $k_{\min}$ -- not a
-second, separately-implemented percentile-of-k-NN-distances computation.
+above), called with this same $k_{\min}$ -- not a second,
+separately-implemented percentile-of-k-NN-distances computation.
 `seeds` exposes its own call's `radius_percentile` as `exclusion_radius_percentile`,
 independently of whatever percentile any other caller of this SKG uses for the
 actual growth-phase radius: a fixed, dataset-wide-in-spirit median exclusion
@@ -847,7 +851,7 @@ output, so a report (see "Scientific plots / Visualization" below) can show
 
 ## Estimate parameters from data
 
-The crucial parameters are `k_min`, `k_density`, `density_quantile`,
+The crucial parameters are `k_min`, `density_quantile`,
 `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max` (`RMSE_change_max`,
 `accept_ensemble`'s fourth criterion, is not estimated by this SKG -- see
 "SKG `estimate_stc_parameters`" below). Grid-searching them, or the bootstrap-resampling
@@ -931,10 +935,9 @@ d_i, G_i)_{i=1}^{n_{\text{anchors}}}$, where $k_i$ is EA $i$'s final cloud
 size and $\bar{d}_i^{\text{median}}$ the median distance from EA $i$'s anchor
 to its own cloud members:
 
-* $k_{\min} \leftarrow \text{median}_i(k_i)$
-* $k_{\text{density}} \leftarrow k_{\min}$ -- reused, not separately
-  estimated, the same relationship `density_labels`' own default already has
-  to `calc_ensemble_growth_radius`'s $k_{\min}$ (see "Seeding" above).
+* $k_{\min} \leftarrow \text{median}_i(k_i)$ -- the single shared `k_min`,
+  used directly by `density_labels`/`seeds` as well as growth (see "Seeding"
+  above); no separate `k_density` estimate exists any more.
 * $\text{density\_quantile} \leftarrow \text{median}_i(\bar{d}_i^{\text{median}})$
   -- a literal radius (data units), used directly wherever a radius is
   needed, not converted into a 0-100 percentile: `seeds`/
@@ -971,7 +974,7 @@ to its own cloud members:
 * $d_{\max} \leftarrow Q_{p}\big(\{|d_i - d_j|\}_{i<j}\big)$
 
 where $Q_p$ is the $p$-th percentile (linear interpolation, via
-`calc_percentile_helper`) and $p$, `first_quartile_percentile`, is itself an
+`calc_percentile_helper`) and $p$, `quantile_pairwise_ea_comparison`, is itself an
 optional argument (default 25.0, the first quartile) -- not hardcoded,
 following the same "expose the heuristic, do not disguise it" precedent as
 `bandwidth_percentile`/`exclusion_radius_percentile` above.
@@ -984,6 +987,230 @@ strong density heterogeneity, all anchors could land in similar regions), and
 the `seed_max_set_size` size cap. Treat its output the way any of this
 family's other tunable defaults are treated: a reasonable value to start
 from and refine, not a guarantee.
+
+# STC parameter reference
+
+Every tunable parameter of the STC pipeline itself (not I/O plumbing, not `stc_sa_cli`'s own
+simulated-annealing hyperparameters like $T_0$/$\alpha$, which control the *search*, not STC) --
+its internal (Fortran dummy argument) name, its external command-line flag in `stc_cli`/
+`stc_sa_cli` where one exists, its default, and what increasing or decreasing it does. Where the
+interactive HTML/D3 report (`misc/STC-experiments/interactive_template.html`, `PARAM_EXPLANATIONS`)
+already carries a plain-language explanation for a parameter, that exact text is reused below
+rather than re-derived, so the report and this spec never drift into two different explanations of
+the same knob.
+
+Grouped by pipeline stage, matching "Functions / Subroutines" above.
+
+## Seeding (`density_labels`, `seeds`)
+
+`k_density` has been abolished as a separate parameter: `seeds`' own coverage-radius reuse of
+`calc_ensemble_growth_radius` (see below) already fed this value into that computation's own
+`k_min`-named argument, so seeding, density estimation, and growth all now share the single
+`k_min` parameter directly, documented once under "Ensemble growth" below. `k_min`/`k_density`
+are deliberately kept as one shared parameter for now rather than reintroduced as two
+independently-tunable ones -- see the "To Do" section at the end of this reference for the
+open question of whether that turns out to be the right call once SA experiments actually probe
+it.
+
+- **`bandwidth_percentile`** -- CLI: `--bandwidth-percentile` (both CLIs, default `68.27`, the
+  kernel's own default -- fixed in `stc_sa_cli`, never tuned by SA). Valid range $[0, 100]$.
+  "Percentile (0-100) of kNN distances used as the local density-estimate kernel bandwidth."
+  Higher values widen the kernel (smoother density estimate, blurring together points that are
+  genuinely at different densities); lower values narrow it (sharper, more locally faithful, but
+  noisier estimate from fewer effectively-contributing neighbors).
+- **`exclusion_radius_percentile`** -- CLI: `--exclusion-radius-percentile` (both CLIs, default
+  `50.0` -- fixed in `stc_sa_cli`). Valid range $[0, 100]$. "Percentile (0-100) of kNN distances
+  used as each seed's own coverage/exclusion radius during seeding. Lower = less over-eager
+  suppression, more (smaller) ensembles." Higher values make each already-chosen seed suppress a
+  larger surrounding region from also becoming a seed, yielding fewer, more widely-spaced seeds
+  overall.
+
+## Ensemble growth (`calc_ensemble_growth_radius`, `grow_ensemble`, `ensemble_identification`/`_merged`)
+
+- **`k_min`** -- CLI: `--k-min` (`stc_cli`, default `30`, the kernel's own default); one of
+  `stc_sa_cli`'s seven tuned $\boldsymbol{\phi}$ parameters instead, searched over
+  $[1, \min_s(N_s) - 1]$. Valid range $[1, N-1]$. Now the single neighborhood-size parameter for
+  seeding, density estimation, *and* the growth radius -- see "Seeding" above. "Neighborhood
+  size (kNN pool) used to compute each ensemble's growth radius. Larger = smoother, less
+  locally-adaptive radius." At the extreme low end (`k_min` near 1) growth proceeds in very
+  fine, very frequent steps -- each one re-running `observable`'s from-scratch SVD (see
+  "Potential Time Complexity Improvements" above), which is why very small `k_min` is also the
+  single most expensive region of parameter space to explore with the current,
+  not-yet-incremental SVD -- confirmed in practice: a random `stc_sa_cli` proposal landing near
+  `k_min=1` on a 500-point benchmark made a single iteration take minutes instead of the
+  usual sub-second.
+- **`radius_percentile`** -- CLI: `--radius-percentile` (both CLIs, default `50.0`, the
+  kernel's own default -- one of `stc_sa_cli`'s seven tuned $\boldsymbol{\phi}$ parameters,
+  searched over its full valid range $[0, 100]$, no separate CLI-bound flag needed since the
+  kernel already documents both ends). Previously hardcoded: `ensemble_identification`/`_merged`
+  never passed this argument through to `calc_ensemble_growth_radius` at all, so growth was
+  permanently stuck at the median with no way to change it from the command line -- now a real,
+  tunable pass-through, added specifically because growth radius is a key lever during ensemble
+  growth. (`seeds`' own `exclusion_radius_percentile` above is a separate, independently-tunable
+  copy of the same underlying percentile-of-kNN-distances computation, used for the seed
+  coverage radius instead of the growth radius -- the two are not the same call and not tied
+  together.) "Percentile (0 to 100) of the `k_min` neighbor distances reported as the growth
+  radius." Higher values report a larger growth radius from the same neighbor pool (more
+  permissive growth); lower values report a smaller one (more conservative growth).
+- **`chordal_dist_max_as_prcnt_of_range`** -- CLI: `--chordal-dist-max-as-prcnt-of-range`
+  (`stc_cli`, required, no default); tuned $\boldsymbol{\phi}$ parameter in `stc_sa_cli`, range
+  $[0, 1]$ (the kernel's own `DM_MIN`/`DM_MAX`, used as-is for SA's search bounds too). "Max
+  tolerated tangent-space rotation vs. any reference basis, as a fraction of its
+  $[0,\sqrt{d}]$ range. Higher = more tolerant of orientation drift." Raising it lets an
+  ensemble's tangent estimate wander further between growth steps before that drift alone stops
+  growth; lowering it demands tighter step-to-step orientation stability to keep growing.
+- **`d_max`** (growth context) -- CLI: `--d-max` (`stc_cli`, required, no default); tuned
+  $\boldsymbol{\phi}$ parameter in `stc_sa_cli`, range $[0, \texttt{phi-max-d-max}]$ where
+  `--phi-max-d-max` (default: the benchmark suite's shared `ambient_dim`) supplies the upper
+  bound the kernel itself does not document (`DM_MIN(0)` only). "Max tolerated change in
+  intrinsic dimension vs. the bootstrap iteration and vs. the previous iteration." Higher values
+  let the ensemble's estimated intrinsic dimension jump around more between steps before that
+  alone halts growth (more tolerant of a noisy/ambiguous local dimension estimate); `0` demands
+  the dimension estimate never move at all from the bootstrap step. Not to be confused with
+  reconciliation's `filter_dim_max` below, which bounds the *final* dimension's value, not its
+  *drift* during growth.
+- **`G_max`** -- CLI: `--g-max` (`stc_cli`, default `|log(1.5)| \approx 0.4055`, the kernel's
+  own default -- see below); tuned $\boldsymbol{\phi}$ parameter in `stc_sa_cli`, default search
+  range $[0, \texttt{phi-max-g-max}]$ where `--phi-max-g-max` (default `5.0`) sets the practical
+  SA search ceiling. Separately, the kernel itself now carries an absolute safety `DM_MAX` of
+  $2|\log(\varepsilon(1.0_{\text{real64}}))| \approx 72.09$ -- not a tuning bound, just the point
+  past which the criterion becomes provably vacuous (both sides of the ratio are bounded away
+  from zero by machine epsilon, so no achievable ratio's $|\log|$ can exceed it), there purely
+  to catch a nonsensical/typo'd input. "Max tolerated $|\log|$ change in spectral gap between
+  consecutive growth iterations." Higher values tolerate a more erratic spectral gap (the
+  tangent/normal-eigenvalue separation that signals "genuine local structure") from one step to
+  the next before that alone stops growth; lower values demand a more stable, steadily-behaving
+  gap. The default mirrors `RMSE_change_max`'s own reasoning below: both are `|log(ratio)|`
+  bounds between two consecutive positive-quantity growth steps, so tolerating up to a 50%
+  relative change is the same choice applied to the same mathematical shape.
+- **`RMSE_change_max`** -- CLI: `--rmse-change-max` (both CLIs, default `|log(1.5)| \approx
+  0.4055`, the kernel's own default); tuned $\boldsymbol{\phi}$ parameter in `stc_sa_cli`,
+  default search range $[0, \texttt{phi-max-rmse-change-max}]$ where
+  `--phi-max-rmse-change-max` (default `5.0`) sets the practical SA search ceiling -- the kernel
+  itself documents no upper bound at all here (unlike `G_max`, no epsilon-derived ceiling has
+  been added for this one yet). "Max tolerated $|\log|$ change in residual (RMSE) between
+  consecutive growth iterations." Higher values tolerate noisier, more erratic residual behavior
+  between steps; lower values demand smoothly, predictably shrinking/stable residuals to keep
+  growing.
+- **`f_max`** -- CLI: `--f-max` (both CLIs, default `1.0`, i.e. disabled -- fixed, never tuned by
+  SA). Valid range $(0, 1]$. "Ensemble size fraction of N above which growth is abandoned
+  entirely (evidence against local structure). 0-1." Raising it lets a single ensemble grow to
+  consume a larger share of the whole dataset before that size alone is treated as evidence the
+  "ensemble" is really swallowing unrelated structure; lowering it stops runaway growth earlier,
+  at the risk of also cutting off genuinely large true manifolds. Defaults to `1.0` (the
+  criterion never fires) rather than the kernel's own `0.95`, deliberately: many legitimate
+  benchmark datasets (e.g. `line`/`circular_arc`/`s_curve`/`gaussian_hill` in this repo's own SA
+  benchmark suite) are a single connected manifold whose correct recovery is one ensemble
+  covering essentially all of $N$ -- a fixed `0.95` ceiling would make that structurally
+  unreachable regardless of how every other parameter is tuned.
+- **`min_stable_iterations`** (renamed from `a`) -- CLI: `--min-stable-iterations` (`stc_cli`,
+  default `2`, the kernel's own default, unchanged by the rename); one of `stc_sa_cli`'s seven
+  tuned $\boldsymbol{\phi}$ parameters instead, default search range
+  $[\texttt{phi-min-min-stable-iterations}, \texttt{phi-max-min-stable-iterations}]$ =
+  $[1, 5]$ by default (both bounds separately overridable, since the kernel documents no natural
+  upper bound here either). "Minimum number of accepted iterations required before a later
+  rejection counts as a stable stop rather than an immediate one." Higher values require an
+  ensemble to have grown successfully for longer before a rejection is trusted as "stopped
+  because it found its natural boundary" rather than "rejected immediately, probably never had
+  real structure to begin with" -- this distinction feeds directly into `ensemble_reconciliation`'s
+  own per-Stop-Condition filtering.
+- **`o`** -- CLI: `--o` (both CLIs, required, no kernel default, though this spec's own
+  worked example above suggests `10` as a sensible starting value -- a Fortran array bound
+  cannot depend on a possibly-absent optional argument, so this is always required at the API
+  level regardless). Valid range $[1, \infty)$ (integer). "Depth of the trailing
+  observable-history window retained per ensemble." A larger window keeps more of an ensemble's
+  growth trajectory available for reconciliation and reporting (e.g. the consecutive
+  tangent-space drift statistics, or `ensemble_final_observable`'s own backward scan for the
+  last genuinely-accepted state) at the cost of more memory per ensemble; too small a window
+  risks the one rejected-candidate push that precedes a stable stop evicting every accepted
+  entry the window ever held, the rare case `ensemble_final_observable` documents as
+  `ensemble_has_final = .false.`.
+
+## Reconciliation (`ensemble_reconciliation`)
+
+- **`mode`** -- CLI: `--reconciliation-mode` (both CLIs; **the kernel's own default is
+  report-only** (`MODE_REPORT`), but both CLIs override this at the flag-default level to
+  `merge_overlap_coefficient` -- a CLI-level choice, not the kernel's). One of `report` (compute
+  the overlap-coefficient matrix, merge nothing), `merge_overlap_coefficient` (merge ensemble
+  pairs whose Overlap Coefficient clears `min_overlap_coefficient` below), or `merge_any` (merge
+  on any nonempty intersection at all, ignoring the coefficient entirely). "How intersecting
+  ensembles are processed: report only, merge above a minimum Overlap Coefficient, or merge on
+  any intersection."
+- **`min_overlap_coefficient`** -- CLI: `--min-overlap-coefficient` (both CLIs, default `0.9`
+  -- fixed in `stc_sa_cli`). Valid range $[0, 1]$; only consulted in `merge_overlap_coefficient`
+  mode. "Minimum Overlap Coefficient required to merge two ensembles in
+  'merge_overlap_coefficient' mode. 0-1." Higher values demand near-total mutual containment
+  before merging (fewer, more conservative merges); lower values merge on comparatively slight
+  overlap (more, looser merges).
+- **`report_overlap_coefficient`** -- CLI: `--report-overlap-coefficient` (both CLIs, a flag,
+  default off). Whether to additionally compute and return each super-ensemble's own
+  merge-chain Overlap Coefficient sequence, beyond just performing the merge -- a reporting
+  cost/detail toggle, not a clustering-behavior parameter (turning it on never changes which
+  ensembles end up in which super-ensemble).
+- **`allowed_stop_reasons`** -- CLI: `--reconciliation-exclude-stop-reasons` (both CLIs,
+  default: none excluded -- note the CLI flag's sense is inverted from the internal boolean
+  array: the flag names Stop Conditions to *exclude*, which the CLI translates into an
+  all-true-except-those-named mask before calling the kernel). "Stop Conditions excluded from
+  `ensemble_reconciliation`'s own merging -- those ensembles still exist everywhere else in this
+  report, they just cannot join a super-ensemble or appear in the overlap-coefficient matrix."
+  Excluding a Stop Condition (e.g. `rejected_immediately`, ensembles that likely never had real
+  structure) keeps clearly-spurious ensembles out of super-ensembles without discarding them
+  from the run's other output entirely.
+- **`filter_dim_min` / `filter_dim_max`** -- CLI: `--filter-dim-min` / `--filter-dim-max` (both
+  CLIs, default: no lower/upper bound). Valid range $[0, D]$ each. "Minimum/maximum final
+  intrinsic dimension (inclusive) required for an ensemble to be eligible for merging. Ensembles
+  below/above this are still reported everywhere, just excluded from reconciliation." Distinct
+  from growth's own `d_max` above, which bounds dimension *drift* during growth, not the
+  *final* dimension's value -- narrowing this range excludes ensembles whose final estimated
+  dimension falls outside it from ever joining a super-ensemble, without touching growth itself.
+- **`var_explained_min`** (CLI flag: `filter_var_explained_min`) -- CLI:
+  `--filter-var-explained-min` (both CLIs, default: no filtering). Valid range $[0, 1]$.
+  "Minimum final classical variance explained (tangent eigenvalue energy / total energy)
+  required for an ensemble to be eligible for merging -- excludes ensembles that mostly 'learned
+  noise'." Raising it excludes progressively more ensembles whose final tangent-space fit
+  explains only a small fraction of their own local variance (weak evidence of real structure)
+  from participating in merging.
+- **`max_group_size`** -- **no CLI flag in either tool**: both `stc_cli` and `stc_sa_cli` always
+  compute $\min(1024, N_E)$ internally now. The kernel itself still requires this argument
+  explicitly (it sizes a Fortran array, the same reasoning as `o` above), so it has not been
+  removed from the pipeline -- only from both CLIs' public surface. "Maximum number of ensembles
+  one super-ensemble can hold." Deliberately dropped as a user-facing (and `stc_sa_cli`-tunable)
+  knob: at the scale of every dataset this pipeline has actually been run against, $N_E$ never
+  approaches 1024, so the auto-computed value never binds at all -- it is a pure Fortran-array-
+  sizing safety cap, not a parameter with any plausible *quality* upside from tuning (a smaller
+  cap can only ever split an otherwise-good large super-ensemble into pieces, never improve
+  anything).
+
+## Parameter estimation (`estimate_stc_parameters`)
+
+Also reuses `k_min`/`bandwidth_percentile` from "Seeding"/"Ensemble growth" above internally
+(same meaning, same valid ranges) -- not restated here. Note `estimate_stc_parameters`'s own
+`estimated_k_density` output has been removed entirely (it was always just a copy of
+`estimated_k_min`, never an independent estimate) rather than renamed, matching `k_density`'s
+own removal above.
+
+- **`n_anchors`** -- CLI: `--n-anchors` (both CLIs, default `5`). Valid range $[2, N]$ (integer).
+  Number of estimator anchors (EAs) whose own grown clouds are pairwise-compared to derive every
+  other estimated parameter. More anchors give a larger, more reliable comparison sample (more
+  pairs to estimate a percentile from) at proportionally higher cost (each anchor grows its own
+  cloud independently); very few anchors risk this SKG's own documented failure mode -- fewer
+  than 2 usable anchor clouds, or every usable pair sharing zero tangent rank -- becoming more
+  likely, a clean `ierr` (not a crash) rather than a wrong answer when it happens.
+- **`seed_max_set_size`** -- CLI: `--seed-max-set-size` (both CLIs, default `5.0`). Valid range
+  $[0, 100]$ (percent of $N$). Cap on total growth across *all* estimator-anchor clouds combined,
+  as a percentage of $N$. Raising it lets each anchor's cloud grow larger before the shared cap
+  halts further growth (a richer, more locally-informed sample per anchor, at higher cost);
+  lowering it keeps anchor clouds small and cheap, at the risk of them being too small to
+  usefully estimate a local tangent space from at all.
+- **`quantile_pairwise_ea_comparison`** -- CLI: `--quantile-pairwise-ea-comparison` (both CLIs, default
+  `25.0`, the first quartile). Valid range $[0, 100]$. Percentile of the pairwise-EA-comparison
+  distributions used to read off `chordal_dist_max_as_prcnt_of_range`/`G_max`/`d_max`'s
+  estimated values (and, via the shared percentile machinery, `k_min`/`density_quantile`'s own
+  medians). Raising it reads off a more permissive (larger) estimated
+  threshold from the same comparison sample; lowering it reads off a stricter (smaller) one --
+  `25.0` deliberately errs permissive (first-quartile, not median) since these become STC's own
+  acceptance thresholds, and a too-strict inherited threshold would reject genuinely-good growth
+  steps outright.
 
 # Command line interface (CLI) in C
 
@@ -1882,7 +2109,64 @@ $$
 (\phi_1,\phi_2,\ldots,\phi_p)
 $$
 
-denote the STC parameter vector.
+denote the STC parameter vector. Concretely, $p=7$ (revised from an earlier $p=5$: `k_density`
+has been abolished as a separate parameter -- see "STC parameter reference" above -- and
+`RMSE_change_max`/`radius_percentile`/`min_stable_iterations` joined $\boldsymbol{\phi}$ after
+initially being planned as fixed, non-tuned CLI values):
+
+$$
+\boldsymbol{\phi} = (k_{\min},\ \text{chordal\_dist\_max\_as\_prcnt\_of\_range},\ d_{\max},\ G_{\max},\ \text{RMSE\_change\_max},\ \text{radius\_percentile},\ \text{min\_stable\_iterations}).
+$$
+
+$k_{\min}$, `chordal_dist_max_as_prcnt_of_range`, $d_{\max}$, and $G_{\max}$ are exactly the
+four parameters `estimate_stc_parameters` can estimate *and* that a real STC run can actually
+consume back as an input (see "SKG `estimate_stc_parameters`" above) -- its own
+`density_quantile` output has no corresponding run parameter to feed it back into at all (it is
+estimation-only, reported and nothing else), so it is not part of $\boldsymbol{\phi}$.
+`RMSE_change_max`/`radius_percentile`/`min_stable_iterations` have no `estimate_stc_parameters`
+output at all, so the estimator-seeded chain starts these three at the midpoint of their own
+$[\phi_i^{\min},\phi_i^{\max}]$ range instead of an estimated value (see "Chain initialization"
+below).
+
+Every other parameter `ensemble_identification_merged`/`ensemble_reconciliation` need
+(`o`, `f_max`, `bandwidth_percentile`, `exclusion_radius_percentile`, and
+`ensemble_reconciliation`'s own mode/threshold arguments) is **not** tuned by SA -- it is
+supplied once, fixed, via `stc_sa_cli` flags, exactly as `stc_cli` already requires them (`o`
+has no kernel default and is always required; the rest default to the same values `stc_cli`
+itself defaults to). `reconciliation_mode` specifically is fixed at `merge_overlap_coefficient`
+(both CLIs' own shared default) for the whole SA run by deliberate choice, not merely because no
+mechanism exists to tune it -- `mode` is categorical, not continuous, and would need a genuinely
+different (discrete) proposal mechanism from the Gaussian-perturbation-and-reflect scheme below;
+that is future work, not yet built.
+
+Allowed ranges $[\phi_i^{\min},\phi_i^{\max}]$, shared across the whole benchmark suite for a joint run:
+
+| $\phi_i$ | $\phi_i^{\min}$ | $\phi_i^{\max}$ |
+|---|---|---|
+| $k_{\min}$ | 1 | $\min_s(N_s) - 1$ |
+| chordal_dist_max_as_prcnt_of_range | 0.0 | 1.0 |
+| $d_{\max}$ | 0 | `--phi-max-d-max` (CLI flag, default: the suite's shared `ambient_dim`) |
+| $G_{\max}$ | 0.0 | `--phi-max-g-max` (CLI flag, default: 5.0) |
+| RMSE_change_max | 0.0 | `--phi-max-rmse-change-max` (CLI flag, default: 5.0) |
+| radius_percentile | 0.0 | 100.0 (the kernel's own full valid range, no override flag needed) |
+| min_stable_iterations | `--phi-min-min-stable-iterations` (CLI flag, default: 1) | `--phi-max-min-stable-iterations` (CLI flag, default: 5) |
+
+where $N_s$ is dataset $s$'s own point count. $d_{\max}$, $G_{\max}$, and `RMSE_change_max` have
+no documented upper bound in the kernel itself (`d_max` is a bound on intrinsic-dimension
+*drift*, naturally capped by the ambient dimension; `G_max`/`RMSE_change_max` bound a log-ratio
+magnitude, which has no natural finite ceiling at all -- `G_max` does now carry a separate,
+much-more-generous epsilon-derived *safety* ceiling directly in the kernel, see "STC parameter
+reference" above, but that is not the practical SA search bound used here) -- these three
+therefore get an explicit, CLI-overridable default rather than an inferred one.
+`min_stable_iterations` has a documented kernel-side lower bound (1) but, like the other two, no
+upper bound, so both ends of its practical SA search range are separately CLI-overridable, with
+a narrower default range ($[1,5]$) than its full kernel-valid domain, since the *practical*
+range worth exploring is much narrower than "any positive integer." Because $d_{\max}$'s default
+depends on `ambient_dim`, and $k_{\min}$'s range depends on point counts that could differ
+wildly for datasets of different ambient dimension anyway, **every dataset in one `--input-dir`
+must share the same `ambient_dim`** -- `stc_sa_cli` rejects a directory mixing 2D and 3D
+benchmark files; run 2D and 3D suites (e.g. this repo's `data_json/2d/` and `data_json/3d/`) as
+separate invocations.
 
 Simulated annealing searches for
 
@@ -1898,7 +2182,7 @@ It combines broad exploration at high temperature with increasingly local optimi
 
 ## Chain initialization
 
-Each SA run launches multiple independent chains (see the CLI below), started from different initial parameter vectors so the search does not depend on a single starting point. Exactly one chain is always seeded with the output of `estimate_stc_parameters` -- for $m=1$, its estimate on that one dataset; for $m>1$, `estimate_stc_parameters` run separately on each dataset in the suite, with the resulting six-parameter estimates averaged component-wise into one starting $\boldsymbol{\phi}$. This chain is never randomly perturbed at initialization. Its purpose is as much diagnostic as exploratory: comparing where this chain's best-found $L$ ends up relative to the randomly-initialized chains directly measures whether `estimate_stc_parameters` already lands close to the SA optimum (parameter estimation is working) or far from it (parameter estimation needs revisiting). All remaining chains are initialized by drawing each $\phi_i$ independently and uniformly from its allowed range $[\phi_i^{\min},\phi_i^{\max}]$.
+Each SA run launches multiple independent chains (see the CLI below), started from different initial parameter vectors so the search does not depend on a single starting point. Exactly one chain is always seeded with the output of `estimate_stc_parameters` -- for $m=1$, its estimate on that one dataset; for $m>1$, `estimate_stc_parameters` run separately on each dataset in the suite, with the resulting four estimates that map onto $\boldsymbol{\phi}$ ($k_{\min}$, `chordal_dist_max_as_prcnt_of_range`, $d_{\max}$, $G_{\max}$ -- `density_quantile` is dropped, per above) averaged component-wise. The other three $\boldsymbol{\phi}$ components (`RMSE_change_max`, `radius_percentile`, `min_stable_iterations`) have no estimator output at all, so this chain starts them at the midpoint of their own $[\phi_i^{\min},\phi_i^{\max}]$ range instead. This chain is never randomly perturbed at initialization. Its purpose is as much diagnostic as exploratory: comparing where this chain's best-found $L$ ends up relative to the randomly-initialized chains directly measures whether `estimate_stc_parameters` already lands close to the SA optimum (parameter estimation is working) or far from it (parameter estimation needs revisiting). All remaining chains are initialized by drawing each $\phi_i$ independently and uniformly from its allowed range $[\phi_i^{\min},\phi_i^{\max}]$.
 
 ---
 
@@ -2250,6 +2534,10 @@ Use GNU argp, the same as `stc_cli`. JSON parsing uses `cJSON` (MIT-licensed), l
 * the SA hyperparameters ($T_0$, $\alpha$, $q$ or $q_{\min}/q_{\max}$, minimum temperature or maximum iteration count) as optional arguments with sensible defaults, following the same "expose the heuristic, do not hardcode it" convention as STC's own tunables.
 * a required RNG seed argument -- every chain's proposal draws and acceptance draws must be reproducible from this seed (plus the chain index, so chains do not share a stream), never from an unseeded global generator.
 * `--store-iteration-shatter-results`, optional, off by default -- see below.
+* `--phi-max-d-max`/`--phi-max-g-max`/`--phi-max-rmse-change-max`, optional, defaulting as in the $\boldsymbol{\phi}$ range table above -- the $\phi_i^{\max}$ values that have no value derivable from the kernel itself.
+* `--phi-min-min-stable-iterations`/`--phi-max-min-stable-iterations`, optional (defaults `1`/`5`) -- unlike the others above, both ends of this one are overridable, since the kernel's own valid domain has no natural upper bound and only a loose lower bound (any positive integer).
+* the fixed (non-$\boldsymbol{\phi}$) STC parameters `ensemble_identification_merged`/`ensemble_reconciliation` still need regardless of what SA is searching over: `--o` (required, no kernel default, exactly as in `stc_cli`), `--f-max`/`--bandwidth-percentile`/`--exclusion-radius-percentile` and `ensemble_reconciliation`'s own mode/threshold flags (all optional, defaulting to `stc_cli`'s own defaults) -- one fixed value per flag for the whole SA run, not one per chain or dataset. `max_group_size` has no flag at all in either CLI (see "STC parameter reference" above).
+* the `estimate_stc_parameters`-specific flags the estimator-seeded chain's initialization needs (`--n-anchors`/`--seed-max-set-size`/`--quantile-pairwise-ea-comparison`), optional, defaulting as in `stc_cli`.
 
 ## Benchmark dataset JSON schema
 
@@ -2334,3 +2622,43 @@ Optional flag, off by default. STC ("Shape Truthful Clustering" -- "SHATTER" is 
 This reuses `stc_cli`'s existing output-writing call path unchanged, just invoked once per (chain, dataset, iteration) instead of once per CLI invocation -- wiring, not new serialization logic, so it does not meaningfully add code complexity.
 
 It does add real cost, and not only disk space: `tox_stc_html_assets.F90` embeds the full D3 bundle and report template (currently ~8.8MB as Fortran source), and `write_stc_interactive_html_report` re-embeds that same static bundle into every report it writes. Doing that once per iteration -- potentially thousands of iterations across chains and datasets -- means writing the identical multi-megabyte bundle over and over, which costs wall-clock time in the SA loop itself, not just space afterward. `--store-iteration-shatter-results` therefore always writes only the JSON and CSV companions per iteration, never the standalone HTML report. A future bulk-loading version of the interactive D3 visualization (loading many iterations' worth of JSON at once, rather than one self-contained HTML file per iteration) is the intended way to browse these per-iteration results -- out of scope here, tracked as follow-up work once this CLI exists.
+
+# To Do
+
+Deliberately deferred items, tracked here rather than acted on immediately, so they are not
+lost and are not confused with settled design decisions elsewhere in this spec.
+
+- **Percentile -> quantile refactor.** Every `*_percentile` parameter (`bandwidth_percentile`,
+  `exclusion_radius_percentile`, `radius_percentile`, `quantile_pairwise_ea_comparison`) is currently
+  expressed on a $[0,100]$ scale; the intent is to eventually rename them off "percentile" and
+  rescale them to $[0,1]$ "quantile" values throughout -- Fortran `_impl` arguments and their
+  `DM_MIN`/`DM_MAX`/`DM_DEFAULT` annotations, the generated C/Python/R bindings, both CLIs'
+  flags, and every mention in this spec. Two open questions to settle before starting: (1) the
+  exact new names (straightforward `*_quantile` suffixes, e.g. `bandwidth_quantile`, are the
+  working assumption but not yet confirmed), and (2) whether `seed_max_set_size` -- percent-
+  flavored but not literally named `*_percentile` -- should be pulled into the same rescale for
+  consistency, or left as a $[0,100]$ percentage since its name doesn't say "percentile". This is
+  a large, cross-cutting rename touching hand-written Fortran, every regenerated binding, both
+  CLIs, and every existing Fortran/Python/R test that references any of these parameters --
+  sequence it as its own dedicated pass, not folded into unrelated work.
+- **Stage-prefix naming convention.** Prefixing reconciliation's own parameters (`mode`,
+  `min_overlap_coefficient`, `report_overlap_coefficient`, `allowed_stop_reasons`,
+  `filter_dim_min`, `filter_dim_max`, `var_explained_min`) and parameter-estimation's own
+  (`n_anchors`, `seed_max_set_size`, and the renamed quantile parameter above) by pipeline stage
+  was raised as a way to make collisions-in-spirit (e.g. growth's `d_max`, a drift bound, vs.
+  reconciliation's `filter_dim_max`, a final-value bound -- already called out explicitly in "STC
+  parameter reference" above) structurally impossible rather than merely documented. Not yet
+  actioned: neither the exact prefix spellings nor the precise scope (which parameters get a
+  prefix) has been confirmed.
+- **`n_anchors`/`seed_max_set_size` scaling law.** Both are currently fixed absolute defaults (5
+  and 5.0 respectively) independent of $N$, and there is reason to think each is wrong in a
+  *different* direction as $N$ grows: `n_anchors` is a raw count with no relationship to $N$ at
+  all, even though a larger, more diverse dataset plausibly needs more anchors to adequately
+  sample it (the existing "anchors chosen by density quantile alone, no spatial-spread guarantee"
+  caveat gets worse, not better, as $N$ grows); `seed_max_set_size`, by contrast, is already a
+  *percentage* of $N$, which means its absolute effect scales with $N$ without bound, even though
+  the underlying task each anchor cloud serves -- characterizing a *local* tangent space -- is an
+  inherently local, roughly $N$-independent estimation problem, so a large dataset may not need a
+  bigger per-anchor cloud, only more of them. Left untouched for now; a future revisit should
+  treat these as a genuine multi-objective tradeoff (sampling breadth vs. cost) rather than
+  attempt a single "obviously correct" scaling formula for either.

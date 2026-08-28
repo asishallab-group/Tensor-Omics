@@ -42,7 +42,7 @@ fixture_c <- function() {
 test_natural_fixed_point <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 4)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 4)
 
   assert_true(res$stop_reason == STOP_REASON_FIXED_POINT)
   assert_true(abs(res$growth_radius - 1.0) < 1e-9)
@@ -75,7 +75,7 @@ test_natural_fixed_point <- function() {
 test_history_window_shifts <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 2)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 2)
 
   assert_true(res$stop_reason == STOP_REASON_FIXED_POINT)
   assert_true(all(res$k_history == c(4, 5)))
@@ -85,7 +85,7 @@ test_history_window_shifts <- function() {
 test_max_size_at_bootstrap <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, f_max = 0.2, o = 3)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, f_max = 0.2, o = 3)
 
   assert_true(res$stop_reason == STOP_REASON_MAX_SIZE)
   assert_true(!any(res$final_ensemble_mask))
@@ -102,7 +102,7 @@ test_max_size_at_bootstrap <- function() {
 test_max_size_poisons_prior_accepts <- function() {
   fx <- fixture_a()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, f_max = 0.35, o = 3)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, f_max = 0.35, o = 3)
 
   assert_true(res$stop_reason == STOP_REASON_MAX_SIZE)
   assert_true(!any(res$final_ensemble_mask))
@@ -124,7 +124,7 @@ test_max_size_poisons_prior_accepts <- function() {
 test_rejected_immediately <- function() {
   fx <- fixture_b()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 2)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 2)
 
   assert_true(res$stop_reason == STOP_REASON_REJECTED_IMMEDIATELY)
 
@@ -144,7 +144,7 @@ test_rejected_immediately <- function() {
 test_rejected_after_stable <- function() {
   fx <- fixture_c()
   res <- ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 3)
+                                 chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 3)
 
   assert_true(res$stop_reason == STOP_REASON_REJECTED_AFTER_STABLE)
 
@@ -164,14 +164,14 @@ test_rejected_after_stable <- function() {
 test_seed_index_out_of_range <- function() {
   fx <- fixture_a()
   assert_error(ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 8, k_min = 1,
-                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 3),
+                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 3),
                "Expected error for seed_index > n_vectors", ERR_INVALID_INPUT)
 }
 
 test_o_zero <- function() {
   fx <- fixture_a()
   assert_error(ensemble_identification(fx$vectors, fx$kd_indices, fx$dimension_order, 1, k_min = 1,
-                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 0),
+                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 0),
                "Expected error for o=0", ERR_INVALID_INPUT)
 }
 
@@ -181,7 +181,7 @@ test_n_dimensions_too_small <- function() {
   kd_indices <- build_kd_index(vectors, dimension_order)
 
   assert_error(ensemble_identification(vectors, kd_indices, dimension_order, 1, k_min = 1,
-                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 1e10, RMSE_change_max = 1e10, o = 3),
+                                       chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 0, G_max = 70, RMSE_change_max = 1e10, o = 3),
                "Expected error for n_dimensions=1", ERR_INVALID_INPUT)
 }
 

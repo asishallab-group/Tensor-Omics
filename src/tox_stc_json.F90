@@ -86,13 +86,13 @@ contains
                                              ensemble_low_confidence_masks, &
                                              ensemble_U_first, ensemble_d_first, &
                                              super_ensembles, &
-                                             k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
-                                             RMSE_change_max, f_max, a, exclusion_radius_percentile, &
+                                             k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
+                                             RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, &
                                              bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
                                              filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
-                                             estimated_k_min, estimated_k_density, estimated_density_quantile, &
+                                             estimated_k_min, estimated_density_quantile, &
                                              estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, &
                                              estimated_d_max, &
                                              ierr)
@@ -155,8 +155,6 @@ contains
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(int32), intent(in), target :: k_min
             !! This run's neighborhood size for each seed's growth radius
-        integer(int32), intent(in), target :: k_density
-            !! This run's density estimation neighborhood size
         real(real64), intent(in), target :: chordal_dist_max_as_prcnt_of_range
             !! This run's maximum tolerated chordal distance between tangent bases
         integer(int32), intent(in), target :: d_max
@@ -167,8 +165,10 @@ contains
             !! This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
         real(real64), intent(in), target :: f_max
             !! This run's ensemble size fraction of N above which growth is abandoned
-        integer(int32), intent(in), target :: a
+        integer(int32), intent(in), target :: min_stable_iterations
             !! This run's minimum accepted-iteration count for a stable rejection
+        real(real64), intent(in), target :: radius_percentile
+            !! This run's growth-radius percentile
         real(real64), intent(in), target :: exclusion_radius_percentile
             !! This run's seeding exclusion radius percentile
         real(real64), intent(in), target :: bandwidth_percentile
@@ -212,8 +212,6 @@ contains
             !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(int32), intent(in), optional, target :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-        integer(int32), intent(in), optional, target :: estimated_k_density
-            !! `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
         real(real64), intent(in), optional, target :: estimated_density_quantile
             !! `estimate_stc_parameters`'s proposed density quantile, if estimation was used
         real(real64), intent(in), optional, target :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -249,12 +247,12 @@ contains
             ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, &
             ensemble_U_first, ensemble_d_first, &
             super_ensembles, &
-            k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, &
+            k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, &
             exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
                                              filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
-            estimated_k_min, estimated_k_density, estimated_density_quantile, &
+            estimated_k_min, estimated_density_quantile, &
             estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, estimated_d_max, ierr)
 
         close (unit)
@@ -277,13 +275,13 @@ contains
                                                  ensemble_low_confidence_masks, &
                                                  ensemble_U_first, ensemble_d_first, &
                                                  super_ensembles, &
-                                                 k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
-                                                 RMSE_change_max, f_max, a, exclusion_radius_percentile, &
+                                                 k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
+                                                 RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, &
                                                  bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
                                              filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
-                                                 estimated_k_min, estimated_k_density, estimated_density_quantile, &
+                                                 estimated_k_min, estimated_density_quantile, &
                                                  estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, &
                                                  estimated_d_max, &
                                                  ierr)
@@ -346,8 +344,6 @@ contains
             !! One super-ensemble per column, 0-padded, see `ensemble_reconciliation`
         integer(int32), intent(in), target :: k_min
             !! This run's neighborhood size for each seed's growth radius
-        integer(int32), intent(in), target :: k_density
-            !! This run's density estimation neighborhood size
         real(real64), intent(in), target :: chordal_dist_max_as_prcnt_of_range
             !! This run's maximum tolerated chordal distance between tangent bases
         integer(int32), intent(in), target :: d_max
@@ -358,8 +354,10 @@ contains
             !! This run's maximum tolerated |log(RMSE_tp1/RMSE_t)|
         real(real64), intent(in), target :: f_max
             !! This run's ensemble size fraction of N above which growth is abandoned
-        integer(int32), intent(in), target :: a
+        integer(int32), intent(in), target :: min_stable_iterations
             !! This run's minimum accepted-iteration count for a stable rejection
+        real(real64), intent(in), target :: radius_percentile
+            !! This run's growth-radius percentile
         real(real64), intent(in), target :: exclusion_radius_percentile
             !! This run's seeding exclusion radius percentile
         real(real64), intent(in), target :: bandwidth_percentile
@@ -403,8 +401,6 @@ contains
             !! See `ensemble_reconciliation`'s own `eligible_by_var_explained`
         integer(int32), intent(in), optional, target :: estimated_k_min
             !! `estimate_stc_parameters`'s proposed `k_min`, if estimation was used
-        integer(int32), intent(in), optional, target :: estimated_k_density
-            !! `estimate_stc_parameters`'s proposed `k_density`, if estimation was used
         real(real64), intent(in), optional, target :: estimated_density_quantile
             !! `estimate_stc_parameters`'s proposed density quantile, if estimation was used
         real(real64), intent(in), optional, target :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -446,12 +442,12 @@ contains
             ensemble_accepted_history, ensemble_member_added_at_step, ensemble_low_confidence_masks, &
             ensemble_U_first, ensemble_d_first, &
             super_ensembles, &
-            k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, a, &
+            k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, RMSE_change_max, f_max, min_stable_iterations, radius_percentile, &
             exclusion_radius_percentile, bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
                                              filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
-            estimated_k_min, estimated_k_density, estimated_density_quantile, &
+            estimated_k_min, estimated_density_quantile, &
             estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, estimated_d_max, ierr)
 
         write (unit, "(A)", advance="no") REPORT_TEMPLATE_TAIL
@@ -579,13 +575,13 @@ contains
                                             ensemble_low_confidence_masks, &
                                             ensemble_U_first, ensemble_d_first, &
                                             super_ensembles, &
-                                            k_min, k_density, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
-                                            RMSE_change_max, f_max, a, exclusion_radius_percentile, &
+                                            k_min, chordal_dist_max_as_prcnt_of_range, d_max, G_max, &
+                                            RMSE_change_max, f_max, min_stable_iterations, radius_percentile, exclusion_radius_percentile, &
                                             bandwidth_percentile, reconciliation_mode, min_overlap_coefficient, allowed_stop_reasons, &
                                              filter_dim_min, filter_dim_max, filter_var_explained_min, &
                                              ensemble_eligible, ensemble_eligible_by_stop_condition, &
                                              ensemble_eligible_by_dimension, ensemble_eligible_by_var_explained, &
-                                            estimated_k_min, estimated_k_density, estimated_density_quantile, &
+                                            estimated_k_min, estimated_density_quantile, &
                                             estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, &
                                             estimated_d_max, ierr)
         integer(int32), intent(in) :: unit
@@ -614,13 +610,13 @@ contains
         integer(int32), intent(in) :: ensemble_d_first(n_selected_seed)
         integer(int32), intent(in), target :: super_ensembles(max_group_size, n_selected_seed*(n_selected_seed - 1))
         integer(int32), intent(in), target :: k_min
-        integer(int32), intent(in), target :: k_density
         real(real64), intent(in), target :: chordal_dist_max_as_prcnt_of_range
         integer(int32), intent(in), target :: d_max
         real(real64), intent(in), target :: G_max
         real(real64), intent(in), target :: RMSE_change_max
         real(real64), intent(in), target :: f_max
-        integer(int32), intent(in), target :: a
+        integer(int32), intent(in), target :: min_stable_iterations
+        real(real64), intent(in), target :: radius_percentile
         real(real64), intent(in), target :: exclusion_radius_percentile
         real(real64), intent(in), target :: bandwidth_percentile
         integer(int32), intent(in) :: reconciliation_mode
@@ -634,7 +630,6 @@ contains
         logical(c_bool), intent(in) :: ensemble_eligible_by_dimension(n_selected_seed)
         logical(c_bool), intent(in) :: ensemble_eligible_by_var_explained(n_selected_seed)
         integer(int32), intent(in), optional, target :: estimated_k_min
-        integer(int32), intent(in), optional, target :: estimated_k_density
         real(real64), intent(in), optional, target :: estimated_density_quantile
         real(real64), intent(in), optional, target :: estimated_chordal_dist_max_as_prcnt_of_range
         real(real64), intent(in), optional, target :: estimated_G_max
@@ -800,8 +795,6 @@ contains
         n_params = 0
         n_params = n_params + 1; param_keys(n_params) = 'k_min'
         param_values(n_params)%value => k_min
-        n_params = n_params + 1; param_keys(n_params) = 'k_density'
-        param_values(n_params)%value => k_density
         n_params = n_params + 1; param_keys(n_params) = 'chordal_dist_max_as_prcnt_of_range'
         param_values(n_params)%value => chordal_dist_max_as_prcnt_of_range
         n_params = n_params + 1; param_keys(n_params) = 'd_max'
@@ -812,8 +805,10 @@ contains
         param_values(n_params)%value => RMSE_change_max
         n_params = n_params + 1; param_keys(n_params) = 'f_max'
         param_values(n_params)%value => f_max
-        n_params = n_params + 1; param_keys(n_params) = 'a'
-        param_values(n_params)%value => a
+        n_params = n_params + 1; param_keys(n_params) = 'min_stable_iterations'
+        param_values(n_params)%value => min_stable_iterations
+        n_params = n_params + 1; param_keys(n_params) = 'radius_percentile'
+        param_values(n_params)%value => radius_percentile
         n_params = n_params + 1; param_keys(n_params) = 'o'
         param_values(n_params)%value => o
         n_params = n_params + 1; param_keys(n_params) = 'exclusion_radius_percentile'
@@ -864,10 +859,6 @@ contains
         if (present(estimated_k_min)) then
             n_params = n_params + 1; param_keys(n_params) = 'estimated_k_min'
             param_values(n_params)%value => estimated_k_min
-        end if
-        if (present(estimated_k_density)) then
-            n_params = n_params + 1; param_keys(n_params) = 'estimated_k_density'
-            param_values(n_params)%value => estimated_k_density
         end if
         if (present(estimated_density_quantile)) then
             n_params = n_params + 1; param_keys(n_params) = 'estimated_density_quantile'

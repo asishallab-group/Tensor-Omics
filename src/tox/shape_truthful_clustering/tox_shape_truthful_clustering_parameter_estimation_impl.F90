@@ -3,7 +3,7 @@
 !> # Shape Truthful Clustering (STC): Parameter Estimation
 !|
 !| A separate, optional pipeline step estimating near-optimal starting values for the crucial
-!| parameters (`k_min`, `k_density`, `density_quantile`,
+!| parameters (`k_min`, `density_quantile`,
 !| `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
 !| fraction of the cost of a grid search or a
 !| resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local
@@ -43,7 +43,7 @@ module tox_shape_truthful_clustering_parameter_estimation_impl
 
 #define CM_N_ANCHORS_DEFAULT 5_int32
 #define CM_SEED_MAX_SET_SIZE_DEFAULT 5.0_real64
-#define CM_FIRST_QUARTILE_PERCENTILE_DEFAULT 25.0_real64
+#define CM_QUANTILE_PAIRWISE_EA_COMPARISON_DEFAULT 25.0_real64
 
     private
     public :: sample_estimator_anchors_impl
@@ -233,7 +233,7 @@ contains
 
     end subroutine tox_stc_estimate_parameters_svd_workspace
 
-    !> summary: Estimate k_min, k_density, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
+    !> summary: Estimate k_min, density_quantile, chordal_dist_max_as_prcnt_of_range, G_max, d_max from the data
     !| AUTHOR_ASIS_HALLAB
     !| Orchestrates density_labels -> sample_estimator_anchors -> grow_estimator_anchor_clouds
     !| -> observable (once per EA) -> pairwise EA comparisons -> aggregation. See
@@ -250,15 +250,15 @@ contains
     !| n_vectors/n_anchors/seed_max_set_size in isolation) -- see `codegen_guide.md` section
     !| 5.14.
     pure subroutine estimate_stc_parameters_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                                   k_density, bandwidth_percentile, &
-                                                   n_anchors, seed_max_set_size, first_quartile_percentile, &
+                                                   k_min, bandwidth_percentile, &
+                                                   n_anchors, seed_max_set_size, quantile_pairwise_ea_comparison, &
                                                    lwork_observable, iwork_size, lwork_angle, &
                                                    tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                                    tmp_density_labels, tmp_anchor_indices, &
                                                    tmp_cloud_masks, tmp_cloud_sizes, &
                                                    tmp_y, tmp_s, tmp_u_econ, tmp_vt_econ, tmp_work, tmp_iwork, &
                                                    tmp_angle_m, tmp_angle_s, tmp_angle_work, &
-                                                   estimated_k_min, estimated_k_density, estimated_density_quantile, &
+                                                   estimated_k_min, estimated_density_quantile, &
                                                    estimated_chordal_dist_max_as_prcnt_of_range, estimated_G_max, &
                                                    estimated_d_max, ierr)
         integer(int32), intent(in) :: n_dimensions
@@ -279,7 +279,7 @@ contains
             !! Dimension order used to build `kd_indices`
             !! DM_MIN(1_int32)
             !! DM_MAX(n_dimensions)
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Passed through to density_labels
             !! DM_MIN(1_int32)
             !! DM_MAX(n_vectors - 1_int32)
@@ -297,12 +297,12 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
             !! DM_DEFAULT(CM_SEED_MAX_SET_SIZE_DEFAULT)
-        real(real64), intent(in), optional :: first_quartile_percentile
+        real(real64), intent(in), optional :: quantile_pairwise_ea_comparison
             !! Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
             !! chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
             !! DM_MIN(0.0_real64)
             !! DM_MAX(100.0_real64)
-            !! DM_DEFAULT(CM_FIRST_QUARTILE_PERCENTILE_DEFAULT)
+            !! DM_DEFAULT(CM_QUANTILE_PAIRWISE_EA_COMPARISON_DEFAULT)
         integer(int32), intent(in) :: lwork_observable
             !! Size of tmp_work
             !! DM_OUTPUT_FROM(lwork_observable, tox_stc_estimate_parameters_svd_workspace, tox_shape_truthful_clustering_parameter_estimation_impl, AUTO)
@@ -348,8 +348,6 @@ contains
             !! Workspace: LAPACK dgesvd scratch for the principal-angle SVD
         real(real64), intent(out) :: estimated_k_min
             !! Estimated k_min (real-valued; round for direct use as an integer argument)
-        real(real64), intent(out) :: estimated_k_density
-            !! Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         real(real64), intent(out) :: estimated_density_quantile
             !! Estimated density_quantile -- a literal radius (data units), not a percentile
         real(real64), intent(out) :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -363,7 +361,7 @@ contains
 
         integer(int32) :: actual_n_anchors, e, i, j, k, n_valid, d_common, info
         real(real64)   :: u_dummy(1, 1), vt_dummy(1, 1)
-        real(real64)   :: actual_first_quartile_percentile
+        real(real64)   :: actual_quantile_pairwise_ea_comparison
         real(real64)   :: k_vals(n_vectors), dist_vals(n_vectors), median_dist_vals(n_vectors)
         integer(int32) :: d_vals(n_vectors)
         real(real64)   :: G_vals(n_vectors)
@@ -388,10 +386,10 @@ contains
         ! than 5 points who omits n_anchors would otherwise reach tmp_anchor_indices(1:5) below,
         ! past the end of a workspace array sized n_vectors.
         actual_n_anchors = min(actual_n_anchors, n_vectors)
-        M_DEFAULT_VAL(first_quartile_percentile, actual_first_quartile_percentile, CM_FIRST_QUARTILE_PERCENTILE_DEFAULT)
+        M_DEFAULT_VAL(quantile_pairwise_ea_comparison, actual_quantile_pairwise_ea_comparison, CM_QUANTILE_PAIRWISE_EA_COMPARISON_DEFAULT)
 
         call density_labels_impl(vectors, n_dimensions, n_vectors, kd_indices, dimension_order, &
-                                   k_density, bandwidth_percentile, &
+                                   k_min, bandwidth_percentile, &
                                    tmp_neighbors, tmp_distances, tmp_range_stack, tmp_sort_perm, &
                                    tmp_density_labels)
 
@@ -446,14 +444,13 @@ contains
         call init_perm(k_perm(1:n_valid))
         call sort_real_heapsort(k_vals(1:n_valid), k_perm(1:n_valid))
         call calc_percentile_impl(k_vals(1:n_valid), n_valid, k_perm(1:n_valid), 0.5_real64, estimated_k_min)
-        estimated_k_density = estimated_k_min
 
         call init_perm(dist_perm(1:n_valid))
         call sort_real_heapsort(median_dist_vals(1:n_valid), dist_perm(1:n_valid))
         call calc_percentile_impl(median_dist_vals(1:n_valid), n_valid, dist_perm(1:n_valid), 0.5_real64, &
                                   estimated_density_quantile)
 
-        ! --- Aggregation: first_quartile_percentile over all pairs of the n_valid EAs -------
+        ! --- Aggregation: quantile_pairwise_ea_comparison over all pairs of the n_valid EAs -------
         n_pairs         = 0
         n_chordal_pairs = 0
         do i = 1, n_valid - 1
@@ -497,23 +494,23 @@ contains
             return
         end if
 
-        ! calc_percentile_impl takes its percentile as a [0,1] fraction; first_quartile_percentile
+        ! calc_percentile_impl takes its percentile as a [0,1] fraction; quantile_pairwise_ea_comparison
         ! is documented and validated as 0-100, so it is rescaled at each call site below.
         call init_perm(pair_perm(1:n_chordal_pairs))
         call sort_real_heapsort(chordal_vals(1:n_chordal_pairs), pair_perm(1:n_chordal_pairs))
         call calc_percentile_impl(chordal_vals(1:n_chordal_pairs), n_chordal_pairs, pair_perm(1:n_chordal_pairs), &
-                                  actual_first_quartile_percentile/100.0_real64, &
+                                  actual_quantile_pairwise_ea_comparison/100.0_real64, &
                                   estimated_chordal_dist_max_as_prcnt_of_range)
 
         call init_perm(pair_perm(1:n_pairs))
         call sort_real_heapsort(g_ratio_vals(1:n_pairs), pair_perm(1:n_pairs))
         call calc_percentile_impl(g_ratio_vals(1:n_pairs), n_pairs, pair_perm(1:n_pairs), &
-                                  actual_first_quartile_percentile/100.0_real64, estimated_G_max)
+                                  actual_quantile_pairwise_ea_comparison/100.0_real64, estimated_G_max)
 
         call init_perm(pair_perm(1:n_pairs))
         call sort_real_heapsort(d_diff_vals(1:n_pairs), pair_perm(1:n_pairs))
         call calc_percentile_impl(d_diff_vals(1:n_pairs), n_pairs, pair_perm(1:n_pairs), &
-                                  actual_first_quartile_percentile/100.0_real64, estimated_d_max)
+                                  actual_quantile_pairwise_ea_comparison/100.0_real64, estimated_d_max)
 
     end subroutine estimate_stc_parameters_impl
 

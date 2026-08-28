@@ -65,7 +65,8 @@ contains
             G_max,&
             RMSE_change_max,&
             f_max,&
-            a,&
+            min_stable_iterations,&
+            radius_percentile,&
             o,&
             final_ensemble_mask,&
             stop_reason,&
@@ -124,8 +125,24 @@ contains
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
         real(c_double), intent(in), target :: G_max
-            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+            !! `RMSE_change_max`'s own documented default (see there): both are a bound on
+            !! `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+            !! `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+            !! applied to the same mathematical shape. The upper bound below is a
+            !! deliberately generous safety ceiling, not a meaningful tuning bound:
+            !! `G_max`/`RMSE_change_max`
+            !! are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+            !! quantities kept strictly positive by an `epsilon(1.0_real64)` guard (see
+            !! `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+            !! denominator of that ratio are bounded below by machine epsilon, no achievable
+            !! ratio's `|log|` can exceed `2*|log(epsilon(1.0_real64))|` (~72.09 for `real64`);
+            !! above that, the criterion is provably vacuous (can never reject) regardless of
+            !! input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+            !! constrain legitimate tuning.
             !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `72.0_real64`.
+            !! The default value is `0.405465108108164_real64`.
         real(c_double), intent(in), target :: RMSE_change_max
             !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
@@ -134,11 +151,20 @@ contains
             !! The minimum valid value is `above(0.0_real64)`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
-        integer(c_int), intent(in), target :: a
+        integer(c_int), intent(in), target :: min_stable_iterations
             !! Minimum accepted-iteration count for a later rejection to count as "stable", see
-            !! Stop Condition 2
+            !! Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+            !! unchanged
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
+        real(c_double), intent(in), target :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+            !! kernel's own default (50.0, the median) since this parent never passed it
+            !! through; now a real, tunable pass-through
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         logical(c_bool), dimension(n_vectors), intent(out), target :: final_ensemble_mask
             !! The last accepted ensemble's membership. All `.false.` when `stop_reason` is
             !! `STOP_REASON_MAX_SIZE` -- see Stop Condition 1.
@@ -211,7 +237,8 @@ contains
         M_CHECK_NON_NULL(G_max)
         M_CHECK_NON_NULL(RMSE_change_max)
         M_CHECK_NON_NULL(f_max)
-        M_CHECK_NON_NULL(a)
+        M_CHECK_NON_NULL(min_stable_iterations)
+        M_CHECK_NON_NULL(radius_percentile)
         M_CHECK_NON_NULL(o)
         M_CHECK_NON_NULL(stop_reason)
         M_CHECK_NON_NULL(growth_radius)
@@ -244,7 +271,8 @@ contains
             G_max = G_max,&
             RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
-            a = a,&
+            min_stable_iterations = min_stable_iterations,&
+            radius_percentile = radius_percentile,&
             o = o,&
             final_ensemble_mask = final_ensemble_mask,&
             stop_reason = stop_reason,&
@@ -297,7 +325,8 @@ contains
             G_max,&
             RMSE_change_max,&
             f_max,&
-            a,&
+            min_stable_iterations,&
+            radius_percentile,&
             o,&
             ensemble_masks,&
             ensemble_stop_reason,&
@@ -357,8 +386,24 @@ contains
             !! Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
             !! The minimum valid value is `0_int32`.
         real(c_double), intent(in), target :: G_max
-            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+            !! Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+            !! `RMSE_change_max`'s own documented default (see there): both are a bound on
+            !! `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+            !! `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+            !! applied to the same mathematical shape. The upper bound below is a
+            !! deliberately generous safety ceiling, not a meaningful tuning bound:
+            !! `G_max`/`RMSE_change_max`
+            !! are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+            !! quantities kept strictly positive by an `epsilon(1.0_real64)` guard (see
+            !! `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+            !! denominator of that ratio are bounded below by machine epsilon, no achievable
+            !! ratio's `|log|` can exceed `2*|log(epsilon(1.0_real64))|` (~72.09 for `real64`);
+            !! above that, the criterion is provably vacuous (can never reject) regardless of
+            !! input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+            !! constrain legitimate tuning.
             !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `72.0_real64`.
+            !! The default value is `0.405465108108164_real64`.
         real(c_double), intent(in), target :: RMSE_change_max
             !! Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
             !! The minimum valid value is `0.0_real64`.
@@ -367,11 +412,20 @@ contains
             !! The minimum valid value is `above(0.0_real64)`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95_real64`.
-        integer(c_int), intent(in), target :: a
+        integer(c_int), intent(in), target :: min_stable_iterations
             !! Minimum accepted-iteration count for a later rejection to count as "stable", see
-            !! Stop Condition 2
+            !! Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+            !! unchanged
             !! The minimum valid value is `1_int32`.
             !! The default value is `2_int32`.
+        real(c_double), intent(in), target :: radius_percentile
+            !! Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+            !! radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+            !! kernel's own default (50.0, the median) since this parent never passed it
+            !! through; now a real, tunable pass-through
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `50.0_real64`.
         logical(c_bool), dimension(n_vectors, n_selected_seed), intent(out), target :: ensemble_masks
             !! Per-ensemble accepted membership, one column per seed, see `final_ensemble_mask`
         integer(c_int), dimension(n_selected_seed), intent(out), target :: ensemble_stop_reason
@@ -415,7 +469,8 @@ contains
         M_CHECK_NON_NULL(G_max)
         M_CHECK_NON_NULL(RMSE_change_max)
         M_CHECK_NON_NULL(f_max)
-        M_CHECK_NON_NULL(a)
+        M_CHECK_NON_NULL(min_stable_iterations)
+        M_CHECK_NON_NULL(radius_percentile)
         M_CHECK_NON_NULL(o)
         M_CHECK_ARRAY_NON_NULL(vectors, n_dimensions * n_vectors)
         M_CHECK_ARRAY_NON_NULL(kd_indices, n_vectors)
@@ -450,7 +505,8 @@ contains
             G_max = G_max,&
             RMSE_change_max = RMSE_change_max,&
             f_max = f_max,&
-            a = a,&
+            min_stable_iterations = min_stable_iterations,&
+            radius_percentile = radius_percentile,&
             o = o,&
             ensemble_masks = ensemble_masks,&
             ensemble_stop_reason = ensemble_stop_reason,&

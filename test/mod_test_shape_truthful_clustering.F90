@@ -85,7 +85,7 @@ contains
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=4_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=4_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -145,7 +145,7 @@ contains
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=2_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=2_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -180,7 +180,7 @@ contains
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, f_max=0.2d0, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, f_max=0.2d0, &
                                      o=3_int32, final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -228,7 +228,7 @@ contains
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, f_max=0.35d0, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, f_max=0.35d0, &
                                      o=3_int32, final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -310,7 +310,7 @@ contains
         call build_fixture_b(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 3_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=2_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=2_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -385,7 +385,7 @@ contains
         call build_fixture_c(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 3_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=3_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=3_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -435,7 +435,7 @@ contains
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 8_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=3_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=3_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -460,7 +460,7 @@ contains
         call build_fixture_a(vectors, kd_indices, dim_order)
 
         call ensemble_identification(vectors, 2_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=0_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=0_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &
@@ -494,7 +494,7 @@ contains
         end if
 
         call ensemble_identification(vectors, 1_int32, 7_int32, kd_indices, dim_order, 1_int32, &
-                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=1.0d10, RMSE_change_max=1.0d10, o=3_int32, &
+                                     k_min=1_int32, chordal_dist_max_as_prcnt_of_range=0.1d0, d_max=0_int32, G_max=70.0d0, RMSE_change_max=1.0d10, o=3_int32, &
                                      final_ensemble_mask=final_ensemble_mask, stop_reason=stop_reason, &
                                      growth_radius=growth_radius, U_history=U_history, S_history=S_history, &
                                      d_history=d_history, G_history=G_history, mu_history=mu_history, &

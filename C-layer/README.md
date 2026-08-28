@@ -88,12 +88,12 @@ Broadly:
 ### `--estimate-parameters`
 
 Runs `estimate_stc_parameters` first and applies its own
-`k_min`/`k_density`/`chordal_dist_max_as_prcnt_of_range`/`G_max`/`d_max` as this run's actual
+`k_min`/`chordal_dist_max_as_prcnt_of_range`/`G_max`/`d_max` as this run's actual
 parameters (its own `density_quantile` output has no run parameter to apply to; it is only
 ever reported, as `estimated_density_quantile` in the JSON). Supplying any of
-`--k-min`/`--k-density`/`--chordal-dist-max-as-prcnt-of-range`/`--g-max`/`--d-max` together
+`--k-min`/`--chordal-dist-max-as-prcnt-of-range`/`--g-max`/`--d-max` together
 with `--estimate-parameters` is a validation error -- pick estimation or manual values, never
-both. `--n-anchors`/`--seed-max-set-size`/`--first-quartile-percentile` tune the estimation
+both. `--n-anchors`/`--seed-max-set-size`/`--quantile-pairwise-ea-comparison` tune the estimation
 step itself and are only meaningful in this mode.
 
 ```bash

@@ -13,7 +13,7 @@ line_fixture <- function(n = 11) {
 # =====================
 # density_labels
 # =====================
-# 3 points on a line, (0,0),(1,0),(3,0), k_density=2 (every other point). Bandwidth is the
+# 3 points on a line, (0,0),(1,0),(3,0), k_min=2 (every other point). Bandwidth is the
 # bandwidth_percentile-th percentile (default 68.27, the heuristic "1 SD" anchor) of each
 # point's own k-NN distances, via calc_percentile_helper. Hand-computed (and cross-checked
 # against an independent Python re-implementation of the same formula) expected densities --
@@ -23,7 +23,7 @@ test_density_labels_hand_computed <- function() {
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
 
-  labels <- density_labels(vectors, kd_indices, dimension_order, k_density = 2)
+  labels <- density_labels(vectors, kd_indices, dimension_order, k_min = 2)
   expected <- c(0.2434133437, 0.4702740525, 0.1795903795)
   assert_true(all(abs(labels - expected) < 1e-6))
 }
@@ -35,18 +35,18 @@ test_density_labels_bandwidth_percentile_median <- function() {
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
 
-  labels <- density_labels(vectors, kd_indices, dimension_order, k_density = 2, bandwidth_percentile = 50.0)
+  labels <- density_labels(vectors, kd_indices, dimension_order, k_min = 2, bandwidth_percentile = 50.0)
   expected <- c(0.3017873425, 0.5385998637, 0.1940642069)
   assert_true(all(abs(labels - expected) < 1e-6))
 }
 
 test_density_labels_invalid_bandwidth_percentile <- function() {
   fx <- line_fixture(11)
-  assert_error(density_labels(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 4, bandwidth_percentile = 101.0),
+  assert_error(density_labels(fx$vectors, fx$kd_indices, fx$dimension_order, k_min = 4, bandwidth_percentile = 101.0),
                "Expected error for bandwidth_percentile > 100", ERR_INVALID_INPUT)
 }
 
-# The center of an evenly-spaced plus shape has all 4 of its k_density=4 neighbors at the
+# The center of an evenly-spaced plus shape has all 4 of its k_min=4 neighbors at the
 # identical distance 0.1 -- the percentile-based bandwidth is exactly 0.1 (every distance
 # equal), never zero, so this just confirms the label is a genuine, representable, strictly
 # positive number.
@@ -58,23 +58,23 @@ test_density_labels_symmetric_neighborhood_does_not_underflow <- function() {
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
 
-  labels <- density_labels(vectors, kd_indices, dimension_order, k_density = 4)
+  labels <- density_labels(vectors, kd_indices, dimension_order, k_min = 4)
   assert_true(labels[1] > 0.0)
 }
 
-# On an evenly-spaced 11-point line, every interior point's k_density=4 nearest neighbors
+# On an evenly-spaced 11-point line, every interior point's k_min=4 nearest neighbors
 # form the identical distance pattern [1,1,2,2] by translation symmetry, so all interior
 # points (3..9) must get exactly the same density label.
 test_density_labels_uniform_interior_points_agree <- function() {
   fx <- line_fixture(11)
-  labels <- density_labels(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 4)
+  labels <- density_labels(fx$vectors, fx$kd_indices, fx$dimension_order, k_min = 4)
   for (i in 4:9) {
     assert_true(abs(labels[i] - labels[3]) < 1e-9)
   }
 }
 
 # A dense cluster (spacing 0.1) and a sparse cluster (spacing 2.0), far enough apart that
-# k_density=2 never crosses between them: the dense cluster's adaptive bandwidth is far
+# k_min=2 never crosses between them: the dense cluster's adaptive bandwidth is far
 # smaller, so its members must get a strictly higher density label.
 test_density_labels_dense_vs_sparse <- function() {
   vectors <- rbind(
@@ -84,7 +84,7 @@ test_density_labels_dense_vs_sparse <- function() {
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
 
-  labels <- density_labels(vectors, kd_indices, dimension_order, k_density = 2)
+  labels <- density_labels(vectors, kd_indices, dimension_order, k_min = 2)
   assert_true(labels[2] > labels[5])
 }
 
@@ -92,22 +92,22 @@ test_density_labels_invalid_kd_indices <- function() {
   fx <- line_fixture(11)
   bad_kd_indices <- fx$kd_indices
   bad_kd_indices[1] <- 12L
-  assert_error(density_labels(fx$vectors, bad_kd_indices, fx$dimension_order, k_density = 4),
+  assert_error(density_labels(fx$vectors, bad_kd_indices, fx$dimension_order, k_min = 4),
                "Expected error for kd_indices entry > n_vectors", ERR_INVALID_INPUT)
 }
 
-test_density_labels_k_density_too_large <- function() {
+test_density_labels_k_min_too_large <- function() {
   fx <- line_fixture(11)
-  assert_error(density_labels(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 11),
-               "Expected error for k_density > n_vectors - 1", ERR_INVALID_INPUT)
+  assert_error(density_labels(fx$vectors, fx$kd_indices, fx$dimension_order, k_min = 11),
+               "Expected error for k_min > n_vectors - 1", ERR_INVALID_INPUT)
 }
 
 # =====================
 # seeds
 # =====================
-# Two separated 2-point clusters, k_density=1: each point's single nearest neighbor is always
+# Two separated 2-point clusters, k_min=1: each point's single nearest neighbor is always
 # its own cluster-mate (0.1 apart), never the other cluster (10 apart) -- see the Fortran
-# test's own comment for why this stays a 2-point, k_density=1 fixture rather than a larger
+# test's own comment for why this stays a 2-point, k_min=1 fixture rather than a larger
 # symmetric one.
 two_clusters_fixture <- function() {
   vectors <- rbind(
@@ -121,7 +121,7 @@ two_clusters_fixture <- function() {
 
 test_seeds_two_separated_clusters <- function() {
   fx <- two_clusters_fixture()
-  is_seed_mask <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 1)
+  is_seed_mask <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_min = 1)
   assert_true(sum(is_seed_mask) == 2)
   assert_true(any(is_seed_mask[1:2]))
   assert_true(any(is_seed_mask[3:4]))
@@ -132,19 +132,19 @@ test_seeds_single_cluster_one_seed <- function() {
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
 
-  is_seed_mask <- seeds(vectors, kd_indices, dimension_order, k_density = 1)
+  is_seed_mask <- seeds(vectors, kd_indices, dimension_order, k_min = 1)
   assert_true(sum(is_seed_mask) == 1)
 }
 
-# The shared 11-point line fixture, k_density=4. A wider exclusion radius (100th percentile
-# of the k_density distances, i.e. the farthest neighbor -- 2.0, vs. the default
+# The shared 11-point line fixture, k_min=4. A wider exclusion radius (100th percentile
+# of the k_min distances, i.e. the farthest neighbor -- 2.0, vs. the default
 # 50th-percentile median of 1.5) suppresses more of the line per seed, so fewer seeds are
 # needed to cover it.
 test_seeds_exclusion_radius_percentile_widens_coverage <- function() {
   fx <- line_fixture(11)
 
-  mask_default <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 4)
-  mask_wide <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_density = 4, exclusion_radius_percentile = 100.0)
+  mask_default <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_min = 4)
+  mask_wide <- seeds(fx$vectors, fx$kd_indices, fx$dimension_order, k_min = 4, exclusion_radius_percentile = 100.0)
 
   expected_default <- rep(FALSE, 11)
   expected_default[c(2, 4, 6, 8, 10)] <- TRUE
@@ -163,29 +163,29 @@ test_seeds_invalid_exclusion_radius_percentile <- function() {
   )
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
-  assert_error(seeds(vectors, kd_indices, dimension_order, k_density = 4, exclusion_radius_percentile = 101.0),
+  assert_error(seeds(vectors, kd_indices, dimension_order, k_min = 4, exclusion_radius_percentile = 101.0),
                "Expected error for exclusion_radius_percentile > 100", ERR_INVALID_INPUT)
 }
 
-test_seeds_invalid_k_density <- function() {
+test_seeds_invalid_k_min <- function() {
   vectors <- rbind(
     c(0.0, 0.1, 0.0, -0.1, 0.0),
     c(0.0, 0.0, 0.1, 0.0, -0.1)
   )
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
-  assert_error(seeds(vectors, kd_indices, dimension_order, k_density = 0),
-               "Expected error for k_density < 1", ERR_INVALID_INPUT)
+  assert_error(seeds(vectors, kd_indices, dimension_order, k_min = 0),
+               "Expected error for k_min < 1", ERR_INVALID_INPUT)
 }
 
-# The Fortran suite's test_density_labels_omitted_k_density_is_clamped/
-# test_seeds_omitted_k_density_is_clamped are regression tests for a crash that could only
-# happen with k_density truly absent at the Fortran ABI boundary -- not reproducible here,
-# since the R binding always resolves and passes k_density=30 explicitly, never a
+# The Fortran suite's test_density_labels_omitted_k_min_is_clamped/
+# test_seeds_omitted_k_min_is_clamped are regression tests for a crash that could only
+# happen with k_min truly absent at the Fortran ABI boundary -- not reproducible here,
+# since the R binding always resolves and passes k_min=30 explicitly, never a
 # genuinely-absent optional (see misc/code_gen_footgun.md's third entry). What is worth
 # covering from R: that this always-explicit default of 30 still gets validated normally (a
 # clean, typed error, not a crash) on a dataset smaller than it.
-test_seeds_default_k_density_too_large_for_dataset <- function() {
+test_seeds_default_k_min_too_large_for_dataset <- function() {
   vectors <- rbind(
     c(0.0, 0.1, 0.0, -0.1, 0.0),
     c(0.0, 0.0, 0.1, 0.0, -0.1)
@@ -193,7 +193,7 @@ test_seeds_default_k_density_too_large_for_dataset <- function() {
   dimension_order <- c(1L, 2L)
   kd_indices <- build_kd_index(vectors, dimension_order)
   assert_error(seeds(vectors, kd_indices, dimension_order),
-               "Expected error for the default k_density=30 on a 5-point dataset", ERR_INVALID_INPUT)
+               "Expected error for the default k_min=30 on a 5-point dataset", ERR_INVALID_INPUT)
 }
 
 run_all_tests()

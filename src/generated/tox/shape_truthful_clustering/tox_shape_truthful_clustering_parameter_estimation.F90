@@ -3,7 +3,7 @@
 !> # Shape Truthful Clustering (STC): Parameter Estimation
 !|
 !| A separate, optional pipeline step estimating near-optimal starting values for the crucial
-!| parameters (`k_min`, `k_density`, `density_quantile`,
+!| parameters (`k_min`, `density_quantile`,
 !| `chordal_dist_max_as_prcnt_of_range`, `G_max`, `d_max`) directly from the input data, at a
 !| fraction of the cost of a grid search or a
 !| resampling-based scheme: grow a handful of "estimator anchors" (EAs) into small local
@@ -224,13 +224,12 @@ contains
             n_vectors,&
             kd_indices,&
             dimension_order,&
-            k_density,&
+            k_min,&
             bandwidth_percentile,&
             n_anchors,&
             seed_max_set_size,&
-            first_quartile_percentile,&
+            quantile_pairwise_ea_comparison,&
             estimated_k_min,&
-            estimated_k_density,&
             estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max,&
@@ -255,7 +254,7 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Passed through to density_labels
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
@@ -273,7 +272,7 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `5.0_real64`.
-        real(real64), intent(in), optional :: first_quartile_percentile
+        real(real64), intent(in), optional :: quantile_pairwise_ea_comparison
             !! Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
             !! chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
             !! The minimum valid value is `0.0_real64`.
@@ -281,8 +280,6 @@ contains
             !! The default value is `25.0_real64`.
         real(real64), intent(out) :: estimated_k_min
             !! Estimated k_min (real-valued; round for direct use as an integer argument)
-        real(real64), intent(out) :: estimated_k_density
-            !! Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         real(real64), intent(out) :: estimated_density_quantile
             !! Estimated density_quantile -- a literal radius (data units), not a percentile
         real(real64), intent(out) :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -318,11 +315,11 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(n_dimensions, ierr, arg_pos=2_int32, min=2_int32)
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
-        call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_int(k_min, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
         call validate_in_range_int(n_anchors, ierr, arg_pos=8_int32, min=2_int32, max=n_vectors)
         call validate_in_range_real(seed_max_set_size, ierr, arg_pos=9_int32, min=0.0_real64, max=100.0_real64)
-        call validate_in_range_real(first_quartile_percentile, ierr, arg_pos=10_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(quantile_pairwise_ea_comparison, ierr, arg_pos=10_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(vectors, n_dimensions * n_vectors, ierr, arg_pos=1_int32)
         call validate_all_in_range_int(kd_indices, n_vectors, ierr, arg_pos=4_int32, min=1_int32, max=n_vectors)
         call validate_all_in_range_int(dimension_order, n_dimensions, ierr, arg_pos=5_int32, min=1_int32, max=n_dimensions)
@@ -360,11 +357,11 @@ contains
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            k_density = k_density,&
+            k_min = k_min,&
             bandwidth_percentile = bandwidth_percentile,&
             n_anchors = n_anchors,&
             seed_max_set_size = seed_max_set_size,&
-            first_quartile_percentile = first_quartile_percentile,&
+            quantile_pairwise_ea_comparison = quantile_pairwise_ea_comparison,&
             lwork_observable = lwork_observable,&
             iwork_size = iwork_size,&
             lwork_angle = lwork_angle,&
@@ -386,7 +383,6 @@ contains
             tmp_angle_s = tmp_angle_s,&
             tmp_angle_work = tmp_angle_work,&
             estimated_k_min = estimated_k_min,&
-            estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range = estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max = estimated_G_max,&
@@ -417,11 +413,11 @@ contains
             n_vectors,&
             kd_indices,&
             dimension_order,&
-            k_density,&
+            k_min,&
             bandwidth_percentile,&
             n_anchors,&
             seed_max_set_size,&
-            first_quartile_percentile,&
+            quantile_pairwise_ea_comparison,&
             lwork_observable,&
             iwork_size,&
             lwork_angle,&
@@ -443,7 +439,6 @@ contains
             tmp_angle_s,&
             tmp_angle_work,&
             estimated_k_min,&
-            estimated_k_density,&
             estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max,&
@@ -477,7 +472,7 @@ contains
             !! Dimension order used to build `kd_indices`
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_dimensions`.
-        integer(int32), intent(in), optional :: k_density
+        integer(int32), intent(in), optional :: k_min
             !! Passed through to density_labels
             !! The minimum valid value is `1_int32`.
             !! The maximum valid value is `n_vectors - 1_int32`.
@@ -495,7 +490,7 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `100.0_real64`.
             !! The default value is `5.0_real64`.
-        real(real64), intent(in), optional :: first_quartile_percentile
+        real(real64), intent(in), optional :: quantile_pairwise_ea_comparison
             !! Percentile (0 to 100) of the pairwise-EA-comparison distributions used for
             !! chordal_dist_max_as_prcnt_of_range/G_max/d_max, see estimate_stc_parameters
             !! The minimum valid value is `0.0_real64`.
@@ -537,8 +532,6 @@ contains
             !! Workspace: LAPACK dgesvd scratch for the principal-angle SVD
         real(real64), intent(out) :: estimated_k_min
             !! Estimated k_min (real-valued; round for direct use as an integer argument)
-        real(real64), intent(out) :: estimated_k_density
-            !! Estimated k_density (equal to estimated_k_min, see estimate_stc_parameters)
         real(real64), intent(out) :: estimated_density_quantile
             !! Estimated density_quantile -- a literal radius (data units), not a percentile
         real(real64), intent(out) :: estimated_chordal_dist_max_as_prcnt_of_range
@@ -554,11 +547,11 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_in_range_int(n_dimensions, ierr, arg_pos=2_int32, min=2_int32)
         call validate_in_range_int(n_vectors, ierr, arg_pos=3_int32, min=2_int32)
-        call validate_in_range_int(k_density, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
+        call validate_in_range_int(k_min, ierr, arg_pos=6_int32, min=1_int32, max=n_vectors - 1_int32)
         call validate_in_range_real(bandwidth_percentile, ierr, arg_pos=7_int32, min=0.0_real64, max=100.0_real64)
         call validate_in_range_int(n_anchors, ierr, arg_pos=8_int32, min=2_int32, max=n_vectors)
         call validate_in_range_real(seed_max_set_size, ierr, arg_pos=9_int32, min=0.0_real64, max=100.0_real64)
-        call validate_in_range_real(first_quartile_percentile, ierr, arg_pos=10_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_real(quantile_pairwise_ea_comparison, ierr, arg_pos=10_int32, min=0.0_real64, max=100.0_real64)
         call validate_dimension_size(lwork_observable, ierr, arg_pos=11_int32)
         call validate_dimension_size(iwork_size, ierr, arg_pos=12_int32)
         call validate_dimension_size(lwork_angle, ierr, arg_pos=13_int32)
@@ -574,11 +567,11 @@ contains
             n_vectors = n_vectors,&
             kd_indices = kd_indices,&
             dimension_order = dimension_order,&
-            k_density = k_density,&
+            k_min = k_min,&
             bandwidth_percentile = bandwidth_percentile,&
             n_anchors = n_anchors,&
             seed_max_set_size = seed_max_set_size,&
-            first_quartile_percentile = first_quartile_percentile,&
+            quantile_pairwise_ea_comparison = quantile_pairwise_ea_comparison,&
             lwork_observable = lwork_observable,&
             iwork_size = iwork_size,&
             lwork_angle = lwork_angle,&
@@ -600,7 +593,6 @@ contains
             tmp_angle_s = tmp_angle_s,&
             tmp_angle_work = tmp_angle_work,&
             estimated_k_min = estimated_k_min,&
-            estimated_k_density = estimated_k_density,&
             estimated_density_quantile = estimated_density_quantile,&
             estimated_chordal_dist_max_as_prcnt_of_range = estimated_chordal_dist_max_as_prcnt_of_range,&
             estimated_G_max = estimated_G_max,&

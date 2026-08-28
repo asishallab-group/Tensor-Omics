@@ -55,7 +55,7 @@ echo "=== manual parameters ==="
 OUT1="$WORKDIR/out1"
 mkdir -p "$OUT1"
 run --input "$FIXTURE" --header --n-records 30 --output-dir "$OUT1" \
-    --k-min 5 --k-density 5 --chordal-dist-max-as-prcnt-of-range 0.3 --d-max 1 --g-max 5.0 \
+    --k-min 5 --chordal-dist-max-as-prcnt-of-range 0.3 --d-max 1 --g-max 5.0 \
     --rmse-change-max 5.0 --o 4 --exclusion-radius-percentile 60 >/dev/null
 check "$?" "manual run exits 0"
 for f in report.html results.json points.csv ensemble_overlap_coefficients.csv super_ensembles.tsv; do

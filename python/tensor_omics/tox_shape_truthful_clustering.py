@@ -47,6 +47,7 @@ _lib.ensemble_identification_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
@@ -66,9 +67,9 @@ _lib.ensemble_identification_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_IDENTIFICATION_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "U_first", "d_first", "ierr",)
+_ENSEMBLE_IDENTIFICATION_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_index", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "o", "final_ensemble_mask", "stop_reason", "growth_radius", "U_history", "S_history", "d_history", "G_history", "mu_history", "k_history", "accepted_history", "member_added_at_step", "low_confidence_mask", "U_first", "d_first", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ENSEMBLE_IDENTIFICATION_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, None, "U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_ENSEMBLE_IDENTIFICATION_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, None, None, None, None, None, None, None, None, "U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 _lib.ensemble_identification_merged_c.restype = None
 _lib.ensemble_identification_merged_c.argtypes = (
@@ -86,6 +87,7 @@ _lib.ensemble_identification_merged_c.argtypes = (
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.bool_, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -105,9 +107,9 @@ _lib.ensemble_identification_merged_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "a", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "ierr",)
+_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENTS = ("vectors", "n_dimensions", "n_vectors", "kd_indices", "dimension_order", "seed_selection_mask", "n_selected_seed", "k_min", "chordal_dist_max_as_prcnt_of_range", "d_max", "G_max", "RMSE_change_max", "f_max", "min_stable_iterations", "radius_percentile", "o", "ensemble_masks", "ensemble_stop_reason", "ensemble_growth_radii", "ensemble_U_history", "ensemble_S_history", "ensemble_d_history", "ensemble_G_history", "ensemble_mu_history", "ensemble_k_history", "ensemble_accepted_history", "ensemble_member_added_at_step", "ensemble_low_confidence_masks", "ensemble_U_first", "ensemble_d_first", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, "ensemble_masks", None, None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_ENSEMBLE_IDENTIFICATION_MERGED_ARGUMENT_SOURCES = (None, "vectors", "vectors", None, None, None, "ensemble_masks", None, None, None, None, None, None, None, None, "ensemble_U_history", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def ensemble_identification(
         vectors,
@@ -116,12 +118,13 @@ def ensemble_identification(
         seed_index,
         chordal_dist_max_as_prcnt_of_range,
         d_max,
-        G_max,
         RMSE_change_max,
         o,
         k_min=30,
+        G_max=0.405465108108164,
         f_max=0.95,
-        a=2,
+        min_stable_iterations=2,
+        radius_percentile=50.0,
 ):
     r"""Grow and track a single ensemble from one seed until a Stop Condition is reached
 
@@ -154,9 +157,25 @@ def ensemble_identification(
     d_max : int
         Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
         The minimum valid value is `0`.
-    G_max : float
-        Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+    G_max : float, optional, default 0.405465108108164
+        Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+        `RMSE_change_max`'s own documented default (see there): both are a bound on
+        `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+        `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+        applied to the same mathematical shape. The upper bound below is a
+        deliberately generous safety ceiling, not a meaningful tuning bound:
+        `G_max`/`RMSE_change_max`
+        are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+        quantities kept strictly positive by an `epsilon(1.0)` guard (see
+        `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+        denominator of that ratio are bounded below by machine epsilon, no achievable
+        ratio's `|log|` can exceed `2*|log(epsilon(1.0))|` (~72.09 for `real64`);
+        above that, the criterion is provably vacuous (can never reject) regardless of
+        input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+        constrain legitimate tuning.
         The minimum valid value is `0.0`.
+        The maximum valid value is `72.0`.
+        The default value is `0.405465108108164`.
     RMSE_change_max : float
         Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
         The minimum valid value is `0.0`.
@@ -165,11 +184,20 @@ def ensemble_identification(
         The minimum valid value is `above(0.0)`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
-    a : int, optional, default 2
+    min_stable_iterations : int, optional, default 2
         Minimum accepted-iteration count for a later rejection to count as "stable", see
-        Stop Condition 2
+        Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+        unchanged
         The minimum valid value is `1`.
         The default value is `2`.
+    radius_percentile : float, optional, default 50.0
+        Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+        radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+        kernel's own default (50.0, the median) since this parent never passed it
+        through; now a real, tunable pass-through
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
+        The default value is `50.0`.
     o : int
         Trailing observable-history window depth (`misc/mod_STC.md` suggests 10 as a
         sensible default). Always required, never optional with an auto-applied
@@ -324,7 +352,8 @@ def ensemble_identification(
         ctypes.byref(ctypes.c_double(G_max)),
         ctypes.byref(ctypes.c_double(RMSE_change_max)),
         ctypes.byref(ctypes.c_double(f_max)),
-        ctypes.byref(ctypes.c_int(a)),
+        ctypes.byref(ctypes.c_int(min_stable_iterations)),
+        ctypes.byref(ctypes.c_double(radius_percentile)),
         ctypes.byref(ctypes.c_int(o)),
         final_ensemble_mask,
         ctypes.byref(stop_reason),
@@ -382,12 +411,13 @@ def ensemble_identification_merged(
         seed_selection_mask,
         chordal_dist_max_as_prcnt_of_range,
         d_max,
-        G_max,
         RMSE_change_max,
         o,
         k_min=30,
+        G_max=0.405465108108164,
         f_max=0.95,
-        a=2,
+        min_stable_iterations=2,
+        radius_percentile=50.0,
 ):
     r"""Run ensemble_identification once per seed and assemble the merged, per-ensemble output arrays
 
@@ -418,9 +448,25 @@ def ensemble_identification_merged(
     d_max : int
         Maximum tolerated change in intrinsic dimension, see `accept_ensemble`
         The minimum valid value is `0`.
-    G_max : float
-        Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`
+    G_max : float, optional, default 0.405465108108164
+        Maximum tolerated |log(G_tp1/G_t)|, see `accept_ensemble`. Default mirrors
+        `RMSE_change_max`'s own documented default (see there): both are a bound on
+        `|log(ratio)|` between two consecutive positive-quantity growth steps, so
+        `|log(1.5)|` (tolerate up to a 50% relative change) is the same reasoning
+        applied to the same mathematical shape. The upper bound below is a
+        deliberately generous safety ceiling, not a meaningful tuning bound:
+        `G_max`/`RMSE_change_max`
+        are per-iteration `|log(G_tp1/G_t)|`/`|log(RMSE_tp1/RMSE_t)|` ratios of
+        quantities kept strictly positive by an `epsilon(1.0)` guard (see
+        `observable`'s own spectral-gap/RMSE formulas) -- since both the numerator and
+        denominator of that ratio are bounded below by machine epsilon, no achievable
+        ratio's `|log|` can exceed `2*|log(epsilon(1.0))|` (~72.09 for `real64`);
+        above that, the criterion is provably vacuous (can never reject) regardless of
+        input, so the ceiling exists purely to catch a nonsensical/typo'd value, not to
+        constrain legitimate tuning.
         The minimum valid value is `0.0`.
+        The maximum valid value is `72.0`.
+        The default value is `0.405465108108164`.
     RMSE_change_max : float
         Maximum tolerated |log(RMSE_tp1/RMSE_t)|, see `accept_ensemble`
         The minimum valid value is `0.0`.
@@ -429,11 +475,20 @@ def ensemble_identification_merged(
         The minimum valid value is `above(0.0)`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
-    a : int, optional, default 2
+    min_stable_iterations : int, optional, default 2
         Minimum accepted-iteration count for a later rejection to count as "stable", see
-        Stop Condition 2
+        Stop Condition 2 -- renamed from the original `a` for clarity; kernel default
+        unchanged
         The minimum valid value is `1`.
         The default value is `2`.
+    radius_percentile : float, optional, default 50.0
+        Percentile (0 to 100) of the k_min neighbor distances reported as the growth
+        radius, see `calc_ensemble_growth_radius` -- previously hardcoded at that
+        kernel's own default (50.0, the median) since this parent never passed it
+        through; now a real, tunable pass-through
+        The minimum valid value is `0.0`.
+        The maximum valid value is `100.0`.
+        The default value is `50.0`.
     o : int
         Trailing observable-history window depth, see `ensemble_identification`. Always
         required, for the same reason as there: it sizes every history output below.
@@ -573,7 +628,8 @@ def ensemble_identification_merged(
         ctypes.byref(ctypes.c_double(G_max)),
         ctypes.byref(ctypes.c_double(RMSE_change_max)),
         ctypes.byref(ctypes.c_double(f_max)),
-        ctypes.byref(ctypes.c_int(a)),
+        ctypes.byref(ctypes.c_int(min_stable_iterations)),
+        ctypes.byref(ctypes.c_double(radius_percentile)),
         ctypes.byref(ctypes.c_int(o)),
         ensemble_masks,
         ensemble_stop_reason,

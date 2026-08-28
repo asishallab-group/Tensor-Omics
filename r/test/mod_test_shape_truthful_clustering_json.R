@@ -5,8 +5,9 @@ STOP_REASON_FIXED_POINT <- 4L
 STOP_REASON_REJECTED_AFTER_STABLE <- 2L
 
 common_args <- list(
-  k_min = 3L, k_density = 4L, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 1L,
-  G_max = 2.0, RMSE_change_max = 0.5, f_max = 0.8, a = 3L,
+  k_min = 3L, chordal_dist_max_as_prcnt_of_range = 0.1, d_max = 1L,
+  G_max = 2.0, RMSE_change_max = 0.5, f_max = 0.8, min_stable_iterations = 3L,
+  radius_percentile = 50.0,
   exclusion_radius_percentile = 50.0, bandwidth_percentile = 68.0,
   reconciliation_mode = "merge_overlap_coefficient", min_overlap_coefficient = 0.5
 )
@@ -195,13 +196,12 @@ test_json_estimated_params_included <- function() {
   fx <- fixture()
   filename <- "test_stc_estimated_params_r.json"
   call_serialize(fx, filename,
-                 estimated_k_min = 5L, estimated_k_density = 6L, estimated_density_quantile = 0.75,
+                 estimated_k_min = 5L, estimated_density_quantile = 0.75,
                  estimated_chordal_dist_max_as_prcnt_of_range = 0.2, estimated_G_max = 3.0, estimated_d_max = 2L)
   content <- read_whole_file(filename)
   file.remove(filename)
 
   assert_true(grepl('"estimated_k_min":5', content, fixed = TRUE))
-  assert_true(grepl('"estimated_k_density":6', content, fixed = TRUE))
   assert_true(grepl('"estimated_d_max":2', content, fixed = TRUE))
 }
 
