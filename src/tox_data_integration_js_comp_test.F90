@@ -282,7 +282,8 @@ contains
     !| \[
     !|      \texttt{n_bins} = \max\left(\texttt{sturges_bins}, \texttt{freed_diac_bins}\right)
     !| \]
-    pure subroutine estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins)
+    pure subroutine estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range, n_bins, &
+            diag_quartile_25, diag_quartile_75, diag_n_pool, diag_n_reps_neighborhood, diag_half_bin_width, diag_n_bins_sturges, diag_n_bins_freedman_diaconis)
         integer(int32), intent(in) :: n_neighbors
             !! Neighborhood size
         integer(int32), intent(in) :: n_residuals
@@ -297,29 +298,59 @@ contains
             !! Computed residual range (R)
         integer(int32), intent(out) :: n_bins
             !! Appropriate number of bins to do the JSD Compatibility test for
+        real(real64), intent(out), optional :: diag_quartile_25
+            !! Diagnostic: 25th percentile of the *global* (pooled) residual distribution. -1.0 if n_pool == 0.
+        real(real64), intent(out), optional :: diag_quartile_75
+            !! Diagnostic: 75th percentile of the *global* (pooled) residual distribution. -1.0 if n_pool == 0.
+        integer(int32), intent(out), optional :: diag_n_pool
+            !! Diagnostic: n_pool, the global count of non-NaN residuals used for the quartiles above
+        real(real64), intent(out), optional :: diag_n_reps_neighborhood
+            !! Diagnostic: max_n_reps_all_studies * n_neighbors, the "n" used as the Freedman-Diaconis sample size. -1.0 if n_pool == 0.
+        real(real64), intent(out), optional :: diag_half_bin_width
+            !! Diagnostic: Freedman-Diaconis half bin width estimate = (quartile_75 - quartile_25) / n_reps_neighborhood^(1/3). -1.0 if n_pool == 0.
+        integer(int32), intent(out), optional :: diag_n_bins_sturges
+            !! Diagnostic: the Sturges-only candidate for n_bins, before being combined with the Freedman-Diaconis estimate via max()
+        integer(int32), intent(out), optional :: diag_n_bins_freedman_diaconis
+            !! Diagnostic: the Freedman-Diaconis-only candidate for n_bins, before being combined with Sturges via max(). -1 if half_bin_width was ~0 (FD term skipped).
 
         integer(int32) :: n_pool
         real(real64) :: half_bin_width, quartile_25, quartile_75, n_reps_neighborhood
 
         n_pool = find_last_non_nan(residuals, residuals_perm, size(residuals, kind=int32))
+        if (present(diag_n_pool)) diag_n_pool = n_pool
+
         if (n_pool == 0) then
             n_bins = 1
+            if (present(diag_quartile_25)) diag_quartile_25 = -1.0_real64
+            if (present(diag_quartile_75)) diag_quartile_75 = -1.0_real64
+            if (present(diag_n_reps_neighborhood)) diag_n_reps_neighborhood = -1.0_real64
+            if (present(diag_half_bin_width)) diag_half_bin_width = -1.0_real64
+            if (present(diag_n_bins_sturges)) diag_n_bins_sturges = -1_int32
+            if (present(diag_n_bins_freedman_diaconis)) diag_n_bins_freedman_diaconis = -1_int32
         else
             n_reps_neighborhood = real(max_n_reps_all_studies * n_neighbors, kind=real64)
+            if (present(diag_n_reps_neighborhood)) diag_n_reps_neighborhood = n_reps_neighborhood
 
             ! Estimate n_bins
             ! Sturges
             n_bins = 1 + nint(log(n_reps_neighborhood) / LOG_2, kind=int32)
+            if (present(diag_n_bins_sturges)) diag_n_bins_sturges = n_bins
 
             ! Freedman-Diaconis
             call calc_percentile_helper(residuals, residuals_perm(:n_pool), 25.0_real64, quartile_25)
             call calc_percentile_helper(residuals, residuals_perm(:n_pool), 75.0_real64, quartile_75)
+            if (present(diag_quartile_25)) diag_quartile_25 = quartile_25
+            if (present(diag_quartile_75)) diag_quartile_75 = quartile_75
 
             ! bin width as defined by Freedman-Diaconis, but without doubling the value.
             ! With doubling the value, the bin count would be calculated as `2*shared_residual_range/(2*bin_width)` -> the 2 is unnecessary
             half_bin_width = (quartile_75 - quartile_25) / (n_reps_neighborhood ** (1.0_real64 / 3.0_real64))
+            if (present(diag_half_bin_width)) diag_half_bin_width = half_bin_width
             if (.not. is_close(half_bin_width, 0.0_real64)) then
+                if (present(diag_n_bins_freedman_diaconis)) diag_n_bins_freedman_diaconis = nint(shared_residual_range / half_bin_width, kind=int32)
                 n_bins = max(n_bins, nint(shared_residual_range / half_bin_width, kind=int32))
+            else
+                if (present(diag_n_bins_freedman_diaconis)) diag_n_bins_freedman_diaconis = -1_int32
             end if
         end if
     end subroutine estimate_bin_count_helper
@@ -425,6 +456,14 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_confidence_interval
         real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
 
+        ! --- NEW: bin-count estimation diagnostics (see Fortran-Code Bins-Diskussion) ---
+        real(real64), dimension(:), allocatable :: candidates_n_reps_neighborhood
+        real(real64), dimension(:), allocatable :: candidates_half_bin_width
+        integer(int32), dimension(:), allocatable :: candidates_n_bins_sturges
+        integer(int32), dimension(:), allocatable :: candidates_n_bins_freedman_diaconis
+        real(real64) :: diag_quartile_25, diag_quartile_75
+        integer(int32) :: diag_n_pool
+
         integer(int32) :: n_bootstrapping_top_k_jsds, n_residuals, prev_point_candidate, n_candidates, max_n_bins_all_candidates
         integer(int32) :: i_point_candidate, point_candidate, prev_neighbor_candidate, i_neighbor_candidate, neighbor_candidate, max_n_points_candidate, max_n_neighbors_candidate
         integer(int32) :: i_study
@@ -464,6 +503,10 @@ contains
         M_ALLOCATE(candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS))
         M_ALLOCATE(n_bins_candidates(MAX_CANDIDATE_PAIRS))
         M_ALLOCATE(trace_candidates_kx(MAX_CANDIDATE_PAIRS))
+        M_ALLOCATE(candidates_n_reps_neighborhood(MAX_CANDIDATE_PAIRS))
+        M_ALLOCATE(candidates_half_bin_width(MAX_CANDIDATE_PAIRS))
+        M_ALLOCATE(candidates_n_bins_sturges(MAX_CANDIDATE_PAIRS))
+        M_ALLOCATE(candidates_n_bins_freedman_diaconis(MAX_CANDIDATE_PAIRS))
         n_points_high = real(clamp(ceiling(4.0_real64 * sqrt(real(max_n_genes_all_studies, real64))), min_val=MIN_POINTS, max_val=MAX_POINTS), kind=real64)
         n_points_low = real(max(MIN_POINTS, ceiling(0.2_real64 * n_points_high)), kind=real64)
 
@@ -471,6 +514,9 @@ contains
         n_candidates = 0_int32
         max_n_bins_all_candidates = 0_int32
         max_n_neighbors_candidate = 0_int32
+        diag_quartile_25 = -1.0_real64
+        diag_quartile_75 = -1.0_real64
+        diag_n_pool = 0_int32
 
         do i_point_candidate = 1, MAX_POINT_CANDIDATES
             if (n_points_high < n_points_low) exit
@@ -494,7 +540,13 @@ contains
 
                         trace_candidates_kx(n_candidates) = KX_FACTORS(i_neighbor_candidate)
 
-                        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, neighbor_candidate, shared_residual_range, n_bins_candidates(n_candidates))
+                        ! --- NEW: capture bin-count-estimation diagnostics per candidate.
+                        ! quartile_25/quartile_75/n_pool are global (same every iteration) - just kept overwriting
+                        ! them is harmless and avoids extra branching.
+                        call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, neighbor_candidate, shared_residual_range, n_bins_candidates(n_candidates), &
+                            diag_quartile_25=diag_quartile_25, diag_quartile_75=diag_quartile_75, diag_n_pool=diag_n_pool, &
+                            diag_n_reps_neighborhood=candidates_n_reps_neighborhood(n_candidates), diag_half_bin_width=candidates_half_bin_width(n_candidates), &
+                            diag_n_bins_sturges=candidates_n_bins_sturges(n_candidates), diag_n_bins_freedman_diaconis=candidates_n_bins_freedman_diaconis(n_candidates))
 
                         max_n_bins_all_candidates = max(max_n_bins_all_candidates, n_bins_candidates(n_candidates))
                         max_n_neighbors_candidate = max(max_n_neighbors_candidate, neighbor_candidate)
@@ -543,6 +595,12 @@ contains
         M_ALLOCATE(trace_delta(n_studies, n_candidates))
         M_ALLOCATE(trace_delta_median(n_candidates))
         M_ALLOCATE(trace_delta_max(n_candidates))
+
+        call write_js_comp_test_bin_estimation_csv(&
+            "js_comp_test_bin_estimation.csv", candidates_n_points_n_neighbors, trace_candidates_kx, n_candidates,&
+            diag_quartile_25, diag_quartile_75, diag_n_pool,&
+            candidates_n_reps_neighborhood, candidates_half_bin_width, candidates_n_bins_sturges, candidates_n_bins_freedman_diaconis, n_bins_candidates&
+        )
 
         call determine_js_comp_test_n_points_n_neighbors_helper(&
             candidates_n_points_n_neighbors, n_candidates, max_n_points_candidate, max_n_neighbors_candidate,&
@@ -2022,5 +2080,44 @@ contains
 
         close(unit)
     end subroutine write_js_comp_test_effect_size_csv
+
+    !> Writes the bin-count-estimation diagnostics (quartiles, n_pool, n_reps_neighborhood, half_bin_width,
+    !| Sturges vs. Freedman-Diaconis candidate n_bins) computed during candidate generation in `_alloc`.
+    !| quartile_25 / quartile_75 / n_pool are global (identical for every candidate); the rest vary per candidate.
+    subroutine write_js_comp_test_bin_estimation_csv(filename, candidates_n_points_n_neighbors, candidates_kx, n_candidates_n_points_n_neighbors, &
+            quartile_25, quartile_75, n_pool, n_reps_neighborhood, half_bin_width, n_bins_sturges, n_bins_freedman_diaconis, n_bins_final)
+        character(len=*), intent(in) :: filename
+        integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
+        integer(int32), dimension(2, n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_points_n_neighbors
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in) :: candidates_kx
+        real(real64), intent(in) :: quartile_25
+        real(real64), intent(in) :: quartile_75
+        integer(int32), intent(in) :: n_pool
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in) :: n_reps_neighborhood
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in) :: half_bin_width
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: n_bins_sturges
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: n_bins_freedman_diaconis
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: n_bins_final
+
+        integer :: unit, ios, i_candidate
+
+        open(newunit=unit, file=filename, status="replace", action="write", iostat=ios)
+        if (ios /= 0) then
+            write(*,*) "ERROR: Could not open bin estimation CSV: ", trim(filename)
+            return
+        end if
+
+        write(unit, '(A)') 'candidate,n_points,n_neighbors,k_x,quartile_25,quartile_75,n_pool,n_reps_neighborhood,half_bin_width,n_bins_sturges,n_bins_freedman_diaconis,n_bins_final'
+
+        do i_candidate = 1, n_candidates_n_points_n_neighbors
+            write(unit, '(I0,",",I0,",",I0,",",ES24.16,",",ES24.16,",",ES24.16,",",I0,",",ES24.16,",",ES24.16,",",I0,",",I0,",",I0)') &
+                i_candidate, candidates_n_points_n_neighbors(1, i_candidate), candidates_n_points_n_neighbors(2, i_candidate), &
+                candidates_kx(i_candidate), quartile_25, quartile_75, n_pool, &
+                n_reps_neighborhood(i_candidate), half_bin_width(i_candidate), &
+                n_bins_sturges(i_candidate), n_bins_freedman_diaconis(i_candidate), n_bins_final(i_candidate)
+        end do
+
+        close(unit)
+    end subroutine write_js_comp_test_bin_estimation_csv
 
 end module tox_data_integration_js_comp_test
