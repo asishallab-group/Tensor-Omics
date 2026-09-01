@@ -369,6 +369,24 @@ contains
             !! The significance level used for obtained values in bootstrapping, default: `2.5` -> `best_candidate_pair_confidence_interval` caps `95%` from all obtained values
         real(real64), intent(in), optional :: residual_range_quantile
             !! Quantile for determining the residual range, default: `95.0`
+        logical, allocatable :: trace_neighbor_overlap_ok(:)
+            !! .true. if ALL studies passed test_neighborhood_overlaps_helper for this candidate
+        logical, allocatable :: trace_min_bin_count_ok(:)
+            !! .true. if test_mean_pmf_min_counts_helper passed (consensus PMF had enough residuals per bin)
+        integer(int32), allocatable :: trace_min_mean_pmf_bin_count(:)
+            !! minval(mean_pmf_counts) actually observed for this candidate
+        real(real64), allocatable :: trace_confidence_interval(:, :, :)
+            !! bootstrapped [lower, upper] JSD CI per study, per candidate
+        real(real64), allocatable :: trace_ci_overlap(:, :)
+            !! per-study fractional CI overlap vs. the running best candidate
+        integer(int32), allocatable :: trace_exceeds_ci_overlap(:)
+            !! number of studies whose overlap exceeded succeeding_ci_overlap, per candidate
+        logical, allocatable :: trace_plateau_found(:)
+            !! .true. for the candidate at which the plateau condition triggered
+        real(real64), allocatable :: trace_candidates_kx(:)
+            !! The KX factor for each candidate pair, used to determine the plateau condition 
+        integer(int32), allocatable :: trace_mean_pmf_counts_full(:, :, :)
+            !! Full per-bin gene counts of the mean pmf, per candidate (bin, point, candidate)
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -437,6 +455,7 @@ contains
         ! 2. Determine candidates
         M_ALLOCATE(candidates_n_points_n_neighbors(2, MAX_CANDIDATE_PAIRS))
         M_ALLOCATE(n_bins_candidates(MAX_CANDIDATE_PAIRS))
+        M_ALLOCATE(trace_candidates_kx(MAX_CANDIDATE_PAIRS))
         n_points_high = real(clamp(ceiling(4.0_real64 * sqrt(real(max_n_genes_all_studies, real64))), min_val=MIN_POINTS, max_val=MAX_POINTS), kind=real64)
         n_points_low = real(max(MIN_POINTS, ceiling(0.2_real64 * n_points_high)), kind=real64)
 
@@ -464,6 +483,8 @@ contains
                         n_candidates = n_candidates + 1
                         candidates_n_points_n_neighbors(1, n_candidates) = point_candidate
                         candidates_n_points_n_neighbors(2, n_candidates) = neighbor_candidate
+
+                        trace_candidates_kx(n_candidates) = KX_FACTORS(i_neighbor_candidate)
 
                         call estimate_bin_count_helper(residuals, residuals_perm, n_residuals, max_n_reps_all_studies, neighbor_candidate, shared_residual_range, n_bins_candidates(n_candidates))
 
@@ -501,6 +522,16 @@ contains
         M_ALLOCATE(tmp_confidence_interval(2, n_studies))
         M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
 
+        ! --- NEW: Allocate trace arrays if requested ---
+        M_ALLOCATE(trace_neighbor_overlap_ok(n_candidates))
+        M_ALLOCATE(trace_min_bin_count_ok(n_candidates))
+        M_ALLOCATE(trace_min_mean_pmf_bin_count(n_candidates))
+        M_ALLOCATE(trace_confidence_interval(2, n_studies, n_candidates))
+        M_ALLOCATE(trace_ci_overlap(n_studies, n_candidates))
+        M_ALLOCATE(trace_exceeds_ci_overlap(n_candidates))
+        M_ALLOCATE(trace_plateau_found(n_candidates))
+        M_ALLOCATE(trace_mean_pmf_counts_full(max_n_bins_all_candidates, max_n_points_candidate, n_candidates))
+
         call determine_js_comp_test_n_points_n_neighbors_helper(&
             candidates_n_points_n_neighbors, n_candidates, max_n_points_candidate, max_n_neighbors_candidate,&
             n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, shared_residual_range, n_bins_candidates, max_n_bins_all_candidates,&
@@ -509,8 +540,23 @@ contains
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
             tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
             tmp_confidence_interval, tmp_bootstrapping_top_k_jsds,&
-            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
+            trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
+            trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
+            trace_mean_pmf_counts_full&
         )
+
+        !call write_js_comp_test_trace_csv( &
+        !    "/home/laszl/TH-Bingen/Tensor-Omics/js_comp_test_trace.csv", &
+        !    candidates_n_points_n_neighbors, &
+        !    n_bins_candidates, &
+        !    n_candidates, &
+        !    n_studies, &
+        !    trace_neighbor_overlap_ok, &
+        !    trace_min_bin_count_ok, &
+        !    trace_min_mean_pmf_bin_count, &
+        !    trace_confidence_interval, &
+        !    trace_ci_overlap)
     end subroutine determine_js_comp_test_n_points_n_neighbors_alloc
 
     subroutine determine_js_comp_test_n_points_n_neighbors(&
@@ -521,7 +567,10 @@ contains
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
             tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
             tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, ierr,&
-            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
+            trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
+            trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
+            trace_mean_pmf_counts_full&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -609,6 +658,24 @@ contains
             !! Minimum fractional overlap the confidence intervals should have to the current best confidence intervals (respecting the `join_method`) to make a candidate pair eligible, default: `0.9`
         integer(int32), intent(in), optional :: random_seed
             !! Random seed to use for random number generation, default: `42`
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_neighbor_overlap_ok
+            !! .true. if ALL studies passed test_neighborhood_overlaps_helper for this candidate
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_min_bin_count_ok
+            !! .true. if test_mean_pmf_min_counts_helper passed (consensus PMF had enough residuals per bin)
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_min_mean_pmf_bin_count
+            !! minval(mean_pmf_counts) actually observed for this candidate
+        real(real64), dimension(2, n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_confidence_interval
+            !! bootstrapped [lower, upper] JSD CI per study, per candidate
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_ci_overlap
+            !! per-study fractional CI overlap vs. the running best candidate
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_exceeds_ci_overlap
+            !! number of studies whose overlap exceeded succeeding_ci_overlap, per candidate
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_plateau_found
+            !! .true. for the candidate at which the plateau condition triggered
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in), optional :: trace_candidates_kx
+            !! The KX factor for each candidate pair, as determined by the caller during candidate generation (e.g. `_alloc`). This routine never computes k_x itself; it only forwards the value for tracing/CSV output.
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_mean_pmf_counts_full
+            !! Full per-bin gene counts of the mean pmf, per candidate
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -652,7 +719,10 @@ contains
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
             tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
             tmp_confidence_interval, tmp_bootstrapping_top_k_jsds,&
-            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
+            trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
+            trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
+            trace_mean_pmf_counts_full&
         )
     end subroutine determine_js_comp_test_n_points_n_neighbors
 
@@ -664,7 +734,10 @@ contains
             tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
             tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
             tmp_confidence_interval, tmp_bootstrapping_top_k_jsds,&
-            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed&
+            min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
+            trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
+            trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
+            trace_mean_pmf_counts_full&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -752,7 +825,34 @@ contains
             !! Minimum fractional overlap the confidence intervals should have to the current best confidence intervals (respecting the `join_method`) to make a candidate pair eligible, default: `0.9`
         integer(int32), intent(in), optional :: random_seed
             !! Random seed to use for random number generation, default: `42`
-
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_neighbor_overlap_ok
+            !! .true. if ALL studies passed test_neighborhood_overlaps_helper for this candidate
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_min_bin_count_ok
+            !! .true. if test_mean_pmf_min_counts_helper passed (consensus PMF had enough residuals per bin)
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_min_mean_pmf_bin_count
+            !! minval(mean_pmf_counts) actually observed for this candidate -> directly comparable to min_count_per_mean_bin
+        real(real64), dimension(2, n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_confidence_interval
+            !! bootstrapped [lower, upper] JSD CI per study, per candidate
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_ci_overlap
+            !! per-study fractional CI overlap vs. the running best candidate
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_exceeds_ci_overlap
+            !! number of studies whose overlap exceeded succeeding_ci_overlap, per candidate
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_plateau_found
+            !! .true. for the candidate at which the plateau condition actually triggered (at most one .true. entry)
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in), optional :: trace_candidates_kx
+            !! The KX factor for each candidate pair, as determined by the caller during candidate generation (e.g. `_alloc`). This routine never computes k_x itself; it only forwards the value for tracing/CSV output.
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_mean_pmf_counts_full
+            !! Full per-bin gene counts of the mean pmf, per candidate. Only [1:n_bins, 1:n_points, i] are meaningful per candidate.
+        logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_neighbor_overlap_ok
+            !! Always-populated local mirror, used internally regardless of whether the caller requested trace output
+        logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_min_bin_count_ok
+        integer(int32), dimension(n_candidates_n_points_n_neighbors) :: local_trace_min_mean_pmf_bin_count
+        real(real64), dimension(2, n_studies, n_candidates_n_points_n_neighbors) :: local_trace_confidence_interval
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors) :: local_trace_ci_overlap
+        integer(int32), dimension(n_candidates_n_points_n_neighbors) :: local_trace_exceeds_ci_overlap
+        logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_plateau_found
+        real(real64), dimension(n_candidates_n_points_n_neighbors) :: local_trace_candidates_kx
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors) :: local_trace_mean_pmf_counts_full
         integer(int32) :: prev_n_points, n_gene_means, n_pool, i_study, i_candidate_n_points_n_neighbors, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap
         logical :: plateau_found, all_have_min_neighbor_overlap
         integer(int32) :: actual_min_count_per_mean_bin
@@ -766,6 +866,11 @@ contains
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
         M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, 0.9_real64)
 
+        call write_js_comp_test_run_metadata_csv(&
+            "js_comp_test_run_metadata.csv", shared_residual_range, actual_min_neighbor_overlap,&
+            actual_succeeding_ci_overlap, actual_min_count_per_mean_bin, n_bootstraps, join_method&
+        )
+
         n_gene_means = size(gene_means, kind=int32)
         n_pool = find_last_non_nan(gene_means, gene_means_perm_all, n_gene_means)
 
@@ -775,6 +880,23 @@ contains
         best_params_exceeded_CI_overlap = 0
 
         plateau_found = .false.
+
+        ! --- NEW: Initialize trace arrays (always-populated locals, regardless of caller's optional args) ---
+        local_trace_neighbor_overlap_ok = .false.
+        local_trace_min_bin_count_ok = .false.
+        local_trace_min_mean_pmf_bin_count = 0
+        local_trace_confidence_interval = -1.0_real64
+        local_trace_ci_overlap = -1.0_real64
+        local_trace_exceeds_ci_overlap = 0
+        local_trace_plateau_found = .false.
+        local_trace_mean_pmf_counts_full = 0
+        ! trace_candidates_kx is intent(in): this routine never computes k_x itself, only forwards
+        ! whatever the caller (e.g. _alloc) supplied. -1.0 marks "caller did not provide k_x".
+        if (present(trace_candidates_kx)) then
+            local_trace_candidates_kx = trace_candidates_kx
+        else
+            local_trace_candidates_kx = -1.0_real64
+        end if
 
         prev_n_points = -1
 
@@ -812,11 +934,23 @@ contains
                 end if
             end do
 
+            ! --- NEW: trace neighbor overlap ---
+            local_trace_neighbor_overlap_ok(i_candidate_n_points_n_neighbors) = all_have_min_neighbor_overlap
+
             ! If min consecutive overlap is met, check plateau condition 
             if (all_have_min_neighbor_overlap) then
                 ! 1. Compute mean pmf and ensure all bins have a minimum bin count
                 call create_mean_pmf_helper(tmp_pmfs_view, tmp_counts_view, n_bins, n_points, n_studies, tmp_included_n_reps_view, tmp_mean_pmf_view, tmp_mean_pmf_included_n_reps, tmp_mean_pmf_counts_view)
-                if (.not. test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts_view, n_bins, n_points, actual_min_count_per_mean_bin)) cycle
+                
+                ! --- NEW: capture bin sparsity BEFORE the early cycle ---
+                local_trace_min_mean_pmf_bin_count(i_candidate_n_points_n_neighbors) = minval(tmp_mean_pmf_counts_view(1:n_bins, 1:n_points))
+                local_trace_mean_pmf_counts_full(1:n_bins, 1:n_points, i_candidate_n_points_n_neighbors) = tmp_mean_pmf_counts_view(1:n_bins, 1:n_points)
+                block
+                    logical :: min_bin_count_ok
+                    min_bin_count_ok = test_mean_pmf_min_counts_helper(tmp_mean_pmf_counts_view, n_bins, n_points, actual_min_count_per_mean_bin)
+                    local_trace_min_bin_count_ok(i_candidate_n_points_n_neighbors) = min_bin_count_ok
+                    if (.not. min_bin_count_ok) cycle
+                end block
 
                 ! 2. If min bin count is met, compute JSD observation
                 do concurrent (i_study = 1:n_studies) shared(tmp_pmfs_view, tmp_mean_pmf_view, n_points, n_bins, tmp_js_divergences_view, tmp_included_n_reps_view, tmp_mean_pmf_included_n_reps, tmp_global_js_divergence, tmp_weights_view, tmp_confidence_interval)
@@ -828,10 +962,67 @@ contains
                 ! 3. Compute a confidence interval for the JSD value by bootstrapping
                 ! Each candidate pair should have same conditions for comparability -> reset RNG
                 call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts_view, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf_view, random_seed)
+                
+                ! --- NEW: capture CI + overlap BEFORE check_plateau_condition_helper ---
+                local_trace_confidence_interval(:, :, i_candidate_n_points_n_neighbors) = tmp_confidence_interval
+                
+                do i_study = 1, n_studies
+                    local_trace_ci_overlap(i_study, i_candidate_n_points_n_neighbors) = compute_fractional_overlap_helper(&
+                        tmp_confidence_interval(1, i_study), tmp_confidence_interval(2, i_study),&
+                        best_candidate_pair_confidence_interval(1, i_study), best_candidate_pair_confidence_interval(2, i_study)&
+                    )
+                end do
+                
                 call check_plateau_condition_helper(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap, i_candidate_n_points_n_neighbors, join_method, actual_succeeding_ci_overlap, plateau_found)
+                
+                ! --- NEW: trace exceeds_ci_overlap and plateau_found ---
+                local_trace_exceeds_ci_overlap(i_candidate_n_points_n_neighbors) = best_params_exceeded_CI_overlap
+                local_trace_plateau_found(i_candidate_n_points_n_neighbors) = plateau_found
+                
                 if (plateau_found) exit
             end if
         end do
+
+        ! ------------------------------------------------------------
+        ! Write trace information for debugging/visualization
+        ! ------------------------------------------------------------
+
+        write(*,*) "DEBUG: About to write JS comp test trace CSV"
+
+
+
+        call write_js_comp_test_trace_csv( &
+            "js_comp_test_trace.csv", &
+            candidates_n_points_n_neighbors, &
+            candidates_n_bins, &
+            n_candidates_n_points_n_neighbors, &
+            n_studies, &
+            local_trace_neighbor_overlap_ok, &
+            local_trace_min_bin_count_ok, &
+            local_trace_min_mean_pmf_bin_count, &
+            local_trace_confidence_interval, &
+            local_trace_ci_overlap, &
+            local_trace_exceeds_ci_overlap, &
+            local_trace_plateau_found, &
+            local_trace_candidates_kx &
+        )
+
+        call write_js_comp_test_bin_counts_csv(&
+            "js_comp_test_bin_counts.csv", candidates_n_points_n_neighbors, candidates_n_bins,&
+            n_candidates_n_points_n_neighbors, max_n_bins_all_candidates, max_n_points_candidate,&
+            local_trace_mean_pmf_counts_full, local_trace_neighbor_overlap_ok, local_trace_min_bin_count_ok&
+        )
+
+        ! Nur zurückschreiben, wenn der Aufrufer die jeweilige Trace-Variable tatsächlich angefordert hat
+        if (present(trace_neighbor_overlap_ok)) trace_neighbor_overlap_ok = local_trace_neighbor_overlap_ok
+        if (present(trace_min_bin_count_ok)) trace_min_bin_count_ok = local_trace_min_bin_count_ok
+        if (present(trace_min_mean_pmf_bin_count)) trace_min_mean_pmf_bin_count = local_trace_min_mean_pmf_bin_count
+        if (present(trace_confidence_interval)) trace_confidence_interval = local_trace_confidence_interval
+        if (present(trace_ci_overlap)) trace_ci_overlap = local_trace_ci_overlap
+        if (present(trace_exceeds_ci_overlap)) trace_exceeds_ci_overlap = local_trace_exceeds_ci_overlap
+        if (present(trace_plateau_found)) trace_plateau_found = local_trace_plateau_found
+        ! trace_candidates_kx is intent(in) now - nothing to copy back, it's caller-supplied input
+        if (present(trace_mean_pmf_counts_full)) trace_mean_pmf_counts_full = local_trace_mean_pmf_counts_full
 
         ! assign final candidate pair, will be first pair if no candidate pair met the plateau condition
         ! If there is only one candidate pair, this one is the plateau
@@ -1531,4 +1722,176 @@ contains
             overlap_percent = max(0.0_real64, (left_max - right_min) / (a_max - a_min))
         end if
     end function compute_fractional_overlap_helper
+
+    subroutine write_js_comp_test_trace_csv( &
+        filename, &
+        candidates_n_points_n_neighbors, &
+        candidates_n_bins, &
+        n_candidates_n_points_n_neighbors, &
+        n_studies, &
+        trace_neighbor_overlap_ok, &
+        trace_min_bin_count_ok, &
+        trace_min_mean_pmf_bin_count, &
+        trace_confidence_interval, &
+        trace_ci_overlap, &
+        trace_exceeds_ci_overlap, &
+        trace_plateau_found, &
+        trace_candidates_kx &
+    )
+
+        use, intrinsic :: iso_fortran_env, only: int32, real64
+
+        character(len=*), intent(in) :: filename
+
+        integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
+        integer(int32), intent(in) :: n_studies
+
+        integer(int32), dimension(2, n_candidates_n_points_n_neighbors), intent(in) :: &
+            candidates_n_points_n_neighbors
+
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            candidates_n_bins
+
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_neighbor_overlap_ok
+
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_min_bin_count_ok
+
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_min_mean_pmf_bin_count
+
+        real(real64), dimension(2, n_studies, n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_confidence_interval
+
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_ci_overlap
+
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_exceeds_ci_overlap
+
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_plateau_found
+
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in) :: &
+            trace_candidates_kx
+
+        integer :: unit
+        integer :: i_candidate
+        integer :: i_study
+        integer :: ios
+
+        ! Debugging output
+        write(*,*) "DEBUG: ENTERED write_js_comp_test_trace_csv"
+        write(*,*) "DEBUG: filename = ", trim(filename)
+
+        ! Open CSV file
+        open( &
+            newunit=unit, &
+            file=filename, &
+            status="replace", &
+            action="write", &
+            iostat=ios)
+
+        if (ios /= 0) then
+            write(*,*) "ERROR: Could not open JSCompTest trace CSV: ", trim(filename)
+            return
+        end if
+
+        ! Header
+        write(unit, '(A)') &
+            'n_points,n_neighbors,n_bins,study,ci_lower,ci_upper,' // &
+            'ci_overlap,min_bin_count,neighbor_overlap_ok,min_bin_count_ok,' // &
+            'exceeds_ci_overlap,plateau_found,k_x'
+
+        ! One row per (candidate x study)
+        do i_candidate = 1, n_candidates_n_points_n_neighbors
+
+            do i_study = 1, n_studies
+
+                write(unit, '(I0,",",I0,",",I0,",",I0,",",ES24.16,",",ES24.16,",",ES24.16,",",I0,",",I0,",",I0,",",I0,",",I0,",",ES24.16)') &
+                    candidates_n_points_n_neighbors(1, i_candidate), &
+                    candidates_n_points_n_neighbors(2, i_candidate), &
+                    candidates_n_bins(i_candidate), &
+                    i_study, &
+                    trace_confidence_interval(1, i_study, i_candidate), &
+                    trace_confidence_interval(2, i_study, i_candidate), &
+                    trace_ci_overlap(i_study, i_candidate), &
+                    trace_min_mean_pmf_bin_count(i_candidate), &
+                    merge(1, 0, trace_neighbor_overlap_ok(i_candidate)), &
+                    merge(1, 0, trace_min_bin_count_ok(i_candidate)), &
+                    trace_exceeds_ci_overlap(i_candidate), &
+                    merge(1, 0, trace_plateau_found(i_candidate)), &
+                    trace_candidates_kx(i_candidate)
+
+            end do
+
+        end do
+
+        close(unit)
+
+    end subroutine write_js_comp_test_trace_csv
+
+    !> Writes a small one-row CSV with the run-level parameters, so the trace CSV can be interpreted standalone.
+    subroutine write_js_comp_test_run_metadata_csv(filename, shared_residual_range, min_neighbor_overlap, succeeding_ci_overlap, min_count_per_mean_bin, n_bootstraps, join_method)
+        character(len=*), intent(in) :: filename
+        real(real64), intent(in) :: shared_residual_range
+        real(real64), intent(in) :: min_neighbor_overlap
+        real(real64), intent(in) :: succeeding_ci_overlap
+        integer(int32), intent(in) :: min_count_per_mean_bin
+        integer(int32), intent(in) :: n_bootstraps
+        integer(int32), intent(in) :: join_method
+
+        integer :: unit, ios
+
+        open(newunit=unit, file=filename, status="replace", action="write", iostat=ios)
+        if (ios /= 0) then
+            write(*,*) "ERROR: Could not open run metadata CSV: ", trim(filename)
+            return
+        end if
+
+        write(unit, '(A)') 'shared_residual_range,min_neighbor_overlap,succeeding_ci_overlap,min_count_per_mean_bin,n_bootstraps,join_method'
+        write(unit, '(ES24.16,",",ES24.16,",",ES24.16,",",I0,",",I0,",",I0)') &
+            shared_residual_range, min_neighbor_overlap, succeeding_ci_overlap, min_count_per_mean_bin, n_bootstraps, join_method
+
+        close(unit)
+    end subroutine write_js_comp_test_run_metadata_csv
+
+    !> Writes the full per-bin gene counts of the mean pmf, one row per (candidate, point, bin).
+    subroutine write_js_comp_test_bin_counts_csv(filename, candidates_n_points_n_neighbors, candidates_n_bins, n_candidates_n_points_n_neighbors, max_n_bins_all_candidates, max_n_points_candidate, trace_mean_pmf_counts_full, trace_neighbor_overlap_ok, trace_min_bin_count_ok)
+        character(len=*), intent(in) :: filename
+        integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
+        integer(int32), intent(in) :: max_n_bins_all_candidates
+        integer(int32), intent(in) :: max_n_points_candidate
+        integer(int32), dimension(2, n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_points_n_neighbors
+        integer(int32), dimension(n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_bins
+        integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(in) :: trace_mean_pmf_counts_full
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: trace_neighbor_overlap_ok
+        logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: trace_min_bin_count_ok
+
+        integer :: unit, ios, i_candidate, i_point, i_bin
+
+        open(newunit=unit, file=filename, status="replace", action="write", iostat=ios)
+        if (ios /= 0) then
+            write(*,*) "ERROR: Could not open bin counts CSV: ", trim(filename)
+            return
+        end if
+
+        write(unit, '(A)') 'candidate,n_points,n_neighbors,point_idx,bin_idx,gene_count,neighbor_overlap_ok,min_bin_count_ok'
+
+        do i_candidate = 1, n_candidates_n_points_n_neighbors
+            do i_point = 1, candidates_n_points_n_neighbors(1, i_candidate)
+                do i_bin = 1, candidates_n_bins(i_candidate)
+                    write(unit, '(I0,",",I0,",",I0,",",I0,",",I0,",",I0,",",I0,",",I0)') &
+                        i_candidate, candidates_n_points_n_neighbors(1, i_candidate), candidates_n_points_n_neighbors(2, i_candidate), &
+                        i_point, i_bin, trace_mean_pmf_counts_full(i_bin, i_point, i_candidate), &
+                        merge(1, 0, trace_neighbor_overlap_ok(i_candidate)), &
+                        merge(1, 0, trace_min_bin_count_ok(i_candidate))
+                end do
+            end do
+        end do
+
+        close(unit)
+    end subroutine write_js_comp_test_bin_counts_csv
+
 end module tox_data_integration_js_comp_test
