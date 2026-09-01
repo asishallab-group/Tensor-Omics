@@ -426,6 +426,8 @@ contains
             !! Delta-tilde_t: median of trace_delta(:, t) across studies
         real(real64), allocatable :: trace_delta_max(:)
             !! Delta_t^max: maximum of trace_delta(:, t) across studies
+        real(real64), allocatable :: trace_x_star(:, :)
+            !! Mean-expression reference point x_star(point_idx) for each candidate
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -595,6 +597,7 @@ contains
         M_ALLOCATE(trace_delta(n_studies, n_candidates))
         M_ALLOCATE(trace_delta_median(n_candidates))
         M_ALLOCATE(trace_delta_max(n_candidates))
+        M_ALLOCATE(trace_x_star(max_n_points_candidate, n_candidates))
 
         call write_js_comp_test_bin_estimation_csv(&
             "js_comp_test_bin_estimation.csv", candidates_n_points_n_neighbors, trace_candidates_kx, n_candidates,&
@@ -613,7 +616,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max, trace_x_star&
         )
 
         !call write_js_comp_test_trace_csv( &
@@ -640,7 +643,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max, trace_x_star&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -754,6 +757,8 @@ contains
             !! Delta-tilde_t: median of trace_delta(:, t) across studies
         real(real64), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta_max
             !! Delta_t^max: maximum of trace_delta(:, t) across studies
+        real(real64), dimension(max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_x_star
+            !! Mean-expression reference point x_star(point_idx) for each candidate
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -800,7 +805,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max, trace_x_star&
         )
     end subroutine determine_js_comp_test_n_points_n_neighbors
 
@@ -815,7 +820,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max, trace_x_star&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -929,6 +934,9 @@ contains
             !! Delta-tilde_t: median of trace_delta(:, t) across studies. -1.0 if undefined (no previous admissible candidate).
         real(real64), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta_max
             !! Delta_t^max: maximum of trace_delta(:, t) across studies. -1.0 if undefined (no previous admissible candidate).
+        real(real64), dimension(max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_x_star
+            !! Mean-expression reference point x_star(point_idx) for each candidate. Only [1:n_points, i] are meaningful per candidate.
+            !! Lets callers relate bin sparsity (js_comp_test_bin_counts.csv) back to the expression level of each neighborhood.
         logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_neighbor_overlap_ok
             !! Always-populated local mirror, used internally regardless of whether the caller requested trace output
         logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_min_bin_count_ok
@@ -943,6 +951,7 @@ contains
         real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors) :: local_trace_delta
         real(real64), dimension(n_candidates_n_points_n_neighbors) :: local_trace_delta_median
         real(real64), dimension(n_candidates_n_points_n_neighbors) :: local_trace_delta_max
+        real(real64), dimension(max_n_points_candidate, n_candidates_n_points_n_neighbors) :: local_trace_x_star
         real(real64), dimension(n_studies) :: prev_admissible_j
             !! J_{i,t-1} of the last admissible candidate, used to compute Delta_{i,t}
         logical :: has_prev_admissible
@@ -992,6 +1001,7 @@ contains
         local_trace_delta = -1.0_real64
         local_trace_delta_median = -1.0_real64
         local_trace_delta_max = -1.0_real64
+        local_trace_x_star = -1.0_real64
         has_prev_admissible = .false.
         ! trace_candidates_kx is intent(in): this routine never computes k_x itself, only forwards
         ! whatever the caller (e.g. _alloc) supplied. -1.0 marks "caller did not provide k_x".
@@ -1024,6 +1034,9 @@ contains
                 ! determine x_star
                 call pool_means_n_pool_input_helper(gene_means, gene_means_perm_all, n_gene_means, n_points, n_pool, tmp_x_star)
             end if
+
+            ! --- NEW: capture x_star for this candidate (same values whenever n_points repeats, e.g. across k_x) ---
+            local_trace_x_star(1:n_points, i_candidate_n_points_n_neighbors) = tmp_x_star(1:n_points)
 
             ! Calculate neighborhoods and check min overlap of consecutive neighbors
             all_have_min_neighbor_overlap = .true.
@@ -1141,7 +1154,7 @@ contains
         call write_js_comp_test_bin_counts_csv(&
             "js_comp_test_bin_counts.csv", candidates_n_points_n_neighbors, candidates_n_bins,&
             n_candidates_n_points_n_neighbors, max_n_bins_all_candidates, max_n_points_candidate,&
-            local_trace_mean_pmf_counts_full, local_trace_neighbor_overlap_ok, local_trace_min_bin_count_ok&
+            local_trace_mean_pmf_counts_full, local_trace_neighbor_overlap_ok, local_trace_min_bin_count_ok, local_trace_x_star&
         )
 
         call write_js_comp_test_effect_size_csv(&
@@ -1164,6 +1177,7 @@ contains
         if (present(trace_delta)) trace_delta = local_trace_delta
         if (present(trace_delta_median)) trace_delta_median = local_trace_delta_median
         if (present(trace_delta_max)) trace_delta_max = local_trace_delta_max
+        if (present(trace_x_star)) trace_x_star = local_trace_x_star
 
         ! assign final candidate pair, will be first pair if no candidate pair met the plateau condition
         ! If there is only one candidate pair, this one is the plateau
@@ -1999,7 +2013,7 @@ contains
     end subroutine write_js_comp_test_run_metadata_csv
 
     !> Writes the full per-bin gene counts of the mean pmf, one row per (candidate, point, bin).
-    subroutine write_js_comp_test_bin_counts_csv(filename, candidates_n_points_n_neighbors, candidates_n_bins, n_candidates_n_points_n_neighbors, max_n_bins_all_candidates, max_n_points_candidate, trace_mean_pmf_counts_full, trace_neighbor_overlap_ok, trace_min_bin_count_ok)
+    subroutine write_js_comp_test_bin_counts_csv(filename, candidates_n_points_n_neighbors, candidates_n_bins, n_candidates_n_points_n_neighbors, max_n_bins_all_candidates, max_n_points_candidate, trace_mean_pmf_counts_full, trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_x_star)
         character(len=*), intent(in) :: filename
         integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
         integer(int32), intent(in) :: max_n_bins_all_candidates
@@ -2009,6 +2023,8 @@ contains
         integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(in) :: trace_mean_pmf_counts_full
         logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: trace_neighbor_overlap_ok
         logical, dimension(n_candidates_n_points_n_neighbors), intent(in) :: trace_min_bin_count_ok
+        real(real64), dimension(max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(in) :: trace_x_star
+            !! Mean-expression reference point x_star(point_idx) for each candidate - lets bin sparsity be related to expression level
 
         integer :: unit, ios, i_candidate, i_point, i_bin
 
@@ -2018,14 +2034,14 @@ contains
             return
         end if
 
-        write(unit, '(A)') 'candidate,n_points,n_neighbors,point_idx,bin_idx,gene_count,neighbor_overlap_ok,min_bin_count_ok'
+        write(unit, '(A)') 'candidate,n_points,n_neighbors,point_idx,x_star,bin_idx,gene_count,neighbor_overlap_ok,min_bin_count_ok'
 
         do i_candidate = 1, n_candidates_n_points_n_neighbors
             do i_point = 1, candidates_n_points_n_neighbors(1, i_candidate)
                 do i_bin = 1, candidates_n_bins(i_candidate)
-                    write(unit, '(I0,",",I0,",",I0,",",I0,",",I0,",",I0,",",I0,",",I0)') &
+                    write(unit, '(I0,",",I0,",",I0,",",I0,",",ES24.16,",",I0,",",I0,",",I0,",",I0)') &
                         i_candidate, candidates_n_points_n_neighbors(1, i_candidate), candidates_n_points_n_neighbors(2, i_candidate), &
-                        i_point, i_bin, trace_mean_pmf_counts_full(i_bin, i_point, i_candidate), &
+                        i_point, trace_x_star(i_point, i_candidate), i_bin, trace_mean_pmf_counts_full(i_bin, i_point, i_candidate), &
                         merge(1, 0, trace_neighbor_overlap_ok(i_candidate)), &
                         merge(1, 0, trace_min_bin_count_ok(i_candidate))
                 end do
