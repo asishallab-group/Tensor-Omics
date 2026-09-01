@@ -387,6 +387,14 @@ contains
             !! The KX factor for each candidate pair, used to determine the plateau condition 
         integer(int32), allocatable :: trace_mean_pmf_counts_full(:, :, :)
             !! Full per-bin gene counts of the mean pmf, per candidate (bin, point, candidate)
+        real(real64), allocatable :: trace_global_js_divergence(:, :)
+            !! J_{i,t}: observed (point-estimate) global JSD per study, per candidate
+        real(real64), allocatable :: trace_delta(:, :)
+            !! Delta_{i,t}: relative change in J vs. the previous admissible candidate, per study
+        real(real64), allocatable :: trace_delta_median(:)
+            !! Delta-tilde_t: median of trace_delta(:, t) across studies
+        real(real64), allocatable :: trace_delta_max(:)
+            !! Delta_t^max: maximum of trace_delta(:, t) across studies
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -531,6 +539,10 @@ contains
         M_ALLOCATE(trace_exceeds_ci_overlap(n_candidates))
         M_ALLOCATE(trace_plateau_found(n_candidates))
         M_ALLOCATE(trace_mean_pmf_counts_full(max_n_bins_all_candidates, max_n_points_candidate, n_candidates))
+        M_ALLOCATE(trace_global_js_divergence(n_studies, n_candidates))
+        M_ALLOCATE(trace_delta(n_studies, n_candidates))
+        M_ALLOCATE(trace_delta_median(n_candidates))
+        M_ALLOCATE(trace_delta_max(n_candidates))
 
         call determine_js_comp_test_n_points_n_neighbors_helper(&
             candidates_n_points_n_neighbors, n_candidates, max_n_points_candidate, max_n_neighbors_candidate,&
@@ -543,7 +555,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
         )
 
         !call write_js_comp_test_trace_csv( &
@@ -570,7 +582,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -676,6 +688,14 @@ contains
             !! The KX factor for each candidate pair, as determined by the caller during candidate generation (e.g. `_alloc`). This routine never computes k_x itself; it only forwards the value for tracing/CSV output.
         integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_mean_pmf_counts_full
             !! Full per-bin gene counts of the mean pmf, per candidate
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_global_js_divergence
+            !! J_{i,t}: observed (point-estimate) global JSD per study, per candidate
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta
+            !! Delta_{i,t}: relative change in J vs. the previous admissible candidate, per study
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta_median
+            !! Delta-tilde_t: median of trace_delta(:, t) across studies
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta_max
+            !! Delta_t^max: maximum of trace_delta(:, t) across studies
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -722,7 +742,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
         )
     end subroutine determine_js_comp_test_n_points_n_neighbors
 
@@ -737,7 +757,7 @@ contains
             min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, random_seed,&
             trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
             trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found, trace_candidates_kx,&
-            trace_mean_pmf_counts_full&
+            trace_mean_pmf_counts_full, trace_global_js_divergence, trace_delta, trace_delta_median, trace_delta_max&
         )
         integer(int32), intent(in) :: n_studies
             !! Number of studies
@@ -843,6 +863,14 @@ contains
             !! The KX factor for each candidate pair, as determined by the caller during candidate generation (e.g. `_alloc`). This routine never computes k_x itself; it only forwards the value for tracing/CSV output.
         integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_mean_pmf_counts_full
             !! Full per-bin gene counts of the mean pmf, per candidate. Only [1:n_bins, 1:n_points, i] are meaningful per candidate.
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_global_js_divergence
+            !! J_{i,t}: observed (point-estimate) global JSD per study, per candidate. Captured before bootstrapping overwrites the work array. -1.0 if this candidate was never admissible far enough to compute it.
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta
+            !! Delta_{i,t}: relative change in J vs. the previous *admissible* candidate, per study. -1.0 if there is no previous admissible candidate to compare against (e.g. the first admissible one).
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta_median
+            !! Delta-tilde_t: median of trace_delta(:, t) across studies. -1.0 if undefined (no previous admissible candidate).
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(out), optional :: trace_delta_max
+            !! Delta_t^max: maximum of trace_delta(:, t) across studies. -1.0 if undefined (no previous admissible candidate).
         logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_neighbor_overlap_ok
             !! Always-populated local mirror, used internally regardless of whether the caller requested trace output
         logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_min_bin_count_ok
@@ -853,6 +881,18 @@ contains
         logical, dimension(n_candidates_n_points_n_neighbors) :: local_trace_plateau_found
         real(real64), dimension(n_candidates_n_points_n_neighbors) :: local_trace_candidates_kx
         integer(int32), dimension(max_n_bins_all_candidates, max_n_points_candidate, n_candidates_n_points_n_neighbors) :: local_trace_mean_pmf_counts_full
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors) :: local_trace_global_js_divergence
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors) :: local_trace_delta
+        real(real64), dimension(n_candidates_n_points_n_neighbors) :: local_trace_delta_median
+        real(real64), dimension(n_candidates_n_points_n_neighbors) :: local_trace_delta_max
+        real(real64), dimension(n_studies) :: prev_admissible_j
+            !! J_{i,t-1} of the last admissible candidate, used to compute Delta_{i,t}
+        logical :: has_prev_admissible
+            !! .true. once at least one admissible candidate has been processed
+        integer(int32), dimension(n_studies) :: delta_sort_perm
+            !! Scratch permutation for the small median-of-studies computation
+        real(real64), parameter :: DELTA_EPSILON = 1.0e-12_real64
+            !! Small constant preventing division by zero in the relative JSD change Delta_{i,t}
         integer(int32) :: prev_n_points, n_gene_means, n_pool, i_study, i_candidate_n_points_n_neighbors, best_params_CI_i_candidate_n_points_n_neighbors, best_params_exceeded_CI_overlap
         logical :: plateau_found, all_have_min_neighbor_overlap
         integer(int32) :: actual_min_count_per_mean_bin
@@ -890,6 +930,11 @@ contains
         local_trace_exceeds_ci_overlap = 0
         local_trace_plateau_found = .false.
         local_trace_mean_pmf_counts_full = 0
+        local_trace_global_js_divergence = -1.0_real64
+        local_trace_delta = -1.0_real64
+        local_trace_delta_median = -1.0_real64
+        local_trace_delta_max = -1.0_real64
+        has_prev_admissible = .false.
         ! trace_candidates_kx is intent(in): this routine never computes k_x itself, only forwards
         ! whatever the caller (e.g. _alloc) supplied. -1.0 marks "caller did not provide k_x".
         if (present(trace_candidates_kx)) then
@@ -959,6 +1004,34 @@ contains
                     tmp_confidence_interval(:, i_study) = tmp_global_js_divergence(i_study)
                 end do
 
+                ! --- NEW: capture J_{i,t} (point-estimate JSD) BEFORE bootstrapping overwrites tmp_global_js_divergence ---
+                local_trace_global_js_divergence(:, i_candidate_n_points_n_neighbors) = tmp_global_js_divergence
+
+                ! --- NEW: relative effect-size change Delta_{i,t} vs. the previous *admissible* candidate ---
+                if (has_prev_admissible) then
+                    do i_study = 1, n_studies
+                        local_trace_delta(i_study, i_candidate_n_points_n_neighbors) = &
+                            abs(tmp_global_js_divergence(i_study) - prev_admissible_j(i_study)) / max(prev_admissible_j(i_study), DELTA_EPSILON)
+                    end do
+
+                    ! Median and max across studies (n_studies is small, plain heapsort-based argsort is fine)
+                    call init_perm(delta_sort_perm)
+                    call sort_array_heapsort(local_trace_delta(:, i_candidate_n_points_n_neighbors), delta_sort_perm)
+                    if (mod(n_studies, 2) == 0) then
+                        local_trace_delta_median(i_candidate_n_points_n_neighbors) = ( &
+                            local_trace_delta(delta_sort_perm(n_studies / 2), i_candidate_n_points_n_neighbors) + &
+                            local_trace_delta(delta_sort_perm(n_studies / 2 + 1), i_candidate_n_points_n_neighbors) &
+                        ) / 2.0_real64
+                    else
+                        local_trace_delta_median(i_candidate_n_points_n_neighbors) = &
+                            local_trace_delta(delta_sort_perm(n_studies / 2 + 1), i_candidate_n_points_n_neighbors)
+                    end if
+                    local_trace_delta_max(i_candidate_n_points_n_neighbors) = maxval(local_trace_delta(:, i_candidate_n_points_n_neighbors))
+                end if
+
+                prev_admissible_j = tmp_global_js_divergence
+                has_prev_admissible = .true.
+
                 ! 3. Compute a confidence interval for the JSD value by bootstrapping
                 ! Each candidate pair should have same conditions for comparability -> reset RNG
                 call bootstrap_histogram_helper(n_bootstraps, tmp_included_n_reps_view, n_bins, n_points, n_studies, tmp_mean_pmf_counts_view, tmp_mean_pmf_included_n_reps, tmp_confidence_interval, tmp_js_divergences_view, tmp_weights_view, tmp_global_js_divergence, tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds, tmp_counts_view, tmp_pmfs_view, tmp_mean_pmf_view, random_seed)
@@ -1013,6 +1086,12 @@ contains
             local_trace_mean_pmf_counts_full, local_trace_neighbor_overlap_ok, local_trace_min_bin_count_ok&
         )
 
+        call write_js_comp_test_effect_size_csv(&
+            "js_comp_test_effect_size.csv", candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, n_studies,&
+            local_trace_global_js_divergence, local_trace_confidence_interval, local_trace_delta,&
+            local_trace_delta_median, local_trace_delta_max&
+        )
+
         ! Nur zurückschreiben, wenn der Aufrufer die jeweilige Trace-Variable tatsächlich angefordert hat
         if (present(trace_neighbor_overlap_ok)) trace_neighbor_overlap_ok = local_trace_neighbor_overlap_ok
         if (present(trace_min_bin_count_ok)) trace_min_bin_count_ok = local_trace_min_bin_count_ok
@@ -1023,6 +1102,10 @@ contains
         if (present(trace_plateau_found)) trace_plateau_found = local_trace_plateau_found
         ! trace_candidates_kx is intent(in) now - nothing to copy back, it's caller-supplied input
         if (present(trace_mean_pmf_counts_full)) trace_mean_pmf_counts_full = local_trace_mean_pmf_counts_full
+        if (present(trace_global_js_divergence)) trace_global_js_divergence = local_trace_global_js_divergence
+        if (present(trace_delta)) trace_delta = local_trace_delta
+        if (present(trace_delta_median)) trace_delta_median = local_trace_delta_median
+        if (present(trace_delta_max)) trace_delta_max = local_trace_delta_max
 
         ! assign final candidate pair, will be first pair if no candidate pair met the plateau condition
         ! If there is only one candidate pair, this one is the plateau
@@ -1893,5 +1976,51 @@ contains
 
         close(unit)
     end subroutine write_js_comp_test_bin_counts_csv
+
+    !> Writes the relative effect-size change (Delta_t) diagnostics from the "Assessing JSD Plateau
+    !| Stability Using Relative Effect-Size Change" section of the method description: J_{i,t}, CI width,
+    !| relative CI width, Delta_{i,t}, and their per-candidate median/max across studies.
+    subroutine write_js_comp_test_effect_size_csv(filename, candidates_n_points_n_neighbors, n_candidates_n_points_n_neighbors, n_studies, &
+            trace_global_js_divergence, trace_confidence_interval, trace_delta, trace_delta_median, trace_delta_max)
+        character(len=*), intent(in) :: filename
+        integer(int32), intent(in) :: n_candidates_n_points_n_neighbors
+        integer(int32), intent(in) :: n_studies
+        integer(int32), dimension(2, n_candidates_n_points_n_neighbors), intent(in) :: candidates_n_points_n_neighbors
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(in) :: trace_global_js_divergence
+        real(real64), dimension(2, n_studies, n_candidates_n_points_n_neighbors), intent(in) :: trace_confidence_interval
+        real(real64), dimension(n_studies, n_candidates_n_points_n_neighbors), intent(in) :: trace_delta
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in) :: trace_delta_median
+        real(real64), dimension(n_candidates_n_points_n_neighbors), intent(in) :: trace_delta_max
+
+        real(real64), parameter :: WRITE_EPSILON = 1.0e-12_real64
+            !! Same role as DELTA_EPSILON in the helper: avoids division by ~0 when reporting relative CI width
+
+        integer :: unit, ios, i_candidate, i_study
+        real(real64) :: j_val, ci_width
+
+        open(newunit=unit, file=filename, status="replace", action="write", iostat=ios)
+        if (ios /= 0) then
+            write(*,*) "ERROR: Could not open effect size CSV: ", trim(filename)
+            return
+        end if
+
+        write(unit, '(A)') 'candidate,n_points,n_neighbors,study,J,ci_lower,ci_upper,ci_width,ci_width_relative,delta,delta_median,delta_max'
+
+        do i_candidate = 1, n_candidates_n_points_n_neighbors
+            do i_study = 1, n_studies
+                j_val = trace_global_js_divergence(i_study, i_candidate)
+                ci_width = trace_confidence_interval(2, i_study, i_candidate) - trace_confidence_interval(1, i_study, i_candidate)
+
+                write(unit, '(I0,",",I0,",",I0,",",I0,",",ES24.16,",",ES24.16,",",ES24.16,",",ES24.16,",",ES24.16,",",ES24.16,",",ES24.16,",",ES24.16)') &
+                    i_candidate, candidates_n_points_n_neighbors(1, i_candidate), candidates_n_points_n_neighbors(2, i_candidate), &
+                    i_study, j_val, &
+                    trace_confidence_interval(1, i_study, i_candidate), trace_confidence_interval(2, i_study, i_candidate), &
+                    ci_width, ci_width / max(j_val, WRITE_EPSILON), &
+                    trace_delta(i_study, i_candidate), trace_delta_median(i_candidate), trace_delta_max(i_candidate)
+            end do
+        end do
+
+        close(unit)
+    end subroutine write_js_comp_test_effect_size_csv
 
 end module tox_data_integration_js_comp_test
