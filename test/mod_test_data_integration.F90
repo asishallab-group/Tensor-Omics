@@ -20,7 +20,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate(all_tests(28))
+        allocate(all_tests(29))
 
         ! jsd
         all_tests(22) = test_case("test_build_residual_histograms", test_build_residual_histograms)
@@ -39,6 +39,7 @@ contains
         all_tests(26) = test_case("test_check_plateau_condition_helper", test_check_plateau_condition_helper)
         all_tests(27) = test_case("test_js_comp_test", test_js_comp_test)
         all_tests(28) = test_case("test_determine_js_comp_test_n_points_n_neighbors", test_determine_js_comp_test_n_points_n_neighbors)
+        all_tests(29) = test_case("test_trace_arrays_debug", test_trace_arrays_debug)
 
         ! preprocessing
         all_tests(1) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
@@ -109,6 +110,13 @@ contains
         real(real64), dimension(n_studies) :: tmp_global_js_divergence
         real(real64), dimension(2, n_studies) :: tmp_confidence_interval
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies) :: tmp_bootstrapping_top_k_jsds
+
+        logical, dimension(n_candidates) :: trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_plateau_found
+        integer(int32), dimension(n_candidates) :: trace_min_mean_pmf_bin_count, trace_exceeds_ci_overlap
+        real(real64), dimension(2, n_studies, n_candidates) :: trace_confidence_interval
+        real(real64), dimension(n_studies, n_candidates) :: trace_ci_overlap
+        real(real64), dimension(n_candidates) :: trace_candidates_kx
+        integer(int32), dimension(n_bins_2, max_n_points_candidate, n_candidates) :: trace_mean_pmf_counts_full
 
         integer(int32) :: i_candidates, i_join, expected_n_points, expected_n_neighbors
         integer(int32) :: i, j, s, ierr
@@ -261,7 +269,12 @@ contains
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
                         tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
-                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32)
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, random_seed=42_int32, &
+                        trace_neighbor_overlap_ok=trace_neighbor_overlap_ok, trace_min_bin_count_ok=trace_min_bin_count_ok, &
+                        trace_min_mean_pmf_bin_count=trace_min_mean_pmf_bin_count, trace_confidence_interval=trace_confidence_interval, &
+                        trace_ci_overlap=trace_ci_overlap, trace_exceeds_ci_overlap=trace_exceeds_ci_overlap, &
+                        trace_plateau_found=trace_plateau_found, trace_candidates_kx=trace_candidates_kx, &
+                        trace_mean_pmf_counts_full=trace_mean_pmf_counts_full)
 
                     call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), errmsg_prefix // "Case 2: expected n_points")
                     call assert_equal_int(n_neighbors, candidates_n_points_n_neighbors(2, 1), errmsg_prefix // "Case 2: expected n_neighbors")
@@ -287,8 +300,8 @@ contains
                     call assert_equal_int(ierr, ERR_OK, errmsg_prefix // "Case 3: ierr")
 
                     ! Min grid values
-                    call assert_equal_int(n_points, 300_int32, errmsg_prefix // "Case 3: expected n_points")
-                    call assert_equal_int(n_neighbors, 1_int32, errmsg_prefix // "Case 3: expected n_neighbors")
+                    call assert_equal_int(n_points, 400_int32, errmsg_prefix // "Case 3: expected n_points")
+                    call assert_equal_int(n_neighbors, 12_int32, errmsg_prefix // "Case 3: expected n_neighbors")
 
                     do s = 1, n_studies
                         call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, errmsg_prefix // "Case 3: best CI lower must be -1.0 on min-count fallback")
@@ -309,8 +322,8 @@ contains
 
                     call assert_equal_int(ierr, ERR_OK, errmsg_prefix // "Case 4: ierr")
 
-                    call assert_equal_int(n_points, 300_int32, errmsg_prefix // "Case 4: expected n_points")
-                    call assert_equal_int(n_neighbors, 1_int32, errmsg_prefix // "Case 4: expected n_neighbors")
+                    call assert_equal_int(n_points, 400_int32, errmsg_prefix // "Case 4: expected n_points")
+                    call assert_equal_int(n_neighbors, 12_int32, errmsg_prefix // "Case 4: expected n_neighbors")
 
                     do s = 1, n_studies
                         call assert_equal_real(best_candidate_pair_confidence_interval(1,s), -1.0_real64, TOL, errmsg_prefix // "Case 4: best CI lower must be -1.0 on n_bins=2 fallback")
@@ -351,7 +364,12 @@ contains
                         tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
                         tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
                         tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
-                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32)
+                        min_count_per_mean_bin=min_count_per_mean_bin, succeeding_ci_overlap=succeeding_ci_overlap, min_neighbor_overlap=above(1.0_real64), random_seed=42_int32, &
+                        trace_neighbor_overlap_ok=trace_neighbor_overlap_ok, trace_min_bin_count_ok=trace_min_bin_count_ok, &
+                        trace_min_mean_pmf_bin_count=trace_min_mean_pmf_bin_count, trace_confidence_interval=trace_confidence_interval, &
+                        trace_ci_overlap=trace_ci_overlap, trace_exceeds_ci_overlap=trace_exceeds_ci_overlap, &
+                        trace_plateau_found=trace_plateau_found, trace_candidates_kx=trace_candidates_kx, &
+                        trace_mean_pmf_counts_full=trace_mean_pmf_counts_full)
 
 
                     call assert_equal_int(n_points, candidates_n_points_n_neighbors(1, 1), errmsg_prefix // "Case 5: expected n_points")
@@ -2288,5 +2306,137 @@ contains
         call assert_equal_array_int( neighborhood_range(:,2), [1,2], n_neighbors, &
             "test_construct_neighborhoods_nan_handling: NaN x star handling Incorrect neighborhood range for point 2")
     end subroutine test_construct_neighborhoods_nan_handling
+
+    !> Test routine to display trace array outputs (debug test for plateau debugging)
+    subroutine test_trace_arrays_debug()
+        integer(int32), parameter :: n_studies = 3_int32
+        integer(int32), parameter :: max_n_genes_all_studies = 1000_int32
+        integer(int32), parameter :: max_n_reps_all_studies  = 4_int32
+        integer(int32), parameter :: n_candidates = 4_int32
+        integer(int32), parameter :: max_n_points_candidate  = 4_int32
+        integer(int32), parameter :: max_n_neighbors_candidate = 4_int32
+        integer(int32), parameter :: max_n_bins_candidate = 10_int32
+        integer(int32), parameter :: n_bootstraps = 100_int32
+        integer(int32), parameter :: n_bootstrapping_top_k_jsds = 2_int32
+
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies) :: residuals
+        real(real64), dimension(max_n_genes_all_studies, n_studies) :: gene_means
+        integer(int32), dimension(max_n_genes_all_studies, n_studies) :: gene_means_perms
+        integer(int32), dimension(max_n_genes_all_studies * n_studies) :: gene_means_perm_all
+
+        integer(int32), dimension(2, n_candidates) :: candidates_n_points_n_neighbors
+        integer(int32), dimension(n_candidates) :: n_bins_candidates
+
+        real(real64), dimension(2, n_studies) :: best_candidate_pair_confidence_interval
+        integer(int32) :: n_points, n_neighbors, n_bins, shared_range, ierr
+
+        integer(int32), dimension(max_n_neighbors_candidate, max_n_points_candidate) :: tmp_neighborhood_residuals
+        integer(int32), dimension(2, max_n_points_candidate) :: tmp_neighborhood_ranges
+        real(real64), dimension(max_n_points_candidate) :: tmp_x_star
+        real(real64), dimension(max_n_bins_candidate, max_n_points_candidate, n_studies) :: tmp_pmfs
+        integer(int32), dimension(max_n_bins_candidate, max_n_points_candidate, n_studies) :: tmp_counts
+        integer(int32), dimension(max_n_points_candidate, n_studies) :: tmp_included_n_reps
+        real(real64), dimension(max_n_bins_candidate, max_n_points_candidate) :: tmp_mean_pmf
+        integer(int32), dimension(max_n_bins_candidate, max_n_points_candidate) :: tmp_mean_pmf_counts
+        integer(int32), dimension(max_n_points_candidate) :: tmp_mean_pmf_included_n_reps
+        real(real64), dimension(max_n_points_candidate, n_studies) :: tmp_js_divergences
+        real(real64), dimension(max_n_points_candidate, n_studies) :: tmp_weights
+        real(real64), dimension(n_studies) :: tmp_global_js_divergence
+        real(real64), dimension(2, n_studies) :: tmp_confidence_interval
+        real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies) :: tmp_bootstrapping_top_k_jsds
+
+        ! Trace outputs
+        logical, dimension(:), allocatable :: trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_plateau_found
+        integer(int32), dimension(:), allocatable :: trace_min_mean_pmf_bin_count, trace_exceeds_ci_overlap
+        real(real64), dimension(:, :, :), allocatable :: trace_confidence_interval
+        real(real64), dimension(:, :), allocatable :: trace_ci_overlap
+        real(real64), dimension(:), allocatable :: trace_candidates_kx
+        integer(int32), dimension(:, :, :), allocatable :: trace_mean_pmf_counts_full
+
+        real(real64) :: R
+        integer(int32) :: i, s, i_cand
+
+        ! Initialize allocatables
+        allocate(trace_neighbor_overlap_ok(n_candidates))
+        allocate(trace_min_bin_count_ok(n_candidates))
+        allocate(trace_min_mean_pmf_bin_count(n_candidates))
+        allocate(trace_confidence_interval(2, n_studies, n_candidates))
+        allocate(trace_ci_overlap(n_studies, n_candidates))
+        allocate(trace_exceeds_ci_overlap(n_candidates))
+        allocate(trace_plateau_found(n_candidates))
+        allocate(trace_candidates_kx(n_candidates))
+        allocate(trace_mean_pmf_counts_full(max_n_bins_candidate, max_n_points_candidate, n_candidates))
+
+        ! Setup minimal test data
+        R = 2.0_real64
+        residuals = R
+        gene_means = R
+
+        do s = 1, n_studies
+            do i = 1, max_n_genes_all_studies
+                gene_means_perms(i, s) = i
+            end do
+        end do
+
+        do i = 1, max_n_genes_all_studies * n_studies
+            gene_means_perm_all(i) = i
+        end do
+
+        ! Setup candidates: (2,2), (3,3), (4,4), (4,4)
+        candidates_n_points_n_neighbors(1, :) = [2_int32, 3_int32, 4_int32, 4_int32]
+        candidates_n_points_n_neighbors(2, :) = [2_int32, 3_int32, 4_int32, 4_int32]
+        n_bins_candidates(:) = 5_int32
+
+        ! Initialize data structures
+        tmp_pmfs = 0.0_real64
+        tmp_counts = 0_int32
+        tmp_included_n_reps = 0_int32
+        tmp_mean_pmf = 0.0_real64
+        tmp_mean_pmf_counts = 0_int32
+        tmp_mean_pmf_included_n_reps = 0_int32
+        tmp_js_divergences = 0.0_real64
+        tmp_weights = 0.0_real64
+        tmp_global_js_divergence = 0.0_real64
+        tmp_confidence_interval = -1.0_real64
+        tmp_bootstrapping_top_k_jsds = 0.0_real64
+        best_candidate_pair_confidence_interval = -1.0_real64
+
+        ! Call helper with trace outputs
+        call determine_js_comp_test_n_points_n_neighbors_helper(&
+            candidates_n_points_n_neighbors, n_candidates, max_n_points_candidate, max_n_neighbors_candidate,&
+            n_points, n_neighbors, n_bins, residuals, max_n_reps_all_studies, max_n_genes_all_studies, R, &
+            n_bins_candidates, max_n_bins_candidate,&
+            gene_means, gene_means_perms, gene_means_perm_all, n_studies,&
+            n_bootstraps, n_bootstrapping_top_k_jsds, best_candidate_pair_confidence_interval, JOIN_MIN,&
+            tmp_neighborhood_residuals, tmp_neighborhood_ranges, tmp_x_star, tmp_pmfs, tmp_counts, tmp_included_n_reps,&
+            tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, tmp_global_js_divergence,&
+            tmp_confidence_interval, tmp_bootstrapping_top_k_jsds,&
+            5_int32, 0.1_real64, 0.9_real64, 42_int32,&
+            trace_neighbor_overlap_ok, trace_min_bin_count_ok, trace_min_mean_pmf_bin_count,&
+            trace_confidence_interval, trace_ci_overlap, trace_exceeds_ci_overlap, trace_plateau_found,&
+            trace_candidates_kx, trace_mean_pmf_counts_full&
+        )
+
+        ! Output trace results
+        print *, ""
+        print *, "=== TRACE ARRAY DEBUG OUTPUT ==="
+        do i_cand = 1, n_candidates
+            print *, ""
+            print *, "Candidate", i_cand, ": n_points=", candidates_n_points_n_neighbors(1, i_cand), &
+                     ", n_neighbors=", candidates_n_points_n_neighbors(2, i_cand), &
+                     ", n_bins=", n_bins_candidates(i_cand)
+            print *, "  neighbor_overlap_ok:", trace_neighbor_overlap_ok(i_cand)
+            print *, "  min_bin_count_ok:", trace_min_bin_count_ok(i_cand)
+            print *, "  min_mean_pmf_bin_count:", trace_min_mean_pmf_bin_count(i_cand)
+            print *, "  exceeds_ci_overlap:", trace_exceeds_ci_overlap(i_cand)
+            print *, "  plateau_found:", trace_plateau_found(i_cand)
+            print *, "  CI overlap per study:", trace_ci_overlap(:, i_cand)
+        end do
+        print *, ""
+        print *, "Final chosen: n_points=", n_points, ", n_neighbors=", n_neighbors, ", n_bins=", n_bins
+        print *, "=== END TRACE OUTPUT ==="
+        print *, ""
+
+    end subroutine test_trace_arrays_debug
 
 end module mod_test_data_integration
