@@ -19,7 +19,7 @@ misc/tox-manual/
     _template.tex      copy this to start a new recipe
     outlier_detection.tex  divergent-gene analysis
     trajectory_contributions.tex  signed contribution analysis
-    snd_detection.tex  worked example (exercises every environment)
+    snd_detection.tex      SND analysis
   shared/
     tox_dataset.tex             creating a TOX dataset
     normalization.tex           the normalization sub-recipe
