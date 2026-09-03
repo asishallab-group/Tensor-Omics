@@ -58,7 +58,7 @@ def compute_shift_vector_field(
     Returns
     -------
     shift_vectors : np.ndarray[np.float64] of shape (n_tissues, 2, n_genes,), column-major (order='F'), read-only
-        Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
+        Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first, then the shift vector from that centroid to the gene. A gene with no family assigned has no centroid to shift from, so both of its vectors are zero
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
