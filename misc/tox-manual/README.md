@@ -20,6 +20,7 @@ misc/tox-manual/
     outlier_detection.tex  divergent-gene analysis
     snd_detection.tex  worked example (exercises every environment)
   shared/
+    tox_dataset.tex             creating a TOX dataset
     normalization.tex           the normalization sub-recipe
     family_centroids.tex        the family-centroid sub-recipe
     gene_family_detection.tex   example reusable sub-recipe
