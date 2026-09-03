@@ -1,0 +1,110 @@
+%% snd_detection.tex -- worked example recipe. Exercises every environment in
+%% toxmanual.sty and serves as a living style reference. The scientific content
+%% is illustrative scaffolding, not a validated protocol -- replace before use.
+
+\begin{recipe}[label=rec:snd]{Subfunctionalization, Neofunctionalization and
+  Dosage-Effect Detection (SND)}
+
+\recipepurpose{Detect genes whose expression trajectories diverge between
+  duplicated or orthologous copies in a way consistent with
+  subfunctionalization, neofunctionalization, or dosage effects, using the
+  Tensor Omics geometric framework.}
+
+\recipemaintainer{The researcher currently developing and running SND analysis}
+
+\begin{requiredinputs}
+  \item Per-sample expression matrices (e.g.\ TPM from \cmd{kallisto}), one
+        matrix per species, genes $\times$ conditions.
+  \item A sample sheet mapping each column to a condition and replicate.
+  \item Gene-family assignments and ortholog/paralog relationships
+        (produced by the prerequisites below).
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \dependson{sub:gene-family-detection}
+\end{prerequisites}
+
+\begin{note}
+  SND compares copies \emph{within} a gene family, so the family grouping and
+  the ortholog/paralog classification must be finished and sanity-checked
+  before you start here.
+\end{note}
+
+\begin{workflow}
+  \step{Normalize each species' expression matrix and assemble a TOX dataset
+        (see the normalization and dataset-creation sub-recipes).}
+  \step{Restrict the dataset to families that contain at least two copies in
+        the compared lineages.}
+  \step{Compute, per family, the geometric divergence of each copy's expression
+        trajectory relative to the family centroid.}
+  \step{Classify each divergent copy as subfunctionalized, neofunctionalized,
+        or dosage-affected using the decision thresholds below.}
+  \step{Export the per-gene SND table and the diagnostic trajectory plots.}
+\end{workflow}
+
+\examplescript{python/examples/snd_detection.py}{%
+  Runs the full SND analysis on the bundled example data and writes an
+  \file{snd_results.tsv} table plus per-family trajectory plots. Running it
+  unchanged reproduces the default results referenced in this recipe.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: input paths and thresholds}]
+# --- input data -------------------------------------------------------------
+species = {
+    "ath": "data/ath_tpm.tsv",   # Arabidopsis thaliana
+    "aly": "data/aly_tpm.tsv",   # Arabidopsis lyrata
+}
+sample_sheet = "data/samples.tsv"
+
+# --- parameters (see the parameter table below) -----------------------------
+min_family_size   = 2
+divergence_cutoff = 0.35      # angular divergence from the family centroid
+dosage_log2fc     = 1.0       # |log2 fold-change| flagged as a dosage effect
+\end{codefragment}
+
+\begin{parameters}
+  \param{min\_family\_size}{Smallest number of copies a family must have to be
+    tested}{Keep at \code{2} for pairwise comparisons; raise to focus on larger,
+    higher-confidence families}
+  \param{divergence\_cutoff}{Angular divergence from the family centroid above
+    which a copy is called ``divergent''}{Lower ($\sim$0.2) for sensitive
+    screening; raise ($\sim$0.5) to report only strong divergence}
+  \param{dosage\_log2fc}{Absolute log2 fold-change flagged as a dosage effect}{%
+    Use \code{1.0} (2$\times$) as a default; tighten for deep, low-noise data}
+\end{parameters}
+
+\begin{expectedresults}
+  After step~3 you should have one divergence score per copy, most near zero.
+  On the example data roughly 5--10\% of copies exceed
+  \code{divergence\_cutoff}; a much larger fraction usually indicates a
+  normalization or batch problem rather than genuine biology.
+\end{expectedresults}
+
+\begin{pitfall}
+  Comparing raw TPM across species without a common normalization inflates
+  divergence scores. Always assemble the TOX dataset from consistently
+  normalized matrices before computing divergence.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: unbalanced replicates]
+  Families whose copies are measured in different conditions produce
+  artefactual trajectory divergence. Restrict to the shared condition set, or
+  impute with care, before classification.
+\end{pitfall}
+
+\begin{interpretation}
+  A copy with high divergence but a conserved expression \emph{shape} relative
+  to a sibling suggests \emph{dosage} change; divergent shape with retained
+  breadth suggests \emph{subfunctionalization}; a novel expression domain
+  absent from all other copies suggests \emph{neofunctionalization}. Read the
+  per-family trajectory plots alongside the table before drawing conclusions.
+\end{interpretation}
+
+\begin{references}
+  \reference{Robinson, McCarthy \& Smyth (2010). edgeR: a Bioconductor package
+    for differential expression analysis of digital gene expression data.
+    \emph{Bioinformatics} 26(1):139--140.}
+  \reference{Emms \& Kelly (2019). OrthoFinder: phylogenetic orthology
+    inference for comparative genomics. \emph{Genome Biology} 20:238.}
+\end{references}
+
+\end{recipe}

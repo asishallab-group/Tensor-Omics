@@ -1,0 +1,76 @@
+%% _template.tex -- copy this file to start a new recipe.
+%%
+%% HOW TO USE
+%%   1. Copy to recipes/<your_recipe>.tex (or shared/<your_subrecipe>.tex).
+%%   2. Give the recipe a unique label:  [label=rec:<slug>]  (analyses)
+%%                                        [label=sub:<slug>]  (shared sub-recipes)
+%%   3. Fill in every field below. Delete a field ONLY if it genuinely does not
+%%      apply -- prefer "None" over silence.
+%%   4. \input your file from tox_manual.tex under the correct \part.
+%%
+%% GUIDELINE (issue #147): document reproducible WORKFLOWS, not API/source code.
+%% Keep it simple, safe, clear, concise. Link to full scripts; show only the
+%% fragments a user must inspect or edit.
+
+\begin{recipe}[label=rec:CHANGE_ME]{Recipe Title}
+
+% One or two sentences: what biological question does this answer?
+\recipepurpose{TODO: state the purpose.}
+
+% Ownership: the researcher currently developing/applying this workflow.
+\recipemaintainer{TODO: Name}
+
+% The data the user must have before starting.
+\begin{requiredinputs}
+  \item TODO: e.g. per-sample expression matrices (TPM), one file per species.
+\end{requiredinputs}
+
+% Other recipes that must be completed first. Each \dependson links by label.
+\begin{prerequisites}
+  \dependson{sub:CHANGE_ME}
+\end{prerequisites}
+
+% The ordered procedure. One \step per action; reference scripts, don't paste them.
+\begin{workflow}
+  \step{TODO: first action.}
+  \step{TODO: next action.}
+\end{workflow}
+
+% The full runnable script lives in the repo; link it here.
+\examplescript{path/to/example_script.sh}{%
+  TODO: what this script does and what a default run produces.}
+
+% Only the fragments the user must inspect or edit (inputs, parameters).
+\begin{codefragment}[language=bash,caption={Edit the input paths and key options}]
+# TODO: input data
+INPUT=data/my_matrix.tsv
+# TODO: key parameters
+MIN_COUNT=10
+\end{codefragment}
+
+% Parameters worth deliberate choice: what each controls, and how to choose.
+\begin{parameters}
+  \param{--min-count}{TODO: what it controls}{TODO: when to raise/lower it}
+\end{parameters}
+
+% What the user should see at intermediate checkpoints.
+\begin{expectedresults}
+  TODO: describe intermediate outputs the user can check against.
+\end{expectedresults}
+
+% Traps and how to avoid them (repeatable -- add more \begin{pitfall} blocks).
+\begin{pitfall}
+  TODO: a common mistake and how to avoid it.
+\end{pitfall}
+
+% How to read the final output.
+\begin{interpretation}
+  TODO: how to interpret the results.
+\end{interpretation}
+
+% Relevant publications. Use \reference{...} or \cite{key} with references.bib.
+\begin{references}
+  \reference{TODO: Author et al. (year). Title. Journal.}
+\end{references}
+
+\end{recipe}
