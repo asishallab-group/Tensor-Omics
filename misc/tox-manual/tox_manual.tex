@@ -1,0 +1,35 @@
+%% tox_manual.tex -- master document for the Tensor Omics user manual (cookbook).
+%%
+%% Build:  make            (or: latexmk tox_manual.tex)
+%% Add a recipe: copy recipes/_template.tex, fill it in, and \input it below
+%%               under the appropriate \part.
+%%
+%% This is a NEW, recipe-style manual (issue #147). It is intentionally separate
+%% from the older API-reference manual on the general_documentation branch.
+
+\documentclass[11pt,a4paper]{scrreprt}
+\usepackage{toxmanual}
+
+\begin{document}
+
+\toxtitlepage
+
+\tableofcontents
+\cleardoublepage
+
+% ===========================================================================
+\part{Analysis Recipes}
+% Top-level, end-to-end analyses a user runs to answer a biological question.
+% ===========================================================================
+
+\input{recipes/snd_detection}
+
+% ===========================================================================
+\part{Shared Sub-Recipes}
+% Reusable preprocessing / QC procedures referenced by the analyses above.
+% Document each shared step once here; link to it with \dependson.
+% ===========================================================================
+
+\input{shared/gene_family_detection}
+
+\end{document}
