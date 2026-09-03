@@ -222,6 +222,13 @@
   \par\smallskip\noindent
   {\small\color{toxink}\faUserEdit\hspace{0.4em}\textbf{Maintainer:} #1}\par}
 
+% A recipe with no individual owner is maintained by the team: write
+% \nomaintainer instead of naming someone. The name lives here once, so
+% renaming the team restyles every such recipe at once.
+\newcommand{\tox@teammaintainer}{Tensor Omics Developers}
+\newcommand{\toxteammaintainer}[1]{\renewcommand{\tox@teammaintainer}{#1}}
+\newcommand{\nomaintainer}{\recipemaintainer{\tox@teammaintainer}}
+
 % Required input data.
 \newenvironment{requiredinputs}
   {\subsection*{\faDatabase\hspace{0.4em}Required Input Data}%
