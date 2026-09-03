@@ -17,6 +17,7 @@ misc/tox-manual/
   tox_manual.tex       master document — \input each recipe here
   recipes/
     _template.tex      copy this to start a new recipe
+    outlier_detection.tex  divergent-gene analysis
     snd_detection.tex  worked example (exercises every environment)
   shared/
     normalization.tex           the normalization sub-recipe

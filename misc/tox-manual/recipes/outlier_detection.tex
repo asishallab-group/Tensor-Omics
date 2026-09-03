@@ -1,0 +1,174 @@
+%% outlier_detection.tex -- the original Tensor Omics analysis: which genes have
+%% diverged from their family, and in which direction.
+
+\begin{recipe}[label=rec:outlier-detection]{Detecting Divergent Genes: Outliers and Shift Vectors}
+
+\recipepurpose{Find the genes whose expression has moved away from the rest of
+  their gene family further than the family's own spread explains, and describe
+  \emph{how} each one moved. This is the original Tensor Omics workflow: the
+  distances answer whether a copy diverged, the shift vectors answer in which
+  direction.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item Normalized expression vectors, one gene per column, from the
+        normalization sub-recipe.
+  \item A gene-to-family mapping, with \code{0} for genes belonging to no
+        family. Genes outside your families may stay in the matrix.
+  \item Family centroids, from the centroid sub-recipe --- and the decision
+        made there about which members define them.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \dependson{sub:normalization}
+  \dependson{sub:family-centroids}
+\end{prerequisites}
+
+\begin{workflow}
+  \step{Measure each gene against its own family's centroid with
+        \code{distance\_to\_centroid}. Genes with no family receive
+        \code{-1}, a sentinel rather than a distance.}
+  \step{Call \code{detect\_outliers}. It does \emph{not} compare distances to a
+        fixed cutoff: it divides each distance by its family's own spread ---
+        the Relative Distance Index (RDI) --- and flags the top
+        $1-\optn{percentile}$ of those. Scaling per family is what puts a
+        broadly spread family and a tight one on the same footing.}
+  \step{Compute the shift vector field with
+        \code{compute\_shift\_vector\_field}. For each gene it returns two
+        vectors, the family centroid and then the shift
+        $\vec{s} = \vec{p} - \vec{o}$ from that centroid to the gene.}
+  \step{Report the flagged genes with their shift vectors. Use the
+        \emph{raw} distances and shifts for everything downstream --- the RDI
+        exists to choose which genes are worth looking at, not to describe how
+        far they moved.}
+\end{workflow}
+
+\begin{note}
+  The family scaling is not simply each family's own standard deviation. A
+  family with few members cannot give a usable one, so Tensor Omics fits the
+  spread of a family against its mean distance across \emph{all} families with
+  LOESS, and reads each family's scale off that curve. A small family is
+  therefore scaled by the trend its neighbours establish instead of by its own
+  noise.
+\end{note}
+
+\examplescript{python/examples/outlier_detection.py}{%
+  Runs the whole chain --- centroids, distances, outliers, shift vectors ---
+  and writes a per-gene table plus the shift vectors of the flagged genes.
+  Run unchanged from the repository root it takes about two seconds on the
+  bundled data and writes \file{results/outliers.tsv}.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: the threshold, and what you keep}]
+from tensor_omics import (distance_to_centroid, detect_outliers,
+                          compute_shift_vector_field)
+
+# --- how far is each gene from its own family's centroid? --
+distances = distance_to_centroid(
+    expr, centroids, gene_to_family)   # -1 where no family
+
+# --- which of those distances are extreme for their family? -
+result = detect_outliers(
+    n_families, distances, gene_to_family,
+    percentile=0.95)                   # FRACTION: top 5%
+is_outlier = result["is_outlier"]
+quantile   = result["quantile"]        # effect size, NOT a p-value
+
+# --- in which direction did each gene move? ----------------
+field = compute_shift_vector_field(
+    expr, centroids, gene_to_family)   # (n_axes, 2, n_genes)
+centroid_of = field[:, 0, :]           # the family's centroid
+shift       = field[:, 1, :]           # p - o, the divergence
+\end{codefragment}
+
+\begin{parameters}
+  \param{percentile}{Where the threshold on the RDI sits; the genes above it
+    are flagged}{A \emph{fraction} in $[0,1]$, not a percentage:
+    \code{0.95} keeps the top 5\%. Lower it to screen more broadly, raise it to
+    report only the strongest divergence}
+  \param{n\_families}{How many families the mapping refers to}{Must cover the
+    largest index in \code{gene\_to\_fam}, and must be the same number the
+    centroids were computed with}
+  \param{gene\_to\_fam}{Which family each gene is measured against}{\code{0}
+    for a gene belonging to no family. Such genes pass through the whole chain
+    without being flagged and without affecting the threshold}
+\end{parameters}
+
+\begin{expectedresults}
+  With the default \code{percentile=0.95} the flagged fraction is essentially
+  5\% of the genes that have a family --- on the bundled data, 512 of 10\,234,
+  exactly 5.00\%, with 75\,594 genes belonging to no family carried along and
+  none of them flagged. Distances to the own centroid have a median of 1.73 and
+  a maximum of 2.96 there. A flagged fraction far from
+  $1-\optn{percentile}$ means genes are reaching the test that should not:
+  check for families with a zero centroid first.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: reading percentile as a percentage]
+  \optn{percentile} is a fraction in $[0,1]$. Passing \code{95} does not ask
+  for the top 5\% --- it is out of range and the call fails. Passing
+  \code{0.05} silently asks for the top 95\%, flagging almost everything.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: treating the quantile as a p-value]
+  The \code{quantile} output states how extreme a gene's distance is
+  \emph{relative to the distances actually observed} --- an empirical
+  upper-tail effect size. It is not a null-hypothesis test: nothing here models
+  what the distances would look like in the absence of divergence, so a
+  \code{quantile} of 0.001 is not a $p$ of 0.001 and must not be corrected for
+  multiple testing as though it were.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: a family whose spread cannot be estimated]
+  A family with a single member \emph{is} its own centroid: the distance is
+  zero, there is no intra-family spread to estimate, its scaling factor is
+  zero, and the gene can never be flagged. That is the right answer --- one
+  copy cannot diverge from itself --- but it is silent, so a family reduced to
+  one member by filtering leaves the analysis without a word. Check family
+  sizes rather than trusting an empty result. And where too few families remain
+  to fit the trend at all, every family falls back to a single global spread,
+  losing exactly the between-family comparability the RDI exists to provide.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: testing genes against a reference that contains them]
+  If the centroids came from \code{group\_centroid\_all}, every candidate is
+  part of the reference it is measured against, which pulls the centroid
+  towards the divergent copies and shrinks exactly the distances this recipe
+  looks for. Prefer orthologs-only centroids when the question is whether a
+  copy diverged --- see \seerecipe{sub:family-centroids}.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: averaging the distance sentinel]
+  \code{distance\_to\_centroid} returns \code{-1} for a gene with no family.
+  That is a marker, not a short distance: summarising the distance column
+  without excluding it drags every statistic down. Select on the family
+  mapping, not on the distances.
+\end{pitfall}
+
+\begin{interpretation}
+  A flagged gene is one that sits further from its family's consensus than that
+  family's own spread makes ordinary. It is a statement about \emph{relative}
+  divergence: the same absolute distance is unremarkable in a widely spread
+  family and striking in a tight one, which is the whole point of scaling per
+  family.
+
+  The distance says only \emph{that} a gene moved. The shift vector says
+  \emph{where} to, and that is the interpretable part: its large components
+  name the tissues that carry the divergence. A shift concentrated on one axis
+  is a copy that gained or lost expression in that one tissue; a shift spread
+  evenly across axes is a change in overall level rather than in pattern. Read
+  the shift vectors of the flagged genes before drawing conclusions --- and
+  carry the raw shifts, not the RDI, into any later geometric analysis.
+
+  Finally, the flagged set is a \emph{ranking cut}, not a discovery set with an
+  error rate. At \code{percentile=0.95} you get the top 5\% by construction,
+  whether or not anything in your data has genuinely diverged.
+\end{interpretation}
+
+\begin{references}
+  \reference{Cleveland (1979). Robust locally weighted regression and
+    smoothing scatterplots. \emph{Journal of the American Statistical
+    Association} 74(368):829--836.}
+\end{references}
+
+\end{recipe}
