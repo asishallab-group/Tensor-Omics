@@ -129,7 +129,7 @@ def distance_to_centroid(
     genes : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
         Gene expression matrix (n_tissues × n_genes), column-major
     centroids : np.ndarray[np.float64] of shape (n_tissues, n_families,), column-major (order='F')
-        Family centroid matrix (n_tissues × n_families), column-major, `-1.0` for unassigned genes
+        Family centroid matrix (n_tissues × n_families), column-major
     gene_to_fam : np.ndarray[np.int32] of shape (n_genes,)
         Index mapping -> each index `i` holds the family index for the corresponding gene in `genes`, using `0` for unassigned genes
         The minimum valid value is `1`.
@@ -139,7 +139,12 @@ def distance_to_centroid(
     Returns
     -------
     distances : np.ndarray[np.float64] of shape (n_genes,), read-only
-        Output distances array
+        Euclidean distance from each gene to its own family's centroid. A gene carrying
+        `0` in `gene_to_fam` has no centroid to measure against and
+        receives `-1.0` instead of a distance -- a value no Euclidean
+        distance can take, so that summarising this array without excluding those genes is
+        visibly wrong rather than quietly biased. Which genes those are is `gene_to_fam`,
+        not a negative entry here.
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

@@ -1,0 +1,198 @@
+%% snd_detection.tex -- subfunctionalization, neofunctionalization and dosage
+%% effects among the copies of a duplicated gene.
+
+\begin{recipe}[label=rec:snd]{Subfunctionalization, Neofunctionalization and
+  Dosage-Effect Detection (SND)}
+
+\recipepurpose{After a duplication, decide what became of the copies: whether a
+  subset of them divided the ancestral expression between them
+  (subfunctionalization), whether they kept its direction but amplified it
+  (dosage effect), or whether one of them expresses where the ancestor did not
+  (neofunctionalization). Each is a separate test with its own criterion.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item An ancestral expression vector per family. In practice this is the
+        family's orthologs-only centroid --- the conserved reference, not the
+        all-genes mean.
+  \item The paralogs' expression vectors, as columns, and a gene-to-family
+        mapping.
+  \item The angle between each gene and its family's ancestor, in radians. No
+        routine computes these; the filters take them as given.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \dependson{sub:normalization}
+  \dependson{sub:family-centroids}
+  \dependson{sub:gene-family-detection}
+\end{prerequisites}
+
+\begin{workflow}
+  \step{Compute each paralog's angle to its family's ancestor, and pick a
+        threshold on that angle. Subfunctionalization keeps the copies
+        \emph{at or above} it, the dosage effect those \emph{at or below}.}
+  \step{Prefilter with \code{filter\_paralogs\_by\_pattern\_subfunctionalization}
+        or \code{\ldots\_dosage\_effect}. Each returns one bitmask per family,
+        naming the copies that pattern will consider at all.}
+  \step{Size the search with \code{calc\_work\_arr\_paralog\_subsets\_size} and
+        use the \code{max\_subset\_size} it returns --- it caps the value you
+        asked for to what the filtered family can support.}
+  \step{Run \code{detect\_subfunctionalization} or
+        \code{detect\_dosage\_effect}. Both search subsets of the filtered
+        copies: the first for a subset whose sum lands within
+        \optn{rdi\_threshold} of the ancestor, the second for one that stays
+        within \optn{max\_angle} of it while exceeding its magnitude by
+        \optn{gain\_gamma}.}
+  \step{Decode each result with \code{mask\_check\_state}, which reports
+        whether a given 1-based gene index is a member of that subset.}
+  \step{Test neofunctionalization separately with
+        \code{detect\_neofunctionalization}, on \emph{RAP-projected unit}
+        vectors. It returns one boolean per gene and axis, so it names the
+        tissues that changed.}
+\end{workflow}
+
+\begin{note}
+  The three tests do not share an input space. Subfunctionalization and the
+  dosage effect add expression vectors up, so they need the raw vectors with
+  their magnitudes intact. Neofunctionalization asks only about direction, so
+  it needs vectors projected into the RAP and scaled to unit length, and
+  rejects anything outside $[-1, 1]$. Mixing the two is the most common way to
+  misuse this module.
+\end{note}
+
+\examplescript{python/examples/snd_detection.py}{%
+  Builds one synthetic family containing each pattern exactly once and runs all
+  three detectors over it, so the output can be checked against what was
+  planted. The repository ships no ortholog/paralog designation, so no bundled
+  family could serve.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: the threshold, and each pattern's criterion}]
+import numpy as np
+from tensor_omics import (
+    filter_paralogs_by_pattern_subfunctionalization,
+    calc_work_arr_paralog_subsets_size,
+    detect_subfunctionalization, mask_check_state,
+    mask_chunk_count)
+
+# --- angles to the ancestor are YOURS to supply ------------
+angles = np.arccos(cosines)        # radians, 0 <= a <= pi
+threshold = float(np.median(angles))
+
+n_chunks = mask_chunk_count(n_genes)
+masks = filter_paralogs_by_pattern_subfunctionalization(
+    angles, threshold, n_families, gene_to_fam, n_chunks)
+
+# --- one family at a time: its ancestor, its mask ----------
+mask = np.asarray(masks)[:, family - 1]
+sizing = calc_work_arr_paralog_subsets_size(
+    max_subset_size, n_genes, mask)     # it CAPS the size
+
+norms = np.linalg.norm(genes, axis=0)
+res = detect_subfunctionalization(
+    ancestor, genes, mask, sizing["max_subset_size"],
+    rdi_threshold,                      # residual tolerated
+    norms, (np.argsort(norms) + 1).astype(np.int32))
+
+subsets = np.asarray(res["work_arr_paralog_subsets"])
+for k in range(res["n_results"]):       # decode the bitmasks
+    picked = [i for i in range(1, n_genes + 1)
+              if mask_check_state(subsets[:, k], i)]
+\end{codefragment}
+
+\begin{parameters}
+  \param{threshold}{The angle at which the prefilters split wide-angle copies
+    from narrow-angle ones}{A single value for \emph{all} families. The methods
+    document describes a per-family median; that is not expressible here, so
+    pick a global quantile of the angle distribution and say which}
+  \param{rdi\_threshold}{How far a subfunctionalization subset's sum may land
+    from the ancestor}{The distance below which you consider the ancestral
+    expression reconstructed. Larger admits looser partitions}
+  \param{max\_angle}{How far a dosage subset's sum may point away from the
+    ancestor}{\textbf{Defaults to $\pi$, which is no constraint at all.} The
+    pattern is defined by small angles, so set this deliberately}
+  \param{gain\_gamma}{How much a dosage subset must exceed the ancestor's
+    magnitude}{Default \code{0.1}, i.e. about 10\% more. Raise it to demand a
+    clearer amplification}
+  \param{max\_subset\_size}{Largest number of copies combined into one
+    candidate}{Use the value \code{calc\_work\_arr\_paralog\_subsets\_size}
+    returns. The search is combinatorial, so a cap around 15 is advisable for
+    large families}
+\end{parameters}
+
+\begin{expectedresults}
+  On the example's planted family of five copies, each detector finds exactly
+  what was placed there: subfunctionalization returns the pair whose sum
+  reproduces the ancestor with residual $0.000$; the dosage effect returns the
+  pair summing to $1.50\times$ the ancestor's magnitude; and
+  neofunctionalization flags the new-domain copy. It also flags both
+  subfunctionalized copies --- see the interpretation, that is correct and not
+  a defect.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: giving neofunctionalization raw expression vectors]
+  \code{detect\_neofunctionalization} takes RAP-projected \emph{unit} vectors,
+  for the ancestors, the genes and the per-axis thresholds alike, and rejects
+  values outside $[-1, 1]$ with
+  \code{ToxInputError: invalid input arguments (argument 'ancestors')}. Project
+  with \code{omics\_vector\_RAP\_projection} and scale with
+  \code{normalize\_unit\_length} first --- which works \emph{in place} and
+  returns nothing, so use the array you passed in, not the return value.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: an ancestor expressed evenly everywhere]
+  A gene expressed uniformly across all axes lies along the space diagonal, so
+  its RAP projection is the origin and it has no direction to normalize:
+  \code{normalize\_unit\_length} then fails with
+  \code{Division by zero encountered}. Neofunctionalization simply cannot be
+  evaluated against such an ancestor --- there is no ancestral preference for a
+  copy to depart from. Detect this case and report it rather than working
+  around it.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: leaving the dosage angle at its default]
+  \optn{max\_angle} defaults to $\pi$, which admits every direction, so the
+  dosage search reduces to ``any subset that is large enough''. The pattern is
+  defined by copies pointing the \emph{same way} as the ancestor. Set the angle
+  yourself, and record what you set.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: one threshold, two inclusive bounds]
+  The prefilters keep angles $\geq$ the threshold for subfunctionalization and
+  $\leq$ it for the dosage effect, so a copy sitting exactly at the threshold
+  passes \emph{both} --- with the median as threshold and an odd number of
+  copies, the middle one always does. That is harmless, but it means the two
+  candidate sets are not a partition of the family.
+\end{pitfall}
+
+\begin{interpretation}
+  Read the three results together; they are not mutually exclusive, and a copy
+  may register in more than one. A copy that took over part of the ancestral
+  expression has by definition changed direction, so neofunctionalization flags
+  it too. What separates the patterns is the evidence each requires: only
+  subfunctionalization asks that the copies \emph{reconstruct} the ancestor
+  between them, only the dosage effect asks that they preserve its direction
+  while amplifying it, and neofunctionalization asks nothing about the other
+  copies at all. A copy flagged by neofunctionalization alone --- with no
+  subset containing it reconstructing the ancestor --- is the clean case.
+
+  A subfunctionalization result is a claim about a \emph{set}, not about single
+  genes: it says these copies together account for the ancestral expression.
+  The residual is how well they do so, and belongs in any report of the result.
+
+  Because the search is over subsets, absence of a result is weak evidence. It
+  may mean no such division occurred, or that the prefilter removed a
+  participant, or that \optn{max\_subset\_size} stopped the search below the
+  size needed. Record all three settings with any negative result.
+\end{interpretation}
+
+\begin{references}
+  \reference{Force, Lynch, Pickett, Amores, Yan \& Postlethwait (1999).
+    Preservation of duplicate genes by complementary, degenerative mutations.
+    \emph{Genetics} 151(4):1531--1545.}
+  \reference{Innan \& Kondrashov (2010). The evolution of gene duplications:
+    classifying and distinguishing between models. \emph{Nature Reviews
+    Genetics} 11:97--108.}
+\end{references}
+
+\end{recipe}

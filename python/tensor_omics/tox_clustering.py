@@ -80,15 +80,17 @@ def cluster_factor_trajectories_k_means(
         centroids,
         max_iterations,
 ):
-    r"""Performs k-means clustering on factor trajectories, so factor evolution over time
+    r"""Performs k-means clustering on whole factor trajectories, so which samples evolve alike
 
     Parameters
     ----------
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
-        matrix with data points to cluster
-    centroids : np.ndarray[np.float64] of shape (n_factors, n_clusters,), column-major (order='F'), modified in place
+        matrix with the trajectories to cluster
+    centroids : np.ndarray[np.float64] of shape (n_factors*n_timepoints, n_clusters,), column-major (order='F'), modified in place
         matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
         The centroids should be unique. This is not checked in this routine.
+
+        One centroid is a whole flattened trajectory, so it has `n_factors*n_timepoints` entries.
 
         The final values will be the final centroids of the clusters
     max_iterations : int
@@ -99,13 +101,13 @@ def cluster_factor_trajectories_k_means(
     dict
         with keys:
 
-        labels : np.ndarray[np.int32] of shape (n_samples*n_timepoints,), read-only
-            array of labels, each index corresponds to the respective point's index, so first label is first point's label.
+        labels : np.ndarray[np.int32] of shape (n_samples,), read-only
+            array of labels, one per sample, so the first label is the first sample's.
 
             each label is the index of its related cluster -> `1<=label<=n_clusters=k`
             A result is a value; call `.copy()` to obtain a modifiable array.
         label_counts : np.ndarray[np.int32] of shape (n_clusters,), read-only
-            holds the number of points having the respective label assigned
+            holds the number of samples having the respective label assigned
             A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -138,14 +140,8 @@ def cluster_factor_trajectories_k_means(
     n_samples = trajectories.shape[1]
     n_timepoints = trajectories.shape[2]
 
-    # Fortran cannot check that shared extents agree; this can
-    if centroids.shape[0] != n_factors:
-        raise ValueError(f"'centroids' has {centroids.shape[0]} along axis 0, but "
-            f"'trajectories' implies n_factors == {n_factors}"
-        )
-
     # outputs and work arrays, which the caller never sees
-    labels = np.empty((n_samples*n_timepoints,), dtype=np.int32, order='C')
+    labels = np.empty((n_samples,), dtype=np.int32, order='C')
     label_counts = np.empty((n_clusters,), dtype=np.int32, order='C')
     ierr = ctypes.c_int(0)
 

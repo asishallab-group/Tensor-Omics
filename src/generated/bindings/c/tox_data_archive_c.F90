@@ -162,27 +162,27 @@ contains
         integer(c_int), intent(out), target :: ierr
             !! Error code
         character(len=1, kind=c_char), dimension(gene_ids_strlen, n_gene_ids_elements), intent(in), optional, target :: gene_ids
-            !! Gene ids array, will be saved if provided
+            !! Gene ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=1, kind=c_char), dimension(gene_ids_file_strlen), intent(in), optional, target :: gene_ids_file
             !! Name of the gene ids file
         real(c_double), dimension(n_expression_elements_dim_1, n_expression_elements_dim_2), intent(in), optional :: expression
-            !! Expression vectors array, will be saved if provided
+            !! Expression vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=1, kind=c_char), dimension(expression_file_strlen), intent(in), optional, target :: expression_file
             !! Name of the expression file
         integer(c_int), dimension(n_gene_to_family_elements), intent(in), optional :: gene_to_family
-            !! Gene to family mapping array, will be saved if provided
+            !! Gene to family mapping array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=1, kind=c_char), dimension(gene_to_family_file_strlen), intent(in), optional, target :: gene_to_family_file
             !! Name of the gene to family mapping file
         character(len=1, kind=c_char), dimension(family_ids_strlen, n_family_ids_elements), intent(in), optional, target :: family_ids
-            !! Family ids array, will be saved if provided
+            !! Family ids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=1, kind=c_char), dimension(family_ids_file_strlen), intent(in), optional, target :: family_ids_file
             !! Name of the family ids file
         real(c_double), dimension(n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2), intent(in), optional :: family_centroids
-            !! Family centroids array, will be saved if provided
+            !! Family centroids array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=1, kind=c_char), dimension(family_centroids_file_strlen), intent(in), optional, target :: family_centroids_file
             !! Name of the family centroids file
         real(c_double), dimension(n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2), intent(in), optional :: shift_vectors
-            !! Shift vectors array, will be saved if provided
+            !! Shift vectors array. Saved when it and its `*_file` name are both given; giving only one of the two is an error
         character(len=1, kind=c_char), dimension(shift_vectors_file_strlen), intent(in), optional, target :: shift_vectors_file
             !! Name of the shift vectors file
         character(len=zip_filename_strlen), pointer :: zip_filename_f

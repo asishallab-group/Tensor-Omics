@@ -1,0 +1,11 @@
+# latexmkrc -- pin the TOX manual build to pdfLaTeX.
+# latexmk runs enough passes to resolve the table of contents and the
+# \dependson / cleveref cross-references automatically.
+
+$pdf_mode = 1;          # build via pdflatex -> PDF
+$pdflatex = 'pdflatex -interaction=nonstopmode -halt-on-error -file-line-error %O %S';
+$bibtex_use = 2;        # run bibtex when references.bib is used
+@default_files = ('tox_manual.tex');
+
+# Extra generated extensions latexmk -C should also clean.
+$clean_ext = 'bbl run.xml synctex.gz';
