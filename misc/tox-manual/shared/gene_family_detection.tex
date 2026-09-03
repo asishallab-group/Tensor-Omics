@@ -1,47 +1,155 @@
-%% gene_family_detection.tex -- shared sub-recipe. Referenced by higher-level
-%% analyses via \dependson{sub:gene-family-detection}. Content is illustrative.
+%% gene_family_detection.tex -- shared sub-recipe. Produces the family table and
+%% the ortholog designation that the analysis recipes consume.
 
 \begin{recipe}[label=sub:gene-family-detection]{Gene Family Detection}
 
-\recipepurpose{Group protein-coding genes across species into gene families so
-  that downstream analyses can compare orthologous and paralogous copies. This
-  is a shared preprocessing step reused by several analysis recipes.}
+\recipepurpose{Group genes across species into families, and decide which
+  members of each family count as orthologs. Tensor Omics consumes both and
+  produces neither: the grouping fixes what every later comparison is made
+  \emph{within}, and the ortholog designation fixes what divergence is measured
+  \emph{against}.}
 
 \nomaintainer
 
 \begin{requiredinputs}
-  \item One protein FASTA per species (primary transcripts only).
-  \item A species list / directory layout expected by OrthoFinder.
+  \item One protein FASTA per species, reduced to primary transcripts.
+  \item Gene identifiers that match those in your expression table exactly ---
+        the two are joined by string equality, nothing else.
+  \item OrthoFinder, installed and run separately. It is not part of Tensor
+        Omics and this recipe does not wrap it.
 \end{requiredinputs}
 
+\begin{prerequisites}
+  \item None. Everything else in this manual depends on this step.
+\end{prerequisites}
+
 \begin{workflow}
-  \step{Run OrthoFinder on the per-species protein FASTAs to obtain
-        orthogroups.}
-  \step{Optionally refine large orthogroups with MCL clustering to split fused
-        families.}
-  \step{Emit a gene-to-family table used by downstream recipes.}
+  \step{Reduce each proteome to one protein per gene, the primary transcript.
+        Isoforms are the single most common cause of inflated families.}
+  \step{Run OrthoFinder on the directory of proteomes, following its own
+        documentation. Nothing about this step is Tensor Omics specific.}
+  \step{Take \file{Orthogroups/Orthogroups.tsv} as the family table: one row per
+        orthogroup, one column per species, the genes of that species listed in
+        the cell. This is what \code{read\_orthofinder\_file} parses.}
+  \step{Decide which genes are the \emph{orthologs}, which is a separate
+        question --- see the pitfall below. OrthoFinder answers it in
+        \file{Orthologues/}, whose pairwise files mark each relation as
+        one-to-one, one-to-many or many-to-many; the genes appearing alone on
+        both sides of a row are the unambiguous one-to-one orthologs.}
+  \step{Check the result against your expression table before using it: family
+        sizes, how many species each family covers, and above all how many of
+        your genes actually landed in a family.}
 \end{workflow}
 
-\examplescript{scripts/gene_family_detection.sh}{%
-  Wraps OrthoFinder + optional MCL refinement and writes
-  \file{orthogroups.tsv}. A default run on the example proteomes reproduces the
-  family table used elsewhere in this manual.}
+\examplescript{python/examples/gene_family_detection.py}{%
+  Surveys an \file{Orthogroups.tsv}, checks it against an expression table, and
+  derives the one-to-one ortholog list from an \file{Orthologues/} directory.
+  It covers the handoff only --- OrthoFinder itself is not run here.}
+
+\begin{codefragment}[language=bash,caption={The external step, and what to keep from it}]
+# one protein per gene: isoforms inflate every family
+# (use your annotation's primary-transcript flag)
+
+orthofinder -f proteomes/ -t 16
+
+# what Tensor Omics reads afterwards:
+#   Orthogroups/Orthogroups.tsv
+#       the FAMILIES: row = orthogroup, column = species
+#   Orthologues/<species>/<a>__v__<b>.tsv
+#       the ORTHOLOGY relations: 3 columns, Orthogroup + one
+#       per species; a row with ONE gene on each side is a
+#       one-to-one ortholog pair
+#   Orthogroups/Orthogroups_UnassignedGenes.tsv
+#       genes in no family -- they get the sentinel 0 in TOX
+\end{codefragment}
 
 \begin{parameters}
-  \param{inflation (-I)}{MCL granularity when refining orthogroups}{%
-    Higher (\code{2.0}--\code{4.0}) yields smaller, tighter families; lower
-    yields larger, more inclusive families}
+  \param{primary transcripts}{Whether one or many proteins represent each
+    gene}{Always reduce first. Every isoform kept becomes an apparent paralog
+    and biases family size, centroids and every divergence test built on them}
+  \param{species set}{Which genomes define the families}{Adding a distant
+    species merges families; removing one can split them. The set is part of
+    the result, not a free parameter --- record it}
+  \param{ortholog rule}{Which family members count as the conserved reference}{%
+    The one-to-one relations in \file{Orthologues/} are the strict choice.
+    The single-copy orthogroups file is stricter still, but excludes exactly the
+    duplicated families a divergence analysis is about. State which you used}
+  \param{inflation (MCL, \optn{-I})}{Granularity, if you refine large
+    orthogroups further}{Higher (\code{2.0}--\code{4.0}) yields smaller, tighter
+    families; lower yields larger, more inclusive ones}
 \end{parameters}
 
-\begin{pitfall}
-  Including multiple splice isoforms per gene inflates family sizes and biases
-  every downstream comparison. Reduce each proteome to primary transcripts
-  first.
+\begin{expectedresults}
+  The bundled \file{material/Orthogroups.tsv} holds 15\,512 orthogroups over
+  four mammal species, family sizes from 2 to 143 with a median of 4. Of these
+  12\,842 contain all four species and 2\,670 are missing at least one, while
+  4\,004 hold more genes than species and therefore contain duplications ---
+  those are the families an SND analysis has anything to say about. Against the
+  bundled expression table, 81\,960 of 88\,327 genes land in a family and
+  6\,367 carry the unassigned sentinel. A far larger unassigned fraction almost
+  always means the identifiers do not match, not that the genes are orphans.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: taking an orthogroup for a set of orthologs]
+  They are different things, and Tensor Omics needs both. An \emph{orthogroup}
+  is the set of genes descended from a single gene in the last common ancestor
+  of \emph{all} the species; \emph{orthologues} are genes descended from a
+  single gene in the ancestor of a \emph{pair} of species; \emph{paralogues}
+  arose by duplication within an orthogroup. \file{Orthogroups.tsv} therefore
+  gives you families that mix orthologs and paralogs, and reading it does not
+  tell you which is which. \code{group\_centroid\_orthologs} asks for exactly
+  that distinction, and it comes from \file{Orthologues/}, not from the
+  orthogroup table.
 \end{pitfall}
+
+\begin{pitfall}[Pitfall: retreating to the single-copy orthogroups]
+  \file{Orthogroups\_SingleCopyOrthologues.txt} lists the families with exactly
+  one gene per species, which makes the ortholog question trivial --- every
+  member is one. It is also useless for the analyses in this manual: a family
+  with no duplicated copies has no paralog to test for subfunctionalization, no
+  outlier to detect against its siblings. Use it to sanity-check a pipeline,
+  never as the working family set.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: identifiers that nearly match]
+  The family table and the expression table are joined by exact string
+  equality. A version suffix present in one and stripped in the other, or a
+  transcript identifier against a gene identifier, produces no error anywhere
+  --- the genes simply come back unassigned and quietly leave the analysis. The
+  example script reports the assigned count for this reason; check it against
+  what you expect before going on.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: isoforms as paralogs]
+  Several splice isoforms of one gene look exactly like several copies of it.
+  They inflate family sizes, drag centroids towards whichever gene has the most
+  isoforms, and can present as a dosage effect that is purely an annotation
+  artefact. Reduce to primary transcripts before OrthoFinder, not after.
+\end{pitfall}
+
+\begin{interpretation}
+  The family grouping is not a preprocessing detail; it defines the comparison.
+  Every later recipe asks how a gene differs from \emph{its family}, so a
+  family that is too inclusive hides divergence inside itself, and one that is
+  too fragmented has nothing to compare against. When a result looks surprising,
+  the family it came from is the first thing to inspect.
+
+  The ortholog designation carries a second, independent decision: what counts
+  as the ancestral state. A centroid over one-to-one orthologs is a claim about
+  conserved expression, and the divergence measured against it is divergence
+  from that conserved state. A centroid over all members measures divergence
+  from the family as it is now, duplications included. Both are legitimate;
+  they answer different questions, and no later recipe can recover which one
+  you meant. Record the species set, the ortholog rule and the OrthoFinder
+  version alongside the results.
+\end{interpretation}
 
 \begin{references}
   \reference{Emms \& Kelly (2019). OrthoFinder: phylogenetic orthology
     inference for comparative genomics. \emph{Genome Biology} 20:238.}
+  \reference{Emms \& Kelly (2015). OrthoFinder: solving fundamental biases in
+    whole genome comparisons dramatically improves orthogroup inference
+    accuracy. \emph{Genome Biology} 16:157.}
 \end{references}
 
 \end{recipe}
