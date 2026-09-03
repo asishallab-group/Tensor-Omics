@@ -4,8 +4,10 @@
 !|
 !| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
 !| a relative distance index, scaled per family so families of different spread are comparable.
-!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
-!| applies the threshold and reports which genes exceed it.
+!| `compute_family_scaling` produces that scaling: it fits each family's spread -- the standard
+!| deviation of its members' distances -- against its mean distance with LOESS over all families,
+!| so that a family too small for a usable empirical estimate is scaled by the trend instead.
+!| `identify_outliers` applies the threshold and reports which genes exceed it.
 !|
 !| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_impl
@@ -52,7 +54,7 @@ contains
             !! DM_ALLOW_NAN
             !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: gene_to_fam(n_genes)
-            !! Mapping of each gene to its family (1-based)
+            !! M_GENE_TO_FAM_DOC(distances)
 
         real(real64), intent(out) :: dscale(n_families)
             !! Array of scaling factors per family (output)
@@ -162,8 +164,12 @@ contains
         n_valid = 0
 
         ! Validate family indices; the -1 sentinel output on failure is part of the contract, so this
-        ! stays in the implementation rather than becoming a wrapper range check.
+        ! stays in the implementation rather than becoming a wrapper range check. A gene carrying
+        ! M_GENE_TO_FAM_SENTINEL belongs to no family and simply contributes to no family's spread:
+        ! rejecting it would make the whole call fail for the ordinary case of a dataset that has
+        ! genes outside the families under study.
         do i_gene = 1, n_genes
+            if (gene_to_fam(i_gene) == M_GENE_TO_FAM_SENTINEL) cycle
             if (gene_to_fam(i_gene) < 1 .or. gene_to_fam(i_gene) > n_families) then
                 dscale = -1.0_real64
                 call set_err_once(ierr, ERR_INVALID_INPUT)
@@ -182,6 +188,7 @@ contains
 
         do i_gene = 1, n_genes
             family_idx = gene_to_fam(i_gene)
+            if (family_idx == M_GENE_TO_FAM_SENTINEL) cycle
             dist_val = abs(distances(i_gene))
 
             tmp_permutation_indices(family_idx) = tmp_permutation_indices(family_idx) + 1
@@ -289,8 +296,13 @@ contains
 
         n_valid = k
 
-        ! Trigger fallback case when having too few points
-        if (n_valid <= 1) then
+        ! Trigger fallback case when having too few points. Each local fit determines a
+        ! degree-`degree` polynomial from roughly `span * n_valid` neighbours, so it needs at least
+        ! `degree + 1` of them. Below that the netlib fit does not complete, and evaluating it
+        ! afterwards trips netlib's assertion, which `stop`s -- taking the calling process with it
+        ! rather than returning an error a caller could handle. So "too few points" is that bound,
+        ! not merely the degenerate `n_valid <= 1`, and both take the global-median fallback below.
+        if (n_valid <= 1 .or. int(actual_span*real(n_valid, real64)) < actual_degree + 1) then
             xmin = 0.0_real64
             xmax = xmin
         else
@@ -396,7 +408,7 @@ contains
             !! DM_ALLOW_NAN
             !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: gene_to_fam(n_genes)
-            !! Gene-to-family mapping (1-based indexing)
+            !! M_GENE_TO_FAM_DOC(distances)
         real(real64), intent(in) :: dscale(:)
             !! Array of scaling factors for each family
             !! DM_ALLOW_NAN
@@ -486,8 +498,8 @@ contains
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
             !! upper-tail quantile is used.
 
-        integer(int32) :: i, idx
-        real(real64) :: perc_pos, percentile_val
+        integer(int32) :: i, idx, n_usable
+        real(real64) :: perc_pos, percentile_val, quantile_rescale
 
         M_DEFAULT_VAL(percentile, percentile_val, CM_OUTLIER_PERCENTILE_DEFAULT)
 
@@ -501,24 +513,49 @@ contains
             return
         end if
 
-        ! Nearest-rank percentile: round the fractional rank up to the next integer index into the
-        ! ascending-sorted array, so `threshold` is always an observed RDI value rather than an
-        ! interpolated one. `percentile_val` is a fraction in [0,1].
-        perc_pos = n_genes*percentile_val
+        ! Only the genes with a positive RDI are part of the distribution this threshold describes.
+        ! A gene belonging to no family, or one whose family spread could not be estimated, arrives
+        ! here as a non-positive RDI and is not a candidate outlier (see the `rdi > 0` test below);
+        ! counting such genes would drag the threshold towards zero -- on a dataset where most genes
+        ! belong to none of the families under study, far enough to flag most of the rest. `perm`
+        ! orders ascending, so those genes come first and the usable ones are a contiguous tail.
+        n_usable = 0
+        do i = 1, n_genes
+            if (sorted_rdi(i) > 0.0_real64) n_usable = n_usable + 1
+        end do
+
+        call compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
+
+        if (n_usable < 1) then
+            threshold = 0.0_real64
+            return
+        end if
+
+        ! Nearest-rank percentile: round the fractional rank up to the next integer index into that
+        ! usable tail, so `threshold` is always an observed RDI value rather than an interpolated
+        ! one. `percentile_val` is a fraction in [0,1].
+        perc_pos = n_usable*percentile_val
         idx = ceiling(perc_pos)
         ! Clamp idx to valid range
         if (idx < 1) idx = 1
-        if (idx > n_genes) idx = n_genes
+        if (idx > n_usable) idx = n_usable
 
-        ! Get the threshold value from the sorted array (sorted_rdi must be ascending)
-        threshold = sorted_rdi(perm(idx))
+        ! Get the threshold value from the sorted array (perm orders sorted_rdi ascending)
+        threshold = sorted_rdi(perm(n_genes - n_usable + idx))
 
         ! Mark genes as outliers if their RDI exceeds the threshold (and is positive)
         do i = 1, n_genes
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        call compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
+        ! The quantile just computed counts every gene in its denominator, but only the usable ones
+        ! belong to the distribution it describes. No non-positive RDI can enter any gene's
+        ! numerator -- they all sort below every positive value -- so the correction is exactly a
+        ! change of denominator, and the clamp keeps the non-usable genes' own quantile at 1.
+        quantile_rescale = (real(n_genes, real64) + 1.0_real64)/(real(n_usable, real64) + 1.0_real64)
+        do concurrent (i = 1:n_genes) shared(quantile, quantile_rescale)
+            quantile(i) = min(1.0_real64, quantile(i)*quantile_rescale)
+        end do
 
     end subroutine identify_outliers_impl
 
@@ -543,7 +580,7 @@ contains
             !! DM_ALLOW_NAN
             !! DM_ALLOW_INFINITE
         integer(int32), intent(in) :: gene_to_fam(n_genes)
-            !! Gene-to-family mapping (1-based indexing)
+            !! M_GENE_TO_FAM_DOC(distances)
 
         ! Shared sort scratch (n_genes), reused by the family-scaling and RDI phases
         integer(int32), intent(out) :: tmp_perm(n_genes)

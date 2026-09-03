@@ -11,7 +11,7 @@
 #' @param distances a numeric vector. Array of Euclidean distances for each gene
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @param gene_to_fam a integer vector. Mapping of each gene to its family (1-based)
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
 #' @param span a numeric scalar. Span parameter for LOESS smoothing, passed straight to
 #'   \code{\link{loess_fit_plain}}, so it is held to that
 #'   procedure's own range rather than to the NaN tolerance the distance data carries.
@@ -68,7 +68,7 @@ compute_family_scaling <- function(n_families, distances, gene_to_fam, span = 0.
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
 #' @param dscale a numeric vector. Array of scaling factors for each family
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
@@ -159,7 +159,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
 #' @param distances a numeric vector. Array of Euclidean distances for each gene to its centroid
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
-#' @param gene_to_fam a integer vector. Gene-to-family mapping (1-based indexing)
+#' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
 #' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] for outlier detection.
 #'   The default value is `0.95`.
 #'   The minimum valid value is `0.0`.
