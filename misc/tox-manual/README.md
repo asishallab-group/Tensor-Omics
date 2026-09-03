@@ -20,6 +20,7 @@ misc/tox-manual/
     snd_detection.tex  worked example (exercises every environment)
   shared/
     normalization.tex           the normalization sub-recipe
+    family_centroids.tex        the family-centroid sub-recipe
     gene_family_detection.tex   example reusable sub-recipe
   references.bib       starter bibliography
   latexmkrc  Makefile  build tooling (pinned to pdfLaTeX)
