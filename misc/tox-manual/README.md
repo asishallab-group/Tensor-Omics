@@ -24,6 +24,7 @@ misc/tox-manual/
     tox_dataset.tex             creating a TOX dataset
     normalization.tex           the normalization sub-recipe
     family_centroids.tex        the family-centroid sub-recipe
+    clustering.tex              k-means and linkage
     gene_family_detection.tex   families and orthologs from OrthoFinder
   references.bib       starter bibliography
   latexmkrc  Makefile  build tooling (pinned to pdfLaTeX)
