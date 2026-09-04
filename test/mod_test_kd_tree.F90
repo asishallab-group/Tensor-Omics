@@ -1,7 +1,8 @@
 !> Unit test suite for kd_tree module.
 module mod_test_kd_tree
     use f42_kd_tree
-    use f42_utils
+    use f42_kd_tree_impl, only: get_kd_point
+    use f42_utils_impl
     use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -42,10 +43,18 @@ contains
 
         call set_ok(ierr)
 
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(kd_ix, n, "2D Cartesian KD-Tree")
+
+        ! the allocating entry point owns the four work arrays and must agree
+        block
+            integer(int32) :: own_ix(n)
+            call build_kd_index(X, d, n, own_ix, dim_order, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error (allocating)')
+            call assert_true(all(own_ix == kd_ix), "Allocating build_kd_index returned a different order")
+        end block
     end subroutine test_kd_2d_cartesian
 
     !> Test 3D Spherical KD-Tree.
@@ -60,8 +69,8 @@ contains
         call set_ok(ierr)
 
         call random_unit_vectors(V, d, n)
-        call build_spherical_kd(V, d, n, sphere_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_spherical_kd_expert(V, d, n, sphere_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
         call assert_permutation(sphere_ix, n, "3D Spherical KD-Tree")
     end subroutine test_kd_3d_spherical
 
@@ -77,7 +86,7 @@ contains
         call set_ok(ierr)
 
         ! This should return ERR_EMPTY_INPUT
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
         call assert_equal_int(ierr, create_err_code(ERR_EMPTY_INPUT, arg_pos=3_int32), 'Expected error, but did''nt get one')
 
         call assert_true(.true., "KD-Tree empty array handling")
@@ -94,8 +103,8 @@ contains
 
         call set_ok(ierr)
 
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_equal_int(kd_ix(1), 1, "KD-Tree single point index incorrect")
     end subroutine test_kd_single_point
@@ -111,8 +120,8 @@ contains
 
         call set_ok(ierr)
 
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(kd_ix, n, "KD-Tree identical points")
     end subroutine test_kd_identical_points
@@ -133,8 +142,8 @@ contains
             V(i, i) = 1.0d0
         end do
 
-        call build_spherical_kd(V, d, n, sphere_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_spherical_kd_expert(V, d, n, sphere_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(sphere_ix, n, "KD-Tree unit vectors")
     end subroutine test_kd_unit_vectors
@@ -151,8 +160,8 @@ contains
         call set_ok(ierr)
 
         call random_matrix(X, d, n)
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
         call assert_permutation(kd_ix, n, "KD-Tree high dimension low points")
     end subroutine test_kd_high_dim_low_points
 
@@ -172,8 +181,8 @@ contains
             X(1, i) = i
         end do
 
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(kd_ix, n, "1D sorted KD-Tree")
     end subroutine test_kd_1d_sorted
@@ -189,8 +198,8 @@ contains
 
         call set_ok(ierr)
 
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(kd_ix, n, "2D minimal KD-Tree")
     end subroutine test_kd_2d_minimal
@@ -206,8 +215,8 @@ contains
 
         call set_ok(ierr)
 
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(kd_ix, n, "1D minimal KD-Tree")
     end subroutine test_kd_1d_minimal
@@ -225,10 +234,10 @@ contains
         call set_ok(ierr)
 
         call random_matrix(X, d, n)
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
         call get_kd_point(X, kd_ix, 4, val, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
 
         call assert_permutation(kd_ix, n, "3D large KD-Tree")
     end subroutine test_kd_3d_large
@@ -245,8 +254,8 @@ contains
         call set_ok(ierr)
 
         call random_matrix(X, d, n)
-        call build_kd_index(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
-        call assert_equal_int(ierr, ERR_OK, 'Unexpected error')
+        call build_kd_index_expert(X, d, n, kd_ix, dim_order, work, subarray, perm, recursion_stack, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, 'Unexpected error')
         call assert_permutation(kd_ix, n, "5D medium KD-Tree")
     end subroutine test_kd_5d_medium
 

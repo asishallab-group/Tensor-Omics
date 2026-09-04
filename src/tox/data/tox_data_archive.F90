@@ -10,15 +10,15 @@
 !| fixed TensorOmics data set schema; `create_zip_archive`/`extract_zip_archive` and the
 !| `*_manifest*` routines below are the generic key/filename building blocks they are built on.
 module tox_data_archive
-    use safeguard
-    use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr
+    use f42_safeguard
+    use iso_c_binding, only: c_ptr, c_char, c_int, c_int64_t, c_size_t, c_signed_char, c_f_pointer, c_loc, c_associated, c_null_char, c_null_ptr, c_bool
     use tox_data_read_write
     use tox_errors, only: set_ok, set_err_once, is_err, ERR_FILE_OPEN, ERR_ALLOC_FAIL, ERR_FILE_ADD, set_err
     use tox_errors, only: ERR_FILE_CLOSE, ERR_FILE_EXTRACT, ERR_INVALID_INPUT
     use tox_errors, only: ERR_POINTER_NULL, ERR_WRITE_DATA, ERR_READ_DATA
     use iso_fortran_env, only: real64, int32, iostat_end
-    use config, only: DEBUG
-    implicit none
+    use f42_config, only: DEBUG
+    M_IMPLICIT_NONE
 
     ! libzip constants
     integer(c_int), parameter :: ZIP_CREATE = 1
@@ -131,8 +131,9 @@ module tox_data_archive
 
 contains
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Creates a zip archive with generic file lists
+    !> M_EXPORT_C
+    !| summary: Creates a zip archive with generic file lists
+    !| AUTHOR_AARON_SCHROEDER
     subroutine create_zip_archive(zip_filename, keys, filenames, ierr)
         character(len=*), intent(in) :: zip_filename
             !! Name of the zip file to create
@@ -235,8 +236,8 @@ contains
         type(c_ptr) :: zip_handle
         integer(c_int) :: error
         integer(c_int64_t) :: i, num_entries
-        character(len=:), allocatable :: filename
-        logical :: file_exists
+        character(len=:), pointer :: filename
+        logical(c_bool) :: file_exists
         integer(int32) :: i_fortran
         integer(c_int64_t) :: i_c
 
@@ -267,8 +268,9 @@ contains
         num_entries = zip_get_num_entries(zip_handle, 0)
         do i_fortran = 0, int(num_entries - 1, int32)
             call int32_as_c_int64(i_fortran, i_c)
-            call get_zip_entry_name(zip_handle, i_c, filename, ierr)
-            if (is_err(ierr)) then
+            call get_zip_entry_name(zip_handle, i_c, filename)
+            if (.not. associated(filename)) then
+                call set_err_once(ierr, ERR_READ_DATA)
                 error = zip_close(zip_handle)
                 return
             end if
@@ -329,25 +331,31 @@ contains
 
     !> AUTHOR_AARON_SCHROEDER
     !| Helper function to get the name of a ZIP entry
-    subroutine get_zip_entry_name(zip_handle, entry_index, entry_name, ierr)
-        use tox_conversions, only: c_char_1d_as_string
+    !| `entry_name` is a **view into libzip's own memory**, not a copy: it is valid only while
+    !| `zip_handle` is open, and must not be kept past `zip_close`. The one caller uses it
+    !| inside the loop that reads the archive, which is exactly that window.
+    subroutine get_zip_entry_name(zip_handle, entry_index, entry_name)
+        use tox_conversions, only: c_char_as_view
         type(c_ptr), intent(in) :: zip_handle
             !! Zip file connection
         integer(c_int64_t), intent(in) :: entry_index
             !! Index of the entry
-        character(len=:), allocatable, intent(out) :: entry_name
-            !! Name of the entry
-        integer(int32), intent(out) :: ierr
-            !! Error code
+        character(len=:), pointer, intent(out) :: entry_name
+            !! Name of the entry, ending at libzip's NUL. Unassociated if the entry has no name.
 
         character(kind=c_char, len=1), pointer :: name_ptr(:)
+        type(c_ptr) :: name_cptr
         integer(int32), parameter :: MAX_NAME_LENGTH = 4096  ! Reasonable maximum
+
         ! zip_get_name returns a pointer to a NUL-terminated C string of unknown length; we don't
-        ! have a real bound from libzip, so we map a fixed-size window over it and rely on
-        ! c_char_1d_as_string to stop at the first NUL byte. MAX_NAME_LENGTH must stay >= the
+        ! have a real bound from libzip, so we map a fixed-size window over it and let
+        ! c_char_as_view stop at the first NUL byte. MAX_NAME_LENGTH must stay >= the
         ! longest entry name any archive we read can contain.
-        call c_f_pointer(zip_get_name(zip_handle, entry_index, 0), name_ptr, [MAX_NAME_LENGTH])
-        call c_char_1d_as_string(name_ptr, entry_name, ierr)
+        nullify (entry_name)
+        name_cptr = zip_get_name(zip_handle, entry_index, 0)
+        if (.not. c_associated(name_cptr)) return
+        call c_f_pointer(name_cptr, name_ptr, [MAX_NAME_LENGTH])
+        entry_name => c_char_as_view(name_ptr)
     end subroutine get_zip_entry_name
 
     !> AUTHOR_AARON_SCHROEDER
@@ -428,7 +436,7 @@ contains
     !| (`data_type=DATA_TYPE_STRING`, `data_source` is the literal content).
     subroutine add_data_to_zip(zip_handle, filename, data_source, data_type, ierr)
         use tox_conversions, only: int32_as_c_size
-        implicit none
+        M_IMPLICIT_NONE
 
         ! Arguments
         type(c_ptr), intent(in)    :: zip_handle
@@ -555,7 +563,7 @@ contains
 
     end subroutine add_data_to_zip
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> AUTHOR_AARON_SCHROEDER
     !| Write manifest from given key-value pairs
     subroutine write_manifest(keys, filenames, manifest_filename, ierr)
         character(len=*), intent(in) :: keys(:)
@@ -608,7 +616,7 @@ contains
         if (DEBUG) print *, "Manifest created successfully with ", size(keys), " entries"
     end subroutine write_manifest
 
-    !> AUTHOR_FRANZ_ERIC_SILL
+    !> AUTHOR_AARON_SCHROEDER
     !| Read manifest file and return key-value pairs
     subroutine read_manifest_generic(manifest_filename, keys, values, ierr)
         character(len=*), intent(in) :: manifest_filename
@@ -685,13 +693,14 @@ contains
         end if
     end subroutine extract_and_parse_manifest
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Save standard tox data
+    !> M_EXPORT_C
+    !| summary: Save standard tox data
+    !| AUTHOR_AARON_SCHROEDER
     subroutine save_tox_data(zip_filename, ierr, gene_ids, gene_ids_file, expression, &
                              expression_file, gene_to_family, gene_to_family_file, &
                              family_ids, family_ids_file, family_centroids, &
                              family_centroids_file, shift_vectors, shift_vectors_file)
-        implicit none
+        M_IMPLICIT_NONE
 
         character(len=*), intent(in) :: zip_filename
         !! Zip filename
@@ -724,8 +733,8 @@ contains
 
         character(len=:), allocatable :: actual_gene_ids_file, actual_expression_file, actual_gene_to_family_file, &
                                          actual_family_ids_file, actual_family_centroids_file, actual_shift_vectors_file
-        logical :: gene_ids_present, expression_present, gene_to_family_present, &
-                   family_ids_present, family_centroids_present, shift_vectors_present
+        logical(c_bool) :: gene_ids_present, expression_present, gene_to_family_present, &
+                           family_ids_present, family_centroids_present, shift_vectors_present
         integer(int32) :: temp_ierr
         character(len=:), allocatable :: keys(:), filenames(:)
         integer :: count, i
@@ -860,7 +869,7 @@ contains
         !| `ierr`), since a leftover temp file does not affect whether the archive itself was
         !| written successfully.
         subroutine cleanup_temporary_files(file_present, filename, description)
-            logical, intent(in) :: file_present
+            logical(c_bool), intent(in) :: file_present
                 !! Whether this array was actually saved (and thus has a temp file to remove)
             character(len=*), intent(in) :: filename
                 !! Path of the temporary file to delete
@@ -884,7 +893,7 @@ contains
         use f42_serde_arrays_utils, only: get_array_metadata, REAL_TYPE_CODE, INTEGER_TYPE_CODE
         use tox_data_read_write
         use iso_fortran_env, only: real64, int32
-        implicit none
+        M_IMPLICIT_NONE
 
         character(len=*), intent(in) :: zip_filename
         !! Name of the zipfile
@@ -917,8 +926,8 @@ contains
 
         character(len=:), allocatable :: keys(:), filenames(:)
         integer(int32) :: i_key, type_code
-        logical :: gene_ids_requested, expression_requested, gene_to_family_requested, &
-                   family_ids_requested, family_centroids_requested, shift_vectors_requested
+        logical(c_bool) :: gene_ids_requested, expression_requested, gene_to_family_requested, &
+                           family_ids_requested, family_centroids_requested, shift_vectors_requested
         integer(int32) :: max_dims, ndims, dims(5)
         character(len=:), allocatable :: extracted_gene_ids_file, extracted_expression_file, &
                                          extracted_gene_to_family_file, extracted_family_ids_file, &
@@ -1098,108 +1107,260 @@ contains
         deallocate (keys, filenames)
     end subroutine read_tox_data
 
+    ! ---- C-exportable read path -------------------------------------------------------------
+    ! read_tox_data above returns allocatable, optional arrays, which have no C ABI: the caller
+    ! cannot allocate a buffer it does not yet know the size of. For export the read is split in
+    ! two -- get_tox_data_dims reports every member's shape, and read_tox_data_into fills
+    ! caller-provided buffers of that shape. An AUTO output-from directive on the latter's
+    ! extents wires the first call into the second, so from Python/R it is still one read call.
+
+    !> summary: Resolve the six standard members of a tox data archive to extracted filenames
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| Extracts `zip_filename` to temporary files and maps the manifest keys to them; a member
+    !| absent from the manifest comes back as an empty string. Not exported (returns allocatable
+    !| strings) -- a helper shared by get_tox_data_dims and read_tox_data_into.
+    subroutine resolve_tox_data_files(zip_filename, gene_ids_file, expression_file, &
+            gene_to_family_file, family_ids_file, family_centroids_file, shift_vectors_file, ierr)
+        character(len=*), intent(in) :: zip_filename
+            !! Name of the zip file
+        character(len=:), allocatable, intent(out) :: gene_ids_file, expression_file, &
+            gene_to_family_file, family_ids_file, family_centroids_file, shift_vectors_file
+            !! Extracted member filenames, empty when the member is absent
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        character(len=:), allocatable :: keys(:), filenames(:)
+        integer(int32) :: i_key
+
+        call set_ok(ierr)
+        gene_ids_file = ""
+        expression_file = ""
+        gene_to_family_file = ""
+        family_ids_file = ""
+        family_centroids_file = ""
+        shift_vectors_file = ""
+
+        call extract_zip_archive(zip_filename, keys, filenames, ierr)
+        if (is_err(ierr)) return
+
+        ! Same key vocabulary as save_tox_data / read_tox_data -- keep the three in sync.
+        do i_key = 1, size(keys)
+            select case (trim(keys(i_key)))
+            case ('gene_ids');         gene_ids_file = trim(filenames(i_key))
+            case ('expression');       expression_file = trim(filenames(i_key))
+            case ('gene_to_family');   gene_to_family_file = trim(filenames(i_key))
+            case ('family_ids');       family_ids_file = trim(filenames(i_key))
+            case ('family_centroids'); family_centroids_file = trim(filenames(i_key))
+            case ('shift_vectors');    shift_vectors_file = trim(filenames(i_key))
+            end select
+        end do
+    end subroutine resolve_tox_data_files
+
+    !> summary: Best-effort deletion of the temporary files an extraction leaves behind
+    !| AUTHOR_FRANZ_ERIC_SILL
+    subroutine cleanup_tox_data_files(gene_ids_file, expression_file, gene_to_family_file, &
+            family_ids_file, family_centroids_file, shift_vectors_file)
+        character(len=*), intent(in) :: gene_ids_file, expression_file, gene_to_family_file, &
+            family_ids_file, family_centroids_file, shift_vectors_file
+            !! Extracted member filenames to remove (skipped when empty)
+
+        integer(int32) :: temp_ierr
+
+        call set_ok(temp_ierr)
+        if (len_trim(gene_ids_file) > 0) call delete_file(gene_ids_file, temp_ierr)
+        if (len_trim(expression_file) > 0) call delete_file(expression_file, temp_ierr)
+        if (len_trim(gene_to_family_file) > 0) call delete_file(gene_to_family_file, temp_ierr)
+        if (len_trim(family_ids_file) > 0) call delete_file(family_ids_file, temp_ierr)
+        if (len_trim(family_centroids_file) > 0) call delete_file(family_centroids_file, temp_ierr)
+        if (len_trim(shift_vectors_file) > 0) call delete_file(shift_vectors_file, temp_ierr)
+        call delete_file("manifest.txt", temp_ierr)
+        if (DEBUG .and. is_err(temp_ierr)) print *, "Warning: failed to clean up one or more temporary extracted files"
+    end subroutine cleanup_tox_data_files
+
+    !> M_EXPORT_C
+    !| summary: Report the shape of every member of a tox data archive
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| Each count (and each string length) is 0 when the corresponding member is absent, so a
+    !| caller can size all six output buffers up front. Character members report both an element
+    !| count and a per-element string length. Pairs with
+    !| [[tox_data_archive(module):read_tox_data_into(subroutine)]].
+    subroutine get_tox_data_dims(zip_filename, &
+            n_gene_ids, gene_id_len, &
+            n_expression_rows, n_expression_cols, &
+            n_gene_to_family, &
+            n_family_ids, family_id_len, &
+            n_family_centroids_rows, n_family_centroids_cols, &
+            n_shift_vectors_rows, n_shift_vectors_cols, ierr)
+        character(len=*), intent(in) :: zip_filename
+            !! Name of the zip file
+        integer(int32), intent(out) :: n_gene_ids
+            !! Number of gene ids, 0 if absent
+        integer(int32), intent(out) :: gene_id_len
+            !! String length of each gene id, 0 if absent
+        integer(int32), intent(out) :: n_expression_rows
+            !! Rows (samples) of the expression matrix, 0 if absent
+        integer(int32), intent(out) :: n_expression_cols
+            !! Columns (genes) of the expression matrix, 0 if absent
+        integer(int32), intent(out) :: n_gene_to_family
+            !! Number of gene-to-family entries, 0 if absent
+        integer(int32), intent(out) :: n_family_ids
+            !! Number of family ids, 0 if absent
+        integer(int32), intent(out) :: family_id_len
+            !! String length of each family id, 0 if absent
+        integer(int32), intent(out) :: n_family_centroids_rows
+            !! Rows (samples) of the family centroids matrix, 0 if absent
+        integer(int32), intent(out) :: n_family_centroids_cols
+            !! Columns (families) of the family centroids matrix, 0 if absent
+        integer(int32), intent(out) :: n_shift_vectors_rows
+            !! Rows of the shift vectors matrix, 0 if absent
+        integer(int32), intent(out) :: n_shift_vectors_cols
+            !! Columns of the shift vectors matrix, 0 if absent
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        character(len=:), allocatable :: f_gene_ids, f_expression, f_gene_to_family, &
+            f_family_ids, f_family_centroids, f_shift_vectors
+        integer(int32) :: unused
+
+        n_gene_ids = 0
+        gene_id_len = 0
+        n_expression_rows = 0
+        n_expression_cols = 0
+        n_gene_to_family = 0
+        n_family_ids = 0
+        family_id_len = 0
+        n_family_centroids_rows = 0
+        n_family_centroids_cols = 0
+        n_shift_vectors_rows = 0
+        n_shift_vectors_cols = 0
+
+        call resolve_tox_data_files(zip_filename, f_gene_ids, f_expression, f_gene_to_family, &
+            f_family_ids, f_family_centroids, f_shift_vectors, ierr)
+        if (is_err(ierr)) return
+
+        if (.not. is_err(ierr)) call member_dims(f_gene_ids, n_gene_ids, unused, gene_id_len, ierr)
+        if (.not. is_err(ierr)) call member_dims(f_expression, n_expression_rows, n_expression_cols, unused, ierr)
+        if (.not. is_err(ierr)) call member_dims(f_gene_to_family, n_gene_to_family, unused, unused, ierr)
+        if (.not. is_err(ierr)) call member_dims(f_family_ids, n_family_ids, unused, family_id_len, ierr)
+        if (.not. is_err(ierr)) call member_dims(f_family_centroids, n_family_centroids_rows, n_family_centroids_cols, unused, ierr)
+        if (.not. is_err(ierr)) call member_dims(f_shift_vectors, n_shift_vectors_rows, n_shift_vectors_cols, unused, ierr)
+
+        call cleanup_tox_data_files(f_gene_ids, f_expression, f_gene_to_family, &
+            f_family_ids, f_family_centroids, f_shift_vectors)
+
+    contains
+
+        subroutine member_dims(filename, count1, count2, char_len, ierr)
+            use f42_serde_arrays_utils, only: get_array_metadata
+            character(len=*), intent(in) :: filename
+            integer(int32), intent(out) :: count1, count2, char_len
+            integer(int32), intent(out) :: ierr
+
+            integer(int32) :: dims(5), ndims, type_code
+
+            count1 = 0
+            count2 = 0
+            char_len = 0
+            call set_ok(ierr)
+            if (len_trim(filename) == 0) return
+
+            call get_array_metadata(filename, dims, 5, ndims, type_code, ierr)
+            if (is_err(ierr)) return
+
+            if (ndims >= 1) count1 = dims(1)
+            if (ndims >= 2) count2 = dims(2)
+            ! Character members store their string length in type_code (>= 0); numeric members
+            ! store a negative sentinel there, so char_len stays 0 for a numeric member.
+            if (type_code >= 0) char_len = type_code
+        end subroutine member_dims
+    end subroutine get_tox_data_dims
+
+    !> M_EXPORT_C
+    !| summary: Read a tox data archive into caller-provided buffers
+    !| AUTHOR_FRANZ_ERIC_SILL
+    !| Fills every buffer from the archive; size them from
+    !| [[tox_data_archive(module):get_tox_data_dims(subroutine)]] first. A member that is absent
+    !| has a zero extent and is left untouched.
+    subroutine read_tox_data_into(zip_filename, &
+            n_gene_ids, gene_id_len, gene_ids, &
+            n_expression_rows, n_expression_cols, expression, &
+            n_gene_to_family, gene_to_family, &
+            n_family_ids, family_id_len, family_ids, &
+            n_family_centroids_rows, n_family_centroids_cols, family_centroids, &
+            n_shift_vectors_rows, n_shift_vectors_cols, shift_vectors, ierr)
+        character(len=*), intent(in) :: zip_filename
+            !! Name of the zip file
+        integer(int32), intent(in) :: n_gene_ids
+            !! Number of gene ids.
+            !! DM_OUTPUT_FROM(n_gene_ids, get_tox_data_dims, tox_data_archive, AUTO)
+        integer(int32), intent(in) :: gene_id_len
+            !! String length of each gene id.
+            !! DM_OUTPUT_FROM(gene_id_len, get_tox_data_dims, tox_data_archive, AUTO)
+        character(len=gene_id_len), dimension(n_gene_ids), intent(out) :: gene_ids
+            !! Gene ids
+        integer(int32), intent(in) :: n_expression_rows
+            !! Rows (samples) of the expression matrix.
+            !! DM_OUTPUT_FROM(n_expression_rows, get_tox_data_dims, tox_data_archive, AUTO)
+        integer(int32), intent(in) :: n_expression_cols
+            !! Columns (genes) of the expression matrix.
+            !! DM_OUTPUT_FROM(n_expression_cols, get_tox_data_dims, tox_data_archive, AUTO)
+        real(real64), dimension(n_expression_rows, n_expression_cols), intent(out) :: expression
+            !! Expression vectors
+        integer(int32), intent(in) :: n_gene_to_family
+            !! Number of gene-to-family entries.
+            !! DM_OUTPUT_FROM(n_gene_to_family, get_tox_data_dims, tox_data_archive, AUTO)
+        integer(int32), dimension(n_gene_to_family), intent(out) :: gene_to_family
+            !! Gene to family mapping
+        integer(int32), intent(in) :: n_family_ids
+            !! Number of family ids.
+            !! DM_OUTPUT_FROM(n_family_ids, get_tox_data_dims, tox_data_archive, AUTO)
+        integer(int32), intent(in) :: family_id_len
+            !! String length of each family id.
+            !! DM_OUTPUT_FROM(family_id_len, get_tox_data_dims, tox_data_archive, AUTO)
+        character(len=family_id_len), dimension(n_family_ids), intent(out) :: family_ids
+            !! Family ids
+        integer(int32), intent(in) :: n_family_centroids_rows
+            !! Rows (samples) of the family centroids matrix.
+            !! DM_OUTPUT_FROM(n_family_centroids_rows, get_tox_data_dims, tox_data_archive, AUTO)
+        integer(int32), intent(in) :: n_family_centroids_cols
+            !! Columns (families) of the family centroids matrix.
+            !! DM_OUTPUT_FROM(n_family_centroids_cols, get_tox_data_dims, tox_data_archive, AUTO)
+        real(real64), dimension(n_family_centroids_rows, n_family_centroids_cols), intent(out) :: family_centroids
+            !! Family centroids
+        integer(int32), intent(in) :: n_shift_vectors_rows
+            !! Rows of the shift vectors matrix.
+            !! DM_OUTPUT_FROM(n_shift_vectors_rows, get_tox_data_dims, tox_data_archive, AUTO)
+        integer(int32), intent(in) :: n_shift_vectors_cols
+            !! Columns of the shift vectors matrix.
+            !! DM_OUTPUT_FROM(n_shift_vectors_cols, get_tox_data_dims, tox_data_archive, AUTO)
+        real(real64), dimension(n_shift_vectors_rows, n_shift_vectors_cols), intent(out) :: shift_vectors
+            !! Shift vectors
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        character(len=:), allocatable :: f_gene_ids, f_expression, f_gene_to_family, &
+            f_family_ids, f_family_centroids, f_shift_vectors
+
+        call resolve_tox_data_files(zip_filename, f_gene_ids, f_expression, f_gene_to_family, &
+            f_family_ids, f_family_centroids, f_shift_vectors, ierr)
+        if (is_err(ierr)) return
+
+        ! A zero extent means the member is absent (or not requested): its buffer stays as passed.
+        if (.not. is_err(ierr) .and. n_gene_ids > 0 .and. len_trim(f_gene_ids) > 0) &
+            call load_gene_ids(gene_ids, f_gene_ids, ierr)
+        if (.not. is_err(ierr) .and. n_expression_rows > 0 .and. len_trim(f_expression) > 0) &
+            call load_expression_vectors(expression, f_expression, ierr)
+        if (.not. is_err(ierr) .and. n_gene_to_family > 0 .and. len_trim(f_gene_to_family) > 0) &
+            call load_gene_to_family(gene_to_family, f_gene_to_family, ierr)
+        if (.not. is_err(ierr) .and. n_family_ids > 0 .and. len_trim(f_family_ids) > 0) &
+            call load_family_ids(family_ids, f_family_ids, ierr)
+        if (.not. is_err(ierr) .and. n_family_centroids_rows > 0 .and. len_trim(f_family_centroids) > 0) &
+            call load_family_centroids(family_centroids, f_family_centroids, ierr)
+        if (.not. is_err(ierr) .and. n_shift_vectors_rows > 0 .and. len_trim(f_shift_vectors) > 0) &
+            call load_shift_vectors(shift_vectors, f_shift_vectors, ierr)
+
+        call cleanup_tox_data_files(f_gene_ids, f_expression, f_gene_to_family, &
+            f_family_ids, f_family_centroids, f_shift_vectors)
+    end subroutine read_tox_data_into
+
 end module tox_data_archive
-
-!> C binding for generic archive creation with arrays of keys and filenames
-subroutine create_zip_archive_c(zip_filename, zip_len, &
-                                keys, keys_len, keys_count, &
-                                filenames, filenames_len, filenames_count, &
-                                ierr) bind(C, name="create_zip_archive_c")
-    use tox_data_archive, only: create_zip_archive
-    use tox_conversions, only: c_char_2d_as_string, c_char_1d_as_string
-    use iso_c_binding, only: c_int, c_char
-    use tox_errors, only: is_err, set_ok, set_err_once, ERR_INVALID_INPUT
-    use iso_fortran_env, only: int32
-    M_USE_NULL_VALIDATION
-
-    ! Input arguments
-    integer(c_int), intent(in), target :: zip_len
-    !! Length of the zip filename
-    character(kind=c_char, len=1), intent(in), target :: zip_filename(zip_len)
-    !! Zip Filename as c_chars
-    integer(c_int), intent(in), target :: keys_count
-    !! number of keys
-    integer(c_int), intent(in), target :: keys_len
-    !! lengths of the keys
-    character(kind=c_char, len=1), intent(in), target :: keys(keys_len, keys_count)
-    !! Keys as c_chars
-    integer(c_int), intent(in), target :: filenames_count
-    !! Number of files
-    integer(c_int), intent(in), target :: filenames_len
-    !! Length of the filenames
-    character(kind=c_char, len=1), intent(in), target :: filenames(filenames_len, filenames_count)
-    !! Filenames as c_chars
-    integer(c_int), intent(out), target :: ierr
-    !! Error code
-
-    ! Local variables
-    character(len=:), allocatable :: f_zip_filename
-    character(len=:), allocatable :: f_keys(:)
-    character(len=:), allocatable :: f_filenames(:)
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(zip_len)
-    M_CHECK_NON_NULL(keys_count)
-    M_CHECK_NON_NULL(keys_len)
-    M_CHECK_NON_NULL(filenames_count)
-    M_CHECK_NON_NULL(filenames_len)
-    M_CHECK_NON_NULL(zip_filename)
-    M_CHECK_NON_NULL(keys)
-    M_CHECK_NON_NULL(filenames)
-
-    call set_ok(ierr)
-
-    call c_char_1d_as_string(zip_filename, f_zip_filename, ierr)
-    if (is_err(ierr)) return
-
-    call c_char_2d_as_string(keys, f_keys, ierr)
-    if (is_err(ierr)) return
-
-    call c_char_2d_as_string(filenames, f_filenames, ierr)
-    if (is_err(ierr)) return
-
-    ! Validate array sizes
-    if (size(f_keys) /= size(f_filenames)) then
-        call set_err_once(ierr, ERR_INVALID_INPUT)
-        return
-    end if
-
-    call create_zip_archive(f_zip_filename, f_keys, f_filenames, ierr)
-
-end subroutine create_zip_archive_c
-
-!> C binding for extract_zip_archive - can be called directly from Python via ctypes
-subroutine extract_zip_archive_c(zip_filename, filename_len, ierr) &
-    bind(C, name="extract_zip_archive_c")
-    use tox_data_archive, only: extract_zip_archive
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: set_ok, is_err
-    use iso_c_binding, only: c_int, c_char
-    use iso_fortran_env, only: int32
-    M_USE_NULL_VALIDATION
-
-    ! Input arguments
-    integer(c_int), intent(in), target :: filename_len
-    !! Length of the filename
-    character(kind=c_char, len=1), intent(in), target :: zip_filename(filename_len)
-    !! Zip filename length
-    integer(c_int), intent(out), target :: ierr
-    !! Error code
-
-    ! Local variables
-    character(len=:), allocatable :: f_zip_filename
-    character(len=:), allocatable :: keys(:), filenames(:)
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(filename_len)
-    M_CHECK_NON_NULL(zip_filename)
-
-    call set_ok(ierr)
-
-    ! Convert C string to Fortran string
-    call c_char_1d_as_string(zip_filename, f_zip_filename, ierr)
-    if (is_err(ierr)) return
-
-    call extract_zip_archive(f_zip_filename, keys, filenames, ierr)
-
-end subroutine extract_zip_archive_c

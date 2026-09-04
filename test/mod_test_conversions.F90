@@ -17,16 +17,13 @@ contains
     function get_all_tests_conversions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(8))
+        allocate (all_tests(5))
 
         all_tests(1) = test_case("test_tox_conversions_c_char_as_char", test_c_char_as_char)
-        all_tests(2) = test_case("test_tox_conversions_c_char_1d_as_string", test_c_char_1d_as_string)
-        all_tests(3) = test_case("test_tox_conversions_c_char_2d_as_string", test_c_char_2d_as_string)
-        all_tests(4) = test_case("test_tox_conversions_c_int_as_logical", test_c_int_as_logical)
-        all_tests(5) = test_case("test_tox_conversions_char_as_c_char", test_char_as_c_char)
-        all_tests(6) = test_case("test_tox_conversions_string_as_c_char_1d", test_string_as_c_char_1d)
-        all_tests(7) = test_case("test_tox_conversions_string_as_c_char_2d", test_string_as_c_char_2d)
-        all_tests(8) = test_case("test_tox_conversions_logical_as_c_int", test_logical_as_c_int)
+        all_tests(2) = test_case("test_tox_conversions_c_char_as_view", test_c_char_as_view)
+        all_tests(3) = test_case("test_tox_conversions_c_int_as_logical", test_c_int_as_logical)
+        all_tests(4) = test_case("test_tox_conversions_char_as_c_char", test_char_as_c_char)
+        all_tests(5) = test_case("test_tox_conversions_logical_as_c_int", test_logical_as_c_int)
     end function get_all_tests_conversions
 
     !> Test C int to logical conversion for scalar and array cases.
@@ -75,42 +72,45 @@ contains
         call assert_true(casted_fortran == expected_fortran, "test_conversions_c_char_as_char: value mismatch for null char")
     end subroutine test_c_char_as_char
 
-    !> Test string to C char array conversion for 1D case.
-    subroutine test_c_char_1d_as_string
-        character(kind=c_char, len=1) :: c_char_array(5)
-        character(len=:), allocatable :: f_char
-        integer(int32) :: ierr
+    !> A C buffer read as one Fortran string, without copying it.
+    !| The two padding conventions are the point: a hand-written C caller NUL-terminates, the
+    !| generated bindings blank-pad, and both have to reach the same answer. Only the second
+    !| is exercised by the suites end to end, so the first is checked here or nowhere.
+    subroutine test_c_char_as_view
+        character(kind=c_char, len=1), target :: c_char_array(8)
+        character(len=:), pointer :: view
 
-        call set_ok(ierr)
+        ! NUL-terminated, C's convention: the view stops at the NUL
+        c_char_array = ["w", "a", "r", "d", c_null_char, c_null_char, c_null_char, c_null_char]
+        view => c_char_as_view(c_char_array)
+        call assert_equal_int(len(view), 4, "c_char_as_view: NUL-terminated length")
+        call assert_true(view == "ward", "c_char_as_view: NUL-terminated value")
 
-        c_char_array = ["H", "e", "l", "l", "o"]
-        call c_char_1d_as_string(c_char_array, f_char, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
-        call assert_true(f_char == "Hello", "test_conversions_c_char_1d_as_string: value mismatch")
+        ! blank-padded, what the generated bindings send: no NUL, so the whole buffer
+        c_char_array = ["w", "a", "r", "d", " ", " ", " ", " "]
+        view => c_char_as_view(c_char_array)
+        call assert_equal_int(len(view), 8, "c_char_as_view: blank-padded length")
+        ! and it still compares equal to the short literal, because Fortran blank-pads the
+        ! shorter operand -- which is what lets `select case` accept either convention
+        call assert_true(view == "ward", "c_char_as_view: blank-padded compares equal")
 
-        ! test empty string
-        c_char_array = [c_null_char, "e", "l", "l", "o"]
-        call c_char_1d_as_string(c_char_array, f_char, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
-        call assert_true(f_char == "", "test_conversions_c_char_1d_as_string: value mismatch")
-    end subroutine test_c_char_1d_as_string
+        ! no padding at all
+        c_char_array = ["w", "e", "i", "g", "h", "t", "e", "d"]
+        view => c_char_as_view(c_char_array)
+        call assert_equal_int(len(view), 8, "c_char_as_view: full width length")
+        call assert_true(view == "weighted", "c_char_as_view: full width value")
 
-    !> Test string to C char array conversion for 2D case.
-    subroutine test_c_char_2d_as_string
-        character(kind=c_char, len=1) :: c_char_array(5, 2)
-        character(len=:), allocatable :: f_char(:)
-        integer(int32) :: ierr
+        ! a leading NUL is the empty string
+        c_char_array = [c_null_char, "e", "l", "l", "o", " ", " ", " "]
+        view => c_char_as_view(c_char_array)
+        call assert_equal_int(len(view), 0, "c_char_as_view: leading NUL gives the empty string")
 
-        call set_ok(ierr)
-
-        c_char_array(:, 1) = ["H", "e", "l", "l", "o"]
-        c_char_array(:, 2) = [c_null_char, "e", "l", "l", "o"]
-
-        call c_char_2d_as_string(c_char_array, f_char, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_conversions_c_char_1d_as_string: Unexpected Error Code")
-        call assert_equal_int(size(f_char, 1), 2, "test_conversions_c_char_2d_as_string: Did not get two strings")
-        call assert_true(f_char(1) == "Hello" .and. f_char(2) == "", "test_conversions_c_char_2d_as_string: value mismatch")
-    end subroutine test_c_char_2d_as_string
+        ! it is a view, not a copy
+        c_char_array = ["w", "a", "r", "d", c_null_char, c_null_char, c_null_char, c_null_char]
+        view => c_char_as_view(c_char_array)
+        c_char_array(1) = "h"
+        call assert_true(view == "hard", "c_char_as_view: writing through the buffer changes the view")
+    end subroutine test_c_char_as_view
 
     !> Test logical to C int conversion for scalar and array cases.
     subroutine test_logical_as_c_int
@@ -152,40 +152,4 @@ contains
         call assert_true(casted_c == c_null_char, "test_tox_conversions_char_as_c_char: null char mismatch")
     end subroutine test_char_as_c_char
 
-    !> Test Fortran string to C char array conversion for 1D case.
-    subroutine test_string_as_c_char_1d
-        character(len=5) :: f_str
-        character(kind=c_char, len=1), allocatable :: c_array(:)
-
-        f_str = "Hello"
-        allocate (c_array(6))
-        call string_as_c_char_1d(f_str, c_array)
-        call assert_true(all(c_array == ["H", "e", "l", "l", "o", c_null_char]), &
-                         "test_tox_conversions_string_as_c_char_1d: value mismatch")
-
-        call string_as_c_char_1d(f_str, c_array(1:5))
-        call assert_true(all(c_array == ["H", "e", "l", "l", "o", c_null_char]), &
-                         "test_tox_conversions_string_as_c_char_1d: value mismatch")
-
-        f_str = ""
-        call string_as_c_char_1d(f_str, c_array)
-        call assert_true(c_array(1) == c_null_char, "test_tox_conversions_string_as_c_char_1d: empty string mismatch")
-
-        ! just check empty array output
-        deallocate (c_array)
-        allocate (c_array(0))
-        call string_as_c_char_1d(f_str, c_array)
-    end subroutine test_string_as_c_char_1d
-
-    !> Test Fortran string to C char array conversion for 2D case.
-    subroutine test_string_as_c_char_2d
-        character(len=5) :: f_str(2)
-        character(kind=c_char, len=1) :: c_array(6, 2)
-
-        f_str(1) = "Hello"
-        f_str(2) = ""
-        call string_as_c_char_2d(f_str, c_array)
-        call assert_true(all(c_array(:, 1) == ["H", "e", "l", "l", "o", c_null_char]), "test_tox_conversions_string_as_c_char_2d: mismatch in first string")
-        call assert_true(c_array(1, 2) == c_null_char, "test_tox_conversions_string_as_c_char_2d: mismatch in second string")
-    end subroutine test_string_as_c_char_2d
 end module mod_test_conversions

@@ -13,8 +13,8 @@ on:
       - .github/workflows/run_tests.yml
       - .github/actions/install-Python/*
       - .github/actions/git-push/*
-      - helper/generate_snippets.py
-      - rcpp/**
+      - helper/**
+      - r/**
       - python/**
       - src/**
       - test/**
@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         compiler: [ifx, gfortran]
-        max_performance_flag: [--max-performance, ""]
+        max_performance_flag: [--max-performance, --diagnostics]
     uses: ./.github/workflows/run_tests.yml
     with:
       compiler: ${{ matrix.compiler }}
@@ -54,7 +54,7 @@ jobs:
           packages: ford
 
       - name: Generate snippets
-        run: python helper/generate_snippets.py
+        run: python helper/generate_code.py --target snippets
 
       - name: Generate docs
         run: ford concise_project_info.md

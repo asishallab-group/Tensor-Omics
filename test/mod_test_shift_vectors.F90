@@ -31,7 +31,7 @@ contains
         gene_to_centroid = [2, 3, 1, 3, 1]
 
         call compute_shift_vector_field(3, 5, 3, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected Error")
         expected_shift_vectors = reshape([2.0_real64, 1.0_real64, 0.0_real64, -1.0_real64, 1.0_real64, 3.0_real64, &
                                           -1.0_real64, -2.0_real64, -3.0_real64, 5.0_real64, 7.0_real64, 9.0_real64, &
                                           5.0_real64, 4.0_real64, 3.0_real64, 2.0_real64, 4.0_real64, 6.0_real64, &
@@ -72,7 +72,7 @@ contains
 
         ! Call the function with zero distance values
         call compute_shift_vector_field(3, 2, 2, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected Error")
 
         ! Check for expected 0 values in shift_vectors
         expected_shift_vectors = reshape([1.0_real64, 2.0_real64, 3.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, &
@@ -98,7 +98,7 @@ contains
 
         ! Call the function with multiple genes per family
         call compute_shift_vector_field(2, 4, 2, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected Error")
 
         call assert_equal_array_real(shift_vectors, expected_shift_vectors, 4, 1e-12_real64, &
                                      "Shift vectors should match expected values")
@@ -122,7 +122,7 @@ contains
 
         ! Call the function with single genes per family centroid
         call compute_shift_vector_field(2, 4, 4, expression_vectors, family_centroids, gene_to_centroid, shift_vectors, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected Error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected Error")
 
         call assert_equal_array_real(shift_vectors, expected_shift_vectors, 4, 1e-12_real64, &
                                      "Shift vectors should match expected values")

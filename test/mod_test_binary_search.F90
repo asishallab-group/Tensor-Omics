@@ -5,7 +5,7 @@ module mod_test_binary_search
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
-    use f42_utils
+    use f42_utils_impl
     use tox_errors
     use test_suite, only: test_case
     implicit none

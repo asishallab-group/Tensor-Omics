@@ -2,9 +2,17 @@
 module mod_test_paralog_analysis
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_paralog_analysis
+    ! the bit-mask utilities and the work-array sizing routine stayed in the kernel module
+    use tox_paralog_analysis_impl, only: mask_chunk_count, mask_set_state, mask_check_state, &
+                                          mask_get_first_successor_idx, calc_work_arr_paralog_subsets_size, &
+                                          fill_array_with_minvals_for_each_idx, &
+                                          add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper
     use test_suite, only: test_case
     use tox_errors
+    use f42_math_impl, only: PI
+    use f42_vector_impl, only: angle_between
     implicit none
 
     real(real64), parameter :: TOL = epsilon(1.0_real64)
@@ -46,8 +54,8 @@ contains
         real(real64) :: genes(n_axes, n_genes)
         integer(int32) :: gene_to_fam(n_genes)
         real(real64) :: thresholds(n_axes)
-        logical :: neofunc(n_genes, n_axes)
-        logical :: expected(n_genes, n_axes)
+        logical(c_bool) :: neofunc(n_genes, n_axes)
+        logical(c_bool) :: expected(n_genes, n_axes)
         integer(int32) :: i_gene
 
         ! -------------------------------
@@ -62,7 +70,7 @@ contains
         expected = .false.
 
         call detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Case 1 ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Case 1 ierr")
         call assert_equal_array_logical(neofunc, expected, n_genes*n_axes, "test_detect_neofunctionalization: Case 1 output")
 
         ! -------------------------------
@@ -78,7 +86,7 @@ contains
         expected = reshape([.false., .true., .false., .false., .true., .false.], [n_genes, n_axes])
 
         call detect_neofunctionalization(ancestors, n_families, genes, n_axes, gene_to_fam, n_genes, thresholds, neofunc, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_neofunctionalization: Case 2 ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_neofunctionalization: Case 2 ierr")
         call assert_equal_array_logical(neofunc, expected, n_genes*n_axes, "test_detect_neofunctionalization: Case 2 output")
     end subroutine test_detect_neofunctionalization
 
@@ -92,7 +100,7 @@ contains
         real(real64) :: paralogs(n_dims, n_genes)
         integer(int32) :: gene_to_fam(n_genes)
         real(real64) :: thresholds(n_dims)
-        logical :: neofunc_paralogs(n_genes, n_dims)
+        logical(c_bool) :: neofunc_paralogs(n_genes, n_dims)
 
         gene_to_fam = 1
 
@@ -105,7 +113,7 @@ contains
         thresholds = 0.2_real64
 
         call detect_neofunctionalization(ancestors, n_families, paralogs, n_dims, gene_to_fam, n_genes, thresholds, neofunc_paralogs, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_neofunctionalization_input_validation: case valid input")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_neofunctionalization_input_validation: case valid input")
 
         ! -------------------------------
         ! Case 2: Ancestor out of range
@@ -156,12 +164,12 @@ contains
 
     !> Test the input validation for the detect_patterns function.
     subroutine test_detect_patterns_input_validation()
-        use f42_utils, only: PI
+        use f42_math_impl, only: PI
         use ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
 
         integer(int32), parameter :: n_dims = 3, n_genes = 2 + 1
         integer(int32), parameter :: n_mask_chunks = 1, n_families = 2, n_paralog_subsets = 4, n_paralogs = n_genes - 1
-        integer(int32) :: ierr, pattern, max_subset_size, n_results
+        integer(int32) :: ierr, max_subset_size, n_results
         real(real64) :: ancestor(n_dims), paralogs(n_dims, n_genes)
         integer(int32) :: filtered_paralogs_masks(n_mask_chunks, n_families)
         integer(int32) :: work_arr_paralog_subsets(n_mask_chunks, n_paralog_subsets)
@@ -182,7 +190,6 @@ contains
 
         INF = ieee_value(1.0_real64, ieee_positive_inf)
         NAN = ieee_value(1.0_real64, ieee_quiet_nan)
-        pattern = 0
         filtered_paralogs_masks = 1
         max_subset_size = 2
         dosage_gain_gamma = 0.1_real64
@@ -197,21 +204,29 @@ contains
         ancestor = [1.0_real64, 2.0_real64, 3.0_real64]
         paralogs(:, 1:n_paralogs) = reshape([1.0_real64, 0.0_real64, 0.0_real64, 0.0_real64, 1.0_real64, 0.0_real64], [n_dims, n_paralogs])
 
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_input_validation: case valid input")
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_input_validation: case valid input")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+                             n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_input_validation: case valid input")
 
         ! -------------------------------
         ! Case 2: max_subset_size = 0
         ! -------------------------------
         max_subset_size = 0
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_input_validation: case max_subset_size = 0")
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_input_validation: case max_subset_size = 0")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+                             n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_input_validation: case max_subset_size = 0")
 
         max_subset_size = 2  ! reset
 
@@ -219,10 +234,14 @@ contains
         ! Case 3: NaN in ancestor
         ! -------------------------------
         ancestor = [1.0_real64, INF, 3.0_real64]
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_detect_patterns_input_validation: case NaN in ancestor")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+                             n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
         call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=1_int32), "test_detect_patterns_input_validation: case NaN in ancestor")
 
         ancestor = [1.0_real64, 2.0_real64, 3.0_real64]  ! reset
@@ -231,10 +250,14 @@ contains
         ! Case 4: Infinity in paralogs
         ! -------------------------------
         paralogs(:, 1) = [1.0_real64, INF, 0.0_real64]
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=2_int32), "test_detect_patterns_input_validation: case Infinity in paralogs")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+                             n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
         call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=2_int32), "test_detect_patterns_input_validation: case Infinity in paralogs")
 
         paralogs(:, 1) = [1.0_real64, 0.0_real64, 0.0_real64]  ! reset
@@ -243,17 +266,15 @@ contains
         ! Case 5: dosage_gain_gamma <= 0
         ! -------------------------------
         dosage_gain_gamma = 0.0_real64
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=15_int32), "test_detect_patterns_input_validation: case dosage_gain_gamma == 0")
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=14_int32), "test_detect_patterns_input_validation: case dosage_gain_gamma == 0")
         dosage_gain_gamma = -1.0_real64
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=15_int32), "test_detect_patterns_input_validation: case dosage_gain_gamma < 0")
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=14_int32), "test_detect_patterns_input_validation: case dosage_gain_gamma < 0")
 
         dosage_gain_gamma = 0.1_real64  ! reset
 
@@ -261,11 +282,10 @@ contains
         ! Case 6: dosage_max_angle > PI
         ! -------------------------------
         dosage_max_angle = 1.1_real64*PI
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=14_int32), "test_detect_patterns_input_validation: case dosage_max_angle > PI")
+                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=13_int32), "test_detect_patterns_input_validation: case dosage_max_angle > PI")
 
         dosage_max_angle = PI  ! reset
 
@@ -273,11 +293,11 @@ contains
         ! Case 7: NaN in subfunc_paralog_norms
         ! -------------------------------
         subfunc_paralog_norms(1:n_paralogs) = [1.0_real64, NAN]
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=17_int32), "test_detect_patterns_input_validation: case NaN in subfunc_paralog_norms")
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_NAN_INF, arg_pos=14_int32), "test_detect_patterns_input_validation: case NaN in subfunc_paralog_norms")
 
         subfunc_paralog_norms(1:n_paralogs) = [1.0_real64, 2.0_real64]  ! reset
 
@@ -285,11 +305,11 @@ contains
         ! Case 8: subfunc_sorted_paralog_norms_perm < 1
         ! -------------------------------
         subfunc_sorted_paralog_norms_perm(1:n_paralogs) = [0, 2]
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=18_int32), "test_detect_patterns_input_validation: case subfunc_sorted_paralog_norms_perm < 1")
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=15_int32), "test_detect_patterns_input_validation: case subfunc_sorted_paralog_norms_perm < 1")
 
         subfunc_sorted_paralog_norms_perm(1:n_paralogs) = [1, 2]  ! reset
 
@@ -297,11 +317,11 @@ contains
         ! Case 9: subfunc_rdi_threshold < 0
         ! -------------------------------
         subfunc_rdi_threshold = -1.0_real64
-        call detect_patterns(ancestor, paralogs, n_genes, n_dims, pattern, filtered_paralogs_masks(:, 1), n_mask_chunks, &
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, &
                              n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, active_mask, &
-                             tmp_paralog_vector, dosage_max_angle, dosage_gain_gamma, subfunc_rdi_threshold, &
-                             subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
-        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=16_int32), "test_detect_patterns_input_validation: case subfunc_rdi_threshold < 0")
+                             tmp_paralog_vector, subfunc_rdi_threshold, subfunc_paralog_norms, &
+                             subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array, ierr)
+        call assert_equal_int(ierr, create_err_code(ERR_INVALID_INPUT, arg_pos=13_int32), "test_detect_patterns_input_validation: case subfunc_rdi_threshold < 0")
     end subroutine test_detect_patterns_input_validation
 
     !> Test the detect_patterns function with floating-point epsilon considerations.
@@ -339,25 +359,25 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when detecting subfunctionalization")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_floating_point_epsilon: unexpected error when detecting subfunctionalization")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_subfunc_floating_point_epsilon: expected only one result for subfunctionalization")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 7_int32, "test_detect_patterns_subfunc_floating_point_epsilon: expected result mask to be 7=0b111 for subfunctionalization")
     end subroutine test_detect_patterns_subfunc_floating_point_epsilon
 
     !> Test the detect_patterns function with mixed results.
     subroutine test_detect_patterns_mixed_results
-        use f42_utils, only: radians, PI
+        use f42_math_impl, only: radians, PI
 
         integer(int32), parameter :: n_genes = 4 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-3_real64
@@ -395,36 +415,36 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, subf_min_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, subf_min_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when detecting subfunctionalization")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when detecting subfunctionalization")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_mixed_results: expected only one result for subfunctionalization")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 3_int32, "test_detect_patterns_mixed_results: expected result mask to be 3=0b0011 for subfunctionalization")
 
         deallocate (work_arr_paralog_subsets)
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, 2*dos_max_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for dosage effect")
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, 2*dos_max_angle, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when filtering paralogs for dosage effect")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
-        call detect_dosage_effect(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, ierr, dos_max_angle, gain_gamma)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_mixed_results: unexpected error when detecting dosage effect")
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, dos_max_angle, gain_gamma, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_mixed_results: unexpected error when detecting dosage effect")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_mixed_results: expected one result for dosage effect")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 12_int32, "test_detect_patterns_mixed_results: expected result mask to be 12=0b1100 for dosage effect")
     end subroutine test_detect_patterns_mixed_results
 
     !> Test the detect_patterns function with dosage effect near angle margin
     subroutine test_detect_patterns_dosage_effect_near_angle_margin
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 2 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-6_real64
@@ -460,37 +480,33 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating work array size")
-        allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating work array size")
+        ! no paralog passes the subfunctionalization filter here, so nothing is left to detect
+        call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_dosage_effect_near_angle_margin: expected no subfunctionalization candidates")
 
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when detecting subfunctionalization")
-        call assert_equal_int(n_results, 0_int32, "test_detect_patterns_dosage_effect_near_angle_margin: expected no results for subfunctionalization")
-
-        deallocate (work_arr_paralog_subsets)
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for dosage effect")
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when filtering paralogs for dosage effect")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_dosage_effect(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, ierr, max_angle, gain_gamma)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when detecting dosage effect")
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect_near_angle_margin: unexpected error when detecting dosage effect")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_dosage_effect_near_angle_margin: expected one result for dosage effect")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 3_int32, "test_detect_patterns_dosage_effect_near_angle_margin: expected result mask to be 3=0b011 for dosage effect")
     end subroutine test_detect_patterns_dosage_effect_near_angle_margin
 
     !> Test the detect_patterns function with dosage effect just within angle margin
     subroutine test_detect_patterns_dosage_effect
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 2 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-6_real64
@@ -526,37 +542,37 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when detecting subfunctionalization")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when detecting subfunctionalization")
         call assert_equal_int(n_results, 0_int32, "test_detect_patterns_dosage_effect: expected no results for subfunctionalization")
 
         deallocate (work_arr_paralog_subsets)
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for dosage effect")
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when filtering paralogs for dosage effect")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_dosage_effect(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, ierr, max_angle, gain_gamma)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when detecting dosage effect")
+        call detect_dosage_effect_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, max_angle, gain_gamma, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_dosage_effect: unexpected error when detecting dosage effect")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_dosage_effect: expected one result for dosage effect")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 3_int32, "test_detect_patterns_dosage_effect: expected result mask to be 3=0b011 for dosage effect")
     end subroutine test_detect_patterns_dosage_effect
 
     !> Test the detect_patterns function with perfect subfunctionalization split
     subroutine test_detect_patterns_perfect_subfunc_split
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 3 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-6_real64
@@ -591,37 +607,35 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when detecting subfunctionalization")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when detecting subfunctionalization")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_perfect_subfunc_split: expected only one result for subfunctionalization")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 3_int32, "test_detect_patterns_perfect_subfunc_split: expected result mask to be 3=0b011 for subfunctionalization")
 
         deallocate (work_arr_paralog_subsets)
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for dosage effect")
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when filtering paralogs for dosage effect")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating work array size")
-        allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
-
-        call detect_dosage_effect(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when detecting dosage effect")
-        call assert_equal_int(n_results, 0_int32, "test_detect_patterns_perfect_subfunc_split: expected one result for dosage effect")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_perfect_subfunc_split: unexpected error when calculating work array size")
+        ! a perfect subfunctionalization split leaves no dosage-effect candidate at all: the
+        ! filter selects nothing, so there is no subset array to detect in
+        call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_perfect_subfunc_split: expected no dosage-effect candidates")
     end subroutine test_detect_patterns_perfect_subfunc_split
 
     !> Test the detect_patterns function with subfunctionalization just at angle margin
     subroutine test_detect_patterns_subfunc_at_angle_margin
-        use f42_utils, only: radians
+        use f42_math_impl, only: radians
 
         integer(int32), parameter :: n_genes = 2 + 1, n_dims = 3, n_mask_chunks = 1, n_families = 2, n_paralogs = n_genes - 1
         real(real64), parameter ::  rdi_threshold = 1e-3_real64
@@ -656,32 +670,28 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when detecting subfunctionalization")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+        call assert_err(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when detecting subfunctionalization")
         call assert_equal_int(n_results, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no results for subfunctionalization")
 
         deallocate (work_arr_paralog_subsets)
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for dosage effect")
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for dosage effect")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
-        allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
-
-        call detect_dosage_effect(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when detecting dosage effect")
-        call assert_equal_int(n_results, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no results for dosage effect")
-        deallocate (work_arr_paralog_subsets)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
+        ! no paralog passes the dosage-effect filter here, so nothing is left to detect
+        call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no dosage-effect candidates")
 
         ! should pass
         ancestor = [1, 1, 0]
@@ -693,37 +703,34 @@ contains
 
         do i_paralog = 1, n_genes
             call angle_between(paralogs(:, i_paralog), ancestor, n_dims, paralog_angles(i_paralog), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating angles")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating angles")
         end do
 
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for subfunctionalization")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
         allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
 
-        call detect_subfunctionalization(ancestor, paralogs, n_genes, n_dims, rdi_threshold, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when detecting subfunctionalization")
+        call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when detecting subfunctionalization")
         call assert_equal_int(n_results, 1_int32, "test_detect_patterns_subfunc_at_angle_margin: expected only one result for subfunctionalization")
         call assert_equal_int(work_arr_paralog_subsets(1, 1), 3_int32, "test_detect_patterns_subfunc_at_angle_margin: expected result mask to be 3=0b011 for subfunctionalization")
 
         deallocate (work_arr_paralog_subsets)
         max_subset_size = n_genes
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for dosage effect")
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, prefilter_threshold, n_genes, n_families, gene_to_fam, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when filtering paralogs for dosage effect")
         call calc_work_arr_paralog_subsets_size(max_subset_size, n_genes, work_array_size, filtered_paralogs_masks(:, 1), n_mask_chunks, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
-        allocate (work_arr_paralog_subsets(n_mask_chunks, work_array_size))
-
-        call detect_dosage_effect(ancestor, paralogs, n_genes, n_dims, filtered_paralogs_masks(:, 1), n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, work_array_size, active_mask, tmp_paralog_vector, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when detecting dosage effect")
-        call assert_equal_int(n_results, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no results for dosage effect")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_detect_patterns_subfunc_at_angle_margin: unexpected error when calculating work array size")
+        ! no paralog passes the dosage-effect filter here, so nothing is left to detect
+        call assert_equal_int(work_array_size, 0_int32, "test_detect_patterns_subfunc_at_angle_margin: expected no dosage-effect candidates")
     end subroutine test_detect_patterns_subfunc_at_angle_margin
 
     !> Test the angle_between function with various vector configurations.
     subroutine test_angle_between
-        use f42_utils, only: PI
+        use f42_math_impl, only: PI
 
         integer(int32), parameter :: n_dims = 5
         real(real64), dimension(n_dims) :: v1, v2
@@ -734,31 +741,31 @@ contains
         v1 = [1, 2, 3, 4, 5]
         v2 = v1
         call angle_between(v1, v2, n_dims, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_angle_between: unexpected error when calculating angle between identical vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_angle_between: unexpected error when calculating angle between identical vectors")
         call assert_equal_real(angle, 0.0_real64, TOL, "test_angle_between: vector should have zero angle to itself")
         v2 = v1/2
         call angle_between(v1, v2, n_dims, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_angle_between: unexpected error when calculating angle between equal, but scaled vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_angle_between: unexpected error when calculating angle between equal, but scaled vectors")
         call assert_equal_real(angle, 0.0_real64, TOL, "test_angle_between: vector should have zero angle to itself")
 
         ! test v2 points in opposite direction
         v2 = -v1
         call angle_between(v1, v2, n_dims, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_angle_between: unexpected error when calculating angle between opposite vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_angle_between: unexpected error when calculating angle between opposite vectors")
         call assert_equal_real(angle, PI, TOL, "test_angle_between: opposite vector should have 180 deg angle")
 
         ! test v2 perpendicular to v1
         v1 = [1, 0, 0, 0, 0]
         v2 = [0, 1, 0, 0, 0]
         call angle_between(v1, v2, n_dims, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_angle_between: unexpected error when calculating angle between perpendicular vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_angle_between: unexpected error when calculating angle between perpendicular vectors")
         call assert_equal_real(angle, PI/2, TOL, "test_angle_between: opposite vector should have 90 deg angle")
 
         ! test v2 45 deg to v1
         v1 = [1, 0, 0, 0, 0]
         v2 = [0.7071, 0.7071, 0.0, 0.0, 0.0]
         call angle_between(v1, v2, n_dims, angle, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_angle_between: unexpected error when calculating angle between 45 deg vectors")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_angle_between: unexpected error when calculating angle between 45 deg vectors")
         call assert_equal_real(angle, PI/4, TOL, "test_angle_between: opposite vector should have 90 deg angle")
     end subroutine test_angle_between
 
@@ -774,7 +781,7 @@ contains
         src_arr = [0.85117158_real64, -0.35000591_real64, 0.0880246_real64, 1.2852401_real64, 1.47949047_real64, -0.28126471_real64, 0.82010833_real64, 0.03206986_real64, 0.24169488_real64, 0.39394542_real64]
         sorted_src_arr_perm = [2, 6, 8, 3, 9, 10, 7, 1, 4, 5]
         call fill_array_with_minvals_for_each_idx(out_arr, src_arr, sorted_src_arr_perm, src_arr_len, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_fill_array_with_minvals_for_each_idx: unexpected error when calling routine")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_fill_array_with_minvals_for_each_idx: unexpected error when calling routine")
 
         do i_element = 1, src_arr_len
             call assert_equal_real(out_arr(i_element), minval(src_arr(i_element:src_arr_len)), 0.0_real64, "test_fill_array_with_minvals_for_each_idx: min value does not match")
@@ -802,7 +809,7 @@ contains
                     if (n_active_masks == 0) then
                         call assert_false(is_ok(ierr), "test_take_active_mask_helper: expected an error when taking an active mask from zero active masks")
                     else
-                        call assert_equal_int(ierr, ERR_OK, "test_take_active_mask_helper: unexpected error when taking active mask")
+                        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_take_active_mask_helper: unexpected error when taking active mask")
                         call assert_equal_int(n_actual_active_masks, n_active_masks - 1, "test_take_active_mask_helper: number of active masks did not change")
                         call assert_equal_int(taken_active_mask(1), original_subsets(1, n_results + n_active_masks), "test_take_active_mask_helper: taken mask does not match")
                         call assert_equal_array_int(subsets(:, 1:n_results), original_subsets(:, 1:n_results), n_results, "test_take_active_mask_helper: results have changed")
@@ -837,7 +844,7 @@ contains
                     if (n_results + n_active_masks + n_new_active_masks == n_subsets) then
                         call assert_false(is_ok(ierr), "test_add_to_results_helper: expected an error when adding a result to full array")
                     else
-                        call assert_equal_int(ierr, ERR_OK, "test_add_to_results_helper: unexpected error when adding result")
+                        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_add_to_results_helper: unexpected error when adding result")
                         call assert_equal_int(n_actual_results, n_results + 1, "test_add_to_results_helper: number of results did not change")
                         call assert_true(all(subsets(:, 1:n_actual_results) == new_active_mask(1)), "test_add_to_results_helper: results don't match")
                         do i_subset = 1, n_active_masks
@@ -873,7 +880,7 @@ contains
                     if (n_results + n_active_masks + n_new_active_masks == n_subsets) then
                         call assert_false(is_ok(ierr), "test_add_new_active_mask_helper: expected an error when adding a new active mask to full array")
                     else
-                        call assert_equal_int(ierr, ERR_OK, "test_add_new_active_mask_helper: unexpected error when adding new active mask")
+                        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_add_new_active_mask_helper: unexpected error when adding new active mask")
                         call assert_equal_int(n_actual_new_active_masks, n_new_active_masks + 1, "test_add_new_active_mask_helper: number of new active masks did not change")
                         call assert_equal_array_int(subsets(:, 1:n_results), original_subsets(:, 1:n_results), n_results, "test_add_new_active_mask_helper: results have changed")
                         call assert_equal_array_int(subsets(:, n_results + 1:n_results + n_active_masks), original_subsets(:, n_results + 1:n_results + n_active_masks), n_active_masks, "test_add_new_active_mask_helper: active masks have changed")
@@ -913,7 +920,7 @@ contains
         paralog_angles(1:4) = 2*threshold
         paralog_angles(n_genes) = 2*threshold
 
-        call filter_paralogs_by_pattern(SUBFUNC_PATTERN, paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         n_in_filtered = 0
         do i_paralog = 1, n_genes
             if (mask_check_state(masks(:, 1), i_paralog)) then
@@ -923,7 +930,7 @@ contains
         call assert_equal_int(n_in_filtered, count(paralog_angles(:n_genes - 1) >= threshold), "test_filter_paralogs_by_pattern: wrong filtering for subfunctionalization")
         call assert_true(mask_check_state(masks(:, 2), n_genes), "test_filter_paralogs_by_pattern: second family's gene should be active")
 
-        call filter_paralogs_by_pattern(DOSAGE_PATTERN, paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
+        call filter_paralogs_by_pattern_dosage_effect(paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
         n_in_filtered = 0
         do i_paralog = 1, n_genes
             if (mask_check_state(masks(:, 1), i_paralog)) then
@@ -953,8 +960,8 @@ contains
         ! stress the detect_patterns: Exploit an edge case where the whole working array is in use at some point to ensure correct size calculation
         mask_all_active = 0
         do i_gene = 1, n_genes
-            call mask_set_state(mask_all_active, i_gene, .true., ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in mask")
+            call mask_set_state(mask_all_active, i_gene, .true._c_bool, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in mask")
 
             subfunc_sorted_paralog_norms_perm(i_gene) = n_genes - i_gene + 1
         end do
@@ -969,23 +976,23 @@ contains
             max_subset_size_all_active = i_gene
 
             call calc_work_arr_paralog_subsets_size(max_subset_size_all_active, n_genes, work_array_size, mask_all_active, size(mask_all_active), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when calculating work array size")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when calculating work array size")
 
             allocate (work_arr_paralog_subsets(1, work_array_size + 1))
             work_arr_paralog_subsets = 0
-            call detect_patterns(ancestor, paralogs, n_genes, n_dims, SUBFUNC_PATTERN, mask_all_active, size(mask_all_active), n_results, max_subset_size_all_active, work_arr_paralog_subsets, work_array_size + 1, active_mask, tmp_paralog_vector, subfunc_rdi_threshold=rdi_threshold, subfunc_paralog_norms=subfunc_paralog_norms, subfunc_sorted_paralog_norms_perm=subfunc_sorted_paralog_norms_perm, tmp_subfunc_work_array=tmp_subfunc_work_array, ierr=ierr)
+            call detect_subfunctionalization_expert(ancestor, paralogs, n_genes, n_dims, mask_all_active, size(mask_all_active), n_results, max_subset_size_all_active, work_arr_paralog_subsets, work_array_size + 1, active_mask, tmp_paralog_vector, rdi_threshold=rdi_threshold, paralog_norms=subfunc_paralog_norms, sorted_paralog_norms_perm=subfunc_sorted_paralog_norms_perm, tmp_work_array=tmp_subfunc_work_array, ierr=ierr)
 
             ! masks have at least one active bit -> non-zero
             ! masks also won't be reset to zero, as new added masks overwrite them anyway.
             ! Thus, all calculated needed space should be used during detection -> non-zero
-            call assert_equal_int(ierr, ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when detecting patterns")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when detecting patterns")
             call assert_equal_int(count(work_arr_paralog_subsets /= 0), work_array_size, "test_calc_work_arr_paralog_subsets_size: different count of subsets used than expected")
             deallocate (work_arr_paralog_subsets)
         end do
 
         do i_gene = 1, n_paralogs_overflow
-            call mask_set_state(mask_all_active_overflow, i_gene, .true., ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in oerflow mask")
+            call mask_set_state(mask_all_active_overflow, i_gene, .true._c_bool, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in oerflow mask")
         end do
         max_subset_size_overflown = 16
         call calc_work_arr_paralog_subsets_size(max_subset_size_overflown, n_paralogs_overflow, work_array_size, mask_all_active_overflow, size(mask_all_active_overflow), ierr)
@@ -1008,31 +1015,31 @@ contains
         ! set first paralog
         paralog = 1
         expected_mask(1) = ibset(expected_mask(1), paralog - 1)
-        call mask_set_state(actual_mask, paralog, .true., ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set first paralog")
+        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set first paralog")
         call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting first paralog")
 
         ! set last paralog
         paralog = n_genes
         expected_mask(2) = ibset(expected_mask(2), paralog - 32 - 1)
-        call mask_set_state(actual_mask, paralog, .true., ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
+        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
         call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting last paralog")
 
         ! set 32nd paralog
         paralog = 32
         expected_mask(1) = ibset(expected_mask(1), paralog - 1)
-        call mask_set_state(actual_mask, paralog, .true., ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
+        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
         call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting 32nd paralog")
 
         ! unset all
-        call mask_set_state(actual_mask, 1, .false., ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not unset first paralog")
-        call mask_set_state(actual_mask, n_genes, .false., ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
-        call mask_set_state(actual_mask, 32, .false., ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
+        call mask_set_state(actual_mask, 1, .false._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not unset first paralog")
+        call mask_set_state(actual_mask, n_genes, .false._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
+        call mask_set_state(actual_mask, 32, .false._c_bool, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
 
         call assert_true(all(actual_mask == 0), "test_tox_paralog_analysis_mask_set_state: not all unset")
     end subroutine test_mask_set_state
@@ -1080,14 +1087,14 @@ contains
         call assert_equal_int(mask_get_first_successor_idx(mask), 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
 
         do paralog = 1, n_genes
-            call mask_set_state(mask, paralog, .true., ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
+            call mask_set_state(mask, paralog, .true._c_bool, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
             call assert_equal_int(mask_get_first_successor_idx(mask), paralog + 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
         end do
 
         do paralog = 1, n_genes - 1
-            call mask_set_state(mask, paralog, .false., ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
+            call mask_set_state(mask, paralog, .false._c_bool, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
             call assert_equal_int(mask_get_first_successor_idx(mask), n_genes + 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
         end do
     end subroutine test_mask_get_first_successor_idx

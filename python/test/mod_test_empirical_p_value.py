@@ -11,10 +11,24 @@ import ctypes
 # Path configuration to import your functions
 # Adjust the path if your module is in a different directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (
-    compute_scaled_distance_quantile
-)
+from tensor_omics import compute_scaled_distance_quantile as _compute_scaled_distance_quantile
 from test_helpers import run_all_tests
+
+
+def compute_scaled_distance_quantile(distribution, c_const):
+    """Clamp-prep in front of the Fortran routine, which takes rdi and the distribution.
+
+    Negatives are invalid and clamped to zero. The permutation that sorts the clamped
+    array is built by the entry point itself, so only the clamping is left here.
+    """
+    dist = np.ascontiguousarray(distribution, dtype=np.float64)
+    if dist.size == 0:
+        return np.ascontiguousarray([], dtype=np.float64)
+
+    sorted_rdi = dist.copy()
+    sorted_rdi[sorted_rdi < 0.0] = 0.0
+
+    return _compute_scaled_distance_quantile(dist, sorted_rdi, float(c_const))
 
 
 def _assert_allclose(a, b, tol=1e-12, msg=""):

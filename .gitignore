@@ -1,81 +1,110 @@
+# Note about this gitignore:
+# This is a whitelist approach, so * ignores everything, while any allowed component needs to be explicitly allowed
+# When adding new directories, you need to allow them first (not for src, as all its contained subdirs are recursively allowed, just read through the rules below)
+# Adding new files not being tracked need to be allowed as well
+# Always start the rule with !/, so it applies from repository root (!foo matches any entity named foo in any dir in the repo, while !/foo only applies to root dir)
+# This way we don't add garbage accidently.
+# One exception: /misc is whitelisted wholesale and carries its own blacklist in misc/.gitignore -- see there for why.
+
 *
 
 # generics
-!**/*.gitkeep
-!**/[Rr]eadme.md
-!**/README.md
+!/**/*.gitkeep
+!/**/[Rr]eadme.md
+!/**/README.md
 
 # .
-!.gitignore
-!*.h
-!build*.sh
-!test_runner.sh
-!run_all_tests.sh
-!fpm.toml
-!*.md
-!LICENSE
+!/.gitattributes
+!/.gitignore
+!/*.h
+!/build*.sh
+!/test_runner.sh
+!/run_all_tests.sh
+!/fpm.toml
+!/*.md
+!/LICENSE
 
 # test
-!test
-!test/test_files
-!test/test_files/**/*
-!test/mod_test*.[fF]90
-!test/run_tests.[Ff]90
-!test/test_suite.[Ff]90
-!test/asserts.[Ff]90
+!/test
+!/test/test_files
+!/test/test_files/**/*
+!/test/mod_test*.[fF]90
+!/test/run_tests.[Ff]90
+!/test/test_suite.[Ff]90
+!/test/asserts.[Ff]90
 
 # src
-!src
+!/src
 # src all contained dirs
-!src/**/[a-z]*/
-!src/**/*.[Ff]90
-!src/**/macros.h
+!/src/**/[a-z]*/
+!/src/**/*.[Ff]90
+!/src/**/*.c
+!/src/**/*.h
 
 # snippets
-!snippets
+# the dir is allowed but the generated *_snippets.json inside stay ignored (large, regenerated)
+!/snippets
 
 # python
-!python
-!python/test
-!python/test/mod_test_*.py
-!python/*.py
+!/python
+!/python/test
+!/python/test/mod_test_*.py
+!/python/tensor_omics
+!/python/tensor_omics/*.py
+!/python/*.py
 
-# R
-!rcpp
-!rcpp/test
-!rcpp/test/mod_test_*.R
-!rcpp/*.R
-!rcpp/tensoromics_functions.cpp
+# R (the generated C .Call shims live in src/bindings/r/ so fpm bundles them into the .so)
+!/r
+!/r/test
+!/r/test/mod_test_*.R
+!/r/tensor_omics
+!/r/tensor_omics/*.R
+!/r/*.R
 
 # misc
-!misc
-!misc/**/*
+# Whitelisted wholesale, and blacklisted from within by misc/.gitignore.
+!/misc
+!/misc/**/*
 
 # material
-!material
-!material/*.[tc]sv
+!/material
+!/material/*.[tc]sv
 
 # helper
-!helper
-!helper/*.py
-!helper/*.sh
+!/helper
+!/helper/*.py
+!/helper/*.sh
+
+# helper/codegen
+# [a-z]*/ keeps __pycache__ excluded, as for src
+!/helper/codegen
+!/helper/codegen/**/[a-z]*/
+!/helper/codegen/**/*.py
+!/helper/codegen/**/*.md
+!/helper/codegen/**/*.toml
+!/helper/codegen/**/*.txt
+!/helper/codegen/**/*.h
+!/helper/codegen/**/*.R
+# generator fixtures and expected output
+!/helper/codegen/tests/fixtures/**/*
+!/helper/codegen/tests/golden/**/*
 
 # loess_netlib
-!external
-!external/loess_netlib
-!external/loess_netlib/fpm.toml
-!external/loess_netlib/src
-!external/loess_netlib/src/*.f
+!/external
+!/external/loess_netlib
+!/external/loess_netlib/fpm.toml
+!/external/loess_netlib/src
+!/external/loess_netlib/src/*.f
 
 # drotg
-!external/loess_netlib/drotg
-!external/loess_netlib/drotg/fpm.toml
-!external/loess_netlib/drotg/src
-!external/loess_netlib/drotg/src/drotg.f90
+!/external/loess_netlib/drotg
+!/external/loess_netlib/drotg/fpm.toml
+!/external/loess_netlib/drotg/src
+!/external/loess_netlib/drotg/src/drotg.f90
 
 # .github
-!.github
-!.github/actions
-!.github/actions/*/
-!.github/workflows
-!.github/**/*.yml
+!/.github
+!/.github/actions
+!/.github/actions/*/
+!/.github/workflows
+!/.github/**/*.yml

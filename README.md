@@ -51,26 +51,28 @@ This repository contains the source code, methods, snippets, and tests for the *
 /python
   └── ...       # Python scripts that execute pipeline logic and invoke subroutines
 
-/rcpp
-  └── ...       # Rcpp scripts that execute pipeline logic and invoke subroutines
+/r
+  └── ...       # R package that executes pipeline logic and invokes subroutines
 
 /snippets
   └── ...       # Code templates or reusable short logic blocks
 
 /src
+  ├── tox/      # the hand-written `_impl` modules -- the source of truth for the generated API
+  ├── generated/# NOTHING here is hand-written; the generator owns it
   └── ...       # Fortran backend
 
 /test
   └── ...       # Fortran testing
 
 /helper
-  ├── helper_c_wrapper.py       # generates C wrapper subroutines
-  ├── helper_rcpp_wrapper.py    # generates Rcpp wrapper subroutines
-  └── generate_snippets.py      # auto-generates VS Code snippet files from source code
+  ├── codegen/                  # the Fortran wrapper / C / Python / R / snippet generator
+  └── generate_code.py          # its entry point
 
 build.sh            # Compile and generate shared libraries (incl. bundled externals)
 build_utils.sh      # Shared helper functions used by the build and test scripts
 fpm.toml            # fpm compilation settings, also holds the FORD config
+codegen_guide.md    # How to write Fortran the code generator can wrap -- read before adding a procedure
 authors.h           # Author metadata macros used in the FORD documentation
 test_runner.sh      # Compile and run Fortran unit tests
 run_all_tests.sh    # Run the full test suite (Fortran + Python + R)
@@ -82,11 +84,11 @@ run_all_tests.sh    # Run the full test suite (Fortran + Python + R)
 * **`/material`** holds example and reference datasets (`.tsv`) used by the tests and usage demonstrations.
 * **`/misc`** contains the team's coding guidelines (`misc/Fortran_Coding_Guides.pdf`), the detailed method description (`misc/Tensor_Omics_Methods.pdf`), and the Dockerfile (`misc/gfortran.docker`) used to compile the project without installing anything beyond Docker.
 * **`/python`** includes Python scripts that coordinate analysis workflows.
-* **`/rcpp`** includes Rcpp scripts that coordinate analysis workflows.
+* **`/r`** includes the R package that coordinates analysis workflows.
 * **`/snippets`** includes frequently used or testable units of logic reused across development stages. Snippets expose subroutine names and their arguments. Use the `f42:` prefix for F42-compliant infrastructure and the `tox:` prefix for application-specific subroutines. See `snippets/readme.md` for details.
-* **`/src`** contains performance-critical Fortran code compiled during the build process. Subroutines that perform no I/O operations or memory allocations must be declared `pure`.
+* **`/src`** contains performance-critical Fortran code compiled during the build process. Subroutines that perform no I/O operations or memory allocations must be declared `pure`. `src/generated/` is written by the code generator -- edit anything outside it.
 * **`/test`** contains unit tests for the Fortran subroutines. `asserts.f90` provides the assertion library; `run_tests.f90` is the central test program. Test files (`mod_test_*.f90`) generally correspond to full modules from `src/`, though newly added subroutines or utility functions from utils are sometimes isolated into their own test cases. See `test/readme.md` for details.
-* **`/helper`** is a temporary development aid for generating C wrappers (`helper_c_wrapper.py`), Rcpp wrappers (`helper_rcpp_wrapper.py`), and VS Code snippet files (`generate_snippets.py`). See `helper/readme.md` for details.
+* **`/helper`** holds the code generator that writes the public API: the entry point around each `_impl` procedure (and the `_expert` tier beside it where there is one), plus the C, Python and R bindings and the VS Code snippets. See [`codegen_guide.md`](./codegen_guide.md) for how to write Fortran it can wrap, `helper/codegen/README.md` for the generator itself, and `helper/readme.md` for the folder.
 
 ---
 
@@ -101,10 +103,10 @@ See [Install / Compilation](#install--compilation) for step-by-step setup instru
 | libzip | ≥ 1.11 | Required for archive handling |
 | xxhash (XXH3) | ≥ 0.8 | Required for hashing |
 | Python | ≥ 3.7 + NumPy + pandas | Python integration |
-| R | ≥ 3.6 + Rcpp | R integration |
+| R | ≥ 3.6 | R integration (the binding is pure C `.Call`; no Rcpp needed) |
 | gdb | optional | Needed only for `--debug` flag |
 
-[FORD](https://github.com/Fortran-FOSS-Programmers/ford) (`pip install ford`) is optional and only needed to regenerate the API documentation.
+[FORD](https://github.com/Fortran-FOSS-Programmers/ford) (`pip install ford`) is needed to run the code generator, which every build does unless `--skip-code-generation` is passed; the generated sources are committed, so a build without it warns and compiles what is in the tree. It also regenerates the API documentation.
 
 ---
 
@@ -195,25 +197,40 @@ Beyond the profiles above, `build.sh` accepts several options (which `test_runne
 * `--debug` — implies `--diagnostics` plus `-O0`, so gdb doesn't hit optimized-out variables or misleading source stepping. Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
 * `--yes` — skip the confirmation prompt that `--debug --max-performance` would otherwise show.
 * `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect.
-* `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`.
+* `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=NO_R_BINDING --directive=NO_INPUT_VALIDATION`. The directives the sources actually read are listed below.
 * `--clean-build` — force `fpm` to rebuild `src/` from scratch (enabled automatically when switching git branches). Useful when `fpm` misses changes that do not alter the module structure.
+* `--skip-code-generation` — every build first regenerates the C, Python and R bindings and the generated Fortran wrappers from `src/` (see [`helper/codegen`](./helper/codegen/README.md)), so a source change and its generated layers cannot drift apart. This option skips that. The generated sources are committed, so a build without Python or [`ford`](https://forddocs.readthedocs.io) installed works anyway -- it warns and compiles what is in the tree.
+
+### Preprocessor directives
+
+What `--directive=<NAME>` can usefully define. A name the sources do not read is accepted and
+does nothing, so these are the ones that have an effect:
+
+| Directive | Effect |
+|---|---|
+| `NO_C_BINDING` | Omit the generated `bind(C)` wrappers. The R `.Call` shims sit inside them, so this drops the R binding with it, and neither Python nor R can load the library. The Fortran library itself is unaffected. |
+| `NO_R_BINDING` | Omit the R `.Call` shims only. The C wrappers and the Python binding stay, and the build no longer needs R's headers. |
+| `NO_INPUT_VALIDATION` | Compile out the validation the generated entry points perform, for a caller who has already established that their inputs are good. `call set_ok(ierr)` stays outside the guard — it is what leaves `ierr` defined, not a check — and so do the C layer's null checks, which guard against a segfault rather than a bad value. |
+| `NO_COLORS` | Drop ANSI colour from the test runner's output. Set automatically when stdout or stderr is not a terminal, so it is rarely worth passing by hand. |
+| `TEST_KIND_MISMATCH_C_INT`<br>`TEST_KIND_MISMATCH_C_DOUBLE`<br>`TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX`<br>`TEST_KIND_MISMATCH_C_CHAR`<br>`TEST_KIND_MISMATCH_C_BOOL`<br>`TEST_KIND_MISMATCH_C_SIZE_T`<br>`TEST_KIND_MISMATCH_C_INT64_T`<br>`TEST_KIND_MISMATCH_C_SIGNED_CHAR` | Break one C kind — the first four disagree with the Fortran kind they are assumed equal to, the last four go missing the way `iso_c_binding` reports an absent kind — so the matching compile-time guard in `f42_safeguard` fires. One directive, one guard, and there are eight of each. A build with one of these is **meant to fail**, with `Error: Division by zero`; `test_runner.sh` uses them to prove each guard still works. Not useful outside that test. |
+
+`--max-performance` also defines `MAX_PERFORMANCE`, but no source reads it — the switch earns
+its keep through the compiler flags it selects (`-O3` plus the per-compiler optimisation
+profile in `fpm.toml`), so pass the switch rather than the directive.
 
 > **Note:** Each `--<option>` maps to an uppercased, `TOX_`-prefixed variable with non-alphanumeric characters replaced by underscores — e.g. `--override-flags` becomes `TOX_OVERRIDE_FLAGS`. Passing `--<option>=<value>` sets that value (a bare flag sets `1`), so any option can equivalently be supplied as an environment variable. An explicit `--<option>` always overrides the corresponding variable.
 
 ### Python integration
 
-The `python/` folder contains the wrapper functions needed to call Tensor Omics subroutines from Python, along with example scripts in `python/test/` that demonstrate usage and can serve as a starting point for your own analyses.
+The `python/tensor_omics/` package holds the `ctypes` wrapper functions that call Tensor Omics subroutines from Python. It is **generated** from the annotated Fortran source -- do not edit it. `python/test/` has example scripts that demonstrate usage and can serve as a starting point for your own analyses.
 
-Once the shared library is available, load it from Python:
+The package loads `build/libtensor-omics.so` itself, so once the shared library is built there is nothing to set up:
 
 ```python
-import ctypes, os
+import sys
+sys.path.insert(0, "python")
 
-lib_path = os.path.abspath("build/libtensor-omics.so")
-ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-
-lib = ctypes.CDLL(lib_path)
-from tensoromics_functions import tox_euclidean_distance
+from tensor_omics import euclidean_distance
 ```
 
 Verify that the library loaded correctly:
@@ -224,19 +241,18 @@ python3 python/test/mod_test_euclidean_distance.py
 
 ### R integration
 
-The `rcpp/` folder contains the Rcpp wrapper functions for calling Tensor Omics from R, along with example tests in `rcpp/test/` that illustrate how to use each function.
+The `r/tensor_omics/` package holds the R wrapper functions for calling Tensor Omics from R. Like the Python package it is **generated**, and it reaches Fortran through pure C `.Call` shims that the ordinary build compiles into the shared library -- there is nothing to compile from R. `r/test/` has example tests that illustrate how to use each function.
 
 ```r
-library(Rcpp)
-lib_path <- shQuote(normalizePath("build"))
-Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
-Rcpp::sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
+source("r/load_tensor_omics.R")
+
+euclidean_distance(c(1.0, 2.0, 3.0), c(4.0, 5.0, 6.0))
 ```
 
 Verify that the library loaded correctly:
 
 ```bash
-Rscript rcpp/test/mod_test_euclidean_distance.R
+Rscript r/test/mod_test_euclidean_distance.R
 ```
 
 ---
@@ -294,7 +310,21 @@ cp snippets/Python_tox_snippets.json  "$HOME/Library/Application Support/Code/Us
 cp snippets/R_tox_snippets.json       "$HOME/Library/Application Support/Code/User/snippets/"
 ```
 
-Restart VS Code after copying. Snippets are auto-generated from the source code by the CI pipeline — see `snippets/readme.md` for details on how they are maintained.
+Restart VS Code after copying. Snippets are generated from the source code by the code generator (`python helper/generate_code.py --target snippets`) — see the [code generator README](helper/codegen/README.md) and `snippets/readme.md` for details on how they are maintained.
+
+---
+
+## Adding or changing a procedure
+
+The public API is **generated**. You write an annotated `<name>_impl` procedure in a
+`<module>_impl` module — for TOX, under `src/tox/` — and the entry point `<name>`, its
+`<name>_expert` tier where one is warranted, and the C, Python and R bindings are generated
+from it: documentation, input validation and error handling included. Every build regenerates
+them (`./build.sh`, unless `--skip-code-generation`).
+
+**[`codegen_guide.md`](./codegen_guide.md) is the guide for that**: what to write, case by case,
+with an example for each. [`helper/codegen/README.md`](./helper/codegen/README.md) covers the
+generator itself, and [`helper/codegen/design/`](./helper/codegen/design/) the rationale.
 
 ---
 
@@ -351,7 +381,7 @@ If `gdb` is not installed on your system, install it first. For command referenc
 
 `test_runner.sh` accepts all of the [build options](#build-options) above, plus a few test-specific ones:
 
-* `--skip-kinds-test` — skip the compile-time check that C types match the Fortran kinds. Handy to avoid the extra clean build it otherwise triggers, since the check always passes on an unchanged platform.
+* `--skip-kinds-test` — skip the runs that *prove* `f42_safeguard`'s kind guards still fire, each of which forces a mismatch with a `TEST_KIND_MISMATCH_*` directive and expects the build to fail. Handy to avoid the extra clean builds they trigger, and safe on an unchanged platform. It does not disable the guards themselves — those are compiled into `f42_safeguard` on every build, whatever options are passed.
 * `--reuse-mod-files` — keep `fpm`'s test module files instead of removing them before each run. Speeds up test recompilation; use when debugging tests.
 * `--test-target=<target>` — select the test target from `fpm.toml` (currently only `run_tests`, which is the default).
 * `--keep-files` — keep the temporary files the runner creates in the repo root (removed by default).

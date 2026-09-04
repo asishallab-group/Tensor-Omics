@@ -1,13 +1,14 @@
+#include <src/macros.h>
+
 !> Bounds-checked lookup and indexing helpers for the TensorOmics data model.
 !|
 !| Thin accessors over the raw gene/family arrays produced and consumed elsewhere in `tox_data_*`
 !| (e.g. [[tox_data_archive(module):read_tox_data(subroutine)]]): given an index, return the
 !| corresponding row/column/slice with bounds and shape checks; given an ID string, find its index.
 module tox_data_accessors
-    use safeguard
     use iso_fortran_env, only: int32, real64
     use tox_errors, only: set_ok, set_err_once, ERR_SIZE_MISMATCH, ERR_INVALID_INPUT
-    implicit none
+    M_IMPLICIT_NONE
 
     public :: get_gene_index, get_family_index
     public :: get_family_for_gene_index, get_expression_vector

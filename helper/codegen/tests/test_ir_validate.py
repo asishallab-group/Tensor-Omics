@@ -1,0 +1,1499 @@
+from dataclasses import replace
+
+import pytest
+
+from codegen.diagnostics import DiagnosticBag
+from codegen.ir.entities import Meta
+from codegen.ir.roles import analyse
+from codegen.ir.types import Intent
+from pathlib import Path
+
+from codegen.diagnostics import SourceLocation
+from codegen.ir.validate import (
+    _within_one_edit,
+    check_c_kinds_depend_on_the_safeguard,
+    check_doc_links,
+    check_extents_are_declared_first,
+    validate_module,
+    validate_procedure,
+    validate_project,
+)
+
+import builders as b
+
+
+@pytest.fixture
+def bag():
+    return DiagnosticBag()
+
+
+def checked(procedure, bag):
+    """Analyse then validate, as a real run does."""
+    analyse(procedure, bag)
+    validate_procedure(procedure, bag)
+    return bag
+
+
+def messages(bag):
+    return [d.message for d in bag.errors]
+
+
+def only_error(bag):
+    assert len(bag.errors) == 1, messages(bag)
+    return bag.errors[0]
+
+
+class TestScope:
+    def test_only_exported_procedures_are_validated(self, bag):
+        # an internal routine may use anything Fortran allows
+        module = b.module(
+            "m",
+            b.procedure(
+                "internal",
+                b.character("s", Intent.IN, length=":"),
+                meta=Meta(summary="s", author="a"),
+            ),
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_exported_procedure_is_validated(self, bag):
+        module = b.module("m", b.procedure("exported", b.character("s", Intent.IN, length=":")))
+
+        validate_module(module, bag)
+
+        assert "deferred length" in only_error(bag).message
+
+    def test_validate_project_walks_every_module(self, bag):
+        project = b.project(
+            b.module("a", b.procedure("p", b.character("s", Intent.IN, length=":"))),
+            b.module("b", b.procedure("q", b.character("t", Intent.IN, length=":"))),
+        )
+
+        validate_project(project, bag)
+
+        assert len(bag.errors) == 2
+
+
+class TestCharacters:
+    def test_a_deferred_length_is_rejected(self, bag):
+        checked(b.procedure("p", b.character("s", Intent.IN, length=":")), bag)
+
+        error = only_error(bag)
+        assert "deferred length (len=:)" in error.message
+        assert "len=*" in error.note
+
+    @pytest.mark.parametrize("length", ["*", "n", "42"])
+    def test_other_lengths_are_accepted(self, bag, length):
+        checked(b.procedure("p", b.character("s", Intent.IN, length=length), b.integer("n")), bag)
+
+        assert bag.errors == ()
+
+    def test_a_character_scalar_is_accepted(self, bag):
+        checked(b.procedure("p", b.character("s", Intent.IN)), bag)
+
+        assert bag.errors == ()
+
+    def test_a_character_vector_is_accepted(self, bag):
+        checked(b.procedure("p", b.character("s", Intent.IN, "(n)"), b.integer("n")), bag)
+
+        assert bag.errors == ()
+
+    def test_a_character_matrix_is_rejected(self, bag):
+        # it would need a rank-3 c_char conversion, which tox_conversions has not got
+        checked(
+            b.procedure("p", b.character("s", Intent.IN, "(n, m)"), b.integer("n"), b.integer("m")),
+            bag,
+        )
+
+        assert "rank-2 character array" in only_error(bag).message
+
+
+class TestTypes:
+    def test_a_derived_type_is_rejected(self, bag):
+        from codegen.ir.entities import Argument
+        from codegen.ir.types import BaseType, FortranType
+
+        argument = Argument("p", FortranType(BaseType.DERIVED, derived_name="point"), intent=Intent.IN)
+        checked(b.procedure("p", argument), bag)
+
+        assert "derived type" in only_error(bag).message
+
+    @pytest.mark.parametrize("attribute", ["allocatable", "pointer"])
+    def test_non_interoperable_attributes_are_rejected(self, bag, attribute):
+        checked(
+            b.procedure("p", b.real("v", Intent.OUT, "(:)", attributes=(attribute,))), bag
+        )
+
+        assert f"is '{attribute}'" in only_error(bag).message
+
+    def test_target_is_fine(self, bag):
+        checked(b.procedure("p", b.real("v", Intent.OUT, "(n)", attributes=("target",)), b.integer("n")), bag)
+
+        assert bag.errors == ()
+
+
+class TestIntent:
+    def test_a_missing_intent_is_rejected(self, bag):
+        argument = b.real("v", Intent.IN)
+        argument.intent = None
+
+        checked(b.procedure("p", argument), bag)
+
+        error = only_error(bag)
+        assert "has no intent" in error.message
+        assert "constness" in error.note
+
+    def test_a_result_needs_no_declared_intent(self, bag):
+        result = b.real("out", Intent.OUT, is_result=True)
+        result.intent = None
+
+        checked(b.procedure("f", result=result), bag)
+
+        assert bag.errors == ()
+
+
+class TestTemporaries:
+    def test_an_intent_in_temporary_is_rejected(self, bag):
+        checked(b.procedure("p", b.real("tmp_work", Intent.IN, "(n)"), b.integer("n")), bag)
+
+        error = only_error(bag)
+        assert "temporary 'tmp_work' is intent(in)" in error.message
+        assert "tmp_" in error.note
+
+    @pytest.mark.parametrize("intent", [Intent.OUT, Intent.INOUT])
+    def test_out_and_inout_temporaries_are_accepted(self, bag, intent):
+        checked(b.procedure("p", b.real("tmp_work", intent, "(n)"), b.integer("n")), bag)
+
+        assert bag.errors == ()
+
+
+class TestModeArguments:
+    def _mode_doc(self):
+        return [
+            "| Mode | Value |",
+            "|------|-------|",
+            "| x | [[m(module):MODE_X(variable)]] |",
+        ]
+
+    def test_an_integer_scalar_mode_is_accepted(self, bag):
+        checked(b.procedure("p", b.integer("mode", Intent.IN, doc=self._mode_doc())), bag)
+
+        assert bag.errors == ()
+
+    def test_a_non_integer_mode_is_rejected(self, bag):
+        # the Fortran mode is an integer; only the C wrapper receives a string
+        checked(b.procedure("p", b.character("mode", Intent.IN, doc=self._mode_doc())), bag)
+
+        assert "is not a scalar integer" in only_error(bag).message
+
+    def test_an_array_mode_is_rejected(self, bag):
+        checked(
+            b.procedure("p", b.integer("mode", Intent.IN, "(n)", doc=self._mode_doc()), b.integer("n")),
+            bag,
+        )
+
+        assert "is not a scalar integer" in only_error(bag).message
+
+    def _split_mode_doc(self):
+        return [
+            "| Mode | Value | Procedure |",
+            "|------|-------|-----------|",
+            "| x | [[m(module):MODE_X(variable)]] | p_x |",
+        ]
+
+    def _scoped_optional(self, mode_doc):
+        from codegen.ir.directives import Default, Directives, RequiredIfMode
+
+        return b.procedure(
+            "p",
+            b.integer("mode", Intent.IN, doc=mode_doc),
+            b.real(
+                "tuning",
+                Intent.IN,
+                optional=True,
+                doc="a tuning knob",
+                directives=Directives(
+                    default=Default("1.0_real64"),
+                    required_if_mode=RequiredIfMode("mode", "m", "MODE_X"),
+                ),
+            ),
+        )
+
+    def test_a_default_with_a_required_if_mode_is_rejected_for_a_runtime_mode(self, bag):
+        # the argument is always passed on, so "required in that mode" says nothing
+        checked(self._scoped_optional(self._mode_doc()), bag)
+
+        assert "both a default and a mode it is required in" in only_error(bag).message
+
+    def test_a_default_with_a_required_if_mode_is_accepted_when_the_mode_splits(self, bag):
+        # there the directive scopes the argument to its mode, and the default applies within it
+        checked(self._scoped_optional(self._split_mode_doc()), bag)
+
+        assert bag.errors == ()
+
+
+class TestShapeArguments:
+    def _shape_procedure(self, shape_argument, data=None):
+        return b.procedure("p", data or b.real("data", Intent.IN, "(:)"), shape_argument)
+
+    def test_a_well_formed_shape_argument_is_accepted(self, bag):
+        checked(self._shape_procedure(b.integer("data_shape", Intent.IN, "(:)")), bag)
+
+        assert bag.errors == ()
+
+    def test_a_shape_argument_must_be_intent_in(self, bag):
+        checked(self._shape_procedure(b.integer("data_shape", Intent.OUT, "(:)")), bag)
+
+        assert "is not intent(in)" in only_error(bag).message
+
+    def test_a_shape_argument_must_be_a_rank_1_integer(self, bag):
+        checked(self._shape_procedure(b.integer("data_shape", Intent.IN)), bag)
+
+        assert "is not a rank-1 integer array" in only_error(bag).message
+
+    def test_a_real_shape_argument_is_rejected(self, bag):
+        checked(self._shape_procedure(b.real("data_shape", Intent.IN, "(:)")), bag)
+
+        assert "is not a rank-1 integer array" in only_error(bag).message
+
+    def test_a_shape_argument_must_not_be_optional(self, bag):
+        # the c_loc ordering depends on it being there
+        checked(self._shape_procedure(b.integer("data_shape", Intent.IN, "(:)", optional=True)), bag)
+
+        error = only_error(bag)
+        assert "shape argument 'data_shape' is optional" in error.message
+        assert "c_loc" in error.note
+
+    def test_the_described_argument_must_be_flat(self, bag):
+        checked(
+            self._shape_procedure(
+                b.integer("data_shape", Intent.IN, "(:)"),
+                data=b.real("data", Intent.IN, "(:, :)"),
+            ),
+            bag,
+        )
+
+        assert "has a shape argument but is rank 2" in only_error(bag).message
+
+
+class TestExtentArguments:
+    def test_an_extent_must_not_be_optional(self, bag):
+        checked(
+            b.procedure("p", b.integer("n", Intent.IN, optional=True), b.real("v", Intent.IN, "(n)")),
+            bag,
+        )
+
+        error = only_error(bag)
+        assert "extent argument 'n' is optional, but 'v' needs it" in error.message
+        assert "c_loc" in error.note
+
+    def test_the_error_names_every_dependent_array(self, bag):
+        checked(
+            b.procedure(
+                "p",
+                b.integer("n", Intent.IN, optional=True),
+                b.real("a", Intent.IN, "(n)"),
+                b.real("c", Intent.IN, "(n)"),
+            ),
+            bag,
+        )
+
+        assert "'a', 'c'" in only_error(bag).message
+
+    def test_a_non_extent_scalar_may_be_optional(self, bag):
+        checked(b.procedure("p", b.integer("seed", Intent.IN, optional=True)), bag)
+
+        assert bag.errors == ()
+
+
+class TestErrorArgument:
+    def test_a_well_formed_ierr_is_accepted(self, bag):
+        checked(b.procedure("p", b.ierr()), bag)
+
+        assert bag.errors == ()
+
+    def test_an_intent_in_ierr_is_rejected(self, bag):
+        checked(b.procedure("p", b.integer("ierr", Intent.IN, doc="Error code")), bag)
+
+        assert "no error can be reported through it" in only_error(bag).message
+
+    def test_a_non_integer_ierr_is_rejected(self, bag):
+        checked(b.procedure("p", b.real("ierr", Intent.OUT, doc="Error code")), bag)
+
+        assert "is not a scalar integer" in only_error(bag).message
+
+    def test_an_array_ierr_is_rejected(self, bag):
+        checked(b.procedure("p", b.integer("ierr", Intent.OUT, "(2)", doc="Error code")), bag)
+
+        assert "is not a scalar integer" in only_error(bag).message
+
+
+class TestWarnings:
+    def test_a_procedure_without_a_summary_warns(self, bag):
+        checked(b.procedure("p", meta=Meta(author="a", category="C-binding")), bag)
+
+        assert bag.errors == ()
+        assert "no summary meta tag" in bag.warnings[0].message
+
+    def test_a_procedure_without_an_author_warns(self, bag):
+        checked(b.procedure("p", meta=Meta(summary="s", category="C-binding")), bag)
+
+        assert "no author meta tag" in bag.warnings[0].message
+
+    def test_an_undocumented_argument_warns(self, bag):
+        checked(b.procedure("p", b.integer("n", Intent.IN)), bag)
+
+        assert bag.errors == ()
+        assert "argument 'n' has no documentation" in bag.warnings[0].message
+
+    def test_an_undocumented_result_does_not_warn(self, bag):
+        checked(b.procedure("f", result=b.real("out", Intent.OUT, is_result=True)), bag)
+
+        assert bag.warnings == () or all("result" not in w.message for w in bag.warnings)
+
+    def test_an_undocumented_module_warns(self, bag):
+        validate_module(b.module("m"), bag)
+
+        assert "module has no documentation" in bag.warnings[0].message
+
+    def test_warnings_never_stop_generation(self, bag):
+        checked(b.procedure("p", b.integer("n", Intent.IN), meta=Meta(category="C-binding")), bag)
+
+        bag.raise_if_errors()  # must not raise
+
+
+class TestEverythingTogether:
+    def test_a_clean_procedure_produces_nothing(self, bag):
+        procedure = b.procedure(
+            "normalize_unit_length",
+            b.integer("n_dims", Intent.IN, doc="number of elements in `vector`"),
+            b.real("vector", Intent.INOUT, "(n_dims)", doc="Vector to normalise"),
+            b.ierr(),
+        )
+
+        checked(procedure, bag)
+
+        assert bag.errors == ()
+        assert bag.warnings == ()
+
+    def test_every_problem_is_reported_in_one_run(self, bag):
+        procedure = b.procedure(
+            "p",
+            b.character("s", Intent.IN, length=":", doc="a string"),
+            b.real("tmp_work", Intent.IN, "(n)", doc="work_expert"),
+            b.integer("n", Intent.IN, optional=True, doc="extent"),
+        )
+
+        checked(procedure, bag)
+
+        assert len(bag.errors) == 3
+        assert any("deferred length" in m for m in messages(bag))
+        assert any("is intent(in)" in m for m in messages(bag))
+        assert any("is optional" in m for m in messages(bag))
+
+
+class TestOptionalOutputs:
+    """Refused: no binding can honour one, and every binding ignores it silently, so the
+    Fortran declaration and the generated wrapper disagree about the same argument."""
+
+    def test_an_optional_output_is_rejected(self, bag):
+        checked(
+            b.procedure(
+                "p",
+                b.real("values", Intent.IN, "(n)"),
+                b.real("diagnostics", Intent.OUT, "(n)", optional=True),
+                b.integer("n"),
+            ),
+            bag,
+        )
+
+        error = only_error(bag)
+        assert "'diagnostics' is an optional output" in error.message
+        assert "compute_influence" in error.note
+
+    def test_an_optional_work_array_is_accepted(self, bag):
+        # dropped from the allocating wrapper, so it never reaches a caller
+        checked(
+            b.procedure(
+                "p",
+                b.real("tmp_work", Intent.OUT, "(n)", optional=True),
+                b.integer("n"),
+            ),
+            bag,
+        )
+
+        assert bag.errors == ()
+
+    def test_an_optional_input_is_accepted(self, bag):
+        checked(b.procedure("p", b.logical("compute_influence", Intent.IN, optional=True)), bag)
+
+        assert bag.errors == ()
+
+    def test_a_mandatory_output_is_accepted(self, bag):
+        checked(
+            b.procedure("p", b.real("results", Intent.OUT, "(n)"), b.integer("n")), bag
+        )
+
+        assert bag.errors == ()
+
+
+class TestImplModules:
+    """The rules that hold for an implementation, which is read rather than wrapped and so is not
+    reached by the exported-procedure rules above."""
+
+    def impl_module(self, *procedures):
+        return b.module("tox_thing_impl", *procedures, doc="an implementation module")
+
+    def test_a_file_named_for_something_else_is_rejected(self, bag):
+        # synthesis triggers on the module name and the cleaner scans file names, so the two
+        # disagreeing leaves a generated wrapper nothing owns
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", path="src/tox/helpers_impl.F90"
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation module 'tox_thing_impl' is in 'helpers_impl.F90'" == error.message
+        assert "tox_thing_impl.F90" in error.note
+
+    def test_a_file_named_for_the_module_is_accepted(self, bag):
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", path="src/tox/tox_thing_impl.F90"
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_impl_that_allocates_a_dummy_is_rejected(self, bag):
+        # an allocatable dummy looks like the caller's memory, but whoever fills it is the
+        # one who allocated it -- and a `tmp_` argument says so without an allocatable
+        module = self.impl_module(
+            b.procedure(
+                "thing_impl",
+                b.real("out", Intent.OUT, "(:)", attributes=("allocatable",)),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert "'thing_impl' allocates: 'out'" in messages(bag)
+
+    def test_an_impl_may_use_another_impl_module(self, bag):
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", uses=("tox_other_impl",)
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_impl_may_use_a_whitelisted_module(self, bag):
+        module = b.module(
+            "tox_thing_impl",
+            doc="an implementation module",
+            uses=("iso_fortran_env", "tox_errors", "f42_safeguard"),
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_impl_using_anything_else_is_rejected(self, bag):
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", uses=("tox_data_archive",)
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation module uses 'tox_data_archive'" == error.message
+        assert "impl_import_whitelist" in error.note
+
+    def test_a_generated_wrapper_is_not_reachable_either(self, bag):
+        # `tox_other` uses `tox_other_impl`, so an implementation reaching back for it
+        # inverts the layering -- and within one family it is a module cycle
+        module = b.module(
+            "tox_thing_impl", doc="an implementation module", uses=("tox_other",)
+        )
+
+        validate_module(module, bag)
+
+        assert "implementation module uses 'tox_other'" in messages(bag)
+
+    def test_a_procedure_level_use_is_held_to_the_same_rule(self, bag):
+        # Fortran lets a `use` sit inside a procedure; reading only the module header would
+        # put the whole rule one indentation level away from being bypassed
+        module = self.impl_module(
+            b.procedure(
+                "thing_impl",
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+                uses=("tox_data_archive",),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert "implementation module uses 'tox_data_archive'" in messages(bag)
+
+    def test_a_impl_that_allocates_is_rejected(self, bag):
+        module = self.impl_module(
+            b.procedure(
+                "thing_impl",
+                b.real("x", Intent.IN, "(n)"),
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+                allocatable_locals=("workspace",),
+            )
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "'thing_impl' allocates: 'workspace'" == error.message
+        assert "tmp_" in error.note
+
+    def test_a_helper_that_allocates_is_rejected_too(self, bag):
+        # an implementation that allocates nothing but calls a helper that does is no better off
+        module = self.impl_module(
+            b.procedure(
+                "thing_helper",
+                b.real("x", Intent.IN, "(n)"),
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+                allocatable_locals=("scratch",),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert "'thing_helper' allocates" in only_error(bag).message
+
+    def test_a_pointer_local_is_accepted(self, bag):
+        # aliasing a buffer the caller handed in allocates nothing
+        module = self.impl_module(
+            b.procedure(
+                "thing_impl",
+                b.real("x", Intent.IN, "(n)"),
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_exported_impl_is_rejected(self, bag):
+        module = self.impl_module(
+            b.procedure("thing_impl", b.integer("n"))  # b.procedure exports by default
+        )
+
+        validate_module(module, bag)
+
+        errors = messages(bag)
+        assert "implementation 'thing_impl' is exported" in errors
+        assert "M_EXPORT_C" in bag.errors[0].note
+
+    def test_an_exported_support_routine_is_accepted(self, bag):
+        # a recommend routine has no wrapper, so DM_OUTPUT_FROM needs it exported
+        module = self.impl_module(b.procedure("thing_required_workspace", b.integer("n")))
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+    def test_an_impl_named_for_the_allocating_wrapper_is_rejected(self, bag):
+        module = self.impl_module(
+            b.procedure(
+                "thing_alloc_impl",
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation 'thing_alloc_impl' is named for a wrapper" == error.message
+        assert "'_alloc'" in error.note
+        assert "tmp_" in error.note
+
+    def test_an_impl_named_for_the_expert_wrapper_is_rejected(self, bag):
+        # `thing_expert_impl` beside a `thing_impl` would generate two `thing_expert`s, and
+        # the emitter would strip the suffix and call `thing_impl` from the wrong one --
+        # wrong code that compiles, because `thing_impl` really exists
+        module = self.impl_module(
+            b.procedure(
+                "thing_expert_impl",
+                b.integer("n"),
+                meta=Meta(summary="s", author="a"),
+            )
+        )
+
+        validate_module(module, bag)
+
+        error = only_error(bag)
+        assert "implementation 'thing_expert_impl' is named for a wrapper" == error.message
+        assert "'_expert'" in error.note
+
+    def test_an_ordinary_module_is_not_held_to_these_rules(self, bag):
+        module = b.module(
+            "tox_thing",
+            b.procedure(
+                "thing_alloc",
+                b.integer("n"),
+                allocatable_locals=("workspace",),
+            ),
+            doc="an ordinary module",
+        )
+
+        validate_module(module, bag)
+
+        assert bag.errors == ()
+
+
+class TestPrologue:
+    """A DM_PROLOGUE must name something the wrapper can actually call.
+
+    Every one of these used to pass silently: the emitter was the directive's only consumer,
+    and an emitter has no author's line to point at.
+    """
+
+    def checked(self, guard_arguments=None, impl_arguments=None, bag=None):
+        from test_synthesize import prologue_impl_module
+
+        module = prologue_impl_module(guard_arguments)
+        if impl_arguments is not None:
+            crunch = module.procedure("crunch_impl")
+            crunch.arguments = tuple(impl_arguments)
+        project = b.project(module)
+        validate_project(project, bag if bag is not None else self.bag)
+        return self.bag
+
+    @pytest.fixture(autouse=True)
+    def _bag(self, bag):
+        self.bag = bag
+
+    def guard(self, *arguments):
+        return tuple(arguments)
+
+    def test_a_well_formed_prologue_is_accepted(self):
+        self.checked()
+
+        assert self.bag.errors == ()
+
+    def test_a_prologue_that_does_not_exist_is_rejected(self):
+        from codegen.ir.directives import Prologue
+        from test_synthesize import prologue_impl_module
+
+        module = prologue_impl_module()
+        module.procedure("crunch_impl").directives = replace(
+            module.procedure("crunch_impl").directives,
+            prologue=Prologue("guardd", "tox_demo_impl"),
+        )
+        validate_project(b.project(module), self.bag)
+
+        error = only_error(self.bag)
+        assert "prologue 'tox_demo_impl:guardd' does not exist" == error.message
+        assert "without a prologue at all" in error.note
+
+    def test_a_prologue_without_handled_is_rejected(self):
+        # the wrapper declares `handled` and branches on it regardless, so a prologue that
+        # never sets it leaves that branch reading an undefined logical -- which compiles
+        self.checked(guard_arguments=self.guard(
+            b.real("values", Intent.IN, "(n)", doc="the data"),
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            b.ierr(),
+        ))
+
+        error = only_error(self.bag)
+        assert "prologue 'guard' has no 'handled' argument" == error.message
+        assert "undefined value" in error.note
+
+    def test_a_handled_that_is_not_a_scalar_logical_is_rejected(self):
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.integer("handled", Intent.OUT, doc="not a logical"),
+            b.ierr(),
+        ))
+
+        assert "'handled' is not a scalar logical" in only_error(self.bag).message
+
+    def test_a_handled_the_prologue_reads_is_rejected(self):
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.logical("handled", Intent.IN, doc="read, not reported"),
+            b.ierr(),
+        ))
+
+        assert "'handled' is not intent(out)" in only_error(self.bag).message
+
+    def test_a_dummy_the_impl_does_not_have_becomes_the_wrappers_own(self):
+        # what the prologue derives *from* is the allocating tier's vocabulary, not the
+        # impl's: a threshold comes from a percentile, and the implementation takes the threshold
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("percentile", Intent.IN, doc="where to put the threshold"),
+            b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            b.logical("handled", Intent.OUT, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        assert self.bag.errors == ()
+
+    def test_a_near_miss_of_a_impl_argument_is_refused_as_a_typo(self):
+        # otherwise a misspelling reads as a new argument, and the prologue and the implementation
+        # would work from different numbers with nothing to say so
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("valuess", Intent.IN, "(n)", doc="one letter off 'values'"),
+            b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            b.logical("handled", Intent.OUT, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        error = only_error(self.bag)
+        assert "'valuess' looks like a misspelling of 'values'" in error.message
+        assert "different values" in error.note
+
+    def test_a_work_array_is_not_a_dummy_the_impl_does_not_have(self):
+        # tmp_scratch is an implementation argument the allocating wrapper prepares, and a prologue
+        # may take it -- that is the whole point of running below the allocations
+        self.checked(guard_arguments=self.guard(
+            b.integer("n", Intent.IN, doc="length"),
+            b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+            b.logical("handled", Intent.OUT, doc="dealt with"),
+            b.ierr(),
+        ))
+
+        assert self.bag.errors == ()
+
+    def test_what_the_prologue_writes_and_the_impl_reads_becomes_a_local(self):
+        # nobody outside the wrapper is involved, so the caller neither supplies nor
+        # receives it -- and both intents already say so
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="written here"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            impl_arguments=[
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.IN, doc="only read here"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        assert self.bag.errors == ()
+
+    def test_it_is_refused_when_it_also_sizes_something_the_caller_gets(self):
+        # then it cannot be dropped, so it stays an intent(in) dummy -- which Fortran will
+        # not let the wrapper hand to something that writes it
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="written here"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            impl_arguments=[
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.IN, doc="read here, and sizes result"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                b.real("result", Intent.OUT, "(room)", doc="the answer"),
+            ],
+        )
+
+        error = only_error(self.bag)
+        assert "cannot make a local" in error.message
+        assert "sizes something the caller still" in error.note
+
+    def test_two_alternative_producers_of_one_output_are_accepted(self):
+        # impl intent(out) means the prologue and the implementation each may produce it: the
+        # prologue's value is what the caller gets on the handled path
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.real("result", Intent.OUT, "(n)", doc="answered here when degenerate"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+        )
+
+        assert self.bag.errors == ()
+
+    def test_a_prologue_may_not_produce_what_sizes_a_work_array(self):
+        # tmp_scratch is allocated above the prologue, so its extent cannot be something the
+        # prologue only fills afterwards -- the name resolves either way and computes rubbish
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="how much scratch is needed"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            impl_arguments=[
+                b.real("values", Intent.IN, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.INOUT, doc="how much scratch is needed"),
+                b.real("tmp_scratch", Intent.OUT, "(room)", doc="scratch"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        error = only_error(self.bag)
+        assert "'tmp_scratch' is sized by 'room', which the prologue only fills afterwards" == error.message
+        assert "runs below the work arrays it prepares" in error.note
+
+    def test_a_prologue_may_not_rewrite_what_a_permutation_was_sorted_against(self):
+        # the wrapper heapsorts values_perm against values above the prologue, so a prologue
+        # that then rewrites values leaves an order describing data that no longer exists.
+        # Nothing crashes -- the implementation is simply handed a wrong answer.
+        self.checked(
+            guard_arguments=self.guard(
+                b.real("values", Intent.INOUT, "(n)", doc="rewritten here"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            impl_arguments=[
+                b.real("values", Intent.INOUT, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="what makes it run late"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        error = only_error(self.bag)
+        assert (
+            "'values_perm' is sorted against 'values' before the prologue rewrites it"
+            == error.message
+        )
+
+    def test_a_prologue_may_rewrite_the_base_of_a_permutation_it_builds_itself(self):
+        # the counterpart of the test above: nothing sorts values_perm above the prologue,
+        # because the prologue is what builds it, so rewriting values reads nothing early
+        self.checked(
+            guard_arguments=self.guard(
+                b.real("values", Intent.INOUT, "(n)", doc="rewritten here"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("values_perm", Intent.OUT, "(n)", doc="built here too"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="a work array"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            impl_arguments=[
+                b.real("values", Intent.INOUT, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("values_perm", Intent.OUT, "(n)", doc="values, ordered"),
+                b.real("tmp_other", Intent.OUT, "(n)", doc="a work array"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        assert self.bag.errors == ()
+
+    def test_a_produced_value_nothing_above_reads_is_accepted(self):
+        # `room` is the implementation's business alone -- no allocation, sort or recommend call
+        # above the prologue names it, so filling it there is in time
+        self.checked(
+            guard_arguments=self.guard(
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.OUT, doc="something only the implementation reads"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+            ),
+            impl_arguments=[
+                b.real("values", Intent.IN, "(n)", doc="the data"),
+                b.integer("n", Intent.IN, doc="length"),
+                b.integer("room", Intent.INOUT, doc="something only the implementation reads"),
+                b.real("tmp_scratch", Intent.OUT, "(n)", doc="scratch"),
+                b.real("result", Intent.OUT, "(n)", doc="the answer"),
+            ],
+        )
+
+        assert self.bag.errors == ()
+
+
+class TestAPrologueFeedingARecommendRoutine:
+    """The recommend calls sit above the prologue, so what they are passed must be there."""
+
+    def test_a_producer_input_the_prologue_writes_is_rejected(self, bag):
+        from codegen.ir.roles import analyse_project
+        from codegen.synthesize import synthesize_wrappers
+        from test_synthesize import prologue_feeding_a_producer_module
+
+        project = synthesize_wrappers(
+            b.project(prologue_feeding_a_producer_module()), diagnostics=DiagnosticBag()
+        ).project
+        analyse_project(project, DiagnosticBag())
+        validate_project(project, bag)
+
+        assert any(
+            "'work_size' is passed 'budget', which the prologue only fills afterwards"
+            == d.message
+            for d in bag.errors
+        ), messages(bag)
+
+
+class TestPrologueAndTheModeSplit:
+    """A prologue is declared once and runs in every wrapper, so it may only name what
+    every wrapper has -- which is all of the implementation's arguments unless it splits per mode."""
+
+    def checked(self, dummy, bag, split=True):
+        from codegen.ir.directives import Prologue
+        from codegen.ir.roles import analyse_project
+        from test_synthesize import mode_split_impl_module
+
+        source = mode_split_impl_module()
+        if not split:
+            # same impl, but the table names no procedure per mode, so nothing splits
+            table = source.procedure("detect_patterns_impl").argument("pattern_mode").doc
+            source = _without_the_procedure_column(source, table)
+        impl = source.procedure("detect_patterns_impl")
+        impl.directives = replace(
+            impl.directives, prologue=Prologue("guard", "tox_demo_impl")
+        )
+        source.procedures += (
+            b.procedure(
+                "guard",
+                dummy,
+                b.logical("handled", Intent.OUT, doc="dealt with"),
+                b.ierr(),
+                meta=Meta(summary="Guard", author="AUTHOR"),
+            ),
+        )
+        source._adopt(source.procedures)
+        # the real stage order: synthesis analyses each impl (which is where a mode table
+        # becomes roles.mode), then the project-wide pass, then validation
+        from codegen.synthesize import synthesize_wrappers
+
+        project = synthesize_wrappers(b.project(source), diagnostics=DiagnosticBag()).project
+        analyse_project(project, DiagnosticBag())
+        validate_project(project, bag)
+        return bag
+
+    def test_the_mode_argument_itself_is_rejected(self):
+        # every wrapper fixes the mode in the implementation call and drops it from its signature,
+        # so the prologue call would silently lose it
+        bag = self.checked(
+            b.integer("pattern_mode", Intent.IN, doc="which pattern"), DiagnosticBag()
+        )
+
+        assert any("'pattern_mode' is not on every wrapper" in m for m in messages(bag)), messages(bag)
+
+    def test_a_mode_scoped_argument_is_rejected_when_the_mode_splits(self):
+        bag = self.checked(
+            b.real("threshold", Intent.IN, doc="dosage threshold"), DiagnosticBag()
+        )
+
+        assert any("'threshold' is not on every wrapper" in m for m in messages(bag)), messages(bag)
+
+    def test_a_mode_scoped_argument_is_accepted_when_the_mode_does_not_split(self):
+        # without a Procedure column there is one wrapper, which carries the argument as an
+        # ordinary optional -- DM_REQUIRED_IF_MODE then only means "required at run time"
+        bag = self.checked(
+            b.real("threshold", Intent.IN, doc="dosage threshold"),
+            DiagnosticBag(),
+            split=False,
+        )
+
+        assert not any("is not on every wrapper" in m for m in messages(bag)), messages(bag)
+
+
+def _without_the_procedure_column(source, doc):
+    """The same impl module with the mode table's Procedure column removed."""
+    from codegen.ir.doc import Doc
+
+    lines = [
+        "Which pattern to detect.",
+        "| Mode | Value |",
+        "|------|-------|",
+        "| dosage effect | [[tox_demo_impl(module):MODE_DOSAGE(variable)]] |",
+        "| subfunctionalisation | [[tox_demo_impl(module):MODE_SUBFUNC(variable)]] |",
+    ]
+    source.procedure("detect_patterns_impl").argument("pattern_mode").doc = Doc.parse(lines)
+    return source
+
+
+class TestPrologueThatCouldNeverRun:
+    def test_a_prologue_on_a_impl_with_no_work_arrays_is_rejected(self, bag):
+        from test_synthesize import prologue_impl_module
+
+        source = prologue_impl_module()
+        crunch = source.procedure("crunch_impl")
+        # drop the work array, so no allocating wrapper is generated at all
+        crunch.arguments = tuple(a for a in crunch.arguments if a.name != "tmp_scratch")
+        validate_project(b.project(source), bag)
+
+        error = only_error(bag)
+        assert "on an implementation that generates no allocating wrapper" in error.message
+        assert "would never be called" in error.note
+
+    def test_it_is_accepted_when_the_impl_does_generate_one(self, bag):
+        from test_synthesize import prologue_impl_module
+
+        validate_project(b.project(prologue_impl_module()), bag)
+
+        assert bag.errors == ()
+
+
+class TestTheMisspellingHeuristic:
+    """The last thing between a typo and a silently invented argument, so it has to be exact
+    in both directions: catching a near miss, and letting a real new name through."""
+
+    @pytest.mark.parametrize("dummy, impl_name", [
+        ("n_gene", "n_genes"),      # a dropped letter
+        ("valuess", "values"),      # a doubled one
+        ("n_gnes", "n_genes"),      # a transposition that reads as one insertion
+        ("values", "values"),       # itself
+        ("n_genez", "n_genes"),     # a substitution
+    ])
+    def test_one_edit_apart(self, dummy, impl_name):
+        assert _within_one_edit(dummy, impl_name)
+
+    @pytest.mark.parametrize("dummy, impl_name", [
+        ("percentile", "values"),   # a genuinely new argument
+        ("n_geens", "n_genes"),     # two substitutions: two names, not a typo
+        ("x", "values"),            # nothing alike
+        ("threshold", "thresh"),    # three characters apart
+    ])
+    def test_further_than_one_edit(self, dummy, impl_name):
+        assert not _within_one_edit(dummy, impl_name)
+
+    def test_it_names_the_argument_it_thinks_you_meant(self):
+        from codegen.ir.validate import _nearly
+
+        assert _nearly("n_gene", {"n_genes", "values", "result"}) == "n_genes"
+        assert _nearly("percentile", {"n_genes", "values", "result"}) is None
+
+
+class TestDocLinks:
+    """A Ford `[[...]]` cross-reference has to name something that exists.
+
+    The failure it catches has no other symptom: Ford prints the literal text, the Python and
+    R emitters fall back to plain code on purpose (a dangling R `\\link` fails R CMD check),
+    and everything still generates, compiles and passes.
+    """
+
+    def errors(self, *modules):
+        bag = DiagnosticBag()
+        check_doc_links(b.project(*modules), bag)
+        assert bag.warnings == (), "a dangling link is an error, not a warning"
+        return [d.message for d in bag.errors]
+
+    def test_a_link_to_a_procedure_in_another_module_resolves(self):
+        assert not self.errors(
+            b.module("a", doc="see [[m(module):crunch(subroutine)]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+    def test_a_link_to_a_module_that_does_not_exist_warns(self):
+        (error,) = self.errors(b.module("a", doc="see [[gone(module)]]"))
+
+        assert "'gone', which is not a module here" in error
+
+    def test_a_link_to_a_name_the_module_does_not_publish_warns(self):
+        (error,) = self.errors(
+            b.module("a", doc="see [[m(module):missing(subroutine)]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+        assert "'missing', which 'm' does not publish" in error
+
+    def test_a_module_constant_resolves(self):
+        assert not self.errors(
+            b.module("a", doc="see [[m(module):MODE_WARD(variable)]]"),
+            b.module("m", parameters=(b.parameter("MODE_WARD", "1"),)),
+        )
+
+    def test_a_generic_interface_resolves(self):
+        """It is nothing the generator models -- a generic has no one signature -- but Ford
+        documents it and authors link to it, so it is carried by name."""
+        assert not self.errors(
+            b.module("a", doc="see [[m(module):is_close(interface)]]"),
+            b.module("m", declarations=(b.declaration("is_close"),)),
+        )
+
+    def test_a_derived_type_resolves(self):
+        assert not self.errors(
+            b.module("a", doc="see [[m(module):hashmap_type(type)]]"),
+            b.module("m", declarations=(b.declaration("hashmap_type", kind="type"),)),
+        )
+
+    def test_a_link_inside_an_interface_s_own_documentation_is_checked(self):
+        """The one place these links live that is nowhere else in the IR: an interface block's
+        comment belongs to no procedure and no module."""
+        (error,) = self.errors(
+            b.module("m", declarations=(b.declaration("is_close", doc="see [[gone(module)]]"),))
+        )
+
+        assert "'gone', which is not a module here" in error
+
+    def test_an_argument_comment_is_checked(self):
+        (error,) = self.errors(
+            b.module(
+                "m",
+                b.procedure("crunch", b.real("x", Intent.IN, doc="see [[gone(module)]]")),
+            )
+        )
+
+        assert "'gone', which is not a module here" in error
+
+    def test_a_bare_entity_link_resolves_against_the_whole_project(self):
+        # `[[crunch]]`, with no module named: Ford resolves it project-wide, so this does too
+        assert not self.errors(
+            b.module("a", doc="see [[crunch]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+    def test_the_same_authored_line_is_reported_once(self):
+        """A generated wrapper carries the implementation's documentation verbatim, so one bad
+        link reaches the check once per module that inherited it."""
+        shared = b.real("x", Intent.IN, doc="see [[gone(module)]]")
+        location = SourceLocation(Path("src/tox/tox_demo_impl.F90"), 12)
+        first = b.procedure("crunch_impl", replace_location(shared, location))
+        second = b.procedure("crunch", replace_location(shared, location))
+
+        assert len(self.errors(b.module("m", first, second))) == 1
+
+    def test_a_link_into_another_project_is_left_alone(self):
+        """`ext`-prefixed types name an entity of a different project. Nothing here can
+        resolve one, and reporting it missing would be a lie."""
+        assert not self.errors(b.module("a", doc="see [[zlib(extmodule)]]"))
+
+    def test_a_link_inside_backticks_is_not_a_link(self):
+        """Ford has left inline code verbatim since v7, cross-references included -- an author
+        showing the syntax must not have the build refused over it."""
+        assert not self.errors(b.module("a", doc="write `[[gone(module)]]` to link"))
+
+    def test_a_link_into_a_generated_module_is_correct(self):
+        """`[[f42_binary_search_tree(module):build_bst_index]]` names the wrapper a reader can
+        call; `emit/doc_links` turns it into that binding. Resolution therefore runs over the
+        augmented project, generated modules included."""
+        assert not self.errors(
+            b.module("m_impl", doc="see [[m(module):crunch(subroutine)]]"),
+            b.module("m", b.procedure("crunch")),
+        )
+
+
+def replace_location(argument, location):
+    """A copy of `argument` at `location` -- two entities from one authored line."""
+    import copy
+
+    clone = copy.deepcopy(argument)
+    clone.location = location
+    return clone
+
+
+class TestTheWhitelistIsAllocationFree:
+    """`_check_impl_allocates` reads declarations, so it sees a procedure allocating for
+    itself and nothing else. What makes the rule hold *across* modules is the import bound --
+    an implementation may reach another implementation, held to the same rule, or a member of
+    `impl_import_whitelist`, which nothing verified. This is the verification.
+
+    It was deferred twice because it would have shipped as a standing failure: `f42_utils`
+    while its `f42_stats` child still had hand-written `_alloc` halves, and `tox_conversions`
+    until its string conversions became pointer views.
+    """
+
+    def whitelisted(self, procedure):
+        # tox_errors is on impl_import_whitelist and is the shortest real name to borrow
+        return b.project(b.module("tox_errors", procedure, doc="infrastructure"))
+
+    def test_an_allocatable_local_is_rejected(self, bag):
+        procedure = b.procedure("helper", b.ierr(), allocatable_locals=("scratch",))
+
+        validate_project(self.whitelisted(procedure), bag)
+
+        error = only_error(bag)
+        assert "whitelisted module 'tox_errors' allocates in 'helper': 'scratch'" == error.message
+        assert "impl_import_whitelist" in error.note
+
+    def test_an_allocatable_dummy_is_rejected_too(self, bag):
+        # the subtler half: it looks like the caller's memory, but whoever fills it allocated.
+        # Not exported, or the C-interop rule fires on the same argument as well -- both are
+        # right, and this test is about the whitelist one.
+        out = b.character("out", Intent.OUT, attributes=("allocatable",))
+        procedure = b.procedure("helper", out, b.ierr(), meta=Meta(summary="s", author="A"))
+
+        validate_project(self.whitelisted(procedure), bag)
+
+        assert "allocates in 'helper': 'out'" in only_error(bag).message
+
+    def test_a_clean_whitelisted_module_passes(self, bag):
+        procedure = b.procedure("helper", b.real("x", Intent.IN), b.ierr())
+
+        validate_project(self.whitelisted(procedure), bag)
+
+        assert bag.errors == ()
+
+    def test_a_module_that_is_not_whitelisted_may_allocate(self, bag):
+        """The rule is about what an implementation can *reach*. Everything else -- the
+        hand-written data layer, the generated wrappers -- allocates as it likes."""
+        procedure = b.procedure("helper", b.ierr(), allocatable_locals=("scratch",))
+        project = b.project(b.module("tox_data_archive", procedure, doc="not whitelisted"))
+
+        validate_project(project, bag)
+
+        assert bag.errors == ()
+
+    def test_an_entry_the_project_never_parsed_is_not_an_error(self, bag):
+        """The intrinsic modules are on the list and have no source here. An entry naming
+        nothing is fine: the import rule already refuses an implementation that reaches for a
+        module that does not exist."""
+        validate_project(b.project(), bag)
+
+        assert bag.errors == ()
+
+
+class TestCKindsDependOnTheSafeguard:
+    """The rule that orders the build, and the one check nothing exercised.
+
+    `iso_c_binding` reports a kind the platform lacks as -1 rather than failing, so
+    `f42_safeguard`'s guards are what name the missing kind -- and they only speak if the
+    safeguard is compiled first, which a dependency is the only way to arrange. The rule
+    has regressed once already (the `c_bool` sweep put C kinds in 39 more units and left
+    the `use` behind), and until now it was enforced only by the sources happening to obey
+    it: removing the check outright kept the suite green.
+    """
+
+    def _project(self, *, uses=(), kind="c_bool"):
+        return b.project(
+            b.module("f42_safeguard"),
+            b.module(
+                "m",
+                b.procedure("p", b.logical("flag", Intent.IN, kind=kind), b.ierr()),
+                uses=uses,
+            ),
+        )
+
+    def test_naming_a_c_kind_without_the_safeguard_is_an_error(self, bag):
+        check_c_kinds_depend_on_the_safeguard(self._project(), bag)
+
+        error = only_error(bag)
+        assert "without using 'f42_safeguard'" in error.message
+        assert "'c_bool'" in error.message
+
+    def test_the_dependency_satisfies_it(self, bag):
+        check_c_kinds_depend_on_the_safeguard(self._project(uses=["f42_safeguard"]), bag)
+
+        assert bag.errors == ()
+
+    def test_a_use_on_the_procedure_counts_too(self, bag):
+        # the `use` may sit on the procedure rather than the module
+        project = b.project(
+            b.module("f42_safeguard"),
+            b.module(
+                "m",
+                b.procedure(
+                    "p", b.logical("flag", Intent.IN, kind="c_bool"), b.ierr(),
+                    uses=["f42_safeguard"],
+                ),
+            ),
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        assert bag.errors == ()
+
+    def test_a_kind_that_is_not_a_c_kind_is_not_required_to(self, bag):
+        check_c_kinds_depend_on_the_safeguard(self._project(kind="int32"), bag)
+
+        assert bag.errors == ()
+
+    def test_every_offending_kind_is_named_once(self, bag):
+        project = b.project(
+            b.module("f42_safeguard"),
+            b.module(
+                "m",
+                b.procedure(
+                    "p",
+                    b.logical("flag", Intent.IN, kind="c_bool"),
+                    b.logical("other", Intent.IN, kind="c_bool"),
+                    b.integer("count", Intent.IN, kind="c_size_t"),
+                    b.ierr(),
+                ),
+            ),
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        message = only_error(bag).message
+        assert "'c_bool', 'c_size_t'" in message
+
+    def test_a_project_without_the_safeguard_is_left_alone(self, bag):
+        # a fixture tree that never parsed the safeguard cannot depend on it
+        project = b.project(
+            b.module("m", b.procedure("p", b.logical("flag", Intent.IN, kind="c_bool")))
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        assert bag.errors == ()
+
+    def test_a_synthesized_wrapper_is_the_emitters_to_answer_for(self, bag):
+        # `m` is generated beside `m_impl`; its `use` list is written by the emitter and is
+        # not in the IR, so checking it here would report what the emitter already handles
+        project = b.project(
+            b.module("f42_safeguard"),
+            b.module("m_impl", b.procedure("p_impl", b.ierr())),
+            b.module("m", b.procedure("p", b.logical("flag", Intent.IN, kind="c_bool"))),
+        )
+
+        check_c_kinds_depend_on_the_safeguard(project, bag)
+
+        assert bag.errors == ()
+
+
+class TestExtentsAreDeclaredFirst:
+    """`real :: a(n)` above `integer :: n` is a GNU extension gfortran rejects under -std=.
+
+    The generator has always ordered its own emitted declarations this way; five
+    hand-written files had drifted from the same rule and only stopped compiling when the
+    diagnostics profile gained `-std=f2023`. This turns the rule back on the sources.
+    """
+
+    def _procedure(self, array_line, extent_line):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        return b.procedure(
+            "p",
+            b.real("array", Intent.IN, "(n)", location=at(array_line)),
+            b.integer("n", Intent.IN, location=at(extent_line)),
+            b.ierr(),
+        )
+
+    def _check(self, procedure, bag):
+        check_extents_are_declared_first(b.project(b.module("m", procedure)), bag)
+        return bag
+
+    def test_an_extent_below_the_array_it_sizes_is_reported(self, bag):
+        self._check(self._procedure(array_line=10, extent_line=12), bag)
+
+        error = only_error(bag)
+        assert "'array' is sized by 'n', which is not declared above it" in error.message
+
+    def test_an_extent_in_the_same_statement_is_reported(self, bag):
+        # `integer :: a(n), n` is rejected exactly as the two-line form is
+        self._check(self._procedure(array_line=10, extent_line=10), bag)
+
+        assert "not declared above it" in only_error(bag).message
+
+    def test_an_extent_above_the_array_is_accepted(self, bag):
+        self._check(self._procedure(array_line=12, extent_line=10), bag)
+
+        assert bag.errors == ()
+
+    def test_an_extent_inside_an_expression_is_checked(self, bag):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p",
+            b.real("series", Intent.IN, "(max(0, n_points - 1))", location=at(10)),
+            b.integer("n_points", Intent.IN, location=at(12)),
+            b.ierr(),
+        )
+
+        self._check(procedure, bag)
+
+        assert "sized by 'n_points'" in only_error(bag).message
+
+    def test_an_extent_that_is_not_an_argument_is_not_our_business(self, bag):
+        # a module parameter, say: its declaration is not in this procedure at all
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p", b.real("buffer", Intent.IN, "(MAX_STACK)", location=at(10)), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_an_argument_with_no_known_line_is_skipped(self, bag):
+        # nothing is guessed at when the declaration could not be located
+        procedure = b.procedure(
+            "p", b.real("array", Intent.IN, "(n)"), b.integer("n", Intent.IN), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_a_character_length_below_its_argument_is_reported(self, bag):
+        # `character(len=clen) :: a(n)` above `integer :: clen` fails the same way an
+        # extent does -- the shape `asserts.F90` had before it was reordered
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p",
+            b.character("labels", Intent.IN, "(n)", length="clen", location=at(12)),
+            b.integer("clen", Intent.IN, location=at(14)),
+            b.integer("n", Intent.IN, location=at(10)),
+            b.ierr(),
+        )
+
+        self._check(procedure, bag)
+
+        assert "sized by 'clen'" in only_error(bag).message
+
+    def test_a_character_length_above_its_argument_is_accepted(self, bag):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p",
+            b.integer("clen", Intent.IN, location=at(10)),
+            b.integer("n", Intent.IN, location=at(11)),
+            b.character("labels", Intent.IN, "(n)", length="clen", location=at(12)),
+            b.ierr(),
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_an_assumed_length_names_nothing_and_is_fine(self, bag):
+        # `character(len=*)` is sized by the caller, not by another argument
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p", b.character("label", Intent.IN, length="*", location=at(10)), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_a_constant_length_is_not_an_argument_reference(self, bag):
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        procedure = b.procedure(
+            "p", b.character("label", Intent.IN, length="256", location=at(10)), b.ierr()
+        )
+
+        self._check(procedure, bag)
+
+        assert bag.errors == ()
+
+    def test_an_unexported_procedure_is_checked_too(self, bag):
+        # this is about whether the file compiles, not about what crosses into C
+        at = lambda line: SourceLocation(file=Path("src/m.F90"), line=line)
+        internal = b.procedure(
+            "internal",
+            b.real("array", Intent.IN, "(n)", location=at(10)),
+            b.integer("n", Intent.IN, location=at(12)),
+            meta=Meta(summary="s", author="a"),
+        )
+
+        self._check(internal, bag)
+
+        assert "not declared above it" in only_error(bag).message
