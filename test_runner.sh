@@ -19,7 +19,9 @@ if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   for d in c_int c_double c_double_complex; do
     msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$d"
     declare -n directives="$d"
-    if [[ $(bash build.sh "$@" "${directives[@]}" 1>kinds.out 2>/dev/null ; grep "Divi.*zero" kinds.out) ]]; then
+    # these builds are meant to fail in the preprocessor, so regenerating for each of them
+    # would only cost time -- the build below does it once for the run
+    if [[ $(bash build.sh "$@" --skip-code-generation "${directives[@]}" 1>kinds.out 2>/dev/null ; grep "Divi.*zero" kinds.out) ]]; then
       stderr "$msg_prefix$COLOR_CREAM: ${COLOR_GREEN}success"
     else
       stderr "$msg_prefix$COLOR_CREAM: ${COLOR_RED}failure"

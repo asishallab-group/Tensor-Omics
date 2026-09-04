@@ -7,15 +7,16 @@ import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import tox_k_means_clustering, tox_linkage_clustering
+from tensor_omics import k_means_clustering, linkage_clustering
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_NAN_INF
 
 
-def test_tox_k_means_clustering():
+def test_k_means_clustering():
     """
-    Test tox_k_means_clustering using known 2D points and initial centroids.
+    Test k_means_clustering using known 2D points and initial centroids.
     """
 
     # Define 2D points: two clusters
@@ -27,10 +28,10 @@ def test_tox_k_means_clustering():
     ], dtype=np.float64)
 
     # Initial centroids: first and last points
-    centroids_init = np.array([
+    centroids = np.array([
         [1.0, 10.0],
         [1.0, 10.0]
-    ], dtype=np.float64)
+    ], dtype=np.float64).transpose().copy(order="F")
 
     # Expected final centroids
     expected_centroids = np.array([
@@ -43,16 +44,16 @@ def test_tox_k_means_clustering():
     expected_counts = np.array([2, 2], dtype=np.int32)
 
     # Run clustering
-    centroids, labels, label_counts = tox_k_means_clustering(data_points, centroids_init, max_iter=10).values()
+    labels, label_counts = k_means_clustering(data_points, centroids, max_iterations=10).values()
 
     # Validate centroids
-    assert np.allclose(centroids, expected_centroids, atol=1e-12), "tox_k_means_clustering: centroid mismatch"
+    assert np.allclose(centroids, expected_centroids, atol=1e-12), "k_means_clustering: centroid mismatch"
 
     # Validate labels
-    assert np.array_equal(labels, expected_labels), "tox_k_means_clustering: label assignment mismatch"
+    assert np.array_equal(labels, expected_labels), "k_means_clustering: label assignment mismatch"
 
     # Validate label counts
-    assert np.array_equal(label_counts, expected_counts), "tox_k_means_clustering: label_counts mismatch"
+    assert np.array_equal(label_counts, expected_counts), "k_means_clustering: label_counts mismatch"
 
 
 def test_linkage_methods():
@@ -94,9 +95,9 @@ def test_linkage_methods():
                 [21.0, 30.0, 0.0, 28.0, 39.0],
                 [31.0, 34.0, 28.0, 0.0, 43.0],
                 [23.0, 21.0, 39.0, 43.0, 0.0]
-            ])
-            dist_copy = dist.copy()
-            merge_i, merge_j, heights, cluster_sizes = tox_linkage_clustering(dist_copy, method).values()
+            ]).transpose().copy(order="F")
+            dist_copy = dist.copy(order="F")
+            merge_i, merge_j, heights, cluster_sizes = linkage_clustering(dist_copy, method).values()
 
             assert np.allclose(dist_copy, dist, atol=0.0), f"{label}: reference output matrix mismatch"
             for i in range(4):
@@ -109,8 +110,8 @@ def test_linkage_methods():
 
             # Case 2: Equal distances
             dist = np.ones((4, 4)) - np.eye(4)
-            dist_copy = dist.copy()
-            merge_i, merge_j, heights, cluster_sizes = tox_linkage_clustering(dist_copy, method).values()
+            dist_copy = dist.copy(order="F")
+            merge_i, merge_j, heights, cluster_sizes = linkage_clustering(dist_copy, method).values()
             assert np.allclose(dist_copy, dist, atol=0.0), f"{label}: equal-distance output matrix mismatch"
             assert np.allclose(heights, [1.0, 1.0, 1.0], atol=TOL), f"{label}: equal-distance heights mismatch"
 
@@ -119,14 +120,14 @@ def test_linkage_methods():
                 [0.0, 5.0],
                 [5.0, 0.0]
             ])
-            dist_copy = dist.copy()
-            merge_i, merge_j, heights, cluster_sizes = tox_linkage_clustering(dist_copy, method).values()
+            dist_copy = dist.copy(order="F")
+            merge_i, merge_j, heights, cluster_sizes = linkage_clustering(dist_copy, method).values()
             assert np.allclose(dist_copy, dist, atol=0.0), f"{label}: two-point output matrix mismatch"
             assert np.allclose(heights, [5.0], atol=TOL), f"{label}: two-point height mismatch"
 
             # Case 4: Single point
             dist = np.array([[0.0]])
-            merge_i, merge_j, heights, cluster_sizes = tox_linkage_clustering(dist.copy(), method).values()
+            merge_i, merge_j, heights, cluster_sizes = linkage_clustering(dist.copy(order="F"), method).values()
             assert merge_i.size == 0, f"{label}: single-point merge_i should be empty"
             assert merge_j.size == 0, f"{label}: single-point merge_j should be empty"
             assert heights.size == 0, f"{label}: single-point heights should be empty"
@@ -138,7 +139,7 @@ def test_linkage_methods():
                 [1.0, 0.0, 1.0],
                 [np.nan, 1.0, 0.0]
             ])
-            assert_error(lambda: tox_linkage_clustering(dist.copy(), method), f"{label}: NaN case should raise an error")
+            assert_error(lambda: linkage_clustering(dist.copy(order="F"), method), f"{label}: NaN case should raise an error", ERR_NAN_INF)
         except RuntimeError:
             raise AssertionError(f"{label}: Unexpected Error")
 

@@ -1,19 +1,48 @@
 #!/usr/bin/env python3
 """
 Comprehensive Python test suite for outlier detection functions
-Uses tensoromics_functions.py wrapper functions (mirrors R get_outliers.R tests)
+Uses tensor_omics.py wrapper functions (mirrors R get_outliers.R tests)
 """
 
 import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import (
-    tox_compute_family_scaling, tox_compute_family_scaling_expert, tox_compute_rdi, tox_identify_outliers, tox_detect_outliers
+from tensor_omics import (
+    compute_family_scaling,
+    compute_family_scaling,
+    compute_rdi,
+    identify_outliers as _identify_outliers,
+    detect_outliers as _detect_outliers,
 )
-from test_helpers import run_all_tests
+from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_INVALID_INPUT
+
+# compute_rdi returns the sorted array and permutation that identify_outliers wants, so
+# the pipeline composes directly. Only the two shims below remain: one for calling
+# identify_outliers with a bare rdi, and one for the key the old suite expects.
+
+
+def _sort_prep(rdi):
+    """Values clamped non-negative plus the 1-based permutation that sorts them."""
+    sorted_rdi = np.asarray(rdi, dtype=np.float64).copy()
+    sorted_rdi[sorted_rdi < 0.0] = 0.0
+    perm = (np.argsort(sorted_rdi, kind="mergesort").astype(np.int32) + 1)
+    return sorted_rdi, perm
+
+
+def identify_outliers(rdi, percentile=0.95):
+    sorted_rdi, perm = _sort_prep(rdi)
+    result = _identify_outliers(rdi, sorted_rdi, perm, percentile)
+    return dict(result, outliers=result["is_outlier"])
+
+
+def detect_outliers(distances, gene_to_fam, percentile=0.95):
+    n_families = int(np.max(gene_to_fam))
+    result = _detect_outliers(n_families, distances, gene_to_fam, percentile)
+    return dict(result, outliers=result["is_outlier"])
 
 
 # =====================
@@ -54,7 +83,7 @@ def test_compute_family_scaling_basic():
         np.full(genes_per_fam, 10)
     ]).astype(np.int32)
 
-    result = tox_compute_family_scaling(distances, gene_to_fam)
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
 
     # Verify basic properties
     assert len(result['dscale']) == n_families  # Ten families
@@ -68,7 +97,8 @@ def test_compute_family_scaling_single_family():
     distances = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float64)
     gene_to_fam = np.array([1, 1, 1, 1], dtype=np.int32)  # All in family 1
 
-    result = tox_compute_family_scaling(distances, gene_to_fam)
+    n_families = int(np.max(gene_to_fam))
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
 
     assert len(result['dscale']) == 1
     assert result['dscale'][0] == 0
@@ -95,7 +125,8 @@ def test_compute_family_scaling_edge_cases():
         11, 11, 12, 12  # Family 6
     ], dtype=np.int32)
 
-    result = tox_compute_family_scaling(distances, gene_to_fam)
+    n_families = int(np.max(gene_to_fam))
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
     assert all(np.isfinite(result['dscale']))
 
     # Case 2: Large distances with more families
@@ -116,11 +147,11 @@ def test_compute_family_scaling_edge_cases():
         11, 11, 12, 12  # Family 6
     ], dtype=np.int32)
 
-    result = tox_compute_family_scaling(distances, gene_to_fam)
+    result = compute_family_scaling(n_families, distances, gene_to_fam)
     assert all(np.isfinite(result['dscale']))
 
 
-def test_tox_compute_family_scaling_expert():
+def test_tox_compute_family_scaling_buffers():
     """Test expert version with user-provided work arrays"""
 
     # Test data
@@ -128,7 +159,7 @@ def test_tox_compute_family_scaling_expert():
     genes_per_fam = 4
     n_genes = n_families * genes_per_fam
     span = 0.7
-    mode = 1
+    mode = "robust"
     n_iters = 3
     degree = 2
 
@@ -157,14 +188,8 @@ def test_tox_compute_family_scaling_expert():
         np.full(genes_per_fam, 10)
     ]).astype(np.int32)
 
-    # Pre-allocate work arrays (user responsibility)
-    perm_tmp = np.empty(n_genes, dtype=np.int32)
-    stack_left_tmp = np.empty(n_genes, dtype=np.int32)
-    stack_right_tmp = np.empty(n_genes, dtype=np.int32)
-
-    result = tox_compute_family_scaling_expert(
-        distances, gene_to_fam, span, degree, mode, n_iters, perm_tmp, stack_left_tmp,
-        stack_right_tmp
+    result = compute_family_scaling(
+        n_families, distances, gene_to_fam, span, degree, mode, n_iters
     )
 
     # Verify basic properties
@@ -172,13 +197,13 @@ def test_tox_compute_family_scaling_expert():
     assert all(np.isfinite(result['dscale']))
     assert all(result['dscale'] > 0)  # Scaling factors should be positive
 
-    # Verify work arrays are returned
-    assert 'perm_tmp' in result
-    assert 'stack_left_tmp' in result
-    assert 'stack_right_tmp' in result
+    # Verify the smoothing diagnostics come back too
+    assert 'low_sd_cutoff' in result
+    assert 'excluded_low_sd' in result
+    assert 'indices_used' in result
 
     # Compare with regular version to ensure consistency
-    result_regular = tox_compute_family_scaling(distances, gene_to_fam)
+    result_regular = compute_family_scaling(n_families, distances, gene_to_fam)
 
     # Results should be very similar (within numerical precision)
     np.testing.assert_allclose(result['dscale'], result_regular['dscale'], rtol=1e-10)
@@ -186,14 +211,14 @@ def test_tox_compute_family_scaling_expert():
     np.testing.assert_allclose(result['loess_y'], result_regular['loess_y'], rtol=1e-10)
 
 
-def test_compute_family_scaling_expert_input_validation():
+def test_compute_family_scaling_input_validation():
     """Test expert version input validation"""
 
     n_families = 6
     genes_per_fam = 4
     n_genes = n_families * genes_per_fam
     span = 0.7
-    mode = 1
+    mode = "robust"
     n_iters = 3
     degree = 2
 
@@ -214,37 +239,19 @@ def test_compute_family_scaling_expert_input_validation():
         np.full(genes_per_fam, 6)
     ]).astype(np.int32)
 
-    # Test wrong size work arrays
-    error_caught1 = False
-    try:
-        perm_tmp = np.empty(n_genes - 1, dtype=np.int32)  # Wrong size
-        stack_left_tmp = np.empty(n_genes, dtype=np.int32)
-        stack_right_tmp = np.empty(n_genes, dtype=np.int32)
+    # distances and gene_to_fam share n_genes; a mismatch has to be rejected
+    assert_error(
+        lambda: compute_family_scaling(
+            n_families, distances[:-1], gene_to_fam, span, degree, mode, n_iters),
+        "Expected an error for mismatched distances / gene_to_fam lengths",
+    )
 
-        tox_compute_family_scaling_expert(
-            distances, gene_to_fam, span, degree, mode, n_iters, perm_tmp, stack_left_tmp,
-            stack_right_tmp
-        )
-    except ValueError as e:
-        error_caught1 = True
-        assert "same length" in str(e)
-    assert error_caught1
-
-    # Test another wrong size array
-    error_caught2 = False
-    try:
-        perm_tmp = np.empty(n_genes, dtype=np.int32)
-        stack_left_tmp = np.empty(n_genes, dtype=np.int32)
-        stack_right_tmp = np.empty(n_genes + 1, dtype=np.int32)
-
-        tox_compute_family_scaling_expert(
-            distances, gene_to_fam, span, degree, mode, n_iters, perm_tmp, stack_left_tmp,
-            stack_right_tmp
-        )
-    except ValueError as e:
-        error_caught2 = True
-        assert "same length" in str(e)
-    assert error_caught2
+    # an unknown mode string is not one of the tabulated values
+    assert_error(
+        lambda: compute_family_scaling(
+            n_families, distances, gene_to_fam, span, degree, "not_a_mode", n_iters),
+        "Expected an error for an invalid mode string", ERR_INVALID_INPUT,
+    )
 
 
 # =====================
@@ -258,7 +265,7 @@ def test_compute_rdi_basic():
     gene_to_fam = np.array([1, 1, 2, 2, 2], dtype=np.int32)
     dscale = np.array([1.5, 2.0], dtype=np.float64)  # Manual scaling factors
 
-    rdi = tox_compute_rdi(distances, gene_to_fam, dscale)
+    rdi = compute_rdi(distances, gene_to_fam, dscale)['rdi']
 
     # Verify properties
     assert len(rdi) == len(distances)
@@ -274,7 +281,7 @@ def test_compute_rdi_outlier_detection():
     gene_to_fam = np.array([1, 1, 1, 1], dtype=np.int32)
     dscale = np.array([1.0], dtype=np.float64)
 
-    rdi = tox_compute_rdi(distances, gene_to_fam, dscale)
+    rdi = compute_rdi(distances, gene_to_fam, dscale)['rdi']
 
     # The outlier should have much higher RDI
     assert rdi[3] > rdi[0]
@@ -292,7 +299,7 @@ def test_identify_outliers_basic():
     # RDI values with clear outlier
     rdi = np.array([0.5, 0.6, 0.4, 3.5, 0.5], dtype=np.float64)
 
-    result = tox_identify_outliers(rdi, percentile=0.8)  # Use 80th percentile
+    result = identify_outliers(rdi, percentile=0.8)  # Use 80th percentile
 
     # Verify that gene with RDI=3.5 is identified as outlier
     assert result['outliers'][3] == True
@@ -304,7 +311,7 @@ def test_identify_outliers_no_outliers():
 
     rdi = np.array([0.5, 0.6, 0.4, 0.7, 0.5], dtype=np.float64)  # All low RDI
 
-    result = tox_identify_outliers(rdi, percentile=0.99)  # Very high percentile
+    result = identify_outliers(rdi, percentile=0.99)  # Very high percentile
 
     # With very high percentile, few or no outliers should be found
     assert isinstance(result['outliers'], np.ndarray)
@@ -316,7 +323,7 @@ def test_identify_outliers_all_outliers():
 
     rdi = np.array([3.0, 4.0, 5.0, 3.5], dtype=np.float64)  # All high RDI
 
-    result = tox_identify_outliers(rdi, percentile=0.25)  # Low percentile = more outliers
+    result = identify_outliers(rdi, percentile=0.25)  # Low percentile = more outliers
 
     # With low percentile, more outliers should be found
     assert sum(result['outliers']) >= 1
@@ -348,7 +355,7 @@ def test_detect_outliers_pipeline():
     ], dtype=np.int32)
     percentile = 0.9
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile)
+    result = detect_outliers(distances, gene_to_fam, percentile)
 
     # Verify structure
     assert len(result['outliers']) == len(distances)
@@ -378,7 +385,7 @@ def test_detect_outliers_performance():
     import time
     start_time = time.time()
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile=0.95)
+    result = detect_outliers(distances, gene_to_fam, percentile=0.95)
 
     end_time = time.time()
     elapsed = end_time - start_time
@@ -397,14 +404,14 @@ def test_detect_outliers_edge_cases():
     distances = np.array([1.0, 2.0, 3.0], dtype=np.float64)
     gene_to_fam = np.array([1, 1, 1], dtype=np.int32)
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile=0.95)
+    result = detect_outliers(distances, gene_to_fam, percentile=0.95)
     assert len(result['loess_x']) == 1
 
     # Case 2: Each gene in different family
     distances = np.array([1.0, 2.0, 3.0], dtype=np.float64)
     gene_to_fam = np.array([1, 2, 3], dtype=np.int32)
 
-    result = tox_detect_outliers(distances, gene_to_fam, percentile=0.95)
+    result = detect_outliers(distances, gene_to_fam, percentile=0.95)
     assert len(result['loess_x']) == 3
 
 

@@ -12,11 +12,10 @@
 !| raw array payload follows immediately after the header, written as one
 !| contiguous block by the type-specific serializers.
 module f42_serde_arrays_utils
-    use safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use f42_serde_utils
     use tox_errors
-    implicit none
+    M_IMPLICIT_NONE
 
     public :: get_array_metadata, read_file_header_helper, write_file_header
 
@@ -174,8 +173,9 @@ contains
         M_CHECK_IO_ERR(ERR_READ_DIMS)
     end subroutine read_file_header_helper
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Get the metadata of an array file
+    !> M_EXPORT_C
+    !| summary: Get the metadata of an array file
+    !| AUTHOR_AARON_SCHROEDER
     subroutine get_array_metadata(filename, dims_out, dims_out_capacity, ndims, type_code, ierr)
 
         character(len=*), intent(in) :: filename
@@ -186,6 +186,7 @@ contains
             !! Capacity of the dims_out array
         integer(int32), intent(out) :: dims_out(dims_out_capacity)
             !! Array to store output dimensions
+            !! DM_RESULT_SIZE_IS(ndims)
         integer(int32), intent(out) :: type_code
             !! Type code of the serialized array
             !!
@@ -217,57 +218,3 @@ contains
         dims_out(1:ndims) = dims
     end subroutine get_array_metadata
 end module f42_serde_arrays_utils
-
-!> C binding for the subroutine to get the dimensions of an array file
-subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, ndims, type_code, ierr) bind(C, name="get_array_metadata_c")
-    use iso_c_binding, only: c_int, c_char
-    use f42_serde_arrays_utils, only: get_array_metadata
-    use tox_conversions, only: c_char_1d_as_string
-    use tox_errors, only: is_err
-    M_USE_NULL_VALIDATION
-    implicit none
-
-    ! Input
-    integer(c_int), intent(in), target :: fn_len
-        !! Length of the filename array
-    character(kind=c_char, len=1), intent(in), target :: filename(fn_len)
-        !! Array of ASCII characters representing the filename
-    integer(c_int), intent(in), target :: dims_out_capacity
-        !! Capacity of the dims_out array
-
-    ! Output
-    integer(c_int), intent(out), target :: dims_out(dims_out_capacity)
-        !! Output array for dimensions
-    integer(c_int), intent(out), target :: ndims
-        !! Output variable for the number of dimensions
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-    integer(c_int), intent(out), target :: type_code
-        !! Type code of the serialized array
-        !!
-        !!
-        !! |    Type   |           Code          |
-        !! |-----------|-------------------------|
-        !! |  integer  |   M_INTEGER_TYPE_CODE  |
-        !! |    real   |   M_REAL_TYPE_CODE     |
-        !! |  complex  |   M_COMPLEX_TYPE_CODE  |
-        !! |  logical  |   M_LOGICAL_TYPE_CODE  |
-        !! | character |      string length      |
-        !!
-
-    ! Local variables
-    character(len=:), allocatable :: filename_f
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(fn_len)
-    M_CHECK_NON_NULL(filename)
-    M_CHECK_NON_NULL(dims_out)
-    M_CHECK_NON_NULL(ndims)
-    M_CHECK_NON_NULL(type_code)
-    M_CHECK_NON_NULL(dims_out_capacity)
-
-    call c_char_1d_as_string(filename, filename_f, ierr)
-    if (is_err(ierr)) return
-
-    call get_array_metadata(filename_f, dims_out, dims_out_capacity, ndims, type_code, ierr)
-end subroutine get_array_metadata_c

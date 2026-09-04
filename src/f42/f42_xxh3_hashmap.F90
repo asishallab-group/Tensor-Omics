@@ -1,17 +1,18 @@
+#include <src/macros.h>
+
 !> AUTHOR_AARON_SCHROEDER
 !| String-keyed hashmap (`character -> integer(int32)`) and hashset (`character` membership),
 !| implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
-!| algorithm for hashing. Both containers grow automatically via [[f42_xxh3_hashmap(module):resize_hashmap(subroutine)]]
-!| / [[f42_xxh3_hashmap(module):resize_hashset(subroutine)]] once the load factor exceeds
-!| [[f42_xxh3_hashmap(module):MAX_LOAD_FACTOR(variable)]].
+!| algorithm for hashing. Both containers rehash into a larger bucket array of their own accord
+!| once three quarters full, so a caller never sizes one twice.
 module f42_xxh3_hashmap
-    use safeguard
+    use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_loc
     use iso_fortran_env, only: int32, int64
-    use f42_utils, only: next_power_of_two
-    use config, only: DEBUG, debug_hashing
+    use f42_math_impl, only: next_power_of_two
+    use f42_config, only: DEBUG, debug_hashing
     use tox_errors, only: set_ok, set_err, ERR_INVALID_INPUT
-    implicit none
+    M_IMPLICIT_NONE
     private
 
     public :: hashmap_type, hashmap_create, hashmap_destroy, hashmap_get, hashmap_put
@@ -22,7 +23,7 @@ module f42_xxh3_hashmap
     interface
         function xxh3_hash_c(key, length) bind(C, name="XXH3_64bits")
             use, intrinsic :: iso_c_binding, only: c_ptr, c_int, c_int64_t
-            implicit none
+            M_IMPLICIT_NONE
             type(c_ptr), value :: key
                 !! C pointer to the start of the key's character data.
             integer(c_int), value :: length
@@ -63,7 +64,7 @@ module f42_xxh3_hashmap
     !| Base type for hashmap and hashset (currently)
     type :: hashmap_base
         integer(int32) :: size = 0
-            !! Number of buckets (always a power of two, see [[f42_utils(module):next_power_of_two(function)]]).
+            !! Number of buckets (always a power of two, see [[f42_math_impl(module):next_power_of_two(function)]]).
         integer(int32) :: count = 0
             !! Number of key-value pairs currently stored.
     end type hashmap_base

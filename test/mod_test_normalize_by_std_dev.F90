@@ -2,7 +2,10 @@
 module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: iso_c_binding, only: c_bool
   use tox_normalization
+  ! the tox_normalization module used to re-export it; it is f42 infrastructure
+  use f42_math_impl, only: std_dev
   use test_suite
   use tox_errors
   implicit none
@@ -34,7 +37,7 @@ contains
 
     ! --- Compute using the user's function ---
     s_pop  = std_dev(v)                     ! default: no Bessel correction
-    s_samp = std_dev(v, do_bessel_correction=.true.)
+    s_samp = std_dev(v, do_bessel_correction=.true._c_bool)
 
     ! --- Assertions ---
     call assert_equal_real(s_pop,  sqrt(2.0_real64), 1e-12_real64, &
@@ -56,7 +59,7 @@ contains
       w = [3.14159_real64]
 
       s1  = std_dev(w)
-      s1b = std_dev(w, do_bessel_correction=.true.)
+      s1b = std_dev(w, do_bessel_correction=.true._c_bool)
 
       call assert_equal_real(s1,  0.0_real64, 1e-12_real64, "test_std_dev: std_dev length-1 (population)")
       call assert_equal_real(s1b, 0.0_real64, 1e-12_real64, "test_std_dev: std_dev length-1 (sample)")
@@ -84,9 +87,9 @@ contains
     ! Assign it a huge variance that breaks the linear trend
     mat(1, 10) = 1000.0_real64 
 
-    call normalize_by_std_dev_alloc(ng, nt, mat, res, span, deg, ierr)
+    call normalize_by_std_dev(ng, nt, mat, res, span, deg, ierr)
 
-    call assert_equal_int(ierr, ERR_OK, "test_loess_normalization_outlier_correction: LOESS normalization failed")
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_normalization_outlier_correction: LOESS normalization failed")
 
     call assert_no_nan_real(res, ng*nt, "test_loess_normalization_outlier_correction: NaNs in LOESS result")
   end subroutine test_loess_normalization_outlier_correction
@@ -104,9 +107,9 @@ contains
           mat(1, i) = mat(1, i) + 0.5_real64
         end do
 
-        call normalize_by_std_dev_alloc(ng, nt, mat, res, 0.75d0, 1_int32, ierr)
+        call normalize_by_std_dev(ng, nt, mat, res, 0.75d0, 1_int32, ierr)
         
-        call assert_equal_int(ierr, ERR_OK, "test_loess_zero_variance_handling: LOESS failed even with valid points")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_zero_variance_handling: LOESS failed even with valid points")
         
         call assert_equal_real(res(1, 10), 1.0_real64, 1d-12, "test_loess_zero_variance_handling: Zero variance gene altered")
     end subroutine test_loess_zero_variance_handling

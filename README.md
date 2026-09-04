@@ -51,29 +51,30 @@ This repository contains the source code, methods, snippets, and tests for the *
 /python
   └── ...       # Python scripts that execute pipeline logic and invoke subroutines
 
-/rcpp
-  └── ...       # Rcpp scripts that execute pipeline logic and invoke subroutines
+/r
+  └── ...       # R scripts that execute pipeline logic and invoke subroutines
 
 /snippets
   └── ...       # Code templates or reusable short logic blocks
 
 /src
-  └── ...       # Fortran backend
+  └── generated/# NOTHING here is hand-written; the generator owns it
+  └── ...       # Fortran backend -- `<name>_impl` procedures are the source of truth for the generated API
 
 /test
   └── ...       # Fortran testing
 
 /helper
-  ├── helper_c_wrapper.py       # generates C wrapper subroutines
-  ├── helper_rcpp_wrapper.py    # generates Rcpp wrapper subroutines
-  └── generate_snippets.py      # auto-generates VS Code snippet files from source code
+  └── codegen/  # the C / Python / R / wrapper generator
+  └── generate_code.py          # its entry point
 
-build.sh            # Compile and generate shared libraries (incl. bundled externals)
-build_utils.sh      # Shared helper functions used by the build and test scripts
-fpm.toml            # fpm compilation settings, also holds the FORD config
-authors.h           # Author metadata macros used in the FORD documentation
-test_runner.sh      # Compile and run Fortran unit tests
-run_all_tests.sh    # Run the full test suite (Fortran + Python + R)
+authors.h        # header file, defining macros for author meta tags for Ford documentation
+build.sh         # Compile and generate shared libraries
+build_utils.sh   # Several functions used by build.sh and test_runner.sh
+codegen_guide.md # How to write Fortran the code generator can wrap -- read before adding a procedure
+fpm.toml         # Defines fpm related compilation settings, also includes Ford config
+run_all_tests.sh # Convenience script for running all Fortran and Python, R tests
+test_runner.sh   # Compile and generate unit test
 ```
 
 * **`/build`** stores shared libraries, compiled objects, and binary files resulting from Fortran compilation. It keeps the repository clean by separating source from compiled code.
@@ -82,11 +83,11 @@ run_all_tests.sh    # Run the full test suite (Fortran + Python + R)
 * **`/material`** holds example and reference datasets (`.tsv`) used by the tests and usage demonstrations.
 * **`/misc`** contains the team's coding guidelines (`misc/Fortran_Coding_Guides.pdf`), the detailed method description (`misc/Tensor_Omics_Methods.pdf`), and the Dockerfile (`misc/gfortran.docker`) used to compile the project without installing anything beyond Docker.
 * **`/python`** includes Python scripts that coordinate analysis workflows.
-* **`/rcpp`** includes Rcpp scripts that coordinate analysis workflows.
-* **`/snippets`** includes frequently used or testable units of logic reused across development stages. Snippets expose subroutine names and their arguments. Use the `f42:` prefix for F42-compliant infrastructure and the `tox:` prefix for application-specific subroutines. See `snippets/readme.md` for details.
+* **`/r`** includes R scripts that coordinate analysis workflows.
+* **`/snippets`** includes frequently used or testable units of logic reused across development stages. Snippets expose subroutine names and their arguments. Use the `f42:` prefix for F42-compliant infrastructure and the `tox:` prefix for application-specific subroutines, and `toxdev:` for development convenience snippets. See [Loading snippets into VS Code](#loading-snippets-into-vs-code) for details.
 * **`/src`** contains performance-critical Fortran code compiled during the build process. Subroutines that perform no I/O operations or memory allocations must be declared `pure`.
 * **`/test`** contains unit tests for the Fortran subroutines. `asserts.f90` provides the assertion library; `run_tests.f90` is the central test program. Test files (`mod_test_*.f90`) generally correspond to full modules from `src/`, though newly added subroutines or utility functions from utils are sometimes isolated into their own test cases. See `test/readme.md` for details.
-* **`/helper`** is a temporary development aid for generating C wrappers (`helper_c_wrapper.py`), Rcpp wrappers (`helper_rcpp_wrapper.py`), and VS Code snippet files (`generate_snippets.py`). See `helper/readme.md` for details.
+* **`/helper`** holds the code generator that writes the public API: the validating and allocating wrappers around each `_impl` procedure, and the C, Python and R bindings. See [`codegen_guide.md`](./codegen_guide.md) for how to write Fortran it can wrap, `helper/codegen/README.md` for the generator itself, and `helper/readme.md` for the folder.
 
 ---
 
@@ -101,7 +102,7 @@ See [Install / Compilation](#install--compilation) for step-by-step setup instru
 | libzip | ≥ 1.11 | Required for archive handling |
 | xxhash (XXH3) | ≥ 0.8 | Required for hashing |
 | Python | ≥ 3.7 + NumPy + pandas | Python integration |
-| R | ≥ 3.6 + Rcpp | R integration |
+| R | ≥ 3.6 | R integration |
 | gdb | optional | Needed only for `--debug` flag |
 
 [FORD](https://github.com/Fortran-FOSS-Programmers/ford) (`pip install ford`) is optional and only needed to regenerate the API documentation.
@@ -116,6 +117,18 @@ Clone the repository from GitHub:
 git clone https://github.com/asishallab-group/Tensor-Omics.git
 cd Tensor-Omics
 ```
+
+### Adding or changing a procedure
+
+The public API is **generated**. You write an annotated `<name>_impl` procedure in a
+`<module>_impl` module under `src/f42/` or `src/tox/`, and the validating wrapper, the allocating
+wrapper and the C, Python and R bindings are generated from it -- documentation, input validation
+and error handling included. Every build regenerates them (`./build.sh`, unless
+`--skip-code-generation`).
+
+**[`codegen_guide.md`](./codegen_guide.md) is the guide for that**: what to write, case by case,
+with an example for each. [`helper/codegen/README.md`](./helper/codegen/README.md) covers the
+generator itself, and [`helper/codegen/design/`](./helper/codegen/design/) the rationale.
 
 ---
 
@@ -182,7 +195,7 @@ On Ubuntu/Debian, gfortran 15 is not available in the standard repositories. Use
 **Intel Fortran Compiler** — with additional optimisation flags:
 
 ```bash
-FC=ifx ./build.sh --max-performance 
+FC=ifx ./build.sh --max-performance
 ```
 
 ### Build options
@@ -197,46 +210,41 @@ Beyond the profiles above, `build.sh` accepts several options (which `test_runne
 * `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect.
 * `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=MAX_PERFORMANCE --directive=OTHER_DIRECTIVE`.
 * `--clean-build` — force `fpm` to rebuild `src/` from scratch (enabled automatically when switching git branches). Useful when `fpm` misses changes that do not alter the module structure.
+* `--skip-code-generation` — every build first regenerates the C, Python and R bindings and the generated Fortran wrappers from `src/` (see [`helper/codegen`](./helper/codegen/README.md)), so a source change and its generated layers cannot drift apart. This option skips that. The generated sources are committed, so a build without Python or [`ford`](https://forddocs.readthedocs.io) installed works anyway -- it warns and compiles what is in the tree.
 
 > **Note:** Each `--<option>` maps to an uppercased, `TOX_`-prefixed variable with non-alphanumeric characters replaced by underscores — e.g. `--override-flags` becomes `TOX_OVERRIDE_FLAGS`. Passing `--<option>=<value>` sets that value (a bare flag sets `1`), so any option can equivalently be supplied as an environment variable. An explicit `--<option>` always overrides the corresponding variable.
 
 ### Python integration
 
-The `python/` folder contains the wrapper functions needed to call Tensor Omics subroutines from Python, along with example scripts in `python/test/` that demonstrate usage and can serve as a starting point for your own analyses.
+The `python/tensor_omics/` package is generated: it holds a Python wrapper for every bound subroutine, plus `library.py`, which locates and loads `build/libtensor-omics.so` the first time any wrapper is called. Example scripts in `python/test/` demonstrate usage and can serve as a starting point for your own analyses.
 
-Once the shared library is available, load it from Python:
+Once the shared library is built, just import from the package:
 
 ```python
-import ctypes, os
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))  # if running outside python/test/
 
-lib_path = os.path.abspath("build/libtensor-omics.so")
-ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-
-lib = ctypes.CDLL(lib_path)
-from tensoromics_functions import tox_euclidean_distance
+from tensor_omics import clock_hand_angle_between_vectors
 ```
 
 Verify that the library loaded correctly:
 
 ```bash
-python3 python/test/mod_test_euclidean_distance.py
+python3 python/test/mod_test_clock_hand_angles.py
 ```
 
 ### R integration
 
-The `rcpp/` folder contains the Rcpp wrapper functions for calling Tensor Omics from R, along with example tests in `rcpp/test/` that illustrate how to use each function.
+The `r/tensor_omics/` package is likewise generated, one wrapper per bound subroutine. `r/load_tensor_omics.R` is the hand-written counterpart to `library.py`: it `dyn.load`s `build/libtensor-omics.so` and sources the generated wrappers. Example tests in `r/test/` illustrate usage.
 
 ```r
-library(Rcpp)
-lib_path <- shQuote(normalizePath("build"))
-Sys.setenv(PKG_LIBS = paste0("-Wl,-rpath,", lib_path, " -L", lib_path, " -ltensor-omics -lgfortran"))
-Rcpp::sourceCpp("rcpp/tensoromics_functions.cpp", env = .GlobalEnv)
+source("r/load_tensor_omics.R")
 ```
 
 Verify that the library loaded correctly:
 
 ```bash
-Rscript rcpp/test/mod_test_euclidean_distance.R
+Rscript r/test/mod_test_clock_hand_angles.R
 ```
 
 ---
@@ -294,7 +302,7 @@ cp snippets/Python_tox_snippets.json  "$HOME/Library/Application Support/Code/Us
 cp snippets/R_tox_snippets.json       "$HOME/Library/Application Support/Code/User/snippets/"
 ```
 
-Restart VS Code after copying. Snippets are auto-generated from the source code by the CI pipeline — see `snippets/readme.md` for details on how they are maintained.
+Restart VS Code after copying. Snippets are auto-generated from the source code by the code generator (see [Adding or changing a procedure](#adding-or-changing-a-procedure)); `snippets/toxdev_snippets.json` is the one hand-written exception.
 
 ---
 

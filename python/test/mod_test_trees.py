@@ -4,8 +4,11 @@ import sys
 import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensoromics_functions import build_bst_index, build_kd_index, bst_range_query, build_spherical_kd
+from tensor_omics import (
+    build_bst_index, build_kd_index, bst_range_query, bst_range_query_expert, build_spherical_kd
+)
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT
 
 
 # --- Test Cases ---
@@ -17,11 +20,13 @@ def test_bst():
 
     assert all(x[ix - 1] == sorted(x)), "expected x to be sorted"
 
-    # Range query using the wrapper function
-    res = bst_range_query(x, ix, 1.5, 3.5)
-    matching_indices = res["matching_indices"]
+    # Range query against the index we already hold
+    matching_indices = bst_range_query_expert(x, ix, 1.5, 3.5)
 
     assert all(x[matching_indices - 1] == [2.0, 3.0]), "expected range values are wrong"
+
+    # The allocating entry point builds the index itself
+    assert all(bst_range_query(x, 1.5, 3.5) == matching_indices), "allocating query disagrees"
 
 
 def test_kdtree():
@@ -78,7 +83,7 @@ def test_spherical_kdtree_specific_cases():
 def test_bst_edge_cases():
     # Empty array
     x = np.array([], dtype=np.float64, order="F")
-    assert_error(lambda: build_bst_index(x), "Expected error for empty bst index input")
+    assert_error(lambda: build_bst_index(x), "Expected error for empty bst index input", ERR_EMPTY_INPUT)
 
     # Single element
     x = np.array([42.0], dtype=np.float64)
@@ -88,7 +93,7 @@ def test_bst_edge_cases():
 def test_kdtree_edge_cases():
     # Empty matrix
     X = np.empty((2, 0), dtype=np.float64, order='F')
-    assert_error(lambda: build_kd_index(X), "Expected error for empty kd tree input")
+    assert_error(lambda: build_kd_index(X, np.array([1, 2], dtype=np.int32)), "Expected error for empty kd tree input", ERR_EMPTY_INPUT)
 
     # Single point
     X = np.array([[1.0, 2.0]], dtype=np.float64).T.copy(order='F')
@@ -98,7 +103,7 @@ def test_kdtree_edge_cases():
 def test_spherical_kdtree_edge_cases():
     # Empty spherical data
     empty_vectors = np.empty((3, 0), dtype=np.float64, order='F')
-    assert_error(lambda: build_spherical_kd(empty_vectors) - 1, "Expected error for empty spherical kd tree input")
+    assert_error(lambda: build_spherical_kd(empty_vectors, np.array([1, 2, 3], dtype=np.int32)) - 1, "Expected error for empty spherical kd tree input", ERR_EMPTY_INPUT)
 
     # Single vector on sphere
     single_vector = np.array([[0.0, 0.0, 1.0]], dtype=np.float64).T.copy(order='F')  # North pole
@@ -121,7 +126,7 @@ def test_performance():
     large_vectors = np.random.randn(3, 500).astype(np.float64, order="F")  # 3D, 500 vectors
     large_vectors = large_vectors / np.linalg.norm(large_vectors, axis=0)
     start_time = time.time()
-    sphere_indices = build_spherical_kd(large_vectors)
+    sphere_indices = build_spherical_kd(large_vectors, np.array([1, 2, 3], dtype=np.int32))
     end_time = time.time()
 
     assert end_time - start_time < 1, "performance very bad, should be faster than a second"
