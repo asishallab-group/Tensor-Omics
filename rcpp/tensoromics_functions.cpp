@@ -1188,6 +1188,7 @@ void compute_noise_pvalues_pipeline_c(
   const int* k_max,
   const double* tau,
   const double* trim_frac,
+  const int* null_method,
   double* pvalues_own,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
@@ -1217,6 +1218,7 @@ void compute_noise_pvalues_pipeline_exact_c(
   const int* k_max,
   const double* tau,
   const double* trim_frac,
+  const int* null_method,
   double* pvalues_own,
   int* n_genes_with_pvalue,
   const int* max_pool_size,
@@ -4744,6 +4746,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
     int k_max,
     double tau,
     double trim_frac,
+    int null_method,
     int max_pool_size) {
 
     int case_n_samples = case_replicates.nrow();
@@ -4771,7 +4774,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
             obs_own.begin(), valid_genes_own.begin(),
             &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau, &trim_frac,
+            &k_start, &k_step, &k_max, &tau, &trim_frac, &null_method,
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
@@ -4782,7 +4785,7 @@ static Rcpp::List run_noise_pvalues_pipeline(
             control_means.begin(), control_replicates.begin(), &control_n_genes, &control_n_samples,
             obs_own.begin(), valid_genes_own.begin(),
             &n_genes, &norm_method,
-            &k_start, &k_step, &k_max, &tau, &trim_frac,
+            &k_start, &k_step, &k_max, &tau, &trim_frac, &null_method,
             pvalues_own.begin(), &n_success, &max_pool_size,
             neighborhood_size_own_case.begin(), neighborhood_size_own_control.begin(),
             neighborhood_size_case.begin(),
@@ -4818,7 +4821,14 @@ static Rcpp::List run_noise_pvalues_pipeline(
 //' @param k_max Integer maximum pool size
 //' @param tau Double adaptive stopping threshold
 //' @param trim_frac Double symmetric per-tail residual-pool trim fraction in
-//'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0). 0 = off.
+//'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0) AND only with
+//'   null_method = 0 (trimming sorts the pool, destroying the per-gene blocks the
+//'   blocked null reads). 0 = off.
+//' @param null_method Integer null construction for the baseline model: 0 =
+//'   resample n_rep residuals iid from the pooled neighbourhood (historical
+//'   behaviour); 1 = gene-blocked (pick a neighbour gene, resample within it),
+//'   computed by exact multiset enumeration where that fits, else sampled. The
+//'   exact model implements only its own null and errors on a non-zero value.
 //' @param max_pool_size Integer maximum neighborhood pool size
 //'
 //' @return List with pvalues_own, success count, three neighborhood sizes
@@ -4837,13 +4847,14 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_rcpp(
     int k_max,
     double tau,
     double trim_frac,
+    int null_method,
     int max_pool_size) {
 
     return run_noise_pvalues_pipeline(
-        0,  // baseline (bootstrap mean-difference null)
+        0,  // baseline (mean-difference null)
         case_means, case_replicates, control_means, control_replicates,
         obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, trim_frac, max_pool_size);
+        norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, max_pool_size);
 }
 
 //' Compute noise-model p-values (EXACT variant, gene-vs-own comparison)
@@ -4870,12 +4881,13 @@ Rcpp::List tox_compute_noise_pvalues_pipeline_exact_rcpp(
     int k_max,
     double tau,
     double trim_frac,
+    int null_method,
     int max_pool_size) {
 
     return run_noise_pvalues_pipeline(
         1,  // exact (sorted binary-search + sqrt(n) scaling)
         case_means, case_replicates, control_means, control_replicates,
         obs_own, valid_genes_own,
-        norm_method, k_start, k_step, k_max, tau, trim_frac, max_pool_size);
+        norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, max_pool_size);
 }
 

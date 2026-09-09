@@ -3615,6 +3615,17 @@ compute_scaled_distance_quantile <- function(distribution, c_const) {
 #' @param tau Numeric adaptive stopping threshold.
 #' @param trim_frac Numeric symmetric per-tail residual-pool trim fraction in
 #'   [0, 0.5); applied ONLY for raw normalization (norm_method == 0). 0 = off.
+#' @param null_method Integer null construction (baseline model only): 0 =
+#'   resample `n_rep` residuals iid from the POOLED neighbourhood (historical
+#'   behaviour); 1 = GENE-BLOCKED — pick one neighbour gene, then resample
+#'   within that gene, so each null mean carries a single coherent noise level
+#'   as a real gene's mean does. The blocked null is computed by exact multiset
+#'   enumeration wherever `C(2n-1, n) * n_genes_pool` fits the Fortran cap
+#'   (through `n_rep = 5` at `k_max = 50` by default), which uses no RNG and
+#'   drops the p-value floor from `1/(n_boot + 1)` to `1/(W_case * W_control + 1)`
+#'   with `W = n_genes_pool * n_rep^n_rep`; above the cap it is sampled. The
+#'   exact variant implements only its own null and returns `ierr != 0` for any
+#'   non-zero value.
 #' @param max_pool_size Integer maximum residual pool size.
 #'
 #' @return A list with pvalues_own, n_success, three neighborhood sizes
@@ -3633,6 +3644,7 @@ tox_compute_noise_pvalues_pipeline <- function(
     k_max = 1000L,
     tau = 0.01,
     trim_frac = 0.0,
+    null_method = 0L,
     max_pool_size
 ) {
 
@@ -3649,6 +3661,7 @@ tox_compute_noise_pvalues_pipeline <- function(
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
         trim_frac = as.numeric(trim_frac),
+        null_method = as.integer(null_method),
         max_pool_size = as.integer(max_pool_size)
     )
     return(result)
@@ -3680,6 +3693,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
     k_max = 1000L,
     tau = 0.01,
     trim_frac = 0.0,
+    null_method = 0L,
     max_pool_size
 ) {
 
@@ -3696,6 +3710,7 @@ tox_compute_noise_pvalues_pipeline_exact <- function(
         k_max = as.integer(k_max),
         tau = as.numeric(tau),
         trim_frac = as.numeric(trim_frac),
+        null_method = as.integer(null_method),
         max_pool_size = as.integer(max_pool_size)
     )
     return(result)
