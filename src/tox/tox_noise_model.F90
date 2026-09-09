@@ -60,6 +60,48 @@ module noise_model
 
     integer(int32), parameter :: N_BOOTSTRAP_DRAWS = 10000_int32
         !! Number of bootstrap resamples used to build the `own` mean-difference null
+        !! (sampled null constructions only; the enumerated blocked null uses none)
+
+    integer(int32), parameter :: NULL_METHOD_POOLED = 0_int32
+        !! `null_method`: resample `n_rep` residuals iid from the POOLED neighbourhood.
+        !! Historical behaviour of this module. One draw can combine a residual from a
+        !! quiet gene with one from a noisy gene, which no real gene's mean does.
+
+    integer(int32), parameter :: NULL_METHOD_BLOCKED = 1_int32
+        !! `null_method`: GENE-BLOCKED null — pick one neighbour gene, then resample
+        !! within that gene, so every null mean carries a single coherent noise level.
+        !! Computed by exact multiset enumeration when that fits under
+        !! `BLOCKED_MAX_ENUM_VALUES`, otherwise sampled.
+
+    integer(int64), parameter :: BLOCKED_MAX_ENUM_VALUES = 8000_int64
+        !! Cap on enumerated values per side, `C(2n-1, n) * n_genes_pool`; above it the
+        !! blocked null is sampled instead. The binding constraint is RUNTIME, not
+        !! memory: the per-gene cost is one sort plus `N` binary searches over `N`
+        !! values, and `N` grows like `C(2n-1, n)`, i.e. ~4x per extra replicate.
+        !! Measured at 2,000 genes, `k_max = 50`, against this module's own 10,000-draw
+        !! pooled bootstrap on the same data (gfortran -O2, single core):
+        !!
+        !!   n_rep :   3      4      5       6       7
+        !!   values:  500  1,750  6,300  23,100  85,800   (= C(2n-1,n) * 50)
+        !!   blocked: 0.41s  1.71s  7.34s  30.6s   131s
+        !!   pooled : 1.45s  1.79s  2.18s   2.63s  3.03s
+        !!   ratio  : 0.28x  0.95x  3.4x    12x     43x
+        !!
+        !! So at `n_rep = 3` — the case where the p-value floor actually bites —
+        !! enumeration is ~3.5x FASTER than the bootstrap it replaces AND removes the
+        !! floor; by `n_rep = 6` it costs 12x. The default 8,000 enumerates through
+        !! `n_rep = 5` at `k_max = 50` and samples from 6 up. Raise it if a lower floor
+        !! at higher replicate counts is worth the time (memory is not the issue: 8,000
+        !! values is 64 KB per side). The obvious optimisation before raising it far is
+        !! to sort BOTH sides once and sweep them with two pointers instead of doing
+        !! `N` binary searches, which removes a `log N` factor from the dominant term.
+
+    integer(int32), parameter :: RNG_BUFFER_MAX = 1048576_int32
+        !! Upper bound on the pre-drawn random-number buffer (8 MB). Random numbers
+        !! are produced one CHUNK of draws at a time by a single `random_number` array
+        !! fill instead of one call per draw: at `n_rep = 3` and 10,000 draws the
+        !! whole gene needs ONE RNG call instead of 10,000. The buffer is allocated
+        !! once by the alloc layer and reused for every gene.
 
     real(real64), parameter :: NOISE_LOG_OFFSET = 1.0_real64
         !! Additive constant `c` in the log-space residual
@@ -551,7 +593,7 @@ contains
                                                     pool_control, n_pool_control, &
                                                     n_rep_case, n_rep_control, &
                                                     observed_statistic_abs, n_boot, &
-                                                    p_value)
+                                                    rbuf, p_value)
         integer(int32), intent(in) :: n_pool_case
         !! Size of the case residual pool (the sampling source)
         real(real64), dimension(n_pool_case), intent(in) :: pool_case
@@ -568,44 +610,462 @@ contains
         !! Absolute value of the observed test statistic
         integer(int32), intent(in) :: n_boot
         !! Number of bootstrap resamples
+        real(real64), intent(inout) :: rbuf(:)
+        !! Pre-allocated random-number buffer (reused across genes)
         real(real64), intent(out) :: p_value
         !! Bootstrapped p-value
 
-        integer(int32) :: i_boot, i_rep, idx, count_ge
+        integer(int32) :: i_boot, i_rep, idx, count_ge, per_iter, chunk, j, base
         real(real64) :: sum_case, sum_control, null_stat
-        real(real64) :: rbuf(n_rep_case + n_rep_control)
 
-        ! Draw case AND control resample indices for one bootstrap iteration in a
-        ! SINGLE array RNG call: rbuf(1:n_rep_case) feeds the case side and
-        ! rbuf(n_rep_case+1 : n_rep_case+n_rep_control) the control side. Map
-        ! [0,1) -> [1, n_pool]. This replaces the millions of scalar `rand_range`
-        ! calls per gene (n_boot * n_rep of them) with n_boot array fills, which is
-        ! far cheaper per value. The fill MUST be inside the loop so each iteration
-        ! draws fresh indices; drawing once would reuse identical resamples every
-        ! iteration and collapse the null. `init_random(42)` (called once by the
-        ! pipeline) seeds this stream, so results stay reproducible.
+        ! Random numbers are drawn a CHUNK OF ITERATIONS at a time with a single
+        ! `random_number` array fill, instead of one fill (or worse, one scalar call)
+        ! per iteration: `rbuf` holds `chunk * per_iter` values, laid out iteration by
+        ! iteration, with the case indices first and the control indices after. With
+        ! the default buffer this is ONE RNG call per gene at typical replicate
+        ! counts, which is where the intrinsic's per-call overhead was going. The
+        ! chunk is sized from the buffer so memory stays bounded when `n_rep` is
+        ! large. `init_random(42)` (called once by the pipeline) seeds this stream,
+        ! so results stay reproducible for a fixed gene order.
+        per_iter = n_rep_case + n_rep_control
+        chunk = max(1, min(n_boot, int(size(rbuf), int32) / per_iter))
+
         count_ge = 0
-        do i_boot = 1, n_boot
-            call random_number(rbuf)
-            sum_case = 0.0_real64
-            do i_rep = 1, n_rep_case
-                idx = min(int(rbuf(i_rep) * real(n_pool_case, real64), int32) + 1, n_pool_case)
-                sum_case = sum_case + pool_case(idx)
-            end do
+        i_boot = 0
+        do while (i_boot < n_boot)
+            j = min(chunk, n_boot - i_boot)
+            call random_number(rbuf(1:j * per_iter))
+            do base = 0, (j - 1) * per_iter, per_iter
+                sum_case = 0.0_real64
+                do i_rep = 1, n_rep_case
+                    idx = min(int(rbuf(base + i_rep) * real(n_pool_case, real64), int32) + 1, n_pool_case)
+                    sum_case = sum_case + pool_case(idx)
+                end do
 
-            sum_control = 0.0_real64
-            do i_rep = 1, n_rep_control
-                idx = min(int(rbuf(i_rep + n_rep_case) * real(n_pool_control, real64), int32) + 1, n_pool_control)
-                sum_control = sum_control + pool_control(idx)
-            end do
+                sum_control = 0.0_real64
+                do i_rep = 1, n_rep_control
+                    idx = min(int(rbuf(base + n_rep_case + i_rep) * real(n_pool_control, real64), int32) + 1, &
+                              n_pool_control)
+                    sum_control = sum_control + pool_control(idx)
+                end do
 
-            null_stat = abs(sum_case / real(n_rep_case, real64) - &
-                            sum_control / real(n_rep_control, real64))
-            if (null_stat >= observed_statistic_abs) count_ge = count_ge + 1
+                null_stat = abs(sum_case / real(n_rep_case, real64) - &
+                                sum_control / real(n_rep_control, real64))
+                if (null_stat >= observed_statistic_abs) count_ge = count_ge + 1
+            end do
+            i_boot = i_boot + j
         end do
 
         p_value = real(count_ge + 1, real64) / real(n_boot + 1, real64)
     end subroutine compute_pvalue_bootstrap_mean_helper
+
+    ! =========================================================================
+    ! gene-blocked mean null: multiset enumeration + weighted exact tail count
+    ! =========================================================================
+
+    !> Number of distinct MULTISETS drawn when resampling `n_rep` of `n_rep` values
+    !| with replacement: `C(2*n_rep - 1, n_rep)`.
+    !|
+    !| Computed as the running product `C(n+j, j)`, which is an integer at every
+    !| step, so the alternating multiply/divide stays exact. Returns -1 on int64
+    !| overflow (unreachable for any `n_rep` this module will enumerate, but the
+    !| guard is what makes the cap check below safe).
+    !|
+    !|   n_rep :  2   3    4    5    6    8      10       12
+    !|   count :  3  10   35  126  462  6435  92378  1352078
+    pure function n_multisets_helper(n_rep) result(n_ms)
+        integer(int32), intent(in) :: n_rep
+        !! Replicate count (= resample size = number of source values)
+        integer(int64) :: n_ms
+        !! C(2*n_rep - 1, n_rep), or -1 on overflow
+
+        integer(int32) :: j
+
+        if (n_rep < 1) then
+            n_ms = 0_int64
+            return
+        end if
+        n_ms = 1_int64
+        do j = 1, n_rep - 1
+            if (n_ms > huge(0_int64) / int(n_rep + j, int64)) then
+                n_ms = -1_int64
+                return
+            end if
+            n_ms = (n_ms * int(n_rep + j, int64)) / int(j, int64)
+        end do
+    end function n_multisets_helper
+
+    !> Binomial coefficient `C(n, k)` as a real64, for the multinomial weights.
+    !|
+    !| Exact for every (n, k) reachable under `BLOCKED_MAX_ENUM_VALUES`: the largest
+    !| weight enumerated is `n_rep!` and `12! = 4.79e8`, far inside the 2^53 range
+    !| where real64 represents integers exactly.
+    pure function binom_helper(n, k) result(c)
+        integer(int32), intent(in) :: n
+        !! Total count
+        integer(int32), intent(in) :: k
+        !! Chosen count
+        real(real64) :: c
+        !! C(n, k)
+
+        integer(int32) :: j, kk
+
+        if (k < 0 .or. k > n) then
+            c = 0.0_real64
+            return
+        end if
+        kk = min(k, n - k)
+        c = 1.0_real64
+        do j = 1, kk
+            c = (c * real(n - kk + j, real64)) / real(j, real64)
+        end do
+    end function binom_helper
+
+    !> Enumerate every distinct bootstrap MEAN of one gene's residuals, with weights.
+    !|
+    !| Resampling `n_rep` of a gene's `n_rep` residuals with replacement produces
+    !| `n_rep**n_rep` ordered tuples but only `C(2*n_rep - 1, n_rep)` distinct
+    !| multisets. This walks the non-decreasing index tuples
+    !| `1 <= i_1 <= i_2 <= ... <= i_n <= n` as an odometer and emits, for each, the
+    !| mean of the selected residuals together with its multinomial weight
+    !| `n! / prod_j(m_j!)` (`m_j` = run lengths in the tuple), so the weighted set is
+    !| exactly equivalent to the full `n_rep**n_rep` enumeration but far smaller:
+    !| 10 values instead of 27 at `n_rep = 3`, 462 instead of 46,656 at `n_rep = 6`.
+    !|
+    !| The weights sum to `n_rep**n_rep` by construction; the caller relies on that
+    !| when forming the pair-weight denominator.
+    !|
+    !| `means_out` / `weights_out` must each have room for at least
+    !| `n_multisets_helper(n_rep)` entries.
+    pure subroutine enumerate_gene_means_helper(resid, n_rep, means_out, weights_out, n_out)
+        real(real64), intent(in) :: resid(:)
+        !! This gene's residuals (first `n_rep` entries are used)
+        integer(int32), intent(in) :: n_rep
+        !! Replicate count = resample size
+        real(real64), intent(out) :: means_out(:)
+        !! Output: distinct bootstrap means
+        real(real64), intent(out) :: weights_out(:)
+        !! Output: multinomial weight of each mean
+        integer(int32), intent(out) :: n_out
+        !! Number of entries written
+
+        integer(int32) :: idx(n_rep)
+        integer(int32) :: i, p, run_len, rem
+        real(real64) :: s, w
+
+        n_out = 0
+        if (n_rep < 1) return
+
+        idx = 1
+        do
+            n_out = n_out + 1
+
+            s = 0.0_real64
+            do i = 1, n_rep
+                s = s + resid(idx(i))
+            end do
+            means_out(n_out) = s / real(n_rep, real64)
+
+            ! Multinomial weight from the run lengths of the (non-decreasing) tuple:
+            ! n! / prod_j(m_j!) built as a product of binomials, which keeps every
+            ! intermediate an exact integer.
+            w = 1.0_real64
+            rem = n_rep
+            i = 1
+            do while (i <= n_rep)
+                run_len = 1
+                do while (i + run_len <= n_rep)
+                    if (idx(i + run_len) /= idx(i)) exit
+                    run_len = run_len + 1
+                end do
+                w = w * binom_helper(rem, run_len)
+                rem = rem - run_len
+                i = i + run_len
+            end do
+            weights_out(n_out) = w
+
+            ! Advance the odometer: find the rightmost position that can still be
+            ! incremented, bump it, and reset everything to its right to the same
+            ! value (keeping the tuple non-decreasing).
+            p = n_rep
+            do while (p >= 1)
+                if (idx(p) /= n_rep) exit
+                p = p - 1
+            end do
+            if (p < 1) exit
+            idx(p) = idx(p) + 1
+            if (p < n_rep) idx(p + 1:n_rep) = idx(p)
+        end do
+    end subroutine enumerate_gene_means_helper
+
+    !> Build the complete gene-blocked mean null for one gathered pool.
+    !|
+    !| `gather_residuals_helper` appends whole genes, so the flat pool is exactly
+    !| `n_pool / n_rep` contiguous blocks of `n_rep` residuals — one per neighbour
+    !| gene. (A partial trailing block can only arise from the `max_pool_size` cap;
+    !| it is dropped.) Each block is enumerated separately, which is what makes the
+    !| null GENE-BLOCKED: every null mean is formed from ONE gene's residuals, the
+    !| way a real gene's mean is, instead of mixing residuals from a quiet gene and
+    !| a noisy one as an iid draw from the pooled residuals does.
+    !|
+    !| Returns `ok = .false.` (and writes nothing) when the enumeration would exceed
+    !| `max_values`; the caller then falls back to the sampled blocked null.
+    pure subroutine build_blocked_means_helper(pool, n_pool, n_rep, &
+                                               means_out, weights_out, n_out, &
+                                               max_values, ok)
+        real(real64), intent(in) :: pool(:)
+        !! Flat residual pool as returned by `gather_residuals_helper`
+        integer(int32), intent(in) :: n_pool
+        !! Number of valid residuals in `pool`
+        integer(int32), intent(in) :: n_rep
+        !! Residuals contributed by each gene (= replicate count)
+        real(real64), intent(out) :: means_out(:)
+        !! Output: all enumerated block means
+        real(real64), intent(out) :: weights_out(:)
+        !! Output: their multinomial weights
+        integer(int32), intent(out) :: n_out
+        !! Number of entries written (0 when `ok` is .false.)
+        integer(int64), intent(in) :: max_values
+        !! Cap on the number of enumerated values
+        logical, intent(out) :: ok
+        !! .true. if the enumeration was performed
+
+        integer(int32) :: n_genes_pool, g, m, base
+        integer(int64) :: n_ms
+
+        n_out = 0
+        ok = .false.
+        if (n_rep < 1) return
+
+        n_genes_pool = n_pool / n_rep
+        if (n_genes_pool < 1) return
+
+        n_ms = n_multisets_helper(n_rep)
+        if (n_ms < 1_int64) return
+        if (n_ms > max_values / int(n_genes_pool, int64)) return
+        if (n_ms * int(n_genes_pool, int64) > int(min(size(means_out), size(weights_out)), int64)) return
+
+        do g = 1, n_genes_pool
+            base = (g - 1) * n_rep
+            call enumerate_gene_means_helper(pool(base + 1:base + n_rep), n_rep, &
+                                             means_out(n_out + 1:), weights_out(n_out + 1:), m)
+            n_out = n_out + m
+        end do
+        ok = .true.
+    end subroutine build_blocked_means_helper
+
+    !> Count entries of an ascending array below a threshold, via binary search.
+    !|
+    !| Returns the number of entries in `arr(1:n)` (assumed ascending) that are
+    !| `< x` when `inclusive` is .false., or `<= x` when .true. O(log n).
+    pure function count_below_real_helper(arr, n, x, inclusive) result(cnt)
+        real(real64), intent(in) :: arr(:)
+        !! Ascending array
+        integer(int32), intent(in) :: n
+        !! Number of valid entries
+        real(real64), intent(in) :: x
+        !! Threshold
+        logical, intent(in) :: inclusive
+        !! .true. counts entries equal to `x` as well
+        integer(int32) :: cnt
+        !! Number of entries below (or at) the threshold
+
+        integer(int32) :: lo, hi, mid
+        logical :: take
+
+        lo = 1
+        hi = n
+        cnt = 0
+        do while (lo <= hi)
+            mid = lo + (hi - lo) / 2
+            if (inclusive) then
+                take = (arr(mid) <= x)
+            else
+                take = (arr(mid) < x)
+            end if
+            if (take) then
+                cnt = mid
+                lo = mid + 1
+            else
+                hi = mid - 1
+            end if
+        end do
+    end function count_below_real_helper
+
+    !> Exact p-value from the enumerated gene-blocked mean-difference null.
+    !|
+    !| Scores `|observed|` against every case-mean vs control-mean pair, weighted by
+    !| the multinomial weights, using the same sorted-array + two-binary-searches
+    !| tail count the individual-residual null uses:
+    !|
+    !|   p = ( sum_{i,j} w_a(i) w_b(j) [ |a_i - b_j| >= |obs| ] + 1 ) / ( W_a W_b + 1 )
+    !|
+    !| with `W = sum(w) = n_genes_pool * n_rep**n_rep`. There is no draw count and no
+    !| RNG: this is the `n_boot -> infinity` limit of the sampled blocked bootstrap,
+    !| computed in closed form.
+    !|
+    !| Resolution: the floor is `1 / (W_a W_b + 1)`. At `k = 30` neighbour genes and
+    !| `n_rep = 3` that is `810 * 810 = 656,100` -> 1.5e-6, versus 1.2e-4 for the
+    !| 90x90 individual-residual pairing and 4.0e-5 for a 25,000-draw bootstrap.
+    !| NOTE this removes an ARTIFICIAL floor; it does not add information. The
+    !| effective sample size behind a low-replicate pool is orders of magnitude
+    !| smaller than `W_a W_b`, so p-values far below ~1e-2 at `n_rep = 3` are not
+    !| supported by the pool that produced them.
+    !|
+    !| `W_a * W_b` can reach ~1e23 at large `n_rep`, past exact integer range in
+    !| real64; the accumulation is therefore relatively (not absolutely) exact, which
+    !| is immaterial for a ratio.
+    !|
+    !| Work arrays `perm`, `stack_left`, `stack_right`, `sorted_b` must hold at least
+    !| `n_b` entries and `cumw_b` at least `n_b + 1` (indexed from 0).
+    pure subroutine compute_pvalue_blocked_exact_helper(means_a, weights_a, n_a, &
+                                                        means_b, weights_b, n_b, &
+                                                        observed_statistic_abs, &
+                                                        perm, stack_left, stack_right, &
+                                                        sorted_b, cumw_b, p_value)
+        real(real64), intent(in) :: means_a(:)
+        !! Case-side enumerated block means
+        real(real64), intent(in) :: weights_a(:)
+        !! Their multinomial weights
+        integer(int32), intent(in) :: n_a
+        !! Number of case-side entries
+        real(real64), intent(in) :: means_b(:)
+        !! Control-side enumerated block means
+        real(real64), intent(in) :: weights_b(:)
+        !! Their multinomial weights
+        integer(int32), intent(in) :: n_b
+        !! Number of control-side entries
+        real(real64), intent(in) :: observed_statistic_abs
+        !! Absolute observed statistic
+        integer(int32), intent(inout) :: perm(:)
+        !! Work array: sort permutation (length >= n_b)
+        integer(int32), intent(out) :: stack_left(:)
+        !! Work array: quicksort stack (length >= n_b)
+        integer(int32), intent(out) :: stack_right(:)
+        !! Work array: quicksort stack (length >= n_b)
+        real(real64), intent(out) :: sorted_b(:)
+        !! Work array: ascending control means (length >= n_b)
+        real(real64), intent(out) :: cumw_b(0:)
+        !! Work array: prefix sums of the sorted control weights (length >= n_b + 1)
+        real(real64), intent(out) :: p_value
+        !! Exact weighted p-value
+
+        integer(int32) :: i, hi_idx, lo_idx
+        real(real64) :: total_w_a, total_w_b, inside_w, count_ge, a
+
+        do i = 1, n_b
+            perm(i) = i
+        end do
+        call sort_real(means_b(1:n_b), perm(1:n_b), stack_left(1:n_b), stack_right(1:n_b))
+
+        cumw_b(0) = 0.0_real64
+        do i = 1, n_b
+            sorted_b(i) = means_b(perm(i))
+            cumw_b(i) = cumw_b(i - 1) + weights_b(perm(i))
+        end do
+        total_w_b = cumw_b(n_b)
+        total_w_a = sum(weights_a(1:n_a))
+
+        ! Tail weight = sum over case means of the control weight OUTSIDE the open
+        ! interval (a - t, a + t), i.e. every pair with |a - b| >= t.
+        count_ge = 0.0_real64
+        do i = 1, n_a
+            a = means_a(i)
+            hi_idx = count_below_real_helper(sorted_b, n_b, a + observed_statistic_abs, .false.)
+            lo_idx = count_below_real_helper(sorted_b, n_b, a - observed_statistic_abs, .true.)
+            inside_w = cumw_b(hi_idx) - cumw_b(lo_idx)
+            if (inside_w < 0.0_real64) inside_w = 0.0_real64
+            count_ge = count_ge + weights_a(i) * (total_w_b - inside_w)
+        end do
+
+        p_value = (count_ge + 1.0_real64) / (total_w_a * total_w_b + 1.0_real64)
+        if (p_value > 1.0_real64) p_value = 1.0_real64
+    end subroutine compute_pvalue_blocked_exact_helper
+
+    !> Sampled gene-blocked mean null (fallback when enumeration is too large).
+    !|
+    !| Same null as `compute_pvalue_blocked_exact_helper`, drawn instead of
+    !| enumerated: each draw picks one neighbour GENE per side and then resamples
+    !| `n_rep` residuals from within that gene, so the draw carries a single coherent
+    !| noise level. Used only when `C(2n-1, n) * n_genes_pool` exceeds
+    !| `BLOCKED_MAX_ENUM_VALUES` (roughly `n_rep > 9` at `k_max = 50`).
+    !|
+    !| RNG: all random numbers for a CHUNK of draws are produced by ONE
+    !| `random_number` array fill, so the number of RNG calls per gene is
+    !| `ceil(n_boot / chunk)` rather than `n_boot` — typically 1. `rbuf` is allocated
+    !| once by the alloc layer and reused for every gene.
+    subroutine compute_pvalue_blocked_bootstrap_helper(pool_case, n_pool_case, &
+                                                       pool_control, n_pool_control, &
+                                                       n_rep_case, n_rep_control, &
+                                                       observed_statistic_abs, n_boot, &
+                                                       rbuf, p_value)
+        real(real64), intent(in) :: pool_case(:)
+        !! Case residual pool (contiguous blocks of `n_rep_case` per gene)
+        integer(int32), intent(in) :: n_pool_case
+        !! Number of valid case residuals
+        real(real64), intent(in) :: pool_control(:)
+        !! Control residual pool (contiguous blocks of `n_rep_control` per gene)
+        integer(int32), intent(in) :: n_pool_control
+        !! Number of valid control residuals
+        integer(int32), intent(in) :: n_rep_case
+        !! Case replicate count (= resample size, = residuals per gene)
+        integer(int32), intent(in) :: n_rep_control
+        !! Control replicate count
+        real(real64), intent(in) :: observed_statistic_abs
+        !! Absolute observed statistic
+        integer(int32), intent(in) :: n_boot
+        !! Number of bootstrap draws
+        real(real64), intent(inout) :: rbuf(:)
+        !! Pre-allocated random-number buffer (reused across genes)
+        real(real64), intent(out) :: p_value
+        !! Bootstrapped p-value
+
+        integer(int32) :: n_genes_case, n_genes_control, per_iter, chunk
+        integer(int32) :: i_boot, i_rep, j, base, g_case, g_control, idx, count_ge
+        real(real64) :: sum_case, sum_control
+
+        n_genes_case = n_pool_case / n_rep_case
+        n_genes_control = n_pool_control / n_rep_control
+        if (n_genes_case < 1 .or. n_genes_control < 1) then
+            p_value = 1.0_real64
+            return
+        end if
+
+        ! One gene index plus n_rep within-gene indices, per side.
+        per_iter = (n_rep_case + 1) + (n_rep_control + 1)
+        chunk = max(1, min(n_boot, int(size(rbuf), int32) / per_iter))
+
+        count_ge = 0
+        i_boot = 0
+        do while (i_boot < n_boot)
+            j = min(chunk, n_boot - i_boot)
+            call random_number(rbuf(1:j * per_iter))
+            do base = 0, (j - 1) * per_iter, per_iter
+                g_case = min(int(rbuf(base + 1) * real(n_genes_case, real64), int32) + 1, n_genes_case)
+                sum_case = 0.0_real64
+                do i_rep = 1, n_rep_case
+                    idx = min(int(rbuf(base + 1 + i_rep) * real(n_rep_case, real64), int32) + 1, n_rep_case)
+                    sum_case = sum_case + pool_case((g_case - 1) * n_rep_case + idx)
+                end do
+
+                g_control = min(int(rbuf(base + n_rep_case + 2) * real(n_genes_control, real64), int32) + 1, &
+                                n_genes_control)
+                sum_control = 0.0_real64
+                do i_rep = 1, n_rep_control
+                    idx = min(int(rbuf(base + n_rep_case + 2 + i_rep) * real(n_rep_control, real64), int32) + 1, &
+                              n_rep_control)
+                    sum_control = sum_control + pool_control((g_control - 1) * n_rep_control + idx)
+                end do
+
+                if (abs(sum_case / real(n_rep_case, real64) - &
+                        sum_control / real(n_rep_control, real64)) >= observed_statistic_abs) &
+                    count_ge = count_ge + 1
+            end do
+            i_boot = i_boot + j
+        end do
+
+        p_value = real(count_ge + 1, real64) / real(n_boot + 1, real64)
+    end subroutine compute_pvalue_blocked_bootstrap_helper
 
     ! =========================================================================
     ! compute_noise_pvalue_pipeline
@@ -631,12 +1091,14 @@ contains
         means_case, means_control, &
         observed_statistic_own, &
         compute_pvalue_own, &
-        n_genes, k_start, k_step, k_max, tau, trim_frac, &
+        n_genes, k_start, k_step, k_max, tau, trim_frac, null_method, &
         pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
         neighborhood_size_case, &
         tmp_pool_case, tmp_pool_control_own, &
+        blk_means_case, blk_weights_case, blk_means_control, blk_weights_control, &
+        blk_perm, blk_stack_left, blk_stack_right, blk_sorted, blk_cumw, rbuf, &
         ierr)
 
         type(sorted_data_t), intent(in) :: sorted_case
@@ -663,7 +1125,12 @@ contains
         !! Relative-change threshold for adaptive pool growth
         real(real64), intent(in) :: trim_frac
         !! Symmetric per-tail residual-pool trim fraction (0 = no trimming); the
-        !! caller passes the norm-gated value (raw only)
+        !! caller passes the norm-gated value (raw only, and pooled null only —
+        !! trimming sorts the pool, which would destroy the per-gene block structure
+        !! the blocked null depends on, so the alloc layer forces it to 0 there)
+        integer(int32), intent(in) :: null_method
+        !! `NULL_METHOD_POOLED` (0) = iid resample from the pooled neighbourhood;
+        !! `NULL_METHOD_BLOCKED` (1) = gene-blocked null, enumerated where it fits
         integer(int32), intent(in) :: max_pool_size
         !! Allocated size of all pool arrays
         real(real64), dimension(n_genes), intent(out) :: pvalues_own
@@ -681,12 +1148,34 @@ contains
         real(real64), dimension(max_pool_size * 2), intent(inout) :: tmp_pool_control_own
         !! Work array: output residual pool for this gene's control kNN neighbourhood
         !! (the `own` comparison)
+        real(real64), dimension(:), intent(inout) :: blk_means_case
+        !! Work array: enumerated gene-blocked case means (length = enumeration capacity)
+        real(real64), dimension(:), intent(inout) :: blk_weights_case
+        !! Work array: their multinomial weights
+        real(real64), dimension(:), intent(inout) :: blk_means_control
+        !! Work array: enumerated gene-blocked control means
+        real(real64), dimension(:), intent(inout) :: blk_weights_control
+        !! Work array: their multinomial weights
+        integer(int32), dimension(:), intent(inout) :: blk_perm
+        !! Work array: sort permutation for the control-side enumeration
+        integer(int32), dimension(:), intent(inout) :: blk_stack_left
+        !! Work array: quicksort stack
+        integer(int32), dimension(:), intent(inout) :: blk_stack_right
+        !! Work array: quicksort stack
+        real(real64), dimension(:), intent(inout) :: blk_sorted
+        !! Work array: ascending control means
+        real(real64), dimension(0:), intent(inout) :: blk_cumw
+        !! Work array: prefix sums of the sorted control weights (0-based)
+        real(real64), dimension(:), intent(inout) :: rbuf
+        !! Work array: pre-drawn random numbers for the sampled null constructions
         integer(int32), intent(out) :: ierr
 
         integer(int32) :: i_gene
         real(real64) :: mean_case_val, mean_control_val
         real(real64) :: observed_statistic_own_val
         integer(int32) :: n_pool_case, n_pool_control_own
+        integer(int32) :: n_rep_case, n_rep_control, n_blk_case, n_blk_control
+        logical :: enum_ok_case, enum_ok_control
 
         call set_ok(ierr)
 
@@ -696,11 +1185,17 @@ contains
         neighborhood_size_case = -1
         n_genes_with_pvalue = 0
 
-        ! This loop MUST stay sequential: the `own` mean-difference bootstrap
-        ! (compute_pvalue_bootstrap_mean_helper) draws from the global RNG stream
-        ! seeded once by init_random(42). Parallelising the gene loop would make the
-        ! draws order-dependent and break reproducibility -- use a per-gene
-        ! counter-based RNG (seeded by gene index) before ever doing so.
+        n_rep_case = sorted_case%max_resid_per_gene
+        n_rep_control = sorted_control%max_resid_per_gene
+
+        ! This loop stays sequential whenever a SAMPLED null is in use: those draw
+        ! from the global RNG stream seeded once by init_random(42), so reordering
+        ! genes would change the draws and break reproducibility. Note that
+        ! null_method = NULL_METHOD_BLOCKED uses NO RNG at all whenever the
+        ! enumeration fits (the common case at low replicate counts), so that path
+        ! could be parallelised as-is; it is left sequential here so one code path
+        ! serves both, and because the enumerated null is already much cheaper than
+        ! N_BOOTSTRAP_DRAWS resamples per gene.
         do i_gene = 1, n_genes
             mean_case_val = means_case(i_gene)
             mean_control_val = means_control(i_gene)
@@ -728,18 +1223,47 @@ contains
             if (observed_statistic_own_val /= observed_statistic_own_val) cycle
 
             if (compute_pvalue_own(i_gene) == 1) then
-                ! Build the `own` null by BOOTSTRAPPING the mean difference directly from
-                ! the gathered kNN pools: resample n_replicates residuals per side (with
-                ! replacement), average, difference. n_replicates is each side's per-gene
-                ! replicate count (sorted_*%max_resid_per_gene) — the count the observed
-                ! means were averaged over. Observed statistic is left as-is. Both pools
-                ! are already gated >= 10 above.
-                call compute_pvalue_bootstrap_mean_helper( &
-                    tmp_pool_case(1:n_pool_case), n_pool_case, &
-                    tmp_pool_control_own(1:n_pool_control_own), n_pool_control_own, &
-                    sorted_case%max_resid_per_gene, sorted_control%max_resid_per_gene, &
-                    abs(observed_statistic_own_val), N_BOOTSTRAP_DRAWS, &
-                    pvalues_own(i_gene))
+                ! Build the `own` null at the level the observed statistic lives on --
+                ! a difference of MEANS over n_replicates per side, where n_replicates
+                ! is each side's per-gene replicate count (sorted_*%max_resid_per_gene),
+                ! the count the observed means were averaged over. The observed
+                ! statistic is left as-is. Both pools are already gated >= 10 above.
+                if (null_method == NULL_METHOD_BLOCKED) then
+                    ! GENE-BLOCKED: each null mean comes from ONE neighbour gene.
+                    ! Enumerated exactly when C(2n-1, n) * n_genes_pool fits the work
+                    ! arrays, which removes both the RNG and the 1/(n_boot + 1) floor;
+                    ! sampled otherwise.
+                    call build_blocked_means_helper(tmp_pool_case, n_pool_case, n_rep_case, &
+                                                    blk_means_case, blk_weights_case, n_blk_case, &
+                                                    BLOCKED_MAX_ENUM_VALUES, enum_ok_case)
+                    call build_blocked_means_helper(tmp_pool_control_own, n_pool_control_own, n_rep_control, &
+                                                    blk_means_control, blk_weights_control, n_blk_control, &
+                                                    BLOCKED_MAX_ENUM_VALUES, enum_ok_control)
+                    if (enum_ok_case .and. enum_ok_control) then
+                        call compute_pvalue_blocked_exact_helper( &
+                            blk_means_case, blk_weights_case, n_blk_case, &
+                            blk_means_control, blk_weights_control, n_blk_control, &
+                            abs(observed_statistic_own_val), &
+                            blk_perm, blk_stack_left, blk_stack_right, blk_sorted, blk_cumw, &
+                            pvalues_own(i_gene))
+                    else
+                        call compute_pvalue_blocked_bootstrap_helper( &
+                            tmp_pool_case, n_pool_case, &
+                            tmp_pool_control_own, n_pool_control_own, &
+                            n_rep_case, n_rep_control, &
+                            abs(observed_statistic_own_val), N_BOOTSTRAP_DRAWS, &
+                            rbuf, pvalues_own(i_gene))
+                    end if
+                else
+                    ! POOLED: resample n_replicates residuals iid from the whole
+                    ! neighbourhood pool per side, average, difference.
+                    call compute_pvalue_bootstrap_mean_helper( &
+                        tmp_pool_case(1:n_pool_case), n_pool_case, &
+                        tmp_pool_control_own(1:n_pool_control_own), n_pool_control_own, &
+                        n_rep_case, n_rep_control, &
+                        abs(observed_statistic_own_val), N_BOOTSTRAP_DRAWS, &
+                        rbuf, pvalues_own(i_gene))
+                end if
                 neighborhood_size_own_case(i_gene) = n_pool_case
                 neighborhood_size_own_control(i_gene) = n_pool_control_own
             end if
@@ -765,7 +1289,7 @@ contains
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
         observed_statistic_own, compute_pvalue_own, &
-        n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+        n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
         pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -806,7 +1330,13 @@ contains
         !! Relative-change threshold for adaptive pool growth
         real(real64), intent(in) :: trim_frac
         !! Symmetric per-tail residual-pool trim fraction in [0, 0.5); applied ONLY
-        !! for raw normalization (norm_method == 0). 0 = no trimming.
+        !! for raw normalization (norm_method == 0) AND only under
+        !! `NULL_METHOD_POOLED`. 0 = no trimming.
+        integer(int32), intent(in) :: null_method
+        !! Null construction: `NULL_METHOD_POOLED` (0) resamples residuals iid from
+        !! the whole neighbourhood pool; `NULL_METHOD_BLOCKED` (1) draws one neighbour
+        !! GENE and resamples within it, and is computed by exact enumeration wherever
+        !! `C(2n-1, n) * n_genes_pool` fits `BLOCKED_MAX_ENUM_VALUES`.
         integer(int32), intent(in) :: max_pool_size
         !! Maximum number of residuals in any pool
         real(real64), dimension(n_genes), intent(out) :: pvalues_own
@@ -824,7 +1354,13 @@ contains
 
         type(sorted_data_t) :: sorted_case, sorted_control
         real(real64), allocatable :: tmp_pool_case(:), tmp_pool_control_own(:)
-        integer(int32) :: sort_ierr
+        real(real64), allocatable :: blk_means_case(:), blk_weights_case(:)
+        real(real64), allocatable :: blk_means_control(:), blk_weights_control(:)
+        real(real64), allocatable :: blk_sorted(:), blk_cumw(:), rbuf(:)
+        integer(int32), allocatable :: blk_perm(:), blk_stack_left(:), blk_stack_right(:)
+        integer(int32) :: sort_ierr, blk_capacity, rbuf_size, per_iter_max
+        integer(int32) :: k_eff_case, k_eff_control
+        integer(int64) :: n_ms_case, n_ms_control, need_case, need_control
         real(real64) :: effective_trim
 
         call set_ok(ierr)
@@ -862,25 +1398,75 @@ contains
         M_ALLOCATE(tmp_pool_case(max_pool_size * 2))
         M_ALLOCATE(tmp_pool_control_own(max_pool_size * 2))
 
+        ! Enumeration capacity for the gene-blocked null: C(2n-1, n) values per gene,
+        ! times the most genes a pool can hold (k_max, or fewer if max_pool_size binds
+        ! first). Sized per side and allocated at the larger. If the product overflows
+        ! or exceeds BLOCKED_MAX_ENUM_VALUES the arrays stay at length 1, which makes
+        ! `build_blocked_means_helper` report `ok = .false.` and the per-gene loop fall
+        ! back to the sampled blocked null -- no special-casing needed downstream.
+        blk_capacity = 1
+        if (null_method == NULL_METHOD_BLOCKED) then
+            k_eff_case = min(k_max, max(1, max_pool_size / max(1, n_replicates_case)))
+            k_eff_control = min(k_max, max(1, max_pool_size / max(1, n_replicates_control)))
+            n_ms_case = n_multisets_helper(n_replicates_case)
+            n_ms_control = n_multisets_helper(n_replicates_control)
+            need_case = 0_int64
+            need_control = 0_int64
+            if (n_ms_case > 0_int64 .and. n_ms_case <= BLOCKED_MAX_ENUM_VALUES / int(k_eff_case, int64)) &
+                need_case = n_ms_case * int(k_eff_case, int64)
+            if (n_ms_control > 0_int64 .and. &
+                n_ms_control <= BLOCKED_MAX_ENUM_VALUES / int(k_eff_control, int64)) &
+                need_control = n_ms_control * int(k_eff_control, int64)
+            blk_capacity = int(max(1_int64, max(need_case, need_control)), int32)
+        end if
+
+        M_ALLOCATE(blk_means_case(blk_capacity))
+        M_ALLOCATE(blk_weights_case(blk_capacity))
+        M_ALLOCATE(blk_means_control(blk_capacity))
+        M_ALLOCATE(blk_weights_control(blk_capacity))
+        M_ALLOCATE(blk_perm(blk_capacity))
+        M_ALLOCATE(blk_stack_left(blk_capacity))
+        M_ALLOCATE(blk_stack_right(blk_capacity))
+        M_ALLOCATE(blk_sorted(blk_capacity))
+        M_ALLOCATE(blk_cumw(blk_capacity + 1))
+
+        ! Random-number buffer for the sampled null constructions. Sized so that one
+        ! `random_number` call covers as many draws as fit, capped at RNG_BUFFER_MAX
+        ! so a large replicate count cannot blow the allocation up. The blocked
+        ! sampler needs one extra value per side per draw (the gene index), so size
+        ! for that; the pooled sampler simply uses less of the buffer.
+        per_iter_max = max(1, (n_replicates_case + 1) + (n_replicates_control + 1))
+        rbuf_size = per_iter_max
+        if (int(N_BOOTSTRAP_DRAWS, int64) * int(per_iter_max, int64) < int(RNG_BUFFER_MAX, int64)) then
+            rbuf_size = N_BOOTSTRAP_DRAWS * per_iter_max
+        else
+            rbuf_size = max(per_iter_max, (RNG_BUFFER_MAX / per_iter_max) * per_iter_max)
+        end if
+        M_ALLOCATE(rbuf(rbuf_size))
+
         if (is_err(ierr)) return
 
         ! Residual-pool trimming is a raw-normalization-only knob: log/voom-style
         ! transforms already stabilize the mean-variance trend, so there is nothing
         ! to trim there. Gate it here so the helper receives an already-resolved
         ! fraction (0 disables it).
+        ! Trimming sorts the pool in place, which destroys the per-gene block layout
+        ! the blocked null reads, so it is available only under NULL_METHOD_POOLED.
         effective_trim = 0.0_real64
-        if (norm_method == 0) effective_trim = trim_frac
+        if (norm_method == 0 .and. null_method == NULL_METHOD_POOLED) effective_trim = trim_frac
 
         call compute_noise_pvalue_pipeline_helper( &
             sorted_case, sorted_control, &
             means_case, means_control, &
             observed_statistic_own, compute_pvalue_own, &
-            n_genes, k_start, k_step, k_max, tau, effective_trim, &
+            n_genes, k_start, k_step, k_max, tau, effective_trim, null_method, &
             pvalues_own, n_genes_with_pvalue, &
             max_pool_size, &
             neighborhood_size_own_case, neighborhood_size_own_control, &
             neighborhood_size_case, &
             tmp_pool_case, tmp_pool_control_own, &
+            blk_means_case, blk_weights_case, blk_means_control, blk_weights_control, &
+            blk_perm, blk_stack_left, blk_stack_right, blk_sorted, blk_cumw, rbuf, &
             ierr)
 
     end subroutine compute_noise_pvalue_pipeline
@@ -905,7 +1491,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
     means_case, replicates_case, n_genes_case, n_replicates_case, &
     means_control, replicates_control, n_genes_control, n_replicates_control, &
     observed_statistic_own, compute_pvalue_own, &
-    n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+    n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
     pvalues_own, n_genes_with_pvalue, &
     max_pool_size, &
     neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -951,7 +1537,12 @@ subroutine compute_noise_pvalues_pipeline_c( &
     real(c_double), intent(in), target :: tau
     !! Relative-change threshold for adaptive pool growth
     real(c_double), intent(in), target :: trim_frac
-    !! Symmetric per-tail residual-pool trim fraction in [0, 0.5); raw norm only
+    !! Symmetric per-tail residual-pool trim fraction in [0, 0.5); raw norm only,
+    !! and pooled null only (see `null_method`)
+    integer(c_int), intent(in), target :: null_method
+    !! Null construction: 0 = iid resample from the pooled neighbourhood (historical
+    !! behaviour); 1 = gene-blocked null, exactly enumerated where it fits. Callers
+    !! that predate this argument should pass 0 to reproduce previous results.
     integer(c_int), intent(in), target :: max_pool_size
     !! Maximum number of residuals in any pool
     real(c_double), dimension(n_genes), intent(out), target :: pvalues_own
@@ -985,6 +1576,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
     M_CHECK_NON_NULL(k_max)
     M_CHECK_NON_NULL(tau)
     M_CHECK_NON_NULL(trim_frac)
+    M_CHECK_NON_NULL(null_method)
     M_CHECK_NON_NULL(max_pool_size)
     M_CHECK_NON_NULL(pvalues_own)
     M_CHECK_NON_NULL(n_genes_with_pvalue)
@@ -996,7 +1588,7 @@ subroutine compute_noise_pvalues_pipeline_c( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
         means_control, replicates_control, n_genes_control, n_replicates_control, &
         observed_statistic_own, compute_pvalue_own, &
-        n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+        n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
         pvalues_own, n_genes_with_pvalue, &
         max_pool_size, &
         neighborhood_size_own_case, neighborhood_size_own_control, &

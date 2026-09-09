@@ -983,7 +983,7 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     means_case, replicates_case, n_genes_case, n_replicates_case, &
     means_control, replicates_control, n_genes_control, n_replicates_control, &
     observed_statistic_own, compute_pvalue_own, &
-    n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, &
+    n_genes, norm_method, k_start, k_step, k_max, tau, trim_frac, null_method, &
     pvalues_own, n_genes_with_pvalue, &
     max_pool_size, &
     neighborhood_size_own_case, neighborhood_size_own_control, &
@@ -992,6 +992,7 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
 
     use, intrinsic :: iso_c_binding, only: c_int, c_double
     use noise_model_exact, only: compute_noise_pvalue_pipeline
+    use tox_errors, only: set_err, ERR_INVALID_INPUT
     use safeguard
     M_USE_NULL_VALIDATION
     implicit none
@@ -1028,6 +1029,12 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     !! Hard upper limit on residual pool size
     real(c_double), intent(in), target :: tau
     !! Relative-change threshold for adaptive pool growth
+    integer(c_int), intent(in), target :: null_method
+    !! Null construction selector, present only to keep this entry point's ABI
+    !! identical to `compute_noise_pvalues_pipeline_c` (the two are interchangeable
+    !! by design). This module implements ONLY the individual-residual null with
+    !! `1/sqrt(n)` scaling, so any value other than 0 is rejected rather than
+    !! silently ignored — use the bootstrap module for the gene-blocked null.
     real(c_double), intent(in), target :: trim_frac
     !! Symmetric per-tail residual-pool trim fraction in [0, 0.5); raw norm only
     integer(c_int), intent(in), target :: max_pool_size
@@ -1063,12 +1070,20 @@ subroutine compute_noise_pvalues_pipeline_exact_c( &
     M_CHECK_NON_NULL(k_max)
     M_CHECK_NON_NULL(tau)
     M_CHECK_NON_NULL(trim_frac)
+    M_CHECK_NON_NULL(null_method)
     M_CHECK_NON_NULL(max_pool_size)
     M_CHECK_NON_NULL(pvalues_own)
     M_CHECK_NON_NULL(n_genes_with_pvalue)
     M_CHECK_NON_NULL(neighborhood_size_own_case)
     M_CHECK_NON_NULL(neighborhood_size_own_control)
     M_CHECK_NON_NULL(neighborhood_size_case)
+
+    ! This module has a single null construction; refuse a request for another one
+    ! instead of computing something the caller did not ask for.
+    if (null_method /= 0) then
+        call set_err(ierr, ERR_INVALID_INPUT)
+        return
+    end if
 
     call compute_noise_pvalue_pipeline( &
         means_case, replicates_case, n_genes_case, n_replicates_case, &
