@@ -24,7 +24,8 @@
 !test/test_suite.[Ff]90
 !test/asserts.[Ff]90
 
-!test/Noise_Model_Test
+!experiments
+!experiments/**
 
 # src
 !src
