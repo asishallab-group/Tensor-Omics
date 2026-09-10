@@ -147,7 +147,7 @@ function get_flags_and_features() {
 
   if [[ $TOX_MAX_PERFORMANCE ]]; then
     FEATURES="$FEATURES,optimization"
-    FLAGS="-DMAX_PERFORMANCE -O3"
+    FLAGS="-O3"
     if [[ $TOX_DEBUG ]]; then
       declare ans=y
       if [[ -z $TOX_YES ]]; then
@@ -162,7 +162,10 @@ function get_flags_and_features() {
         exit 1
       fi
     fi
-  elif [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
+  else
+    # Stated for the default build too: once `--features` is passed, fpm adds none of its own
+    # profile flags, so the level used to be whatever each compiler assumes without one --
+    # -O0 for gfortran, -O2 for ifx -- and the two default builds were quietly different.
     FLAGS="-O0"
   fi
   if [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then

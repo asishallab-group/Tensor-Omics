@@ -192,7 +192,7 @@ FC=ifx ./build.sh --max-performance
 Beyond the profiles above, `build.sh` accepts several options (which `test_runner.sh` inherits):
 
 * `--compiler=<gfortran|ifx|nvfortran>` — compiler to use (defaults to `gfortran`). The `FC` environment variable is also honoured, with precedence `--compiler` > `$TOX_COMPILER` > `$FC`.
-* `--max-performance` — enable the `optimization` profile (`-O3` and performance-oriented code paths).
+* `--max-performance` — enable the `optimization` profile: `-O3` plus the per-compiler optimisation flags in `fpm.toml`. Without it, every build compiles at `-O0`, whatever the compiler.
 * `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
 * `--debug` — implies `--diagnostics` plus `-O0`, so gdb doesn't hit optimized-out variables or misleading source stepping. Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
 * `--yes` — skip the confirmation prompt that `--debug --max-performance` would otherwise show.
@@ -213,10 +213,6 @@ does nothing, so these are the ones that have an effect:
 | `NO_INPUT_VALIDATION` | Compile out the validation the generated entry points perform, for a caller who has already established that their inputs are good. `call set_ok(ierr)` stays outside the guard — it is what leaves `ierr` defined, not a check — and so do the C layer's null checks, which guard against a segfault rather than a bad value. |
 | `NO_COLORS` | Drop ANSI colour from the test runner's output. Set automatically when stdout or stderr is not a terminal, so it is rarely worth passing by hand. |
 | `TEST_KIND_MISMATCH_C_INT`<br>`TEST_KIND_MISMATCH_C_DOUBLE`<br>`TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX`<br>`TEST_KIND_MISMATCH_C_CHAR`<br>`TEST_KIND_MISMATCH_C_BOOL`<br>`TEST_KIND_MISMATCH_C_SIZE_T`<br>`TEST_KIND_MISMATCH_C_INT64_T`<br>`TEST_KIND_MISMATCH_C_SIGNED_CHAR` | Break one C kind — the first four disagree with the Fortran kind they are assumed equal to, the last four go missing the way `iso_c_binding` reports an absent kind — so the matching compile-time guard in `f42_safeguard` fires. One directive, one guard, and there are eight of each. A build with one of these is **meant to fail**, with `Error: Division by zero`; `test_runner.sh` uses them to prove each guard still works. Not useful outside that test. |
-
-`--max-performance` also defines `MAX_PERFORMANCE`, but no source reads it — the switch earns
-its keep through the compiler flags it selects (`-O3` plus the per-compiler optimisation
-profile in `fpm.toml`), so pass the switch rather than the directive.
 
 > **Note:** Each `--<option>` maps to an uppercased, `TOX_`-prefixed variable with non-alphanumeric characters replaced by underscores — e.g. `--override-flags` becomes `TOX_OVERRIDE_FLAGS`. Passing `--<option>=<value>` sets that value (a bare flag sets `1`), so any option can equivalently be supplied as an environment variable. An explicit `--<option>` always overrides the corresponding variable.
 
