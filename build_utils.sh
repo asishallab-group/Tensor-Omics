@@ -78,7 +78,12 @@ Run '$COLOR_LIGHT_GRAY$(basename $python) -m pip install ford$COLOR_CREAM' to re
 
 function utils_fpm() {
   cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
-  declare -a prefix=(fpm build)
+  # --tests: fpm rebuilds a target's dependents only within the run that rebuilds the target,
+  # and records nothing for the next run. A plain `fpm build` leaves the tests out of the model,
+  # so a changed module (a parameter value, an interface) recompiled the library but left the
+  # test objects compiled against the old .mod -- and the `fpm test` that followed found both
+  # up to date. Building them here puts them in the same run, and only the stale ones rebuild.
+  declare -a prefix=(fpm build --tests)
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
     prefix=(fpm test --target "${2:-run_tests}")

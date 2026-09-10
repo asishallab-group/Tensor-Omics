@@ -1229,7 +1229,7 @@ them it warns and compiles what is committed. CI checks the same thing with `--c
 Then the suites, all of which must pass:
 
 ```sh
-./run_all_tests.sh --skip-kinds-test --reuse-mod-files   # Fortran, then Python, then R
+./run_all_tests.sh --skip-kinds-test   # Fortran, then Python, then R
 python -m pytest helper/codegen/tests -q                 # the generator's own suite
 ```
 
@@ -1238,7 +1238,7 @@ than reporting a library the Python and R suites could not have loaded. It print
 R files as pass/fail only, so run a failing one alone for the actual message:
 
 ```sh
-./test_runner.sh --skip-kinds-test --reuse-mod-files     # Fortran, with output
+./test_runner.sh --skip-kinds-test     # Fortran, with output
 python python/test/mod_test_<x>.py
 Rscript r/test/mod_test_<x>.R
 ```

@@ -382,7 +382,6 @@ If `gdb` is not installed on your system, install it first. For command referenc
 `test_runner.sh` accepts all of the [build options](#build-options) above, plus a few test-specific ones:
 
 * `--skip-kinds-test` — skip the runs that *prove* `f42_safeguard`'s kind guards still fire, each of which forces a mismatch with a `TEST_KIND_MISMATCH_*` directive and expects the build to fail. Handy to avoid the extra clean builds they trigger, and safe on an unchanged platform. It does not disable the guards themselves — those are compiled into `f42_safeguard` on every build, whatever options are passed.
-* `--reuse-mod-files` — keep `fpm`'s test module files instead of removing them before each run. Speeds up test recompilation; use when debugging tests.
 * `--test-target=<target>` — select the test target from `fpm.toml` (currently only `run_tests`, which is the default).
 * `--keep-files` — keep the temporary files the runner creates in the repo root (removed by default).
 * `--keep-<ext>` — the fine-grained variant of `--keep-files`, keeping only files of a given extension, e.g. `--keep-zip` or `--keep-txt`.
