@@ -22,6 +22,7 @@ view of it -- so the padding byte is part of the value, and blanks are what Fort
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
@@ -169,6 +170,23 @@ class CCallEmitter:
         # that includes this header sees them before its own uses too
         return _MARSHAL_HEADER.replace("// __WEAK_PRAGMAS__", "\n".join(_weak_pragmas()))
 
+    def header_stamp(self) -> str:
+        """A comment naming the content hash of the marshal header this file includes.
+
+        fpm decides whether to recompile a source from a hash of *that file's own text* --
+        never its includes, and never timestamps (fpm_backend.F90; fortran-lang/fpm#358,
+        open since 2021). So a change to the header alone recompiled nothing, and the old
+        helpers stayed linked into the library. Every file that includes the header carries
+        its hash, so any change to the header is a change to each of them, and fpm rebuilds
+        exactly those -- with nothing that depends on fpm's build-directory layout.
+
+        The hash is of the content this emitter writes, so the stamp and the header on disk
+        cannot disagree after a generator run; `--check` covers the rest.
+        """
+        digest = hashlib.sha256(self.marshal_header_content().encode()).hexdigest()[:16]
+        return (f"// {self.marshal_header} {digest} -- its hash, so that fpm, which only "
+                "hashes this file, recompiles it when the header changes")
+
     # -- module -----------------------------------------------------------------
 
     def module(self, module: CWrapperModule) -> str:
@@ -178,6 +196,7 @@ class CCallEmitter:
         writer.line("#include <R.h>")
         writer.line("#include <Rinternals.h>")
         writer.line(f'#include "{self.marshal_header}"')
+        writer.line(self.header_stamp())
         writer.blank()
 
         writer.line("// the Fortran C-ABI symbols this module calls")

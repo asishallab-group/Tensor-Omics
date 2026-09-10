@@ -164,3 +164,43 @@ class TestStringWidthNeverReachesFortranAsZero:
 
         early = body[: body.index("int longest")]
         assert "if (x == R_NilValue || TYPEOF(x) != STRSXP) return 0;" in early
+
+
+class TestHeaderStamp:
+    """fpm recompiles a source only when that file's own text changes -- it never hashes
+    what the file includes (fortran-lang/fpm#358) -- so a change to `tox_marshal.h` alone
+    used to rebuild nothing and leave the old helpers linked in. Every shim that includes the
+    header therefore carries its hash."""
+
+    def test_the_stamp_is_the_hash_of_the_header_as_emitted(self):
+        import hashlib
+
+        emitter = CCallEmitter()
+        digest = hashlib.sha256(emitter.marshal_header_content().encode()).hexdigest()[:16]
+
+        assert digest in emitter.header_stamp()
+        assert emitter.header_stamp().startswith("// tox_marshal.h ")
+
+    def test_any_change_to_the_header_changes_the_stamp(self):
+        class Edited(CCallEmitter):
+            def marshal_header_content(self):
+                return super().marshal_header_content() + "\n// one more comment\n"
+
+        assert Edited().header_stamp() != CCallEmitter().header_stamp()
+
+    def test_every_shim_on_disk_carries_the_hash_of_the_header_on_disk(self):
+        """The invariant fpm needs, checked on the committed tree: if a shim's stamp and the
+        header disagree, the header changed without the shim changing with it."""
+        import hashlib
+
+        from conftest import REPO_ROOT
+
+        binding = REPO_ROOT / "src/generated/bindings/r"
+        header = (binding / "tox_marshal.h").read_text()
+        digest = hashlib.sha256(header.encode()).hexdigest()[:16]
+        includers = [c for c in sorted(binding.glob("*.c"))
+                     if '#include "tox_marshal.h"' in c.read_text()]
+
+        assert includers, "no shim includes the header -- the premise is gone"
+        stale = [c.name for c in includers if digest not in c.read_text()]
+        assert not stale, f"stamp does not match tox_marshal.h: {stale}"
