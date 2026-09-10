@@ -7,6 +7,10 @@ library = true
 
 [library]
 type = "shared"
+# `#include <src/macros.h>` and `<authors.h>` resolve from the repository root. Stated here
+# rather than as a build-script `-I.`, so fpm resolves it relative to the package -- which is
+# also what a project depending on this one would need.
+include-dir = ["."]
 
 [features]
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
