@@ -105,3 +105,37 @@ class TestDefaultedOptionalIsNotNullable:
 
         assert "refine_p" not in text
         assert "&refine_v," in text
+
+
+class TestMarshalHeaderProtection:
+    """R's rule: anything allocated must be protected before the next allocation.
+
+    Not reachable from a runtime test. `gctorture(TRUE)` does collect an unprotected
+    `out`, but the freed node is only reused by a later allocation of its own size class,
+    and the fill loop allocates CHARSXPs -- so a 400-string round trip comes back intact
+    either way. The invariant is therefore asserted on the emitted source, which is also
+    the level a static checker like rchk works at.
+    """
+
+    def test_tox_char_out_protects_across_the_fill(self):
+        header = CCallEmitter().marshal_header_content()
+        body = header[header.index("tox_char_out(const char*"):]
+        body = body[: body.index("\n}")]
+
+        # Rf_mkCharLen allocates, so `out` must already be protected when the loop runs
+        assert "PROTECT(Rf_allocVector(STRSXP, n))" in body
+        assert "Rf_mkCharLen" in body
+        assert body.index("PROTECT(") < body.index("Rf_mkCharLen")
+        assert "UNPROTECT(1)" in body
+
+    def test_the_helpers_that_stay_unprotected_never_allocate_twice(self):
+        # tox_bool_out and tox_shape_of hand back an unprotected SEXP too, which is safe
+        # only as long as nothing after their single allocation can trigger a GC
+        header = CCallEmitter().marshal_header_content()
+        for helper in ("tox_bool_out", "tox_shape_of"):
+            body = header[header.index(f"{helper}("):]
+            body = body[: body.index("\n}")]
+            allocators = [call for call in ("Rf_allocVector", "Rf_mkChar", "Rf_mkCharLen",
+                                           "Rf_ScalarInteger", "Rf_duplicate", "Rf_coerceVector")
+                          if call in body]
+            assert len(allocators) <= 1, f"{helper} allocates more than once: {allocators}"

@@ -107,15 +107,21 @@ static inline char* tox_char_alloc(int len, int n) {
 // blank-pads whatever it assigns into a character(len=n), and the wrapper hands that buffer
 // straight through. Trailing NULs are deliberately not stripped -- nothing writes them any
 // more, and Rf_mkCharLen turning a stray one into a loud R error is the right answer.
-// Returned unprotected: the caller protects it straight into a result slot.
+//
+// `out` is protected for the whole fill, unlike every other helper here: Rf_mkCharLen
+// allocates, so it can trigger a GC on any iteration, and until the caller receives `out`
+// nothing else references it. Protecting on return -- which is what the caller's
+// PROTECT(tox_char_out(...)) does -- is too late; the window is the loop, and it grows with
+// n. Balanced before returning, so the caller's own PROTECT is still the one that keeps it.
 static inline SEXP tox_char_out(const char* buf, int len, int n) {
-    SEXP out = Rf_allocVector(STRSXP, n);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
     for (int i = 0; i < n; ++i) {
         const char* p = buf + (size_t) i * len;
         int m = len;
         while (m > 0 && p[m - 1] == ' ') --m;
         SET_STRING_ELT(out, i, Rf_mkCharLen(p, m));
     }
+    UNPROTECT(1);
     return out;
 }
 
@@ -138,7 +144,9 @@ static inline unsigned char* tox_bool_alloc(int n) {
 }
 
 // c_bool byte buffer -> LGLSXP. Read the raw byte and test != 0: ifx writes 0xFF for true,
-// which must map to R's TRUE (1), not stay 255. Returned unprotected.
+// which must map to R's TRUE (1), not stay 255. Returned unprotected, and safely so: the one
+// allocation is the first statement and nothing after it allocates, so no GC can run while
+// the result is unreferenced.
 static inline SEXP tox_bool_out(const unsigned char* buf, int n) {
     SEXP out = Rf_allocVector(LGLSXP, n);
     int* po = LOGICAL(out);
