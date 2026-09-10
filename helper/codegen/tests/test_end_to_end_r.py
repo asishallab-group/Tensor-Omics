@@ -2,12 +2,13 @@
 
 The R analogue of `test_end_to_end.py`. It generates the C and R from the fixtures and
 compiles the Fortran fixtures *and* the C `.Call` shims into one `libfixtures.so` -- the
-same bundling fpm does for libtensor-omics.so in production -- then runs a driver script
+same bundling fpm does for libtensor_omics.so in production -- then runs a driver script
 that `dyn.load`s it, sources everything, and checks the answers and the classed conditions.
 
 Skipped without gfortran, gcc and R. No Rcpp -- the shims are pure C.
 """
 
+import re
 import shutil
 import subprocess
 import textwrap
@@ -21,7 +22,7 @@ from codegen.diagnostics import DiagnosticBag
 from codegen.emit.errors_r import RErrorEmitter
 from codegen.emit.fortran_c import FortranCEmitter
 from codegen.emit.r_wrapper import RWrapperEmitter
-from codegen.emit.c_call import CCallEmitter
+from codegen.emit.c_call import CCallEmitter, R_DLL_NAME
 from codegen.frontend.ford_frontend import FordFrontend
 from codegen.ir.errors import ErrorCatalogue
 from codegen.ir.roles import analyse_project
@@ -50,7 +51,9 @@ def _generate(out: Path) -> None:
     binding = build_project(parsed.project, bag)
     assert bag.errors == (), bag.render()
 
-    fortran, c, r = FortranCEmitter(), CCallEmitter(), RWrapperEmitter()
+    # dll_name matches the library _build_lib produces, because R derives the routine it
+    # calls from the file's basename -- which is exactly what this suite has to exercise
+    fortran, c, r = FortranCEmitter(), CCallEmitter(dll_name="libfixtures"), RWrapperEmitter()
     modules = list(binding)
     (out / "tox_marshal.h").write_text(c.marshal_header_content())
     (out / "init.c").write_text(c.registration(modules))
@@ -78,7 +81,7 @@ def _r_cppflags() -> list[str]:
 def _build_lib(out: Path, with_r: bool = True) -> Path:
     """Compile the Fortran fixtures and the generated C `.Call` shims into one
     `libfixtures.so` -- mirroring the bundled production build, where fpm links the R shims
-    into libtensor-omics.so. With `with_r=False` the shims are compiled with
+    into libtensor_omics.so. With `with_r=False` the shims are compiled with
     `-DNO_R_BINDING`, so they are empty objects and the library has no R entry points."""
     lib_dir = out / ("lib_r" if with_r else "lib_nor")
     lib_dir.mkdir(exist_ok=True)
@@ -294,12 +297,46 @@ class TestNoRBinding:
         assert "fx_normalize_c" in syms          # the Fortran C ABI stays
 
 
+class TestTheRoutinesAreActuallyRegistered:
+    """R enters a library through `R_init_<basename of the .so>` -- the `lib` prefix
+    included, and with no substitution for characters that are not C identifiers. The name
+    used to be `R_init_tensoromics` against a `libtensor-omics.so`, so it was never called:
+    `R_registerRoutines` and `R_useDynamicSymbols(FALSE)` had never once run, and nothing
+    said so because `.Call` by string falls back to dynamic lookup. Reported by
+    @schroederaaron."""
+
+    def test_dyn_load_runs_the_init_routine(self, built):
+        out = run_r(built, """
+            d <- getLoadedDLLs()[["libfixtures"]]
+            cat(length(getDLLRegisteredRoutines(d)$.Call) > 0, d[["dynamicLookup"]])
+        """)
+        # registered, and dynamic lookup switched off -- neither is true if init never ran
+        assert out.split() == ["TRUE", "FALSE"]
+
+    def test_calling_by_name_still_works_once_lookup_is_off(self, built):
+        # R_useDynamicSymbols(FALSE) blocks *unregistered* names only, and every shim is
+        # registered -- so the wrappers' .Call("<name>_call", ...) keeps resolving
+        out = run_r(built, 'cat(fx_count_positive(c(-1, 2, 3)))')
+        assert int(out) == 2
+
+    def test_the_production_name_matches_the_library_that_is_built(self):
+        """The guard for the bug itself. fpm names the artifact `lib` + its project name,
+        and R will look for `R_init_` + that basename; if the two ever drift apart again the
+        registration silently stops happening."""
+        fpm = (REPO_ROOT / "fpm.toml").read_text()
+        name = re.search(r'^name\s*=\s*"([^"]+)"', fpm, re.M).group(1)
+
+        assert R_DLL_NAME == f"lib{name}"
+        # and it has to be spellable as a C identifier, or no symbol can carry it
+        assert re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", R_DLL_NAME)
+
+
 class TestPythonCanLoadTheBundledLibrary:
     def test_ctypes_loads_the_r_bundled_library(self, built):
         """The one library carries the R shims (undefined R symbols), but must still load
         into a non-R host under the *default* eager binding: every R symbol is marked weak,
         so it resolves to null (Python never calls the R code). This guards the fix that lets
-        Python's ctypes load libtensor-omics.so once it also contains the R binding -- and,
+        Python's ctypes load libtensor_omics.so once it also contains the R binding -- and,
         because the load is eager, that the weak set is complete (a strong R symbol would
         make this fail)."""
         import ctypes

@@ -40,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"a target to generate; repeatable, defaults to ({", ".join(DEFAULT_TARGETS)})",
     )
     parser.add_argument(
-        "--library", default="build/libtensor-omics.so",
+        "--library", default="build/libtensor_omics.so",
         help="where the built shared library is, as the Python loader should look for it",
     )
     parser.add_argument(

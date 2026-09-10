@@ -7,7 +7,7 @@ import ctypes
 import os
 
 #: Where the library is expected, relative to the repository root
-DEFAULT_LIBRARY = 'build/libtensor-omics.so'
+DEFAULT_LIBRARY = 'build/libtensor_omics.so'
 
 #: Overrides the search, for an installed or relocated build
 LIBRARY_ENV_VAR = "TENSOR_OMICS_LIBRARY"

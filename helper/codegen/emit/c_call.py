@@ -28,17 +28,28 @@ from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 
-#: The R shared object this binding is registered into (drives `R_init_<name>`).
-R_DLL_NAME = "tensoromics"
+#: The R shared object this binding is registered into.
+#:
+#: R derives the initialisation routine it calls on `dyn.load` from the file's own basename,
+#: **including the `lib` prefix and with no substitution at all**: `libtensor_omics.so` is
+#: entered through `R_init_libtensor_omics`, and nothing else. That is why the library is not
+#: called `libtensor-omics.so` any more -- `R_init_libtensor-omics` is not a C identifier, and
+#: the one way to emit it (a quoted `__asm__` label) is GNU-as-only: clang and icx put the
+#: quote characters *in the symbol name*, silently, and fpm compiles the shims with icx
+#: whenever the Fortran compiler is ifx. A name R can reach is the portable fix.
+#:
+#: Keep this equal to the basename of the artifact `build.sh` produces, which is `lib` plus
+#: fpm's project name. `test_end_to_end_r` checks the routines really do get registered.
+R_DLL_NAME = "libtensor_omics"
 
-#: The R shims compile into the one `libtensor-omics.so`. This guard drops them (and their
+#: The R shims compile into the one `libtensor_omics.so`. This guard drops them (and their
 #: R.h include) when the binding is built without R (`NO_R_BINDING`) or without the C ABI
 #: they call (`NO_C_BINDING`), leaving empty objects that need no R headers.
 _GUARD_OPEN = "#if !defined(NO_R_BINDING) && !defined(NO_C_BINDING)"
 _GUARD_CLOSE = "#endif  // R binding"
 
 #: Every R API symbol the shims reference. R provides them at dyn.load, but the one
-#: libtensor-omics.so also loads into a non-R host (Python via ctypes). Marking them all weak
+#: libtensor_omics.so also loads into a non-R host (Python via ctypes). Marking them all weak
 #: lets that load succeed under eager binding -- the undefined R symbols resolve to null, and
 #: the R-only code that would use them never runs from Python -- while a *genuinely* missing
 #: symbol (a build regression) still fails loudly at load. R binds them to its real

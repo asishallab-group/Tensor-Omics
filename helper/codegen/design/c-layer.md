@@ -60,11 +60,26 @@ Not in the source files they wrap. From issue #131:
 
 The R binding is pure C (`.Call`) shims — generated into `src/generated/bindings/r/*.c` — that
 marshal R objects and call the `bind(C)` wrappers. They are **compiled by fpm into the one
-`libtensor-omics.so`** (fpm already scans `src/` recursively and rebuilds only changed
+`libtensor_omics.so`** (fpm already scans `src/` recursively and rebuilds only changed
 files), so there is a single artifact and no separate R build step; the R loader just
-`dyn.load`s it and `.Call`s the entry points by name (resolved by dynamic symbol lookup —
-the `.so`'s hyphenated name means the registration `R_init_*` never auto-fires, which is
-fine).
+`dyn.load`s it and `.Call`s the entry points by name.
+
+**The artifact's name is load-bearing, and the underscore in it is deliberate.** R enters a
+library through `R_init_<basename of the file>` — the `lib` prefix included, and with no
+substitution for characters that are not C identifiers. So `libtensor_omics.so` is entered
+through `R_init_libtensor_omics`, and a `libtensor-omics.so` could not be entered at all:
+`R_init_libtensor-omics` is not a C identifier, and the one way to emit it — a quoted
+`__asm__` label — assembles only under GNU as. clang and icx accept the same source and put
+the quote characters *into the symbol name*, and fpm compiles these shims with icx whenever
+the Fortran compiler is ifx, so half the CI matrix would have gone on silently not
+registering. Keep `R_DLL_NAME` equal to `lib` + fpm's project name; `test_end_to_end_r`
+fails if they drift.
+
+Registration is what `R_useDynamicSymbols(dll, FALSE)` and `.Call` arity checking depend on.
+It is not what makes the wrappers work — `.Call("<name>_call", ...)` resolves against the
+registration table, and would fall back to dynamic lookup without it. That fallback is
+exactly why the name being wrong went unnoticed for so long: nothing failed, the library
+simply never registered anything.
 
 The shims are guarded by `#if !defined(NO_R_BINDING) && !defined(NO_C_BINDING)`, mirroring
 the Fortran wrappers' `#ifndef NO_C_BINDING`. So:

@@ -7,18 +7,18 @@
 # Usage from the repository root:
 #     source("r/load_tensor_omics.R")
 #
-# The C `.Call` shims are compiled into `build/libtensor-omics.so` by the ordinary build
+# The C `.Call` shims are compiled into `build/libtensor_omics.so` by the ordinary build
 # (`./build.sh`), so there is nothing to compile here -- this loads that library and sources
 # the generated R wrappers. Build the library first, with the R binding included (the
 # default; i.e. not `--directive=NO_R_BINDING`).
 
-.tox_load <- function(root = "r/tensor_omics", lib = "build/libtensor-omics.so") {
+.tox_load <- function(root = "r/tensor_omics", lib = "build/libtensor_omics.so") {
     so <- normalizePath(lib, mustWork = TRUE)
 
     # A rebuilt .so is only picked up by a fresh R session; within one session dyn.load is a
     # no-op once loaded (dyn.unload first to reload). Fresh Rscript runs -- the test flow --
     # are unaffected.
-    if (is.null(getLoadedDLLs()[["libtensor-omics"]])) dyn.load(so)
+    if (is.null(getLoadedDLLs()[["libtensor_omics"]])) dyn.load(so)
 
     # a wrapper reaches C through .Call by name (resolved by dynamic lookup); if the R shims
     # were left out of the build (--directive=NO_R_BINDING, or R absent when it ran) the

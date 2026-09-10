@@ -68,7 +68,7 @@ docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
 
 \subsection{Native Compilation}
 
-If you already have \texttt{gfortran} $\geq$ 15 installed, compile directly with \texttt{build.sh}. It compiles all files in \texttt{src/}, places compiled objects under \texttt{build/<compiler>/}, and creates a symbolic link to the resulting shared library (\texttt{libtensor-omics.so}) so that Python and R always find the same path.
+If you already have \texttt{gfortran} $\geq$ 15 installed, compile directly with \texttt{build.sh}. It compiles all files in \texttt{src/}, places compiled objects under \texttt{build/<compiler>/}, and creates a symbolic link to the resulting shared library (\texttt{libtensor\_omics.so}) so that Python and R always find the same path.
 
 \textbf{Arch Linux} (rolling release --- always has the latest GCC):
 \begin{lstlisting}[language=bash]

@@ -66,7 +66,7 @@ happened repeatedly.
 
 | | **Direct FFI** (Python) | **Compiled shim** (R) |
 |---|---|---|
-| How the host reaches Fortran | `ctypes` loads `libtensor-omics.so` and calls the `_c` symbol | a C `.Call` shim compiled *into* the same `.so`, called from an R wrapper |
+| How the host reaches Fortran | `ctypes` loads `libtensor_omics.so` and calls the `_c` symbol | a C `.Call` shim compiled *into* the same `.so`, called from an R wrapper |
 | What is generated | one `.py` per module | a `.c` shim **and** an `.R` wrapper per module, plus a registration `init.c` |
 | Who converts host values | the host language | the shim (`REAL(x)` → `double*`) |
 | Who validates | the host language | the host language — **never the shim** |
@@ -262,7 +262,7 @@ else.
 | `.gitattributes` | mark the output tree `linguist-generated` |
 | `README.md`, `design/language-layers.md` | what the layer costs in this host, and every decision you took above |
 
-A shim-based target additionally needs its shim sources compiled into `libtensor-omics.so` (fpm
+A shim-based target additionally needs its shim sources compiled into `libtensor_omics.so` (fpm
 picks up anything under `src/`, which is why the R shims live in `src/generated/bindings/r`) and
 a registration entry point. Note the trap the R shims hit: their host-API symbols are undefined
 until the host loads the library, so Python's eager `ctypes` load of the *same* `.so` would fail

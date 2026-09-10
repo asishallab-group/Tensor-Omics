@@ -137,7 +137,7 @@ live in [`config.py`](config.py) as `Paths`. The defaults:
 | `macros_header` | `src/macros.h` | the macro definitions, incl. the `DM_` doc macros |
 | `generated_dir` | `src/generated` | **output**: everything written back into the source tree, the wrapper modules included |
 | `c_binding_dir` | `src/generated/bindings/c` | **output**: the Fortran C wrappers |
-| `r_binding_dir` | `src/generated/bindings/r` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor-omics.so`) |
+| `r_binding_dir` | `src/generated/bindings/r` | **output**: the R C `.Call` shims (fpm bundles these into `libtensor_omics.so`) |
 | `python_out_dir` | `python/tensor_omics` | **output**: the Python package |
 | `r_out_dir` | `r/tensor_omics` | **output**: the R wrappers + loader |
 | `snippets_dir` | `snippets` | **output**: the VS Code snippets (six files, only on `--target snippets`) |
@@ -176,7 +176,7 @@ Three things worth knowing:
   the sources (`synthesize.generated_wrapper_paths`), so a wrapper whose implementation has
   been *deleted* is not named by it and survives on disk. Harmlessly: Ford excludes
   `generated_dir` as a directory, so nothing stale is ever parsed back in.
-- **`--library`** (default `build/libtensor-omics.so`) is not an output path; it is where the
+- **`--library`** (default `build/libtensor_omics.so`) is not an output path; it is where the
   *generated Python loader* will look for the compiled shared library at runtime. Override it
   for an installed or relocated build, or set `TENSOR_OMICS_LIBRARY` at run time.
 

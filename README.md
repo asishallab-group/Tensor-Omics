@@ -145,7 +145,7 @@ docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
 
 ### Native compilation
 
-If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `build/<compiler>_<hash>/`, and copies the resulting shared library (`libtensor-omics.so`) into `build/` so that Python and R always find it at the same path.
+If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `build/<compiler>_<hash>/`, and copies the resulting shared library (`libtensor_omics.so`) into `build/` so that Python and R always find it at the same path.
 
 gfortran 15 is readily available on rolling-release or well-equipped systems. For most other Linux distributions and Windows, **we recommend Docker** since gfortran 15 is not yet available in standard package repositories (May 2026).
 
@@ -224,7 +224,7 @@ profile in `fpm.toml`), so pass the switch rather than the directive.
 
 The `python/tensor_omics/` package holds the `ctypes` wrapper functions that call Tensor Omics subroutines from Python. It is **generated** from the annotated Fortran source -- do not edit it. `python/test/` has example scripts that demonstrate usage and can serve as a starting point for your own analyses.
 
-The package loads `build/libtensor-omics.so` itself, so once the shared library is built there is nothing to set up:
+The package loads `build/libtensor_omics.so` itself, so once the shared library is built there is nothing to set up:
 
 ```python
 import sys
