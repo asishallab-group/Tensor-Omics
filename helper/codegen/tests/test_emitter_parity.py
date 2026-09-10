@@ -19,10 +19,12 @@ import pytest
 from codegen.abi.c_abi import build_project
 from codegen.config import CONVENTIONS, Paths
 from codegen.diagnostics import DiagnosticBag
+from codegen.emit.doc_literals import is_ford_block_tag
 from codegen.emit.python_ctypes import PythonEmitter
 from codegen.emit.c_call import CCallEmitter
 from codegen.emit.r_wrapper import RWrapperEmitter
 from codegen.frontend.ford_frontend import FordFrontend
+from codegen.ir.doc import DocTable
 from codegen.ir.roles import analyse_project
 from codegen.ir.validate import validate_project
 from codegen.synthesize import synthesize_wrappers
@@ -280,3 +282,64 @@ def _real_published():
     analyse_project(synthesis.project, bag)
     binding = build_project(synthesis.project, bag, CONVENTIONS)
     return _published_to_the_languages(binding, synthesis), synthesis
+
+
+class TestTheTargetsDocumentTheSame:
+    """Both targets render the same Fortran doc, and for a long time only one of them
+    rendered all of it: roxygen wrote the summary *and* the body, numpydoc wrote the summary
+    and went straight to Parameters. So every generated Python function was missing whatever
+    the author wrote below `summary:` -- which is usually where the contract is, and there is
+    no other place a Python caller could have read it.
+
+    Checked on the real sources rather than the fixtures, for the reason `project_binding`
+    gives: the fixtures are small and this kind of loss only shows on real prose.
+    """
+
+    def _body_lines(self, wrapper):
+        """The prose blocks of a procedure's doc, tables and Ford tags dropped -- what both
+        renderers are supposed to carry over."""
+        return [
+            block.text.strip()
+            for block in wrapper.doc
+            if not isinstance(block, DocTable)
+            and not is_ford_block_tag(block.text)
+            and block.text.strip()
+        ]
+
+    def test_the_doc_body_reaches_python_wherever_it_reaches_r(self, project_binding):
+        python, r = PythonEmitter(), RWrapperEmitter()
+
+        missing = []
+        for wrapper in _wrappers(project_binding):
+            body = self._body_lines(wrapper)
+            if not body:
+                continue
+            py = python.function(wrapper)
+            roxygen = r.function(wrapper)
+            for line in body:
+                # a sentence long enough to be prose, not a fragment reformatted per target
+                probe = line.split(".")[0][:60]
+                if len(probe) < 25 or probe not in roxygen:
+                    continue
+                if probe not in py:
+                    missing.append((wrapper.stripped_name, probe))
+
+        assert not missing, "documented in R and not in Python:\n" + "\n".join(
+            f"  {name}: {probe!r}" for name, probe in missing[:10]
+        )
+
+    def test_the_scale_direction_is_not_lost(self, project_binding):
+        """The worked example from the report. `compute_tissue_versatility` normalises to
+        [0, 1] and only the doc body says which end is which, so without it the returned
+        number cannot be read at all."""
+        wrapper = next(
+            w for w in _wrappers(project_binding)
+            if w.stripped_name == "compute_tissue_versatility"
+        )
+
+        text = PythonEmitter().function(wrapper)
+
+        assert "0 means uniform expression" in text
+        # and it lands where numpydoc puts an extended summary: after the summary line,
+        # before Parameters
+        assert text.index("0 means uniform expression") < text.index("Parameters")

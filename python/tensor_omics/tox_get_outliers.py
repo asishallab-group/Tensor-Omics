@@ -113,6 +113,8 @@ def compute_family_scaling(
 ):
     r"""Compute family scaling factors (dscale) to normalize distances
 
+    Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.
+
     Parameters
     ----------
     n_families : int
@@ -250,6 +252,8 @@ def compute_rdi(
 ):
     r"""Compute the hybrid RDI (Relative Distance Index) for each gene
 
+    RDI = Euclidean distance / family scaling factor
+
     Parameters
     ----------
     distances : np.ndarray[np.float64] of shape (n_genes,)
@@ -356,6 +360,9 @@ def identify_outliers(
         percentile=0.95,
 ):
     r"""Identify gene outliers based on the top percentile of RDI values
+
+    Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
+    If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
 
     Parameters
     ----------
@@ -472,6 +479,11 @@ def detect_outliers(
         percentile=0.95,
 ):
     r"""Main routine to detect outliers using RDI and LOESS-based scaling
+
+    Orchestrates the full pipeline: per-family scaling via
+    :func:`tensor_omics.compute_family_scaling`, the RDI per gene via
+    :func:`tensor_omics.compute_rdi`, then flags outliers via
+    :func:`tensor_omics.identify_outliers`.
 
     Parameters
     ----------

@@ -60,6 +60,9 @@ def gjct_permutation_test(
 ):
     r"""Estimate how likely the observed divergence is to occur by chance
 
+    Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
+    the work copies, so the caller's own arrays are left untouched.
+
     Parameters
     ----------
     neighborhood_residuals_S1 : np.ndarray[np.float64] of shape (n_reps_S1, n_neighbors, n_points,), column-major (order='F')

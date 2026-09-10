@@ -524,6 +524,8 @@ def filter_paralogs_by_pattern_dosage_effect(
 ):
     r"""Prefilters the genes for a pattern, so genes that cannot match it are not tried as subset extensions
 
+    This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
+
     Parameters
     ----------
     gene_angles : np.ndarray[np.float64] of shape (n_genes,)
@@ -613,6 +615,8 @@ def filter_paralogs_by_pattern_subfunctionalization(
         n_mask_chunks,
 ):
     r"""Prefilters the genes for a pattern, so genes that cannot match it are not tried as subset extensions
+
+    This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
 
     Parameters
     ----------

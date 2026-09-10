@@ -203,6 +203,8 @@ def normalize_all_trajectories(
 ):
     r"""Normalize all trajectories across multiple entities
 
+    independently across time for each sample.
+
     Parameters
     ----------
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')

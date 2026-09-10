@@ -56,6 +56,8 @@ def euclidean_distance(
 ):
     r"""Compute the Euclidean distance between two vectors.
 
+    Calculates the L2 norm: `result = sqrt(sum((vec1_i - vec2_i)**2))`
+
     Parameters
     ----------
     vec1 : np.ndarray[np.float64] of shape (n_elements,)
@@ -123,6 +125,8 @@ def distance_to_centroid(
         gene_to_fam,
 ):
     r"""Compute distance from each gene to its corresponding family centroid.
+
+    For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.
 
     Parameters
     ----------

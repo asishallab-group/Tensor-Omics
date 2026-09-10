@@ -167,6 +167,12 @@ def calc_work_arr_paralog_subsets_size(
 ):
     r"""Calculates the needed size for the paralog-subsets work array
 
+    The `detect_*` subroutines need a work array for the to be tested subsets.
+    In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+    This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.
+
+    This subroutine calculates the needed size for the work array.
+
     Parameters
     ----------
     max_subset_size : int

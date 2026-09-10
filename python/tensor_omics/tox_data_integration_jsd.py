@@ -124,6 +124,9 @@ def determine_shared_residual_range(
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
 
+    This takes the pool already built; `determine_study_shared_residual_range` builds it from
+    the neighborhood residuals of two studies first, if that is what is at hand.
+
     Parameters
     ----------
     abs_residual_pool : np.ndarray[np.float64] of shape (pool_size,)
@@ -186,6 +189,9 @@ def determine_shared_residual_range_expert(
         residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
+
+    This takes the pool already built; `determine_study_shared_residual_range` builds it from
+    the neighborhood residuals of two studies first, if that is what is at hand.
 
     Parameters
     ----------
@@ -266,6 +272,9 @@ def determine_study_shared_residual_range(
         residual_range_quantile=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
+
+    Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
+    as `determine_shared_residual_range` does.
 
     Parameters
     ----------
@@ -353,6 +362,8 @@ def build_residual_histograms(
         neighbor_mask=None,
 ):
     r"""Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
+
+    The probability mass function `pmf(residual, bin)` is actually a matrix.
 
     Parameters
     ----------
@@ -451,6 +462,8 @@ def compute_divergence_per_reference_point(
 ):
     r"""Compute the Jensen-Shannon divergence per reference point from two histograms
 
+    Takes the probabilities `pmf` produced by `build_residual_histograms`.
+
     Parameters
     ----------
     pmf_S1 : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F')
@@ -532,6 +545,8 @@ def compute_weighted_global_divergence(
         included_n_reps_S2,
 ):
     r"""Compute the global weighted Jensen-Shannon divergence from the per-neighbor divergences
+
+    Takes the divergences produced by `compute_divergence_per_reference_point`.
 
     Parameters
     ----------

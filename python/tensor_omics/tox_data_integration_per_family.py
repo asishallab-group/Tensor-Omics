@@ -106,6 +106,9 @@ def fjct_compute_jsd(
 ):
     r"""Compute the family-level compatibility score between two studies for a single gene family
 
+    Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
+    the residual samples to the genes belonging to the family `family_idx`.
+
     Parameters
     ----------
     family_idx : int
@@ -302,6 +305,11 @@ def fjct_compute_masked_jsd(
 ):
     r"""Compute the compatibility score between two studies for a single masked sub-neighborhood
 
+    Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts the
+    residual samples to the neighbors selected by `neighbor_mask_S1`/`neighbor_mask_S2`. Typically
+    those are all neighbors belonging to one gene family, which is what `fjct_compute_jsd` builds
+    the masks for from a family index.
+
     Parameters
     ----------
     neighborhood_residuals_S1 : np.ndarray[np.float64] of shape (n_reps_S1, n_neighbors, n_points,), column-major (order='F')
@@ -475,6 +483,13 @@ def fjct_compute_contribution_scores(
         total_included_n_reps_per_f,
 ):
     r"""Compute the per-sub-neighborhood contribution score
+
+    Combines
+
+    1. how divergent the family is between the studies (`global_js_divergences`), and
+    2. how much residual support the family has overall (`total_included_n_reps_per_f`),
+
+    using the outputs of `fjct_compute_jsd`, collected for the analyzed sub-neighborhoods.
 
     Parameters
     ----------

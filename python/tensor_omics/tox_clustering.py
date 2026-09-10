@@ -180,6 +180,10 @@ def k_means_clustering(
 ):
     r"""k-means clustering algorithm
 
+    1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    2. Recalculates the centroids using the mean of its assigned points
+    3. repeat 1-2 until assignment remains unchanged
+
     Parameters
     ----------
     data_points : np.ndarray[np.float64] of shape (n_dims, n_points,), column-major (order='F')
@@ -275,6 +279,10 @@ def linkage_clustering(
         method,
 ):
     r"""Perform linkage clustering on a distance matrix.
+
+    The bottom triangle is used as scratch and restored from the top triangle before
+    returning, on success or on error, so the matrix comes back unchanged. There is no
+    need to copy it before calling.
 
     Parameters
     ----------

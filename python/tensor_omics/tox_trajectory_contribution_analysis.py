@@ -296,6 +296,9 @@ def compute_p_values(
 ):
     r"""Calculates the p values for the contributions once the permutation tests are done
 
+    Given the permutation tests (:func:`tensor_omics.perform_permutation_test`),
+    this counts how many of the permutation contributions were at least as high as the real ones.
+
     Parameters
     ----------
     local_contributions_observed : np.ndarray[np.float64] of shape (n_timepoints,)
@@ -893,6 +896,17 @@ def compute_velocity_acceleration_contributions(
         baseline_mode,
 ):
     r"""Compute velocity and acceleration contributions for all variable pairs
+
+    Performance layout:
+
+    `trajectories` uses `(n_factors, n_samples, n_timepoints)`.
+    Velocity and acceleration use time-first layouts:
+
+    - `velocity`     -> `(max(0, n_timepoints-1), n_factors, n_samples)`
+    - `acceleration` -> `(max(0, n_timepoints-2), n_factors, n_samples)`
+
+    This keeps slices like `velocity(:, factor, sample)` contiguous,
+    avoids expensive tmporaries, and improves cache efficiency.
 
     Parameters
     ----------

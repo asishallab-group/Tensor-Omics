@@ -259,6 +259,9 @@ def pool_means(
 ):
     r"""Turn a sorted pool of per-gene mean expression values into reference points
 
+    This takes the pool already built; `pool_study_means` pools the means of two studies
+    first, if that is what is at hand.
+
     Parameters
     ----------
     pooled_means : np.ndarray[np.float64] of shape (pool_size,)
@@ -332,6 +335,9 @@ def pool_means_expert(
         n_points,
 ):
     r"""Turn a sorted pool of per-gene mean expression values into reference points
+
+    This takes the pool already built; `pool_study_means` pools the means of two studies
+    first, if that is what is at hand.
 
     Parameters
     ----------
@@ -421,6 +427,9 @@ def pool_study_means(
         n_points,
 ):
     r"""Pool the per-gene mean expression values of two studies into reference points
+
+    Concatenates the two studies' means, sorts the pool, and turns it into reference
+    points exactly as `pool_means` does.
 
     Parameters
     ----------

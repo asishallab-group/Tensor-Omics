@@ -140,6 +140,9 @@ def loess_smooth_2d(
 ):
     r"""Performs LOESS smoothing on a set of data points
 
+    Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.
+    The user must pre-filter data and provide only valid indices in indices_used.
+
     Parameters
     ----------
     x_ref : np.ndarray[np.float64] of shape (n_total,)
@@ -242,6 +245,9 @@ def compute_edf(
 ):
     r"""Compute the Empirical Distribution Function (EDF) from a sorted permutation
 
+    Returns the sorted unique values and their cumulative frequencies in [0,1].
+    The number of unique values can be determined by finding the last non-zero cdf_value.
+
     Parameters
     ----------
     values : np.ndarray[np.float64] of shape (n_values,)
@@ -316,6 +322,9 @@ def compute_edf_expert(
         values_perm,
 ):
     r"""Compute the Empirical Distribution Function (EDF) from a sorted permutation
+
+    Returns the sorted unique values and their cumulative frequencies in [0,1].
+    The number of unique values can be determined by finding the last non-zero cdf_value.
 
     Parameters
     ----------
@@ -411,6 +420,8 @@ def calc_percentile(
 ):
     r"""Calculate the percentile of an array given a sorted permutation
 
+    Uses linear interpolation between adjacent values.
+
     Parameters
     ----------
     array : np.ndarray[np.float64] of shape (n_array,)
@@ -481,6 +492,8 @@ def calc_percentile_expert(
         n_considered=0,
 ):
     r"""Calculate the percentile of an array given a sorted permutation
+
+    Uses linear interpolation between adjacent values.
 
     Parameters
     ----------
@@ -570,6 +583,19 @@ def compute_scaled_distance_quantile(
 ):
     r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
 
+    This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    observed distribution it was drawn from, not an independently generated null distribution.
+    It instead measures how extreme an observed distance is relative to all observed distances.
+
+    Implements:
+    Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+
+    Because distances are non-negative, a one-sided upper-tail quantile is used.
+
+    Assumptions / preconditions:
+    - sorted_rdi(1:n_genes) contains the empirical distribution D.
+    - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
+
     Parameters
     ----------
     rdi : np.ndarray[np.float64] of shape (n_genes,)
@@ -652,6 +678,19 @@ def compute_scaled_distance_quantile_expert(
         c_const,
 ):
     r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+
+    This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    observed distribution it was drawn from, not an independently generated null distribution.
+    It instead measures how extreme an observed distance is relative to all observed distances.
+
+    Implements:
+    Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+
+    Because distances are non-negative, a one-sided upper-tail quantile is used.
+
+    Assumptions / preconditions:
+    - sorted_rdi(1:n_genes) contains the empirical distribution D.
+    - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 
     Parameters
     ----------

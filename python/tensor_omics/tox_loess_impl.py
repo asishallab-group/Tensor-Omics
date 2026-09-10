@@ -48,6 +48,9 @@ def tox_loess_required_workspace(
 ):
     r"""Recommend workspace sizes based on Netlib exact formulas
 
+    Computes the required sizes for integer and real workspace arrays.
+    These sizes depend on the dimensionality of the data and the maximum neighborhood size.
+
     Parameters
     ----------
     n_dim : int
