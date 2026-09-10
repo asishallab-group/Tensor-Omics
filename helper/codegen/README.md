@@ -242,11 +242,11 @@ the wrappers, and the export path, where you write the whole procedure and mark 
 | If you want | Go to |
 |---|---|
 | the whole contract, task by task | the guide |
-| valid ranges, finiteness, masks, distance matrices, optionals | guide §5.1–5.6 |
-| work arrays, permutations, recommend sizing | guide §5.7–5.9 |
-| modes, per-mode procedures | guide §5.10–5.12 |
-| prologues, runtime errors, split families | guide §5.13–5.15 |
-| exporting a hand-written procedure | guide §6 |
+| valid ranges, finiteness, masks, distance matrices, optionals | guide Sections 5.1–5.6 |
+| work arrays, permutations, recommend sizing | guide Sections 5.7–5.9 |
+| modes, per-mode procedures | guide Sections 5.10–5.12 |
+| prologues, runtime errors, split families | guide Sections 5.13–5.15 |
+| exporting a hand-written procedure | guide Section 6 |
 | every `DM_` macro, with its contract in a comment | [`src/macros.h`](../../src/macros.h) |
 
 None of that is repeated here. Two copies of one contract drift, and these two had; what stays

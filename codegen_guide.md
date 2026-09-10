@@ -106,7 +106,7 @@ src/
     serde/              likewise, per element type
   tox/                the tox application code -- the API's source of truth, hand-written
     data/               the data-set API (tox_data_*), incl. the zip archive; not implementations
-    data_integration/   a family split over several files (§5.15)
+    data_integration/   a family split over several files (Section 5.15)
   generated/          NOTHING here is hand-written
     tox/                the wrappers, mirroring src/tox/ sub-directories and all
     f42/                likewise for src/f42/
@@ -140,13 +140,13 @@ That is all. There is no marker macro to forget, and **no fixed directory either
 name is the whole trigger, so an implementation generates wherever under `src/` it is written.
 The suffix is part of every call site, which matters, because calling an implementation directly
 means calling something with no input validation. A procedure in an implementation module that
-does *not* end in `_impl` is not one — the recommend routines of §5.9 and private helpers live
-there untouched.
+does *not* end in `_impl` is not one — the recommend routines of Section 5.9 and private helpers
+live there untouched.
 
 Because the suffix alone triggers, **`_impl` is reserved across the whole of `src/`**: any module
-so named acquires generated wrappers and is held to §4's rules, whether it sits under `src/tox/`
-or anywhere else. The file must be named for the module, too (`tox_shift_vectors_impl` in
-`tox_shift_vectors_impl.F90`) — see §4 for why.
+so named acquires generated wrappers and is held to Section 4's rules, whether it sits under
+`src/tox/` or anywhere else. The file must be named for the module, too (`tox_shift_vectors_impl` in
+`tox_shift_vectors_impl.F90`) — see Section 4 for why.
 
 Where the wrappers are written is a mechanical mirror of where the implementation sits, with no
 knowledge of layers in it:
@@ -187,32 +187,30 @@ and the published API can be grepped for with one string.
 **`foo_expert` exists only where there is something for `foo` to take over** — work arrays, a
 `<base>_perm` permutation, a `DM_OUTPUT_FROM(..., AUTO)` value, an argument the prologue asks for
 of its own. Where there is nothing, one wrapper is generated and it is called `foo`, because
-there is no second tier for a suffix to distinguish it from. That is 39 of the 87 generated
-procedures today, so do not read — or write — as though every implementation produced a pair.
+there is no second tier for a suffix to distinguish it from. That is common, so do not read — or
+write — as though every implementation produced a pair.
 
 The pair, where there is one, is a **sugar/control** split, not a fast/slow one. `foo` derives
-what the expert tier lets you pass: the heapsorted permutation of §5.8, the threshold or
-short-circuit a prologue computes (§5.13), the workspace sizes of §5.9. Want a different sort
-order, your own reused buffers, or the computation without a degenerate-input policy? That is
-what the expert tier is.
+what the expert tier lets you pass: the heapsorted permutation of Section 5.8, the threshold or
+short-circuit a prologue computes (Section 5.13), the workspace sizes of Section 5.9. Want a
+different sort order, your own reused buffers, or the computation without a degenerate-input policy?
+That is what the expert tier is.
 
 **The expert tier is not published to Python and R unless it offers something.** Where `foo` only
 validates and allocates, those languages allocate the work arrays for *both* tiers anyway, so
-`foo_expert` would be the same call under a name claiming otherwise — the generator emits only
-`foo` there. Fortran and C always get both: there the expert tier really does hand the buffers
-over. Today two generated procedures keep a Python/R expert tier — `pool_means` and
-`determine_shared_residual_range` — each because it seeds and sorts a permutation you may supply
-yourself. Where both are published, **each docstring says what the other does** -- which
-permutation the plain one seeds and sorts, which prologue it runs -- so a reader does not have to
-work out why there are two.
+`foo_expert` would be the same call under a name claiming otherwise — the generator emits only `foo`
+there. Fortran and C always get both: there the expert tier really does hand the buffers over. Where
+Python and R do get one, it is for a reason like `pool_means`'s: its plain tier seeds and sorts a
+permutation you may want to supply yourself. Where both are published, **each docstring says what
+the other does** -- which permutation the plain one seeds and sorts, which prologue it runs -- so a
+reader does not have to work out why there are two.
 
 ### Which path is yours
 
-Not everything is an implementation, and a third of the public API is not — 39 hand-written
-exports against 87 generated wrappers today. File and archive IO, the f42 trees and statistics,
-the whole serde family, and the sizing routines the implementations themselves call are all
-**hand-written and exported**: the generator wraps them to C, Python and R, but does not write
-their Fortran.
+Not everything is an implementation, and a sizeable part of the public API is not. File and archive
+IO, the f42 trees and statistics, the whole serde family, and the sizing routines the
+implementations themselves call are all **hand-written and exported**: the generator wraps them to
+C, Python and R, but does not write their Fortran.
 
 | Your procedure | Path | Where | Marker |
 |---|---|---|---|
@@ -223,11 +221,12 @@ their Fortran.
 
 `src/tox/` in the first row is convention, not mechanism: the trigger is the name, so an `_impl`
 module under `src/f42/` would generate exactly the same way, into `src/generated/f42/`. Nothing
-there has been converted yet (§6.5 says why), but the mechanism no longer knows the difference.
+there has been converted yet (Section 6.5 says why), but the mechanism no longer knows the
+difference.
 
 The two paths share everything about the *bindings* — naming conventions, documentation, type
-rules, the refusals in §8. They differ in exactly one thing: **who writes the validation.** On
-the implementation path the generator does. On the export path you do (§6.3).
+rules, the refusals in Section 8. They differ in exactly one thing: **who writes the validation.**
+On the implementation path the generator does. On the export path you do (Section 6.3).
 
 ---
 
@@ -312,8 +311,8 @@ annotation lines on `gene_to_fam` — the only thing in the file that is not imp
 There is nothing to take over here — no work array, no permutation, no recommend-sized buffer —
 so this one wrapper is the whole of it, and it takes the plain name. Five of those six checks
 you never asked for: the extents are validated because they *are* extents, and both real matrices
-are checked for NaN and infinity because that is the framework's default contract (§5.2). The
-`#ifndef` is what `--directive=NO_INPUT_VALIDATION` compiles out (§9).
+are checked for NaN and infinity because that is the framework's default contract (Section 5.2). The
+`#ifndef` is what `--directive=NO_INPUT_VALIDATION` compiles out (Section 9).
 
 **What a caller gets**, from the same source, without another line written:
 
@@ -324,8 +323,8 @@ compute_shift_vector_field(expression_vectors, family_centroids, gene_to_fam)   
 compute_shift_vector_field(expression_vectors, family_centroids, gene_to_fam)
 ```
 
-with your `summary:` as the docstring, your argument docs as the parameter docs, and an
-`ierr` that raises a typed error naming the offending argument.
+with your `summary:` and the prose below it as the docstring, your argument docs as the parameter
+docs, and an `ierr` that raises a typed error naming the offending argument.
 
 ---
 
@@ -341,12 +340,12 @@ with your `summary:` as the docstring, your argument docs as the parameter docs,
 | Kinded numeric types (`real(real64)`, `integer(int32)`) | a default kind has no defensible C mapping |
 | **`logical(c_bool)` for every logical that occupies storage** | one byte rather than four, and the kind the bindings already use, so a mask crosses without being copied — the wrapper used to declare an automatic array of default `logical` and convert elementwise both ways. A `logical, parameter` and a `logical function` result are the exceptions: no storage, nothing to save. Note a literal needs the kind too — `.true._c_bool`, because argument association does not convert kinds, though plain assignment does |
 | `!> summary: ...` on the procedure | becomes the docstring in Python and R |
-| **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (§7) |
+| **A `!>` block on the module, written as API prose** | it is carried verbatim onto the generated module, so it is the Python module docstring and the Ford page for the published API. Say what the family is for and name its entry points; do *not* describe the implementation, and do not explain what the generator will do with it (Section 7) |
 | An author tag (`AUTHOR_*` from [`authors.h`](authors.h)) | attribution, rendered into the Ford docs |
 | A `!!` doc on **every** argument | inherited by the C wrapper and by both language layers |
-| **No `ierr` for validation** | validation is the wrapper's job; see §5.14 for the one case where an implementation keeps an `ierr` |
-| **No `M_EXPORT_C` on the implementation** | the generated wrapper is what the bindings call; exporting the implementation beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of §5.9 — *are* exported: they have no wrapper |
-| **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which every author here reads as the allocating tier while being an ordinary second procedure beside the generated `foo` that is one (§6.5). Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (§5.7) |
+| **No `ierr` for validation** | validation is the wrapper's job; see Section 5.14 for the one case where an implementation keeps an `ierr` |
+| **No `M_EXPORT_C` on the implementation** | the generated wrapper is what the bindings call; exporting the implementation beside it publishes an unvalidated twin under a name a caller cannot tell apart. Support routines in the same module — the recommend routines of Section 5.9 — *are* exported: they have no wrapper |
+| **No `_alloc` or `_expert` in the implementation's name** | both are wrapper suffixes, and neither is yours to choose. `foo_expert_impl` would generate a second procedure called `foo_expert`; `foo_alloc_impl` would generate `foo_alloc`, which every author here reads as the allocating tier while being an ordinary second procedure beside the generated `foo` that is one (Section 6.5). Name the implementation for what it computes; whether a second tier appears at all is decided by its `tmp_` arguments (Section 5.7) |
 | **No allocation, anywhere in the module** | every buffer is a `tmp_` argument, so the generated `foo` owns the memory and an expert caller can hand in buffers it already has. The rule covers the module's helpers too: an implementation that allocates nothing itself but calls a helper that does is no better off. Enforced on the declaration — a local *or a dummy* declared `allocatable` is refused. A `pointer` local is fine: aliasing a buffer you were handed allocates nothing |
 | **Only implementations and infrastructure may be `use`d** | another `_impl` module, or one of `impl_import_whitelist` — the intrinsic modules, `tox_errors`, `tox_conversions`, `f42_config`, `f42_safeguard`. That bound is what makes the rule above hold *across* modules: the check reads declarations, so only the import list can see a helper elsewhere that allocates. It also fixes the direction — an implementation cannot reach a generated wrapper, which would invert the layering and, within one family, be a module cycle. A `use` inside a procedure counts the same as one in the module header. Every whitelisted module is itself checked to be allocation-free, so the bound is verified rather than promised |
 
@@ -520,7 +519,7 @@ Fortran caller wants. Size the array for the worst case as usual — the languag
 
 > The example is `fx_masked` in [`helper/codegen/tests/fixtures/src/fx_edges.F90`](helper/codegen/tests/fixtures/src/fx_edges.F90).
 > No implementation in `src/` uses this yet — f42's hand-written `compute_edf` does, on the
-> export path (§6.4) — so the fixture is the worked case for this path.
+> export path (Section 6.4) — so the fixture is the worked case for this path.
 
 ### 5.7 Work arrays, and how the expert tier appears
 
@@ -546,21 +545,20 @@ M_ALLOCATE(tmp_stack_left(n_genes))
 
 `foo_expert` keeps them — that is the expert entry point, for a caller who manages buffers. The
 language layers need no translation for this: `foo` is `foo` and `foo_expert` is `foo_expert`
-everywhere, subject only to §2's rule that Python and R drop an expert tier with nothing to
+everywhere, subject only to Section 2's rule that Python and R drop an expert tier with nothing to
 offer. An implementation with no work arrays, permutations or recommend-sized buffers — and no
-prologue asking for arguments of its own (§5.13) — generates only `foo`.
+prologue asking for arguments of its own (Section 5.13) — generates only `foo`.
 
 > A `tmp_` argument that is `intent(in)` is an error. A work array is an output or an in-out;
 > nothing else makes sense.
 
 This is the *only* way an implementation module gets scratch space: an `allocatable` local
-anywhere in it is refused (§4). A buffer whose size is not an expression over the other arguments
-is still a `tmp_` argument — `DM_OUTPUT_FROM(..., AUTO)` (§5.9) names the routine that sizes it.
-Where even that routine cannot be called ahead of time because the size depends on something only
-the implementation discovers, size the buffer at the **upper bound** and slice it:
+anywhere in it is refused (Section 4). A buffer whose size is not an expression over the other
+arguments is still a `tmp_` argument — `DM_OUTPUT_FROM(..., AUTO)` (Section 5.9) names the routine
+that sizes it. Where even that routine cannot be called ahead of time because the size depends on
+something only the implementation discovers, size the buffer at the **upper bound** and slice it:
 `normalize_by_std_dev_impl` takes its LOESS workspace for all `n_genes` and hands the fit
-`tmp_loess_x(1:n_valid)`, because dropping the zero-variance genes only ever makes the fit
-smaller.
+`tmp_loess_x(1:n_valid)`, because dropping the zero-variance genes only ever makes the fit smaller.
 
 ### 5.8 A permutation
 
@@ -590,9 +588,9 @@ ordinary one the caller supplies — and a `tmp_`-prefixed permutation is the im
 scratch, allocated and left alone (`tmp_perm` in `compute_family_scaling_impl` is seeded inside
 the implementation).
 
-**For a different ordering** — descending, stable, by magnitude — let the prologue (§5.13) build
-it: a permutation the prologue declares `intent(out)` is the prologue's, so `foo` allocates it and
-stops. The argument keeps its `<base>_perm` name, so the expert tier still accepts an order from
+**For a different ordering** — descending, stable, by magnitude — let the prologue (Section 5.13)
+build it: a permutation the prologue declares `intent(out)` is the prologue's, so `foo` allocates it
+and stops. The argument keeps its `<base>_perm` name, so the expert tier still accepts an order from
 the caller; only what `foo` builds by default changes. Declare it `intent(inout)` instead and the
 wrapper still seeds and sorts first, handing the prologue an order to refine.
 
@@ -638,9 +636,9 @@ pointing at the routine that computes it. One annotation, two consumers.
 
 The producer must be exported (`M_EXPORT_C`), so that a wrapper exists to call; recommend
 routines therefore live in the implementation module, public, tagged — they are not
-implementations themselves and the `_impl` rules of §4 leave them alone. Use `JUST_INFO` instead
-of `AUTO` when the caller genuinely has to make the call themselves — then the docs say where to
-get the value, and nothing is called for them.
+implementations themselves and the `_impl` rules of Section 4 leave them alone. Use `JUST_INFO`
+instead of `AUTO` when the caller genuinely has to make the call themselves — then the docs say
+where to get the value, and nothing is called for them.
 
 ### 5.10 A mode argument
 
@@ -698,7 +696,7 @@ integer(int32), intent(in) :: pattern_mode
 
 **You get** one entry point per mode value — named from the column, with the `mode` dummy dropped
 and fixed internally — plus its `_expert` sibling wherever that mode's wrapper has something to
-take over (§5.7): `detect_dosage_effect`, `detect_dosage_effect_expert`,
+take over (Section 5.7): `detect_dosage_effect`, `detect_dosage_effect_expert`,
 `detect_subfunctionalization`, `detect_subfunctionalization_expert`, and (nothing to take over, so
 no second tier) `filter_paralogs_by_pattern_dosage_effect` and
 `filter_paralogs_by_pattern_subfunctionalization`.
@@ -724,7 +722,7 @@ real(real64), intent(in), optional :: gain_gamma
     !! DM_MIN(above(0.0_real64))
 ```
 
-**You get** behaviour that depends on whether the mode splits (§5.11):
+**You get** behaviour that depends on whether the mode splits (Section 5.11):
 
 - **Split**: the argument is a **mandatory** dummy in that mode's wrapper and **absent** from
   every other mode's. Mode-independent optionals stay optional in all of them. A `DM_DEFAULT`
@@ -739,8 +737,8 @@ real(real64), intent(in), optional :: gain_gamma
 from a percentile of the data, a permutation built and sorted a particular way — or should decide
 the input is too degenerate to compute on and answer it directly.
 
-This is the same idea as the `<base>_perm` convention of §5.8, which is a prologue hard-coded for
-one case: `foo` seeds and heapsorts, and a caller who wants a different sort reaches for
+This is the same idea as the `<base>_perm` convention of Section 5.8, which is a prologue hard-coded
+for one case: `foo` seeds and heapsorts, and a caller who wants a different sort reaches for
 `foo_expert`. A prologue is the general form.
 
 **Write** `DM_PROLOGUE(<procedure>, <module>)` in the implementation's own doc block. The prologue
@@ -814,7 +812,7 @@ three lines and no directive. That is where LOESS's degenerate-input check lives
   returns early on it regardless, so without it that branch reads an undefined value
 - a dummy that is one edit from an implementation argument — a misspelling, not a new argument
 - a dummy that is the mode argument, or one scoped to a mode, of an implementation that splits per
-  mode (§5.11) — the wrappers for the other modes do not have it
+  mode (Section 5.11) — the wrappers for the other modes do not have it
 - a prologue on an implementation with nothing to take over *and* no arguments of its own, which
   generates a single wrapper with no prologue in it, so the call is emitted nowhere
 - a value the prologue writes and the implementation reads that *also* sizes something the caller
@@ -924,7 +922,7 @@ Because the procedure is not a numeric procedure of the pipeline:
 - **inside an implementation module** — a recommend/sizing routine
   (`tox_loess_required_workspace`, `calc_neighborhood_size`) or a utility a caller genuinely
   needs (`mask_chunk_count`). These *must* be exported: `DM_OUTPUT_FROM(..., AUTO)` needs a
-  wrapper to call (§5.9). The test is the same one: a wrapper around `calc_neighborhood_size`
+  wrapper to call (Section 5.9). The test is the same one: a wrapper around `calc_neighborhood_size`
   would validate nothing and prepare nothing, so there is nothing to generate.
 
 If your procedure is a numeric procedure of the pipeline, take Part I instead. "It was easier to
@@ -932,7 +930,7 @@ export it directly" is how an unvalidated API gets shipped.
 
 One name is not yours on this path either: **`_impl` is reserved across the whole of `src/`.** A
 module named for it acquires generated wrappers wherever it sits, and every procedure in it is
-held to §4 — it may allocate nothing, it may `use` only implementations and the whitelisted
+held to Section 4 — it may allocate nothing, it may `use` only implementations and the whitelisted
 infrastructure, its `_impl` procedures may not be exported, and it must live in a file named
 after it. Nothing hand-written and exported may carry the suffix.
 
@@ -952,8 +950,8 @@ pure subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n
 `M_EXPORT_C` expands to a Ford `category` tag, and the generator reads the category from that
 same macro — so the marker and what the generator recognises cannot drift.
 
-**Everything in §4 still applies**: explicit intents, kinded types, a `summary:`, an author, a
-`!!` on every argument, `M_IMPLICIT_NONE`, `#include <src/macros.h>`. Those are binding
+**Everything in Section 4 still applies**: explicit intents, kinded types, a `summary:`, an author,
+a `!!` on every argument, `M_IMPLICIT_NONE`, `#include <src/macros.h>`. Those are binding
 requirements, not implementation requirements. Untagged procedures are held to none of it.
 
 ### 6.3 What you now do yourself: validate
@@ -978,7 +976,7 @@ subroutine serialize_int_helper(arr, n_elements, arr_shape, filename, ierr)
 ```
 
 Because you own the numbering, `arg_pos` here is *correct* and stays — nothing clears it (contrast
-§5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
+Section 5.14). Use `set_err_once` so the first failure is the one reported, and end validation with
 `if (is_err(ierr)) return` before touching the data.
 
 An exported procedure with no `ierr` gets one synthesised, because the binding languages always
@@ -994,11 +992,11 @@ Everything that is a *binding* rule rather than a wrapper rule, which is most of
 | extents (`vec(n_dims)`) | derived by the binding from the array; never asked of a Python or R caller |
 | `<arg>_mask` / `n_selected_<arg>` | the count is computed from the mask at the call |
 | `tmp_<name>` | a work array: allocated by the binding language, never returned |
-| `<arg>_shape` | a serialized array (§6.6) |
+| `<arg>_shape` | a serialized array (Section 6.6) |
 | `DM_DEFAULT` | the binding passes the evaluated default — `tox_data_tools` uses `DM_DEFAULT(char(9))` for a tab separator |
 | `DM_OUTPUT_FROM(..., AUTO)` | the *language layer* calls the producer for the caller — `tox_data_archive` sizes eleven arguments this way from `get_tox_data_dims` |
 | `DM_OUTPUT_FROM(..., JUST_INFO)` | documentation pointing at where the value comes from |
-| `DM_RESULT_SIZE_IS` | as in Part I (§5.6): Python and R trim the result, Fortran callers still get the full buffer |
+| `DM_RESULT_SIZE_IS` | as in Part I (Section 5.6): Python and R trim the result, Fortran callers still get the full buffer |
 | a mode table | Python and R still pass the mode as a *string*, and the C wrapper still rejects an unknown one |
 
 What is *not* available: the generated validation block, the plain wrapper's automatic allocation
@@ -1008,7 +1006,7 @@ wrapper, and here there is no wrapper for it to write into.
 ### 6.5 An `_alloc` pair by hand — gone
 
 **Do not write one, and do not expect the generator to know what it is.** Write an `_impl` and
-let §2 give you `foo` / `foo_expert`.
+let Section 2 give you `foo` / `foo_expert`.
 
 The shape was two hand-written procedures in one module, `<p>_alloc` and `<p>`, of which the
 allocating one is the one callers want — how this framework spelled the two tiers before any
@@ -1074,6 +1072,11 @@ What that means for you:
 - **Writing an output string?** Fill the whole width. Assigning a shorter value blank-pads
   automatically, which is what the caller decodes; leaving the tail untouched returns whatever
   the caller's buffer held.
+- **Through a binding, an empty string arrives as one blank, and an empty array of strings never
+  arrives at all.** The width is at least 1, so `""` reaches you as `' '` — `len_trim` is still 0
+  and `trim` still gives `''`. A zero-length array of strings has no buffer to view, so the
+  wrapper refuses it as empty input before your procedure runs, exactly as
+  `validate_dimension_size` would for any zero extent.
 - **A value that genuinely ends in a blank will not round-trip.** That is the accepted price of
   the padding convention.
 
@@ -1084,10 +1087,10 @@ The implementation still gets its wrappers, *and* the raw implementation is expo
 Python and R end up offering an unvalidated twin of the same call, one `_impl` suffix apart.
 
 That is never what you want, and it never happens: the generator refuses the tag outright on an
-`_impl` procedure of an `_impl` module (§8). If an implementation's functionality should be
+`_impl` procedure of an `_impl` module (Section 8). If an implementation's functionality should be
 reachable, it is reachable through its wrapper; if some *other* procedure in an implementation
-module should be exported (a recommend routine, a utility), that one is not an `_impl` and §6.1
-already covers it.
+module should be exported (a recommend routine, a utility), that one is not an `_impl` and Section
+6.1 already covers it.
 
 > Its bindings land in a module named for the file they came from, so the exports of
 > `tox_loess_impl` are published as the Python module `tox_loess_impl` beside the wrappers'
@@ -1134,8 +1137,8 @@ docstring and the R `.Rd` help page. So:
 - **Write plainly about arguments the reader actually passes.** Terms like "pre-allocated" or
   "workspace" describe the Fortran expert signature; a Python caller who never sees that
   argument only finds them confusing.
-- **A `mode` mentioned in prose is misleading in a split wrapper** (§5.11), where that argument
-  does not exist. Link to the mode-specific procedure instead.
+- **A `mode` mentioned in prose is misleading in a split wrapper** (Section 5.11), where that
+  argument does not exist. Link to the mode-specific procedure instead.
 
 Errors follow the same principle. An error names the argument the *caller* passed, and points at
 the derived one only as a route:
@@ -1170,23 +1173,23 @@ source and carries a note saying what to write instead.
 | an optional shape or extent argument | the wrapper must read it before it may take `c_loc` of what it sizes |
 | a `tmp_` argument that is `intent(in)` | a work array is an output or an in-out |
 | an **optional output** (`intent(out), optional`, and not a `tmp_`) | no binding can honour it — Python would return a dict whose keys vary per call, R a list of varying length. Express it as an optional input *flag* plus a `tmp_` work array, the way `loess_fit_plain_impl` does with `compute_influence`: the work stays skippable and the return type stays fixed |
-| `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (§5.11) the pair is meaningful and accepted |
+| `DM_DEFAULT` **and** `DM_REQUIRED_IF_MODE` on a mode that does *not* split | with a runtime mode the argument is always passed on, so "required in that mode" says nothing. On a split mode (Section 5.11) the pair is meaningful and accepted |
 | a mode argument that is not a scalar integer | modes are compared against `MODE_*` parameters |
 | a mode table with no values, or a mode string matching no parameter | the table is what the C layer maps the caller's string through |
 | a `DM_OUTPUT_FROM` producer input that is neither name-matched nor in the table | the generator will not guess what to pass |
 | a misspelt `M_`/`CM_`/`DM_` in any doc comment | an unexpanded macro is a silently wrong document |
-| an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (§4) |
-| an implementation module in a file not named after it | generation reads the module name while the cleaner and the Ford exclusion read file names — the two would name different files, and the generator would parse its own output next run (§4) |
-| an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` that reads as the allocating tier beside the generated `foo` that is one (§6.5), the second a second procedure called `foo_expert` (§4) |
-| an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (§4, §5.7) |
-| a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (§4) |
-| a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (§5.13) |
-| a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (§5.13) |
-| a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (§5.13) |
-| a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (§5.13) |
-| a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (§5.13) |
-| a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (§5.13) |
-| a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (§7) |
+| an `M_EXPORT_C` on an **implementation** | its wrappers are the entry points; the export publishes an unvalidated twin beside them (Section 4) |
+| an implementation module in a file not named after it | generation reads the module name while the cleaner and the Ford exclusion read file names — the two would name different files, and the generator would parse its own output next run (Section 4) |
+| an implementation named `<something>_alloc_impl` or `<something>_expert_impl` | both suffixes belong to the wrappers: the first would generate a `foo_alloc` that reads as the allocating tier beside the generated `foo` that is one (Section 6.5), the second a second procedure called `foo_expert` (Section 4) |
+| an `allocatable` local **or dummy** anywhere in an **implementation module** | the generated `foo` owns the memory, not the implementation (Sections 4 and 5.7) |
+| a `use` in an **implementation module** that names neither another `_impl` module nor a whitelisted one | the bound on what it may reach is what makes the allocation rule hold across modules, and what keeps it below the wrappers rather than beside them (Section 4) |
+| a `DM_PROLOGUE` naming a procedure that does not exist | the wrapper would be generated with no prologue at all (Section 5.13) |
+| a prologue with no `handled`, or one that is not a scalar `logical(c_bool), intent(out)` | the wrapper returns early on it regardless, so the branch would read an undefined value (Section 5.13) |
+| a prologue dummy one edit from an implementation argument | a misspelling would otherwise become a new argument, and the two would be different values (Section 5.13) |
+| a prologue dummy that some mode's wrapper does not have | the prologue runs in all of them (Section 5.13) |
+| a prologue on an implementation with nothing to take over and no arguments of its own | only one wrapper is generated, and it has no prologue for this to run in (Section 5.13) |
+| a prologue producing something the setup above it reads | the name resolves either way, so it would compile and compute rubbish (Section 5.13) |
+| a Ford `[[...]]` link naming a module, or a name in it, that does not exist | it silently stops being a link in all four languages, and nothing downstream can tell (Section 7) |
 
 Warnings never stop generation; errors write nothing. A few things are warnings rather than
 errors, and the house bar is **zero warnings**, so treat them as errors anyway:
@@ -1216,8 +1219,8 @@ generated wrapper without its input validation — for a caller who has already 
 the inputs are good, typically an inner loop over data it produced itself. It gives up every
 diagnostic in this guide, so it is a whole-build decision rather than one to take per call site.
 What survives it: `call set_ok(ierr)`, so `ierr` is still defined, and every runtime error an
-implementation raises itself (§5.14) — those are not input checks. The C layer's null checks stay
-too; they guard against a segfault rather than a bad value.
+implementation raises itself (Section 5.14) — those are not input checks. The C layer's null checks
+stay too; they guard against a segfault rather than a bad value.
 
 `build.sh` runs the generator before fpm, so a source change and its generated layers cannot
 drift apart in a build. It needs Python and [`ford`](https://forddocs.readthedocs.io); without
@@ -1274,7 +1277,7 @@ Two things that will bite when you convert an existing procedure to an implement
 - [ ] Module `tox_*_impl` in a file of the same name, procedure `*_impl`, and **not**
       `M_EXPORT_C`.
 - [ ] The module's `!>` block reads as documentation of the published API, not of the
-      implementation — it is carried onto the generated module verbatim (§7).
+      implementation — it is carried onto the generated module verbatim (Section 7).
 - [ ] No `!!` on an ordinary comment inside a procedure *body*: `!!` is Ford's docmark, silent
       while the procedure is unexported and stray documentation lines in the wrapper once it is
       not. `grep -n '^\s*!! ' <file>` before converting one.
@@ -1286,9 +1289,9 @@ Two things that will bite when you convert an existing procedure to an implement
 
 **Part II — a hand-written export**
 
-- [ ] `!> M_EXPORT_C`, and the procedure is genuinely not an implementation (§6.1).
+- [ ] `!> M_EXPORT_C`, and the procedure is genuinely not an implementation (Section 6.1).
 - [ ] It declares `ierr`, opens with `set_ok`, **validates every argument itself**, and ends
       validation with `if (is_err(ierr)) return`.
 - [ ] `arg_pos=` on each validator matches this procedure's own dummy list.
 - [ ] Any `DM_MIN`/`DM_MAX`/`DM_ALLOW_*` it documents is backed by a check it actually makes —
-      here they are prose, not code (§6.3).
+      here they are prose, not code (Section 6.3).
