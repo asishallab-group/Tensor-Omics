@@ -719,16 +719,20 @@ silently wrong ABI.
 Macro & Purpose \\
 \midrule
 \texttt{M\_IMPLICIT\_NONE} & \texttt{implicit none (type, external)}; use it in every module \\
-\texttt{M\_USE\_NULL\_VALIDATION} & Imports modules needed for \texttt{c\_loc}/null checks in C wrappers \\
-\texttt{M\_CHECK\_IERR\_NON\_NULL} & Silently returns if \texttt{ierr} pointer is null (always first check) \\
-\texttt{M\_CHECK\_NON\_NULL(ARG)} & Sets \texttt{ierr} to \texttt{ERR\_POINTER\_NULL} and returns if \texttt{ARG} pointer is null \\
+\texttt{M\_EXPORT\_C} & Exports a hand-written procedure; see \texttt{codegen\_guide.md}, Part II \\
 \texttt{M\_DEFAULT\_VAL(OPT,LOC,DEF)} & Assigns \texttt{OPT} to \texttt{LOC} if present, else assigns \texttt{DEF} \\
 \texttt{M\_ALLOCATE(DECL)} & Allocates \texttt{DECL}; sets \texttt{ERR\_ALLOC\_FAIL} and returns on failure \\
+\texttt{M\_CHECK\_IO\_ERR(CODE)} & After I/O: on a non-zero \texttt{ierr}, sets \texttt{CODE}, closes \texttt{unit}, returns \\
 \texttt{M\_NAN} & IEEE quiet NaN (double) \\
 \texttt{M\_NEG\_INF} & IEEE negative infinity (double) \\
 \texttt{M\_POS\_INF} & IEEE positive infinity (double) \\
+\texttt{M\_GENE\_TO\_FAM\_SENTINEL} & The \texttt{gene\_to\_fam} value of a gene in no family \\
+\texttt{M\_GENE\_TO\_FAM\_DOC(ARG)} & The standard doc sentence for a \texttt{gene\_to\_fam} argument \\
 \bottomrule
 \end{tabular}
+
+The \texttt{M\_CHECK\_*} null checks in \texttt{macros.h} are not listed: the generator emits them
+into the C wrappers, and no hand-written code uses them.
 
 \subsection{Module-Local Constants via \texttt{\#define} (\texttt{CM\_} prefix)}\label{sec:cm-macros}
 
@@ -829,8 +833,9 @@ converting at the boundary --- the equality is the licence for the cheap spellin
 \textbf{Four existence checks} --- \texttt{c\_bool}, \texttt{c\_size\_t}, \texttt{c\_int64\_t},
 \texttt{c\_signed\_char} are each asserted positive. \texttt{iso\_c\_binding} gives a C kind the
 value \texttt{-1} where the platform has no counterpart, and a negative kind is a compile error
-at every single declaration naming it. For \texttt{c\_bool} that is 152 errors in files that did
-nothing wrong, instead of one here naming the kind that is missing.
+at every single declaration naming it. For \texttt{c\_bool}, which every logical in the framework
+now uses, that is an error in nearly every file --- none of which did anything wrong --- instead of
+one here naming the kind that is missing.
 
 \subsection{Why the \texttt{use} is not optional}
 
