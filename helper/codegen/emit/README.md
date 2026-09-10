@@ -90,15 +90,15 @@ Both emitters generate the same nine steps in the same order. The order is not s
 step needs what the one before it settles.
 
 ```
-1  parameters      which C arguments the caller actually supplies (§4.3)
-2  coerce inputs   type check + convert; raise naming the argument (§4.5)
-3  producers       call DM_OUTPUT_FROM(AUTO) producers (§4.3)
-4  derive extents  from the arrays, shape arguments and masks you were given (§4.3)
-5  cross-check     arguments sharing an extent must agree (§4.3)
-6  allocate        outputs, with the right initialisation (§4.6)
+1  parameters      which C arguments the caller actually supplies (Section 4.3)
+2  coerce inputs   type check + convert; raise naming the argument (Section 4.5)
+3  producers       call DM_OUTPUT_FROM(AUTO) producers (Section 4.3)
+4  derive extents  from the arrays, shape arguments and masks you were given (Section 4.3)
+5  cross-check     arguments sharing an extent must agree (Section 4.3)
+6  allocate        outputs, with the right initialisation (Section 4.6)
 7  call            the C symbol
-8  check ierr      decode and raise; statuses do not raise (§4.7)
-9  return          the outputs, in a shape idiomatic for the host (§4.6)
+8  check ierr      decode and raise; statuses do not raise (Section 4.7)
+9  return          the outputs, in a shape idiomatic for the host (Section 4.6)
 ```
 
 Two ordering traps worth stating outright:
@@ -172,7 +172,7 @@ other's outputs and a module-level import would be circular.
 |---|---|---|
 | **logical** | `c_bool`, one byte | the host's boolean is probably an `int` (R) or an object (Python) — convert, and note the scan is free, so check for missing values while you are there |
 | **character in** | a `c_char` buffer with the length as the **leading extent** | encode, then **blank-pad every slot to the full width**. The item size *is* the string length, measured in **bytes** (so UTF-8 is never truncated by the sizing). Pad the encoded bytes, not the host's string |
-| **character out** | the same buffer | **blank-fill it** (§4.6), and strip trailing blanks — not NULs — on the way back |
+| **character out** | the same buffer | **blank-fill it** (Section 4.6), and strip trailing blanks — not NULs — on the way back |
 | **mode argument** | an integer, but the caller passes a **string** | lower-case the string and let the C wrapper map it; an unknown mode is rejected before Fortran is entered. The accepted set is in `.mode` |
 | **missing values** | nothing — Fortran has no `NA` | check where the check is free. R checks integers (`anyNA`, ALTREP-aware so `1:n` is O(1)), logicals and characters (converted anyway), never doubles (`NA_real_` is a NaN payload Fortran already catches). A host with a distinct missing marker needs the same table; one without needs none of it |
 | **kinds with no mapping** | — | already an error upstream. Never guess a mapping: a wrong guess compiles and lies |
@@ -187,7 +187,7 @@ other's outputs and a module-level import would be circular.
 | **serialized array out** | reshape to the shape argument's contents before returning, column-major — the caller wants the n-d array, not a flat buffer plus homework |
 | **shape of the return** | Python returns a scalar for one output and a `dict` for several; R returns the value or a list. Follow the host |
 | **result mutability** | freeze it if the host can. Python sets `flags.writeable = False` on the allocated buffer after the call — O(1), and it propagates into the reshape and slice views the return builds, which then cannot be unfrozen at all. R has no counterpart and needs none: it is copy-on-modify, so a returned vector cannot be aliased. Freeze only what the wrapper allocated — never an `intent(inout)` array, which is the caller's — and say so in the docs with the host's escape hatch (`.copy()`) |
-| **`intent(inout)` in the return** | see §4.2 — it depends on whether you mutate |
+| **`intent(inout)` in the return** | see Section 4.2 — it depends on whether you mutate |
 
 ### 4.7 Errors
 
@@ -240,7 +240,7 @@ else.
   compile time, for a caller who has established their inputs are good. Your layer's own
   validation is a run-time thing and cannot be preprocessed out, so do not try to make it
   conditional: a host caller who wants no checks calls through C or Fortran instead. The
-  cross-extent checks in particular (§4) are the one thing Fortran cannot do for itself, so
+  cross-extent checks in particular (Section 4) are the one thing Fortran cannot do for itself, so
   they are exactly what should *not* become optional.
 
 ---

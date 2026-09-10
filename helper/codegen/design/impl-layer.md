@@ -812,8 +812,8 @@ things decide the shape of that:
 
 **`call set_ok(ierr)` is outside the guard.** It is not a check -- it is what leaves `ierr`
 defined on the path where nothing goes wrong. Inside the guard, a validation-free build would
-hand every caller an undefined `ierr` and an implementation's own runtime errors (§ the `ierr`
-an implementation may keep) would be unreadable.
+hand every caller an undefined `ierr` and an implementation's own runtime errors (see the
+section on the `ierr` an implementation may keep) would be unreadable.
 
 **Rejected -- an optional `validate` argument, or a per-procedure opt-out.** Whether to check
 inputs is not a property of one call: a caller either trusts its data or does not, and mixing
