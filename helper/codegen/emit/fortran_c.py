@@ -117,6 +117,8 @@ class FortranCEmitter:
         # in any Fortran, so a fixed list goes stale silently
         errors = ["set_ok", "set_err"]
         errors.append("ERR_POINTER_NULL")
+        if any(a.conversion is Conversion.CHARACTER for w in module for a in w):
+            errors.append("ERR_EMPTY_INPUT")  # M_CHECK_CHARACTER_VIEW names it
         if any(a.conversion is Conversion.MODE for w in module for a in w):
             errors.append("ERR_INVALID_INPUT")
         # Only a converted argument ever reaches `_allocate_local` in the body, so asking it
@@ -389,13 +391,20 @@ class FortranCEmitter:
             extents = list(argument.dimension.extents)[1:]
         shape = f", [{', '.join(extents)}]" if extents else ""
         remap = f"call c_f_pointer(c_loc({name}), {local}{shape})"
+        # `c_loc` may not be given a zero-size target, and the view is built before the call,
+        # so an empty buffer has to be refused here rather than left to the callee the way
+        # M_CHECK_ARRAY_NON_NULL leaves every other kind. Guarding the check without guarding
+        # this was the hole: the check skipped itself and the remap went ahead anyway.
+        guard = f"M_CHECK_CHARACTER_VIEW({name}, {self._size_of(argument)})"
         if not argument.optional:
-            return remap
+            return f"{guard}\n{remap}"
         # C passed null -> the argument is absent -> the local must be absent to the callee
         # too, which for a pointer means *disassociated* (F2018 15.5.2.12). An undefined
         # pointer is not a disassociated one, so it is nullified explicitly -- as a
         # statement, never as an initialiser, which would give the local an implicit SAVE.
-        return f"nullify({local})\nif (present({name})) {remap}"
+        # Absent is not empty, so the guard sits inside the presence test.
+        body = "\n".join(f"    {line}" for line in (guard, remap))
+        return f"nullify({local})\nif (present({name})) then\n{body}\nend if"
 
     def _allocate_local(self, argument: CArgument, wrapper: CWrapper) -> str:
         """`M_ALLOCATE` for a converted local, or empty where the local is not allocatable.

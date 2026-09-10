@@ -761,6 +761,13 @@ static inline int tox_imin(int a, int b) { return a < b ? a : b; }
 
 // The width a character(len=n) array needs: the longest element, NA skipped. 0 for a
 // non-character or absent (R_NilValue) argument, so an omitted optional reports no width.
+//
+// A *present* argument reports at least 1, matching what the Python layer does with
+// `.ljust(1)` and `max(..., default=0) or 1`. Every element being "" would otherwise give
+// width 0, and `R_alloc(0, 1)` returns NULL -- a null buffer the Fortran wrapper cannot make
+// a pointer view of. The floor is deliberately inside the present branch: raising the absent
+// case to 1 would send width 1 beside a null pointer, and M_CHECK_ARRAY_NON_NULL would then
+// reject an optional the caller legitimately omitted.
 static inline int tox_max_strlen(SEXP x) {
     if (x == R_NilValue || TYPEOF(x) != STRSXP) return 0;
     int longest = 0, n = (int) XLENGTH(x);
@@ -770,7 +777,7 @@ static inline int tox_max_strlen(SEXP x) {
         int m = (int) LENGTH(e);
         if (m > longest) longest = m;
     }
-    return longest;
+    return longest > 0 ? longest : 1;
 }
 
 // Fortran carries a string's length as the leading extent: n strings of length len are

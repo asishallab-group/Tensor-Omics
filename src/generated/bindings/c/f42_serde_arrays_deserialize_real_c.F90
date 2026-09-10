@@ -6,7 +6,7 @@
 module f42_serde_arrays_deserialize_real_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_f_pointer, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -56,6 +56,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(arr, product(arr_shape))
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
 
+        M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
 
         call deserialize_real_helper(&

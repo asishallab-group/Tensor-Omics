@@ -139,3 +139,28 @@ class TestMarshalHeaderProtection:
                                            "Rf_ScalarInteger", "Rf_duplicate", "Rf_coerceVector")
                           if call in body]
             assert len(allocators) <= 1, f"{helper} allocates more than once: {allocators}"
+
+
+class TestStringWidthNeverReachesFortranAsZero:
+    """`R_alloc(0, 1)` returns NULL, so a width of 0 hands the Fortran wrapper a null buffer
+    it cannot make a pointer view of -- gfortran aborts, ifx segfaults. R reaches that with
+    nothing exotic: `tox_max_strlen("")` is 0. The Python layer already floors the width
+    (`.ljust(1)`, `max(..., default=0) or 1`); this is the R equivalent."""
+
+    def widths(self):
+        header = CCallEmitter().marshal_header_content()
+        body = header[header.index("tox_max_strlen(SEXP x)"):]
+        return body[: body.index("\n}")]
+
+    def test_a_present_argument_reports_at_least_one(self):
+        assert "return longest > 0 ? longest : 1;" in self.widths()
+
+    def test_an_absent_argument_still_reports_zero(self):
+        """The floor must NOT cover R_NilValue. An omitted optional arrives as a null buffer,
+        and width 0 is how the wrapper is told so -- raising it to 1 would put width 1 beside
+        a null pointer and make M_CHECK_CHARACTER_VIEW reject an optional the caller left
+        out on purpose."""
+        body = self.widths()
+
+        early = body[: body.index("int longest")]
+        assert "if (x == R_NilValue || TYPEOF(x) != STRSXP) return 0;" in early
