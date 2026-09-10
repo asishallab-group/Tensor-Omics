@@ -37,7 +37,7 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   stderr "Compiling src/"
-  bash build.sh --clean-build "$@" --skip-code-generation --compiler="$COMPILER"
+  bash build.sh "$@" --skip-code-generation --compiler="$COMPILER"
   check_exit_code "Build failed"
 else
   bash build.sh "$@" --compiler="$COMPILER" --skip-code-generation

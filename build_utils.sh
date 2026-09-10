@@ -33,19 +33,54 @@ function init() {
 # either is set they compile to empty objects that need no R headers; otherwise they need R's
 # include path. If the R layer is wanted but R is not installed, drop it with a warning.
 function get_c_flags() {
-  C_FLAGS="-fPIC $DIRECTIVES"
+  # C_ONLY_FLAGS is what the C sources get and the Fortran ones do not. $DIRECTIVES goes to
+  # both, and fpm keys its build directories by the Fortran flags, so a directive never needs
+  # a clean build. A C-only flag does: the library sits in the Fortran-keyed directory, so
+  # switching one back reuses the objects without relinking -- check_build_state hashes these.
+  # That is also why the R fallback adds NO_R_BINDING to $DIRECTIVES, not to the C flags alone.
+  C_ONLY_FLAGS="-fPIC"
   if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
-    return
-  fi
-  if [[ -z $(command -v R) ]]; then
+    :
+  elif [[ -z $(command -v R) ]]; then
     warning "'$(echo_compiler R)' not found -- building without the R binding.
 Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLOR_CREAM' to silence this."
     DIRECTIVES="$DIRECTIVES -DNO_R_BINDING"
-    C_FLAGS="$C_FLAGS -DNO_R_BINDING"
-    TOX_CLEAN_BUILD=1
-    return
+  else
+    C_ONLY_FLAGS="$C_ONLY_FLAGS $(R CMD config --cppflags)"
   fi
-  C_FLAGS="$C_FLAGS $(R CMD config --cppflags)"
+  C_FLAGS="$C_ONLY_FLAGS $DIRECTIVES"
+}
+
+# fpm decides what to recompile from each source's own content, and keys its build directories
+# by the compiler's name and the Fortran flags. Whatever else changes what the library should
+# contain is invisible to it, so it is hashed here and answered with a clean build:
+#   - the hand-written headers: fpm never hashes what a source #includes (fortran-lang/fpm#358).
+#     tox_marshal.h is not among them -- the generator stamps its hash into every shim instead.
+#   - fpm.toml and the link flags: a changed link library alone does not relink the library.
+#   - the C-only flags: see get_c_flags.
+#   - the Fortran compiler's version: an upgrade keeps the name, and the old .mod files with it.
+# This replaces the clean build on every branch switch, which was a stand-in for the same
+# thing, and it also catches these changes when no branch changed -- a pull, a stash pop, an
+# edit to macros.h. One marker per compiler, as a clean build deletes only that compiler's.
+function check_build_state() {
+  declare state
+  state=$(
+    {
+      "$COMPILER" --version 2>/dev/null | head -1
+      echo "C_ONLY_FLAGS=$C_ONLY_FLAGS"
+      echo "LINK_FLAGS=$LINK_FLAGS"
+      cat fpm.toml
+      # git lists the headers without walking the tree by hand (the repo may sit under /mnt/c)
+      { git ls-files --cached --others --exclude-standard -- '*.h' ':!src/generated/**' 2>/dev/null \
+          || find src -name '*.h' -not -path 'src/generated/*'; } | LC_ALL=C sort -u | xargs -r -d '\n' sha256sum
+    } | sha256sum | cut -c1-16
+  )
+  declare marker="build/.${COMPILER}.${state}.buildstate"
+  if [[ ! -f "$marker" ]]; then
+    TOX_CLEAN_BUILD=1
+    rm -f "build/.${COMPILER}."*.buildstate "build/.${COMPILER}."*.branch build/.branch
+    : > "$marker"
+  fi
 }
 
 # Regenerates the bindings and the generated Fortran wrappers from `src/` before compiling, so a
@@ -210,7 +245,6 @@ function handle_args() {
 
       if [[ "$varname" == "TOX_DIRECTIVE" ]]; then
         DIRECTIVES="$DIRECTIVES -D${val}"
-        TOX_CLEAN_BUILD=1
       else
         declare -g "${varname}=$val"
       fi
