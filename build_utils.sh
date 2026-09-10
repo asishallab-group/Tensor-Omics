@@ -94,7 +94,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix=(fpm build --list)
   fi
-  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "-Lexternal" -- $ARGS
+  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "$LINK_FLAGS" -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)
@@ -139,6 +139,15 @@ Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compile
 }
 
 function get_flags_and_features() {
+  # -Lexternal is where build.sh puts the loess archives it builds, so no override removes it
+  LINK_FLAGS="-Lexternal"
+  if [[ "$TOX_OVERRIDE_LINK_FLAGS" ]]; then
+    # The compiler's own feature -- what get_compiler put in $FEATURES -- carries nothing but
+    # its link libraries, so replacing those means leaving it out. They cannot be passed via
+    # --override-flags instead: fpm never hands --flag to the link of the shared library.
+    FEATURES=
+    LINK_FLAGS="$LINK_FLAGS $TOX_OVERRIDE_LINK_FLAGS"
+  fi
   if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
     FLAGS="$TOX_OVERRIDE_FLAGS"
     FEATURES=
@@ -172,6 +181,7 @@ function get_flags_and_features() {
     FEATURES="$FEATURES,diagnostics"
   fi
   FEATURES="$FEATURES,default"
+  FEATURES="${FEATURES#,}"  # the compiler's feature is absent under --override-link-flags
 }
 
 function handle_args() {
