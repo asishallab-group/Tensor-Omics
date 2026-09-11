@@ -23,11 +23,11 @@ This is deliberate. An all-in-one entry point that allocates its outputs inside 
 
 ### In every language
 
-**Errors come back in `ierr`,** the last argument of every procedure. `0` is success. Anything else is `10000*arg_pos + code`: the code names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and `arg_pos` names the argument to blame, counted in the Fortran signature, with `0` when no argument is at fault. Python turns it into an exception derived from `ToxError` (`ToxInputError`, `ToxIOError`, ...) and R into a condition of class `tox_error` (`tox_input_error`, ...), both naming the argument.
+**Errors come back in `ierr`,** the last argument of every procedure. `0` is success. Anything else is `10000*arg_pos + code`: the last four digits are the code, which names the failure (1xx input and output, 2xx invalid input, 3xx memory, 5xxx Fortran runtime, 9xxx internal), and the digits before them are `arg_pos`, the argument to blame, counted in the Fortran signature and `0` when no argument is at fault. Python turns it into an exception derived from `ToxError` (`ToxInputError`, `ToxIOError`, ...) and R into a condition of class `tox_error` (`tox_input_error`, ...), both naming the argument.
 
 **Indices are 1-based,** as in Fortran: family indices and permutations alike. Where an index can be "none", its value is `0`, such as a gene that belongs to no family.
 
-**Results never contain NaN.** Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as `-1` for a distance that was not measured. #180 tracks the one place that still writes NaN. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.
+**Results never contain NaN.** Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as `-1` for a distance that was not measured. A NaN in a result is a bug; please report it. One is known: `detect_outliers` still pads `loess_x` and `loess_y` with NaN. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.
 
 ### From C
 
