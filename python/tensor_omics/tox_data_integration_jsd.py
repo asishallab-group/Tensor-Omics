@@ -30,7 +30,7 @@ _lib.determine_shared_residual_range_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
+_DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "abs_residual_pool", None, None, None,)
 
@@ -45,7 +45,7 @@ _lib.determine_shared_residual_range_expert_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS = ("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr",)
+_DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENTS = ("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_SHARED_RESIDUAL_RANGE_EXPERT_ARGUMENT_SOURCES = (None, None, "abs_residual_pool", None, None, None,)
 
@@ -63,7 +63,7 @@ _lib.determine_study_shared_residual_range_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr",)
+_DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile_level", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None,)
 
@@ -120,7 +120,7 @@ _COMPUTE_WEIGHTED_GLOBAL_DIVERGENCE_ARGUMENT_SOURCES = (None, "js_divergences", 
 
 def determine_shared_residual_range(
         abs_residual_pool,
-        residual_range_quantile=0.95,
+        residual_range_quantile_level=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
 
@@ -132,7 +132,7 @@ def determine_shared_residual_range(
     abs_residual_pool : np.ndarray[np.float64] of shape (pool_size,)
         The absolute residual values of the concatenated S1,S2 residuals
         NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 0.95
+    residual_range_quantile_level : float, optional, default 0.95
         Quantile level in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -175,7 +175,7 @@ def determine_shared_residual_range(
         abs_residual_pool,
         ctypes.byref(ctypes.c_int(pool_size)),
         ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
         ctypes.byref(ierr),
     )
 
@@ -186,7 +186,7 @@ def determine_shared_residual_range(
 def determine_shared_residual_range_expert(
         abs_residual_pool,
         abs_residual_pool_perm,
-        residual_range_quantile=0.95,
+        residual_range_quantile_level=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from a pooled set of absolute residuals
 
@@ -202,7 +202,7 @@ def determine_shared_residual_range_expert(
         The permutation vector that sorts `abs_residual_pool`
         The minimum valid value is `1`.
         The maximum valid value is `pool_size`.
-    residual_range_quantile : float, optional, default 0.95
+    residual_range_quantile_level : float, optional, default 0.95
         Quantile level in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -258,7 +258,7 @@ def determine_shared_residual_range_expert(
         abs_residual_pool_perm,
         ctypes.byref(ctypes.c_int(pool_size)),
         ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
         ctypes.byref(ierr),
     )
 
@@ -269,7 +269,7 @@ def determine_shared_residual_range_expert(
 def determine_study_shared_residual_range(
         neighborhood_residuals_S1,
         neighborhood_residuals_S2,
-        residual_range_quantile=0.95,
+        residual_range_quantile_level=0.95,
 ):
     r"""Compute the shared residual range [-R, R] from the neighborhood residuals of two studies
 
@@ -284,7 +284,7 @@ def determine_study_shared_residual_range(
     neighborhood_residuals_S2 : np.ndarray[np.float64] of shape (n_reps_S2, n_neighbors, n_points,), column-major (order='F')
         Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
-    residual_range_quantile : float, optional, default 0.95
+    residual_range_quantile_level : float, optional, default 0.95
         Quantile level in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
@@ -347,7 +347,7 @@ def determine_study_shared_residual_range(
         ctypes.byref(ctypes.c_int(n_neighbors)),
         ctypes.byref(ctypes.c_int(n_points)),
         ctypes.byref(shared_residual_range),
-        ctypes.byref(ctypes.c_double(residual_range_quantile)),
+        ctypes.byref(ctypes.c_double(residual_range_quantile_level)),
         ctypes.byref(ierr),
     )
 

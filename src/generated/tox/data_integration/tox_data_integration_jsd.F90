@@ -37,7 +37,7 @@ contains
             abs_residual_pool,&
             pool_size,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         )
         integer(int32), intent(in) :: pool_size
@@ -47,7 +47,7 @@ contains
             !! NaN is permitted for this value.
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        real(real64), intent(in), optional :: residual_range_quantile
+        real(real64), intent(in), optional :: residual_range_quantile_level
             !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -59,7 +59,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=2_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(residual_range_quantile_level, ierr, arg_pos=4_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
 #endif
@@ -73,7 +73,7 @@ contains
             abs_residual_pool_perm = abs_residual_pool_perm,&
             pool_size = pool_size,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile&
+            residual_range_quantile_level = residual_range_quantile_level&
         )
     end subroutine determine_shared_residual_range
 
@@ -85,7 +85,7 @@ contains
             abs_residual_pool_perm,&
             pool_size,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         )
         integer(int32), intent(in) :: pool_size
@@ -99,7 +99,7 @@ contains
             !! The maximum valid value is `pool_size`.
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        real(real64), intent(in), optional :: residual_range_quantile
+        real(real64), intent(in), optional :: residual_range_quantile_level
             !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -110,7 +110,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(pool_size, ierr, arg_pos=3_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=5_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(residual_range_quantile_level, ierr, arg_pos=5_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(abs_residual_pool, pool_size, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_int(abs_residual_pool_perm, pool_size, ierr, arg_pos=2_int32, min=1_int32, max=pool_size)
         if (is_err(ierr)) return
@@ -121,7 +121,7 @@ contains
             abs_residual_pool_perm = abs_residual_pool_perm,&
             pool_size = pool_size,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile&
+            residual_range_quantile_level = residual_range_quantile_level&
         )
     end subroutine determine_shared_residual_range_expert
 
@@ -136,7 +136,7 @@ contains
             n_neighbors,&
             n_points,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         )
         integer(int32), intent(in) :: n_reps_S1
@@ -155,7 +155,7 @@ contains
             !! NaN is permitted for this value.
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        real(real64), intent(in), optional :: residual_range_quantile
+        real(real64), intent(in), optional :: residual_range_quantile_level
             !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -171,7 +171,7 @@ contains
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(residual_range_quantile_level, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
@@ -190,7 +190,7 @@ contains
             tmp_abs_residual_pool = tmp_abs_residual_pool,&
             tmp_abs_residual_pool_perm = tmp_abs_residual_pool_perm,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile&
+            residual_range_quantile_level = residual_range_quantile_level&
         )
     end subroutine determine_study_shared_residual_range
 
@@ -207,7 +207,7 @@ contains
             tmp_abs_residual_pool,&
             tmp_abs_residual_pool_perm,&
             shared_residual_range,&
-            residual_range_quantile,&
+            residual_range_quantile_level,&
             ierr&
         )
         integer(int32), intent(in) :: n_reps_S1
@@ -230,7 +230,7 @@ contains
             !! Work array for the permutation that sorts `tmp_abs_residual_pool`
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
-        real(real64), intent(in), optional :: residual_range_quantile
+        real(real64), intent(in), optional :: residual_range_quantile_level
             !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
@@ -244,7 +244,7 @@ contains
         call validate_dimension_size(n_reps_S2, ierr, arg_pos=4_int32)
         call validate_dimension_size(n_neighbors, ierr, arg_pos=5_int32)
         call validate_dimension_size(n_points, ierr, arg_pos=6_int32)
-        call validate_in_range_real(residual_range_quantile, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(residual_range_quantile_level, ierr, arg_pos=10_int32, min=0.0_real64, max=1.0_real64)
         call validate_all_in_range_real(neighborhood_residuals_S1, n_reps_S1 * n_neighbors * n_points, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(neighborhood_residuals_S2, n_reps_S2 * n_neighbors * n_points, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
         if (is_err(ierr)) return
@@ -260,7 +260,7 @@ contains
             tmp_abs_residual_pool = tmp_abs_residual_pool,&
             tmp_abs_residual_pool_perm = tmp_abs_residual_pool_perm,&
             shared_residual_range = shared_residual_range,&
-            residual_range_quantile = residual_range_quantile&
+            residual_range_quantile_level = residual_range_quantile_level&
         )
     end subroutine determine_study_shared_residual_range_expert
 
