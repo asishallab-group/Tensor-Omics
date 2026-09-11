@@ -432,7 +432,7 @@ test_compute_family_scaling_consistency <- function() {
                                          span, degree, mode, n_iters)
   result_regular <- compute_family_scaling(n_families, distances, gene_to_fam)
 
-  valid_idx <- !is.na(result_expert$loess_x)
+  valid_idx <- result_expert$indices_used > 0
 
   # Compare with regular version to ensure consistency
 

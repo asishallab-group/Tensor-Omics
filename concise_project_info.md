@@ -27,7 +27,7 @@ This is deliberate. An all-in-one entry point that allocates its outputs inside 
 
 **Indices are 1-based,** as in Fortran: family indices and permutations alike. Where an index can be "none", its value is `0`, such as a gene that belongs to no family.
 
-**Results never contain NaN.** Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as `-1` for a distance that was not measured. A NaN in a result is a bug; please report it. One is known: `detect_outliers` still pads `loess_x` and `loess_y` with NaN. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.
+**Results never contain NaN.** Where an output value is undefined, the documentation of that output names a sentinel outside the range the quantity can take, such as `-1` for a distance that was not measured. A NaN in a result is a bug; please report it. On input, NaN and infinite values are rejected unless an argument's documentation says they are permitted.
 
 ### From C
 

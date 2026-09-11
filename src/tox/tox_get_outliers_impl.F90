@@ -12,7 +12,7 @@ module tox_get_outliers_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: logx_helper, above, is_close
     use f42_sort_impl, only: sort_array, init_perm
     use f42_stats_impl, only: calc_percentile_impl, compute_scaled_distance_quantile_impl
@@ -26,6 +26,9 @@ module tox_get_outliers_impl
 #define CM_FAMILY_MODE_DEFAULT 1_int32
 #define CM_FAMILY_N_ITERS_DEFAULT 3_int32
 #define CM_OUTLIER_PERCENTILE_DEFAULT 0.95_real64
+! Fills the slots of loess_x / loess_y that no family occupies. They hold a mean and a standard
+! deviation of distances, neither of which can be negative, so -1 cannot be mistaken for data.
+#define CM_LOESS_POINT_SENTINEL -1.0_real64
 
     integer(int32), parameter, public :: MODE_PLAIN = 0_int32
         !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
@@ -59,11 +62,15 @@ contains
 
         ! Buffers (reused)
         real(real64), intent(out) :: loess_x(n_families)
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(real64), intent(out) :: loess_y(n_families)
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), intent(out) :: indices_used(n_families)
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         integer(int32), intent(out) :: tmp_perm(n_genes)
             !! Permutation array for sorting gene distances
         integer(int32), intent(out) :: tmp_stack_left(n_genes)
@@ -157,8 +164,9 @@ contains
         ! Initialize error code and output arrays
         call set_ok(ierr)
         dscale  = 0.0_real64
-        loess_x = 0.0_real64
-        loess_y = 0.0_real64
+        loess_x = CM_LOESS_POINT_SENTINEL
+        loess_y = CM_LOESS_POINT_SENTINEL
+        indices_used = 0_int32
         n_valid = 0
 
         ! Validate family indices; the -1 sentinel output on failure is part of the contract, so this
@@ -289,6 +297,12 @@ contains
 
         n_valid = k
 
+        ! The compaction leaves the slots after the retained families holding values it moved
+        ! forward; mark them unused, as the slots no family ever reached already are.
+        loess_x(n_valid + 1:) = CM_LOESS_POINT_SENTINEL
+        loess_y(n_valid + 1:) = CM_LOESS_POINT_SENTINEL
+        indices_used(n_valid + 1:) = 0_int32
+
         ! Trigger fallback case when having too few points
         if (n_valid <= 1) then
             xmin = 0.0_real64
@@ -373,12 +387,6 @@ contains
             loess_x(i_valid) = max(2.0_real64**loess_x(i_valid) - eps_mean, 0.0_real64)
             loess_y(i_valid) = max(2.0_real64**loess_y(i_valid) - eps_sd, 0.0_real64)
         end do
-
-        if (n_valid < n_families) then
-            loess_x(n_valid + 1:) = M_NAN
-            loess_y(n_valid + 1:) = M_NAN
-            indices_used(n_valid + 1:n_families) = 0_int32
-        end if
 
         low_sd_cutoff = max(2.0_real64**low_sd_cutoff - eps_sd, 0.0_real64)
 
@@ -610,11 +618,15 @@ contains
         logical(c_bool), intent(out) :: is_outlier(n_genes)
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: loess_x(n_families)
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(real64), intent(out) :: loess_y(n_families)
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), intent(out) :: loess_n(n_families)
-            !! Indices of reference points used for smoothing.
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
         real(real64), intent(out) :: quantile(n_genes)
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
