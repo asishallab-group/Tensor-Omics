@@ -11,5 +11,15 @@ Designed for distributed high-performance computing, Tensor Omics is implemented
 * **Robust to sparsity and noise**: percentile-based empirical thresholds and local geometric measures enable stability.
 * **Broad applications**: demonstrated on medical biomarker discovery, gene duplication outcomes, developmental trajectories, and socioeconomic indicators.
 
+## How the API is shaped
+
+Every procedure is published under one name, the same in Fortran, C, Python and R. Its documentation, found on these pages, is the documentation in every language.
+
+**Two tiers, where there is something to take over.** `foo` is the entry point to reach for first: it validates its arguments, allocates the work arrays and prepares what it can derive itself (a sorted permutation, a workspace size, a threshold), then computes. `foo_expert`, where it exists, validates and computes with what you hand it. It allocates nothing and prepares nothing, so you can reuse your own buffers or supply a different sort order. Python and R get the expert tier only where it offers more than buffers, because they allocate the work arrays themselves either way.
+
+**The calling language allocates the outputs.** No procedure allocates an array and hands it back. In Fortran and C you pass the output arrays in. In Python and R the binding allocates them as NumPy arrays or R vectors before the call, and the library writes into that memory directly. Every result is therefore an ordinary object of your language: its garbage collector frees it, and there is nothing to release by hand. The only memory the library allocates itself is scratch space inside `foo`, and it is released before `foo` returns.
+
+This is deliberate. An all-in-one entry point that allocates its outputs inside the library and returns them would save the bindings a few lines. But memory the library allocated must also be freed by the library, so every language would need its own finaliser calling back into it, or a copy of each result into a native array. The cleanup would still be needed, only harder to get right and in more places.
+
 
 *Tensor Omics shows that geometry, when treated not as preprocessing but as the central instrument of analysis, can open entirely new ways to read complex biological and social data — simple, transparent, and surprisingly powerful.*
