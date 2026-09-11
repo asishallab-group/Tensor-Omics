@@ -57,6 +57,7 @@ def render_docstring(wrapper: CWrapper, emitter=None) -> str:
     # invalid escape sequence in a plain string and warns (a hard error in a future Python).
     # The closing `"""` is always on its own line, so no trailing backslash can abut it.
     writer.line('r"""' + _render(wrapper.procedure.meta.summary or wrapper.stripped_name, "python"))
+    _extended_summary(writer, wrapper, emitter)
 
     inputs = emitter._inputs(wrapper)
     outputs = emitter._outputs(wrapper)
@@ -89,6 +90,37 @@ def render_docstring(wrapper: CWrapper, emitter=None) -> str:
 
     writer.line('"""')
     return writer.render()
+
+
+def _extended_summary(writer: Writer, wrapper: CWrapper, emitter=None) -> None:
+    """Everything the author wrote under `summary:`, which is usually where the contract is.
+
+    R has always had this -- `render_roxygen` writes the summary and then the body into the
+    description -- and Python did not, so a Python caller of `compute_tissue_versatility` was
+    never told which end of the normalised [0, 1] scale means uniform and which means a single
+    axis, and a caller of `calc_fchange` was never told the input has to be on a log2 scale
+    already. Numpydoc's *extended summary* is free text between the summary line and
+    Parameters, so this was only ever a placement question, never a format one.
+
+    Same filter as the roxygen side: tables are dropped, because a mode table is already
+    stated as the accepted values on the parameter itself.
+    """
+    lines = []
+    for block in wrapper.doc:
+        if isinstance(block, DocTable) or is_ford_block_tag(block.text):
+            continue
+        lines.append(_render(_spans(block, _resolver(emitter), "python"), "python"))
+    while lines and not lines[-1]:
+        lines.pop()
+    if not lines:
+        return
+
+    writer.blank()
+    for line in lines:
+        if line:
+            writer.line(line)
+        else:
+            writer.blank()
 
 
 def _parameter(writer: Writer, argument: CArgument, emitter) -> None:

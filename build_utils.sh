@@ -33,19 +33,54 @@ function init() {
 # either is set they compile to empty objects that need no R headers; otherwise they need R's
 # include path. If the R layer is wanted but R is not installed, drop it with a warning.
 function get_c_flags() {
-  C_FLAGS="-fPIC $DIRECTIVES"
+  # C_ONLY_FLAGS is what the C sources get and the Fortran ones do not. $DIRECTIVES goes to
+  # both, and fpm keys its build directories by the Fortran flags, so a directive never needs
+  # a clean build. A C-only flag does: the library sits in the Fortran-keyed directory, so
+  # switching one back reuses the objects without relinking -- check_build_state hashes these.
+  # That is also why the R fallback adds NO_R_BINDING to $DIRECTIVES, not to the C flags alone.
+  C_ONLY_FLAGS="-fPIC"
   if [[ "$DIRECTIVES" == *NO_R_BINDING* || "$DIRECTIVES" == *NO_C_BINDING* ]]; then
-    return
-  fi
-  if [[ -z $(command -v R) ]]; then
+    :
+  elif [[ -z $(command -v R) ]]; then
     warning "'$(echo_compiler R)' not found -- building without the R binding.
 Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLOR_CREAM' to silence this."
     DIRECTIVES="$DIRECTIVES -DNO_R_BINDING"
-    C_FLAGS="$C_FLAGS -DNO_R_BINDING"
-    TOX_CLEAN_BUILD=1
-    return
+  else
+    C_ONLY_FLAGS="$C_ONLY_FLAGS $(R CMD config --cppflags)"
   fi
-  C_FLAGS="$C_FLAGS $(R CMD config --cppflags)"
+  C_FLAGS="$C_ONLY_FLAGS $DIRECTIVES"
+}
+
+# fpm decides what to recompile from each source's own content, and keys its build directories
+# by the compiler's name and the Fortran flags. Whatever else changes what the library should
+# contain is invisible to it, so it is hashed here and answered with a clean build:
+#   - the hand-written headers: fpm never hashes what a source #includes (fortran-lang/fpm#358).
+#     tox_marshal.h is not among them -- the generator stamps its hash into every shim instead.
+#   - fpm.toml and the link flags: a changed link library alone does not relink the library.
+#   - the C-only flags: see get_c_flags.
+#   - the Fortran compiler's version: an upgrade keeps the name, and the old .mod files with it.
+# This replaces the clean build on every branch switch, which was a stand-in for the same
+# thing, and it also catches these changes when no branch changed -- a pull, a stash pop, an
+# edit to macros.h. One marker per compiler, as a clean build deletes only that compiler's.
+function check_build_state() {
+  declare state
+  state=$(
+    {
+      "$COMPILER" --version 2>/dev/null | head -1
+      echo "C_ONLY_FLAGS=$C_ONLY_FLAGS"
+      echo "LINK_FLAGS=$LINK_FLAGS"
+      cat fpm.toml
+      # git lists the headers without walking the tree by hand (the repo may sit under /mnt/c)
+      { git ls-files --cached --others --exclude-standard -- '*.h' ':!src/generated/**' 2>/dev/null \
+          || find src -name '*.h' -not -path 'src/generated/*'; } | LC_ALL=C sort -u | xargs -r -d '\n' sha256sum
+    } | sha256sum | cut -c1-16
+  )
+  declare marker="build/.${COMPILER}.${state}.buildstate"
+  if [[ ! -f "$marker" ]]; then
+    TOX_CLEAN_BUILD=1
+    rm -f "build/.${COMPILER}."*.buildstate "build/.${COMPILER}."*.branch build/.branch
+    : > "$marker"
+  fi
 }
 
 # Regenerates the bindings and the generated Fortran wrappers from `src/` before compiling, so a
@@ -78,7 +113,12 @@ Run '$COLOR_LIGHT_GRAY$(basename $python) -m pip install ford$COLOR_CREAM' to re
 
 function utils_fpm() {
   cecho "${COLOR_CREAM}Using compiler: $(echo_compiler $COMPILER)"
-  declare -a prefix=(fpm build)
+  # --tests: fpm rebuilds a target's dependents only within the run that rebuilds the target,
+  # and records nothing for the next run. A plain `fpm build` leaves the tests out of the model,
+  # so a changed module (a parameter value, an interface) recompiled the library but left the
+  # test objects compiled against the old .mod -- and the `fpm test` that followed found both
+  # up to date. Building them here puts them in the same run, and only the stale ones rebuild.
+  declare -a prefix=(fpm build --tests)
   declare libpath="$LD_LIBRARY_PATH"
   if [[ "$1" == "test" ]]; then
     prefix=(fpm test --target "${2:-run_tests}")
@@ -89,7 +129,7 @@ function utils_fpm() {
   elif [[ "$1" == "list" ]]; then
     prefix=(fpm build --list)
   fi
-  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "-Lexternal" --flag "-I." -- $ARGS
+  LD_LIBRARY_PATH="$libpath" "${prefix[@]}" --features "$FEATURES" --compiler "$COMPILER" --flag "$FLAGS $DIRECTIVES" --c-flag "$C_FLAGS" --link-flag "$LINK_FLAGS" -- $ARGS
   exit_code=$?
   rm -f build/cache.toml  # can cause issues (when switching branches and external libs are missing), but doesn't affect compilation when missing
   (exit $exit_code)
@@ -134,6 +174,15 @@ Use '$COLOR_LIGHT_GRAY--override-flags$COLOR_CREAM' to define additional compile
 }
 
 function get_flags_and_features() {
+  # -Lexternal is where build.sh puts the loess archives it builds, so no override removes it
+  LINK_FLAGS="-Lexternal"
+  if [[ "$TOX_OVERRIDE_LINK_FLAGS" ]]; then
+    # The compiler's own feature -- what get_compiler put in $FEATURES -- carries nothing but
+    # its link libraries, so replacing those means leaving it out. They cannot be passed via
+    # --override-flags instead: fpm never hands --flag to the link of the shared library.
+    FEATURES=
+    LINK_FLAGS="$LINK_FLAGS $TOX_OVERRIDE_LINK_FLAGS"
+  fi
   if [[ "$TOX_OVERRIDE_FLAGS" ]]; then
     FLAGS="$TOX_OVERRIDE_FLAGS"
     FEATURES=
@@ -142,7 +191,7 @@ function get_flags_and_features() {
 
   if [[ $TOX_MAX_PERFORMANCE ]]; then
     FEATURES="$FEATURES,optimization"
-    FLAGS="-DMAX_PERFORMANCE -O3"
+    FLAGS="-O3"
     if [[ $TOX_DEBUG ]]; then
       declare ans=y
       if [[ -z $TOX_YES ]]; then
@@ -157,13 +206,17 @@ function get_flags_and_features() {
         exit 1
       fi
     fi
-  elif [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
+  else
+    # Stated for the default build too: once `--features` is passed, fpm adds none of its own
+    # profile flags, so the level used to be whatever each compiler assumes without one --
+    # -O0 for gfortran, -O2 for ifx -- and the two default builds were quietly different.
     FLAGS="-O0"
   fi
   if [[ $TOX_DIAGNOSTICS || $TOX_DEBUG ]]; then
     FEATURES="$FEATURES,diagnostics"
   fi
   FEATURES="$FEATURES,default"
+  FEATURES="${FEATURES#,}"  # the compiler's feature is absent under --override-link-flags
 }
 
 function handle_args() {
@@ -192,7 +245,6 @@ function handle_args() {
 
       if [[ "$varname" == "TOX_DIRECTIVE" ]]; then
         DIRECTIVES="$DIRECTIVES -D${val}"
-        TOX_CLEAN_BUILD=1
       else
         declare -g "${varname}=$val"
       fi

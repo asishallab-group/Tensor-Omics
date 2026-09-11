@@ -43,6 +43,8 @@ def compute_shift_vector_field(
 ):
     r"""Compute the shift vector field for all genes.
 
+    Computes the shift vectors by subtracting the corresponding family centroid from the expression vector.
+
     Parameters
     ----------
     expression_vectors : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')

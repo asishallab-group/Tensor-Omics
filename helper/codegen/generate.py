@@ -65,7 +65,7 @@ def generate(
     paths: Paths = Paths(),
     targets: tuple[str, ...] = ("fortran", "c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
-    library: str = "build/libtensor-omics.so",
+    library: str = "build/libtensor_omics.so",
     parsed: ParsedProject | None = None,
 ) -> Result:
     """Build the generated files, without writing them.
@@ -137,7 +137,7 @@ def generate_and_write(
     paths: Paths = Paths(),
     targets: tuple[str, ...] = ("fortran", "c", "python", "r", "snippets"),
     conventions: Conventions = CONVENTIONS,
-    library: str = "build/libtensor-omics.so",
+    library: str = "build/libtensor_omics.so",
     clean: bool = True,
     parsed: ParsedProject | None = None,
 ) -> Result:
@@ -283,7 +283,7 @@ def _r_files(binding: CBinding, catalogue, paths: Paths,
         tiers=build_tiers(binding, synthesis.specs if synthesis else ()),
     )
     # the C `.Call` shims live under src/ so fpm compiles them into the one
-    # libtensor-omics.so (mirroring the generated src/c_binding/*.F90); the R-language
+    # libtensor_omics.so (mirroring the generated src/c_binding/*.F90); the R-language
     # wrappers live in the R package tree.
     csrc = paths.resolve(paths.r_binding_dir)
     out = paths.resolve(paths.r_out_dir)

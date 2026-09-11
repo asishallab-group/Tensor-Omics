@@ -14,7 +14,7 @@ module tox_data_validation_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
     use, intrinsic :: iso_c_binding, only: c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -122,7 +122,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_centroids, n_family_centroids_elements_dim_1 * n_family_centroids_elements_dim_2)
         M_CHECK_ARRAY_NON_NULL(shift_vectors, n_shift_vectors_elements_dim_1 * n_shift_vectors_elements_dim_2)
 
+        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
         call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_VIEW(gene_family_ids, gene_family_ids_strlen * n_gene_family_ids_elements)
         call c_f_pointer(c_loc(gene_family_ids), gene_family_ids_f, [n_gene_family_ids_elements])
 
         call validate_data_structure(&
@@ -330,6 +332,7 @@ contains
         M_CHECK_NON_NULL(n_str_arr_elements)
         M_CHECK_ARRAY_NON_NULL(str_arr, str_arr_strlen * n_str_arr_elements)
 
+        M_CHECK_CHARACTER_VIEW(str_arr, str_arr_strlen * n_str_arr_elements)
         call c_f_pointer(c_loc(str_arr), str_arr_f, [n_str_arr_elements])
 
         call validate_string_array_uniqueness(&
@@ -442,7 +445,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_centroids, n_family_centroids_elements_dim_1 * n_family_centroids_elements_dim_2)
         M_CHECK_ARRAY_NON_NULL(shift_vectors, n_shift_vectors_elements_dim_1 * n_shift_vectors_elements_dim_2)
 
+        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
         call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_VIEW(gene_family_ids, gene_family_ids_strlen * n_gene_family_ids_elements)
         call c_f_pointer(c_loc(gene_family_ids), gene_family_ids_f, [n_gene_family_ids_elements])
 
         call validate_all_data(&

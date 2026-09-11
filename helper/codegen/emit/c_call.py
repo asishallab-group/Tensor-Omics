@@ -22,23 +22,35 @@ view of it -- so the padding byte is part of the value, and blanks are what Fort
 
 from __future__ import annotations
 
+import hashlib
 import re
 
 from ..abi.model import CArgument, Conversion, CWrapper, CWrapperModule, Origin
 from ..ir.types import BaseType, Intent
 from ..render import Writer
 
-#: The R shared object this binding is registered into (drives `R_init_<name>`).
-R_DLL_NAME = "tensoromics"
+#: The R shared object this binding is registered into.
+#:
+#: R derives the initialisation routine it calls on `dyn.load` from the file's own basename,
+#: **including the `lib` prefix and with no substitution at all**: `libtensor_omics.so` is
+#: entered through `R_init_libtensor_omics`, and nothing else. That is why the library is not
+#: called `libtensor-omics.so` any more -- `R_init_libtensor-omics` is not a C identifier, and
+#: the one way to emit it (a quoted `__asm__` label) is GNU-as-only: clang and icx put the
+#: quote characters *in the symbol name*, silently, and fpm compiles the shims with icx
+#: whenever the Fortran compiler is ifx. A name R can reach is the portable fix.
+#:
+#: Keep this equal to the basename of the artifact `build.sh` produces, which is `lib` plus
+#: fpm's project name. `test_end_to_end_r` checks the routines really do get registered.
+R_DLL_NAME = "libtensor_omics"
 
-#: The R shims compile into the one `libtensor-omics.so`. This guard drops them (and their
+#: The R shims compile into the one `libtensor_omics.so`. This guard drops them (and their
 #: R.h include) when the binding is built without R (`NO_R_BINDING`) or without the C ABI
 #: they call (`NO_C_BINDING`), leaving empty objects that need no R headers.
 _GUARD_OPEN = "#if !defined(NO_R_BINDING) && !defined(NO_C_BINDING)"
 _GUARD_CLOSE = "#endif  // R binding"
 
 #: Every R API symbol the shims reference. R provides them at dyn.load, but the one
-#: libtensor-omics.so also loads into a non-R host (Python via ctypes). Marking them all weak
+#: libtensor_omics.so also loads into a non-R host (Python via ctypes). Marking them all weak
 #: lets that load succeed under eager binding -- the undefined R symbols resolve to null, and
 #: the R-only code that would use them never runs from Python -- while a *genuinely* missing
 #: symbol (a build regression) still fails loudly at load. R binds them to its real
@@ -158,6 +170,23 @@ class CCallEmitter:
         # that includes this header sees them before its own uses too
         return _MARSHAL_HEADER.replace("// __WEAK_PRAGMAS__", "\n".join(_weak_pragmas()))
 
+    def header_stamp(self) -> str:
+        """A comment naming the content hash of the marshal header this file includes.
+
+        fpm decides whether to recompile a source from a hash of *that file's own text* --
+        never its includes, and never timestamps (fpm_backend.F90; fortran-lang/fpm#358,
+        open since 2021). So a change to the header alone recompiled nothing, and the old
+        helpers stayed linked into the library. Every file that includes the header carries
+        its hash, so any change to the header is a change to each of them, and fpm rebuilds
+        exactly those -- with nothing that depends on fpm's build-directory layout.
+
+        The hash is of the content this emitter writes, so the stamp and the header on disk
+        cannot disagree after a generator run; `--check` covers the rest.
+        """
+        digest = hashlib.sha256(self.marshal_header_content().encode()).hexdigest()[:16]
+        return (f"// {self.marshal_header} {digest} -- its hash, so that fpm, which only "
+                "hashes this file, recompiles it when the header changes")
+
     # -- module -----------------------------------------------------------------
 
     def module(self, module: CWrapperModule) -> str:
@@ -167,6 +196,7 @@ class CCallEmitter:
         writer.line("#include <R.h>")
         writer.line("#include <Rinternals.h>")
         writer.line(f'#include "{self.marshal_header}"')
+        writer.line(self.header_stamp())
         writer.blank()
 
         writer.line("// the Fortran C-ABI symbols this module calls")
@@ -761,6 +791,13 @@ static inline int tox_imin(int a, int b) { return a < b ? a : b; }
 
 // The width a character(len=n) array needs: the longest element, NA skipped. 0 for a
 // non-character or absent (R_NilValue) argument, so an omitted optional reports no width.
+//
+// A *present* argument reports at least 1, matching what the Python layer does with
+// `.ljust(1)` and `max(..., default=0) or 1`. Every element being "" would otherwise give
+// width 0, and `R_alloc(0, 1)` returns NULL -- a null buffer the Fortran wrapper cannot make
+// a pointer view of. The floor is deliberately inside the present branch: raising the absent
+// case to 1 would send width 1 beside a null pointer, and M_CHECK_ARRAY_NON_NULL would then
+// reject an optional the caller legitimately omitted.
 static inline int tox_max_strlen(SEXP x) {
     if (x == R_NilValue || TYPEOF(x) != STRSXP) return 0;
     int longest = 0, n = (int) XLENGTH(x);
@@ -770,7 +807,7 @@ static inline int tox_max_strlen(SEXP x) {
         int m = (int) LENGTH(e);
         if (m > longest) longest = m;
     }
-    return longest;
+    return longest > 0 ? longest : 1;
 }
 
 // Fortran carries a string's length as the leading extent: n strings of length len are
@@ -809,15 +846,21 @@ static inline char* tox_char_alloc(int len, int n) {
 // blank-pads whatever it assigns into a character(len=n), and the wrapper hands that buffer
 // straight through. Trailing NULs are deliberately not stripped -- nothing writes them any
 // more, and Rf_mkCharLen turning a stray one into a loud R error is the right answer.
-// Returned unprotected: the caller protects it straight into a result slot.
+//
+// `out` is protected for the whole fill, unlike every other helper here: Rf_mkCharLen
+// allocates, so it can trigger a GC on any iteration, and until the caller receives `out`
+// nothing else references it. Protecting on return -- which is what the caller's
+// PROTECT(tox_char_out(...)) does -- is too late; the window is the loop, and it grows with
+// n. Balanced before returning, so the caller's own PROTECT is still the one that keeps it.
 static inline SEXP tox_char_out(const char* buf, int len, int n) {
-    SEXP out = Rf_allocVector(STRSXP, n);
+    SEXP out = PROTECT(Rf_allocVector(STRSXP, n));
     for (int i = 0; i < n; ++i) {
         const char* p = buf + (size_t) i * len;
         int m = len;
         while (m > 0 && p[m - 1] == ' ') --m;
         SET_STRING_ELT(out, i, Rf_mkCharLen(p, m));
     }
+    UNPROTECT(1);
     return out;
 }
 
@@ -840,7 +883,9 @@ static inline unsigned char* tox_bool_alloc(int n) {
 }
 
 // c_bool byte buffer -> LGLSXP. Read the raw byte and test != 0: ifx writes 0xFF for true,
-// which must map to R's TRUE (1), not stay 255. Returned unprotected.
+// which must map to R's TRUE (1), not stay 255. Returned unprotected, and safely so: the one
+// allocation is the first statement and nothing after it allocates, so no GC can run while
+// the result is unreferenced.
 static inline SEXP tox_bool_out(const unsigned char* buf, int n) {
     SEXP out = Rf_allocVector(LGLSXP, n);
     int* po = LOGICAL(out);

@@ -19,9 +19,9 @@ script_dir <- if (length(.file_arg)) dirname(normalizePath(.file_arg)) else norm
 repo_root  <- normalizePath(file.path(script_dir, "..", ".."))
 build_dir  <- file.path(repo_root, "build")
 rcpp_src   <- file.path(repo_root, "rcpp", "tensor_omics", "src")
-stopifnot(file.exists(file.path(build_dir, "libtensor-omics.so")))
+stopifnot(file.exists(file.path(build_dir, "libtensor_omics.so")))
 
-pkg_libs <- sprintf("-L%s -Wl,-rpath,%s -ltensor-omics", shQuote(build_dir), shQuote(build_dir))
+pkg_libs <- sprintf("-L%s -Wl,-rpath,%s -ltensor_omics", shQuote(build_dir), shQuote(build_dir))
 Sys.setenv(PKG_LIBS = pkg_libs)
 rbin <- file.path(R.home("bin"), "R")
 

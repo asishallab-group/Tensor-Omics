@@ -84,6 +84,11 @@ def loess_fit_plain(
 ):
     r"""Perform plain LOESS fitting
 
+    Data too degenerate to fit is answered directly, by the observations themselves; see
+    ``loess_degenerate_fit``.
+    Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
+    response array.
+
     Parameters
     ----------
     x : np.ndarray[np.float64] of shape (n,)
@@ -209,6 +214,15 @@ def loess_fit_robust(
         n_iters=3,
 ):
     r"""Perform robust LOESS fitting with bisquare reweighting
+
+    Data too degenerate to fit is answered directly, by the observations themselves; see
+    ``loess_degenerate_fit``.
+    Fits a LOESS model to the data using robust iterations to handle outliers.
+    The robust fitting process iterates n_iters times, each iteration:
+    - Combines original weights with robust weights (down-weights from previous iteration)
+    - Runs LOESS fitting with combined weights
+    - Computes residuals (y - fitted values)
+    - Updates robust weights using bisquare function (suppresses large residuals)
 
     Parameters
     ----------

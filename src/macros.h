@@ -16,7 +16,21 @@
 ! An empty array is therefore left alone: a caller passing null for a legitimately
 ! zero-size array gets through, and the callee's own validate_dimension_size decides
 ! whether empty is an error for that routine -- which is where that policy already lives.
+! Characters are the exception; see M_CHECK_CHARACTER_VIEW.
 #define M_CHECK_ARRAY_NON_NULL(ARG, N) if ((N) > 0) then; M_CHECK_NON_NULL(ARG); end if
+
+! A character buffer cannot be waved through when it is empty, the way the array check above
+! waves every other kind through. Every other kind is copied or allocated into a local; a
+! string is a *view*, and the `c_f_pointer(c_loc(ARG), ...)` that builds it has to run before
+! the callee is called. `c_loc` may not be given a zero-size target, and an unassociated
+! pointer may not be passed to a non-pointer dummy -- gfortran calls that one out
+! ("Pointer actual argument is not associated") and ifx segfaults. So there is no address to
+! view and no way to leave the verdict to the callee: the wrapper reaches the same verdict
+! validate_dimension_size would for a zero extent, and returns it.
+!
+! `N` is the buffer's byte count -- the string width times the number of strings -- so this
+! covers a zero-width string as well as a zero-length vector of them.
+#define M_CHECK_CHARACTER_VIEW(ARG, N) if ((N) <= 0) then; call set_err(ierr, ERR_EMPTY_INPUT); return; endif
 
 ! A plain `implicit none` constrains only *variables*. A call to a procedure that does not
 ! exist -- a typo, or a helper that was renamed -- is still accepted as an implicit
@@ -25,9 +39,6 @@
 !
 ! Use this instead of a bare `implicit none` in every module.
 #define M_IMPLICIT_NONE implicit none (type, external)
-
-#define M_USE_NULL_VALIDATION use, intrinsic :: iso_c_binding, only: c_associated, c_loc; use tox_errors, only: set_err, ERR_POINTER_NULL
-#define M_USE_ALLOCATION use tox_errors, only: ERR_ALLOC_FAIL, is_err, set_err
 
 #define M_DEFAULT_VAL(OPT_ARG, LOC_VAR, DEFAULT_VAL) if (present(OPT_ARG)) then; LOC_VAR = OPT_ARG; else; LOC_VAR = DEFAULT_VAL; endif
 

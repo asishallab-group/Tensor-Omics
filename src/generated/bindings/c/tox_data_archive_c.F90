@@ -14,7 +14,7 @@
 module tox_data_archive_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_double, c_f_pointer, c_int, c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -72,8 +72,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(keys, keys_strlen * n_keys_elements)
         M_CHECK_ARRAY_NON_NULL(filenames, filenames_strlen * n_filenames_elements)
 
+        M_CHECK_CHARACTER_VIEW(zip_filename, zip_filename_strlen)
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
+        M_CHECK_CHARACTER_VIEW(keys, keys_strlen * n_keys_elements)
         call c_f_pointer(c_loc(keys), keys_f, [n_keys_elements])
+        M_CHECK_CHARACTER_VIEW(filenames, filenames_strlen * n_filenames_elements)
         call c_f_pointer(c_loc(filenames), filenames_f, [n_filenames_elements])
 
         call create_zip_archive(&
@@ -217,23 +220,48 @@ contains
         M_CHECK_NON_NULL(shift_vectors_file_strlen)
         M_CHECK_ARRAY_NON_NULL(zip_filename, zip_filename_strlen)
 
+        M_CHECK_CHARACTER_VIEW(zip_filename, zip_filename_strlen)
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
         nullify(gene_ids_f)
-        if (present(gene_ids)) call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        if (present(gene_ids)) then
+            M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
+            call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        end if
         nullify(gene_ids_file_f)
-        if (present(gene_ids_file)) call c_f_pointer(c_loc(gene_ids_file), gene_ids_file_f)
+        if (present(gene_ids_file)) then
+            M_CHECK_CHARACTER_VIEW(gene_ids_file, gene_ids_file_strlen)
+            call c_f_pointer(c_loc(gene_ids_file), gene_ids_file_f)
+        end if
         nullify(expression_file_f)
-        if (present(expression_file)) call c_f_pointer(c_loc(expression_file), expression_file_f)
+        if (present(expression_file)) then
+            M_CHECK_CHARACTER_VIEW(expression_file, expression_file_strlen)
+            call c_f_pointer(c_loc(expression_file), expression_file_f)
+        end if
         nullify(gene_to_family_file_f)
-        if (present(gene_to_family_file)) call c_f_pointer(c_loc(gene_to_family_file), gene_to_family_file_f)
+        if (present(gene_to_family_file)) then
+            M_CHECK_CHARACTER_VIEW(gene_to_family_file, gene_to_family_file_strlen)
+            call c_f_pointer(c_loc(gene_to_family_file), gene_to_family_file_f)
+        end if
         nullify(family_ids_f)
-        if (present(family_ids)) call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
+        if (present(family_ids)) then
+            M_CHECK_CHARACTER_VIEW(family_ids, family_ids_strlen * n_family_ids_elements)
+            call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
+        end if
         nullify(family_ids_file_f)
-        if (present(family_ids_file)) call c_f_pointer(c_loc(family_ids_file), family_ids_file_f)
+        if (present(family_ids_file)) then
+            M_CHECK_CHARACTER_VIEW(family_ids_file, family_ids_file_strlen)
+            call c_f_pointer(c_loc(family_ids_file), family_ids_file_f)
+        end if
         nullify(family_centroids_file_f)
-        if (present(family_centroids_file)) call c_f_pointer(c_loc(family_centroids_file), family_centroids_file_f)
+        if (present(family_centroids_file)) then
+            M_CHECK_CHARACTER_VIEW(family_centroids_file, family_centroids_file_strlen)
+            call c_f_pointer(c_loc(family_centroids_file), family_centroids_file_f)
+        end if
         nullify(shift_vectors_file_f)
-        if (present(shift_vectors_file)) call c_f_pointer(c_loc(shift_vectors_file), shift_vectors_file_f)
+        if (present(shift_vectors_file)) then
+            M_CHECK_CHARACTER_VIEW(shift_vectors_file, shift_vectors_file_strlen)
+            call c_f_pointer(c_loc(shift_vectors_file), shift_vectors_file_f)
+        end if
 
         call save_tox_data(&
             zip_filename = zip_filename_f,&
@@ -322,6 +350,7 @@ contains
         M_CHECK_NON_NULL(n_shift_vectors_cols)
         M_CHECK_ARRAY_NON_NULL(zip_filename, zip_filename_strlen)
 
+        M_CHECK_CHARACTER_VIEW(zip_filename, zip_filename_strlen)
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
 
         call get_tox_data_dims(&
@@ -446,8 +475,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_centroids, n_family_centroids_rows * n_family_centroids_cols)
         M_CHECK_ARRAY_NON_NULL(shift_vectors, n_shift_vectors_rows * n_shift_vectors_cols)
 
+        M_CHECK_CHARACTER_VIEW(zip_filename, zip_filename_strlen)
         call c_f_pointer(c_loc(zip_filename), zip_filename_f)
+        M_CHECK_CHARACTER_VIEW(gene_ids, gene_id_len * n_gene_ids)
         call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids])
+        M_CHECK_CHARACTER_VIEW(family_ids, family_id_len * n_family_ids)
         call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids])
 
         call read_tox_data_into(&

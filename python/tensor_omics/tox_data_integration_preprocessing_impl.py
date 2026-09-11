@@ -46,6 +46,9 @@ def calc_neighborhood_size(
 ):
     r"""Calculate the number of neighbors to be used for constructing neighborhoods
 
+    The `desired_size` works as upper limit, as the actual neighborhood size might be lower
+    due to few genes with non-NaN mean.
+
     Parameters
     ----------
     n_pool : int

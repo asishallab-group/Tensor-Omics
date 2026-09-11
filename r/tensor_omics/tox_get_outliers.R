@@ -96,7 +96,7 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
     )
 }
 
-#' Identify gene outliers based on the top percentile of RDI values
+#' Identify gene outliers based on an upper quantile of the RDI values
 #'
 #' Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
 #' If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
@@ -111,37 +111,37 @@ compute_rdi <- function(distances, gene_to_fam, dscale) {
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param perm a integer vector. Permutation array with sorted indices
-#' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] (top 5% for the default).
+#' @param quantile_level a numeric scalar. Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
 #'   The default value is `0.95`.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
 #'   \item{threshold}{a numeric scalar. Output threshold value used for detection}
-#'   \item{quantile}{a numeric vector. Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+#'   \item{tail_probability}{a numeric vector. Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
 #'     observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-#'     upper-tail quantile is used.}
+#'     upper-tail probability is used.}
 #' @export
-identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
+identify_outliers <- function(rdi, sorted_rdi, perm, quantile_level = 0.95) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     perm <- .tox_as_integer_vector(perm, "perm")
-    percentile <- .tox_as_double_scalar(percentile, "percentile")
+    quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
     if (length(sorted_rdi) != length(rdi))
         .tox_shape_error("sorted_rdi", length(sorted_rdi), "rdi", length(rdi))
     if (length(perm) != length(rdi))
         .tox_shape_error("perm", length(perm), "rdi", length(rdi))
 
-    .result <- .Call("identify_outliers_call", rdi, sorted_rdi, perm, percentile)
-    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "quantile", "percentile", "ierr")
+    .result <- .Call("identify_outliers_call", rdi, sorted_rdi, perm, quantile_level)
+    .arguments <- c("n_genes", "rdi", "sorted_rdi", "perm", "is_outlier", "threshold", "tail_probability", "quantile_level", "ierr")
     .sources <- c("rdi", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         is_outlier = .result$is_outlier,
         threshold = .result$threshold,
-        quantile = .result$quantile
+        tail_probability = .result$tail_probability
     )
 }
 
@@ -160,7 +160,7 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param gene_to_fam a integer vector. Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0` for unassigned genes
-#' @param percentile a numeric scalar. Percentile threshold as a fraction in [0,1] for outlier detection.
+#' @param quantile_level a numeric scalar. Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
 #'   The default value is `0.95`.
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
@@ -169,21 +169,21 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
 #'   \item{loess_x}{a numeric vector. Reference x-coordinates.}
 #'   \item{loess_y}{a numeric vector. Reference y-coordinates (length n_total).}
 #'   \item{loess_n}{a integer vector. Indices of reference points used for smoothing.}
-#'   \item{quantile}{a numeric vector. Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+#'   \item{tail_probability}{a numeric vector. Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
 #'     observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-#'     upper-tail quantile is used.}
+#'     upper-tail probability is used.}
 #' @export
-detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 0.95) {
+detect_outliers <- function(n_families, distances, gene_to_fam, quantile_level = 0.95) {
     n_families <- .tox_as_integer_scalar(n_families, "n_families")
     distances <- .tox_as_double_vector(distances, "distances")
     gene_to_fam <- .tox_as_integer_vector(gene_to_fam, "gene_to_fam")
-    percentile <- .tox_as_double_scalar(percentile, "percentile")
+    quantile_level <- .tox_as_double_scalar(quantile_level, "quantile_level")
     if (length(gene_to_fam) != length(distances))
         .tox_shape_error("gene_to_fam", length(gene_to_fam), "distances", length(distances))
 
-    .result <- .Call("detect_outliers_call", n_families, distances, gene_to_fam, percentile)
-    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "quantile", "ierr", "percentile")
+    .result <- .Call("detect_outliers_call", n_families, distances, gene_to_fam, quantile_level)
+    .arguments <- c("n_genes", "n_families", "distances", "gene_to_fam", "is_outlier", "loess_x", "loess_y", "loess_n", "tail_probability", "ierr", "quantile_level")
     .sources <- c("distances", "loess_x", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -192,6 +192,6 @@ detect_outliers <- function(n_families, distances, gene_to_fam, percentile = 0.9
         loess_x = .result$loess_x,
         loess_y = .result$loess_y,
         loess_n = .result$loess_n,
-        quantile = .result$quantile
+        tail_probability = .result$tail_probability
     )
 }

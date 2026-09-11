@@ -1,6 +1,6 @@
 r"""f42_stats
 
-Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.
+Descriptive statistics: quantiles, empirical distribution functions, and 2-D LOESS smoothing.
 
 One of the modules the `f42_utils` family gathers.
 
@@ -68,8 +68,8 @@ _COMPUTE_EDF_EXPERT_ARGUMENTS = ("values", "n_values", "values_perm", "unique_va
 #: For a derived argument, the one the caller passed it in
 _COMPUTE_EDF_EXPERT_ARGUMENT_SOURCES = (None, "values", None, None, None, None, None,)
 
-_lib.calc_percentile_c.restype = None
-_lib.calc_percentile_c.argtypes = (
+_lib.calc_quantile_c.restype = None
+_lib.calc_quantile_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
@@ -79,12 +79,12 @@ _lib.calc_percentile_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_PERCENTILE_ARGUMENTS = ("array", "n_array", "percentile", "value", "n_considered", "ierr",)
+_CALC_QUANTILE_ARGUMENTS = ("array", "n_array", "level", "value", "n_considered", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_PERCENTILE_ARGUMENT_SOURCES = (None, "array", None, None, None, None,)
+_CALC_QUANTILE_ARGUMENT_SOURCES = (None, "array", None, None, None, None,)
 
-_lib.calc_percentile_expert_c.restype = None
-_lib.calc_percentile_expert_c.argtypes = (
+_lib.calc_quantile_expert_c.restype = None
+_lib.calc_quantile_expert_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -95,12 +95,12 @@ _lib.calc_percentile_expert_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_CALC_PERCENTILE_EXPERT_ARGUMENTS = ("array", "n_array", "array_perm", "percentile", "value", "n_considered", "ierr",)
+_CALC_QUANTILE_EXPERT_ARGUMENTS = ("array", "n_array", "array_perm", "level", "value", "n_considered", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_CALC_PERCENTILE_EXPERT_ARGUMENT_SOURCES = (None, "array", None, None, None, None, None,)
+_CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES = (None, "array", None, None, None, None, None,)
 
-_lib.compute_scaled_distance_quantile_c.restype = None
-_lib.compute_scaled_distance_quantile_c.argtypes = (
+_lib.compute_scaled_distance_tail_probability_c.restype = None
+_lib.compute_scaled_distance_tail_probability_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
@@ -110,12 +110,12 @@ _lib.compute_scaled_distance_quantile_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "quantile", "c_const", "ierr",)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "tail_probability", "c_const", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None,)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None,)
 
-_lib.compute_scaled_distance_quantile_expert_c.restype = None
-_lib.compute_scaled_distance_quantile_expert_c.argtypes = (
+_lib.compute_scaled_distance_tail_probability_expert_c.restype = None
+_lib.compute_scaled_distance_tail_probability_expert_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
@@ -126,9 +126,9 @@ _lib.compute_scaled_distance_quantile_expert_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "quantile", "c_const", "ierr",)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENTS = ("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "tail_probability", "c_const", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None,)
+_COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENT_SOURCES = ("rdi", None, None, None, None, None, None,)
 
 def loess_smooth_2d(
         x_ref,
@@ -139,6 +139,9 @@ def loess_smooth_2d(
         kernel_cutoff,
 ):
     r"""Performs LOESS smoothing on a set of data points
+
+    Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.
+    The user must pre-filter data and provide only valid indices in indices_used.
 
     Parameters
     ----------
@@ -242,6 +245,9 @@ def compute_edf(
 ):
     r"""Compute the Empirical Distribution Function (EDF) from a sorted permutation
 
+    Returns the sorted unique values and their cumulative frequencies in [0,1].
+    The number of unique values can be determined by finding the last non-zero cdf_value.
+
     Parameters
     ----------
     values : np.ndarray[np.float64] of shape (n_values,)
@@ -316,6 +322,9 @@ def compute_edf_expert(
         values_perm,
 ):
     r"""Compute the Empirical Distribution Function (EDF) from a sorted permutation
+
+    Returns the sorted unique values and their cumulative frequencies in [0,1].
+    The number of unique values can be determined by finding the last non-zero cdf_value.
 
     Parameters
     ----------
@@ -404,24 +413,26 @@ def compute_edf_expert(
         "cdf_values": cdf_values[..., :n_unique.value],
     }
 
-def calc_percentile(
+def calc_quantile(
         array,
-        percentile,
+        level,
         n_considered=0,
 ):
-    r"""Calculate the percentile of an array given a sorted permutation
+    r"""Calculate the quantile of an array at a given level, given a sorted permutation
+
+    Uses linear interpolation between adjacent values.
 
     Parameters
     ----------
     array : np.ndarray[np.float64] of shape (n_array,)
         input array
-    percentile : float
-        desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+    level : float
+        quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
     n_considered : int, optional, default 0
-        How many leading entries of `array_perm` the percentile is taken over, for a
-        percentile of a subset -- the trailing entries are ignored rather than sliced
+        How many leading entries of `array_perm` the quantile is taken over, for a
+        quantile of a subset -- the trailing entries are ignored rather than sliced
         off, so the permutation stays the shape the sort produced. Zero, the default,
         considers all `n_array` of them.
         The default value is `0`.
@@ -431,7 +442,7 @@ def calc_percentile(
     Returns
     -------
     value : float
-        output percentile value
+        the quantile: the value a fraction `level` of the considered entries lies at or below
 
     Raises
     ------
@@ -440,11 +451,11 @@ def calc_percentile(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::calc_percentile`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::calc_quantile`, whose argument names are
     the ones an error message reports.
 
     This entry point seeds `array_perm` and sorts it by `array`.
-    Call `calc_percentile_expert` to do that yourself.
+    Call `calc_quantile_expert` to do that yourself.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -461,26 +472,28 @@ def calc_percentile(
     value = ctypes.c_double(0)
     ierr = ctypes.c_int(0)
 
-    _lib.calc_percentile_c(
+    _lib.calc_quantile_c(
         array,
         ctypes.byref(ctypes.c_int(n_array)),
-        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(ctypes.c_double(level)),
         ctypes.byref(value),
         ctypes.byref(ctypes.c_int(n_considered)),
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_PERCENTILE_ARGUMENTS, _CALC_PERCENTILE_ARGUMENT_SOURCES)
+    check_err_code(ierr.value, _CALC_QUANTILE_ARGUMENTS, _CALC_QUANTILE_ARGUMENT_SOURCES)
 
     return value.value
 
-def calc_percentile_expert(
+def calc_quantile_expert(
         array,
         array_perm,
-        percentile,
+        level,
         n_considered=0,
 ):
-    r"""Calculate the percentile of an array given a sorted permutation
+    r"""Calculate the quantile of an array at a given level, given a sorted permutation
+
+    Uses linear interpolation between adjacent values.
 
     Parameters
     ----------
@@ -491,13 +504,13 @@ def calc_percentile_expert(
         heapsorts it for you; the expert one takes whatever order you supply.
         The minimum valid value is `1`.
         The maximum valid value is `n_array`.
-    percentile : float
-        desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+    level : float
+        quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
     n_considered : int, optional, default 0
-        How many leading entries of `array_perm` the percentile is taken over, for a
-        percentile of a subset -- the trailing entries are ignored rather than sliced
+        How many leading entries of `array_perm` the quantile is taken over, for a
+        quantile of a subset -- the trailing entries are ignored rather than sliced
         off, so the permutation stays the shape the sort produced. Zero, the default,
         considers all `n_array` of them.
         The default value is `0`.
@@ -507,7 +520,7 @@ def calc_percentile_expert(
     Returns
     -------
     value : float
-        output percentile value
+        the quantile: the value a fraction `level` of the considered entries lies at or below
 
     Raises
     ------
@@ -516,11 +529,11 @@ def calc_percentile_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::calc_percentile_expert`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::calc_quantile_expert`, whose argument names are
     the ones an error message reports.
 
     The expert entry point: you supply `array_perm` yourself.
-    `calc_percentile` seeds `array_perm` and sorts it by `array`.
+    `calc_quantile` seeds `array_perm` and sorts it by `array`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -549,26 +562,39 @@ def calc_percentile_expert(
     value = ctypes.c_double(0)
     ierr = ctypes.c_int(0)
 
-    _lib.calc_percentile_expert_c(
+    _lib.calc_quantile_expert_c(
         array,
         ctypes.byref(ctypes.c_int(n_array)),
         array_perm,
-        ctypes.byref(ctypes.c_double(percentile)),
+        ctypes.byref(ctypes.c_double(level)),
         ctypes.byref(value),
         ctypes.byref(ctypes.c_int(n_considered)),
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _CALC_PERCENTILE_EXPERT_ARGUMENTS, _CALC_PERCENTILE_EXPERT_ARGUMENT_SOURCES)
+    check_err_code(ierr.value, _CALC_QUANTILE_EXPERT_ARGUMENTS, _CALC_QUANTILE_EXPERT_ARGUMENT_SOURCES)
 
     return value.value
 
-def compute_scaled_distance_quantile(
+def compute_scaled_distance_tail_probability(
         rdi,
         sorted_rdi,
         c_const,
 ):
-    r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+    r"""Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
+
+    This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    observed distribution it was drawn from, not an independently generated null distribution.
+    It instead measures how extreme an observed distance is relative to all observed distances.
+
+    Implements:
+    T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+
+    Because distances are non-negative, a one-sided upper-tail probability is used.
+
+    Assumptions / preconditions:
+    - sorted_rdi(1:n_genes) contains the empirical distribution D.
+    - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 
     Parameters
     ----------
@@ -585,8 +611,8 @@ def compute_scaled_distance_quantile(
 
     Returns
     -------
-    quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-        Output array to store the computed quantile for each gene.
+    tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+        Output array to store the computed upper-tail probability for each gene.
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -596,11 +622,11 @@ def compute_scaled_distance_quantile(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_tail_probability`, whose argument names are
     the ones an error message reports.
 
     This entry point seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
-    Call `compute_scaled_distance_quantile_expert` to do that yourself.
+    Call `compute_scaled_distance_tail_probability_expert` to do that yourself.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -626,32 +652,45 @@ def compute_scaled_distance_quantile(
         )
 
     # outputs and work arrays, which the caller never sees
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
+    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
-    _lib.compute_scaled_distance_quantile_c(
+    _lib.compute_scaled_distance_tail_probability_c(
         ctypes.byref(ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
-        quantile,
+        tail_probability,
         ctypes.byref(ctypes.c_double(c_const)),
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_QUANTILE_ARGUMENT_SOURCES)
+    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
-    return quantile
+    return tail_probability
 
-def compute_scaled_distance_quantile_expert(
+def compute_scaled_distance_tail_probability_expert(
         rdi,
         sorted_rdi,
         sorted_rdi_perm,
         c_const,
 ):
-    r"""Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+    r"""Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
+
+    This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    observed distribution it was drawn from, not an independently generated null distribution.
+    It instead measures how extreme an observed distance is relative to all observed distances.
+
+    Implements:
+    T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+
+    Because distances are non-negative, a one-sided upper-tail probability is used.
+
+    Assumptions / preconditions:
+    - sorted_rdi(1:n_genes) contains the empirical distribution D.
+    - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 
     Parameters
     ----------
@@ -673,8 +712,8 @@ def compute_scaled_distance_quantile_expert(
 
     Returns
     -------
-    quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
-        Output array to store the computed quantile for each gene.
+    tail_probability : np.ndarray[np.float64] of shape (n_genes,), read-only
+        Output array to store the computed upper-tail probability for each gene.
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -684,11 +723,11 @@ def compute_scaled_distance_quantile_expert(
 
     Notes
     -----
-    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_quantile_expert`, whose argument names are
+    Generated from the Fortran procedure `f42_stats::compute_scaled_distance_tail_probability_expert`, whose argument names are
     the ones an error message reports.
 
     The expert entry point: you supply `sorted_rdi_perm` yourself.
-    `compute_scaled_distance_quantile` seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
+    `compute_scaled_distance_tail_probability` seeds `sorted_rdi_perm` and sorts it by `sorted_rdi`.
     """
     # accept anything array-like, converting only when C needs it
     try:
@@ -724,22 +763,22 @@ def compute_scaled_distance_quantile_expert(
         )
 
     # outputs and work arrays, which the caller never sees
-    quantile = np.empty((n_genes,), dtype=np.float64, order='C')
+    tail_probability = np.empty((n_genes,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
-    _lib.compute_scaled_distance_quantile_expert_c(
+    _lib.compute_scaled_distance_tail_probability_expert_c(
         ctypes.byref(ctypes.c_int(n_genes)),
         rdi,
         sorted_rdi,
         sorted_rdi_perm,
-        quantile,
+        tail_probability,
         ctypes.byref(ctypes.c_double(c_const)),
         ctypes.byref(ierr),
     )
 
-    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_QUANTILE_EXPERT_ARGUMENT_SOURCES)
+    check_err_code(ierr.value, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENTS, _COMPUTE_SCALED_DISTANCE_TAIL_PROBABILITY_EXPERT_ARGUMENT_SOURCES)
 
     # a result is a value: modify a copy, not this
-    quantile.flags.writeable = False
+    tail_probability.flags.writeable = False
 
-    return quantile
+    return tail_probability

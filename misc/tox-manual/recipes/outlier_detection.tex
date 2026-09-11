@@ -32,7 +32,7 @@
   \step{Call \code{detect\_outliers}. It does \emph{not} compare distances to a
         fixed cutoff: it divides each distance by its family's own spread ---
         the Relative Distance Index (RDI) --- and flags the top
-        $1-\optn{percentile}$ of those. Scaling per family is what puts a
+        $1-\optn{quantile\_level}$ of those. Scaling per family is what puts a
         broadly spread family and a tight one on the same footing.}
   \step{Compute the shift vector field with
         \code{compute\_shift\_vector\_field}. For each gene it returns two
@@ -70,9 +70,10 @@ distances = distance_to_centroid(
 # --- which of those distances are extreme for their family? -
 result = detect_outliers(
     n_families, distances, gene_to_family,
-    percentile=0.95)                   # FRACTION: top 5%
+    quantile_level=0.95)               # FRACTION: top 5%
 is_outlier = result["is_outlier"]
-quantile   = result["quantile"]        # effect size, NOT a p-value
+# an effect size, NOT a p-value:
+tail_probability = result["tail_probability"]
 
 # --- in which direction did each gene move? ----------------
 field = compute_shift_vector_field(
@@ -82,7 +83,7 @@ shift       = field[:, 1, :]           # p - o, the divergence
 \end{codefragment}
 
 \begin{parameters}
-  \param{percentile}{Where the threshold on the RDI sits; the genes above it
+  \param{quantile\_level}{Where the threshold on the RDI sits; the genes above it
     are flagged}{A \emph{fraction} in $[0,1]$, not a percentage:
     \code{0.95} keeps the top 5\%. Lower it to screen more broadly, raise it to
     report only the strongest divergence}
@@ -95,27 +96,27 @@ shift       = field[:, 1, :]           # p - o, the divergence
 \end{parameters}
 
 \begin{expectedresults}
-  With the default \code{percentile=0.95} the flagged fraction is essentially
+  With the default \code{quantile\_level=0.95} the flagged fraction is essentially
   5\% of the genes that have a family --- on the bundled data, 512 of 10\,234,
   exactly 5.00\%, with 75\,594 genes belonging to no family carried along and
   none of them flagged. Distances to the own centroid have a median of 1.73 and
   a maximum of 2.96 there. A flagged fraction far from
-  $1-\optn{percentile}$ means genes are reaching the test that should not:
+  $1-\optn{quantile\_level}$ means genes are reaching the test that should not:
   check for families with a zero centroid first.
 \end{expectedresults}
 
-\begin{pitfall}[Pitfall: reading percentile as a percentage]
-  \optn{percentile} is a fraction in $[0,1]$. Passing \code{95} does not ask
+\begin{pitfall}[Pitfall: reading the quantile level as a percentage]
+  \optn{quantile\_level} is a fraction in $[0,1]$. Passing \code{95} does not ask
   for the top 5\% --- it is out of range and the call fails. Passing
   \code{0.05} silently asks for the top 95\%, flagging almost everything.
 \end{pitfall}
 
-\begin{pitfall}[Pitfall: treating the quantile as a p-value]
-  The \code{quantile} output states how extreme a gene's distance is
+\begin{pitfall}[Pitfall: treating the tail probability as a p-value]
+  The \code{tail\_probability} output states how extreme a gene's distance is
   \emph{relative to the distances actually observed} --- an empirical
   upper-tail effect size. It is not a null-hypothesis test: nothing here models
   what the distances would look like in the absence of divergence, so a
-  \code{quantile} of 0.001 is not a $p$ of 0.001 and must not be corrected for
+  \code{tail\_probability} of 0.001 is not a $p$ of 0.001 and must not be corrected for
   multiple testing as though it were.
 \end{pitfall}
 
@@ -161,7 +162,7 @@ shift       = field[:, 1, :]           # p - o, the divergence
   carry the raw shifts, not the RDI, into any later geometric analysis.
 
   Finally, the flagged set is a \emph{ranking cut}, not a discovery set with an
-  error rate. At \code{percentile=0.95} you get the top 5\% by construction,
+  error rate. At \mbox{\code{quantile\_level=0.95}} you get the top 5\% by construction,
   whether or not anything in your data has genuinely diverged.
 \end{interpretation}
 

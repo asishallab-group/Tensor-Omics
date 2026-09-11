@@ -391,6 +391,11 @@ def get_tox_data_dims(
 ):
     r"""Report the shape of every member of a tox data archive
 
+    Each count (and each string length) is 0 when the corresponding member is absent, so a
+    caller can size all six output buffers up front. Character members report both an element
+    count and a per-element string length. Pairs with
+    :func:`tensor_omics.read_tox_data_into`.
+
     Parameters
     ----------
     zip_filename : str
@@ -491,6 +496,10 @@ def read_tox_data_into(
         zip_filename,
 ):
     r"""Read a tox data archive into caller-provided buffers
+
+    Fills every buffer from the archive; size them from
+    :func:`tensor_omics.get_tox_data_dims` first. A member that is absent
+    has a zero extent and is left untouched.
 
     Parameters
     ----------

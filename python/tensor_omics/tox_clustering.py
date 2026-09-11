@@ -82,6 +82,12 @@ def cluster_factor_trajectories_k_means(
 ):
     r"""Performs k-means clustering on whole factor trajectories, so which samples evolve alike
 
+    One sample is one point: its trajectory is flattened over factors and time into a single
+    vector, `factor1_t1, factor2_t1, ..., factor1_t2, ...`, so the clustering answers which
+    samples follow a similar course. Clustering the individual `(sample, timepoint)` states
+    instead is :func:`tensor_omics.k_means_clustering` on the same
+    array read as `(n_factors, n_samples*n_timepoints)`, which is a different question.
+
     Parameters
     ----------
     trajectories : np.ndarray[np.float64] of shape (n_factors, n_samples, n_timepoints,), column-major (order='F')
@@ -175,6 +181,10 @@ def k_means_clustering(
         max_iterations=300,
 ):
     r"""k-means clustering algorithm
+
+    1. Assigns each data point to one of `k` clusters whose centroid is clostest
+    2. Recalculates the centroids using the mean of its assigned points
+    3. repeat 1-2 until assignment remains unchanged
 
     Parameters
     ----------
@@ -271,6 +281,10 @@ def linkage_clustering(
         method,
 ):
     r"""Perform linkage clustering on a distance matrix.
+
+    The bottom triangle is used as scratch and restored from the top triangle before
+    returning, on success or on error, so the matrix comes back unchanged. There is no
+    need to copy it before calling.
 
     Parameters
     ----------

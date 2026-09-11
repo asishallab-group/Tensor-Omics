@@ -145,7 +145,7 @@ docker run -it -v $(pwd):/opt -w /opt arch-gfortran ./build.sh
 
 ### Native compilation
 
-If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `build/<compiler>_<hash>/`, and copies the resulting shared library (`libtensor-omics.so`) into `build/` so that Python and R always find it at the same path.
+If you have **gfortran ≥ 15** installed, compile directly with `build.sh`. It compiles all files in `src/`, places compiled objects under `build/<compiler>_<hash>/`, and copies the resulting shared library (`libtensor_omics.so`) into `build/` so that Python and R always find it at the same path.
 
 gfortran 15 is readily available on rolling-release or well-equipped systems. For most other Linux distributions and Windows, **we recommend Docker** since gfortran 15 is not yet available in standard package repositories (May 2026).
 
@@ -192,13 +192,14 @@ FC=ifx ./build.sh --max-performance
 Beyond the profiles above, `build.sh` accepts several options (which `test_runner.sh` inherits):
 
 * `--compiler=<gfortran|ifx|nvfortran>` — compiler to use (defaults to `gfortran`). The `FC` environment variable is also honoured, with precedence `--compiler` > `$TOX_COMPILER` > `$FC`.
-* `--max-performance` — enable the `optimization` profile (`-O3` and performance-oriented code paths).
+* `--max-performance` — enable the `optimization` profile: `-O3` plus the per-compiler optimisation flags in `fpm.toml`. Without it, every build compiles at `-O0`, whatever the compiler.
 * `--diagnostics` — enable diagnostic/debugging flags (helpful when debugging). Can be combined with `--max-performance`.
 * `--debug` — implies `--diagnostics` plus `-O0`, so gdb doesn't hit optimized-out variables or misleading source stepping. Conflicts with `--max-performance` (`-O3` wins over `-O0`), so combining them asks for confirmation unless `--yes` is set.
 * `--yes` — skip the confirmation prompt that `--debug --max-performance` would otherwise show.
-* `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect.
+* `--override-flags="<flags>"` — replace the profile flags with your own, e.g. `--override-flags="-O2 -march=native -mtune=native -fopenmp -funroll-loops -ftree-vectorize -fPIC"`. When set, `--max-performance` has no effect. This also drops the link libraries and `-fPIC` that the per-compiler features in `fpm.toml` provide; pass `-fPIC` here and the libraries with `--override-link-flags`, because fpm never passes these flags to the link of the shared library.
+* `--override-link-flags="<flags>"` — replace the compiler's link libraries from `fpm.toml` with your own. Independent of `--override-flags`; the two together give full control. `-Lexternal`, where the build puts the loess archives, is always kept. fpm writes these flags *before* the objects on the link line, which is fine for a shared library but drops a static archive's members before anything references them — so the loess archives need wrapping: `--override-link-flags="-Wl,--whole-archive -lloess-netlib -lloess-netlib-drotg -Wl,--no-whole-archive -lxxhash -lzip"` reproduces the default.
 * `--directive=<NAME>` — define a preprocessor directive; repeatable, e.g. `--directive=NO_R_BINDING --directive=NO_INPUT_VALIDATION`. The directives the sources actually read are listed below.
-* `--clean-build` — force `fpm` to rebuild `src/` from scratch (enabled automatically when switching git branches). Useful when `fpm` misses changes that do not alter the module structure.
+* `--clean-build` — force `fpm` to rebuild `src/` from scratch. Rarely needed: a build does this by itself whenever something changed that `fpm` cannot see — a hand-written header such as `src/macros.h`, `fpm.toml`, the C-only or link flags, or the compiler's version (recorded as `build/.<compiler>.<hash>.buildstate`).
 * `--skip-code-generation` — every build first regenerates the C, Python and R bindings and the generated Fortran wrappers from `src/` (see [`helper/codegen`](./helper/codegen/README.md)), so a source change and its generated layers cannot drift apart. This option skips that. The generated sources are committed, so a build without Python or [`ford`](https://forddocs.readthedocs.io) installed works anyway -- it warns and compiles what is in the tree.
 
 ### Preprocessor directives
@@ -214,17 +215,13 @@ does nothing, so these are the ones that have an effect:
 | `NO_COLORS` | Drop ANSI colour from the test runner's output. Set automatically when stdout or stderr is not a terminal, so it is rarely worth passing by hand. |
 | `TEST_KIND_MISMATCH_C_INT`<br>`TEST_KIND_MISMATCH_C_DOUBLE`<br>`TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX`<br>`TEST_KIND_MISMATCH_C_CHAR`<br>`TEST_KIND_MISMATCH_C_BOOL`<br>`TEST_KIND_MISMATCH_C_SIZE_T`<br>`TEST_KIND_MISMATCH_C_INT64_T`<br>`TEST_KIND_MISMATCH_C_SIGNED_CHAR` | Break one C kind — the first four disagree with the Fortran kind they are assumed equal to, the last four go missing the way `iso_c_binding` reports an absent kind — so the matching compile-time guard in `f42_safeguard` fires. One directive, one guard, and there are eight of each. A build with one of these is **meant to fail**, with `Error: Division by zero`; `test_runner.sh` uses them to prove each guard still works. Not useful outside that test. |
 
-`--max-performance` also defines `MAX_PERFORMANCE`, but no source reads it — the switch earns
-its keep through the compiler flags it selects (`-O3` plus the per-compiler optimisation
-profile in `fpm.toml`), so pass the switch rather than the directive.
-
 > **Note:** Each `--<option>` maps to an uppercased, `TOX_`-prefixed variable with non-alphanumeric characters replaced by underscores — e.g. `--override-flags` becomes `TOX_OVERRIDE_FLAGS`. Passing `--<option>=<value>` sets that value (a bare flag sets `1`), so any option can equivalently be supplied as an environment variable. An explicit `--<option>` always overrides the corresponding variable.
 
 ### Python integration
 
 The `python/tensor_omics/` package holds the `ctypes` wrapper functions that call Tensor Omics subroutines from Python. It is **generated** from the annotated Fortran source -- do not edit it. `python/test/` has example scripts that demonstrate usage and can serve as a starting point for your own analyses.
 
-The package loads `build/libtensor-omics.so` itself, so once the shared library is built there is nothing to set up:
+The package loads `build/libtensor_omics.so` itself, so once the shared library is built there is nothing to set up:
 
 ```python
 import sys
@@ -382,7 +379,6 @@ If `gdb` is not installed on your system, install it first. For command referenc
 `test_runner.sh` accepts all of the [build options](#build-options) above, plus a few test-specific ones:
 
 * `--skip-kinds-test` — skip the runs that *prove* `f42_safeguard`'s kind guards still fire, each of which forces a mismatch with a `TEST_KIND_MISMATCH_*` directive and expects the build to fail. Handy to avoid the extra clean builds they trigger, and safe on an unchanged platform. It does not disable the guards themselves — those are compiled into `f42_safeguard` on every build, whatever options are passed.
-* `--reuse-mod-files` — keep `fpm`'s test module files instead of removing them before each run. Speeds up test recompilation; use when debugging tests.
 * `--test-target=<target>` — select the test target from `fpm.toml` (currently only `run_tests`, which is the default).
 * `--keep-files` — keep the temporary files the runner creates in the repo root (removed by default).
 * `--keep-<ext>` — the fine-grained variant of `--keep-files`, keeping only files of a given extension, e.g. `--keep-zip` or `--keep-txt`.

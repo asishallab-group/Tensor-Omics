@@ -358,14 +358,51 @@ class TestCharacters:
 
         assert "intent(in), optional, target :: tag" in text
         assert "nullify(tag_f)" in text
-        assert "if (present(tag)) call c_f_pointer(c_loc(tag), tag_f)" in text
+        assert "if (present(tag)) then" in text
+        assert "call c_f_pointer(c_loc(tag), tag_f)" in text
         assert "nullify(extras_f)" in text
-        assert (
-            "if (present(extras)) call c_f_pointer(c_loc(extras), extras_f, "
-            "[n_extras_elements])"
-        ) in text
+        assert "if (present(extras)) then" in text
+        assert "call c_f_pointer(c_loc(extras), extras_f, [n_extras_elements])" in text
         # never an initialiser: that would give an automatic-length local an implicit SAVE
         assert "=> null()" not in text
+
+    def test_an_empty_buffer_is_refused_before_the_view_is_built(self, bag, emitter):
+        """`c_loc` may not be given a zero-size target, and the view has to exist before the
+        callee is called -- so an empty character buffer cannot be left to the callee the way
+        M_CHECK_ARRAY_NON_NULL leaves every other kind. Guarding the *check* on `N > 0` while
+        leaving the remap unguarded was the hole: R passing "" made the check skip itself and
+        the remap go ahead on the NULL that R_alloc(0, 1) returns."""
+        procedure = b.procedure(
+            "p",
+            b.character("name", Intent.IN, length="*"),
+            b.character("rows", Intent.IN, "(:)", length="*"),
+            b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        # the byte count, so a zero-width string and an empty vector are both caught
+        assert "M_CHECK_CHARACTER_VIEW(name, name_strlen)" in text
+        assert "M_CHECK_CHARACTER_VIEW(rows, rows_strlen * n_rows_elements)" in text
+        # and it precedes the c_loc it protects
+        assert text.index("M_CHECK_CHARACTER_VIEW(name,") < text.index("c_loc(name)")
+
+    def test_an_absent_optional_is_not_an_empty_one(self, bag, emitter):
+        """An omitted optional arrives as a null pointer with width 0, which is exactly what
+        an empty buffer looks like -- so the guard has to sit inside the presence test, or
+        every omitted optional string would come back ERR_EMPTY_INPUT."""
+        procedure = b.procedure(
+            "p",
+            b.character("tag", Intent.IN, length="*", optional=True),
+            b.ierr(),
+        )
+
+        text = emit(procedure, bag, emitter)
+
+        guard = text.index("M_CHECK_CHARACTER_VIEW(tag,")
+        assert text.index("if (present(tag)) then") < guard
+        assert guard < text.index("end if")
+
 
     def test_c_f_pointer_is_imported(self, bag, emitter):
         # M_IMPLICIT_NONE is `implicit none (type, external)`, so an unimported intrinsic
@@ -632,6 +669,19 @@ class TestImportsMatchTheBody:
 
         assert "ERR_ALLOC_FAIL" not in text
         assert "allocate(" not in text
+
+    def test_a_character_module_imports_the_empty_error(self):
+        # M_CHECK_CHARACTER_VIEW names ERR_EMPTY_INPUT, and only a character emits it
+        text = self.module_of(b.character("s", Intent.IN, length="*", doc="read in"))
+
+        assert "ERR_EMPTY_INPUT" in _errors_imported(text)
+        assert "M_CHECK_CHARACTER_VIEW" in text
+
+    def test_a_module_without_characters_does_not_import_the_empty_error(self):
+        text = self.module_of(b.real("x", Intent.IN, doc="a plain input"))
+
+        assert "ERR_EMPTY_INPUT" not in _errors_imported(text)
+        assert "ERR_EMPTY_INPUT" not in text
 
     def test_a_character_module_imports_nothing_from_tox_conversions(self):
         # in either direction: a view is the caller's own bytes, so neither reading it in

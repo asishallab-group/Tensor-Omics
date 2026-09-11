@@ -13,17 +13,17 @@
 #'
 #' @param abs_residual_pool a numeric vector. The absolute residual values of the concatenated S1,S2 residuals
 #'   NaN is permitted for this value.
-#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
+#' @param residual_range_quantile_level a numeric scalar. Quantile level in [0,1] for determining the residual range
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a numeric scalar. Computed residual range (R)
 #' @export
-determine_shared_residual_range <- function(abs_residual_pool, residual_range_quantile = 0.95) {
+determine_shared_residual_range <- function(abs_residual_pool, residual_range_quantile_level = 0.95) {
     abs_residual_pool <- .tox_as_double_vector(abs_residual_pool, "abs_residual_pool")
-    residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
-    .result <- .Call("determine_shared_residual_range_call", abs_residual_pool, residual_range_quantile)
-    .arguments <- c("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr")
+    residual_range_quantile_level <- .tox_as_double_scalar(residual_range_quantile_level, "residual_range_quantile_level")
+    .result <- .Call("determine_shared_residual_range_call", abs_residual_pool, residual_range_quantile_level)
+    .arguments <- c("abs_residual_pool", "pool_size", "shared_residual_range", "residual_range_quantile_level", "ierr")
     .sources <- c(NA_character_, "abs_residual_pool", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -46,21 +46,21 @@ determine_shared_residual_range <- function(abs_residual_pool, residual_range_qu
 #' @param abs_residual_pool_perm a integer vector. The permutation vector that sorts `abs_residual_pool`
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `pool_size`.
-#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
+#' @param residual_range_quantile_level a numeric scalar. Quantile level in [0,1] for determining the residual range
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a numeric scalar. Computed residual range (R)
 #' @export
-determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residual_pool_perm, residual_range_quantile = 0.95) {
+determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residual_pool_perm, residual_range_quantile_level = 0.95) {
     abs_residual_pool <- .tox_as_double_vector(abs_residual_pool, "abs_residual_pool")
     abs_residual_pool_perm <- .tox_as_integer_vector(abs_residual_pool_perm, "abs_residual_pool_perm")
-    residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
+    residual_range_quantile_level <- .tox_as_double_scalar(residual_range_quantile_level, "residual_range_quantile_level")
     if (length(abs_residual_pool_perm) != length(abs_residual_pool))
         .tox_shape_error("abs_residual_pool_perm", length(abs_residual_pool_perm), "abs_residual_pool", length(abs_residual_pool))
 
-    .result <- .Call("determine_shared_residual_range_expert_call", abs_residual_pool, abs_residual_pool_perm, residual_range_quantile)
-    .arguments <- c("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile", "ierr")
+    .result <- .Call("determine_shared_residual_range_expert_call", abs_residual_pool, abs_residual_pool_perm, residual_range_quantile_level)
+    .arguments <- c("abs_residual_pool", "abs_residual_pool_perm", "pool_size", "shared_residual_range", "residual_range_quantile_level", "ierr")
     .sources <- c(NA_character_, NA_character_, "abs_residual_pool", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
@@ -79,23 +79,23 @@ determine_shared_residual_range_expert <- function(abs_residual_pool, abs_residu
 #'   NaN is permitted for this value.
 #' @param neighborhood_residuals_S2 a numeric array of rank 3. Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
 #'   NaN is permitted for this value.
-#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
+#' @param residual_range_quantile_level a numeric scalar. Quantile level in [0,1] for determining the residual range
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.95`.
 #' @return a numeric scalar. Computed residual range (R)
 #' @export
-determine_study_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile = 0.95) {
+determine_study_shared_residual_range <- function(neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile_level = 0.95) {
     neighborhood_residuals_S1 <- .tox_as_double_array(neighborhood_residuals_S1, "neighborhood_residuals_S1", 3L)
     neighborhood_residuals_S2 <- .tox_as_double_array(neighborhood_residuals_S2, "neighborhood_residuals_S2", 3L)
-    residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
+    residual_range_quantile_level <- .tox_as_double_scalar(residual_range_quantile_level, "residual_range_quantile_level")
     if (dim(neighborhood_residuals_S2)[2] != dim(neighborhood_residuals_S1)[2])
         .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[2], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[2])
     if (dim(neighborhood_residuals_S2)[3] != dim(neighborhood_residuals_S1)[3])
         .tox_shape_error("neighborhood_residuals_S2", dim(neighborhood_residuals_S2)[3], "neighborhood_residuals_S1", dim(neighborhood_residuals_S1)[3])
 
-    .result <- .Call("determine_study_shared_residual_range_call", neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile)
-    .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr")
+    .result <- .Call("determine_study_shared_residual_range_call", neighborhood_residuals_S1, neighborhood_residuals_S2, residual_range_quantile_level)
+    .arguments <- c("neighborhood_residuals_S1", "neighborhood_residuals_S2", "n_reps_S1", "n_reps_S2", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile_level", "ierr")
     .sources <- c(NA_character_, NA_character_, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 

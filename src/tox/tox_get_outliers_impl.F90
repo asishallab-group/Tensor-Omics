@@ -17,7 +17,7 @@ module tox_get_outliers_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: logx_helper, above, is_close
     use f42_sort_impl, only: sort_array, init_perm
-    use f42_stats_impl, only: calc_percentile_impl, compute_scaled_distance_quantile_impl
+    use f42_stats_impl, only: calc_quantile_impl, compute_scaled_distance_tail_probability_impl
     use tox_errors, only: ERR_INVALID_INPUT, ERR_ALLOC_FAIL, set_ok, set_err, set_err_once, is_err, &
                           validate_all_in_range_real
     use tox_loess_impl, only: tox_loess_required_workspace, EPS_LOESS, loess_evaluation, loess_fit_plain_impl, loess_fit_robust_impl
@@ -27,7 +27,7 @@ module tox_get_outliers_impl
 #define CM_FAMILY_DEGREE_DEFAULT 2_int32
 #define CM_FAMILY_MODE_DEFAULT 1_int32
 #define CM_FAMILY_N_ITERS_DEFAULT 3_int32
-#define CM_OUTLIER_PERCENTILE_DEFAULT 0.95_real64
+#define CM_OUTLIER_QUANTILE_LEVEL_DEFAULT 0.95_real64
 
     integer(int32), parameter, public :: MODE_PLAIN = 0_int32
         !! Mode code selecting a plain LOESS fit, for callers that carry the choice as a value
@@ -231,7 +231,7 @@ contains
         ! Use the 5th percentile of the family means as a data-driven pseudo-count instead of a fixed
         ! constant, so log2(mean + eps_mean) below stays well-scaled across datasets with very
         ! different absolute expression ranges.
-        call calc_percentile_impl(loess_x, n_valid, tmp_perm, 0.05_real64, eps_mean)
+        call calc_quantile_impl(loess_x, n_valid, tmp_perm, 0.05_real64, eps_mean)
 
         eps_mean = max(eps_mean, EPS_LOESS)
 
@@ -274,7 +274,7 @@ contains
         call sort_array(loess_y(1:n_valid), tmp_perm(1:n_valid), tmp_stack_left(1:n_valid), tmp_stack_right(1:n_valid))
         ! Bottom 1% of (log2) stddevs is treated as "too flat to trust": these families would otherwise
         ! anchor the mean-vs-stddev LOESS curve with near-degenerate (close to zero-variance) points.
-        call calc_percentile_impl(loess_y, n_valid, tmp_perm, 0.01_real64, low_sd_cutoff)
+        call calc_quantile_impl(loess_y, n_valid, tmp_perm, 0.01_real64, low_sd_cutoff)
 
         ! Compact loess_x/loess_y/indices_used in place, keeping only families at or above the low-sd
         ! cutoff, so the subsequent global LOESS fit below is trained on the retained (k <= n_valid)
@@ -466,11 +466,11 @@ contains
 
     end subroutine compute_rdi_impl
 
-    !> summary: Identify gene outliers based on the top percentile of RDI values
+    !> summary: Identify gene outliers based on an upper quantile of the RDI values
     !| AUTHOR_VIVIAN_BASS
     !| Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
     !| If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.
-    pure subroutine identify_outliers_impl(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)
+    pure subroutine identify_outliers_impl(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, tail_probability, quantile_level)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         real(real64), intent(in) :: rdi(n_genes)
@@ -487,21 +487,21 @@ contains
             !! Output boolean array indicating outliers
         real(real64), intent(out) :: threshold
             !! Output threshold value used for detection
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] (top 5% for the default).
-            !! DM_DEFAULT(CM_OUTLIER_PERCENTILE_DEFAULT)
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1] (the top 5% for the default).
+            !! DM_DEFAULT(CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-        real(real64), intent(out) :: quantile(n_genes)
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), intent(out) :: tail_probability(n_genes)
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
+            !! upper-tail probability is used.
 
         integer(int32) :: i, idx, n_usable
-        real(real64) :: perc_pos, percentile_val, quantile_rescale
+        real(real64) :: fractional_rank, actual_quantile_level, tail_probability_rescale
 
-        M_DEFAULT_VAL(percentile, percentile_val, CM_OUTLIER_PERCENTILE_DEFAULT)
+        M_DEFAULT_VAL(quantile_level, actual_quantile_level, CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
 
         ! Initialize output
         is_outlier = .false.
@@ -524,18 +524,18 @@ contains
             if (sorted_rdi(i) > 0.0_real64) n_usable = n_usable + 1
         end do
 
-        call compute_scaled_distance_quantile_impl(n_genes, rdi, sorted_rdi, perm, quantile, 1.0_real64)
+        call compute_scaled_distance_tail_probability_impl(n_genes, rdi, sorted_rdi, perm, tail_probability, 1.0_real64)
 
         if (n_usable < 1) then
             threshold = 0.0_real64
             return
         end if
 
-        ! Nearest-rank percentile: round the fractional rank up to the next integer index into that
+        ! Nearest-rank quantile: round the fractional rank up to the next integer index into that
         ! usable tail, so `threshold` is always an observed RDI value rather than an interpolated
-        ! one. `percentile_val` is a fraction in [0,1].
-        perc_pos = n_usable*percentile_val
-        idx = ceiling(perc_pos)
+        ! one. `actual_quantile_level` is a fraction in [0,1].
+        fractional_rank = n_usable*actual_quantile_level
+        idx = ceiling(fractional_rank)
         ! Clamp idx to valid range
         if (idx < 1) idx = 1
         if (idx > n_usable) idx = n_usable
@@ -548,13 +548,13 @@ contains
             is_outlier(i) = (rdi(i) >= threshold .and. rdi(i) > 0.0_real64)
         end do
 
-        ! The quantile just computed counts every gene in its denominator, but only the usable ones
+        ! The tail probability just computed counts every gene in its denominator, but only the usable ones
         ! belong to the distribution it describes. No non-positive RDI can enter any gene's
         ! numerator -- they all sort below every positive value -- so the correction is exactly a
-        ! change of denominator, and the clamp keeps the non-usable genes' own quantile at 1.
-        quantile_rescale = (real(n_genes, real64) + 1.0_real64)/(real(n_usable, real64) + 1.0_real64)
-        do concurrent (i = 1:n_genes) shared(quantile, quantile_rescale)
-            quantile(i) = min(1.0_real64, quantile(i)*quantile_rescale)
+        ! change of denominator, and the clamp keeps the non-usable genes' own tail probability at 1.
+        tail_probability_rescale = (real(n_genes, real64) + 1.0_real64)/(real(n_usable, real64) + 1.0_real64)
+        do concurrent (i = 1:n_genes) shared(tail_probability, tail_probability_rescale)
+            tail_probability(i) = min(1.0_real64, tail_probability(i)*tail_probability_rescale)
         end do
 
     end subroutine identify_outliers_impl
@@ -570,7 +570,7 @@ contains
                                tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
                                tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, tmp_means_aux, &
                                tmp_dscale, tmp_excluded_low_sd, tmp_low_sd_cutoff, tmp_rdi, tmp_sorted_rdi, tmp_threshold, &
-                               is_outlier, loess_x, loess_y, loess_n, quantile, ierr, percentile)
+                               is_outlier, loess_x, loess_y, loess_n, tail_probability, ierr, quantile_level)
         integer(int32), intent(in) :: n_genes
             !! Total number of genes
         integer(int32), intent(in) :: n_families
@@ -652,16 +652,16 @@ contains
             !! Reference y-coordinates (length n_total).
         integer(int32), intent(out) :: loess_n(n_families)
             !! Indices of reference points used for smoothing.
-        real(real64), intent(out) :: quantile(n_genes)
-            !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
+        real(real64), intent(out) :: tail_probability(n_genes)
+            !! Empirical one-sided upper-tail probability (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
             !! Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided
-            !! upper-tail quantile is used.
+            !! upper-tail probability is used.
         integer(int32), intent(out) :: ierr
             !! Error code
-        real(real64), intent(in), optional :: percentile
-            !! Percentile threshold as a fraction in [0,1] for outlier detection.
-            !! DM_DEFAULT(CM_OUTLIER_PERCENTILE_DEFAULT)
+        real(real64), intent(in), optional :: quantile_level
+            !! Quantile level of the threshold, as a fraction in [0,1], for outlier detection.
+            !! DM_DEFAULT(CM_OUTLIER_QUANTILE_LEVEL_DEFAULT)
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
 
@@ -677,6 +677,6 @@ contains
 
         call compute_rdi_impl(n_genes, distances, gene_to_fam, tmp_dscale, tmp_rdi, tmp_sorted_rdi, tmp_perm, tmp_stack_left, tmp_stack_right)
 
-        call identify_outliers_impl(n_genes, tmp_rdi, tmp_sorted_rdi, tmp_perm, is_outlier, tmp_threshold, quantile, percentile)
+        call identify_outliers_impl(n_genes, tmp_rdi, tmp_sorted_rdi, tmp_perm, is_outlier, tmp_threshold, tail_probability, quantile_level)
     end subroutine detect_outliers_impl
 end module tox_get_outliers_impl

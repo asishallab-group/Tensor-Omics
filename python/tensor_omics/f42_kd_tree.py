@@ -130,6 +130,10 @@ def build_spherical_kd(
 ):
     r"""Build a k-d tree index over points on the unit sphere (unit vectors)
 
+    This is a thin, semantically-named wrapper: partitioning is identical to
+    :func:`tensor_omics.build_kd_index` (plain per-axis median splits);
+    callers are responsible for ensuring `points` are actually unit-normalized beforehand.
+
     Parameters
     ----------
     points : np.ndarray[np.float64] of shape (n_dimensions, n_points,), column-major (order='F')

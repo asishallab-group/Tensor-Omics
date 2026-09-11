@@ -61,10 +61,10 @@ SEXP get_array_metadata_call(SEXP, SEXP);
 SEXP loess_smooth_2d_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP compute_edf_call(SEXP);
 SEXP compute_edf_expert_call(SEXP, SEXP);
-SEXP calc_percentile_call(SEXP, SEXP, SEXP);
-SEXP calc_percentile_expert_call(SEXP, SEXP, SEXP, SEXP);
-SEXP compute_scaled_distance_quantile_call(SEXP, SEXP, SEXP);
-SEXP compute_scaled_distance_quantile_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP calc_quantile_call(SEXP, SEXP, SEXP);
+SEXP calc_quantile_expert_call(SEXP, SEXP, SEXP, SEXP);
+SEXP compute_scaled_distance_tail_probability_call(SEXP, SEXP, SEXP);
+SEXP compute_scaled_distance_tail_probability_expert_call(SEXP, SEXP, SEXP, SEXP);
 SEXP cluster_factor_trajectories_k_means_call(SEXP, SEXP, SEXP);
 SEXP k_means_clustering_call(SEXP, SEXP, SEXP);
 SEXP linkage_clustering_call(SEXP, SEXP);
@@ -171,10 +171,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"loess_smooth_2d_call", (DL_FUNC) &loess_smooth_2d_call, 6},
     {"compute_edf_call", (DL_FUNC) &compute_edf_call, 1},
     {"compute_edf_expert_call", (DL_FUNC) &compute_edf_expert_call, 2},
-    {"calc_percentile_call", (DL_FUNC) &calc_percentile_call, 3},
-    {"calc_percentile_expert_call", (DL_FUNC) &calc_percentile_expert_call, 4},
-    {"compute_scaled_distance_quantile_call", (DL_FUNC) &compute_scaled_distance_quantile_call, 3},
-    {"compute_scaled_distance_quantile_expert_call", (DL_FUNC) &compute_scaled_distance_quantile_expert_call, 4},
+    {"calc_quantile_call", (DL_FUNC) &calc_quantile_call, 3},
+    {"calc_quantile_expert_call", (DL_FUNC) &calc_quantile_expert_call, 4},
+    {"compute_scaled_distance_tail_probability_call", (DL_FUNC) &compute_scaled_distance_tail_probability_call, 3},
+    {"compute_scaled_distance_tail_probability_expert_call", (DL_FUNC) &compute_scaled_distance_tail_probability_expert_call, 4},
     {"cluster_factor_trajectories_k_means_call", (DL_FUNC) &cluster_factor_trajectories_k_means_call, 3},
     {"k_means_clustering_call", (DL_FUNC) &k_means_clustering_call, 3},
     {"linkage_clustering_call", (DL_FUNC) &linkage_clustering_call, 2},
@@ -263,7 +263,7 @@ static const R_CallMethodDef CallEntries[] = {
     {NULL, NULL, 0}
 };
 
-void R_init_tensoromics(DllInfo *dll) {
+void R_init_libtensor_omics(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

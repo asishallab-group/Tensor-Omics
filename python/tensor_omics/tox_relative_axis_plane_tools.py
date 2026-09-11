@@ -323,6 +323,10 @@ def clock_hand_angle_between_vectors(
 ):
     r"""Compute the signed clock hand angle between two RAP-projected and normalized vectors.
 
+    The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+    which way round the plane the two vectors span counts as positive. Reports
+    `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
+
     Parameters
     ----------
     v1 : np.ndarray[np.float64] of shape (n_dims,)
@@ -407,6 +411,11 @@ def clock_hand_angles_for_shift_vectors(
         orientation_reference,
 ):
     r"""Compute signed rotation angles between for shift vectors, so between their origin and target
+
+    Each selected field is angled by the rule of
+    :func:`tensor_omics.clock_hand_angle_between_vectors`,
+    with one `orientation_reference` shared by the whole batch. A single field whose rotation
+    the reference fails to orient fails the call.
 
     Parameters
     ----------
@@ -499,6 +508,8 @@ def compute_relative_axis_contributions(
 ):
     r"""Compute the fractional contribution of each axis to a RAP-projected and normalized vector
 
+    Shared utility: the shift-vector and expression-vector entry points below both drive it.
+
     Parameters
     ----------
     vec : np.ndarray[np.float64] of shape (n_axes,)
@@ -554,6 +565,8 @@ def relative_axes_changes_from_shift_vector(
 ):
     r"""Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
 
+    Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
+
     Parameters
     ----------
     vec : np.ndarray[np.float64] of shape (n_axes,)
@@ -608,6 +621,8 @@ def relative_axes_expression_from_expression_vector(
         vec,
 ):
     r"""Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+
+    Wrapper for single RAP-projected expression vectors
 
     Parameters
     ----------

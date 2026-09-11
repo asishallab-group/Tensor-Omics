@@ -146,7 +146,7 @@ def character_rank(argument: CArgument) -> int:
 
 
 class PythonEmitter:
-    def __init__(self, library: str = "build/libtensor-omics.so", links=None, tiers=None):
+    def __init__(self, library: str = "build/libtensor_omics.so", links=None, tiers=None):
         self.library = library
         #: resolves a Ford link to what it is called here; None in a unit test, where a link
         #: then renders as plain code rather than a cross-reference

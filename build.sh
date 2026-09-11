@@ -9,18 +9,8 @@ init "$@"
 
 mkdir -p build
 
-# trigger clean build on branch switch
-if [[ $(command -v git) ]]; then
-  current_branch=$(git branch --show-current 2>/dev/null || true)
-  filename=".${COMPILER}.${current_branch}.branch"
-  filename=build/${filename//\//_.SLASH._} # replace / by _.SLASH._, as _.SLASH._ is very likely never being part of a branch name
-  if [[ ! -f "$filename" ]]; then
-    TOX_CLEAN_BUILD=1
-    rm -f build/.$COMPILER.*.branch # remove prev branch file (should only be one)
-    rm -f build/.branch # this one for backwards compatibility with other still existing branches
-    : > "$filename"
-  fi
-fi
+# a clean build whenever something changed that fpm cannot see -- see check_build_state
+check_build_state
 
 # Clean build directory if it exists
 if [[ "$TOX_CLEAN_BUILD" ]]; then

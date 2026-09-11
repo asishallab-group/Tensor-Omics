@@ -203,6 +203,8 @@ def normalization_pipeline(
 ):
     r"""Complete normalization pipeline for gene expression data.
 
+    Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.
+
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
@@ -288,6 +290,9 @@ def normalize_by_std_dev(
 ):
     r"""Normalizes each gene's expression vector using LOESS-stabilized standard deviation.
 
+    This procedure applies a global stabilization based on the relationship between
+    gene-wise mean expression and empirical standard deviation.
+
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
@@ -355,6 +360,8 @@ def root_mean_sq_normalization(
 ):
     r"""Normalizes each gene's expression vector using `sqrt(mean(x^2))`
 
+    across tissues (not classical standard deviation).
+
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
@@ -413,6 +420,8 @@ def quantile_normalization(
         expr,
 ):
     r"""Quantile normalization of a gene expression matrix (F42-compliant).
+
+    Computes average expression per rank across tissues.
 
     Parameters
     ----------
@@ -485,6 +494,11 @@ def log2_transformation(
 ):
     r"""Apply `log2(x + 1)` transformation to each element of the input matrix.
 
+    This subroutine performs element-wise `log2(x + 1)` transformation on a
+    matrix flattened in column-major order. The `log2` is computed via:
+    `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
+    non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+
     Parameters
     ----------
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
@@ -544,6 +558,9 @@ def calc_tiss_avg(
         expr,
 ):
     r"""Calculate tissue averages by averaging replicates within each tissue.
+
+    For each tissue of tissue replicates, this subroutine computes the average
+    expression per gene.
 
     Parameters
     ----------
@@ -616,6 +633,14 @@ def calc_fchange(
         expr,
 ):
     r"""Calculate `log2 fold changes` between condition and control groups.
+
+    For each control-condition pair, this subroutine computes the `log2 fold change`
+    by subtracting the expression value in the control group from the corresponding
+    value in the condition group, for all genes.
+
+    That subtraction is a `log2 fold change` only because `expr` is already on a
+    `log2` scale. Passing tissue averages that have not been log-transformed yields a
+    plain difference of expression levels instead, which is not a fold change.
 
     Parameters
     ----------

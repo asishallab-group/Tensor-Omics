@@ -12,7 +12,7 @@ module tox_data_tools_c
     use f42_safeguard
     use, intrinsic :: iso_c_binding, only: c_associated, c_bool, c_char, c_double, c_f_pointer, c_int
     use, intrinsic :: iso_c_binding, only: c_loc
-    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL
+    use tox_errors, only: set_ok, set_err, ERR_POINTER_NULL, ERR_EMPTY_INPUT
     M_IMPLICIT_NONE
     private
 
@@ -99,8 +99,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(value_cols, n_value_cols_elements)
         M_CHECK_ARRAY_NON_NULL(delimiter, 1)
 
+        M_CHECK_CHARACTER_VIEW(file_list, file_list_strlen * n_file_list_elements)
         call c_f_pointer(c_loc(file_list), file_list_f, [n_file_list_elements])
+        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
         call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_VIEW(delimiter, 1)
         call c_f_pointer(c_loc(delimiter), delimiter_f)
 
         call read_expression_vectors_tsv(&
@@ -158,7 +161,9 @@ contains
         M_CHECK_ARRAY_NON_NULL(filename, filename_strlen)
         M_CHECK_ARRAY_NON_NULL(gene_ids, gene_ids_strlen * n_gene_ids_elements)
 
+        M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
+        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
         call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
 
         call read_gene_ids_from_tsv_file(&
@@ -225,8 +230,11 @@ contains
         M_CHECK_ARRAY_NON_NULL(family_ids, family_ids_strlen * n_family_ids_elements)
         M_CHECK_ARRAY_NON_NULL(gene_to_fam, n_gene_to_fam_elements)
 
+        M_CHECK_CHARACTER_VIEW(filename, filename_strlen)
         call c_f_pointer(c_loc(filename), filename_f)
+        M_CHECK_CHARACTER_VIEW(gene_ids, gene_ids_strlen * n_gene_ids_elements)
         call c_f_pointer(c_loc(gene_ids), gene_ids_f, [n_gene_ids_elements])
+        M_CHECK_CHARACTER_VIEW(family_ids, family_ids_strlen * n_family_ids_elements)
         call c_f_pointer(c_loc(family_ids), family_ids_f, [n_family_ids_elements])
 
         call read_orthofinder_file(&

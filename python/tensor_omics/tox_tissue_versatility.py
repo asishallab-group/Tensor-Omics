@@ -46,6 +46,12 @@ def compute_tissue_versatility(
 ):
     r"""Computes normalized tissue versatility for selected expression vectors.
 
+    The metric is based on the angle between each gene expression vector and the space diagonal.
+    Versatility is normalized to [0, 1], where 0 means uniform expression and 1 means expression in only one axis.
+
+    The masks follow the `n_selected_` convention, so the generated wrapper validates that each
+    selection count matches its mask; `n_selected_axes` (not an array extent) carries its own floor.
+
     Parameters
     ----------
     expression_vectors : np.ndarray[np.float64] of shape (n_axes, n_vectors,), column-major (order='F')

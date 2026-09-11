@@ -11,7 +11,7 @@ The chain is four calls:
 ``detect_outliers`` does not compare a gene's distance against a fixed cutoff.
 It divides each distance by its family's own spread -- giving the Relative
 Distance Index, so that a wide family and a tight one are on the same footing
--- and then flags the top ``--percentile`` of those indices. The scale of a
+-- and then flags the indices above their quantile at ``--quantile-level``. The scale of a
 family whose own spread is too small to estimate comes from a LOESS fit of
 spread against mean distance over all families.
 
@@ -47,18 +47,18 @@ DEFAULT_OUTPUT = Path("results/outliers.tsv")
 
 
 def write_outlier_table(out_path, gene_ids, family_ids, gene_to_family,
-                        distances, quantile, is_outlier):
+                        distances, tail_probability, is_outlier):
     """Write one row per gene that belongs to a family."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w") as handle:
-        handle.write("gene_id\tfamily_id\tdistance_to_centroid\tquantile\tis_outlier\n")
+        handle.write("gene_id\tfamily_id\tdistance_to_centroid\ttail_probability\tis_outlier\n")
         for i_gene, gene_id in enumerate(gene_ids):
             i_family = gene_to_family[i_gene]
             if i_family == UNASSIGNED:
                 continue
             handle.write(
                 f"{gene_id}\t{family_ids[i_family - 1]}\t{distances[i_gene]:.6g}\t"
-                f"{quantile[i_gene]:.6g}\t{int(is_outlier[i_gene])}\n"
+                f"{tail_probability[i_gene]:.6g}\t{int(is_outlier[i_gene])}\n"
             )
 
 
@@ -71,7 +71,7 @@ def main(argv=None):
     parser.add_argument("--orthologs", type=Path, default=None,
                         help="gene ids of the orthologs, one per line; if given, the "
                              "centroids are taken over these genes only")
-    parser.add_argument("--percentile", type=float, default=0.95,
+    parser.add_argument("--quantile-level", type=float, default=0.95,
                         help="fraction, NOT a percentage: 0.95 flags the top 5%% (default: 0.95)")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUTPUT,
                         help=f"where to write the per-gene table (default: {DEFAULT_OUTPUT})")
@@ -100,12 +100,12 @@ def main(argv=None):
     print(f"distance to own centroid: median {np.median(real):.4g}, max {real.max():.4g}")
 
     result = detect_outliers(n_families, distances, gene_to_family,
-                             percentile=args.percentile)
-    is_outlier, quantile = result["is_outlier"], result["quantile"]
+                             quantile_level=args.quantile_level)
+    is_outlier, tail_probability = result["is_outlier"], result["tail_probability"]
 
     n_flagged = int(is_outlier.sum())
     print(f"flagged {n_flagged} of {int(assigned.sum())} assigned genes "
-          f"({n_flagged / max(int(assigned.sum()), 1):.2%}) at percentile {args.percentile}")
+          f"({n_flagged / max(int(assigned.sum()), 1):.2%}) at quantile level {args.quantile_level}")
     if is_outlier[~assigned].any():
         print("WARNING: a gene with no family was flagged; this should not happen")
 
@@ -116,7 +116,7 @@ def main(argv=None):
     shift_vectors = field[:, 1, :]
 
     write_outlier_table(args.out, gene_ids, family_ids, gene_to_family,
-                        distances, quantile, is_outlier)
+                        distances, tail_probability, is_outlier)
     print(f"wrote {args.out}")
 
     flagged = np.flatnonzero(is_outlier)
