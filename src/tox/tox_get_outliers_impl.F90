@@ -324,66 +324,64 @@ contains
                     dscale(i_family) = 0.0_real64
                 end if
             end do
-
-            low_sd_cutoff = max(2.0_real64**low_sd_cutoff - eps_sd, 0.0_real64)
-            return
-        end if
-
-        ! ------------------------------------------------------------
-        ! LOESS GLOBAL: smooth y_ref as function of x_ref (once)
-        ! ------------------------------------------------------------
-        tmp_weights(1:n_valid) = 1.0_real64
-        tmp_eval_points(1:n_valid, 1) = loess_x(1:n_valid)
-
-        if (actual_mode == 0) then
-            ! If you have a plain routine, call it; otherwise keep robust always.
-            call loess_fit_plain_impl( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
-                actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
         else
-            call loess_fit_robust_impl( &
-                n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
-                actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, actual_n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
-                tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+            ! ------------------------------------------------------------
+            ! LOESS GLOBAL: smooth y_ref as function of x_ref (once)
+            ! ------------------------------------------------------------
+            tmp_weights(1:n_valid) = 1.0_real64
+            tmp_eval_points(1:n_valid, 1) = loess_x(1:n_valid)
+
+            if (actual_mode == 0) then
+                ! If you have a plain routine, call it; otherwise keep robust always.
+                call loess_fit_plain_impl( &
+                    n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
+                    actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+            else
+                call loess_fit_robust_impl( &
+                    n_valid, loess_x(1:n_valid), loess_y(1:n_valid), tmp_weights(1:n_valid), tmp_eval_points, &
+                    actual_span, actual_degree, n_valid, .false._c_bool, .false._c_bool, actual_n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl(1:n_valid), &
+                    tmp_robust_weights(1:n_valid), tmp_combined_weights(1:n_valid), tmp_residuals(1:n_valid), tmp_permutation_indices(1:n_valid), tmp_fitted_values(1:n_valid), ierr)
+            end if
+
+            if (is_err(ierr)) return
+
+            ! The `>= 0` branch feeds `tmp_means_aux(i_family) + eps_mean` to log2. Every such family had
+            ! `n_in_family > 1` and therefore contributed exactly this mean to `loess_x`, whose
+            ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
+            ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
+            ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
+            ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
+            ! (each iteration writes only its own `tmp_eval_points` row).
+            do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_eval_points, eps_mean, xmin, xmax)
+                if (tmp_means_aux(i_family) >= 0.0_real64) then
+                    call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_eval_points(i_family, 1))
+                    if (tmp_eval_points(i_family, 1) < xmin) tmp_eval_points(i_family, 1) = xmin
+                    if (tmp_eval_points(i_family, 1) > xmax) tmp_eval_points(i_family, 1) = xmax
+                else
+                    tmp_eval_points(i_family, 1) = xmin
+                end if
+            end do
+
+            call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n_families, tmp_eval_points, tmp_fitted_values(1:n_families))
+
+            if (is_err(ierr)) return
+
+            ! ------------------------------------------------------------
+            ! Map compact tmp_residuals back to full dscale
+            ! ------------------------------------------------------------
+
+            do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_fitted_values, eps_sd)
+                if (tmp_means_aux(i_family) < 0.0_real64) then
+                    dscale(i_family) = 0.0_real64
+                else
+                    dscale(i_family) = max(2.0_real64**tmp_fitted_values(i_family) - eps_sd, 0.0_real64)
+                end if
+            end do
         end if
 
-        if (is_err(ierr)) return
-
-        ! The `>= 0` branch feeds `tmp_means_aux(i_family) + eps_mean` to log2. Every such family had
-        ! `n_in_family > 1` and therefore contributed exactly this mean to `loess_x`, whose
-        ! `+ eps_mean` argument was already validated (> 0, finite) before the first log2 loop above;
-        ! skipped families keep the initial `tmp_means_aux = -1` and take the `else` branch. So the
-        ! argument here is guaranteed valid by that earlier validation -- not by assumption -- and the
-        ! non-validating `logx_helper` runs in a race-free `do concurrent` with no shared `ierr`
-        ! (each iteration writes only its own `tmp_eval_points` row).
-        do concurrent(i_family=1:n_families) shared(tmp_means_aux, tmp_eval_points, eps_mean, xmin, xmax)
-            if (tmp_means_aux(i_family) >= 0.0_real64) then
-                call logx_helper(tmp_means_aux(i_family) + eps_mean, 2.0_real64, tmp_eval_points(i_family, 1))
-                if (tmp_eval_points(i_family, 1) < xmin) tmp_eval_points(i_family, 1) = xmin
-                if (tmp_eval_points(i_family, 1) > xmax) tmp_eval_points(i_family, 1) = xmax
-            else
-                tmp_eval_points(i_family, 1) = xmin
-            end if
-        end do
-
-        call loess_evaluation(tmp_int_workspace, int_workspace_size, real_workspace_size, tmp_real_workspace, n_families, tmp_eval_points, tmp_fitted_values(1:n_families))
-
-        if (is_err(ierr)) return
-
-        ! ------------------------------------------------------------
-        ! Map compact tmp_residuals back to full dscale
-        ! ------------------------------------------------------------
-
-        do concurrent (i_family = 1:n_families) shared(tmp_means_aux, dscale, tmp_fitted_values, eps_sd)
-            if (tmp_means_aux(i_family) < 0.0_real64) then
-                dscale(i_family) = 0.0_real64
-            else
-                dscale(i_family) = max(2.0_real64**tmp_fitted_values(i_family) - eps_sd, 0.0_real64)
-            end if
-        end do
-
+        ! The fit works in log2 space. Both branches end here, so the LOESS points and the cutoff go
+        ! back to the linear scale they were measured on in one place, whichever branch was taken.
         do concurrent (i_valid = 1:n_valid) shared(loess_x, loess_y, eps_mean, eps_sd)
-            ! linear scale for return
             loess_x(i_valid) = max(2.0_real64**loess_x(i_valid) - eps_mean, 0.0_real64)
             loess_y(i_valid) = max(2.0_real64**loess_y(i_valid) - eps_sd, 0.0_real64)
         end do
