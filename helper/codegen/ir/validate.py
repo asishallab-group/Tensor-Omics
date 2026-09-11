@@ -872,7 +872,7 @@ def _check_prologue_arguments_resolve(impl: Procedure, prologue: Procedure,
 
     A name the implementation has is passed straight on. A name it does not becomes an argument of
     the allocating wrapper -- what the prologue derives from, which is the allocating tier's
-    own vocabulary and no business of the implementation's: a threshold's `percentile`.
+    own vocabulary and no business of the implementation's: a threshold's `quantile_level`.
 
     Which leaves a misspelling nowhere to be caught, since it now reads as a new argument.
     So a name that is *nearly* one the implementation has is refused: `n_gene` beside `n_genes` is a

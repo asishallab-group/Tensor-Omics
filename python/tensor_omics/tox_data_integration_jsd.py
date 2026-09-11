@@ -133,7 +133,7 @@ def determine_shared_residual_range(
         The absolute residual values of the concatenated S1,S2 residuals
         NaN is permitted for this value.
     residual_range_quantile : float, optional, default 0.95
-        Quantile in [0,1] for determining the residual range
+        Quantile level in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
@@ -203,7 +203,7 @@ def determine_shared_residual_range_expert(
         The minimum valid value is `1`.
         The maximum valid value is `pool_size`.
     residual_range_quantile : float, optional, default 0.95
-        Quantile in [0,1] for determining the residual range
+        Quantile level in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.
@@ -285,7 +285,7 @@ def determine_study_shared_residual_range(
         Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
         NaN is permitted for this value.
     residual_range_quantile : float, optional, default 0.95
-        Quantile in [0,1] for determining the residual range
+        Quantile level in [0,1] for determining the residual range
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.95`.

@@ -45,7 +45,7 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95`.
@@ -93,7 +93,7 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95`.
@@ -151,7 +151,7 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95`.
@@ -221,7 +221,7 @@ contains
         real(c_double), intent(out), target :: shared_residual_range
             !! Computed residual range (R)
         real(c_double), intent(in), target :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+            !! Quantile level in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
             !! The default value is `0.95`.

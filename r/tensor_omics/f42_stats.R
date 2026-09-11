@@ -108,104 +108,104 @@ compute_edf_expert <- function(values, values_perm) {
     )
 }
 
-#' Calculate the percentile of an array given a sorted permutation
+#' Calculate the quantile of an array at a given level, given a sorted permutation
 #'
 #' Uses linear interpolation between adjacent values.
 #'
-#' Generated from the Fortran procedure \code{f42_stats::calc_percentile}, whose argument names
+#' Generated from the Fortran procedure \code{f42_stats::calc_quantile}, whose argument names
 #' are the ones an error message reports.
 #'
 #' This entry point seeds \code{array_perm} and sorts it by \code{array}.
-#' Call \code{calc_percentile_expert} to do that yourself.
+#' Call \code{calc_quantile_expert} to do that yourself.
 #'
 #' @param array a numeric vector. input array
-#' @param percentile a numeric scalar. desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+#' @param level a numeric scalar. quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
-#' @param n_considered a integer scalar. How many leading entries of `array_perm` the percentile is taken over, for a
-#'   percentile of a subset -- the trailing entries are ignored rather than sliced
+#' @param n_considered a integer scalar. How many leading entries of `array_perm` the quantile is taken over, for a
+#'   quantile of a subset -- the trailing entries are ignored rather than sliced
 #'   off, so the permutation stays the shape the sort produced. Zero, the default,
 #'   considers all `n_array` of them.
 #'   The default value is `0`.
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_array`.
-#' @return a numeric scalar. output percentile value
+#' @return a numeric scalar. the quantile: the value a fraction `level` of the considered entries lies at or below
 #' @export
-calc_percentile <- function(array, percentile, n_considered = 0L) {
+calc_quantile <- function(array, level, n_considered = 0L) {
     array <- .tox_as_double_vector(array, "array")
-    percentile <- .tox_as_double_scalar(percentile, "percentile")
+    level <- .tox_as_double_scalar(level, "level")
     n_considered <- .tox_as_integer_scalar(n_considered, "n_considered")
-    .result <- .Call("calc_percentile_call", array, percentile, n_considered)
-    .arguments <- c("array", "n_array", "percentile", "value", "n_considered", "ierr")
+    .result <- .Call("calc_quantile_call", array, level, n_considered)
+    .arguments <- c("array", "n_array", "level", "value", "n_considered", "ierr")
     .sources <- c(NA_character_, "array", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$value
 }
 
-#' Calculate the percentile of an array given a sorted permutation
+#' Calculate the quantile of an array at a given level, given a sorted permutation
 #'
 #' Uses linear interpolation between adjacent values.
 #'
-#' Generated from the Fortran procedure \code{f42_stats::calc_percentile_expert}, whose argument names
+#' Generated from the Fortran procedure \code{f42_stats::calc_quantile_expert}, whose argument names
 #' are the ones an error message reports.
 #'
 #' The expert entry point: you supply \code{array_perm} yourself.
-#' \code{calc_percentile} seeds \code{array_perm} and sorts it by \code{array}.
+#' \code{calc_quantile} seeds \code{array_perm} and sorts it by \code{array}.
 #'
 #' @param array a numeric vector. input array
 #' @param array_perm a integer vector. Permutation of `array` in ascending order. The allocating entry point builds and
 #'   heapsorts it for you; the expert one takes whatever order you supply.
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_array`.
-#' @param percentile a numeric scalar. desired percentile as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
+#' @param level a numeric scalar. quantile level as a fraction in [0,1] (e.g. 0.95 for the 95th percentile)
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
-#' @param n_considered a integer scalar. How many leading entries of `array_perm` the percentile is taken over, for a
-#'   percentile of a subset -- the trailing entries are ignored rather than sliced
+#' @param n_considered a integer scalar. How many leading entries of `array_perm` the quantile is taken over, for a
+#'   quantile of a subset -- the trailing entries are ignored rather than sliced
 #'   off, so the permutation stays the shape the sort produced. Zero, the default,
 #'   considers all `n_array` of them.
 #'   The default value is `0`.
 #'   The minimum valid value is `0`.
 #'   The maximum valid value is `n_array`.
-#' @return a numeric scalar. output percentile value
+#' @return a numeric scalar. the quantile: the value a fraction `level` of the considered entries lies at or below
 #' @export
-calc_percentile_expert <- function(array, array_perm, percentile, n_considered = 0L) {
+calc_quantile_expert <- function(array, array_perm, level, n_considered = 0L) {
     array <- .tox_as_double_vector(array, "array")
     array_perm <- .tox_as_integer_vector(array_perm, "array_perm")
-    percentile <- .tox_as_double_scalar(percentile, "percentile")
+    level <- .tox_as_double_scalar(level, "level")
     n_considered <- .tox_as_integer_scalar(n_considered, "n_considered")
     if (length(array_perm) != length(array))
         .tox_shape_error("array_perm", length(array_perm), "array", length(array))
 
-    .result <- .Call("calc_percentile_expert_call", array, array_perm, percentile, n_considered)
-    .arguments <- c("array", "n_array", "array_perm", "percentile", "value", "n_considered", "ierr")
+    .result <- .Call("calc_quantile_expert_call", array, array_perm, level, n_considered)
+    .arguments <- c("array", "n_array", "array_perm", "level", "value", "n_considered", "ierr")
     .sources <- c(NA_character_, "array", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$value
 }
 
-#' Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+#' Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
 #'
 #' This is NOT a null-hypothesis-testing p-value: each distance is compared against the
 #' observed distribution it was drawn from, not an independently generated null distribution.
 #' It instead measures how extreme an observed distance is relative to all observed distances.
 #'
 #' Implements:
-#' Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+#' T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
 #'
-#' Because distances are non-negative, a one-sided upper-tail quantile is used.
+#' Because distances are non-negative, a one-sided upper-tail probability is used.
 #'
 #' Assumptions / preconditions:
 #' - sorted_rdi(1:n_genes) contains the empirical distribution D.
 #' - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 #'
-#' Generated from the Fortran procedure \code{f42_stats::compute_scaled_distance_quantile}, whose argument names
+#' Generated from the Fortran procedure \code{f42_stats::compute_scaled_distance_tail_probability}, whose argument names
 #' are the ones an error message reports.
 #'
 #' This entry point seeds \code{sorted_rdi_perm} and sorts it by \code{sorted_rdi}.
-#' Call \code{compute_scaled_distance_quantile_expert} to do that yourself.
+#' Call \code{compute_scaled_distance_tail_probability_expert} to do that yourself.
 #'
 #' @param rdi a numeric vector. empirical distribution D
 #'   NaN is permitted for this value.
@@ -214,43 +214,43 @@ calc_percentile_expert <- function(array, array_perm, percentile, n_considered =
 #'   NaN is permitted for this value.
 #'   Infinite values are permitted for this value.
 #' @param c_const a numeric scalar. Constant used in the computation, typically 1
-#' @return a numeric vector. Output array to store the computed quantile for each gene.
+#' @return a numeric vector. Output array to store the computed upper-tail probability for each gene.
 #' @export
-compute_scaled_distance_quantile <- function(rdi, sorted_rdi, c_const) {
+compute_scaled_distance_tail_probability <- function(rdi, sorted_rdi, c_const) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     c_const <- .tox_as_double_scalar(c_const, "c_const")
     if (length(sorted_rdi) != length(rdi))
         .tox_shape_error("sorted_rdi", length(sorted_rdi), "rdi", length(rdi))
 
-    .result <- .Call("compute_scaled_distance_quantile_call", rdi, sorted_rdi, c_const)
-    .arguments <- c("n_genes", "rdi", "sorted_rdi", "quantile", "c_const", "ierr")
+    .result <- .Call("compute_scaled_distance_tail_probability_call", rdi, sorted_rdi, c_const)
+    .arguments <- c("n_genes", "rdi", "sorted_rdi", "tail_probability", "c_const", "ierr")
     .sources <- c("rdi", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
-    .result$quantile
+    .result$tail_probability
 }
 
-#' Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI)
+#' Calculate the empirical upper-tail probability (effect-size measure) of scaled expression distances (RDI)
 #'
 #' This is NOT a null-hypothesis-testing p-value: each distance is compared against the
 #' observed distribution it was drawn from, not an independently generated null distribution.
 #' It instead measures how extreme an observed distance is relative to all observed distances.
 #'
 #' Implements:
-#' Q(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
+#' T(d) = ( #{di in D | di >= d} + c ) / ( |D| + c )
 #'
-#' Because distances are non-negative, a one-sided upper-tail quantile is used.
+#' Because distances are non-negative, a one-sided upper-tail probability is used.
 #'
 #' Assumptions / preconditions:
 #' - sorted_rdi(1:n_genes) contains the empirical distribution D.
 #' - If invalid RDIs exist (negative), they should already be mapped to 0 in the distribution
 #'
-#' Generated from the Fortran procedure \code{f42_stats::compute_scaled_distance_quantile_expert}, whose argument names
+#' Generated from the Fortran procedure \code{f42_stats::compute_scaled_distance_tail_probability_expert}, whose argument names
 #' are the ones an error message reports.
 #'
 #' The expert entry point: you supply \code{sorted_rdi_perm} yourself.
-#' \code{compute_scaled_distance_quantile} seeds \code{sorted_rdi_perm} and sorts it by \code{sorted_rdi}.
+#' \code{compute_scaled_distance_tail_probability} seeds \code{sorted_rdi_perm} and sorts it by \code{sorted_rdi}.
 #'
 #' @param rdi a numeric vector. empirical distribution D
 #'   NaN is permitted for this value.
@@ -263,9 +263,9 @@ compute_scaled_distance_quantile <- function(rdi, sorted_rdi, c_const) {
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_genes`.
 #' @param c_const a numeric scalar. Constant used in the computation, typically 1
-#' @return a numeric vector. Output array to store the computed quantile for each gene.
+#' @return a numeric vector. Output array to store the computed upper-tail probability for each gene.
 #' @export
-compute_scaled_distance_quantile_expert <- function(rdi, sorted_rdi, sorted_rdi_perm, c_const) {
+compute_scaled_distance_tail_probability_expert <- function(rdi, sorted_rdi, sorted_rdi_perm, c_const) {
     rdi <- .tox_as_double_vector(rdi, "rdi")
     sorted_rdi <- .tox_as_double_vector(sorted_rdi, "sorted_rdi")
     sorted_rdi_perm <- .tox_as_integer_vector(sorted_rdi_perm, "sorted_rdi_perm")
@@ -275,10 +275,10 @@ compute_scaled_distance_quantile_expert <- function(rdi, sorted_rdi, sorted_rdi_
     if (length(sorted_rdi_perm) != length(rdi))
         .tox_shape_error("sorted_rdi_perm", length(sorted_rdi_perm), "rdi", length(rdi))
 
-    .result <- .Call("compute_scaled_distance_quantile_expert_call", rdi, sorted_rdi, sorted_rdi_perm, c_const)
-    .arguments <- c("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "quantile", "c_const", "ierr")
+    .result <- .Call("compute_scaled_distance_tail_probability_expert_call", rdi, sorted_rdi, sorted_rdi_perm, c_const)
+    .arguments <- c("n_genes", "rdi", "sorted_rdi", "sorted_rdi_perm", "tail_probability", "c_const", "ierr")
     .sources <- c("rdi", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
-    .result$quantile
+    .result$tail_probability
 }
