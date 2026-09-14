@@ -1,5 +1,5 @@
 !> Unit test suite for quantile_normalization routine.
-module mod_test_quantile_normalization
+module mod_test_tox_normalization_quantile_normalization
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
@@ -14,7 +14,7 @@ module mod_test_quantile_normalization
 contains
 
     !> Get array of all available tests.
-    function get_all_tests_quantile_normalization() result(all_tests)
+    function get_all_tests_tox_normalization_quantile_normalization() result(all_tests)
         type(test_case),allocatable :: all_tests(:)
         allocate(all_tests(9))
 
@@ -27,7 +27,7 @@ contains
         all_tests(7) = test_case("test_ties", test_ties)
         all_tests(8) = test_case("test_already_normalized", test_already_normalized)
         all_tests(9) = test_case("test_random", test_random)
-    end function get_all_tests_quantile_normalization
+    end function get_all_tests_tox_normalization_quantile_normalization
 
     ! ============================================================
     ! Small helper: stable, simple insertion sort for tests
@@ -266,4 +266,4 @@ contains
         call assert_no_inf_real(means, n_genes, "random: no Inf in rank_means")
     end subroutine
 
-end module mod_test_quantile_normalization
+end module mod_test_tox_normalization_quantile_normalization

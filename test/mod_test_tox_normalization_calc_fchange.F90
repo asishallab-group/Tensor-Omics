@@ -1,5 +1,5 @@
 !> Unit test suite for calc_fchange routine.
-module mod_test_calc_fchange
+module mod_test_tox_normalization_calc_fchange
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
@@ -12,7 +12,7 @@ module mod_test_calc_fchange
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_calc_fchange() result(all_tests)
+  function get_all_tests_tox_normalization_calc_fchange() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
     allocate(all_tests(9))
     
@@ -25,7 +25,7 @@ contains
     all_tests(7) = test_case("test_calc_fchange_identical_values", test_calc_fchange_identical_values)
     all_tests(8) = test_case("test_calc_fchange_mixed_values", test_calc_fchange_mixed_values)
     all_tests(9) = test_case("test_calc_fchange_empty_matrix", test_calc_fchange_empty_matrix)
-  end function get_all_tests_calc_fchange
+  end function get_all_tests_tox_normalization_calc_fchange
 
   !> Test basic fold change calculation.
   subroutine test_calc_fchange_basic_calculation()
@@ -224,4 +224,4 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "calc_fchange should return error for empty input")
   end subroutine test_calc_fchange_empty_matrix
 
-end module mod_test_calc_fchange
+end module mod_test_tox_normalization_calc_fchange

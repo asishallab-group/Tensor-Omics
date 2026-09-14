@@ -1,5 +1,5 @@
 !> Unit test suite for normalize_by_std_dev routine.
-module mod_test_normalize_by_std_dev
+module mod_test_tox_normalization_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
@@ -14,7 +14,7 @@ module mod_test_normalize_by_std_dev
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_normalize_by_std_dev() result(all_tests)
+  function get_all_tests_tox_normalization_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
     allocate(all_tests(3))
     
@@ -22,7 +22,7 @@ contains
     all_tests(2) = test_case("test_loess_normalization_outlier_correction", test_loess_normalization_outlier_correction)
     all_tests(3) = test_case("test_loess_zero_variance_handling", test_loess_zero_variance_handling)
 
-  end function get_all_tests_normalize_by_std_dev
+  end function get_all_tests_tox_normalization_normalize_by_std_dev
 
   subroutine test_std_dev()
     real(real64), dimension(5) :: v
@@ -114,4 +114,4 @@ contains
         call assert_equal_real(res(1, 10), 1.0_real64, 1d-12, "test_loess_zero_variance_handling: Zero variance gene altered")
     end subroutine test_loess_zero_variance_handling
 
-end module mod_test_normalize_by_std_dev
+end module mod_test_tox_normalization_normalize_by_std_dev

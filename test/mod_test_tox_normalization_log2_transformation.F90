@@ -1,5 +1,5 @@
 !> Unit test suite for log2_transformation routine.
-module mod_test_log2_transformation
+module mod_test_tox_normalization_log2_transformation
     use asserts
     use tox_errors, only: get_err_code
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -11,7 +11,7 @@ module mod_test_log2_transformation
 contains
 
     !> Get array of all available tests.
-    function get_all_tests_log2_transformation() result(all_tests)
+    function get_all_tests_tox_normalization_log2_transformation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
         allocate (all_tests(14))
@@ -29,7 +29,7 @@ contains
         all_tests(12) = test_case("test_log2_mathematical_properties", test_log2_mathematical_properties)
         all_tests(13) = test_case("test_log2_empty_matrix", test_log2_empty_matrix)
         all_tests(14) = test_case("test_log2_below_minus_one_errors", test_log2_below_minus_one_errors)
-    end function get_all_tests_log2_transformation
+    end function get_all_tests_tox_normalization_log2_transformation
 
     !> Test log2(x+1) transformation with basic known values (from R test).
     subroutine test_log2_basic_values()
@@ -305,4 +305,4 @@ contains
         call assert_equal_int(ierr, 201, "test_log2_below_minus_one_errors: x < -1 should return ERR_INVALID_INPUT")
     end subroutine test_log2_below_minus_one_errors
 
-end module mod_test_log2_transformation
+end module mod_test_tox_normalization_log2_transformation

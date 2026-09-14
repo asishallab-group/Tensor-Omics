@@ -1,5 +1,5 @@
 !> Unit test suite for normalization_unit_length routine.
-module mod_test_normalization_unit_length
+module mod_test_tox_normalization_normalize_unit_length
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use tox_normalization, only: normalize_unit_length
@@ -13,12 +13,12 @@ module mod_test_normalization_unit_length
 contains
 
     !> Get array of all available tests.
-    function get_all_tests_normalization_unit_length() result(all_tests)
+    function get_all_tests_tox_normalization_normalize_unit_length() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
         allocate (all_tests(1))
         all_tests(1) = test_case("test_normalization_unit_length", test_normalize_unit_length)
-    end function get_all_tests_normalization_unit_length
+    end function get_all_tests_tox_normalization_normalize_unit_length
 
     !> Test the normalize_unit_length function with various cases.
     subroutine test_normalize_unit_length()
@@ -74,4 +74,4 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "test_normalize_unit_length: vector with Infinity should trigger ERR_NAN_INF")
     end subroutine test_normalize_unit_length
 
-end module mod_test_normalization_unit_length
+end module mod_test_tox_normalization_normalize_unit_length

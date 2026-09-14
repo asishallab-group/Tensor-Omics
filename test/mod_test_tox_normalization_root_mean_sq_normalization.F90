@@ -1,5 +1,5 @@
 !> Unit test suite for root_mean_sq_normalization routine.
-module mod_test_root_mean_sq_normalization
+module mod_test_tox_normalization_root_mean_sq_normalization
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
@@ -12,7 +12,7 @@ module mod_test_root_mean_sq_normalization
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_root_mean_sq_normalization() result(all_tests)
+  function get_all_tests_tox_normalization_root_mean_sq_normalization() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
     allocate(all_tests(13))
     
@@ -29,7 +29,7 @@ contains
     all_tests(11) = test_case("test_single_row_col", test_single_row_col)
     all_tests(12) = test_case("test_empty_matrix", test_empty_matrix)
     all_tests(13) = test_case("test_symmetric_rows", test_symmetric_rows)
-  end function get_all_tests_root_mean_sq_normalization
+  end function get_all_tests_tox_normalization_root_mean_sq_normalization
 
   !> Test that root_mean_sq_normalization normalizes values correctly.
   subroutine test_root_mean_sq_normalization_basic()
@@ -244,4 +244,4 @@ contains
     end do
   end subroutine test_symmetric_rows
 
-end module mod_test_root_mean_sq_normalization
+end module mod_test_tox_normalization_root_mean_sq_normalization

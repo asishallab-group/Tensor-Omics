@@ -1,5 +1,5 @@
 !> Unit test suite for calc_tiss_avg routine.
-module mod_test_calc_tiss_avg
+module mod_test_tox_normalization_calc_tiss_avg
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use tox_normalization
@@ -12,7 +12,7 @@ module mod_test_calc_tiss_avg
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_tiss_avg() result(all_tests)
+  function get_all_tests_tox_normalization_calc_tiss_avg() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
     allocate(all_tests(8))
     
@@ -24,7 +24,7 @@ contains
     all_tests(6) = test_case("test_calc_tiss_avg_negative_values", test_calc_tiss_avg_negative_values)
     all_tests(7) = test_case("test_calc_tiss_avg_zero_values", test_calc_tiss_avg_zero_values)
     all_tests(8) = test_case("test_calc_tiss_avg_empty_matrix", test_calc_tiss_avg_empty_matrix)
-  end function get_all_tests_tiss_avg
+  end function get_all_tests_tox_normalization_calc_tiss_avg
 
   !> Test tissue averaging with 3 tissues and 2 replicates each (from R test).
   subroutine test_calc_tiss_avg_three_tissues()
@@ -198,4 +198,4 @@ contains
     ! No further assertion needed: just check no crash
   end subroutine test_calc_tiss_avg_empty_matrix
 
-end module mod_test_calc_tiss_avg
+end module mod_test_tox_normalization_calc_tiss_avg

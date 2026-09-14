@@ -1,5 +1,5 @@
 !> Unit test suite for normalization_pipeline routine.
-module mod_test_normalization_pipeline
+module mod_test_tox_normalization_normalization_pipeline
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
@@ -13,14 +13,14 @@ module mod_test_normalization_pipeline
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_normalization_pipeline() result(all_tests)
+  function get_all_tests_tox_normalization_normalization_pipeline() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
     allocate(all_tests(4))
     all_tests(1) = test_case("test_pipeline_basic", test_pipeline_basic)
     all_tests(2) = test_case("test_pipeline_edge_cases", test_pipeline_edge_cases)
     all_tests(3) = test_case("test_pipeline_vs_manual", test_pipeline_vs_manual)
     all_tests(4) = test_case("test_pipeline_empty_matrix", test_pipeline_empty_matrix)
-  end function get_all_tests_normalization_pipeline
+  end function get_all_tests_tox_normalization_normalization_pipeline
  
   
 
@@ -129,4 +129,4 @@ contains
     ! No further assertion needed: just check no crash
   end subroutine test_pipeline_empty_matrix
 
-end module mod_test_normalization_pipeline
+end module mod_test_tox_normalization_normalization_pipeline
