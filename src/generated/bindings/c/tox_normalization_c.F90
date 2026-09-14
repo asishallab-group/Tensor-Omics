@@ -294,6 +294,9 @@ contains
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_c(&
             n_genes,&
             n_replicates,&
@@ -349,6 +352,9 @@ contains
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev_expert(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_expert_c(&
             n_genes,&
             n_replicates,&

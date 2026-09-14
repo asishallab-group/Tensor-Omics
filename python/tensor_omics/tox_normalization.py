@@ -293,6 +293,9 @@ def normalize_by_std_dev(
 
     This procedure applies a global stabilization based on the relationship between
     gene-wise mean expression and empirical standard deviation.
+    Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    changes sign.
 
     Parameters
     ----------

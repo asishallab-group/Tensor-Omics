@@ -58,6 +58,9 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #'
 #' This procedure applies a global stabilization based on the relationship between
 #' gene-wise mean expression and empirical standard deviation.
+#' Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+#' non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+#' changes sign.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::normalize_by_std_dev}, whose argument names
 #' are the ones an error message reports.

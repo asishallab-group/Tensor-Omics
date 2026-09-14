@@ -219,6 +219,9 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_impl(n_genes, n_replicates, expr, normalized_expr, &
                                     tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
                                     tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
@@ -425,7 +428,10 @@ contains
         ! Step 3: apply normalization
         do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
             fitted_sd = tmp_yhat_global(i_valid)
-            if (is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
+            ! A LOESS fit can dip below zero even on non-negative data, and dividing by a negative
+            ! fitted sd would flip the gene's sign. So a fit at or below zero, like one near it,
+            ! falls back to the gene's own sd, which is positive for every gene in the fit.
+            if (fitted_sd <= 0.0_real64 .or. is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
 
             gene_idx = tmp_indices_used(i_valid)
             do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)

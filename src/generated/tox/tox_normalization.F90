@@ -335,6 +335,9 @@ contains
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):normalize_by_std_dev_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):normalize_by_std_dev_expert]] to prepare it yourself.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev(&
             n_genes,&
             n_replicates,&
@@ -441,6 +444,9 @@ contains
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):normalize_by_std_dev_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):normalize_by_std_dev]] does both.
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_expert(&
             n_genes,&
             n_replicates,&
