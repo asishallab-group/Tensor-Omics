@@ -303,8 +303,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), intent(in), target :: span
@@ -389,8 +387,6 @@ contains
             !! | save_factorization    | .false.     |
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_x
@@ -495,8 +491,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         integer(c_int), intent(out), target :: ierr
@@ -539,8 +533,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: rank_means
@@ -589,8 +581,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: rank_means
@@ -691,8 +681,6 @@ contains
             !! The minimum valid value is `1_int32`.
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
         integer(c_int), intent(out), target :: ierr
@@ -750,8 +738,6 @@ contains
             !! The maximum valid value is `n_tissues`.
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_pairs, n_genes), intent(out), target :: fold_changes
             !! Output matrix for fold changes
         integer(c_int), intent(out), target :: ierr

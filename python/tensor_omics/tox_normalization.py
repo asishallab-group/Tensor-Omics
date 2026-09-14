@@ -294,8 +294,6 @@ def normalize_by_std_dev(
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
@@ -363,8 +361,6 @@ def root_mean_sq_normalization(
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -427,8 +423,6 @@ def quantile_normalization(
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -568,8 +562,6 @@ def calc_tiss_avg(
         The minimum valid value is `1`.
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -650,8 +642,6 @@ def calc_fchange(
         The maximum valid value is `n_tissues`.
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
         Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------

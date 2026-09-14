@@ -59,8 +59,6 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param span a numeric scalar. LOESS span parameter.
 #'   The default value is `0.7`.
 #' @param degree a integer scalar. LOESS degree parameter.
@@ -87,8 +85,6 @@ normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Normalized `expr`
 #' @export
 root_mean_sq_normalization <- function(expr) {
@@ -112,8 +108,6 @@ root_mean_sq_normalization <- function(expr) {
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a named list with elements:
 #'   \item{normalized_expr}{a numeric matrix. Normalized `expr`}
 #'   \item{rank_means}{a numeric vector. The mean of each rank across tissues, one per gene}
@@ -166,8 +160,6 @@ log2_transformation <- function(expr) {
 #'   e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
 #'   The minimum valid value is `1`.
 #' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Tissue averages per gene
 #' @export
 calc_tiss_avg <- function(reps_per_tissue, expr) {
@@ -197,8 +189,6 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_tissues`.
 #' @param expr a numeric matrix. Gene Expression matrix, from \code{\link{calc_tiss_avg}}
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Output matrix for fold changes
 #' @export
 calc_fchange <- function(control_tissues, condition_tissues, expr) {

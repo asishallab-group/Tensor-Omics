@@ -340,8 +340,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), intent(in), optional :: span
@@ -373,6 +371,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_in_range_real(span, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -475,8 +474,6 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: tmp_loess_x
@@ -521,6 +518,7 @@ contains
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=10_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=12_int32)
         call validate_in_range_real(span, ierr, arg_pos=20_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -566,8 +564,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         integer(int32), intent(out) :: ierr
@@ -577,6 +573,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -607,8 +604,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
@@ -622,6 +617,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -660,8 +656,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
@@ -677,6 +671,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -756,8 +751,6 @@ contains
             !! The minimum valid value is `1_int32`.
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
         integer(int32), intent(out) :: ierr
@@ -769,6 +762,7 @@ contains
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=3_int32)
         call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=5_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -814,8 +808,6 @@ contains
             !! The maximum valid value is `n_tissues`.
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
         integer(int32), intent(out) :: ierr
@@ -828,6 +820,7 @@ contains
         call validate_dimension_size(n_pairs, ierr, arg_pos=3_int32)
         call validate_all_in_range_int(control_tissues, n_pairs, ierr, arg_pos=4_int32, min=1_int32, max=n_tissues)
         call validate_all_in_range_int(condition_tissues, n_pairs, ierr, arg_pos=5_int32, min=1_int32, max=n_tissues)
+        call validate_all_in_range_real(expr, n_tissues * n_genes, ierr, arg_pos=6_int32)
         if (is_err(ierr)) return
 #endif
 

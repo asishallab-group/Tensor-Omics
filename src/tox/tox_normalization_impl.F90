@@ -226,8 +226,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
 
@@ -437,8 +435,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
 
@@ -491,8 +487,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
@@ -665,8 +659,6 @@ contains
         ! can be derived from it by the bindings, and so be checked against the sum below.
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
         integer(int32), intent(out) :: ierr
@@ -745,8 +737,6 @@ contains
             !! DM_MAX(n_tissues)
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
 
