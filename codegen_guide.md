@@ -513,6 +513,24 @@ utils::head(.result$results, .result$n_results)   # R
 The counting argument is dropped from the return, because the returned array already carries the
 answer; returning both would invite the caller to slice a second time.
 
+The trim always applies to the **last Fortran-declared extent** — the outermost dimension, the one
+the implementation fills last-varying. Rank 1 is the case above: `head()`/`[..., :n]` trims the
+whole (only) axis. At rank ≥ 2, only that last axis is truncated; every other axis is kept in
+full, because it is a fixed shape (e.g. "2 values per candidate"), not the partially-filled count.
+For an `intent(out) :: pairs(2, n_candidates)` truncated by `DM_RESULT_SIZE_IS(n_found)`:
+
+```python
+pairs[..., :n_found.value]                                   # Python -- rank-agnostic already
+```
+```r
+pairs[, seq_len(.result$n_found), drop = FALSE]               # R -- last axis, matrix stays a matrix
+```
+
+R has no rank-agnostic slicing trick, so the generator branches on the argument's rank: `head()`
+for rank 1, a bracket slice with one leading comma per extra dimension otherwise. `drop = FALSE`
+is required there, not cosmetic — without it, truncating a matrix down to a single remaining
+column would silently collapse the result to a bare vector, losing its matrix-ness.
+
 This is a **binding-level** trim: the generated Fortran wrapper passes both arguments through
 untouched, so a Fortran caller still receives the full buffer plus the count, which is what a
 Fortran caller wants. Size the array for the worst case as usual — the language layers hide it.

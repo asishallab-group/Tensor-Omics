@@ -67,6 +67,41 @@ contains
     end subroutine fx_masked
 
     !> M_EXPORT_C
+    !| summary: A mask and the count derived from it, but the result is a matrix
+    !| author: A Developer
+    subroutine fx_masked_matrix(genes_selection_mask, n_selected_genes, n_genes, results, n_results, ierr)
+        integer(int32), intent(in) :: n_genes
+            !! elements of the mask
+        logical, dimension(n_genes), intent(in) :: genes_selection_mask
+            !! which genes to use
+        integer(int32), intent(in) :: n_selected_genes
+            !! how many genes the mask selects, which the interfacing languages can count
+        real(real64), dimension(2, n_genes), intent(out) :: results
+            !! the results, one column per selected gene: row 1 is the gene's 1-based rank
+            !! among the selected genes, row 2 is ten times that. Filled column by column,
+            !! exactly as candidates_n_points_n_neighbors is in
+            !! generate_js_comp_test_candidates_impl, leaving columns past n_results
+            !! unfilled.
+            !! DM_RESULT_SIZE_IS(n_results)
+        integer(int32), intent(out) :: n_results
+            !! how many leading columns of `results` were filled
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i
+
+        call set_ok(ierr)
+        n_results = 0_int32
+        do i = 1, n_genes
+            if (genes_selection_mask(i)) then
+                n_results = n_results + 1_int32
+                results(1, n_results) = real(n_results, real64)
+                results(2, n_results) = real(n_results, real64)*10.0_real64
+            end if
+        end do
+    end subroutine fx_masked_matrix
+
+    !> M_EXPORT_C
     !| summary: A string coming back out, scalar and vector
     !| author: A Developer
     subroutine fx_labels(values, n_values, label, labels, ierr)

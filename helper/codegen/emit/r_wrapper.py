@@ -379,7 +379,11 @@ class RWrapperEmitter:
         value = f".result${argument.name}"
 
         if roles is not None and roles.result_size_arg is not None:
-            return f"utils::head({value}, .result${roles.result_size_arg.name})"
+            count = f".result${roles.result_size_arg.name}"
+            if argument.rank <= 1:
+                return f"utils::head({value}, {count})"
+            leading = ", " * (argument.rank - 1)
+            return f"{value}[{leading}seq_len({count}), drop = FALSE]"
 
         if argument.type.is_character and argument.is_scalar:
             # a scalar string comes back as a length-1 character vector
