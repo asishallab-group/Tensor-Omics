@@ -637,6 +637,8 @@ def calc_fchange(
     For each control-condition pair, this subroutine computes the `log2 fold change`
     by subtracting the expression value in the control group from the corresponding
     value in the condition group, for all genes.
+    A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    reported as ERR_NAN_INF instead of being written into the result as Inf.
 
     Parameters
     ----------

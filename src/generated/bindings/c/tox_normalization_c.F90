@@ -726,6 +726,8 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    !| reported as ERR_NAN_INF instead of being written into the result as Inf.
     subroutine calc_fchange_c(&
             n_genes,&
             n_tissues,&
@@ -757,7 +759,7 @@ contains
         real(c_double), dimension(n_pairs, n_genes), intent(out), target :: fold_changes
             !! Output matrix for fold changes
         integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)

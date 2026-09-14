@@ -186,6 +186,8 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
 #' For each control-condition pair, this subroutine computes the `log2 fold change`
 #' by subtracting the expression value in the control group from the corresponding
 #' value in the condition group, for all genes.
+#' A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+#' reported as ERR_NAN_INF instead of being written into the result as Inf.
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::calc_fchange}, whose argument names
 #' are the ones an error message reports.

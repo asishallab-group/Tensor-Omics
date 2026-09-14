@@ -802,6 +802,8 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    !| reported as ERR_NAN_INF instead of being written into the result as Inf.
     pure subroutine calc_fchange(&
             n_genes,&
             n_tissues,&
@@ -831,7 +833,7 @@ contains
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
         integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -851,8 +853,10 @@ contains
             control_tissues = control_tissues,&
             condition_tissues = condition_tissues,&
             expr = expr,&
-            fold_changes = fold_changes&
+            fold_changes = fold_changes,&
+            ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine calc_fchange
 
 end module tox_normalization

@@ -14,8 +14,9 @@ module tox_normalization_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
-                          validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH
+                          validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH, ERR_NAN_INF
     use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
     use f42_vector_impl, only: norm
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
@@ -725,7 +726,9 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
-    pure subroutine calc_fchange_impl(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes)
+    !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    !| reported as ERR_NAN_INF instead of being written into the result as Inf.
+    pure subroutine calc_fchange_impl(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr)
         ! === Arguments ===
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -745,10 +748,14 @@ contains
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         ! === Locals ===
         integer(int32) :: i_gene, i_pair
         integer(int32) :: control_group, cond_group
+
+        call set_ok(ierr)
 
         ! === Loop over each pair ===
         do concurrent (i_gene = 1:n_genes) shared(n_pairs, control_tissues, condition_tissues, expr, fold_changes)
@@ -756,6 +763,17 @@ contains
                 control_group = control_tissues(i_pair)
                 cond_group = condition_tissues(i_pair)
                 fold_changes(i_pair, i_gene) = expr(cond_group, i_gene) - expr(control_group, i_gene)
+            end do
+        end do
+
+        ! The inputs are finite, but their difference can still overflow. Checked after the
+        ! concurrent loop and sequentially, as `ierr` is a shared scalar.
+        do i_gene = 1, n_genes
+            do i_pair = 1, n_pairs
+                if (.not. ieee_is_finite(fold_changes(i_pair, i_gene))) then
+                    call set_err(ierr, ERR_NAN_INF)
+                    return
+                end if
             end do
         end do
     end subroutine calc_fchange_impl
