@@ -592,6 +592,9 @@ contains
 
     !> summary: Validates its inputs, prepares what [[tox_normalization_impl(module):quantile_normalization_impl]] needs, then calls it. The entry point to reach for first; see [[tox_normalization(module):quantile_normalization_expert]] to prepare it yourself.
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     pure subroutine quantile_normalization(&
             n_genes,&
             n_replicates,&
@@ -640,6 +643,9 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):quantile_normalization_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_normalization(module):quantile_normalization]] does both.
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     pure subroutine quantile_normalization_expert(&
             n_genes,&
             n_replicates,&

@@ -481,6 +481,9 @@ contains
     !> summary: Quantile normalization of a gene expression matrix (F42-compliant).
     !| AUTHOR_VIVIAN_BASS
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     pure subroutine quantile_normalization_impl(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -523,7 +526,8 @@ contains
             !! Permutation vector
 
         ! Locals
-        integer(int32) :: i_gene, i_tissue
+        integer(int32) :: i_gene, i_tissue, i_rank, first_rank, last_rank
+        real(real64) :: tied_mean
 
         ! Initialize rank means
         rank_means = 0.0_real64
@@ -534,7 +538,8 @@ contains
 
         ! === First pass: accumulate values by rank across tissues ===
         do i_tissue = 1, n_replicates
-            ! Prepare current column and initialize permutation
+            ! The sort is indirect: it reorders tmp_perm, which only needs to hold a permutation on
+            ! entry -- the previous replicate's order is as good as the identity set above.
             do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
@@ -553,17 +558,31 @@ contains
             rank_means(i_gene) = rank_means(i_gene) / real(n_replicates, real64)
         end do
 
-        ! === Second pass: assign averaged values by rank ===
+        ! === Second pass: give each value the mean of its rank ===
         do i_tissue = 1, n_replicates
-            ! Prepare column and reset tmp_permutation
             do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
 
             call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-            do concurrent (i_gene = 1:n_genes) shared(expr, tmp_perm, rank_means, i_tissue)
-                expr(i_tissue, tmp_perm(i_gene)) = rank_means(i_gene)
+            ! Tied values share the mean of the rank means their ranks span, so equal values stay
+            ! equal: the sort leaves ties in no particular order, and ranks alone would split them.
+            first_rank = 1
+            do while (first_rank <= n_genes)
+                ! Sorted ascending, so a value that is not below its successor ties with it.
+                last_rank = first_rank
+                do while (last_rank < n_genes)
+                    if (tmp_genes_row(tmp_perm(last_rank)) < tmp_genes_row(tmp_perm(last_rank + 1))) exit
+                    last_rank = last_rank + 1
+                end do
+
+                tied_mean = sum(rank_means(first_rank:last_rank))/real(last_rank - first_rank + 1, real64)
+                do concurrent (i_rank = first_rank:last_rank) shared(expr, tmp_perm, i_tissue, tied_mean)
+                    expr(i_tissue, tmp_perm(i_rank)) = tied_mean
+                end do
+
+                first_rank = last_rank + 1
             end do
         end do
     end subroutine quantile_normalization_inplace_helper

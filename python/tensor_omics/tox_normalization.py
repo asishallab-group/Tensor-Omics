@@ -423,6 +423,9 @@ def quantile_normalization(
     r"""Quantile normalization of a gene expression matrix (F42-compliant).
 
     Computes average expression per rank across tissues.
+    Tied values within a replicate share the mean of the rank means their ranks span, so values
+    that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    `normalizeQuantiles`. The rank means themselves do not depend on ties.
 
     Parameters
     ----------

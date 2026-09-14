@@ -526,6 +526,9 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization(subroutine)]]
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     subroutine quantile_normalization_c(&
             n_genes,&
             n_replicates,&
@@ -571,6 +574,9 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization_expert(subroutine)]]
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     subroutine quantile_normalization_expert_c(&
             n_genes,&
             n_replicates,&
