@@ -141,6 +141,8 @@ contains
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(2_int32)
         logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! DM_DEFAULT(.false.)
@@ -284,6 +286,8 @@ contains
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(2_int32)
         integer(int32), intent(out) :: ierr
             !! Error code
 

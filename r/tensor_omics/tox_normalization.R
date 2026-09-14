@@ -32,6 +32,8 @@ normalize_unit_length <- function(vector) {
 #'   The default value is `0.7`.
 #' @param degree a integer scalar. LOESS degree parameter.
 #'   The default value is `2`.
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param use_quantile a logical scalar. Use quantile normalization.
 #'   The default value is `FALSE`.
 #' @return a numeric matrix. Log-transformed grouped `expr`
@@ -63,6 +65,8 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #'   The default value is `0.7`.
 #' @param degree a integer scalar. LOESS degree parameter.
 #'   The default value is `2`.
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @return a numeric matrix. Normalized `expr`
 #' @export
 normalize_by_std_dev <- function(expr, span = 0.7, degree = 2L) {

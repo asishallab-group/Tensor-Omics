@@ -217,6 +217,8 @@ def normalization_pipeline(
     degree : int, optional, default 2
         LOESS degree parameter.
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     use_quantile : bool, optional, default False
         Use quantile normalization.
         The default value is `False`.
@@ -300,6 +302,8 @@ def normalize_by_std_dev(
     degree : int, optional, default 2
         LOESS degree parameter.
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
 
     Returns
     -------

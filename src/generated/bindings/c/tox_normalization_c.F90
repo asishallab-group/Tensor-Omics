@@ -95,6 +95,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         logical(c_bool), intent(in), target :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
@@ -221,6 +223,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         logical(c_bool), intent(in), target :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
@@ -311,6 +315,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -421,6 +427,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
