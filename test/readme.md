@@ -24,8 +24,8 @@ test_framework/                          # Local fpm package, a dev-dependency o
 test/
 ├── run_tests.F90                        # Main program
 ├── mod_test_sorting.F90                 # A suite in a single file
-├── mod_test_tox_normalization.F90       # A suite gathering one child module per procedure...
-└── mod_test_tox_normalization/          # ...which live here, named after the procedure
+└── mod_test_tox_normalization/          # A suite with one child module per procedure
+    ├── mod_test_tox_normalization.F90   # The suite itself, gathering the children's cases
     ├── mod_test_tox_normalization_calc_fchange.F90
     └── ...
 ```
