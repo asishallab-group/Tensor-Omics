@@ -15,7 +15,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_calc_tiss_avg() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(9))
+    allocate(all_tests(10))
 
     all_tests(1) = test_case("test_calc_tiss_avg_three_tissues", test_calc_tiss_avg_three_tissues)
     all_tests(2) = test_case("test_calc_tiss_avg_single_tissue", test_calc_tiss_avg_single_tissue)
@@ -27,7 +27,27 @@ contains
                              test_calc_tiss_avg_reps_not_summing_to_the_replicates)
     all_tests(8) = test_case("test_calc_tiss_avg_dimensions", test_calc_tiss_avg_dimensions)
     all_tests(9) = test_case("test_calc_tiss_avg_rejects_nan_and_inf", test_calc_tiss_avg_rejects_nan_and_inf)
+    all_tests(10) = test_case("test_calc_tiss_avg_extreme_magnitudes", test_calc_tiss_avg_extreme_magnitudes)
   end function get_all_tests_tox_normalization_calc_tiss_avg
+
+  !> An average is never larger than its largest value, so it must not overflow where the sum
+  !| does: two replicates of huge average to huge, and [huge, huge/2] to 0.75*huge. Summing first
+  !| overflowed both to Inf.
+  subroutine test_calc_tiss_avg_extreme_magnitudes()
+    integer(int32) :: ierr
+    integer(int32), dimension(1) :: reps_per_tissue
+    real(real64), dimension(2, 2) :: expr
+    real(real64), dimension(1, 2) :: averages, expected
+
+    expr(:, 1) = [huge(1d0), huge(1d0)]
+    expr(:, 2) = [huge(1d0), 0.5d0*huge(1d0)]
+    reps_per_tissue = [2]
+    expected(1, :) = [huge(1d0), 0.75d0*huge(1d0)]
+
+    call calc_tiss_avg(2, 2, 1, reps_per_tissue, expr, averages, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_extreme_magnitudes: ierr")
+    call assert_equal_array_real(averages, expected, 2, 0d0, "test_calc_tiss_avg_extreme_magnitudes: averages of huge values")
+  end subroutine test_calc_tiss_avg_extreme_magnitudes
 
   !> Three tissues of two replicates: rows 1-2, 3-4 and 5-6 of each gene are averaged.
   subroutine test_calc_tiss_avg_three_tissues()
