@@ -1,4 +1,6 @@
-!> Unit test suite for normalize_by_std_dev routine.
+!> The `normalize_by_std_dev` cases. Exact values need data LOESS reproduces exactly: genes on a
+!| linear mean-sd trend (mod_test_tox_normalization_fixtures), whose normalization has a closed
+!| form. Around that: an off-trend gene, genes without variance, the bounds, and the input checks.
 module mod_test_tox_normalization_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -7,128 +9,177 @@ module mod_test_tox_normalization_normalize_by_std_dev
   use tox_normalization
   ! the tox_normalization module used to re-export it; it is f42 infrastructure
   use f42_math_impl, only: std_dev
-  use test_suite
+  use mod_test_tox_normalization_fixtures, only: fill_linear_trend, linear_trend_offset, linear_trend_sd
+  use test_suite, only: test_case
   use tox_errors
   implicit none
   public
+
+  ! LOESS solves a least-squares system: a straight line comes back exact to rounding, not bits
+  real(real64), parameter :: TOL = 1.0e-9_real64
 
 contains
 
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(5))
-    
-    all_tests(1) = test_case("test_std_dev", test_std_dev)
-    all_tests(2) = test_case("test_loess_normalization_outlier_correction", test_loess_normalization_outlier_correction)
-    all_tests(3) = test_case("test_loess_zero_variance_handling", test_loess_zero_variance_handling)
-    all_tests(4) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
-    all_tests(5) = test_case("test_std_dev_degree_bounds", test_std_dev_degree_bounds)
+    allocate(all_tests(9))
 
+    all_tests(1) = test_case("test_std_dev", test_std_dev)
+    all_tests(2) = test_case("test_std_dev_linear_trend", test_std_dev_linear_trend)
+    all_tests(3) = test_case("test_std_dev_off_trend_gene", test_std_dev_off_trend_gene)
+    all_tests(4) = test_case("test_std_dev_zero_variance_genes", test_std_dev_zero_variance_genes)
+    all_tests(5) = test_case("test_std_dev_needs_five_varying_genes", test_std_dev_needs_five_varying_genes)
+    all_tests(6) = test_case("test_std_dev_span_bounds", test_std_dev_span_bounds)
+    all_tests(7) = test_case("test_std_dev_degree_bounds", test_std_dev_degree_bounds)
+    all_tests(8) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
+    all_tests(9) = test_case("test_std_dev_dimensions", test_std_dev_dimensions)
   end function get_all_tests_tox_normalization_normalize_by_std_dev
 
+  !> f42_math's std_dev, which the procedure builds its trend from. It belongs to the f42 suites
+  !| and moves there with the f42 batch.
   subroutine test_std_dev()
-    real(real64), dimension(5) :: v
-    real(real64) :: s_pop, s_samp
+    real(real64) :: v(5), w(1)
 
-    ! Test vector
+    ! population variance of 1..5 is 2, sample variance 2.5
     v = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
+    call assert_equal_real(std_dev(v), sqrt(2.0_real64), 1e-12_real64, "test_std_dev: population std_dev")
+    call assert_equal_real(std_dev(v, do_bessel_correction=.true._c_bool), sqrt(2.5_real64), 1e-12_real64, &
+                           "test_std_dev: sample std_dev (Bessel)")
 
-    ! --- Expected values ---
-    ! Population variance = 2.0  → std = sqrt(2)
-    ! Sample variance     = 2.5  → std = sqrt(2.5)
-
-    ! --- Compute using the user's function ---
-    s_pop  = std_dev(v)                     ! default: no Bessel correction
-    s_samp = std_dev(v, do_bessel_correction=.true._c_bool)
-
-    ! --- Assertions ---
-    call assert_equal_real(s_pop,  sqrt(2.0_real64), 1e-12_real64, &
-         "test_std_dev: population std_dev incorrect")
-
-    call assert_equal_real(s_samp, sqrt(2.5_real64), 1e-12_real64, &
-         "test_std_dev: sample std_dev (Bessel) incorrect")
-
-    ! No NaNs or Infs
-    call assert_true(.not. ieee_is_nan(s_pop),  "test_std_dev: population std_dev produced NaN")
-    call assert_true(.not. ieee_is_nan(s_samp), "test_std_dev: sample std_dev produced NaN")
-    call assert_in_range_real(s_pop,  0.0_real64, huge(1.0_real64), "test_std_dev: population std_dev out of range")
-    call assert_in_range_real(s_samp, 0.0_real64, huge(1.0_real64), "test_std_dev: sample std_dev out of range")
-
-    ! Edge case: vector of length 1 → std = 0 for both modes
-    block
-      real(real64), dimension(1) :: w
-      real(real64) :: s1, s1b
-      w = [3.14159_real64]
-
-      s1  = std_dev(w)
-      s1b = std_dev(w, do_bessel_correction=.true._c_bool)
-
-      call assert_equal_real(s1,  0.0_real64, 1e-12_real64, "test_std_dev: std_dev length-1 (population)")
-      call assert_equal_real(s1b, 0.0_real64, 1e-12_real64, "test_std_dev: std_dev length-1 (sample)")
-    end block
-
+    ! a single value has no spread in either mode
+    w = [3.14159_real64]
+    call assert_equal_real(std_dev(w), 0.0_real64, 0.0_real64, "test_std_dev: length 1 (population)")
+    call assert_equal_real(std_dev(w, do_bessel_correction=.true._c_bool), 0.0_real64, 0.0_real64, &
+                           "test_std_dev: length 1 (sample)")
   end subroutine test_std_dev
 
-  !> Main test: Verifies that an SD outlier is corrected by the global curve.
-  subroutine test_loess_normalization_outlier_correction()
-    integer(int32), parameter :: ng = 20, nt = 10
-    real(real64) :: mat(nt, ng), res(nt, ng)
-    integer(int32) :: ierr, i
-    real(real64) :: span = 0.75_real64
-    integer(int32) :: deg = 1
+  !> Genes exactly on the linear trend are divided by their own sd, as LOESS reproduces the line:
+  !| gene i, i*(10 + d_j), becomes (10 + d_j)/s for every gene.
+  subroutine test_std_dev_linear_trend()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized, expected
+    integer(int32) :: ierr, i_replicate
 
-    ! 1. Create data where SD = Mean (Perfect relationship)
-    do i = 1, ng
-       ! Gene i has mean i, and values fluctuate to give SD approximately i
-       mat(:, i) = real(i, real64) 
-       mat(1, i) = mat(1, i) + real(i, real64) * 0.5_real64
-       mat(2, i) = mat(2, i) - real(i, real64) * 0.5_real64
+    call fill_linear_trend(expr)
+    do i_replicate = 1, n_replicates
+      expected(i_replicate, :) = (10.0_real64 + linear_trend_offset(i_replicate, n_replicates))/linear_trend_sd(n_replicates)
     end do
 
-    ! 2. Introduce an OUTLIER in gene 10
-    ! Assign it a huge variance that breaks the linear trend
-    mat(1, 10) = 1000.0_real64 
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_linear_trend: ierr")
+    call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
+                                 "test_std_dev_linear_trend: every gene becomes (10 + d_j)/s")
+  end subroutine test_std_dev_linear_trend
 
-    call normalize_by_std_dev(ng, nt, mat, res, span, deg, ierr)
+  !> The point of fitting a trend: a gene off it is divided by the trend's sd at its mean, not by
+  !| its own. Gene 10 keeps its mean of 100 but has three times the trend's spread, 10*(10 + 3*d_j);
+  !| the robust fit discounts it, so it becomes (10 + 3*d_j)/s while the others stay (10 + d_j)/s.
+  subroutine test_std_dev_off_trend_gene()
+    integer(int32), parameter :: n_genes = 20, n_replicates = 6, off_trend = 10
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized, expected
+    real(real64) :: offset, s
+    integer(int32) :: ierr, i_replicate
 
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_normalization_outlier_correction: LOESS normalization failed")
+    call fill_linear_trend(expr)
+    s = linear_trend_sd(n_replicates)
+    do i_replicate = 1, n_replicates
+      offset = linear_trend_offset(i_replicate, n_replicates)
+      expr(i_replicate, off_trend) = real(off_trend, real64)*(10.0_real64 + 3.0_real64*offset)
+      expected(i_replicate, :) = (10.0_real64 + offset)/s
+      expected(i_replicate, off_trend) = (10.0_real64 + 3.0_real64*offset)/s
+    end do
 
-    call assert_no_nan_real(res, ng*nt, "test_loess_normalization_outlier_correction: NaNs in LOESS result")
-  end subroutine test_loess_normalization_outlier_correction
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_off_trend_gene: ierr")
+    call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
+                                 "test_std_dev_off_trend_gene: gene 10 must be divided by the trend's sd, not its own")
+  end subroutine test_std_dev_off_trend_gene
 
-    !> Verifies that genes with SD=0 do not break the routine.
-    subroutine test_loess_zero_variance_handling()
-        integer(int32), parameter :: ng = 10, nt = 5
-        real(real64) :: mat(nt, ng), res(nt, ng)
-        integer(int32) :: ierr, i
-        
-        mat = 1.0_real64 
+  !> Genes without variance say nothing about the trend: they are left out of the fit and returned
+  !| unchanged, while the genes on the trend are normalized as usual.
+  subroutine test_std_dev_zero_variance_genes()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6, n_varying = 7
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized, expected
+    integer(int32) :: ierr, i_replicate
 
-        do i = 1, 7
-          mat(:, i) = 1.0_real64 + real(i, real64) * 0.1_real64
-          mat(1, i) = mat(1, i) + 0.5_real64
-        end do
+    call fill_linear_trend(expr(:, 1:n_varying))
+    expr(:, n_varying + 1:) = 1.0_real64
+    expected(:, n_varying + 1:) = 1.0_real64
+    do i_replicate = 1, n_replicates
+      expected(i_replicate, 1:n_varying) = (10.0_real64 + linear_trend_offset(i_replicate, n_replicates)) &
+                                           /linear_trend_sd(n_replicates)
+    end do
 
-        call normalize_by_std_dev(ng, nt, mat, res, 0.75d0, 1_int32, ierr)
-        
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_loess_zero_variance_handling: LOESS failed even with valid points")
-        
-        call assert_equal_real(res(1, 10), 1.0_real64, 1d-12, "test_loess_zero_variance_handling: Zero variance gene altered")
-    end subroutine test_loess_zero_variance_handling
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_zero_variance_genes: ierr")
+    call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
+                                 "test_std_dev_zero_variance_genes: constant genes unchanged, the rest normalized")
+  end subroutine test_std_dev_zero_variance_genes
+
+  !> The fit needs five genes that vary: four is ERR_INVALID_INPUT, five is enough. The span is 1
+  !| here, so that five points are also enough for LOESS itself; the bound under test is the count.
+  subroutine test_std_dev_needs_five_varying_genes()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+    integer(int32) :: ierr
+
+    call fill_linear_trend(expr(:, 1:4))
+    expr(:, 5:) = 1.0_real64
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=1.0_real64, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_needs_five_varying_genes: four varying genes")
+
+    call fill_linear_trend(expr(:, 1:5))
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=1.0_real64, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_needs_five_varying_genes: five varying genes")
+  end subroutine test_std_dev_needs_five_varying_genes
+
+  !> A span must cover enough genes for LOESS: 0, a negative span, and 0.1 of ten genes are
+  !| ERR_INVALID_INPUT. A NaN span is ERR_NAN_INF.
+  subroutine test_std_dev_span_bounds()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6
+    real(real64), parameter :: too_small(3) = [0.0_real64, -1.0_real64, 0.1_real64]
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+    integer(int32) :: ierr, i_span
+
+    call fill_linear_trend(expr)
+    do i_span = 1, size(too_small)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=too_small(i_span), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_span_bounds: span too small")
+    end do
+
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=ieee_value(1.0_real64, ieee_quiet_nan), ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "test_std_dev_span_bounds: NaN span")
+  end subroutine test_std_dev_span_bounds
+
+  !> degree must be 0, 1 or 2, the local models LOESS knows; anything else is ERR_INVALID_INPUT.
+  !| Unchecked, -1 and 3 reached netlib's ehg182, which stops the whole program -- the caller's
+  !| Python or R session with it.
+  subroutine test_std_dev_degree_bounds()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6
+    integer(int32), parameter :: valid(3) = [0, 1, 2], invalid(2) = [-1, 3]
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+    integer(int32) :: ierr, i_degree
+
+    call fill_linear_trend(expr)
+    do i_degree = 1, size(valid)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, degree=valid(i_degree), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_degree_bounds: degrees 0, 1 and 2 are valid")
+    end do
+    do i_degree = 1, size(invalid)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, degree=invalid(i_degree), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_degree_bounds: degrees -1 and 3 are invalid")
+    end do
+  end subroutine test_std_dev_degree_bounds
 
   !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
   !| The matrix varies, so without that check the call would succeed and hide the NaN.
   subroutine test_std_dev_rejects_nan_and_inf()
     integer(int32), parameter :: n_genes = 10, n_replicates = 6
     real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes), bad(2)
-    integer(int32) :: ierr, i_replicate, i_gene, i_bad
+    integer(int32) :: ierr, i_bad
 
-    do i_gene = 1, n_genes
-      do i_replicate = 1, n_replicates
-        expr(i_replicate, i_gene) = real(i_gene, real64)*(10.0_real64 + 0.5_real64*real(i_replicate, real64))
-      end do
-    end do
+    call fill_linear_trend(expr)
     bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
 
     do i_bad = 1, size(bad)
@@ -139,29 +190,18 @@ contains
     end do
   end subroutine test_std_dev_rejects_nan_and_inf
 
-  !> degree must be 0, 1 or 2, the local models LOESS knows; anything else is ERR_INVALID_INPUT.
-  !| Unchecked, -1 and 3 reached netlib's ehg182, which stops the whole program -- the caller's
-  !| Python or R session with it.
-  subroutine test_std_dev_degree_bounds()
-    integer(int32), parameter :: n_genes = 10, n_replicates = 6
-    integer(int32), parameter :: valid(3) = [0, 1, 2], invalid(2) = [-1, 3]
-    real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes)
-    integer(int32) :: ierr, i_replicate, i_gene, i_degree
+  !> Each dimension on its own: zero is ERR_EMPTY_INPUT, negative ERR_INVALID_INPUT.
+  subroutine test_std_dev_dimensions()
+    real(real64), dimension(1, 1) :: expr, normalized
+    integer(int32) :: ierr
 
-    do i_gene = 1, n_genes
-      do i_replicate = 1, n_replicates
-        expr(i_replicate, i_gene) = real(i_gene, real64)*(10.0_real64 + 0.5_real64*real(i_replicate, real64))
-      end do
-    end do
-
-    do i_degree = 1, size(valid)
-      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, degree=valid(i_degree), ierr=ierr)
-      call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_degree_bounds: degrees 0, 1 and 2 are valid")
-    end do
-    do i_degree = 1, size(invalid)
-      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, degree=invalid(i_degree), ierr=ierr)
-      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_degree_bounds: degrees -1 and 3 are invalid")
-    end do
-  end subroutine test_std_dev_degree_bounds
+    expr = 1.0_real64
+    call normalize_by_std_dev(0, 1, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_std_dev_dimensions: n_genes = 0")
+    call normalize_by_std_dev(1, 0, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_std_dev_dimensions: n_replicates = 0")
+    call normalize_by_std_dev(-1, 1, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_dimensions: n_genes = -1")
+  end subroutine test_std_dev_dimensions
 
 end module mod_test_tox_normalization_normalize_by_std_dev
