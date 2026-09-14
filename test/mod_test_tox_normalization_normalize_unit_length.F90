@@ -16,9 +16,10 @@ contains
     function get_all_tests_tox_normalization_normalize_unit_length() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(2))
+        allocate (all_tests(3))
         all_tests(1) = test_case("test_normalization_unit_length", test_normalize_unit_length)
         all_tests(2) = test_case("test_normalize_unit_length_tiny_vector", test_normalize_unit_length_tiny_vector)
+        all_tests(3) = test_case("test_normalize_unit_length_extreme_magnitudes", test_normalize_unit_length_extreme_magnitudes)
     end function get_all_tests_tox_normalization_normalize_unit_length
 
     !> Test the normalize_unit_length function with various cases.
@@ -89,5 +90,35 @@ contains
         call assert_equal_array_real(vector, expected, 3, 0.0_real64, &
                                      "test_normalize_unit_length_tiny_vector: must normalize to [1, 0, 0]")
     end subroutine test_normalize_unit_length_tiny_vector
+
+    !> Squaring an entry must neither overflow nor underflow the norm: 1e200 squared is past the
+    !| largest real64, and 1e-170 squared is below the smallest, which made a non-zero vector's norm
+    !| infinite or exactly zero. Both vectors have a direction and normalize to [1, 0, 0].
+    subroutine test_normalize_unit_length_extreme_magnitudes()
+        integer(int32) :: ierr
+        real(real64) :: vector(3), expected(3)
+
+        expected = [1.0_real64, 0.0_real64, 0.0_real64]
+
+        vector = [1.0e200_real64, 0.0_real64, 0.0_real64]
+        call normalize_unit_length(vector, 3, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_extreme_magnitudes: 1e200 must not overflow")
+        call assert_equal_array_real(vector, expected, 3, 0.0_real64, &
+                                     "test_normalize_unit_length_extreme_magnitudes: 1e200 must normalize to [1, 0, 0]")
+
+        vector = [1.0e-170_real64, 0.0_real64, 0.0_real64]
+        call normalize_unit_length(vector, 3, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_extreme_magnitudes: 1e-170 must not underflow")
+        call assert_equal_array_real(vector, expected, 3, 0.0_real64, &
+                                     "test_normalize_unit_length_extreme_magnitudes: 1e-170 must normalize to [1, 0, 0]")
+
+        ! a 3-4-5 triangle far past the overflow point
+        vector = [3.0e200_real64, 4.0e200_real64, 0.0_real64]
+        expected = [0.6_real64, 0.8_real64, 0.0_real64]
+        call normalize_unit_length(vector, 3, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_extreme_magnitudes: [3e200, 4e200] ierr")
+        call assert_equal_array_real(vector, expected, 3, 4*TOL, &
+                                     "test_normalize_unit_length_extreme_magnitudes: [3e200, 4e200] must normalize to [0.6, 0.8, 0]")
+    end subroutine test_normalize_unit_length_extreme_magnitudes
 
 end module mod_test_tox_normalization_normalize_unit_length
