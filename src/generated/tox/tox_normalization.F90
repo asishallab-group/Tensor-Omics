@@ -708,9 +708,9 @@ contains
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):log2_transformation_impl]].
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     pure subroutine log2_transformation(&
             n_genes,&
             n_tissues,&

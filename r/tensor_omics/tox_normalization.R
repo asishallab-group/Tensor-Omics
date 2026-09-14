@@ -136,9 +136,9 @@ quantile_normalization <- function(expr) {
 #' Apply `log2(x + 1)` transformation to each element of the input matrix.
 #'
 #' This subroutine performs element-wise `log2(x + 1)` transformation on a
-#' matrix flattened in column-major order. The `log2` is computed via:
-#' `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-#' non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+#' matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+#' `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+#' by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
 #'
 #' Generated from the Fortran procedure \code{tox_normalization::log2_transformation}, whose argument names
 #' are the ones an error message reports.

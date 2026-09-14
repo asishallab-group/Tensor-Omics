@@ -19,7 +19,7 @@ contains
     function get_all_tests_tox_normalization_log2_transformation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(7))
+        allocate (all_tests(8))
         all_tests(1) = test_case("test_log2_values", test_log2_values)
         all_tests(2) = test_case("test_log2_negative_values", test_log2_negative_values)
         all_tests(3) = test_case("test_log2_extremes", test_log2_extremes)
@@ -27,7 +27,22 @@ contains
         all_tests(5) = test_case("test_log2_rejects_nan_and_inf", test_log2_rejects_nan_and_inf)
         all_tests(6) = test_case("test_log2_dimensions", test_log2_dimensions)
         all_tests(7) = test_case("test_log2_tiny_values", test_log2_tiny_values)
+        all_tests(8) = test_case("test_log1p", test_log1p)
     end function get_all_tests_tox_normalization_log2_transformation
+
+    !> f42_math's log1p, which log2_transformation is built on; it moves to the f42 suites with the
+    !| f42 batch. log1p(0) = 0, and below half an ulp of 1 it is x itself; log1p(1) = log(2) and
+    !| log1p(-0.5) = -log(2); for a tiny x it matches the series x - x**2/2 to a few ulps.
+    subroutine test_log1p()
+        use f42_math_impl, only: log1p
+        real(real64), parameter :: x = 1.0e-12_real64
+
+        call assert_equal_real(log1p(0.0_real64), 0.0_real64, 0.0_real64, "test_log1p: log1p(0)")
+        call assert_equal_real(log1p(1.0e-300_real64), 1.0e-300_real64, 0.0_real64, "test_log1p: log1p(1e-300) is 1e-300")
+        call assert_equal_real(log1p(1.0_real64), log(2.0_real64), 2*epsilon(1.0_real64), "test_log1p: log1p(1) = log(2)")
+        call assert_equal_real(log1p(-0.5_real64), -log(2.0_real64), 2*epsilon(1.0_real64), "test_log1p: log1p(-0.5) = -log(2)")
+        call assert_equal_real(log1p(x), x - x**2/2.0_real64, 4*epsilon(1.0_real64)*x, "test_log1p: log1p(1e-12)")
+    end subroutine test_log1p
 
     !> For tiny x, forming x + 1 rounds away most of x's digits: 1 + 1e-15 is 1.00000000000000111,
     !| so log(x + 1) came out 11% high. The series log(1 + x) = x - x**2/2 + x**3/3 - ... is exact

@@ -16,7 +16,7 @@ module tox_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
                           validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH
-    use f42_math_impl, only: is_close, logx_helper, above, mean, std_dev
+    use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
     use f42_vector_impl, only: norm
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
@@ -589,9 +589,9 @@ contains
     !> summary: Apply `log2(x + 1)` transformation to each element of the input matrix.
     !| AUTHOR_VIVIAN_BASS
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     pure subroutine log2_transformation_impl(n_genes, n_tissues, expr, transformed_expr, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -611,9 +611,9 @@ contains
     !> AUTHOR_VIVIAN_BASS
     !| Apply `log2(x + 1)` transformation to each element of the input matrix.
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     pure subroutine log2_transformation_inplace_helper(n_genes, n_tissues, expr, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -625,22 +625,20 @@ contains
             !! Error code
         ! Locals
         integer(int32) :: i_gene, i_group
-        real(real64) :: expr_val
 
         call set_ok(ierr)
 
         ! Validate every element up front (sequentially, as `ierr` is a shared scalar here) so that
         ! `log2(x + 1)` is only ever evaluated for `x + 1 > 0`, i.e. `x > -1`. With the inputs
         ! guaranteed valid, the transformation itself can run as a race-free `do concurrent` calling
-        ! the non-validating `logx_helper` -- no per-iteration write to the shared `ierr` is needed.
+        ! the non-validating `log1p` -- no per-iteration write to the shared `ierr` is needed.
         call validate_all_in_range_real(expr, n_genes*n_tissues, ierr, min=above(-1.0_real64))
         if (is_err(ierr)) return
 
         ! Apply the log2(x + 1) transformation to every element in the flattened input matrix
         do concurrent(i_gene=1:n_genes) shared(expr, n_tissues)
-            do concurrent(i_group=1:n_tissues) local(expr_val) shared(expr, i_gene)
-                expr_val = expr(i_group, i_gene) + 1.0_real64
-                call logx_helper(expr_val, 2.0_real64, expr(i_group, i_gene))
+            do concurrent(i_group=1:n_tissues) shared(expr, i_gene)
+                expr(i_group, i_gene) = log1p(expr(i_group, i_gene))/LOG_2
             end do
         end do
     end subroutine log2_transformation_inplace_helper
