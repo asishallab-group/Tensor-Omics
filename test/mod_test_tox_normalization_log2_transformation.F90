@@ -1,12 +1,17 @@
-!> Unit test suite for log2_transformation routine.
+!> The `log2_transformation` cases: log2(x + 1) where it is exact, the edge of its domain at -1,
+!| the extremes of real64, and the input checks.
 module mod_test_tox_normalization_log2_transformation
     use asserts
-    use tox_errors, only: get_err_code
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_normalization
+    use tox_errors
     use test_suite, only: test_case
     implicit none
     public
+
+    ! log2 is computed as log(x + 1)/log(2), which is exact only to a few ulps
+    real(real64), parameter :: TOL = 1.0e-12_real64
 
 contains
 
@@ -14,295 +19,105 @@ contains
     function get_all_tests_tox_normalization_log2_transformation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(14))
-        all_tests(1) = test_case("test_log2_basic_values", test_log2_basic_values)
-        all_tests(2) = test_case("test_log2_zeros_handling", test_log2_zeros_handling)
-        all_tests(3) = test_case("test_log2_preserves_dimensions", test_log2_preserves_dimensions)
-        all_tests(4) = test_case("test_log2_single_element", test_log2_single_element)
-        all_tests(5) = test_case("test_log2_large_values", test_log2_large_values)
-        all_tests(6) = test_case("test_log2_small_values", test_log2_small_values)
-        all_tests(7) = test_case("test_log2_powers_of_two", test_log2_powers_of_two)
-        all_tests(8) = test_case("test_log2_random_matrix", test_log2_random_matrix)
-        all_tests(9) = test_case("test_log2_negative_handling", test_log2_negative_handling)
-        all_tests(10) = test_case("test_log2_edge_cases", test_log2_edge_cases)
-        all_tests(11) = test_case("test_log2_monotonic_property", test_log2_monotonic_property)
-        all_tests(12) = test_case("test_log2_mathematical_properties", test_log2_mathematical_properties)
-        all_tests(13) = test_case("test_log2_empty_matrix", test_log2_empty_matrix)
-        all_tests(14) = test_case("test_log2_below_minus_one_errors", test_log2_below_minus_one_errors)
+        allocate (all_tests(6))
+        all_tests(1) = test_case("test_log2_values", test_log2_values)
+        all_tests(2) = test_case("test_log2_negative_values", test_log2_negative_values)
+        all_tests(3) = test_case("test_log2_extremes", test_log2_extremes)
+        all_tests(4) = test_case("test_log2_rejects_minus_one_and_below", test_log2_rejects_minus_one_and_below)
+        all_tests(5) = test_case("test_log2_rejects_nan_and_inf", test_log2_rejects_nan_and_inf)
+        all_tests(6) = test_case("test_log2_dimensions", test_log2_dimensions)
     end function get_all_tests_tox_normalization_log2_transformation
 
-    !> Test log2(x+1) transformation with basic known values (from R test).
-    subroutine test_log2_basic_values()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat, expected_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
+    !> Where x + 1 is a power of two the result is its exponent: 0, 1, 3, 7, 15 and 1023 become
+    !| 0, 1, 2, 3, 4 and 10, over a 2 x 3 matrix, so that both dimensions are walked.
+    subroutine test_log2_values()
+        integer(int32), parameter :: n_genes = 3, n_tissues = 2
+        real(real64), dimension(n_tissues, n_genes) :: expr, transformed, expected
+        integer(int32) :: ierr
 
-        n_genes = 2; n_tissues = 2
-        ! Matrix: [0, 7; 3, 15] in column-major (flattened: [0, 3, 7, 15])
-        input_flat = [0.0d0, 3.0d0, 7.0d0, 15.0d0]
+        expr(:, 1) = [0.0_real64, 1.0_real64]
+        expr(:, 2) = [3.0_real64, 7.0_real64]
+        expr(:, 3) = [15.0_real64, 1023.0_real64]
+        expected(:, 1) = [0.0_real64, 1.0_real64]
+        expected(:, 2) = [2.0_real64, 3.0_real64]
+        expected(:, 3) = [4.0_real64, 10.0_real64]
 
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
+        call log2_transformation(n_genes, n_tissues, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_log2_values: ierr")
+        call assert_equal_array_real(transformed, expected, n_genes*n_tissues, TOL, "test_log2_values: log2(x + 1)")
+    end subroutine test_log2_values
 
-        ! Expected: log2(x+1) = [log2(1), log2(4), log2(8), log2(16)] = [0, 2, 3, 4]
-        expected_flat = [log(1.0d0)/LOG2, log(4.0d0)/LOG2, log(8.0d0)/LOG2, log(16.0d0)/LOG2]
+    !> The domain is x > -1. Values in (-1, 0) map below zero: -0.5, -0.75 and -0.875 become -1, -2
+    !| and -3. Just above -1 is still valid: -1 + 2**-52 gives x + 1 = 2**-52, so -52.
+    subroutine test_log2_negative_values()
+        real(real64), dimension(4, 1) :: expr, transformed, expected
+        integer(int32) :: ierr
 
-        call assert_equal_array_real(output_flat, expected_flat, 4, 1d-12, &
-                                     "test_log2_basic_values: transformation values incorrect")
-        call assert_equal_real(output_flat(1), 0.0d0, 1d-12, "test_log2_basic_values: log2(0+1) should be 0")
-        call assert_equal_real(output_flat(2), 2.0d0, 1d-12, "test_log2_basic_values: log2(3+1) should be 2")
-        call assert_equal_real(output_flat(3), 3.0d0, 1d-12, "test_log2_basic_values: log2(7+1) should be 3")
-        call assert_equal_real(output_flat(4), 4.0d0, 1d-12, "test_log2_basic_values: log2(15+1) should be 4")
-    end subroutine test_log2_basic_values
+        expr(:, 1) = [-0.5_real64, -0.75_real64, -0.875_real64, -1.0_real64 + 2.0_real64**(-52)]
+        expected(:, 1) = [-1.0_real64, -2.0_real64, -3.0_real64, -52.0_real64]
 
-    !> Test that log2(0+1) = 0 for all zeros (from R test).
-    subroutine test_log2_zeros_handling()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat, expected_flat
+        call log2_transformation(1, 4, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_log2_negative_values: ierr")
+        call assert_equal_array_real(transformed, expected, 4, TOL, "test_log2_negative_values: log2(x + 1)")
+    end subroutine test_log2_negative_values
 
-        n_genes = 2; n_tissues = 2
-        input_flat = [0.0d0, 0.0d0, 0.0d0, 0.0d0]
-        expected_flat = [0.0d0, 0.0d0, 0.0d0, 0.0d0]
+    !> The extremes of real64 stay finite: huge + 1 is huge, whose log2 is just under 1024, and tiny
+    !| vanishes next to 1, so log2(tiny + 1) is exactly 0.
+    subroutine test_log2_extremes()
+        real(real64), dimension(2, 1) :: expr, transformed, expected
+        integer(int32) :: ierr
 
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
+        expr(:, 1) = [huge(1.0_real64), tiny(1.0_real64)]
+        expected(:, 1) = [1024.0_real64, 0.0_real64]
 
-        call assert_equal_array_real(output_flat, expected_flat, 4, 1d-12, &
-                                     "test_log2_zeros_handling: all zeros should become zeros")
-        call assert_true(all(output_flat == 0.0d0), "test_log2_zeros_handling: all values should be exactly 0")
-    end subroutine test_log2_zeros_handling
+        call log2_transformation(1, 2, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_log2_extremes: ierr")
+        call assert_equal_array_real(transformed, expected, 2, TOL, "test_log2_extremes: log2(huge + 1) and log2(tiny + 1)")
+    end subroutine test_log2_extremes
 
-    !> Test that dimensions are preserved (from R test concept).
-    subroutine test_log2_preserves_dimensions()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(6) :: input_flat, output_flat
+    !> x = -1 would take log2(0), and x < -1 the log2 of a negative number: both ERR_INVALID_INPUT.
+    subroutine test_log2_rejects_minus_one_and_below()
+        real(real64), dimension(2, 2) :: expr, transformed
+        integer(int32) :: ierr
 
-        n_genes = 2; n_tissues = 3
-        input_flat = [1.0d0, 2.0d0, 3.0d0, 4.0d0, 5.0d0, 6.0d0]
+        expr(:, 1) = [0.0_real64, 1.0_real64]
+        expr(:, 2) = [-1.0_real64, 3.0_real64]
+        call log2_transformation(2, 2, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_log2_rejects_minus_one_and_below: x = -1")
 
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
+        expr(:, 2) = [3.0_real64, -2.5_real64]
+        call log2_transformation(2, 2, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_log2_rejects_minus_one_and_below: x < -1")
+    end subroutine test_log2_rejects_minus_one_and_below
 
-        ! Check that we get exactly the same number of elements
-        call assert_equal_int(size(output_flat), n_genes*n_tissues, &
-                              "test_log2_preserves_dimensions: output size incorrect")
-        call assert_equal_int(size(output_flat), size(input_flat), &
-                              "test_log2_preserves_dimensions: input/output size mismatch")
-    end subroutine test_log2_preserves_dimensions
+    !> NaN and Inf are rejected up front: TOX writes no NaN.
+    subroutine test_log2_rejects_nan_and_inf()
+        real(real64), dimension(2, 2) :: expr, transformed
+        real(real64) :: bad(2)
+        integer(int32) :: ierr, i_bad
 
-    !> Test single element matrix.
-    subroutine test_log2_single_element()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(1) :: input_flat, output_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
-
-        n_genes = 1; n_tissues = 1
-        input_flat = [7.0d0]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        call assert_equal_real(output_flat(1), log(8.0d0)/LOG2, 1d-12, &
-                               "test_log2_single_element: log2(7+1) incorrect")
-    end subroutine test_log2_single_element
-
-    !> Test with large values to check numerical stability.
-    subroutine test_log2_large_values()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
-
-        n_genes = 2; n_tissues = 2
-        input_flat = [1d6, 1d9, 1d12, 1d15]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        ! Check that results are finite and reasonable
-        call assert_no_nan_real(output_flat, 4, "test_log2_large_values: NaN in result")
-        call assert_true(all(output_flat > 0.0d0), "test_log2_large_values: all results should be positive")
-        call assert_true(all(output_flat < 100.0d0), "test_log2_large_values: results should be reasonable")
-
-        ! Check specific large value: log2(1e6 + 1) ≈ log2(1e6) ≈ 19.93
-        call assert_in_range_real(output_flat(1), 19.0d0, 21.0d0, "test_log2_large_values: log2(1e6+1) out of range")
-    end subroutine test_log2_large_values
-
-    !> Test with very small positive values.
-    subroutine test_log2_small_values()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
-
-        n_genes = 2; n_tissues = 2
-        input_flat = [1d-6, 1d-9, 1d-12, 1d-15]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        call assert_no_nan_real(output_flat, 4, "test_log2_small_values: NaN in result")
-        call assert_true(all(output_flat > 0.0d0), "test_log2_small_values: all results should be positive")
-
-        ! For very small x, log2(x+1) ≈ log2(1) = 0, but slightly positive
-        call assert_in_range_real(output_flat(4), 0.0d0, 1d-10, "test_log2_small_values: very small values should be near 0")
-    end subroutine test_log2_small_values
-
-    !> Test with powers of 2 minus 1 for exact results.
-    subroutine test_log2_powers_of_two()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat, expected_flat
-
-        n_genes = 2; n_tissues = 2
-        ! Powers of 2 minus 1: log2((2^n - 1) + 1) = log2(2^n) = n
-        input_flat = [1.0d0, 3.0d0, 7.0d0, 15.0d0]  ! 2^1-1, 2^2-1, 2^3-1, 2^4-1
-        expected_flat = [1.0d0, 2.0d0, 3.0d0, 4.0d0]  ! log2(2), log2(4), log2(8), log2(16)
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        call assert_equal_array_real(output_flat, expected_flat, 4, 1d-12, &
-                                     "test_log2_powers_of_two: powers of 2 results incorrect")
-    end subroutine test_log2_powers_of_two
-
-    !> Test with random matrix for general properties.
-    subroutine test_log2_random_matrix()
-        integer(int32), parameter :: n_genes = 5, n_tissues = 4
-        real(real64), dimension(n_genes*n_tissues) :: input_flat, output_flat
-        integer(int32) :: i, ierr
-        integer(int32) :: n_seed
-        integer(int32), allocatable :: seed_array(:)
-        ! For reproducibility: initialize the random number generator seed
-        call random_seed(size=n_seed)
-        allocate (seed_array(n_seed))
-        seed_array = 42  ! Fixed value for reproducibility
-        call random_seed(put=seed_array)
-        deallocate (seed_array)
-        call random_number(input_flat)
-        input_flat = input_flat*100.0d0  ! Scale to [0, 100]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        call assert_no_nan_real(output_flat, n_genes*n_tissues, "test_log2_random_matrix: NaN in result")
-        call assert_true(all(output_flat >= 0.0d0), "test_log2_random_matrix: all results should be non-negative")
-
-        ! Check monotonicity: if input[i] > input[j], then output[i] > output[j]
-        do i = 1, n_genes*n_tissues - 1
-            if (input_flat(i) > input_flat(i + 1)) then
-                call assert_true(output_flat(i) > output_flat(i + 1), "test_log2_random_matrix: monotonicity violated")
-            end if
+        expr = 1.0_real64
+        bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
+        do i_bad = 1, size(bad)
+            expr(2, 2) = bad(i_bad)
+            call log2_transformation(2, 2, expr, transformed, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
+                                  "test_log2_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
         end do
-    end subroutine test_log2_random_matrix
+    end subroutine test_log2_rejects_nan_and_inf
 
-    !> Test behavior with negative values (should still work due to +1).
-    subroutine test_log2_negative_handling()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
+    !> Each dimension on its own: zero is ERR_EMPTY_INPUT, negative ERR_INVALID_INPUT.
+    subroutine test_log2_dimensions()
+        real(real64), dimension(1, 1) :: expr, transformed
+        integer(int32) :: ierr
 
-        n_genes = 2; n_tissues = 2
-        input_flat = [-0.5d0, -0.9d0, -0.99d0, -0.999d0]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        call assert_no_nan_real(output_flat, 4, "test_log2_negative_handling: NaN in result")
-        call assert_true(all(output_flat > -10.0d0), "test_log2_negative_handling: results should be reasonable")
-
-        ! log2(-0.5 + 1) = log2(0.5) = -1
-        call assert_equal_real(output_flat(1), -1.0d0, 1d-12, "test_log2_negative_handling: log2(-0.5+1) should be -1")
-    end subroutine test_log2_negative_handling
-
-    !> Test edge cases and boundary conditions.
-    subroutine test_log2_edge_cases()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
-
-        n_genes = 2; n_tissues = 2
-        input_flat = [0.0d0, 1.0d0, huge(1.0d0), tiny(1.0d0)]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        call assert_no_nan_real(output_flat, 4, "test_log2_edge_cases: NaN in result")
-        call assert_true(all(output_flat > -1000.0d0), "test_log2_edge_cases: results should not be extremely negative")
-
-        call assert_equal_real(output_flat(1), 0.0d0, 1d-12, "test_log2_edge_cases: log2(0+1) should be 0")
-        call assert_equal_real(output_flat(2), 1.0d0, 1d-12, "test_log2_edge_cases: log2(1+1) should be 1")
-    end subroutine test_log2_edge_cases
-
-    !> Test monotonic property: log2(x+1) is strictly increasing.
-    subroutine test_log2_monotonic_property()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(5) :: input_flat, output_flat
-        integer(int32) :: i
-
-        n_genes = 5; n_tissues = 1
-        input_flat = [1.0d0, 2.0d0, 5.0d0, 10.0d0, 20.0d0]  ! Increasing sequence
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        ! Check strict monotonicity
-        do i = 1, 4
-            call assert_true(output_flat(i) < output_flat(i + 1), &
-                             "test_log2_monotonic_property: monotonicity violated")
-        end do
-    end subroutine test_log2_monotonic_property
-
-    !> Test mathematical properties of log2 transformation.
-    subroutine test_log2_mathematical_properties()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(8) :: input_flat, output_flat
-        real(real64), parameter :: LOG2 = log(2.0d0)
-
-        n_genes = 4; n_tissues = 2
-        input_flat = [1.0d0, 3.0d0, 7.0d0, 15.0d0, 2.0d0, 6.0d0, 14.0d0, 30.0d0]
-
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 0, "log2_transformation_r returned error")
-
-        ! Property: log2((2x)+1) ≈ log2(2x) = log2(2) + log2(x) = 1 + log2(x)
-        ! But this is approximate for log2(x+1) vs log2(2x+1)
-
-        ! Just check that all results are reasonable and follow expected patterns
-        call assert_no_nan_real(output_flat, 8, "test_log2_mathematical_properties: NaN in result")
-        call assert_true(all(output_flat > 0.0d0), "test_log2_mathematical_properties: all should be positive")
-
-        ! Check some specific relationships
-        call assert_true(output_flat(2) > output_flat(1), "test_log2_mathematical_properties: ordering incorrect")
-        call assert_true(output_flat(6) > output_flat(2), "test_log2_mathematical_properties: larger input gives larger output")
-    end subroutine test_log2_mathematical_properties
-
-    !> Test with empty input matrix.
-    subroutine test_log2_empty_matrix()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(0) :: input_flat, output_flat
-        n_genes = 0; n_tissues = 0
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(get_err_code(ierr), 202, "log2_transformation_r should return error for empty input")
-        ! No further assertion needed: just check no crash
-    end subroutine test_log2_empty_matrix
-
-    !> Test that inputs at or below -1 (where log2(x+1) is undefined) are rejected.
-    !| Guards the up-front validation that lets the transformation loop run as a
-    !| race-free `do concurrent`: `x <= -1` means `x + 1 <= 0`, which must error
-    !| rather than silently produce a NaN/Inf.
-    subroutine test_log2_below_minus_one_errors()
-        integer(int32) :: n_genes, n_tissues, ierr
-        real(real64), dimension(4) :: input_flat, output_flat
-
-        n_genes = 2; n_tissues = 2
-
-        ! Exactly -1 -> log2(0) is undefined
-        input_flat = [0.0d0, 1.0d0, -1.0d0, 3.0d0]
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(ierr, 201, "test_log2_below_minus_one_errors: x = -1 should return ERR_INVALID_INPUT")
-
-        ! Below -1 -> log2 of a negative number
-        input_flat = [0.0d0, 1.0d0, 3.0d0, -2.5d0]
-        call log2_transformation(n_genes, n_tissues, input_flat, output_flat, ierr)
-        call assert_equal_int(ierr, 201, "test_log2_below_minus_one_errors: x < -1 should return ERR_INVALID_INPUT")
-    end subroutine test_log2_below_minus_one_errors
+        expr = 1.0_real64
+        call log2_transformation(0, 1, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_log2_dimensions: n_genes = 0")
+        call log2_transformation(1, 0, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_log2_dimensions: n_tissues = 0")
+        call log2_transformation(-1, 1, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_log2_dimensions: n_genes = -1")
+    end subroutine test_log2_dimensions
 
 end module mod_test_tox_normalization_log2_transformation
