@@ -16,8 +16,9 @@ contains
     function get_all_tests_tox_normalization_normalize_unit_length() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(1))
+        allocate (all_tests(2))
         all_tests(1) = test_case("test_normalization_unit_length", test_normalize_unit_length)
+        all_tests(2) = test_case("test_normalize_unit_length_tiny_vector", test_normalize_unit_length_tiny_vector)
     end function get_all_tests_tox_normalization_normalize_unit_length
 
     !> Test the normalize_unit_length function with various cases.
@@ -73,5 +74,20 @@ contains
         call normalize_unit_length(vector, n_dims, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "test_normalize_unit_length: vector with Infinity should trigger ERR_NAN_INF")
     end subroutine test_normalize_unit_length
+
+    !> Only an exactly zero norm is rejected: a norm of 1e-13 is small, not absent, and the vector
+    !| still has a direction.
+    subroutine test_normalize_unit_length_tiny_vector()
+        integer(int32) :: ierr
+        real(real64) :: vector(3), expected(3)
+
+        vector = [1.0e-13_real64, 0.0_real64, 0.0_real64]
+        expected = [1.0_real64, 0.0_real64, 0.0_real64]
+
+        call normalize_unit_length(vector, 3, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length_tiny_vector: a norm of 1e-13 is not zero")
+        call assert_equal_array_real(vector, expected, 3, 0.0_real64, &
+                                     "test_normalize_unit_length_tiny_vector: must normalize to [1, 0, 0]")
+    end subroutine test_normalize_unit_length_tiny_vector
 
 end module mod_test_tox_normalization_normalize_unit_length
