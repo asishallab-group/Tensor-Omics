@@ -100,6 +100,15 @@ test_calc_tiss_avg_rejects_a_tissue_without_replicates <- function() {
   assert_error(calc_tiss_avg(c(3L, 0L, 3L), .expr()), "a tissue with no replicates has no average", ERR_INVALID_INPUT)
 }
 
+test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates <- function() {
+  # expr has 6 replicates: 5 would silently shift every gene after the first onto the wrong
+  # rows, 7 would read past the end of the matrix
+  for (reps_per_tissue in list(c(3L, 2L), c(3L, 4L))) {
+    assert_error(calc_tiss_avg(reps_per_tissue, .expr()),
+                 paste0("reps_per_tissue ", toString(reps_per_tissue), ", but expr has 6 replicates"), ERR_SIZE_MISMATCH)
+  }
+}
+
 test_calc_fchange <- function() {
   tissue_averages <- calc_tiss_avg(c(2L, 2L, 2L), .expr())
   # one control against two conditions

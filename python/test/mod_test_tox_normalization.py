@@ -126,6 +126,14 @@ def test_calc_tiss_avg_rejects_a_tissue_without_replicates():
                  "a tissue with no replicates has no average", ERR_INVALID_INPUT)
 
 
+def test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates():
+    # expr has 6 replicates: 5 would silently shift every gene after the first onto the wrong
+    # rows, 7 would read past the end of the matrix
+    for reps_per_tissue in ([3, 2], [3, 4]):
+        assert_error(lambda: calc_tiss_avg(np.array(reps_per_tissue, dtype=np.int32), _expr()),
+                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_SIZE_MISMATCH)
+
+
 def test_calc_fchange():
     tissue_averages = calc_tiss_avg(np.array([2, 2, 2], dtype=np.int32), _expr())
     # one control against two conditions
