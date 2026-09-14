@@ -102,7 +102,9 @@ contains
 
     call calc_tiss_avg(2, 7, 3, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_tiss_avg_unequal_replicates: ierr")
-    call assert_equal_array_real(averages, expected, 6, 0d0, "test_calc_tiss_avg_unequal_replicates: averages")
+    ! A few ulps: an optimizer may divide by 3 as a multiplication with the rounded 1/3 (ifx does),
+    ! which the tissues of 2 replicates never see, 1/2 being exact.
+    call assert_equal_array_real(averages, expected, 6, 1d-14, "test_calc_tiss_avg_unequal_replicates: averages")
   end subroutine test_calc_tiss_avg_unequal_replicates
 
   !> One replicate per tissue: the averages are the input itself.
