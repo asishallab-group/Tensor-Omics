@@ -15,11 +15,12 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_normalization_pipeline() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(4))
+    allocate(all_tests(5))
     all_tests(1) = test_case("test_pipeline_basic", test_pipeline_basic)
     all_tests(2) = test_case("test_pipeline_edge_cases", test_pipeline_edge_cases)
     all_tests(3) = test_case("test_pipeline_vs_manual", test_pipeline_vs_manual)
     all_tests(4) = test_case("test_pipeline_empty_matrix", test_pipeline_empty_matrix)
+    all_tests(5) = test_case("test_pipeline_degree_bounds", test_pipeline_degree_bounds)
   end function get_all_tests_tox_normalization_normalization_pipeline
  
   
@@ -128,5 +129,29 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "normalization_pipeline should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_pipeline_empty_matrix
+
+  !> The pipeline passes degree to LOESS, so it must be 0, 1 or 2; -1 and 3 are ERR_INVALID_INPUT
+  !| instead of reaching netlib's ehg182, which stops the whole program.
+  subroutine test_pipeline_degree_bounds()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6, n_tissues = 2
+    integer(int32), parameter :: invalid(2) = [-1, 3]
+    real(real64), dimension(n_replicates, n_genes) :: expr
+    real(real64), dimension(n_tissues, n_genes) :: log_transformed_expr
+    integer(int32), dimension(n_tissues) :: reps_per_tissue
+    integer(int32) :: ierr, i_replicate, i_gene, i_degree
+
+    do i_gene = 1, n_genes
+      do i_replicate = 1, n_replicates
+        expr(i_replicate, i_gene) = real(i_gene, real64)*(10.0_real64 + 0.5_real64*real(i_replicate, real64))
+      end do
+    end do
+    reps_per_tissue = [3, 3]
+
+    do i_degree = 1, size(invalid)
+      call normalization_pipeline(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, &
+                                  degree=invalid(i_degree), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_degree_bounds: degrees -1 and 3 are invalid")
+    end do
+  end subroutine test_pipeline_degree_bounds
 
 end module mod_test_tox_normalization_normalization_pipeline

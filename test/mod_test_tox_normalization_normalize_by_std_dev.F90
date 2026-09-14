@@ -17,12 +17,13 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(4))
+    allocate(all_tests(5))
     
     all_tests(1) = test_case("test_std_dev", test_std_dev)
     all_tests(2) = test_case("test_loess_normalization_outlier_correction", test_loess_normalization_outlier_correction)
     all_tests(3) = test_case("test_loess_zero_variance_handling", test_loess_zero_variance_handling)
     all_tests(4) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
+    all_tests(5) = test_case("test_std_dev_degree_bounds", test_std_dev_degree_bounds)
 
   end function get_all_tests_tox_normalization_normalize_by_std_dev
 
@@ -137,5 +138,30 @@ contains
                             "test_std_dev_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
     end do
   end subroutine test_std_dev_rejects_nan_and_inf
+
+  !> degree must be 0, 1 or 2, the local models LOESS knows; anything else is ERR_INVALID_INPUT.
+  !| Unchecked, -1 and 3 reached netlib's ehg182, which stops the whole program -- the caller's
+  !| Python or R session with it.
+  subroutine test_std_dev_degree_bounds()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6
+    integer(int32), parameter :: valid(3) = [0, 1, 2], invalid(2) = [-1, 3]
+    real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes)
+    integer(int32) :: ierr, i_replicate, i_gene, i_degree
+
+    do i_gene = 1, n_genes
+      do i_replicate = 1, n_replicates
+        expr(i_replicate, i_gene) = real(i_gene, real64)*(10.0_real64 + 0.5_real64*real(i_replicate, real64))
+      end do
+    end do
+
+    do i_degree = 1, size(valid)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, degree=valid(i_degree), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_degree_bounds: degrees 0, 1 and 2 are valid")
+    end do
+    do i_degree = 1, size(invalid)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, degree=invalid(i_degree), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_degree_bounds: degrees -1 and 3 are invalid")
+    end do
+  end subroutine test_std_dev_degree_bounds
 
 end module mod_test_tox_normalization_normalize_by_std_dev
