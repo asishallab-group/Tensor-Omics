@@ -135,6 +135,8 @@ def compute_family_scaling(
     degree : int, optional, default 2
         Degree of the LOESS polynomial
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
         The default value is `'robust'`.
@@ -152,13 +154,17 @@ def compute_family_scaling(
             Array of scaling factors per family (output)
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference x-coordinates for LOESS smoothing
+            Mean distance of each family in the LOESS fit, packed at the front in the order of
+            `indices_used`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference y-coordinates for LOESS smoothing
+            Standard deviation of the distances of each family in the LOESS fit, packed like
+            `loess_x`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         indices_used : np.ndarray[np.int32] of shape (n_families,), read-only
-            Indices of reference points used for smoothing
+            Family index of each point in the LOESS fit, packed at the front. Families with a
+            single member, and those with the lowest spread, are left out of the fit; the
+            remaining slots hold `0`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         low_sd_cutoff : float
             cutoff used to filter families with low std
@@ -510,13 +516,17 @@ def detect_outliers(
             Output boolean array indicating outliers
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_x : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference x-coordinates.
+            Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            front in the order of `loess_n`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_y : np.ndarray[np.float64] of shape (n_families,), read-only
-            Reference y-coordinates (length n_total).
+            Standard deviation of the distances of each family in that fit, packed like
+            `loess_x`. The remaining slots hold `-1`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         loess_n : np.ndarray[np.int32] of shape (n_families,), read-only
-            Indices of reference points used for smoothing.
+            Family index of each point in that fit, packed at the front. Families with a single
+            member, and those with the lowest spread, are left out of the fit; the remaining
+            slots hold `0`.
             A result is a value; call `.copy()` to obtain a modifiable array.
         quantile : np.ndarray[np.float64] of shape (n_genes,), read-only
             Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an

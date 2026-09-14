@@ -20,15 +20,21 @@
 #'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
 #'   The default value is `2`.
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
 #'   The default value is `"robust"`.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting
 #'   The default value is `3`.
 #' @return a named list with elements:
 #'   \item{dscale}{a numeric vector. Array of scaling factors per family (output)}
-#'   \item{loess_x}{a numeric vector. Reference x-coordinates for LOESS smoothing}
-#'   \item{loess_y}{a numeric vector. Reference y-coordinates for LOESS smoothing}
-#'   \item{indices_used}{a integer vector. Indices of reference points used for smoothing}
+#'   \item{loess_x}{a numeric vector. Mean distance of each family in the LOESS fit, packed at the front in the order of
+#'     `indices_used`. The remaining slots hold `-1`.}
+#'   \item{loess_y}{a numeric vector. Standard deviation of the distances of each family in the LOESS fit, packed like
+#'     `loess_x`. The remaining slots hold `-1`.}
+#'   \item{indices_used}{a integer vector. Family index of each point in the LOESS fit, packed at the front. Families with a
+#'     single member, and those with the lowest spread, are left out of the fit; the
+#'     remaining slots hold `0`.}
 #'   \item{low_sd_cutoff}{a numeric scalar. cutoff used to filter families with low std}
 #'   \item{excluded_low_sd}{a integer vector. Mask to save those families that have low sd}
 #' @export
@@ -166,9 +172,13 @@ identify_outliers <- function(rdi, sorted_rdi, perm, percentile = 0.95) {
 #'   The maximum valid value is `1.0`.
 #' @return a named list with elements:
 #'   \item{is_outlier}{a logical vector. Output boolean array indicating outliers}
-#'   \item{loess_x}{a numeric vector. Reference x-coordinates.}
-#'   \item{loess_y}{a numeric vector. Reference y-coordinates (length n_total).}
-#'   \item{loess_n}{a integer vector. Indices of reference points used for smoothing.}
+#'   \item{loess_x}{a numeric vector. Mean distance of each family in the LOESS fit of the family scaling, packed at the
+#'     front in the order of `loess_n`. The remaining slots hold `-1`.}
+#'   \item{loess_y}{a numeric vector. Standard deviation of the distances of each family in that fit, packed like
+#'     `loess_x`. The remaining slots hold `-1`.}
+#'   \item{loess_n}{a integer vector. Family index of each point in that fit, packed at the front. Families with a single
+#'     member, and those with the lowest spread, are left out of the fit; the remaining
+#'     slots hold `0`.}
 #'   \item{quantile}{a numeric vector. Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
 #'     observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
 #'     Returned in the same order as the input RDI array. Because distances are non-negative, a one-sided

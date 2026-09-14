@@ -63,11 +63,15 @@ contains
         real(c_double), dimension(n_families), intent(out), target :: dscale
             !! Array of scaling factors per family (output)
         real(c_double), dimension(n_families), intent(out), target :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(c_double), dimension(n_families), intent(out), target :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(c_int), dimension(n_families), intent(out), target :: indices_used
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         real(c_double), intent(in), target :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
@@ -78,6 +82,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
             !! The default value is `'robust'`.
@@ -217,11 +223,15 @@ contains
         real(c_double), dimension(n_families), intent(out), target :: dscale
             !! Array of scaling factors per family (output)
         real(c_double), dimension(n_families), intent(out), target :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(c_double), dimension(n_families), intent(out), target :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(c_int), dimension(n_families), intent(out), target :: indices_used
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_perm
             !! Permutation array for sorting gene distances
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_stack_left
@@ -258,6 +268,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
             !! The default value is `'robust'`.
@@ -596,11 +608,15 @@ contains
         logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
             !! Output boolean array indicating outliers
         real(c_double), dimension(n_families), intent(out), target :: loess_x
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(c_double), dimension(n_families), intent(out), target :: loess_y
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(c_int), dimension(n_families), intent(out), target :: loess_n
-            !! Indices of reference points used for smoothing.
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
         real(c_double), dimension(n_genes), intent(out), target :: quantile
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -755,11 +771,15 @@ contains
         logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
             !! Output boolean array indicating outliers
         real(c_double), dimension(n_families), intent(out), target :: loess_x
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(c_double), dimension(n_families), intent(out), target :: loess_y
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(c_int), dimension(n_families), intent(out), target :: loess_n
-            !! Indices of reference points used for smoothing.
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
         real(c_double), dimension(n_genes), intent(out), target :: quantile
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.

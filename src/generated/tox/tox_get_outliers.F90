@@ -19,7 +19,7 @@ module tox_get_outliers
     use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
     use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_real
-    use tox_errors, only: validate_dimension_size, validate_in_range_real
+    use tox_errors, only: validate_dimension_size, validate_in_range_int, validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -65,11 +65,15 @@ contains
         real(real64), dimension(n_families), intent(out) :: dscale
             !! Array of scaling factors per family (output)
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: indices_used
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         real(real64), intent(in), optional :: span
             !! Span parameter for LOESS smoothing, passed straight to
             !! [[tox_loess_impl(module):loess_fit_plain_impl(subroutine)]], so it is held to that
@@ -80,6 +84,8 @@ contains
         integer(int32), intent(in), optional :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(int32), intent(in), optional :: mode
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
@@ -119,6 +125,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_families, ierr, arg_pos=2_int32)
         call validate_in_range_real(span, ierr, arg_pos=9_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=10_int32, min=0_int32, max=2_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=11_int32); end if
         if (is_err(ierr)) return
 #endif
@@ -247,11 +254,15 @@ contains
         real(real64), dimension(n_families), intent(out) :: dscale
             !! Array of scaling factors per family (output)
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates for LOESS smoothing
+            !! Mean distance of each family in the LOESS fit, packed at the front in the order of
+            !! `indices_used`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates for LOESS smoothing
+            !! Standard deviation of the distances of each family in the LOESS fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: indices_used
-            !! Indices of reference points used for smoothing
+            !! Family index of each point in the LOESS fit, packed at the front. Families with a
+            !! single member, and those with the lowest spread, are left out of the fit; the
+            !! remaining slots hold `0`.
         integer(int32), dimension(n_genes), intent(out) :: tmp_perm
             !! Permutation array for sorting gene distances
         integer(int32), dimension(n_genes), intent(out) :: tmp_stack_left
@@ -288,6 +299,8 @@ contains
         integer(int32), intent(in), optional :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(int32), intent(in), optional :: mode
             !! Mode for LOESS fitting
             !! The default value is `1_int32`.
@@ -315,6 +328,7 @@ contains
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=13_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=15_int32)
         call validate_in_range_real(span, ierr, arg_pos=24_int32, min=EPS_LOESS, max=1.0_real64)
+        call validate_in_range_int(degree, ierr, arg_pos=25_int32, min=0_int32, max=2_int32)
         call validate_all_in_range_real(tmp_diagl, n_families, ierr, arg_pos=16_int32)
         call validate_all_in_range_real(tmp_eval_points, n_families * 1, ierr, arg_pos=18_int32)
         if (present(mode)) then; if (mode /= MODE_PLAIN .and. mode /= MODE_ROBUST) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=26_int32); end if
@@ -565,11 +579,15 @@ contains
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: loess_n
-            !! Indices of reference points used for smoothing.
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
         real(real64), dimension(n_genes), intent(out) :: quantile
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -788,11 +806,15 @@ contains
         logical(c_bool), dimension(n_genes), intent(out) :: is_outlier
             !! Output boolean array indicating outliers
         real(real64), dimension(n_families), intent(out) :: loess_x
-            !! Reference x-coordinates.
+            !! Mean distance of each family in the LOESS fit of the family scaling, packed at the
+            !! front in the order of `loess_n`. The remaining slots hold `-1`.
         real(real64), dimension(n_families), intent(out) :: loess_y
-            !! Reference y-coordinates (length n_total).
+            !! Standard deviation of the distances of each family in that fit, packed like
+            !! `loess_x`. The remaining slots hold `-1`.
         integer(int32), dimension(n_families), intent(out) :: loess_n
-            !! Indices of reference points used for smoothing.
+            !! Family index of each point in that fit, packed at the front. Families with a single
+            !! member, and those with the lowest spread, are left out of the fit; the remaining
+            !! slots hold `0`.
         real(real64), dimension(n_genes), intent(out) :: quantile
             !! Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
             !! observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
