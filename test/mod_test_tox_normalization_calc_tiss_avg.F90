@@ -2,6 +2,7 @@
 module mod_test_tox_normalization_calc_tiss_avg
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
   use tox_normalization
   use test_suite, only: test_case
   use tox_errors
@@ -14,7 +15,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_calc_tiss_avg() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(9))
+    allocate(all_tests(10))
     
     all_tests(1) = test_case("test_calc_tiss_avg_three_tissues", test_calc_tiss_avg_three_tissues)
     all_tests(2) = test_case("test_calc_tiss_avg_single_group", test_calc_tiss_avg_single_group)
@@ -26,6 +27,7 @@ contains
     all_tests(8) = test_case("test_calc_tiss_avg_empty_matrix", test_calc_tiss_avg_empty_matrix)
     all_tests(9) = test_case("test_calc_tiss_avg_reps_not_summing_to_the_replicates", &
                              test_calc_tiss_avg_reps_not_summing_to_the_replicates)
+    all_tests(10) = test_case("test_calc_tiss_avg_rejects_nan_and_inf", test_calc_tiss_avg_rejects_nan_and_inf)
   end function get_all_tests_tox_normalization_calc_tiss_avg
 
   !> Test tissue averaging with 3 tissues and 2 replicates each (from R test).
@@ -213,5 +215,25 @@ contains
     call calc_tiss_avg(2, 6, 2, [3, 4], input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "reps [3, 4] sum to 7, but expr has 6 rows")
   end subroutine test_calc_tiss_avg_reps_not_summing_to_the_replicates
+
+  !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
+  subroutine test_calc_tiss_avg_rejects_nan_and_inf()
+    integer(int32) :: ierr, i_bad
+    integer(int32), dimension(2) :: reps_per_tissue
+    real(real64), dimension(6, 2) :: input_matrix
+    real(real64), dimension(2, 2) :: output_matrix
+    real(real64) :: bad(2)
+
+    input_matrix = 1d0
+    reps_per_tissue = [3, 3]
+    bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
+
+    do i_bad = 1, size(bad)
+      input_matrix(1, 1) = bad(i_bad)
+      call calc_tiss_avg(2, 6, 2, reps_per_tissue, input_matrix, output_matrix, ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
+                            "test_calc_tiss_avg_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
+    end do
+  end subroutine test_calc_tiss_avg_rejects_nan_and_inf
 
 end module mod_test_tox_normalization_calc_tiss_avg

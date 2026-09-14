@@ -2,7 +2,7 @@
 module mod_test_tox_normalization_root_mean_sq_normalization
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
+  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_value, ieee_quiet_nan, ieee_positive_inf
   use tox_normalization
   use test_suite
   use tox_errors
@@ -14,7 +14,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_root_mean_sq_normalization() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(13))
+    allocate(all_tests(14))
     
     all_tests(1) = test_case("test_root_mean_sq_normalization_basic", test_root_mean_sq_normalization_basic)
     all_tests(2) = test_case("test_root_mean_sq_normalization_constant_rows", test_root_mean_sq_normalization_constant_rows)
@@ -29,6 +29,7 @@ contains
     all_tests(11) = test_case("test_single_row_col", test_single_row_col)
     all_tests(12) = test_case("test_empty_matrix", test_empty_matrix)
     all_tests(13) = test_case("test_symmetric_rows", test_symmetric_rows)
+    all_tests(14) = test_case("test_rms_rejects_nan_and_inf", test_rms_rejects_nan_and_inf)
   end function get_all_tests_tox_normalization_root_mean_sq_normalization
 
   !> Test that root_mean_sq_normalization normalizes values correctly.
@@ -243,5 +244,22 @@ contains
       call assert_equal_real(result(i_tissue, 2), result(i_tissue, 1), 1d-12, "symmetric rows: not equal after normalization")
     end do
   end subroutine test_symmetric_rows
+
+  !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
+  subroutine test_rms_rejects_nan_and_inf()
+    integer(int32), parameter :: n_genes = 3, n_replicates = 2
+    real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes), bad(2)
+    integer(int32) :: ierr, i_bad
+
+    expr = 1.0_real64
+    bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
+
+    do i_bad = 1, size(bad)
+      expr(1, 1) = bad(i_bad)
+      call root_mean_sq_normalization(n_genes, n_replicates, expr, normalized, ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
+                            "test_rms_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
+    end do
+  end subroutine test_rms_rejects_nan_and_inf
 
 end module mod_test_tox_normalization_root_mean_sq_normalization

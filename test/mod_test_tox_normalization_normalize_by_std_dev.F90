@@ -3,6 +3,7 @@ module mod_test_tox_normalization_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
+  use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
   use tox_normalization
   ! the tox_normalization module used to re-export it; it is f42 infrastructure
   use f42_math_impl, only: std_dev
@@ -16,11 +17,12 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(3))
+    allocate(all_tests(4))
     
     all_tests(1) = test_case("test_std_dev", test_std_dev)
     all_tests(2) = test_case("test_loess_normalization_outlier_correction", test_loess_normalization_outlier_correction)
     all_tests(3) = test_case("test_loess_zero_variance_handling", test_loess_zero_variance_handling)
+    all_tests(4) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
 
   end function get_all_tests_tox_normalization_normalize_by_std_dev
 
@@ -113,5 +115,27 @@ contains
         
         call assert_equal_real(res(1, 10), 1.0_real64, 1d-12, "test_loess_zero_variance_handling: Zero variance gene altered")
     end subroutine test_loess_zero_variance_handling
+
+  !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
+  !| The matrix varies, so without that check the call would succeed and hide the NaN.
+  subroutine test_std_dev_rejects_nan_and_inf()
+    integer(int32), parameter :: n_genes = 10, n_replicates = 6
+    real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes), bad(2)
+    integer(int32) :: ierr, i_replicate, i_gene, i_bad
+
+    do i_gene = 1, n_genes
+      do i_replicate = 1, n_replicates
+        expr(i_replicate, i_gene) = real(i_gene, real64)*(10.0_real64 + 0.5_real64*real(i_replicate, real64))
+      end do
+    end do
+    bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
+
+    do i_bad = 1, size(bad)
+      expr(1, 1) = bad(i_bad)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
+                            "test_std_dev_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
+    end do
+  end subroutine test_std_dev_rejects_nan_and_inf
 
 end module mod_test_tox_normalization_normalize_by_std_dev

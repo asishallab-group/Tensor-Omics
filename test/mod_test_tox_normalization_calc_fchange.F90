@@ -2,6 +2,7 @@
 module mod_test_tox_normalization_calc_fchange
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
+  use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
   use tox_normalization
   use test_suite, only: test_case
   use tox_errors
@@ -14,7 +15,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_calc_fchange() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(9))
+    allocate(all_tests(10))
     
     all_tests(1) = test_case("test_calc_fchange_basic_calculation", test_calc_fchange_basic_calculation)
     all_tests(2) = test_case("test_calc_fchange_single_pair", test_calc_fchange_single_pair)
@@ -25,6 +26,7 @@ contains
     all_tests(7) = test_case("test_calc_fchange_identical_values", test_calc_fchange_identical_values)
     all_tests(8) = test_case("test_calc_fchange_mixed_values", test_calc_fchange_mixed_values)
     all_tests(9) = test_case("test_calc_fchange_empty_matrix", test_calc_fchange_empty_matrix)
+    all_tests(10) = test_case("test_calc_fchange_rejects_nan_and_inf", test_calc_fchange_rejects_nan_and_inf)
   end function get_all_tests_tox_normalization_calc_fchange
 
   !> Test basic fold change calculation.
@@ -223,5 +225,26 @@ contains
     call calc_fchange(n_genes, n_cols, n_pairs, control_cols, cond_cols, i_matrix, o_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "calc_fchange should return error for empty input")
   end subroutine test_calc_fchange_empty_matrix
+
+  !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
+  subroutine test_calc_fchange_rejects_nan_and_inf()
+    integer(int32) :: ierr, i_bad
+    integer(int32), dimension(1) :: control_tissues, condition_tissues
+    real(real64), dimension(3, 2) :: expr
+    real(real64), dimension(1, 2) :: fold_changes
+    real(real64) :: bad(2)
+
+    expr = 1d0
+    control_tissues = [1]
+    condition_tissues = [2]
+    bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
+
+    do i_bad = 1, size(bad)
+      expr(2, 1) = bad(i_bad)
+      call calc_fchange(2, 3, 1, control_tissues, condition_tissues, expr, fold_changes, ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
+                            "test_calc_fchange_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
+    end do
+  end subroutine test_calc_fchange_rejects_nan_and_inf
 
 end module mod_test_tox_normalization_calc_fchange

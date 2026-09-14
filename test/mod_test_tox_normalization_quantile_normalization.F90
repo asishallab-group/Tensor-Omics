@@ -2,7 +2,7 @@
 module mod_test_tox_normalization_quantile_normalization
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
-    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_normalization
     use test_suite, only: test_case
     use tox_errors
@@ -16,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_normalization_quantile_normalization() result(all_tests)
         type(test_case),allocatable :: all_tests(:)
-        allocate(all_tests(10))
+        allocate(all_tests(11))
 
         all_tests(1) = test_case("test_error_zero_dimensions", test_error_zero_dimensions)
         all_tests(2) = test_case("test_error_negative_dimensions", test_error_negative_dimensions)
@@ -29,6 +29,7 @@ contains
         all_tests(9) = test_case("test_random", test_random)
         all_tests(10) = test_case("test_ties_share_the_mean_of_their_rank_means", &
                                   test_ties_share_the_mean_of_their_rank_means)
+        all_tests(11) = test_case("test_quantile_rejects_nan_and_inf", test_quantile_rejects_nan_and_inf)
     end function get_all_tests_tox_normalization_quantile_normalization
 
     ! ============================================================
@@ -307,5 +308,25 @@ contains
         call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
                                      "constant replicate: every gene must get the mean of all rank means")
     end subroutine
+
+    !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
+    !| Unchecked, one NaN would spread through the rank means into every replicate.
+    subroutine test_quantile_rejects_nan_and_inf()
+        integer(int32), parameter :: n_genes = 3, n_replicates = 2
+        real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes), bad(2)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr, i_bad
+
+        expr(1, :) = [1.0_real64, 2.0_real64, 3.0_real64]
+        expr(2, :) = [4.0_real64, 5.0_real64, 6.0_real64]
+        bad = [ieee_value(1.0_real64, ieee_quiet_nan), ieee_value(1.0_real64, ieee_positive_inf)]
+
+        do i_bad = 1, size(bad)
+            expr(1, 1) = bad(i_bad)
+            call quantile_normalization_expert(n_genes, n_replicates, expr, normalized, means, tmp, perm, ierr)
+            call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, &
+                                  "test_quantile_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
+        end do
+    end subroutine test_quantile_rejects_nan_and_inf
 
 end module mod_test_tox_normalization_quantile_normalization
