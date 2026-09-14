@@ -19,14 +19,35 @@ contains
     function get_all_tests_tox_normalization_log2_transformation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
-        allocate (all_tests(6))
+        allocate (all_tests(7))
         all_tests(1) = test_case("test_log2_values", test_log2_values)
         all_tests(2) = test_case("test_log2_negative_values", test_log2_negative_values)
         all_tests(3) = test_case("test_log2_extremes", test_log2_extremes)
         all_tests(4) = test_case("test_log2_rejects_minus_one_and_below", test_log2_rejects_minus_one_and_below)
         all_tests(5) = test_case("test_log2_rejects_nan_and_inf", test_log2_rejects_nan_and_inf)
         all_tests(6) = test_case("test_log2_dimensions", test_log2_dimensions)
+        all_tests(7) = test_case("test_log2_tiny_values", test_log2_tiny_values)
     end function get_all_tests_tox_normalization_log2_transformation
+
+    !> For tiny x, forming x + 1 rounds away most of x's digits: 1 + 1e-15 is 1.00000000000000111,
+    !| so log(x + 1) came out 11% high. The series log(1 + x) = x - x**2/2 + x**3/3 - ... is exact
+    !| to double precision after two terms for every x here, so it gives the expected values.
+    subroutine test_log2_tiny_values()
+        real(real64), dimension(4, 1) :: expr, transformed, expected
+        integer(int32) :: ierr, i_value
+
+        expr(:, 1) = [1.0e-15_real64, -1.0e-15_real64, 1.0e-10_real64, 1.0e-8_real64]
+        do i_value = 1, 4
+            expected(i_value, 1) = (expr(i_value, 1) - expr(i_value, 1)**2/2.0_real64)/log(2.0_real64)
+        end do
+
+        call log2_transformation(1, 4, expr, transformed, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_log2_tiny_values: ierr")
+        do i_value = 1, 4
+            call assert_equal_real(transformed(i_value, 1), expected(i_value, 1), 4*epsilon(1.0_real64)*abs(expected(i_value, 1)), &
+                                   "test_log2_tiny_values: log2(1 + x) for tiny x, to a few ulps")
+        end do
+    end subroutine test_log2_tiny_values
 
     !> Where x + 1 is a power of two the result is its exponent: 0, 1, 3, 7, 15 and 1023 become
     !| 0, 1, 2, 3, 4 and 10, over a 2 x 3 matrix, so that both dimensions are walked.
