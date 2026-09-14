@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 2.8% of total for modules and submodules.">243 statements</a>
+                 title=" 1.4% of total for modules and submodules.">266 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -200,6 +200,7 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_errors.html#proc-map_err_arg_pos">map_err_arg_pos</a>
+            <a class="list-group-item" href="../module/tox_errors.html#proc-clear_err_arg_pos">clear_err_arg_pos</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_ok">set_ok</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_err">set_err</a>
             <a class="list-group-item" href="../module/tox_errors.html#proc-set_err_once">set_err_once</a>
@@ -230,14 +231,18 @@
 
     <div class="col-md-9" id='text'>
       <p>error handling module for tensor-omics</p>
+<p>It keeps its <code>tox_</code> name because it defines Tensor Omics' error vocabulary, but it lives in
+<code>src/f42/</code> because f42 itself depends on it: it sits <em>below</em> f42 in the stack, not above.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -838,7 +843,7 @@ parameter
 </h3></div>
     <div class="card-body">
           
-  <p>Creates the error code for an error and a specific argument position (if argument related)</p>
+  <p>Creates the error code for an error and a specific argument position (if argument related)</p><a href="../proc/create_err_code.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -913,7 +918,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~87"></span>
+              <span class="anchor" id="variable-ierr~370"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -943,7 +948,7 @@ parameter
 </h3></div>
     <div class="card-body">
           
-  <p>Extracts the argument position from the error code</p>
+  <p>Extracts the argument position from the error code</p><a href="../proc/get_err_arg_pos.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -958,7 +963,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~88"></span>
+              <span class="anchor" id="variable-ierr~371"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1003,7 +1008,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~93"></span>
+              <span class="anchor" id="variable-ierr~377"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1048,7 +1053,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~94"></span>
+              <span class="anchor" id="variable-ierr~378"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1098,7 +1103,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~89"></span>
+              <span class="anchor" id="variable-ierr~372"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1149,6 +1154,46 @@ parameter
   </div>
 
               <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-clear_err_arg_pos"></span> <h3>public pure subroutine <a href='../proc/clear_err_arg_pos.html'>clear_err_arg_pos</a>(ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Drops the argument position from an error code, keeping the error itself.</p><a href="../proc/clear_err_arg_pos.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~373"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
     <div class="card-header codesum"><span class="anchor" id="proc-set_ok"></span> <h3>public elemental subroutine <a href='../proc/set_ok.html'>set_ok</a>(ierr)  
 </h3></div>
     <div class="card-body">
@@ -1168,7 +1213,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~90"></span>
+              <span class="anchor" id="variable-ierr~374"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1208,7 +1253,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~91"></span>
+              <span class="anchor" id="variable-ierr~375"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1278,7 +1323,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~92"></span>
+              <span class="anchor" id="variable-ierr~376"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1363,7 +1408,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~95"></span>
+              <span class="anchor" id="variable-ierr~379"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1404,7 +1449,7 @@ Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPU
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~16"></span>
+              <span class="anchor" id="variable-n~30"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1419,7 +1464,7 @@ Sets <code>ERR_INVALID_INPUT</code> if <code>n&lt;0</code>, <code>ERR_EMPTY_INPU
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~96"></span>
+              <span class="anchor" id="variable-ierr~380"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1505,7 +1550,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unit~10"></span>
+              <span class="anchor" id="variable-unit~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1520,7 +1565,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~97"></span>
+              <span class="anchor" id="variable-ierr~381"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1590,7 +1635,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~98"></span>
+              <span class="anchor" id="variable-ierr~382"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1690,7 +1735,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~20"></span>
+              <span class="anchor" id="variable-array~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -1705,7 +1750,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~5"></span>
+              <span class="anchor" id="variable-n_elements~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1720,7 +1765,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~99"></span>
+              <span class="anchor" id="variable-ierr~383"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1801,7 +1846,7 @@ Closes the connected unit in case of an error</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_in_range_real.html'>validate_in_range_real</a>(val, ierr, arg_pos, min, max, sentinel)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_in_range_real.html'>validate_in_range_real</a>(val, ierr, arg_pos, min, max, sentinel, allow_nan, allow_infinite)  
 </h3></div>
     <div class="card-body">
           
@@ -1835,7 +1880,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~100"></span>
+              <span class="anchor" id="variable-ierr~384"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -1908,6 +1953,36 @@ Closes the connected unit in case of an error</p>
 <p>Optional sentinel value to allow additionally</p>
             </td>
         </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-allow_nan"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>allow_nan</strong></td>
+            <td>
+<p>Permit NaN, opting out of the default finiteness check. Default <code>.false.</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-allow_infinite"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>allow_infinite</strong></td>
+            <td>
+<p>Permit +/-infinity, opting out of the default finiteness check. Default <code>.false.</code></p>
+            </td>
+        </tr>
     </tbody>
   </table>
 
@@ -1916,7 +1991,7 @@ Closes the connected unit in case of an error</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-validate_all_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_all_in_range_real.html'>validate_all_in_range_real</a>(array, n_elements, ierr, arg_pos, min, max, sentinel)  
+    <div class="card-header codesum"><span class="anchor" id="proc-validate_all_in_range_real"></span> <h3>public pure subroutine <a href='../proc/validate_all_in_range_real.html'>validate_all_in_range_real</a>(array, n_elements, ierr, arg_pos, min, max, sentinel, allow_nan, allow_infinite)  
 </h3></div>
     <div class="card-body">
           
@@ -1935,7 +2010,7 @@ Closes the connected unit in case of an error</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-array~21"></span>
+              <span class="anchor" id="variable-array~24"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -1950,7 +2025,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~6"></span>
+              <span class="anchor" id="variable-n_elements~22"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1965,7 +2040,7 @@ Closes the connected unit in case of an error</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~101"></span>
+              <span class="anchor" id="variable-ierr~385"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2038,6 +2113,36 @@ Closes the connected unit in case of an error</p>
 <p>Optional sentinel value to allow additionally</p>
             </td>
         </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-allow_nan~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>allow_nan</strong></td>
+            <td>
+<p>Permit NaN, opting out of the default finiteness check. Default <code>.false.</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-allow_infinite~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>allow_infinite</strong></td>
+            <td>
+<p>Permit +/-infinity, opting out of the default finiteness check. Default <code>.false.</code></p>
+            </td>
+        </tr>
     </tbody>
   </table>
 
@@ -2067,7 +2172,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances"></span>
+              <span class="anchor" id="variable-distances~28"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2082,7 +2187,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~17"></span>
+              <span class="anchor" id="variable-n~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -2097,7 +2202,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~102"></span>
+              <span class="anchor" id="variable-ierr~386"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -2185,7 +2290,7 @@ and X-&gt;Y is exactly the same as Y-&gt;X (no tolerance).</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

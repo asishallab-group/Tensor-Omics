@@ -1,0 +1,1467 @@
+<!-- -*- mode: jinja2 -*- -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="Documentation for TensorOmics">
+    <meta name="author" content="" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>tox_data_archive_c &ndash; TensorOmics</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <!-- Font Awesome -->
+    <link href="../css/fontawesome.min.css" rel="stylesheet">
+    <link href="../css/brands.min.css" rel="stylesheet">
+    <link href="../css/regular.min.css" rel="stylesheet">
+    <link href="../css/solid.min.css" rel="stylesheet">
+    <link href="../css/v4-font-face.min.css" rel="stylesheet">
+    <link href="../css/v4-shims.min.css" rel="stylesheet">
+    <!-- MathJax -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        TeX: { equationNumbers: { autoNumber: "AMS" } }
+      });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@2.7.9/MathJax.js?config=TeX-AMS-MML_HTMLorMML" async
+            integrity="sha256-DViIOMYdwlM/axqoGDPeUyf0urLoHMN4QACBKyB58Uw=" crossorigin="anonymous"></script>
+    <!-- Other scripts and stylesheets -->
+    <link href="../css/local.css" rel="stylesheet">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <script src="../js/svg-pan-zoom.min.js"></script>
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <div class="container-fluid mb-sm-4 mb-xl-2">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+          <a class="navbar-brand" href="../index.html">TensorOmics </a>
+          <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
+                  aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon">
+          </button>
+
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-link" href="../lists/files.html">Source Files</a>
+                  </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/modules.html">Modules</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/procedures.html">Procedures</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/types.html">Derived Types</a>
+                </li>
+            </ul>
+              <div class="d-flex align-items-end flex-grow-1">
+                <form action="../search.html" role="search" class="ms-auto">
+                  <input type="text" class="form-control" aria-label="Search" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+                </form>
+              </div>
+          </div><!--/.nav-collapse -->
+        </div>
+      </nav>
+    </div>
+
+    <div class="container">
+  <div class="row">
+    <h1>tox_data_archive_c
+      <small>Module</small>
+      
+    </h1>
+      <div class="container p-2 mb-4 bg-light border rounded-3">
+    <div class="row align-items-center justify-content-between" id="info-bar">
+      <div class="col">
+        <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
+
+            <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
+              <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
+                 title=" 2.6% of total for modules and submodules.">491 statements</a>
+            </li>
+
+            <li class="list-inline-item" id="source-file">
+              <i class="fa fa-code"></i>
+              <a href="../src/tox_data_archive_c.F90"> Source File</a>
+            </li>
+        </ul>
+      </div>
+      <div class="col">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb justify-content-end mb-0">
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_archive_c.f90.html'>tox_data_archive_c.F90</a></li>
+            <li class="breadcrumb-item active" aria-current="page">tox_data_archive_c</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <script>
+    // Enable Bootstrap tooltips
+    (function () {
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
+    })();
+  </script>
+
+  </div>
+
+  <div class="row">
+    <div class="col-md-3">
+        <div id="sidebar">
+      <h3>Contents</h3>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#subs-0"
+         aria-expanded="false" aria-controls="subs-0">
+         <h4 class="card-header bg-primary text-white">Subroutines</h4>
+      </a>
+      <div id="subs-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_data_archive_c.html#proc-create_zip_archive_c">create_zip_archive_c</a>
+            <a class="list-group-item" href="../module/tox_data_archive_c.html#proc-save_tox_data_c">save_tox_data_c</a>
+            <a class="list-group-item" href="../module/tox_data_archive_c.html#proc-get_tox_data_dims_c">get_tox_data_dims_c</a>
+            <a class="list-group-item" href="../module/tox_data_archive_c.html#proc-read_tox_data_into_c">read_tox_data_into_c</a>
+        </div>
+      </div>
+    </div>
+
+  
+  
+  
+  
+  
+  
+  
+
+
+  </div>
+
+    </div>
+
+    <div class="col-md-9" id='text'>
+      <p>Zip-archive backed persistence for TensorOmics data sets.</p>
+<p>Wraps libzip (via C bindings declared in the interface block below) to create/extract zip
+archives whose members are <a href="../module/tox_data_read_write.html">tox_data_read_write</a>-serialized arrays, indexed by a
+plain-text <code>manifest.txt</code> mapping logical keys (e.g. <code>gene_ids</code>, <code>expression</code>) to member
+filenames. <a href="../proc/save_tox_data.html">save_tox_data</a> and
+<a href="../proc/read_tox_data.html">read_tox_data</a> are the standard entry points for the
+fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract_zip_archive</code> and the
+<code>*_manifest*</code> routines below are the generic key/filename building blocks they are built on.</p>
+<br>          <div class="card mb-4">
+      <h3 class="card-header card-title bg-light">Uses</h3>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <ul class="list-inline">
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+              </ul>
+            </li>
+        </ul>
+      </div>
+    </div>
+
+      
+      <br>
+
+
+
+
+
+
+
+
+        <section>
+          <h2>Subroutines</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-create_zip_archive_c"></span> <h3>public  subroutine <a href='../proc/create_zip_archive_c.html'>create_zip_archive_c</a>(zip_filename, zip_filename_strlen, keys, keys_strlen, n_keys_elements, filenames, filenames_strlen, n_filenames_elements, ierr) bind(C, name="create_zip_archive_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/create_zip_archive.html">create_zip_archive</a></p><a href="../proc/create_zip_archive_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(zip_filename_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Name of the zip file to create</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>zip_filename</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-keys"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(keys_strlen, n_keys_elements), target
+            </td>
+            <td>::</td>
+            <td><strong>keys</strong></td>
+            <td>
+<p>Array of keys for manifest entries</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-keys_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>keys_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>keys</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_keys_elements"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_keys_elements</strong></td>
+            <td>
+<p>number of elements in <code>keys</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filenames"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(filenames_strlen, n_filenames_elements), target
+            </td>
+            <td>::</td>
+            <td><strong>filenames</strong></td>
+            <td>
+<p>Array of filenames to add to zip</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-filenames_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>filenames_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>filenames</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_filenames_elements"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_filenames_elements</strong></td>
+            <td>
+<p>number of elements in <code>filenames</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~112"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-save_tox_data_c"></span> <h3>public  subroutine <a href='../proc/save_tox_data_c.html'>save_tox_data_c</a>(zip_filename, zip_filename_strlen, ierr, gene_ids, gene_ids_strlen, n_gene_ids_elements, gene_ids_file, gene_ids_file_strlen, expression, n_expression_elements_dim_1, n_expression_elements_dim_2, expression_file, expression_file_strlen, gene_to_family, n_gene_to_family_elements, gene_to_family_file, gene_to_family_file_strlen, family_ids, family_ids_strlen, n_family_ids_elements, family_ids_file, family_ids_file_strlen, family_centroids, n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2, family_centroids_file, family_centroids_file_strlen, shift_vectors, n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2, shift_vectors_file, shift_vectors_file_strlen) bind(C, name="save_tox_data_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/save_tox_data.html">save_tox_data</a></p><a href="../proc/save_tox_data_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename~2"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(zip_filename_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Zip filename</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename_strlen~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>zip_filename</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~113"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids~3"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(gene_ids_strlen, n_gene_ids_elements), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids</strong></td>
+            <td>
+<p>Gene ids array, will be saved if provided</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids_strlen~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>gene_ids</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_ids_elements~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_ids_elements</strong></td>
+            <td>
+<p>number of elements in <code>gene_ids</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids_file"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(gene_ids_file_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids_file</strong></td>
+            <td>
+<p>Name of the gene ids file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids_file_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids_file_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>gene_ids_file</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_expression_elements_dim_1, n_expression_elements_dim_2)
+            </td>
+            <td>::</td>
+            <td><strong>expression</strong></td>
+            <td>
+<p>Expression vectors array, will be saved if provided</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_elements_dim_1"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_elements_dim_1</strong></td>
+            <td>
+<a href="../proc/save_tox_data_c.html#variable-n_expression_elements_dim_1" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_elements_dim_2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_elements_dim_2</strong></td>
+            <td>
+<a href="../proc/save_tox_data_c.html#variable-n_expression_elements_dim_2" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_file"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(expression_file_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>expression_file</strong></td>
+            <td>
+<p>Name of the expression file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_file_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>expression_file_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>expression_file</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_gene_to_family_elements)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family</strong></td>
+            <td>
+<p>Gene to family mapping array, will be saved if provided</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_to_family_elements"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_to_family_elements</strong></td>
+            <td>
+<p>number of elements in <code>gene_to_family</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family_file"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(gene_to_family_file_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family_file</strong></td>
+            <td>
+<p>Name of the gene to family mapping file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family_file_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family_file_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>gene_to_family_file</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(family_ids_strlen, n_family_ids_elements), target
+            </td>
+            <td>::</td>
+            <td><strong>family_ids</strong></td>
+            <td>
+<p>Family ids array, will be saved if provided</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>family_ids_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>family_ids</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_ids_elements"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_ids_elements</strong></td>
+            <td>
+<p>number of elements in <code>family_ids</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids_file"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(family_ids_file_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>family_ids_file</strong></td>
+            <td>
+<p>Name of the family ids file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids_file_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>family_ids_file_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>family_ids_file</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids~7"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2)
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids</strong></td>
+            <td>
+<p>Family centroids array, will be saved if provided</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_elements_dim_1~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_elements_dim_1</strong></td>
+            <td>
+<a href="../proc/save_tox_data_c.html#variable-n_family_centroids_elements_dim_1~5" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_elements_dim_2~5"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_elements_dim_2</strong></td>
+            <td>
+<a href="../proc/save_tox_data_c.html#variable-n_family_centroids_elements_dim_2~5" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids_file"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(family_centroids_file_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids_file</strong></td>
+            <td>
+<p>Name of the family centroids file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids_file_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids_file_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>family_centroids_file</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors~6"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2)
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors</strong></td>
+            <td>
+<p>Shift vectors array, will be saved if provided</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_elements_dim_1~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_elements_dim_1</strong></td>
+            <td>
+<a href="../proc/save_tox_data_c.html#variable-n_shift_vectors_elements_dim_1~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_elements_dim_2~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_elements_dim_2</strong></td>
+            <td>
+<a href="../proc/save_tox_data_c.html#variable-n_shift_vectors_elements_dim_2~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors_file"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional,</td>            <td>
+              dimension(shift_vectors_file_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors_file</strong></td>
+            <td>
+<p>Name of the shift vectors file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors_file_strlen"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors_file_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>shift_vectors_file</code></p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-get_tox_data_dims_c"></span> <h3>public  subroutine <a href='../proc/get_tox_data_dims_c.html'>get_tox_data_dims_c</a>(zip_filename, zip_filename_strlen, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols, ierr) bind(C, name="get_tox_data_dims_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a></p><a href="../proc/get_tox_data_dims_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename~3"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(zip_filename_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Name of the zip file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename_strlen~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>zip_filename</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_ids"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_ids</strong></td>
+            <td>
+<p>Number of gene ids, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_id_len"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>gene_id_len</strong></td>
+            <td>
+<p>String length of each gene id, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_rows"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_rows</strong></td>
+            <td>
+<p>Rows (samples) of the expression matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_cols"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_cols</strong></td>
+            <td>
+<p>Columns (genes) of the expression matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_to_family"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_to_family</strong></td>
+            <td>
+<p>Number of gene-to-family entries, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_ids"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_ids</strong></td>
+            <td>
+<p>Number of family ids, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_id_len"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>family_id_len</strong></td>
+            <td>
+<p>String length of each family id, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_rows"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_rows</strong></td>
+            <td>
+<p>Rows (samples) of the family centroids matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_cols"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_cols</strong></td>
+            <td>
+<p>Columns (families) of the family centroids matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_rows"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_rows</strong></td>
+            <td>
+<p>Rows of the shift vectors matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_cols"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_cols</strong></td>
+            <td>
+<p>Columns of the shift vectors matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~114"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-read_tox_data_into_c"></span> <h3>public  subroutine <a href='../proc/read_tox_data_into_c.html'>read_tox_data_into_c</a>(zip_filename, zip_filename_strlen, n_gene_ids, gene_id_len, gene_ids, n_expression_rows, n_expression_cols, expression, n_gene_to_family, gene_to_family, n_family_ids, family_id_len, family_ids, n_family_centroids_rows, n_family_centroids_cols, family_centroids, n_shift_vectors_rows, n_shift_vectors_cols, shift_vectors, ierr) bind(C, name="read_tox_data_into_c")  
+</h3></div>
+    <div class="card-body">
+          
+  <p>C-wrapper for <a href="../proc/read_tox_data_into.html">read_tox_data_into</a></p><a href="../proc/read_tox_data_into_c.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename~4"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(zip_filename_strlen), target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Name of the zip file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename_strlen~4"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename_strlen</strong></td>
+            <td>
+<p>length of the strings in <code>zip_filename</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_ids~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_ids</strong></td>
+            <td>
+<p>Number of gene ids.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_ids</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_id_len~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>gene_id_len</strong></td>
+            <td>
+<p>String length of each gene id.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>gene_id_len</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids~4"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(gene_id_len, n_gene_ids), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids</strong></td>
+            <td>
+<p>Gene ids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_rows~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_rows</strong></td>
+            <td>
+<p>Rows (samples) of the expression matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expression_rows</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_cols~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_cols</strong></td>
+            <td>
+<p>Columns (genes) of the expression matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expression_cols</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression~2"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_expression_rows, n_expression_cols), target
+            </td>
+            <td>::</td>
+            <td><strong>expression</strong></td>
+            <td>
+<p>Expression vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_to_family~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_to_family</strong></td>
+            <td>
+<p>Number of gene-to-family entries.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_to_family</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family~6"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_gene_to_family), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family</strong></td>
+            <td>
+<p>Gene to family mapping</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_ids~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_ids</strong></td>
+            <td>
+<p>Number of family ids.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_ids</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_id_len~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>family_id_len</strong></td>
+            <td>
+<p>String length of each family id.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>family_id_len</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids~2"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(family_id_len, n_family_ids), target
+            </td>
+            <td>::</td>
+            <td><strong>family_ids</strong></td>
+            <td>
+<p>Family ids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_rows~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_rows</strong></td>
+            <td>
+<p>Rows (samples) of the family centroids matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_centroids_rows</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_cols~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_cols</strong></td>
+            <td>
+<p>Columns (families) of the family centroids matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_centroids_cols</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids~8"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_family_centroids_rows, n_family_centroids_cols), target
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids</strong></td>
+            <td>
+<p>Family centroids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_rows~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_rows</strong></td>
+            <td>
+<p>Rows of the shift vectors matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_vectors_rows</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_cols~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_cols</strong></td>
+            <td>
+<p>Columns of the shift vectors matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_vectors_cols</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors~7"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_shift_vectors_rows, n_shift_vectors_cols), target
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors</strong></td>
+            <td>
+<p>Shift vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~115"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+        </section>
+        <br>
+
+
+
+    </div>
+  </div>
+
+      <hr>
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+        <div class="row justify-content-between">
+          <div class="col">
+            <p>
+              TensorOmics
+              &copy; 2026 <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a>
+</p>
+          </div>
+          <div class="col">
+            <p class="text-end">
+              Documentation generated by
+              <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
+ on 2026-09-14 09:28 +0000             </p>
+          </div>
+        </div>
+        <br>
+      </div> <!-- /container -->
+    </footer>
+  </body>
+</html>

@@ -85,7 +85,6 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
@@ -151,11 +150,14 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine clock_hand_angles_for_shift_vectors(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, selected_axes_for_signed, signed_angles, ierr)  
+    <h2>public pure subroutine clock_hand_angles_for_shift_vectors(fields, n_dims, n_fields, fields_selection_mask, n_selected_fields, orientation_reference, signed_angles, ierr)  
 </h2>
     
 
-    <p>Compute signed rotation angles between for shift vectors, so between their origin and target</p>
+    <p>Each selected field is angled by the rule of
+<a href="../proc/clock_hand_angle_between_vectors_impl.html">clock_hand_angle_between_vectors_impl</a>,
+with one <code>orientation_reference</code> shared by the whole batch. A single field whose rotation
+the reference fails to orient fails the call.</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +173,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-fields~6"></span>
+              <span class="anchor" id="variable-fields~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -181,12 +183,12 @@
             <td>::</td>
             <td><strong>fields</strong></td>
             <td>
-                <p>matrix with vector fields, <code>fields(:, 1, i_vec)</code> mean vector origin, <code>fields(:, 2, i_vec)</code> mean vector targets</p>
+                <p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~22"></span>
+              <span class="anchor" id="variable-n_dims~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -201,7 +203,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_fields~3"></span>
+              <span class="anchor" id="variable-n_fields~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -211,13 +213,13 @@
             <td>::</td>
             <td><strong>n_fields</strong></td>
             <td>
-                <p>Number of vector fields</p>
+                <p>Number of vector pairs</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fields_selection_mask~3"></span>
-              logical,
+              <span class="anchor" id="variable-fields_selection_mask~4"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
@@ -231,7 +233,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_fields~3"></span>
+              <span class="anchor" id="variable-n_selected_fields~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -246,22 +248,26 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed~4"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-orientation_reference~4"></span>
+              real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(3)
+              dimension(n_dims)
             </td>
             <td>::</td>
-            <td><strong>selected_axes_for_signed</strong></td>
+            <td><strong>orientation_reference</strong></td>
             <td>
-                <p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
+                <p>Orients the plane the rotation happens in, so the angle can carry a sign. A
+rotation from one vector to another has no inherent direction above two
+dimensions -- and in RAP space not even in two, since the axes are tissues or
+factors and carry no handedness -- so the caller states which way round counts
+as positive. The sign is that of this vector's component along the rotation.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angles"></span>
+              <span class="anchor" id="variable-signed_angles~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -276,7 +282,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~288"></span>
+              <span class="anchor" id="variable-ierr~136"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -323,7 +329,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

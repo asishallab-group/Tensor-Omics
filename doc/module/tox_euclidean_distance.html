@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.8% of total for modules and submodules.">70 statements</a>
+                 title=" 0.2% of total for modules and submodules.">43 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -142,9 +142,7 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_euclidean_distance.html#proc-euclidean_distance">euclidean_distance</a>
-            <a class="list-group-item" href="../module/tox_euclidean_distance.html#proc-euclidean_distance_helper">euclidean_distance_helper</a>
             <a class="list-group-item" href="../module/tox_euclidean_distance.html#proc-distance_to_centroid">distance_to_centroid</a>
-            <a class="list-group-item" href="../module/tox_euclidean_distance.html#proc-distance_to_centroid_helper">distance_to_centroid_helper</a>
         </div>
       </div>
     </div>
@@ -163,7 +161,11 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Module with Euclidean distance computation routines for tensor omics.</p>
+      <p>Euclidean distances in gene expression space.</p>
+<p><code>euclidean_distance</code> between two expression vectors, and <code>distance_to_centroid</code> from every
+gene of a family to that family's centroid -- the distance the outlier detection and the
+relative-distance index are built on.</p>
+<p>Generated from <a href="../module/tox_euclidean_distance_impl.html">tox_euclidean_distance_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
@@ -171,8 +173,8 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='tox_euclidean_distance_impl.html'>tox_euclidean_distance_impl</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -195,13 +197,8 @@
     <div class="card-header codesum"><span class="anchor" id="proc-euclidean_distance"></span> <h3>public pure subroutine <a href='../proc/euclidean_distance.html'>euclidean_distance</a>(vec1, vec2, n_elements, result, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Compute the Euclidean distance between two vectors.
-Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/euclidean_distance_impl.html">euclidean_distance_impl</a>.</p><a href="../proc/euclidean_distance.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -246,7 +243,7 @@ Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_elements~12"></span>
+              <span class="anchor" id="variable-n_elements"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -276,7 +273,7 @@ Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~179"></span>
+              <span class="anchor" id="variable-ierr~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -286,97 +283,7 @@ Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-euclidean_distance_helper"></span> <h3>public pure subroutine <a href='../proc/euclidean_distance_helper.html'>euclidean_distance_helper</a>(vec1, vec2, n_elements, result)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>(no input validation) Compute the Euclidean distance between two vectors.
-Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-vec1~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_elements)
-            </td>
-            <td>::</td>
-            <td><strong>vec1</strong></td>
-            <td>
-<p>First expression vector</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-vec2~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_elements)
-            </td>
-            <td>::</td>
-            <td><strong>vec2</strong></td>
-            <td>
-<p>Second expression vector</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_elements~13"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_elements</strong></td>
-            <td>
-<p>Dimension of both vectors</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-result~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>result</strong></td>
-            <td>
-<p>Output scalar distance</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -390,13 +297,8 @@ Calculates the L2 norm: <code>result = sqrt(sum((vec1_i - vec2_i)**2))</code></p
     <div class="card-header codesum"><span class="anchor" id="proc-distance_to_centroid"></span> <h3>public pure subroutine <a href='../proc/distance_to_centroid.html'>distance_to_centroid</a>(n_genes, n_families, genes, centroids, gene_to_fam, distances, n_tissues, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Compute distance from each gene to its corresponding family centroid.
-For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/distance_to_centroid_impl.html">distance_to_centroid_impl</a>.</p><a href="../proc/distance_to_centroid.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -411,7 +313,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~35"></span>
+              <span class="anchor" id="variable-n_genes"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -426,7 +328,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~13"></span>
+              <span class="anchor" id="variable-n_families"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -441,7 +343,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~2"></span>
+              <span class="anchor" id="variable-genes"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -471,7 +373,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~15"></span>
+              <span class="anchor" id="variable-gene_to_fam"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -481,12 +383,15 @@ For each gene, extracts its expression vector and the centroid of its assigned f
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes</p>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~10"></span>
+              <span class="anchor" id="variable-distances"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -516,7 +421,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~180"></span>
+              <span class="anchor" id="variable-ierr~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -526,142 +431,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-distance_to_centroid_helper"></span> <h3>public pure subroutine <a href='../proc/distance_to_centroid_helper.html'>distance_to_centroid_helper</a>(n_genes, n_families, genes, centroids, gene_to_fam, distances, n_tissues)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Compute distance from each gene to its corresponding family centroid.
-For each gene, extracts its expression vector and the centroid of its assigned family, then computes the Euclidean distance between them.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~36"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_families~14"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_families</strong></td>
-            <td>
-<p>Total number of gene families</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-genes~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_tissues, n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>genes</strong></td>
-            <td>
-<p>Gene expression matrix (n_tissues × n_genes), column-major</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-centroids~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_tissues, n_families)
-            </td>
-            <td>::</td>
-            <td><strong>centroids</strong></td>
-            <td>
-<p>Family centroid matrix (n_tissues × n_families), column-major, <code>-1.0_real64</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~16"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong></td>
-            <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~11"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>Output distances array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_tissues~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_tissues</strong></td>
-            <td>
-<p>Expression vector dimension</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -694,7 +464,7 @@ For each gene, extracts its expression vector and the centroid of its assigned f
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

@@ -85,25 +85,24 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/jitu2d" target="_blank" >Jitu Daba</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">15 statements</a>
+                 title=" 0.1% of total for procedures.">21 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_utils.F90"> Source File</a>
+              <a href="../src/f42_stats.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_edf</li>
           </ol>
         </nav>
@@ -151,13 +150,11 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_edf(values, n_values, perm, unique_values, cdf_values, n_unique, ierr)  
+    <h2>public pure subroutine compute_edf(values, n_values, unique_values, cdf_values, n_unique, ierr)  
 </h2>
     
 
-    <p>Compute the Empirical Distribution Function (EDF) from pre-sorted permutation.
-Returns the sorted unique values and their cumulative frequencies in [0,1].
-Assumes <code>values</code> is already sorted by <code>values[perm]</code>. Caller controls sorting algorithm.
+    <p>Returns the sorted unique values and their cumulative frequencies in [0,1].
 The number of unique values can be determined by finding the last non-zero cdf_value.</p>
 
 
@@ -174,22 +171,22 @@ The number of unique values can be determined by finding the last non-zero cdf_v
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~7"></span>
+              <span class="anchor" id="variable-values~11"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>values</strong>(n_values)</td>
+            <td><strong>values</strong></td>
             <td>
                 <p>Array of observed data values (e.g., contributions or spikes).</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_values~5"></span>
+              <span class="anchor" id="variable-n_values~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -204,52 +201,39 @@ The number of unique values can be determined by finding the last non-zero cdf_v
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~21"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>perm</strong>(n_values)</td>
-            <td>
-                <p>Pre-sorted permutation indices (must be sorted by values[perm]).</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-unique_values"></span>
+              <span class="anchor" id="variable-unique_values~4"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>unique_values</strong>(n_values)</td>
+            <td><strong>unique_values</strong></td>
             <td>
-                <p>Sorted unique data values.</p>
+                <p>Sorted unique data values.
+The first <code>n_unique</code> elements will hold the results.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cdf_values"></span>
+              <span class="anchor" id="variable-cdf_values~4"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>cdf_values</strong>(n_values)</td>
+            <td><strong>cdf_values</strong></td>
             <td>
-                <p>Corresponding cumulative frequencies between 0 and 1.</p>
+                <p>Corresponding cumulative frequencies between 0 and 1.
+The first <code>n_unique</code> elements will hold the results.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_unique"></span>
+              <span class="anchor" id="variable-n_unique~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -264,7 +248,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~75"></span>
+              <span class="anchor" id="variable-ierr~273"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -274,7 +258,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -311,7 +295,7 @@ The number of unique values can be determined by finding the last non-zero cdf_v
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

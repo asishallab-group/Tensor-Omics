@@ -1,10 +1,15 @@
 #include <src/macros.h>
 
 !> error handling module for tensor-omics
+!|
+!| It keeps its `tox_` name because it defines Tensor Omics' error vocabulary, but it lives in
+!| `src/f42/` because f42 itself depends on it: it sits *below* f42 in the stack, not above.
 module tox_errors
+    use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
-    implicit none
+    M_IMPLICIT_NONE
     public   ! <-- expose all names (constants + procedures)
 
     !------------------------------
@@ -99,6 +104,10 @@ module tox_errors
 contains
 
     !> Creates the error code for an error and a specific argument position (if argument related)
+    !|
+    !| The position numbers the dummy arguments of the Fortran procedure that reports it. The C
+    !| binding inserts array-size and string-length arguments of its own; those are not counted,
+    !| so a position always reads against the Fortran signature at every layer.
     pure integer(int32) function create_err_code(error, arg_pos) result(ierr)
         integer(int32), intent(in)    :: error
             !! `ERR_*` error code from module constants
@@ -106,7 +115,7 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
 
         if (present(arg_pos)) then
-            ierr = 10000*arg_pos + error
+            ierr = M_ERR_ARG_POS_FACTOR*arg_pos + error
         else
             ierr = error
         end if
@@ -117,15 +126,19 @@ contains
         integer(int32), intent(in) :: ierr
             !! Error code
 
-        error = mod(ierr, 10000)
+        error = mod(ierr, M_ERR_ARG_POS_FACTOR)
     end function get_err_code
 
     !> Extracts the argument position from the error code
+    !|
+    !| Zero means the error is not argument related -- either it never was, or it crossed out of
+    !| the procedure that raised it into one whose dummy list cannot express it. See
+    !| [[tox_errors(module):clear_err_arg_pos(subroutine)]].
     pure integer(int32) function get_err_arg_pos(ierr) result(arg_pos)
         integer(int32), intent(in) :: ierr
             !! Error code
 
-        arg_pos = ierr/10000
+        arg_pos = ierr/M_ERR_ARG_POS_FACTOR
     end function get_err_arg_pos
 
     !> Maps a specific argument position in the encoded Error code to a new one. Helpful for nested subroutine calls.
@@ -141,6 +154,21 @@ contains
             ierr = create_err_code(get_err_code(ierr), new)
         end if
     end subroutine map_err_arg_pos
+
+    !> Drops the argument position from an error code, keeping the error itself.
+    !|
+    !| An `ierr` that crosses out of a procedure into a caller with a different dummy list
+    !| carries a position naming an argument the caller does not have -- and it may not even
+    !| be the callee's own position, since it propagates unchanged from whatever private
+    !| helper set it. Nothing can translate that, so the honest report is "not argument
+    !| related". Use [[tox_errors(module):map_err_arg_pos(subroutine)]] instead where the two
+    !| dummy lists really are known to correspond.
+    pure subroutine clear_err_arg_pos(ierr)
+        integer(int32), intent(inout) :: ierr
+            !! Error code
+
+        ierr = get_err_code(ierr)
+    end subroutine clear_err_arg_pos
 
     !> set the error code to OK, use at beginning of procedures
     elemental subroutine set_ok(ierr)
@@ -193,7 +221,7 @@ contains
             !! Error code
         ! `ios` is a raw Fortran iostat value (not one of this module's encoded error codes), so it
         ! must be compared directly against zero instead of going through `is_err`, which decodes its
-        ! argument via the create_err_code arg_pos scheme (mod 10000).
+        ! argument via the create_err_code arg_pos scheme (mod M_ERR_ARG_POS_FACTOR).
         if (ios /= 0) call set_err(ierr, ERR_ALLOC_FAIL)
     end subroutine check_io_stat
 
@@ -300,10 +328,10 @@ contains
     !|
     !| @note
     !| This validation is inclusive: `min<=val<=max`<br>
-    !| To achieve exclusive bounds, us above/below from f42_utils,
+    !| To achieve exclusive bounds, use above/below from f42_math_impl,
     !| like: `validate_in_range_real(x, ierr, min=above(0.0_real64), max=below(100.0_real64))` for `0<x<100`
     !| @endnote
-    pure subroutine validate_in_range_real(val, ierr, arg_pos, min, max, sentinel)
+    pure subroutine validate_in_range_real(val, ierr, arg_pos, min, max, sentinel, allow_nan, allow_infinite)
         real(real64), intent(in), optional :: val
             !! value to be validated
         integer(int32), intent(inout) :: ierr
@@ -316,12 +344,21 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
         real(real64), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
+        logical(c_bool), intent(in), optional :: allow_nan
+            !! Permit NaN, opting out of the default finiteness check. Default `.false.`
+        logical(c_bool), intent(in), optional :: allow_infinite
+            !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         real(real64) :: actual_min, actual_max
+        logical(c_bool) :: nan_ok, inf_ok
+
+        M_DEFAULT_VAL(allow_nan, nan_ok, .false.)
+        M_DEFAULT_VAL(allow_infinite, inf_ok, .false.)
 
         if (present(val)) then
 
             if (ieee_is_nan(val)) then
+                if (nan_ok) return
                 if (present(sentinel)) then
                     if (ieee_is_nan(sentinel)) return
                 end if
@@ -329,6 +366,7 @@ contains
                 call set_err_once(ierr, ERR_NAN_INF, arg_pos)
 
             else if (.not. ieee_is_finite(val)) then
+                if (inf_ok) return
                 if (present(sentinel)) then
                     if (val == sentinel) return
                 end if
@@ -349,7 +387,8 @@ contains
     end subroutine validate_in_range_real
 
     !> Validates min<=e<=max AND e/=NaN for all elements e of an array
-    pure subroutine validate_all_in_range_real(array, n_elements, ierr, arg_pos, min, max, sentinel)
+    pure subroutine validate_all_in_range_real(array, n_elements, ierr, arg_pos, min, max, sentinel, &
+                                               allow_nan, allow_infinite)
         integer(int32), intent(in) :: n_elements
             !! Size of `array`
         real(real64), dimension(n_elements), intent(in), optional :: array
@@ -364,6 +403,10 @@ contains
             !! Position of the validated argument that triggered the error, default: 0 -> not argument related
         real(real64), intent(in), optional :: sentinel
             !! Optional sentinel value to allow additionally
+        logical(c_bool), intent(in), optional :: allow_nan
+            !! Permit NaN, opting out of the default finiteness check. Default `.false.`
+        logical(c_bool), intent(in), optional :: allow_infinite
+            !! Permit +/-infinity, opting out of the default finiteness check. Default `.false.`
 
         integer(int32) :: i_element
 
@@ -372,7 +415,8 @@ contains
             ! scalar read-modify-written via set_err_once on the (rare/exceptional) error path --
             ! writing it from concurrent iterations would be an unsynchronized data race.
             do i_element = 1, n_elements
-                call validate_in_range_real(array(i_element), ierr, arg_pos, min, max, sentinel)
+                call validate_in_range_real(array(i_element), ierr, arg_pos, min, max, sentinel, &
+                                            allow_nan, allow_infinite)
             end do
         end if
     end subroutine validate_all_in_range_real

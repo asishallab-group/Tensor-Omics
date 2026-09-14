@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">35 statements</a>
+                 title=" 0.2% of total for procedures.">36 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_data_integration_jsd.F90"> Source File</a>
+              <a href="../src/tox_data_integration_jsd_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_integration_jsd.f90.html'>tox_data_integration_jsd.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_integration_jsd_c.f90.html'>tox_data_integration_jsd_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_data_integration_jsd_c.html'>tox_data_integration_jsd_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">determine_shared_residual_range_expert_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine determine_shared_residual_range_expert_c(abs_residual_pool, abs_residual_pool_perm, pool_size, residual_range_quantile, shared_residual_range, ierr) bind(C, name="determine_shared_residual_range_expert_c")  
+    <h2>public  subroutine determine_shared_residual_range_expert_c(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile, ierr) bind(C, name="determine_shared_residual_range_expert_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_data_integration_jsd.html'>tox_data_integration_jsd</a></li>
               </ul>
             </li>
         </ul>
@@ -167,7 +166,8 @@
     </div>
 
 
-    <p>C-compatible wrapper for <a href="../interface/determine_shared_residual_range.html">determine_shared_residual_range</a></p>
+    <p>This takes the pool already built; <code>determine_study_shared_residual_range</code> builds it from
+the neighborhood residuals of two studies first, if that is what is at hand.</p>
 
 
     <h3>Arguments</h3>
@@ -183,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-abs_residual_pool~4"></span>
+              <span class="anchor" id="variable-abs_residual_pool~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -193,12 +193,13 @@
             <td>::</td>
             <td><strong>abs_residual_pool</strong></td>
             <td>
-                <p>The absolute residual values of the concatenated S1,S2 residuals</p>
+                <p>The absolute residual values of the concatenated S1,S2 residuals
+NaN is permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-abs_residual_pool_perm~3"></span>
+              <span class="anchor" id="variable-abs_residual_pool_perm~4"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -208,12 +209,14 @@
             <td>::</td>
             <td><strong>abs_residual_pool_perm</strong></td>
             <td>
-                <p>The permutation vector that sorts <code>abs_residual_pool</code></p>
+                <p>The permutation vector that sorts <code>abs_residual_pool</code>
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>pool_size</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pool_size~5"></span>
+              <span class="anchor" id="variable-pool_size~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -228,22 +231,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-residual_range_quantile~4"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>residual_range_quantile</strong></td>
-            <td>
-                <p>Quantile in [0,1] for determining the residual range, default: 0.95</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-shared_residual_range~12"></span>
+              <span class="anchor" id="variable-shared_residual_range~26"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -258,7 +246,25 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~31"></span>
+              <span class="anchor" id="variable-residual_range_quantile~8"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>residual_range_quantile</strong></td>
+            <td>
+                <p>Quantile in [0,1] for determining the residual range
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.
+The default value is <code>0.95</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~388"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -268,7 +274,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -305,7 +311,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

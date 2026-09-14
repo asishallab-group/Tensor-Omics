@@ -9,11 +9,12 @@
 !| `shift_vectors` was actually derived from `expression_vectors` and `family_centroids` as
 !| expected. [[tox_data_validation(module):validate_all_data(subroutine)]] runs the full suite.
 module tox_data_validation
-    use safeguard
+    use f42_safeguard
     use iso_fortran_env, only: real64, int32
+    use iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, is_ok, set_err_once, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH
-    use config, only: DEBUG
-    implicit none
+    use f42_config, only: DEBUG
+    M_IMPLICIT_NONE
     private
 
     ! Public procedures
@@ -32,8 +33,9 @@ module tox_data_validation
 
 contains
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Validate full data structure
+    !> M_EXPORT_C
+    !| summary: Validate full data structure
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, &
                                        gene_to_fam, expression_vectors, family_centroids, &
                                        shift_vectors, ierr)
@@ -125,8 +127,9 @@ contains
 
     end subroutine validate_data_structure
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Validate gene to family mapping
+    !> M_EXPORT_C
+    !| summary: Validate gene to family mapping
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_gene_to_family_mapping(gene_to_fam, n_families, ierr)
         integer(int32), intent(in) :: gene_to_fam(:)
             !! gene to family mapping
@@ -169,12 +172,13 @@ contains
 
     end subroutine validate_gene_to_family_mapping
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Validate expresssion data
+    !> M_EXPORT_C
+    !| summary: Validate expresssion data
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_expression_data(expression_vectors, check_non_negative, ierr)
         real(real64), intent(in) :: expression_vectors(:, :)
             !! Expression vectors
-        logical, intent(in) :: check_non_negative
+        logical(c_bool), intent(in) :: check_non_negative
             !! Defines if non negative should be checked
         integer(int32), intent(out) :: ierr
             !! Error code
@@ -196,8 +200,9 @@ contains
 
     end subroutine validate_expression_data
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Validate the family centroids
+    !> M_EXPORT_C
+    !| summary: Validate the family centroids
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_family_centroids(family_centroids, ierr)
         real(real64), intent(in) :: family_centroids(:, :)
             !! Family centroids array
@@ -212,8 +217,9 @@ contains
 
     end subroutine validate_family_centroids
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Validates shift vectors
+    !> M_EXPORT_C
+    !| summary: Validates shift vectors
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, &
                                       gene_to_fam, n_samples, ierr)
         real(real64), intent(in) :: shift_vectors(:, :)
@@ -365,8 +371,9 @@ contains
 
     end subroutine check_for_nan_inf
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Validate that no string appears more than once
+    !> M_EXPORT_C
+    !| summary: Validate that no string appears more than once
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_string_array_uniqueness(str_arr, ierr)
         use f42_xxh3_hashmap, only: hashset_type, hashset_create, hashset_put, hashset_destroy
         character(len=*), intent(in) :: str_arr(:)
@@ -418,8 +425,9 @@ contains
 
     end subroutine validate_empty_strings
 
-    !> AUTHOR_AARON_SCHROEDER
-    !| Comprehensive validation routine, combining all checks
+    !> M_EXPORT_C
+    !| summary: Comprehensive validation routine, combining all checks
+    !| AUTHOR_AARON_SCHROEDER
     subroutine validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, &
                                  gene_to_fam, expression_vectors, family_centroids, &
                                  shift_vectors, ierr, check_uniqueness, check_shift_consistency)
@@ -443,12 +451,14 @@ contains
             !! shift vectors
         integer(int32), intent(out) :: ierr
             !! error code
-        logical, intent(in), optional :: check_uniqueness
-            !! Check ID arrays for uniqueness
-        logical, intent(in), optional :: check_shift_consistency
-            !! Check consitency of shift array
+        logical(c_bool), intent(in), optional :: check_uniqueness
+            !! Check ID arrays for uniqueness.
+            !! DM_DEFAULT(.true.)
+        logical(c_bool), intent(in), optional :: check_shift_consistency
+            !! Check consitency of shift array.
+            !! DM_DEFAULT(.true.)
 
-        logical :: do_check_uniqueness, do_check_shift_consistency
+        logical(c_bool) :: do_check_uniqueness, do_check_shift_consistency
 
         ! Set defaults for optional parameters
         do_check_uniqueness = .true.
@@ -470,7 +480,7 @@ contains
         if (.not. is_ok(ierr)) return
 
         ! 3. Check expression data
-        call validate_expression_data(expression_vectors, .true., ierr)  ! Check for non-negative
+        call validate_expression_data(expression_vectors, .true._c_bool, ierr)  ! Check for non-negative
         if (.not. is_ok(ierr)) return
 
         ! 4. Check family centroids
@@ -504,322 +514,3 @@ contains
     end subroutine validate_all_data
 
 end module tox_data_validation
-
-! ---- C bindings for validation routines ----
-
-!> C binding to validate gene to family mapping
-subroutine validate_gene_to_family_mapping_c(gene_to_fam, n_genes, n_families, ierr) bind(C, name="validate_gene_to_family_mapping_c")
-    use iso_c_binding, only: c_int
-    use tox_data_validation, only: validate_gene_to_family_mapping
-    use tox_errors, only: set_ok
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Pointer to gene to family array
-    integer(c_int), intent(in), target :: n_families
-        !! Numbero of families
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(gene_to_fam)
-
-    call set_ok(ierr)
-    call validate_gene_to_family_mapping(gene_to_fam, n_families, ierr)
-end subroutine validate_gene_to_family_mapping_c
-
-!> C Binding to validate expression data
-subroutine validate_expression_data_c(expression_vectors, n_genes, n_samples, check_non_negative, ierr) bind(C, name="validate_expression_data_c")
-    use iso_c_binding, only: c_int, c_double
-    use tox_data_validation, only: validate_expression_data
-    use tox_errors, only: set_ok
-    use tox_conversions, only: c_int_as_logical
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes
-    integer(c_int), intent(in), target :: n_samples
-        !! Number of samples
-    real(c_double), intent(in), target :: expression_vectors(n_samples, n_genes)
-        !! Pointer to expression vectors array
-    integer(c_int), intent(in), target :: check_non_negative
-        !! Define if expression data should be checked for negative values
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    logical :: l_check
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(check_non_negative)
-    M_CHECK_NON_NULL(expression_vectors)
-
-    call set_ok(ierr)
-    call c_int_as_logical(check_non_negative, l_check)
-    call validate_expression_data(expression_vectors, l_check, ierr)
-end subroutine validate_expression_data_c
-
-!> C binding to validate family centroids
-subroutine validate_family_centroids_c(family_centroids, n_families, n_samples, ierr) bind(C, name="validate_family_centroids_c")
-    use iso_c_binding, only: c_int, c_double
-    use tox_data_validation, only: validate_family_centroids
-    use tox_errors, only: set_ok
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_families
-        !! Number of families
-    integer(c_int), intent(in), target :: n_samples
-        !! Number of samples
-    real(c_double), intent(in), target :: family_centroids(n_samples, n_families)
-        !! Pointer to family_centroids array
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(family_centroids)
-
-    call set_ok(ierr)
-    call validate_family_centroids(family_centroids, ierr)
-end subroutine validate_family_centroids_c
-
-!> C Binding to validate shift vectors
-subroutine validate_shift_vectors_c(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_genes, n_samples, n_families, ierr) bind(C, name="validate_shift_vectors_c")
-    use iso_c_binding, only: c_int, c_double
-    use tox_data_validation, only: validate_shift_vectors
-    use tox_errors, only: set_ok
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes
-    integer(c_int), intent(in), target :: n_samples
-        !! Number of samples
-    integer(c_int), intent(in), target :: n_families
-        !! Number of families
-    real(c_double), intent(in), target :: shift_vectors(2*n_samples, n_genes)
-        !! Pointer to shift vectors array
-    real(c_double), intent(in), target :: expression_vectors(n_samples, n_genes)
-        !! Pointer to expression vectors array
-    real(c_double), intent(in), target :: family_centroids(n_samples, n_families)
-        !! Pointer to family centroids array
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Pointer to gene to family array
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(shift_vectors)
-    M_CHECK_NON_NULL(expression_vectors)
-    M_CHECK_NON_NULL(family_centroids)
-    M_CHECK_NON_NULL(gene_to_fam)
-
-    call set_ok(ierr)
-
-    call validate_shift_vectors(shift_vectors, expression_vectors, family_centroids, gene_to_fam, n_samples, ierr)
-end subroutine validate_shift_vectors_c
-
-!> C Binding to validate string array uniqueness
-subroutine validate_string_array_uniqueness_c(str_arr, str_len, n_strings, ierr) bind(C, name="validate_string_array_uniqueness_c")
-    use iso_c_binding, only: c_int, c_char
-    use tox_data_validation, only: validate_string_array_uniqueness
-    use tox_errors, only: set_ok, is_ok, set_err_once, ERR_ALLOC_FAIL
-    use tox_conversions, only: c_char_1d_as_string
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: str_len
-        !! Length of the strings
-    integer(c_int), intent(in), target :: n_strings
-        !! Number of strings
-    character(kind=c_char, len=1), intent(in), target :: str_arr(str_len, n_strings)
-        !! Pointer to string array
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    character(len=:), allocatable :: temp_str_arr(:)
-    character(len=:), allocatable :: temp_str
-    integer :: i, ios
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(str_len)
-    M_CHECK_NON_NULL(n_strings)
-    M_CHECK_NON_NULL(str_arr)
-
-    call set_ok(ierr)
-    allocate (character(len=str_len) :: temp_str_arr(n_strings), stat=ios)
-    if (.not. is_ok(ios)) then
-        call set_err_once(ierr, ERR_ALLOC_FAIL)
-        return
-    end if
-    do i = 1, n_strings
-        call c_char_1d_as_string(str_arr(:, i), temp_str, ierr)
-        if (.not. is_ok(ierr)) return
-        temp_str_arr(i) = temp_str
-    end do
-    call validate_string_array_uniqueness(temp_str_arr, ierr)
-end subroutine validate_string_array_uniqueness_c
-
-!> C Binding to validate data structure
-subroutine validate_data_structure_c(n_genes, n_families, n_samples, &
-                                     gene_ids_raw, gene_ids_len, &
-                                     gene_family_ids_raw, fam_len, &
-                                     gene_to_fam, expression_vectors, family_centroids, &
-                                     shift_vectors, ierr) bind(C, name="validate_data_structure_c")
-    use iso_c_binding, only: c_int, c_double, c_char
-    use tox_data_validation, only: validate_data_structure
-    use tox_errors, only: set_ok, is_ok, set_err_once, ERR_ALLOC_FAIL
-    use tox_conversions, only: c_char_1d_as_string
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Number of families
-    integer(c_int), intent(in), target :: n_samples
-        !! Number of samples
-    integer(c_int), intent(in), target :: gene_ids_len
-        !! Length of gene ids
-    integer(c_int), intent(in), target :: fam_len
-        !! Length of the family indices
-    character(kind=c_char, len=1), intent(in), target :: gene_ids_raw(gene_ids_len, n_genes)
-        !! Pointer to gene ids array
-    character(kind=c_char, len=1), intent(in), target :: gene_family_ids_raw(fam_len, n_families)
-        !! Pointer to family ids array
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Pointer to gene to family array
-    real(c_double), intent(in), target :: expression_vectors(n_samples, n_genes)
-        !! Pointer to expression vectors
-    real(c_double), intent(in), target :: family_centroids(n_samples, n_families)
-        !! Pointer to family centroids
-    real(c_double), intent(in), target :: shift_vectors(2*n_samples, n_genes)
-        !! Pointer to shift vectors
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    character(len=:), allocatable :: temp_str
-    character(len=:), allocatable :: gene_ids(:)
-    character(len=:), allocatable :: gene_family_ids(:)
-    integer :: i, ios, ios2
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(gene_ids_len)
-    M_CHECK_NON_NULL(fam_len)
-    M_CHECK_NON_NULL(gene_ids_raw)
-    M_CHECK_NON_NULL(gene_family_ids_raw)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(expression_vectors)
-    M_CHECK_NON_NULL(family_centroids)
-    M_CHECK_NON_NULL(shift_vectors)
-
-    call set_ok(ierr)
-
-    allocate (character(len=gene_ids_len) :: gene_ids(n_genes), stat=ios)
-    allocate (character(len=fam_len) :: gene_family_ids(n_families), stat=ios2)
-
-    if (.not. is_ok(ios) .or. .not. is_ok(ios2)) then
-        call set_err_once(ierr, ERR_ALLOC_FAIL)
-        return
-    end if
-
-    do i = 1, n_genes
-        call c_char_1d_as_string(gene_ids_raw(:, i), temp_str, ierr)
-        if (.not. is_ok(ierr)) return
-        gene_ids(i) = temp_str
-    end do
-    do i = 1, n_families
-        call c_char_1d_as_string(gene_family_ids_raw(:, i), temp_str, ierr)
-        if (.not. is_ok(ierr)) return
-        gene_family_ids(i) = temp_str
-    end do
-
-    call validate_data_structure(n_genes, n_families, n_samples, gene_ids, gene_family_ids, &
-                                 gene_to_fam, expression_vectors, family_centroids, shift_vectors, ierr)
-end subroutine validate_data_structure_c
-
-!> C Binding to validate all data
-subroutine validate_all_data_c(n_genes, n_families, n_samples, &
-                               gene_ids_raw, gene_len, &
-                               gene_family_ids_raw, fam_len, &
-                               gene_to_fam, expression_vectors, family_centroids, &
-                               shift_vectors, ierr) bind(C, name="validate_all_data_c")
-    use iso_c_binding, only: c_int, c_double, c_char
-    use tox_data_validation, only: validate_all_data
-    use tox_errors, only: set_ok, is_ok, set_err_once, ERR_ALLOC_FAIL
-    use tox_conversions, only: c_char_1d_as_string
-    M_USE_NULL_VALIDATION
-    implicit none
-    integer(c_int), intent(in), target :: n_genes
-        !! Number of genes
-    integer(c_int), intent(in), target :: n_families
-        !! Number of families
-    integer(c_int), intent(in), target :: n_samples
-        !! Number of samples
-    integer(c_int), intent(in), target :: gene_len
-        !! Length of the gene ids
-    character(kind=c_char, len=1), intent(in), target :: gene_ids_raw(gene_len, n_genes)
-        !! Pointer to gene ids array
-    integer(c_int), intent(in), target :: fam_len
-        !! Length of the family ids
-    character(kind=c_char, len=1), intent(in), target :: gene_family_ids_raw(fam_len, n_families)
-        !! pointer to family ids array
-    integer(c_int), intent(in), target :: gene_to_fam(n_genes)
-        !! Pointer to gene to family mapping
-    real(c_double), intent(in), target :: expression_vectors(n_samples, n_genes)
-        !! Pointer to expression vectors
-    real(c_double), intent(in), target :: family_centroids(n_samples, n_families)
-        !! Pointer to family centroids
-    real(c_double), intent(in), target :: shift_vectors(2*n_samples, n_genes)
-        !! Pointer to shift vectors
-    integer(c_int), intent(out), target :: ierr
-        !! Error code
-
-    character(len=:), allocatable :: temp_str
-    character(len=:), allocatable :: gene_ids(:)
-    character(len=:), allocatable :: gene_family_ids(:)
-    integer :: i, ios, ios2
-
-    M_CHECK_IERR_NON_NULL
-    M_CHECK_NON_NULL(n_genes)
-    M_CHECK_NON_NULL(n_families)
-    M_CHECK_NON_NULL(n_samples)
-    M_CHECK_NON_NULL(gene_len)
-    M_CHECK_NON_NULL(fam_len)
-    M_CHECK_NON_NULL(gene_ids_raw)
-    M_CHECK_NON_NULL(gene_family_ids_raw)
-    M_CHECK_NON_NULL(gene_to_fam)
-    M_CHECK_NON_NULL(expression_vectors)
-    M_CHECK_NON_NULL(family_centroids)
-    M_CHECK_NON_NULL(shift_vectors)
-
-    call set_ok(ierr)
-
-    allocate (character(len=gene_len) :: gene_ids(n_genes), stat=ios)
-    allocate (character(len=fam_len) :: gene_family_ids(n_families), stat=ios2)
-    if (.not. is_ok(ios) .or. .not. is_ok(ios2)) then
-        call set_err_once(ierr, ERR_ALLOC_FAIL)
-        return
-    end if
-    do i = 1, n_genes
-        call c_char_1d_as_string(gene_ids_raw(:, i), temp_str, ierr)
-        if (.not. is_ok(ierr)) return
-        gene_ids(i) = temp_str
-    end do
-    do i = 1, n_families
-        call c_char_1d_as_string(gene_family_ids_raw(:, i), temp_str, ierr)
-        if (.not. is_ok(ierr)) return
-        gene_family_ids(i) = temp_str
-    end do
-    call validate_all_data(n_genes, n_families, n_samples, gene_ids, gene_family_ids, &
-                           gene_to_fam, expression_vectors, family_centroids, shift_vectors, ierr)
-end subroutine validate_all_data_c

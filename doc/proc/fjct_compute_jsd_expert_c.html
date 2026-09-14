@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.9% of total for procedures.">124 statements</a>
+                 title=" 0.9% of total for procedures.">167 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_data_integration_per_family.F90"> Source File</a>
+              <a href="../src/tox_data_integration_per_family_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_integration_per_family.f90.html'>tox_data_integration_per_family.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_integration_per_family_c.f90.html'>tox_data_integration_per_family_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_data_integration_per_family_c.html'>tox_data_integration_per_family_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">fjct_compute_jsd_expert_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine fjct_compute_jsd_expert_c(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, neighbor_mask_S1, neighbor_mask_S2, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, ierr) bind(C, name="fjct_compute_jsd_expert_c")  
+    <h2>public  subroutine fjct_compute_jsd_expert_c(family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, neighborhood_genes_S1, neighborhood_genes_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, total_included_n_reps, global_js_divergence, weights, tmp_neighbor_mask_S1, tmp_neighbor_mask_S2, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, ierr) bind(C, name="fjct_compute_jsd_expert_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_data_integration_per_family.html'>tox_data_integration_per_family</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +166,8 @@
     </div>
 
 
-    <p>C-compatible wrapper for <a href="../interface/fjct_compute_jsd.html">fjct_compute_jsd</a></p>
+    <p>Reuses the same conditioning-on-mean-expression pipeline as the global gJCT, but restricts
+the residual samples to the genes belonging to the family <code>family_idx</code>.</p>
 
 
     <h3>Arguments</h3>
@@ -184,7 +183,85 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s1~15"></span>
+              <span class="anchor" id="variable-family_idx~8"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>family_idx</strong></td>
+            <td>
+                <p>Index of the family that should be analyzed
+The minimum valid value is <code>1_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family_s1~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S1), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family_S1</strong></td>
+            <td>
+                <p>Mapping for study 1: Each index (gene) holds the index of its family
+The minimum valid value is <code>0_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family_s2~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S2), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family_S2</strong></td>
+            <td>
+                <p>Mapping for study 2: Each index (gene) holds the index of its family
+The minimum valid value is <code>0_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s1~7"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S1</strong></td>
+            <td>
+                <p>Number of genes in study 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s2~7"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S2</strong></td>
+            <td>
+                <p>Number of genes in study 2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals_s1~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -194,13 +271,13 @@
             <td>::</td>
             <td><strong>neighborhood_residuals_S1</strong></td>
             <td>
-                <p>Computed neighborhood residuals for study 1 (<a href="../interface/construct_neighborhoods.html">construct_neighborhoods</a>),
-NaN is explicitly allowed for missing values</p>
+                <p>Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighborhood_residuals_s2~15"></span>
+              <span class="anchor" id="variable-neighborhood_residuals_s2~13"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -210,13 +287,47 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>neighborhood_residuals_S2</strong></td>
             <td>
-                <p>Computed neighborhood residuals for study 2 (<a href="../interface/construct_neighborhoods.html">construct_neighborhoods</a>),
-NaN is explicitly allowed for missing values</p>
+                <p>Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
+NaN is permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s1~21"></span>
+              <span class="anchor" id="variable-neighborhood_genes_s1~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_genes_S1</strong></td>
+            <td>
+                <p>Indices of the selected neighborhood genes of study 1
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes_S1</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_genes_s2~3"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_genes_S2</strong></td>
+            <td>
+                <p>Indices of the selected neighborhood genes of study 2
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes_S2</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s1~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -231,7 +342,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_reps_s2~21"></span>
+              <span class="anchor" id="variable-n_reps_s2~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -246,7 +357,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_neighbors~37"></span>
+              <span class="anchor" id="variable-n_neighbors~20"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -261,7 +372,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~76"></span>
+              <span class="anchor" id="variable-n_points~54"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -276,37 +387,7 @@ NaN is explicitly allowed for missing values</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neighbor_mask_s1~13"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_neighbors, n_points), target
-            </td>
-            <td>::</td>
-            <td><strong>neighbor_mask_S1</strong></td>
-            <td>
-                <p>Optional mask to exclude specific neighbors from study 1</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-neighbor_mask_s2~13"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_neighbors, n_points), target
-            </td>
-            <td>::</td>
-            <td><strong>neighbor_mask_S2</strong></td>
-            <td>
-                <p>Optional mask to exclude specific neighbors from study 2</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_bins~27"></span>
+              <span class="anchor" id="variable-n_bins~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -316,12 +397,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>n_bins</strong></td>
             <td>
-                <p>Number of equally sized histogram bins</p>
+                <p>Number of equally sized histogram bins used for the studies</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shared_residual_range~30"></span>
+              <span class="anchor" id="variable-shared_residual_range~18"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -331,12 +412,13 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>shared_residual_range</strong></td>
             <td>
-                <p>Shared residual range</p>
+                <p>Computed residual range for both studies
+The minimum valid value is <code>0.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-js_divergences~18"></span>
+              <span class="anchor" id="variable-js_divergences~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -346,12 +428,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>js_divergences</strong></td>
             <td>
-                <p>Jensen-Shannon divergence per reference point</p>
+                <p>Jensen-Shannon divergence per reference point, computed for studies S1 and S2</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s1~13"></span>
+              <span class="anchor" id="variable-included_n_reps_s1~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -361,12 +443,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>included_n_reps_S1</strong></td>
             <td>
-                <p>Included replicates S1</p>
+                <p>Count of non-NaN residuals (included ones) in study 1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-included_n_reps_s2~13"></span>
+              <span class="anchor" id="variable-included_n_reps_s2~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -376,12 +458,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>included_n_reps_S2</strong></td>
             <td>
-                <p>Included replicates S2</p>
+                <p>Count of non-NaN residuals (included ones) in study 2</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_included_n_reps~7"></span>
+              <span class="anchor" id="variable-total_included_n_reps~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -391,12 +473,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>total_included_n_reps</strong></td>
             <td>
-                <p>Total included replicates</p>
+                <p>Total number of included replicates from both studies (<script type="math/tex"> \text{sum}(included\_n\_reps\_S1) + \text{sum}(included\_n\_reps\_S2) </script>)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-global_js_divergence~13"></span>
+              <span class="anchor" id="variable-global_js_divergence~7"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -406,12 +488,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>global_js_divergence</strong></td>
             <td>
-                <p>Weighted global JSD</p>
+                <p>Weighted global Jensen-Shannon divergence</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~13"></span>
+              <span class="anchor" id="variable-weights~15"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -421,12 +503,42 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>weights</strong></td>
             <td>
-                <p>Weights</p>
+                <p>Weights used for calculating the global weighted Jensen-Shannon divergence <code>global_js_divergence</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s1~11"></span>
+              <span class="anchor" id="variable-tmp_neighbor_mask_s1~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_neighbor_mask_S1</strong></td>
+            <td>
+                <p>Work array for the mask selecting study 1's neighbors that belong to <code>family_idx</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_neighbor_mask_s2~2"></span>
+              logical(kind=c_bool),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points), target
+            </td>
+            <td>::</td>
+            <td><strong>tmp_neighbor_mask_S2</strong></td>
+            <td>
+                <p>Work array for the mask selecting study 2's neighbors that belong to <code>family_idx</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pmf_s1~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -434,14 +546,14 @@ NaN is explicitly allowed for missing values</p>
               dimension(n_points, n_bins), target
             </td>
             <td>::</td>
-            <td><strong>pmf_S1</strong></td>
+            <td><strong>tmp_pmf_S1</strong></td>
             <td>
-                <p>PMF S1</p>
+                <p>Work array for study 1's normalized histogram counts</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pmf_s2~11"></span>
+              <span class="anchor" id="variable-tmp_pmf_s2~6"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -449,14 +561,14 @@ NaN is explicitly allowed for missing values</p>
               dimension(n_points, n_bins), target
             </td>
             <td>::</td>
-            <td><strong>pmf_S2</strong></td>
+            <td><strong>tmp_pmf_S2</strong></td>
             <td>
-                <p>PMF S2</p>
+                <p>Work array for study 2's normalized histogram counts</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_counts~11"></span>
+              <span class="anchor" id="variable-tmp_counts~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -466,12 +578,12 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>tmp_counts</strong></td>
             <td>
-                <p>Temporary histogram counts</p>
+                <p>Work array for the histogram counts</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~276"></span>
+              <span class="anchor" id="variable-ierr~322"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -481,7 +593,7 @@ NaN is explicitly allowed for missing values</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -518,7 +630,7 @@ NaN is explicitly allowed for missing values</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">26 statements</a>
+                 title=" 0.2% of total for procedures.">40 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,11 +150,10 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, ierr, max_angle, gain_gamma)  
+    <h2>public pure subroutine detect_dosage_effect(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, max_angle, gain_gamma, ierr)  
 </h2>
     
 
-    <p>Identifies subsets of paralogs with small angle to the <code>ancestor</code> (max_angle) and sum to a magnitude significantly exceeding <code>norm(ancestor)</code> (gain)</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +169,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor"></span>
+              <span class="anchor" id="variable-ancestor~7"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -186,7 +184,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~6"></span>
+              <span class="anchor" id="variable-genes~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -201,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~66"></span>
+              <span class="anchor" id="variable-n_genes~51"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -216,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~27"></span>
+              <span class="anchor" id="variable-n_dims~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -231,7 +229,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -241,12 +239,12 @@
             <td>::</td>
             <td><strong>filtered_paralogs_mask</strong></td>
             <td>
-                <p>bit mask with genes' indices kept by pattern set to 1, else 0. Use <code>filter_paralogs_by_pattern</code> for its calculation</p>
+                <p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks"></span>
+              <span class="anchor" id="variable-n_mask_chunks~15"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -256,12 +254,13 @@
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation</p>
+                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
+The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results"></span>
+              <span class="anchor" id="variable-n_results~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -276,7 +275,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_subset_size"></span>
+              <span class="anchor" id="variable-max_subset_size~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -286,12 +285,20 @@
             <td>::</td>
             <td><strong>max_subset_size</strong></td>
             <td>
-                <p>maximum subset size of checked gene subsets. <strong><em>USE <code>calc_work_arr_paralog_subsets_size</code> TO DETERMINE THIS NUMBER</em></strong></p>
+                <p>maximum subset size of checked gene subsets. Too large a value is capped to the
+maximum valid size. The bindings cap it automatically while sizing the work
+array; a Fortran caller caps it by calling
+<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
+Zero is in range and means there is no subset to check -- the sizing routine reports
+it whenever the filtered families hold a single gene each. It reports a work array
+of zero slots along with it, which this routine does not accept, so a caller that
+gets zero back has nothing to detect and should not call here at all.
+The minimum valid value is <code>0_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -310,7 +317,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -320,42 +327,48 @@
             <td>::</td>
             <td><strong>n_paralog_subsets</strong></td>
             <td>
-                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>. <strong><em>USE <code>calc_work_arr_paralog_subsets_size</code> TO DETERMINE THIS NUMBER</em></strong></p>
+                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_active_mask"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_active_mask</strong></td>
-            <td>
-                <p>working array to hold the extended subsets</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_paralog_vector"></span>
+              <span class="anchor" id="variable-max_angle~4"></span>
               real(kind=real64),
             </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_dims)
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
             </td>
             <td>::</td>
-            <td><strong>tmp_paralog_vector</strong></td>
+            <td><strong>max_angle</strong></td>
             <td>
-                <p>vector used for pruning subsets</p>
+                <p>maximum angle in radians <code>0&lt;=angle&lt;=Pi</code> that a subset candidate must not exceed, otherwise pruned
+The default value is <code>4.0_real64*atan(1.0_real64)</code>.
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>PI</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~300"></span>
+              <span class="anchor" id="variable-gain_gamma~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>gain_gamma</strong></td>
+            <td>
+                <p>positive magnitude gain for dosage effect
+The default value is <code>0.1_real64</code>.
+The minimum valid value is <code>above(0.0_real64)</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~203"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -366,36 +379,6 @@
             <td><strong>ierr</strong></td>
             <td>
                 <p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_angle"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>max_angle</strong></td>
-            <td>
-                <p>in dosage mode maximum angle in radians <code>0&lt;=angle&lt;=Pi</code> that a subset candidate must not exceed, otherwise pruned, default is Pi</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gain_gamma"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>gain_gamma</strong></td>
-            <td>
-                <p>positive magnitude gain for dosage effect, default 0.1</p>
             </td>
         </tr>
     </tbody>
@@ -432,7 +415,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
