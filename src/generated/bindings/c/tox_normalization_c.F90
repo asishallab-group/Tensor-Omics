@@ -79,7 +79,9 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
@@ -165,7 +167,9 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         integer(c_int), intent(in), target :: int_workspace_size
@@ -694,7 +698,9 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
@@ -706,7 +712,7 @@ contains
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
         integer(c_int), intent(out), target :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)

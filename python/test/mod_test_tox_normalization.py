@@ -26,7 +26,6 @@ from tensor_omics.error_handling import (
     ERR_DIVISION_BY_ZERO,
     ERR_EMPTY_INPUT,
     ERR_INVALID_INPUT,
-    ERR_SIZE_MISMATCH,
 )
 
 N_REPLICATES, N_GENES = 6, 10
@@ -73,7 +72,7 @@ def test_normalization_pipeline():
 
 def test_normalization_pipeline_rejects_reps_not_summing_to_the_replicates():
     assert_error(lambda: normalization_pipeline(_expr(), np.array([3, 2], dtype=np.int32)),
-                 "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_SIZE_MISMATCH)
+                 "reps_per_tissue sums to 5, but expr has 6 replicates", ERR_INVALID_INPUT)
 
 
 def test_normalize_by_std_dev():
@@ -131,7 +130,7 @@ def test_calc_tiss_avg_rejects_reps_not_summing_to_the_replicates():
     # rows, 7 would read past the end of the matrix
     for reps_per_tissue in ([3, 2], [3, 4]):
         assert_error(lambda: calc_tiss_avg(np.array(reps_per_tissue, dtype=np.int32), _expr()),
-                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_SIZE_MISMATCH)
+                     f"reps_per_tissue {reps_per_tissue}, but expr has 6 replicates", ERR_INVALID_INPUT)
 
 
 def test_calc_fchange():

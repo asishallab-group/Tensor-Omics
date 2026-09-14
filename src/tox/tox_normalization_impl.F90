@@ -16,7 +16,7 @@ module tox_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
-                          validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH, ERR_NAN_INF
+                          validate_in_range_real, validate_all_in_range_real, ERR_NAN_INF
     use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
     use f42_vector_impl, only: norm
     use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
@@ -73,8 +73,11 @@ contains
 
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        ! DM_MIN and DM_MAX of one expression say "equal to" until the generator has DM_EQUALS (#203)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! DM_MIN(sum(reps_per_tissue))
+            !! DM_MAX(sum(reps_per_tissue))
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
@@ -161,18 +164,12 @@ contains
         ! Error handling
         call set_ok(ierr)
 
-        ! sum(reps_per_tissue) must equal n_replicates -- a relation between arguments.
-        if (sum(reps_per_tissue) /= n_replicates) then
-            call set_err(ierr, ERR_SIZE_MISMATCH)
-            return
-        end if
-
         M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
         ! Reuse spare columns of the (n_genes, n_tissues) output buffer as scratch space for the
         ! per-gene LOESS x/y/yhat vectors (each length n_genes) below, instead of reading the
         ! passed-in work vectors, since those columns are still unwritten at this point and get
-        ! fully overwritten by calc_tiss_avg_helper further down before they are read as output.
+        ! fully overwritten by calc_tiss_avg_impl further down before they are read as output.
         ! Only the columns that exist (n_tissues >= 2 for column 2, >= 3 for column 3) can be
         ! reused this way; the remaining vectors come from the caller. Column 1 always exists, so
         ! the x vector is never a dummy at all.
@@ -208,7 +205,7 @@ contains
                                     tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used)
         end if
 
-        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
+        call calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
 
         ! Step 4: Log2(x+1) transformation
         call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
@@ -654,50 +651,23 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| For each tissue of tissue replicates, this subroutine computes the average
     !| expression per gene.
-    pure subroutine calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, expr, tissue_averages, ierr)
+    pure subroutine calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, expr, tissue_averages)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        ! Sizes expr, rather than sum(reps_per_tissue): the bindings derive a dimension only from an
+        ! array, and the markers check it against the sum. DM_MIN and DM_MAX of one expression say
+        ! "equal to" until the generator has DM_EQUALS (#203).
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! DM_MIN(sum(reps_per_tissue))
+            !! DM_MAX(sum(reps_per_tissue))
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! DM_MIN(1_int32)
-        ! Sized by n_replicates, not by sum(reps_per_tissue): only a dimension the array carries
-        ! can be derived from it by the bindings, and so be checked against the sum below.
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
-            !! Gene Expression matrix
-        real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
-            !! Tissue averages per gene
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        call set_ok(ierr)
-
-        ! sum(reps_per_tissue) must equal n_replicates -- a relation between arguments.
-        if (sum(reps_per_tissue) /= n_replicates) then
-            call set_err(ierr, ERR_SIZE_MISMATCH)
-            return
-        end if
-
-        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
-    end subroutine calc_tiss_avg_impl
-
-    !> AUTHOR_VIVIAN_BASS
-    !| (no input validation) Calculate tissue averages by averaging replicates within each group.
-    !| For each group of tissue replicates, this subroutine computes the average
-    !| expression per gene.
-    pure subroutine calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
-        integer(int32), intent(in) :: n_genes
-            !! Number of genes (rows)
-        integer(int32), intent(in) :: n_tissues
-            !! Number of tissues
-        integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
-            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
-        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
             !! Gene Expression matrix
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
@@ -725,7 +695,7 @@ contains
                 start_idx = stop_idx + 1
             end do
         end do
-    end subroutine calc_tiss_avg_helper
+    end subroutine calc_tiss_avg_impl
 
     !> summary: Calculate `log2 fold changes` between condition and control groups.
     !| AUTHOR_VIVIAN_BASS

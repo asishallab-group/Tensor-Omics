@@ -171,13 +171,16 @@ contains
 
     reps_per_tissue = [3, 2]
     call calc_tiss_avg(2, 6, 2, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "reps [3, 2] sum to 5, but expr has 6 rows")
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "reps [3, 2] sum to 5, but expr has 6 rows")
     reps_per_tissue = [3, 4]
     call calc_tiss_avg(2, 6, 2, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "reps [3, 4] sum to 7, but expr has 6 rows")
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "reps [3, 4] sum to 7, but expr has 6 rows")
   end subroutine test_calc_tiss_avg_reps_not_summing_to_the_replicates
 
-  !> Each dimension on its own: zero is ERR_EMPTY_INPUT, negative ERR_INVALID_INPUT.
+  !> Each dimension on its own. n_genes = 0 is ERR_EMPTY_INPUT and a negative one ERR_INVALID_INPUT.
+  !| n_replicates is checked against sum(reps_per_tissue) instead of as a dimension (DM_MIN/DM_MAX,
+  !| until #203), so n_replicates = 0 is ERR_INVALID_INPUT, and so is n_tissues = 0: its empty sum
+  !| is 0, which n_replicates misses before n_tissues' own check runs.
   subroutine test_calc_tiss_avg_dimensions()
     integer(int32) :: ierr
     integer(int32), dimension(1) :: reps_per_tissue
@@ -189,9 +192,9 @@ contains
     call calc_tiss_avg(0, 1, 1, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_calc_tiss_avg_dimensions: n_genes = 0")
     call calc_tiss_avg(1, 0, 1, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_calc_tiss_avg_dimensions: n_replicates = 0")
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_dimensions: n_replicates = 0")
     call calc_tiss_avg(1, 1, 0, reps_per_tissue, expr, averages, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_calc_tiss_avg_dimensions: n_tissues = 0")
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_dimensions: n_tissues = 0")
     call calc_tiss_avg(-1, 1, 1, reps_per_tissue, expr, averages, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_calc_tiss_avg_dimensions: n_genes = -1")
   end subroutine test_calc_tiss_avg_dimensions

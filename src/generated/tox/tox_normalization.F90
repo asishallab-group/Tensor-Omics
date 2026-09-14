@@ -84,7 +84,9 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
@@ -128,7 +130,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_in_range_real(span, ierr, arg_pos=7_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=8_int32, min=0_int32, max=2_int32)
@@ -219,7 +221,9 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), intent(in) :: int_workspace_size
@@ -292,7 +296,7 @@ contains
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=12_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=14_int32)
@@ -768,7 +772,9 @@ contains
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
@@ -780,12 +786,12 @@ contains
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
         integer(int32), intent(out) :: ierr
-            !! Error code
+            !! Error code; zero on success, non-zero on failure.
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_in_range_int(n_replicates, ierr, arg_pos=2_int32, min=sum(reps_per_tissue), max=sum(reps_per_tissue))
         call validate_dimension_size(n_tissues, ierr, arg_pos=3_int32)
         call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=4_int32, min=1_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=5_int32)
@@ -798,10 +804,8 @@ contains
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&
-            tissue_averages = tissue_averages,&
-            ierr = ierr&
+            tissue_averages = tissue_averages&
         )
-        call clear_err_arg_pos(ierr)
     end subroutine calc_tiss_avg
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):calc_fchange_impl]].
