@@ -85,11 +85,12 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
+            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.2% of total for modules and submodules.">271 statements</a>
+                 title=" 1.4% of total for modules and submodules.">271 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -189,24 +190,22 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>AUTHOR_AARON_SCHROEDER
-String-keyed hashmap (<code>character -&gt; integer(int32)</code>) and hashset (<code>character</code> membership),
+      <p>String-keyed hashmap (<code>character -&gt; integer(int32)</code>) and hashset (<code>character</code> membership),
 implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
-algorithm for hashing. Both containers grow automatically via <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>
-/ <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a> once the load factor exceeds
-<a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>.</p>
+algorithm for hashing. Both containers rehash into a larger bucket array of their own accord
+once three quarters full, so a caller never sizes one twice.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='config.html'>config</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_math_impl.html'>f42_math_impl</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='f42_config.html'>f42_config</a></li>
               </ul>
             </li>
         </ul>
@@ -249,7 +248,7 @@ power-of-two-sized bucket array.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-size~3"></span>
+              <span class="anchor" id="variable-size"></span>
               integer(kind=int32),
             </td>
               <td>public</td>
@@ -266,7 +265,7 @@ power-of-two-sized bucket array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-count~3"></span>
+              <span class="anchor" id="variable-count~4"></span>
               integer(kind=int32),
             </td>
               <td>public</td>
@@ -333,7 +332,7 @@ elements themselves only ever use their <code>next</code> pointer, never <code>k
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-size~3"></span>
+              <span class="anchor" id="variable-size"></span>
               integer(kind=int32),
             </td>
               <td>public</td>
@@ -350,7 +349,7 @@ elements themselves only ever use their <code>next</code> pointer, never <code>k
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-count~3"></span>
+              <span class="anchor" id="variable-count~4"></span>
               integer(kind=int32),
             </td>
               <td>public</td>
@@ -401,9 +400,12 @@ elements themselves only ever use their <code>next</code> pointer, never <code>k
     <div class="card-header codesum"><span class="anchor" id="proc-is_in_hashset"></span> <h3>public  function <a href='../proc/is_in_hashset.html'>is_in_hashset</a>(hashset, key) result(res)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Checks whether <code>key</code> is a member of <code>hashset</code>.</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Checks whether <code>key</code> is a member of <code>hashset</code>.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -462,9 +464,12 @@ Checks whether <code>key</code> is a member of <code>hashset</code>.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashmap_get"></span> <h3>public  function <a href='../proc/hashmap_get.html'>hashmap_get</a>(map, key) result(value)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Lookup a key</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Lookup a key</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -528,9 +533,12 @@ Lookup a key</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashmap_create"></span> <h3>public  subroutine <a href='../proc/hashmap_create.html'>hashmap_create</a>(map, initial_size)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Create the hashmap</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Create the hashmap</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -586,9 +594,12 @@ default: 1024 buckets</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashset_create"></span> <h3>public  subroutine <a href='../proc/hashset_create.html'>hashset_create</a>(set, initial_size)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Create the hashset</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Create the hashset</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -644,9 +655,12 @@ default: 1024 buckets</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashmap_destroy"></span> <h3>public  subroutine <a href='../proc/hashmap_destroy.html'>hashmap_destroy</a>(map)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Destroy the hashmap</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Destroy the hashmap</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -685,9 +699,12 @@ Destroy the hashmap</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashset_destroy"></span> <h3>public  subroutine <a href='../proc/hashset_destroy.html'>hashset_destroy</a>(set)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Destroy the set</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Destroy the set</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -726,9 +743,12 @@ Destroy the set</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashmap_put"></span> <h3>public  subroutine <a href='../proc/hashmap_put.html'>hashmap_put</a>(map, key, value)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Insert a key-value pair</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Insert a key-value pair</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -773,7 +793,7 @@ Insert a key-value pair</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-value~8"></span>
+              <span class="anchor" id="variable-value~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -797,9 +817,12 @@ Insert a key-value pair</p>
     <div class="card-header codesum"><span class="anchor" id="proc-hashset_put"></span> <h3>public  subroutine <a href='../proc/hashset_put.html'>hashset_put</a>(set, key, ierr)  
 </h3></div>
     <div class="card-body">
-          
-  <p>AUTHOR_AARON_SCHROEDER
-Insert a key-value pair</p>
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Insert a key-value pair</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -844,7 +867,7 @@ Insert a key-value pair</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~145"></span>
+              <span class="anchor" id="variable-ierr~220"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -887,7 +910,7 @@ Insert a key-value pair</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

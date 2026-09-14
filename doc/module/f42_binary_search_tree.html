@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for modules and submodules.">59 statements</a>
+                 title=" 0.3% of total for modules and submodules.">66 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -133,18 +133,7 @@
   
   
   
-      <div class="card mb-4">
-      <a data-bs-toggle="collapse" href="#funcs-0"
-         aria-expanded="false" aria-controls="funcs-0">
-         <h4 class="card-header bg-primary text-white">Functions</h4>
-      </a>
-      <div id="funcs-0" class="collapse">
-        <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/f42_binary_search_tree.html#proc-get_sorted_value">get_sorted_value</a>
-        </div>
-      </div>
-    </div>
-
+  
       <div class="card mb-4">
       <a data-bs-toggle="collapse" href="#subs-0"
          aria-expanded="false" aria-controls="subs-0">
@@ -154,6 +143,7 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/f42_binary_search_tree.html#proc-build_bst_index">build_bst_index</a>
             <a class="list-group-item" href="../module/f42_binary_search_tree.html#proc-bst_range_query">bst_range_query</a>
+            <a class="list-group-item" href="../module/f42_binary_search_tree.html#proc-bst_range_query_expert">bst_range_query_expert</a>
         </div>
       </div>
     </div>
@@ -175,16 +165,17 @@
       <p>Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
 This module provides routines to build a BST index (via sorting), access sorted values,
 and perform range queries over a real-valued array using the sorted index.</p>
+<p>Generated from <a href="../module/f42_binary_search_tree_impl.html">f42_binary_search_tree_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='f42_binary_search_tree_impl.html'>f42_binary_search_tree_impl</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -200,104 +191,6 @@ and perform range queries over a real-valued array using the sorted index.</p>
 
 
 
-        <section>
-          <h2>Functions</h2>
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-get_sorted_value"></span> <h3>public  function <a href='../proc/get_sorted_value.html'>get_sorted_value</a>(values, sorted_indices, position, ierr) result(sorted_value)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Get the value at the sorted position.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-values~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>values</strong>(:)</td>
-            <td>
-<p>Input real array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-sorted_indices~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>sorted_indices</strong>(:)</td>
-            <td>
-<p>Permutation index array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-position"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>position</strong></td>
-            <td>
-<p>Sorted position (1-based)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~67"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-    <h4>
-    Return Value
-    <small>real(kind=real64)</small>
-    </h4>
-    
-
-    </div>
-  </div>
-
-        </section>
-        <br>
 
         <section>
           <h2>Subroutines</h2>
@@ -305,12 +198,8 @@ and perform range queries over a real-valued array using the sorted index.</p>
     <div class="card-header codesum"><span class="anchor" id="proc-build_bst_index"></span> <h3>public pure subroutine <a href='../proc/build_bst_index.html'>build_bst_index</a>(values, n_values, sorted_indices, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Build the BST index by sorting indices using values in x.</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/build_bst_index_impl.html">build_bst_index_impl</a>.</p><a href="../proc/build_bst_index.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -325,22 +214,22 @@ and perform range queries over a real-valued array using the sorted index.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~2"></span>
+              <span class="anchor" id="variable-values~13"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>values</strong>(n_values)</td>
+            <td><strong>values</strong></td>
             <td>
 <p>Input real array to be indexed</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_values"></span>
+              <span class="anchor" id="variable-n_values~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -355,22 +244,22 @@ and perform range queries over a real-valued array using the sorted index.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_indices"></span>
+              <span class="anchor" id="variable-sorted_indices~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>sorted_indices</strong>(n_values)</td>
+            <td><strong>sorted_indices</strong></td>
             <td>
 <p>Output permutation index</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~66"></span>
+              <span class="anchor" id="variable-ierr~356"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -380,7 +269,7 @@ and perform range queries over a real-valued array using the sorted index.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -391,15 +280,11 @@ and perform range queries over a real-valued array using the sorted index.</p>
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-bst_range_query"></span> <h3>public pure subroutine <a href='../proc/bst_range_query.html'>bst_range_query</a>(values, sorted_indices, n_values, lower_bound, upper_bound, output_indices, n_matches, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-bst_range_query"></span> <h3>public pure subroutine <a href='../proc/bst_range_query.html'>bst_range_query</a>(values, n_values, lower_bound, upper_bound, output_indices, n_matches, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Perform a 1D range query over the sorted index.</p>
+          
+  <p>Validates its inputs, prepares what <a href="../proc/bst_range_query_impl.html">bst_range_query_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/bst_range_query_expert.html">bst_range_query_expert</a> to prepare it yourself.</p><a href="../proc/bst_range_query.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -414,37 +299,22 @@ and perform range queries over a real-valued array using the sorted index.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~4"></span>
+              <span class="anchor" id="variable-values~14"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>values</strong>(n_values)</td>
+            <td><strong>values</strong></td>
             <td>
 <p>Input real array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_indices~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>sorted_indices</strong>(n_values)</td>
-            <td>
-<p>Permutation index array (sorted)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_values~2"></span>
+              <span class="anchor" id="variable-n_values~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -459,7 +329,7 @@ and perform range queries over a real-valued array using the sorted index.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-lower_bound"></span>
+              <span class="anchor" id="variable-lower_bound~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -469,12 +339,13 @@ and perform range queries over a real-valued array using the sorted index.</p>
             <td>::</td>
             <td><strong>lower_bound</strong></td>
             <td>
-<p>Lower bound of range (inclusive)</p>
+<p>Lower bound of range (inclusive)
+The maximum valid value is <code>upper_bound</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-upper_bound"></span>
+              <span class="anchor" id="variable-upper_bound~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -489,22 +360,23 @@ and perform range queries over a real-valued array using the sorted index.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_indices"></span>
+              <span class="anchor" id="variable-output_indices~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>output_indices</strong>(n_values)</td>
+            <td><strong>output_indices</strong></td>
             <td>
-<p>Output array of matching indices</p>
+<p>Output array of matching indices.
+The first <code>n_matches</code> elements will hold the results.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_matches"></span>
+              <span class="anchor" id="variable-n_matches~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -519,7 +391,7 @@ and perform range queries over a real-valued array using the sorted index.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~68"></span>
+              <span class="anchor" id="variable-ierr~357"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -529,7 +401,159 @@ and perform range queries over a real-valued array using the sorted index.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-bst_range_query_expert"></span> <h3>public pure subroutine <a href='../proc/bst_range_query_expert.html'>bst_range_query_expert</a>(values, values_perm, n_values, lower_bound, upper_bound, output_indices, n_matches, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/bst_range_query_impl.html">bst_range_query_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/bst_range_query.html">bst_range_query</a> does both.</p><a href="../proc/bst_range_query_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-values~15"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>values</strong></td>
+            <td>
+<p>Input real array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-values_perm~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>values_perm</strong></td>
+            <td>
+<p>Permutation of <code>values</code> in ascending order -- the BST index. The allocating entry
+point builds and heapsorts it for you; the expert one takes whatever order you
+supply, so a caller that already holds one from
+<a href="../proc/build_bst_index.html">build_bst_index</a> can reuse it across queries.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_values</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_values~13"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_values</strong></td>
+            <td>
+<p>Number of elements</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lower_bound~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>lower_bound</strong></td>
+            <td>
+<p>Lower bound of range (inclusive)
+The maximum valid value is <code>upper_bound</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-upper_bound~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>upper_bound</strong></td>
+            <td>
+<p>Upper bound of range (inclusive)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-output_indices~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_values)
+            </td>
+            <td>::</td>
+            <td><strong>output_indices</strong></td>
+            <td>
+<p>Output array of matching indices.
+The first <code>n_matches</code> elements will hold the results.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_matches~5"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_matches</strong></td>
+            <td>
+<p>Number of matches found</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~358"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -562,7 +586,7 @@ and perform range queries over a real-valued array using the sorted index.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">31 statements</a>
+                 title=" 0.1% of total for procedures.">16 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,12 +150,11 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile)  
+    <h2>public pure subroutine identify_outliers(n_genes, rdi, sorted_rdi, perm, is_outlier, threshold, quantile, percentile, ierr)  
 </h2>
     
 
-    <p>Identify gene outliers based on the top percentile of RDI values.
-Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
+    <p>Expects sorted_rdi to be filtered (no negative values) and perm should be sorted in ascending order before calling.
 If sorted_rdi contains negatives or perm is not sorted, tmp_results may be invalid.</p>
 
 
@@ -173,7 +171,7 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~28"></span>
+              <span class="anchor" id="variable-n_genes~88"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -188,67 +186,71 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~4"></span>
+              <span class="anchor" id="variable-rdi~13"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>rdi</strong>(n_genes)</td>
+            <td><strong>rdi</strong></td>
             <td>
-                <p>Array of RDI values for each gene</p>
+                <p>Array of RDI values for each gene
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~4"></span>
+              <span class="anchor" id="variable-sorted_rdi~13"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>sorted_rdi</strong>(n_genes)</td>
+            <td><strong>sorted_rdi</strong></td>
             <td>
-                <p>Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)</p>
+                <p>Sorted RDI array (must be filtered to remove negatives and sorted in ascending order before calling)
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~30"></span>
+              <span class="anchor" id="variable-perm~27"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
+            <td><strong>perm</strong></td>
             <td>
                 <p>Permutation array with sorted indices</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-is_outlier"></span>
-              logical,
+              <span class="anchor" id="variable-is_outlier~6"></span>
+              logical(kind=c_bool),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>is_outlier</strong>(n_genes)</td>
+            <td><strong>is_outlier</strong></td>
             <td>
                 <p>Output boolean array indicating outliers</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold"></span>
+              <span class="anchor" id="variable-threshold~8"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -263,15 +265,15 @@ If sorted_rdi contains negatives or perm is not sorted, tmp_results may be inval
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~3"></span>
+              <span class="anchor" id="variable-quantile~11"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>quantile</strong>(n_genes)</td>
+            <td><strong>quantile</strong></td>
             <td>
                 <p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
 observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -281,7 +283,7 @@ upper-tail quantile is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~5"></span>
+              <span class="anchor" id="variable-percentile~12"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -291,7 +293,25 @@ upper-tail quantile is used.</p>
             <td>::</td>
             <td><strong>percentile</strong></td>
             <td>
-                <p>(optional) Percentile threshold as a fraction in [0,1] (default: 0.95 for top 5%)</p>
+                <p>Percentile threshold as a fraction in [0,1] (top 5% for the default).
+The default value is <code>0.95_real64</code>.
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~330"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -328,7 +348,7 @@ upper-tail quantile is used.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

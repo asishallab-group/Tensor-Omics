@@ -78,7 +78,7 @@
     <div class="container">
   <div class="row">
     <h1>tox_data_integration_preprocessing
-      <small>Submodule</small>
+      <small>Module</small>
       
     </h1>
       <div class="container p-2 mb-4 bg-light border rounded-3">
@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.0% of total for modules and submodules.">260 statements</a>
+                 title=" 1.0% of total for modules and submodules.">193 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -134,7 +134,25 @@
   
   
   
-  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#subs-0"
+         aria-expanded="false" aria-controls="subs-0">
+         <h4 class="card-header bg-primary text-white">Subroutines</h4>
+      </a>
+      <div id="subs-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-compute_gene_means">compute_gene_means</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-compute_residuals">compute_residuals</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-pool_means">pool_means</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-pool_means_expert">pool_means_expert</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-pool_study_means">pool_study_means</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-pool_study_means_expert">pool_study_means_expert</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-construct_neighborhoods">construct_neighborhoods</a>
+            <a class="list-group-item" href="../module/tox_data_integration_preprocessing.html#proc-construct_neighborhoods_expert">construct_neighborhoods_expert</a>
+        </div>
+      </div>
+    </div>
+
   
   
   
@@ -143,7 +161,6 @@
   
   
 
-    <em>None</em>
 
   </div>
 
@@ -151,24 +168,25 @@
 
     <div class="col-md-9" id='text'>
       <h1>Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing</h1>
-<p>This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.</p>
+<p>The step that turns expression vectors into the neighborhood residuals the rest of the test
+consumes: gene-wise means, the signed deviation of each replicate from them, and the
+neighborhoods of reference points those residuals are grouped into so the comparison is
+conditioned on expression level rather than pooled across it.</p>
+<p><code>calc_neighborhood_size</code> sizes a neighborhood for a caller that allocates its own.</p>
+<p>Generated from <a href="../module/tox_data_integration_preprocessing_impl.html">tox_data_integration_preprocessing_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='tox_data_integration_preprocessing_impl.html'>tox_data_integration_preprocessing_impl</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
+                  <li class="list-inline-item"><a href='f42_sort_impl.html'>f42_sort_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
-              </ul>
-            </li>
-            <li class="list-group-item">
-              <ul class="list-inline">
-                <li><h5>Ancestors:</h5></li>
-                  <li class="list-inline-item"><a href='tox_data_integration.html'>tox_data_integration</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -185,6 +203,1197 @@
 
 
 
+        <section>
+          <h2>Subroutines</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_gene_means"></span> <h3>public pure subroutine <a href='../proc/compute_gene_means.html'>compute_gene_means</a>(n_genes, n_reps, expr, means, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/compute_gene_means_impl.html">compute_gene_means_impl</a>.</p><a href="../proc/compute_gene_means.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~17"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes in the study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps</strong></td>
+            <td>
+<p>Number of biological replicates in the study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expr"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>expr</strong></td>
+            <td>
+<p>Expression matrix
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-means"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>means</strong></td>
+            <td>
+<p>Per-gene mean expression values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~54"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-compute_residuals"></span> <h3>public pure subroutine <a href='../proc/compute_residuals.html'>compute_residuals</a>(n_genes, n_reps, expr, means, resid, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/compute_residuals_impl.html">compute_residuals_impl</a>.</p><a href="../proc/compute_residuals.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes~18"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes</strong></td>
+            <td>
+<p>Number of genes in the study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps</strong></td>
+            <td>
+<p>Number of biological replicates in the study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expr~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>expr</strong></td>
+            <td>
+<p>Expression matrix
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-means~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>means</strong></td>
+            <td>
+<p>Per-gene mean expression values; NaN where every replicate of a gene was NaN
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-resid"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_reps, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>resid</strong></td>
+            <td>
+<p>Matrix of signed residuals</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~55"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-pool_means"></span> <h3>public pure subroutine <a href='../proc/pool_means.html'>pool_means</a>(pooled_means, pool_size, n_points, n_pool, x_star, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/pool_means_impl.html">pool_means_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/pool_means_expert.html">pool_means_expert</a> to prepare it yourself.</p><a href="../proc/pool_means.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pooled_means"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(pool_size)
+            </td>
+            <td>::</td>
+            <td><strong>pooled_means</strong></td>
+            <td>
+<p>Pooled means
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pool_size~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>pool_size</strong></td>
+            <td>
+<p>Number of means in the pool, usually <code>n_genes_S1 + n_genes_S2</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~8"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points to define</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_pool"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_pool</strong></td>
+            <td>
+<p>Total number of included (non-NaN) pooled mean-expression values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_star"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>x_star</strong></td>
+            <td>
+<p>Mean-expression reference points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~56"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-pool_means_expert"></span> <h3>public pure subroutine <a href='../proc/pool_means_expert.html'>pool_means_expert</a>(pooled_means, pooled_means_perm, pool_size, n_points, n_pool, x_star, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/pool_means_impl.html">pool_means_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/pool_means.html">pool_means</a> does both.</p><a href="../proc/pool_means_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pooled_means~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(pool_size)
+            </td>
+            <td>::</td>
+            <td><strong>pooled_means</strong></td>
+            <td>
+<p>Pooled means
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pooled_means_perm~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(pool_size)
+            </td>
+            <td>::</td>
+            <td><strong>pooled_means_perm</strong></td>
+            <td>
+<p>Sorting permutation for <code>pooled_means</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-pool_size~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>pool_size</strong></td>
+            <td>
+<p>Number of means in the pool, usually <code>n_genes_S1 + n_genes_S2</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~9"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points to define</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_pool~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_pool</strong></td>
+            <td>
+<p>Total number of included (non-NaN) pooled mean-expression values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_star~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>x_star</strong></td>
+            <td>
+<p>Mean-expression reference points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~57"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-pool_study_means"></span> <h3>public pure subroutine <a href='../proc/pool_study_means.html'>pool_study_means</a>(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, n_pool, x_star, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/pool_study_means_impl.html">pool_study_means_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/pool_study_means_expert.html">pool_study_means_expert</a> to prepare it yourself.</p><a href="../proc/pool_study_means.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s1"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S1</strong></td>
+            <td>
+<p>Number of genes in study S1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mean_s1"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S1)
+            </td>
+            <td>::</td>
+            <td><strong>mean_S1</strong></td>
+            <td>
+<p>Per-gene mean expression values of study S1
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S2</strong></td>
+            <td>
+<p>Number of genes in study S2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mean_s2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S2)
+            </td>
+            <td>::</td>
+            <td><strong>mean_S2</strong></td>
+            <td>
+<p>Per-gene mean expression values of study S2
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~10"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points to define</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_pool~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_pool</strong></td>
+            <td>
+<p>Total number of included (non-NaN) pooled mean-expression values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_star~3"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>x_star</strong></td>
+            <td>
+<p>Mean-expression reference points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~58"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-pool_study_means_expert"></span> <h3>public pure subroutine <a href='../proc/pool_study_means_expert.html'>pool_study_means_expert</a>(n_genes_S1, mean_S1, n_genes_S2, mean_S2, n_points, tmp_pooled_means, tmp_pooled_means_perm, n_pool, x_star, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/pool_study_means_impl.html">pool_study_means_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/pool_study_means.html">pool_study_means</a> does both.</p><a href="../proc/pool_study_means_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s1~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S1</strong></td>
+            <td>
+<p>Number of genes in study S1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mean_s1~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S1)
+            </td>
+            <td>::</td>
+            <td><strong>mean_S1</strong></td>
+            <td>
+<p>Per-gene mean expression values of study S1
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s2~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S2</strong></td>
+            <td>
+<p>Number of genes in study S2</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mean_s2~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S2)
+            </td>
+            <td>::</td>
+            <td><strong>mean_S2</strong></td>
+            <td>
+<p>Per-gene mean expression values of study S2
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~11"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points to define</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pooled_means~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes_S1+n_genes_S2)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_pooled_means</strong></td>
+            <td>
+<p>Work array holding the concatenated means of both studies</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_pooled_means_perm~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes_S1+n_genes_S2)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_pooled_means_perm</strong></td>
+            <td>
+<p>Work array for the permutation that sorts <code>tmp_pooled_means</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_pool~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_pool</strong></td>
+            <td>
+<p>Total number of included (non-NaN) pooled mean-expression values</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_star~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>x_star</strong></td>
+            <td>
+<p>Mean-expression reference points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~59"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-construct_neighborhoods"></span> <h3>public pure subroutine <a href='../proc/construct_neighborhoods.html'>construct_neighborhoods</a>(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/construct_neighborhoods_impl.html">construct_neighborhoods_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/construct_neighborhoods_expert.html">construct_neighborhoods_expert</a> to prepare it yourself.</p><a href="../proc/construct_neighborhoods.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~12"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_star~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>x_star</strong></td>
+            <td>
+<p>Mean-expression reference points
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S</strong></td>
+            <td>
+<p>Number of genes in the current study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mean_s"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S)
+            </td>
+            <td>::</td>
+            <td><strong>mean_S</strong></td>
+            <td>
+<p>Per-gene mean expression values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S</strong></td>
+            <td>
+<p>Number of biological replicates in the study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-resid_s"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S, n_genes_S)
+            </td>
+            <td>::</td>
+            <td><strong>resid_S</strong></td>
+            <td>
+<p>Matrix of signed residuals
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_reps_S, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals</strong></td>
+            <td>
+<p>Collection of residual vectors for each neighborhood</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_indices"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_indices</strong></td>
+            <td>
+<p>Indices of selected neighborhood genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_neighbors~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_neighbors</strong></td>
+            <td>
+<p>Number of neighbors; a gene whose mean is NaN can never be a neighbor, so this
+cannot exceed the number of genes with a defined mean
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>count(.not. ieee_is_nan(mean_S), kind=int32)</code>.
+It is recommended to compute this with
+<a href="../proc/calc_neighborhood_size.html">calc_neighborhood_size</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~60"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-construct_neighborhoods_expert"></span> <h3>public pure subroutine <a href='../proc/construct_neighborhoods_expert.html'>construct_neighborhoods_expert</a>(n_points, x_star, n_genes_S, mean_S, n_reps_S, resid_S, tmp_distances, tmp_distances_perm, neighborhood_residuals, neighborhood_indices, n_neighbors, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/construct_neighborhoods_impl.html">construct_neighborhoods_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/construct_neighborhoods.html">construct_neighborhoods</a> does both.</p><a href="../proc/construct_neighborhoods_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_points~13"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_points</strong></td>
+            <td>
+<p>Number of reference points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-x_star~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_points)
+            </td>
+            <td>::</td>
+            <td><strong>x_star</strong></td>
+            <td>
+<p>Mean-expression reference points
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_genes_s~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_genes_S</strong></td>
+            <td>
+<p>Number of genes in the current study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mean_s~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_genes_S)
+            </td>
+            <td>::</td>
+            <td><strong>mean_S</strong></td>
+            <td>
+<p>Per-gene mean expression values
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_reps_s~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_reps_S</strong></td>
+            <td>
+<p>Number of biological replicates in the study</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-resid_s~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_reps_S, n_genes_S)
+            </td>
+            <td>::</td>
+            <td><strong>resid_S</strong></td>
+            <td>
+<p>Matrix of signed residuals
+NaN is permitted for this value.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_distances~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes_S)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_distances</strong></td>
+            <td>
+<p>Distances work array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_distances_perm~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_genes_S)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_distances_perm</strong></td>
+            <td>
+<p>Work array for the permutation that sorts <code>tmp_distances</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_residuals~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_reps_S, n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_residuals</strong></td>
+            <td>
+<p>Collection of residual vectors for each neighborhood</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-neighborhood_indices~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_neighbors, n_points)
+            </td>
+            <td>::</td>
+            <td><strong>neighborhood_indices</strong></td>
+            <td>
+<p>Indices of selected neighborhood genes</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_neighbors~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_neighbors</strong></td>
+            <td>
+<p>Number of neighbors; a gene whose mean is NaN can never be a neighbor, so this
+cannot exceed the number of genes with a defined mean
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>count(.not. ieee_is_nan(mean_S), kind=int32)</code>.
+It is recommended to compute this with
+<a href="../proc/calc_neighborhood_size.html">calc_neighborhood_size</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~61"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+        </section>
+        <br>
 
 
 
@@ -206,7 +1415,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
