@@ -15,6 +15,20 @@ else
   DIRECTIVES="-DNO_COLORS"
 fi
 
+# The build scripts depend on bash, the compilers and fpm -- nothing else: no awk, sed, grep, cut,
+# sort or hashing tool, because not every machine a contributor builds on has them all (macOS has
+# no sha256sum, BSD xargs no -d). These are the few text operations the scripts need, in bash.
+
+# The first line of $1 (instead of `head -1`).
+function first_line() {
+  printf '%s' "${1%%$'\n'*}"
+}
+
+# Whether the file $2 exists and its contents match the extended regex $1 (instead of `grep -q`).
+function file_matches() {
+  [[ -f "$2" && "$(<"$2")" =~ $1 ]]
+}
+
 function init() {
   handle_args "$@"
   # --compiler beats global $TOX_COMPILER beats global $FC
@@ -62,7 +76,7 @@ Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLO
 
 # fpm decides what to recompile from each source's own content, and keys its build directories
 # by the compiler's name and the Fortran flags. Whatever else changes what the library should
-# contain is invisible to it, so it is hashed here and answered with a clean build:
+# contain is invisible to it, so it is recorded here and answered with a clean build:
 #   - the hand-written headers: fpm never hashes what a source #includes (fortran-lang/fpm#358).
 #     tox_marshal.h is not among them -- the generator stamps its hash into every shim instead.
 #   - fpm.toml and the link flags: a changed link library alone does not relink the library.
@@ -70,26 +84,33 @@ Install R to include it, or pass '$COLOR_LIGHT_GRAY--directive=NO_R_BINDING$COLO
 #   - the Fortran compiler's version: an upgrade keeps the name, and the old .mod files with it.
 # This replaces the clean build on every branch switch, which was a stand-in for the same
 # thing, and it also catches these changes when no branch changed -- a pull, a stash pop, an
-# edit to macros.h. One marker per compiler, as a clean build deletes only that compiler's.
-function check_build_state() {
-  declare state
-  state=$(
-    {
-      "$COMPILER" --version 2>/dev/null | head -1
-      echo "C_ONLY_FLAGS=$C_ONLY_FLAGS"
-      echo "C_COMPILER=$C_COMPILER"
-      echo "LINK_FLAGS=$LINK_FLAGS"
-      cat fpm.toml
-      # git lists the headers without walking the tree by hand (the repo may sit under /mnt/c)
-      { git ls-files --cached --others --exclude-standard -- '*.h' ':!src/generated/**' 2>/dev/null \
-          || find src -name '*.h' -not -path 'src/generated/*'; } | LC_ALL=C sort -u | xargs -r -d '\n' sha256sum
-    } | sha256sum | cut -c1-16
+# edit to macros.h.
+#
+# The inputs themselves are stored, not a hash of them: bash has no hashing, and the file then
+# shows what the last build saw. One file per compiler, as a clean build deletes only that
+# compiler's directories.
+function build_state() {
+  (  # a subshell, so the glob options set here stay here
+    shopt -s globstar nullglob
+    LC_ALL=C  # glob order independent of the locale
+    printf '%s\n' "$(first_line "$("$COMPILER" --version 2>/dev/null)")"
+    printf '%s\n' "C_ONLY_FLAGS=$C_ONLY_FLAGS" "C_COMPILER=$C_COMPILER" "LINK_FLAGS=$LINK_FLAGS"
+    printf '%s\n' "--- fpm.toml" "$(<fpm.toml)"
+    for header in *.h src/**/*.h; do
+      [[ "$header" == src/generated/* ]] && continue
+      printf '%s\n' "--- $header" "$(<"$header")"
+    done
   )
-  declare marker="build/.${COMPILER}.${state}.buildstate"
-  if [[ ! -f "$marker" ]]; then
+}
+
+function check_build_state() {
+  declare state_file="build/.${COMPILER}.buildstate" state
+  state=$(build_state)
+  if [[ ! -f "$state_file" || "$(<"$state_file")" != "$state" ]]; then
     TOX_CLEAN_BUILD=1
+    # the markers of the two schemes this replaced: hash-named build states, and branch names
     rm -f "build/.${COMPILER}."*.buildstate "build/.${COMPILER}."*.branch build/.branch
-    : > "$marker"
+    printf '%s\n' "$state" > "$state_file"
   fi
 }
 
@@ -112,7 +133,7 @@ Install Python to regenerate them, or $hint"
   fi
   if ! "$python" -c "import ford" >/dev/null 2>&1; then
     warning "'$(echo_compiler ford)' not found -- building the generated sources as they stand in the tree.
-Run '$COLOR_LIGHT_GRAY$(basename $python) -m pip install ford$COLOR_CREAM' to regenerate them, or $hint"
+Run '$COLOR_LIGHT_GRAY${python##*/} -m pip install ford$COLOR_CREAM' to regenerate them, or $hint"
     return
   fi
 
