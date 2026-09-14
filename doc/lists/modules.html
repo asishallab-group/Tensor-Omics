@@ -84,18 +84,30 @@
 			 <thead><tr><th>Module</th><th>Source File</th><th>Description</th></tr></thead>
 			 <tbody>
 			   <tr class="active">
-                 <td><a href='../module/config.html'>config</a></td>
-                 <td><a href='../sourcefile/config.f90.html'>config.F90</a></td>
-                 <td><p>Global, mutable runtime configuration flags (module variables, not parameters).
-Intended to be toggled by client code before calling into the library to enable
-diagnostic <code>print</code> output from the affected modules; both flags default to off.</p></td>
-               </tr>
-<!--active-->			   <tr class="">
                  <td><a href='../module/f42_binary_search_tree.html'>f42_binary_search_tree</a></td>
                  <td><a href='../sourcefile/f42_binary_search_tree.f90.html'>f42_binary_search_tree.F90</a></td>
                  <td><p>Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
 This module provides routines to build a BST index (via sorting), access sorted values,
+and perform range queries over a real-valued array using the sorted index.</p><a href="../module/f42_binary_search_tree.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_binary_search_tree_c.html'>f42_binary_search_tree_c</a></td>
+                 <td><a href='../sourcefile/f42_binary_search_tree_c.f90.html'>f42_binary_search_tree_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_binary_search_tree.html">f42_binary_search_tree</a></p><a href="../module/f42_binary_search_tree_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_binary_search_tree_impl.html'>f42_binary_search_tree_impl</a></td>
+                 <td><a href='../sourcefile/f42_binary_search_tree_impl.f90.html'>f42_binary_search_tree_impl.F90</a></td>
+                 <td><p>Flat-index-based Binary Search Tree (BST) utilities for 1D range queries.
+This module provides routines to build a BST index (via sorting), access sorted values,
 and perform range queries over a real-valued array using the sorted index.</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_config.html'>f42_config</a></td>
+                 <td><a href='../sourcefile/f42_config.f90.html'>f42_config.F90</a></td>
+                 <td><p>Global, mutable runtime configuration flags (module variables, not parameters).
+Intended to be toggled by client code before calling into the library to enable
+diagnostic <code>print</code> output from the affected modules; both flags default to off.</p></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/f42_kd_tree.html'>f42_kd_tree</a></td>
@@ -104,17 +116,52 @@ and perform range queries over a real-valued array using the sorted index.</p></
 Builds a k-d tree by recursively partitioning <code>kd_indices</code> around the median point along a
 caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
 is safe to call from <code>pure</code> procedures. The tree is stored implicitly as an in-place-permuted
+index array rather than as linked nodes.</p><a href="../module/f42_kd_tree.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_kd_tree_c.html'>f42_kd_tree_c</a></td>
+                 <td><a href='../sourcefile/f42_kd_tree_c.f90.html'>f42_kd_tree_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_kd_tree.html">f42_kd_tree</a></p><a href="../module/f42_kd_tree_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_kd_tree_impl.html'>f42_kd_tree_impl</a></td>
+                 <td><a href='../sourcefile/f42_kd_tree_impl.f90.html'>f42_kd_tree_impl.F90</a></td>
+                 <td><p>k-d tree spatial index over fixed-dimensional point sets.
+Builds a k-d tree by recursively partitioning <code>kd_indices</code> around the median point along a
+caller-supplied, cycling dimension order, using a stack-based (non-recursive) traversal so it
+is safe to call from <code>pure</code> procedures. The tree is stored implicitly as an in-place-permuted
 index array rather than as linked nodes.</p></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/f42_math_impl.html'>f42_math_impl</a></td>
+                 <td><a href='../sourcefile/f42_math_impl.f90.html'>f42_math_impl.F90</a></td>
+                 <td><p>Elementary mathematics: the constants, approximate equality, clamping, angles and logarithms.</p><a href="../module/f42_math_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_random_impl.html'>f42_random_impl</a></td>
+                 <td><a href='../sourcefile/f42_random_impl.f90.html'>f42_random_impl.F90</a></td>
+                 <td><p>One of the modules <a href="../module/f42_utils_impl.html">f42_utils_impl</a> gathers; <code>use f42_utils_impl</code> reaches all of them.</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_safeguard.html'>f42_safeguard</a></td>
+                 <td><a href='../sourcefile/f42_safeguard.f90.html'>f42_safeguard.F90</a></td>
+                 <td><p>This module ensures equivalence of used c types in this framework during compile time.
+Thus, it needs to be used by every module to be compiled first, <strong><em>and</em></strong> it is highly recommended to compile the framework manually.</p></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_arrays_deserialize.html'>f42_serde_arrays_deserialize</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_deserialize.f90.html'>f42_serde_arrays_deserialize.F90</a></td>
                  <td><p>Main array deserialization module, re-exporting all deserialization routines</p></td>
                </tr>
-<!---->			   <tr class="active">
+<!--active-->			   <tr class="">
                  <td><a href='../module/f42_serde_arrays_deserialize_char.html'>f42_serde_arrays_deserialize_char</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_deserialize_char.f90.html'>f42_serde_arrays_deserialize_char.F90</a></td>
                  <td><p>Module for deserializing character arrays from files</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_deserialize_char_c.html'>f42_serde_arrays_deserialize_char_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_char_c.f90.html'>f42_serde_arrays_deserialize_char_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_deserialize_char.html">f42_serde_arrays_deserialize_char</a></p><a href="../module/f42_serde_arrays_deserialize_char_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/f42_serde_arrays_deserialize_complex.html'>f42_serde_arrays_deserialize_complex</a></td>
@@ -122,9 +169,19 @@ index array rather than as linked nodes.</p></td>
                  <td><p>Module for deserializing complex arrays from files</p></td>
                </tr>
 <!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_deserialize_complex_c.html'>f42_serde_arrays_deserialize_complex_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_complex_c.f90.html'>f42_serde_arrays_deserialize_complex_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_deserialize_complex.html">f42_serde_arrays_deserialize_complex</a></p><a href="../module/f42_serde_arrays_deserialize_complex_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
                  <td><a href='../module/f42_serde_arrays_deserialize_int.html'>f42_serde_arrays_deserialize_int</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_deserialize_int.f90.html'>f42_serde_arrays_deserialize_int.F90</a></td>
                  <td><p>Module for deserializing integer arrays from files</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_deserialize_int_c.html'>f42_serde_arrays_deserialize_int_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_int_c.f90.html'>f42_serde_arrays_deserialize_int_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_deserialize_int.html">f42_serde_arrays_deserialize_int</a></p><a href="../module/f42_serde_arrays_deserialize_int_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/f42_serde_arrays_deserialize_logical.html'>f42_serde_arrays_deserialize_logical</a></td>
@@ -132,9 +189,19 @@ index array rather than as linked nodes.</p></td>
                  <td><p>Module for deserializing logical arrays from files</p></td>
                </tr>
 <!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_deserialize_logical_c.html'>f42_serde_arrays_deserialize_logical_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_logical_c.f90.html'>f42_serde_arrays_deserialize_logical_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_deserialize_logical.html">f42_serde_arrays_deserialize_logical</a></p><a href="../module/f42_serde_arrays_deserialize_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
                  <td><a href='../module/f42_serde_arrays_deserialize_real.html'>f42_serde_arrays_deserialize_real</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_deserialize_real.f90.html'>f42_serde_arrays_deserialize_real.F90</a></td>
                  <td><p>Module for deserializing real arrays from files</p></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_serde_arrays_deserialize_real_c.html'>f42_serde_arrays_deserialize_real_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_deserialize_real_c.f90.html'>f42_serde_arrays_deserialize_real_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_deserialize_real.html">f42_serde_arrays_deserialize_real</a></p><a href="../module/f42_serde_arrays_deserialize_real_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/f42_serde_arrays_serialize.html'>f42_serde_arrays_serialize</a></td>
@@ -147,9 +214,19 @@ index array rather than as linked nodes.</p></td>
                  <td><p>Module for serializing character arrays into files</p></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_char_c.html'>f42_serde_arrays_serialize_char_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_char_c.f90.html'>f42_serde_arrays_serialize_char_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_serialize_char.html">f42_serde_arrays_serialize_char</a></p><a href="../module/f42_serde_arrays_serialize_char_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_arrays_serialize_complex.html'>f42_serde_arrays_serialize_complex</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_serialize_complex.f90.html'>f42_serde_arrays_serialize_complex.F90</a></td>
                  <td><p>Module for serializing complex arrays into files</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_complex_c.html'>f42_serde_arrays_serialize_complex_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_complex_c.f90.html'>f42_serde_arrays_serialize_complex_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_serialize_complex.html">f42_serde_arrays_serialize_complex</a></p><a href="../module/f42_serde_arrays_serialize_complex_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_arrays_serialize_int.html'>f42_serde_arrays_serialize_int</a></td>
@@ -157,9 +234,19 @@ index array rather than as linked nodes.</p></td>
                  <td><p>Module for serializing integer arrays into files</p></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_int_c.html'>f42_serde_arrays_serialize_int_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_int_c.f90.html'>f42_serde_arrays_serialize_int_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_serialize_int.html">f42_serde_arrays_serialize_int</a></p><a href="../module/f42_serde_arrays_serialize_int_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_arrays_serialize_logical.html'>f42_serde_arrays_serialize_logical</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_serialize_logical.f90.html'>f42_serde_arrays_serialize_logical.F90</a></td>
                  <td><p>Module for serializing logical arrays into files</p></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_logical_c.html'>f42_serde_arrays_serialize_logical_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_logical_c.f90.html'>f42_serde_arrays_serialize_logical_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_serialize_logical.html">f42_serde_arrays_serialize_logical</a></p><a href="../module/f42_serde_arrays_serialize_logical_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_arrays_serialize_real.html'>f42_serde_arrays_serialize_real</a></td>
@@ -167,9 +254,19 @@ index array rather than as linked nodes.</p></td>
                  <td><p>Module for serializing real arrays into files</p></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_serialize_real_c.html'>f42_serde_arrays_serialize_real_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_serialize_real_c.f90.html'>f42_serde_arrays_serialize_real_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_serialize_real.html">f42_serde_arrays_serialize_real</a></p><a href="../module/f42_serde_arrays_serialize_real_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></td>
                  <td><a href='../sourcefile/f42_serde_arrays_utils.f90.html'>f42_serde_arrays_utils.F90</a></td>
                  <td><p>Module for array utilities.</p><a href="../module/f42_serde_arrays_utils.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_serde_arrays_utils_c.html'>f42_serde_arrays_utils_c</a></td>
+                 <td><a href='../sourcefile/f42_serde_arrays_utils_c.f90.html'>f42_serde_arrays_utils_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_serde_arrays_utils.html">f42_serde_arrays_utils</a></p><a href="../module/f42_serde_arrays_utils_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/f42_serde_utils.html'>f42_serde_utils</a></td>
@@ -177,50 +274,88 @@ index array rather than as linked nodes.</p></td>
                  <td><p>Module for de-/serialization utilities.</p></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/f42_sort_impl.html'>f42_sort_impl</a></td>
+                 <td><a href='../sourcefile/f42_sort_impl.f90.html'>f42_sort_impl.F90</a></td>
+                 <td><p>Indirect sorting -- every routine reorders a permutation vector rather than the data -- plus the searches over a sorted array.</p><a href="../module/f42_sort_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_stats.html'>f42_stats</a></td>
+                 <td><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></td>
+                 <td><p>Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.</p><a href="../module/f42_stats.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_stats_c.html'>f42_stats_c</a></td>
+                 <td><a href='../sourcefile/f42_stats_c.f90.html'>f42_stats_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/f42_stats.html">f42_stats</a></p><a href="../module/f42_stats_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_stats_impl.html'>f42_stats_impl</a></td>
+                 <td><a href='../sourcefile/f42_stats_impl.f90.html'>f42_stats_impl.F90</a></td>
+                 <td><p>Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.</p><a href="../module/f42_stats_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
                  <td><a href='../module/f42_utils.html'>f42_utils</a></td>
                  <td><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></td>
-                 <td><p>Utility module for data analysis.
-This module provides general-purpose utility functions for data analysis, to be used as needed.</p></td>
+                 <td><p>General-purpose utilities for data analysis: elementary mathematics, indirect sorting and
+searching, randomness, vector geometry, and descriptive statistics.</p><a href="../module/f42_utils.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/f42_utils_impl.html'>f42_utils_impl</a></td>
+                 <td><a href='../sourcefile/f42_utils_impl.f90.html'>f42_utils_impl.F90</a></td>
+                 <td><p>General-purpose utilities for data analysis: elementary mathematics, indirect sorting and
+searching, randomness, vector geometry, and descriptive statistics.</p><a href="../module/f42_utils_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/f42_vector_impl.html'>f42_vector_impl</a></td>
+                 <td><a href='../sourcefile/f42_vector_impl.f90.html'>f42_vector_impl.F90</a></td>
+                 <td><p>Vector geometry in n dimensions: lengths, angles, and element-wise arithmetic.</p><a href="../module/f42_vector_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/f42_xxh3_hashmap.html'>f42_xxh3_hashmap</a></td>
                  <td><a href='../sourcefile/f42_xxh3_hashmap.f90.html'>f42_xxh3_hashmap.F90</a></td>
-                 <td><p>AUTHOR_AARON_SCHROEDER
-String-keyed hashmap (<code>character -&gt; integer(int32)</code>) and hashset (<code>character</code> membership),
+                 <td><p>String-keyed hashmap (<code>character -&gt; integer(int32)</code>) and hashset (<code>character</code> membership),
 implemented as power-of-two-sized bucket arrays with separate chaining and the external XXH3
-algorithm for hashing. Both containers grow automatically via <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>
-/ <a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a> once the load factor exceeds
-<a href="../module/f42_xxh3_hashmap.html">f42_xxh3_hashmap</a>.</p></td>
+algorithm for hashing. Both containers rehash into a larger bucket array of their own accord
+once three quarters full, so a caller never sizes one twice.</p></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/safeguard.html'>safeguard</a></td>
-                 <td><a href='../sourcefile/safeguard.f90.html'>safeguard.F90</a></td>
-                 <td><p>AUTHOR_FRANZ_ERIC_SILL
-This module ensures equivalence of used c types in this framework during compile time.
-Thus, it needs to be used by every module to be compiled first, <strong><em>and</em></strong> it is highly recommended to compile the framework manually.</p></td>
-               </tr>
-<!---->			   <tr class="active">
                  <td><a href='../module/tox_clustering.html'>tox_clustering</a></td>
                  <td><a href='../sourcefile/tox_clustering.f90.html'>tox_clustering.F90</a></td>
-                 <td><p>Module for clustering routines used in tensor-omics: k-means for factor/trajectory
-grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.</p></td>
+                 <td><p>Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+(agglomerative) linkage clustering over a precomputed distance matrix.</p><a href="../module/tox_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_clustering_c.html'>tox_clustering_c</a></td>
+                 <td><a href='../sourcefile/tox_clustering_c.f90.html'>tox_clustering_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_clustering.html">tox_clustering</a></p><a href="../module/tox_clustering_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/tox_clustering_impl.html'>tox_clustering_impl</a></td>
+                 <td><a href='../sourcefile/tox_clustering_impl.f90.html'>tox_clustering_impl.F90</a></td>
+                 <td><p>Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+(agglomerative) linkage clustering over a precomputed distance matrix.</p><a href="../module/tox_clustering_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_conversions.html'>tox_conversions</a></td>
                  <td><a href='../sourcefile/tox_conversions.f90.html'>tox_conversions.F90</a></td>
                  <td><p>Module with conversion helpers between Fortran-native types and their <code>iso_c_binding</code> counterparts.
 Used by the C interface wrapper subroutines throughout tensor-omics to translate arguments (logicals,
-characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.</p></td>
+characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.</p><a href="../module/tox_conversions.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-<!---->			   <tr class="active">
+<!--active-->			   <tr class="">
                  <td><a href='../module/tox_data_accessors.html'>tox_data_accessors</a></td>
                  <td><a href='../sourcefile/tox_data_accessors.f90.html'>tox_data_accessors.F90</a></td>
                  <td><p>Bounds-checked lookup and indexing helpers for the TensorOmics data model.</p><a href="../module/tox_data_accessors.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-<!--active-->			   <tr class="">
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_data_archive.html'>tox_data_archive</a></td>
                  <td><a href='../sourcefile/tox_data_archive.f90.html'>tox_data_archive.F90</a></td>
                  <td><p>Zip-archive backed persistence for TensorOmics data sets.</p><a href="../module/tox_data_archive.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_archive_c.html'>tox_data_archive_c</a></td>
+                 <td><a href='../sourcefile/tox_data_archive_c.f90.html'>tox_data_archive_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_archive.html">tox_data_archive</a></p><a href="../module/tox_data_archive_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_data_integration.html'>tox_data_integration</a></td>
@@ -229,31 +364,100 @@ characters/strings, and fixed-width integer kinds) crossing the Fortran/C bounda
 Even when studies nominally target the same tissue and condition, differences in sample handling, sequencing technologies, preprocessing pipelines, or cohort,
 composition can introduce batch effects that are not easily detectable from mean expression levels alone.</p><a href="../module/tox_data_integration.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-                  			   <tr class="active submod">
-                 <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_jsd.html'>tox_data_integration_jsd</a></td>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_impl.html'>tox_data_integration_impl</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_impl.f90.html'>tox_data_integration_impl.F90</a></td>
+                 <td><p>In multi-study omics analyses, it is often unclear whether biological replicates originating from different studies can be safely treated as sampling the same biological condition.
+Even when studies nominally target the same tissue and condition, differences in sample handling, sequencing technologies, preprocessing pipelines, or cohort,
+composition can introduce batch effects that are not easily detectable from mean expression levels alone.</p><a href="../module/tox_data_integration_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_jsd.html'>tox_data_integration_jsd</a></td>
                  <td><a href='../sourcefile/tox_data_integration_jsd.f90.html'>tox_data_integration_jsd.F90</a></td>
-                 <td><p>This module implements the pipeline to obtain the JSD value from neighborhood residuals obtained from <a href="../module/tox_data_integration_preprocessing.html">tox_data_integration_preprocessing</a>.</p><a href="../module/tox_data_integration_jsd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+a JSD value: residuals are binned into histograms per study, the two distributions are
+compared per reference point, and the per-point divergences are weighted into one global
+figure for the pair of studies.</p><a href="../module/tox_data_integration_jsd.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-			   <tr class="active submod">
-                 <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_per_family.html'>tox_data_integration_per_family</a></td>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_jsd_c.html'>tox_data_integration_jsd_c</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_jsd_c.f90.html'>tox_data_integration_jsd_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_integration_jsd.html">tox_data_integration_jsd</a></p><a href="../module/tox_data_integration_jsd_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_jsd_impl.html'>tox_data_integration_jsd_impl</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_jsd_impl.f90.html'>tox_data_integration_jsd_impl.F90</a></td>
+                 <td><p>The step that turns neighborhood residuals -- as produced by the preprocessing module -- into
+a JSD value: residuals are binned into histograms per study, the two distributions are
+compared per reference point, and the per-point divergences are weighted into one global
+figure for the pair of studies.</p><a href="../module/tox_data_integration_jsd_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_per_family.html'>tox_data_integration_per_family</a></td>
                  <td><a href='../sourcefile/tox_data_integration_per_family.f90.html'>tox_data_integration_per_family.F90</a></td>
-                 <td><p>This module implements subroutines to obtain the JSD value from neighborhood residuals obtained from <a href="../module/tox_data_integration_preprocessing.html">tox_data_integration_preprocessing</a>
-for specific sub-neighborhoods by using the pipeline from <a href="../module/tox_data_integration_jsd.html">tox_data_integration_jsd</a>.</p><a href="../module/tox_data_integration_per_family.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>The JSD value for a sub-neighborhood -- typically the genes of one family -- obtained by
+driving the same pipeline over a masked set of neighbors. Answers whether two studies are
+compatible <em>for this family</em>, which the global figure can hide either way.</p><a href="../module/tox_data_integration_per_family.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-			   <tr class="active submod">
-                 <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_preprocessing.html'>tox_data_integration_preprocessing</a></td>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_per_family_c.html'>tox_data_integration_per_family_c</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_per_family_c.f90.html'>tox_data_integration_per_family_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_integration_per_family.html">tox_data_integration_per_family</a></p><a href="../module/tox_data_integration_per_family_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_per_family_impl.html'>tox_data_integration_per_family_impl</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_per_family_impl.f90.html'>tox_data_integration_per_family_impl.F90</a></td>
+                 <td><p>The JSD value for a sub-neighborhood -- typically the genes of one family -- obtained by
+driving the same pipeline over a masked set of neighbors. Answers whether two studies are
+compatible <em>for this family</em>, which the global figure can hide either way.</p><a href="../module/tox_data_integration_per_family_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_preprocessing.html'>tox_data_integration_preprocessing</a></td>
                  <td><a href='../sourcefile/tox_data_integration_preprocessing.f90.html'>tox_data_integration_preprocessing.F90</a></td>
-                 <td><p>This module implements the pipeline to obtain neighborhood residuals from expression vectors, to be used for JCT based data integration.</p><a href="../module/tox_data_integration_preprocessing.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>The step that turns expression vectors into the neighborhood residuals the rest of the test
+consumes: gene-wise means, the signed deviation of each replicate from them, and the
+neighborhoods of reference points those residuals are grouped into so the comparison is
+conditioned on expression level rather than pooled across it.</p><a href="../module/tox_data_integration_preprocessing.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-			   <tr class="active submod">
-                 <td>&nbsp;&nbsp;&nbsp;<a href='../module/tox_data_integration_stats.html'>tox_data_integration_stats</a></td>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_preprocessing_c.html'>tox_data_integration_preprocessing_c</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_preprocessing_c.f90.html'>tox_data_integration_preprocessing_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_integration_preprocessing.html">tox_data_integration_preprocessing</a></p><a href="../module/tox_data_integration_preprocessing_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_preprocessing_impl.html'>tox_data_integration_preprocessing_impl</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_preprocessing_impl.f90.html'>tox_data_integration_preprocessing_impl.F90</a></td>
+                 <td><p>The step that turns expression vectors into the neighborhood residuals the rest of the test
+consumes: gene-wise means, the signed deviation of each replicate from them, and the
+neighborhoods of reference points those residuals are grouped into so the comparison is
+conditioned on expression level rather than pooled across it.</p><a href="../module/tox_data_integration_preprocessing_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_preprocessing_impl_c.html'>tox_data_integration_preprocessing_impl_c</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_preprocessing_impl_c.f90.html'>tox_data_integration_preprocessing_impl_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_integration_preprocessing_impl.html">tox_data_integration_preprocessing_impl</a></p><a href="../module/tox_data_integration_preprocessing_impl_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_stats.html'>tox_data_integration_stats</a></td>
                  <td><a href='../sourcefile/tox_data_integration_stats.f90.html'>tox_data_integration_stats.F90</a></td>
-                 <td><p>This module implements a permutation test that estimates an empirical p-value for the weighted global JSD
-computed by <a href="../module/tox_data_integration_jsd.html">tox_data_integration_jsd</a>. Under the null hypothesis that both studies are
-exchangeable, S1/S2 residuals are repeatedly shuffled within each reference point's pooled neighborhood and
-the JSD pipeline is recomputed, giving a null distribution against which the observed JSD is compared.</p><a href="../module/tox_data_integration_stats.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>A permutation test estimating an empirical p-value for the weighted global JSD. Under the null
+hypothesis that both studies are exchangeable, S1/S2 residuals are repeatedly shuffled within
+each reference point's pooled neighborhood and the JSD is recomputed, giving a null
+distribution against which the observed value is compared.</p><a href="../module/tox_data_integration_stats.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
-
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_integration_stats_c.html'>tox_data_integration_stats_c</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_stats_c.f90.html'>tox_data_integration_stats_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_integration_stats.html">tox_data_integration_stats</a></p><a href="../module/tox_data_integration_stats_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_data_integration_stats_impl.html'>tox_data_integration_stats_impl</a></td>
+                 <td><a href='../sourcefile/tox_data_integration_stats_impl.f90.html'>tox_data_integration_stats_impl.F90</a></td>
+                 <td><p>A permutation test estimating an empirical p-value for the weighted global JSD. Under the null
+hypothesis that both studies are exchangeable, S1/S2 residuals are repeatedly shuffled within
+each reference point's pooled neighborhood and the JSD is recomputed, giving a null
+distribution against which the observed value is compared.</p><a href="../module/tox_data_integration_stats_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_data_read_write.html'>tox_data_read_write</a></td>
                  <td><a href='../sourcefile/tox_data_read_write.f90.html'>tox_data_read_write.F90</a></td>
@@ -266,68 +470,174 @@ the JSD pipeline is recomputed, giving a null distribution against which the obs
 TSV/CSV files, OrthoFinder-style family files), plus small array-filtering helpers.</p><a href="../module/tox_data_tools.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_tools_c.html'>tox_data_tools_c</a></td>
+                 <td><a href='../sourcefile/tox_data_tools_c.f90.html'>tox_data_tools_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_tools.html">tox_data_tools</a></p><a href="../module/tox_data_tools_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
                  <td><a href='../module/tox_data_validation.html'>tox_data_validation</a></td>
                  <td><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></td>
                  <td><p>Semantic validation of TensorOmics data sets (dimensions, ID uniqueness, value ranges,
 and cross-array consistency).</p><a href="../module/tox_data_validation.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_data_validation_c.html'>tox_data_validation_c</a></td>
+                 <td><a href='../sourcefile/tox_data_validation_c.f90.html'>tox_data_validation_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_data_validation.html">tox_data_validation</a></p><a href="../module/tox_data_validation_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_errors.html'>tox_errors</a></td>
                  <td><a href='../sourcefile/tox_errors.f90.html'>tox_errors.F90</a></td>
-                 <td><p>error handling module for tensor-omics</p></td>
+                 <td><p>error handling module for tensor-omics</p><a href="../module/tox_errors.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_euclidean_distance.html'>tox_euclidean_distance</a></td>
                  <td><a href='../sourcefile/tox_euclidean_distance.f90.html'>tox_euclidean_distance.F90</a></td>
-                 <td><p>Module with Euclidean distance computation routines for tensor omics.</p></td>
+                 <td><p>Euclidean distances in gene expression space.</p><a href="../module/tox_euclidean_distance.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_euclidean_distance_c.html'>tox_euclidean_distance_c</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance_c.f90.html'>tox_euclidean_distance_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_euclidean_distance.html">tox_euclidean_distance</a></p><a href="../module/tox_euclidean_distance_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_euclidean_distance_impl.html'>tox_euclidean_distance_impl</a></td>
+                 <td><a href='../sourcefile/tox_euclidean_distance_impl.f90.html'>tox_euclidean_distance_impl.F90</a></td>
+                 <td><p>Euclidean distances in gene expression space.</p><a href="../module/tox_euclidean_distance_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_gene_centroids.html'>tox_gene_centroids</a></td>
                  <td><a href='../sourcefile/tox_gene_centroids.f90.html'>tox_gene_centroids.F90</a></td>
-                 <td><p>Module for computing expression centroids of gene families.</p><a href="../module/tox_gene_centroids.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Expression centroids of gene families.</p><a href="../module/tox_gene_centroids.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_gene_centroids_c.html'>tox_gene_centroids_c</a></td>
+                 <td><a href='../sourcefile/tox_gene_centroids_c.f90.html'>tox_gene_centroids_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_gene_centroids.html">tox_gene_centroids</a></p><a href="../module/tox_gene_centroids_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_gene_centroids_impl.html'>tox_gene_centroids_impl</a></td>
+                 <td><a href='../sourcefile/tox_gene_centroids_impl.f90.html'>tox_gene_centroids_impl.F90</a></td>
+                 <td><p>Expression centroids of gene families.</p><a href="../module/tox_gene_centroids_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></td>
                  <td><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></td>
-                 <td><p>Module to identify gene outliers based on their distances to family centroids.</p></td>
+                 <td><p>Gene outliers, from how far each gene sits from its family's centroid.</p><a href="../module/tox_get_outliers.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_get_outliers_c.html'>tox_get_outliers_c</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers_c.f90.html'>tox_get_outliers_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_get_outliers.html">tox_get_outliers</a></p><a href="../module/tox_get_outliers_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_get_outliers_impl.html'>tox_get_outliers_impl</a></td>
+                 <td><a href='../sourcefile/tox_get_outliers_impl.f90.html'>tox_get_outliers_impl.F90</a></td>
+                 <td><p>Gene outliers, from how far each gene sits from its family's centroid.</p><a href="../module/tox_get_outliers_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_loess.html'>tox_loess</a></td>
                  <td><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></td>
-                 <td><p>Wraps the netlib LOESS (<code>dloess</code>/<code>lowesd</code> family) Fortran routines for local polynomial regression smoothing.
-This module exposes the netlib subroutines through Fortran interfaces (see below) and provides
-higher-level wrappers (<a href="../proc/loess_fit_plain.html">loess_fit_plain</a>, <a href="../proc/loess_fit_robust.html">loess_fit_robust</a>,
-<a href="../proc/loess_alloc.html">loess_alloc</a>) that size the required integer/real workspace and
-handle degenerate inputs (a single data point, a near-constant <code>x</code>, or too few unique <code>x</code> values for
-the requested polynomial degree) before delegating to the netlib fitting/evaluation routines. The
-netlib routines themselves are not re-documented here beyond their calling convention.</p></td>
+                 <td><p>LOESS local polynomial regression smoothing, over the netlib <code>dloess</code>/<code>lowesd</code> family.</p><a href="../module/tox_loess.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
-                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
-                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
-                 <td><p>Module with normalization routines for tensor omics.</p></td>
+                 <td><a href='../module/tox_loess_c.html'>tox_loess_c</a></td>
+                 <td><a href='../sourcefile/tox_loess_c.f90.html'>tox_loess_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_loess.html">tox_loess</a></p><a href="../module/tox_loess_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
+                 <td><a href='../module/tox_loess_impl.html'>tox_loess_impl</a></td>
+                 <td><a href='../sourcefile/tox_loess_impl.f90.html'>tox_loess_impl.F90</a></td>
+                 <td><p>LOESS local polynomial regression smoothing, over the netlib <code>dloess</code>/<code>lowesd</code> family.</p><a href="../module/tox_loess_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_loess_impl_c.html'>tox_loess_impl_c</a></td>
+                 <td><a href='../sourcefile/tox_loess_impl_c.f90.html'>tox_loess_impl_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_loess_impl.html">tox_loess_impl</a></p><a href="../module/tox_loess_impl_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_normalization.html'>tox_normalization</a></td>
+                 <td><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></td>
+                 <td><p>Normalization of expression data: putting samples on a comparable scale before anything
+distance-based is computed from them.</p><a href="../module/tox_normalization.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_normalization_c.html'>tox_normalization_c</a></td>
+                 <td><a href='../sourcefile/tox_normalization_c.f90.html'>tox_normalization_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_normalization.html">tox_normalization</a></p><a href="../module/tox_normalization_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_normalization_impl.html'>tox_normalization_impl</a></td>
+                 <td><a href='../sourcefile/tox_normalization_impl.f90.html'>tox_normalization_impl.F90</a></td>
+                 <td><p>Normalization of expression data: putting samples on a comparable scale before anything
+distance-based is computed from them.</p><a href="../module/tox_normalization_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
                  <td><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></td>
                  <td><a href='../sourcefile/tox_paralog_analysis.f90.html'>tox_paralog_analysis.F90</a></td>
-                 <td><p>Module for detecting paralog-subset expression patterns (dosage effect and subfunctionalization) relative to an ancestral ortholog.</p><a href="../module/tox_paralog_analysis.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+                 <td><p>Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.</p><a href="../module/tox_paralog_analysis.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_paralog_analysis_c.html'>tox_paralog_analysis_c</a></td>
+                 <td><a href='../sourcefile/tox_paralog_analysis_c.f90.html'>tox_paralog_analysis_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_paralog_analysis.html">tox_paralog_analysis</a></p><a href="../module/tox_paralog_analysis_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></td>
+                 <td><a href='../sourcefile/tox_paralog_analysis_impl.f90.html'>tox_paralog_analysis_impl.F90</a></td>
+                 <td><p>Paralog-subset expression patterns -- dosage effect and subfunctionalization -- relative to an ancestral ortholog.</p><a href="../module/tox_paralog_analysis_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></td>
+                 <td><a href='../sourcefile/tox_paralog_analysis_impl_c.f90.html'>tox_paralog_analysis_impl_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_paralog_analysis_impl.html">tox_paralog_analysis_impl</a></p><a href="../module/tox_paralog_analysis_impl_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></td>
                  <td><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></td>
-                 <td><p>Module for tools related to relative axis planes (RAPs), i.e. planes in higher-dimensional gene expression space</p></td>
+                 <td><p>Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
+what can be read off a vector once it is projected onto one.</p><a href="../module/tox_relative_axis_plane_tools.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_relative_axis_plane_tools_c.html'>tox_relative_axis_plane_tools_c</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools_c.f90.html'>tox_relative_axis_plane_tools_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_relative_axis_plane_tools.html">tox_relative_axis_plane_tools</a></p><a href="../module/tox_relative_axis_plane_tools_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></td>
+                 <td><a href='../sourcefile/tox_relative_axis_plane_tools_impl.f90.html'>tox_relative_axis_plane_tools_impl.F90</a></td>
+                 <td><p>Relative axis planes (RAPs): planes through higher-dimensional gene expression space, and
+what can be read off a vector once it is projected onto one.</p><a href="../module/tox_relative_axis_plane_tools_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_shift_vectors.html'>tox_shift_vectors</a></td>
                  <td><a href='../sourcefile/tox_shift_vectors.f90.html'>tox_shift_vectors.F90</a></td>
-                 <td><p>Module for computing the shift vector field for all genes.</p></td>
+                 <td><p>The shift vector field: where each gene sits relative to its family's centroid.</p><a href="../module/tox_shift_vectors.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_shift_vectors_c.html'>tox_shift_vectors_c</a></td>
+                 <td><a href='../sourcefile/tox_shift_vectors_c.f90.html'>tox_shift_vectors_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_shift_vectors.html">tox_shift_vectors</a></p><a href="../module/tox_shift_vectors_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_shift_vectors_impl.html'>tox_shift_vectors_impl</a></td>
+                 <td><a href='../sourcefile/tox_shift_vectors_impl.f90.html'>tox_shift_vectors_impl.F90</a></td>
+                 <td><p>The shift vector field: where each gene sits relative to its family's centroid.</p><a href="../module/tox_shift_vectors_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
                  <td><a href='../module/tox_tissue_versatility.html'>tox_tissue_versatility</a></td>
                  <td><a href='../sourcefile/tox_tissue_versatility.f90.html'>tox_tissue_versatility.F90</a></td>
-                 <td><p>Module for calculating normalized tissue (axis) versatility.
-This module implements the angle-based metric for tissue versatility,
-quantifying how uniformly a gene is expressed across selected axes (tissues).</p></td>
+                 <td><p>Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.</p><a href="../module/tox_tissue_versatility.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_tissue_versatility_c.html'>tox_tissue_versatility_c</a></td>
+                 <td><a href='../sourcefile/tox_tissue_versatility_c.f90.html'>tox_tissue_versatility_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_tissue_versatility.html">tox_tissue_versatility</a></p><a href="../module/tox_tissue_versatility_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_tissue_versatility_impl.html'>tox_tissue_versatility_impl</a></td>
+                 <td><a href='../sourcefile/tox_tissue_versatility_impl.f90.html'>tox_tissue_versatility_impl.F90</a></td>
+                 <td><p>Normalized tissue (axis) versatility: how uniformly a gene is expressed across tissues.</p><a href="../module/tox_tissue_versatility_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			   <tr class="active">
                  <td><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></td>
@@ -335,10 +645,29 @@ quantifying how uniformly a gene is expressed across selected axes (tissues).</p
                  <td><p>Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.</p><a href="../module/tox_trajectory_contribution_analysis.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!--active-->			   <tr class="">
+                 <td><a href='../module/tox_trajectory_contribution_analysis_c.html'>tox_trajectory_contribution_analysis_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_c.f90.html'>tox_trajectory_contribution_analysis_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_trajectory_contribution_analysis.html">tox_trajectory_contribution_analysis</a></p><a href="../module/tox_trajectory_contribution_analysis_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_trajectory_contribution_analysis_impl.html'>tox_trajectory_contribution_analysis_impl</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_contribution_analysis_impl.f90.html'>tox_trajectory_contribution_analysis_impl.F90</a></td>
+                 <td><p>Module for quantifying how much one trajectory (a "factor") contributes to another (a "dependent") over time.</p><a href="../module/tox_trajectory_contribution_analysis_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
                  <td><a href='../module/tox_trajectory_normalization.html'>tox_trajectory_normalization</a></td>
                  <td><a href='../sourcefile/tox_trajectory_normalization.f90.html'>tox_trajectory_normalization.F90</a></td>
-                 <td><p>Module for min-max normalization of factor trajectories over time.
-Each factor's time series is independently rescaled to <code>[0,1]</code> per sample/entity.</p></td>
+                 <td><p>Min-max normalization of factor trajectories over time.</p><a href="../module/tox_trajectory_normalization.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!---->			   <tr class="active">
+                 <td><a href='../module/tox_trajectory_normalization_c.html'>tox_trajectory_normalization_c</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_normalization_c.f90.html'>tox_trajectory_normalization_c.F90</a></td>
+                 <td><p>C-wrappers for <a href="../module/tox_trajectory_normalization.html">tox_trajectory_normalization</a></p><a href="../module/tox_trajectory_normalization_c.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
+               </tr>
+<!--active-->			   <tr class="">
+                 <td><a href='../module/tox_trajectory_normalization_impl.html'>tox_trajectory_normalization_impl</a></td>
+                 <td><a href='../sourcefile/tox_trajectory_normalization_impl.f90.html'>tox_trajectory_normalization_impl.F90</a></td>
+                 <td><p>Min-max normalization of factor trajectories over time.</p><a href="../module/tox_trajectory_normalization_impl.html" class="pull-right"><emph>Read more&hellip;</emph></a></td>
                </tr>
 <!---->			 </tbody></table>
              
@@ -359,7 +688,7 @@ Each factor's time series is independently rescaled to <code>[0,1]</code> per sa
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

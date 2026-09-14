@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">46 statements</a>
+                 title=" 0.2% of total for procedures.">39 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,11 +150,10 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, tmp_factors, tmp_dependent, ierr)  
+    <h2>public pure subroutine compute_all_contributions(trajectories, n_factors, n_samples, n_timepoints, factor_indices, n_selected_factors, dependent_indices, n_selected_dependents, baseline_mode, local_contributions, total_contributions, ierr)  
 </h2>
     
 
-    <p>This routine performs contribution analysis for every selected factor–dependent pair</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +169,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~7"></span>
+              <span class="anchor" id="variable-trajectories~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -186,7 +184,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~9"></span>
+              <span class="anchor" id="variable-n_factors~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -201,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~19"></span>
+              <span class="anchor" id="variable-n_samples~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -216,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~11"></span>
+              <span class="anchor" id="variable-n_timepoints~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -241,7 +239,9 @@
             <td>::</td>
             <td><strong>factor_indices</strong></td>
             <td>
-                <p>indices of factors to compute the contributions for</p>
+                <p>indices of factors to compute the contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_factors</code>.</p>
             </td>
         </tr>
         <tr>
@@ -271,7 +271,9 @@
             <td>::</td>
             <td><strong>dependent_indices</strong></td>
             <td>
-                <p>indices of dependents to compute the contributions for</p>
+                <p>indices of dependents to compute the contributions for
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_factors</code>.</p>
             </td>
         </tr>
         <tr>
@@ -291,7 +293,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-baseline_mode~5"></span>
+              <span class="anchor" id="variable-baseline_mode~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -311,15 +313,15 @@
 <tbody>
 <tr>
 <td>Raw/zero baseline</td>
-<td>1_int32</td>
+<td><a href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_raw">MODE_BASELINE_RAW</a></td>
 </tr>
 <tr>
 <td>arithmetic mean</td>
-<td>3_int32</td>
+<td><a href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_mean">MODE_BASELINE_MEAN</a></td>
 </tr>
 <tr>
 <td>minimum value</td>
-<td>2_int32</td>
+<td><a href="../module/tox_trajectory_contribution_analysis_impl.html#variable-mode_baseline_min">MODE_BASELINE_MIN</a></td>
 </tr>
 </tbody>
 </table>
@@ -327,7 +329,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-local_contributions~5"></span>
+              <span class="anchor" id="variable-local_contributions~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -357,37 +359,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_factors"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_timepoints, n_selected_factors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_factors</strong></td>
-            <td>
-                <p>Working array to hold the currently handled sample's factors in contiguous memory</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_dependent~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_timepoints)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_dependent</strong></td>
-            <td>
-                <p>Working array to hold the currently handled dependent in contiguous memory</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~247"></span>
+              <span class="anchor" id="variable-ierr~165"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -434,7 +406,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

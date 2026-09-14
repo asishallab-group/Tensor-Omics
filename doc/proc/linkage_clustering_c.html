@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">59 statements</a>
+                 title=" 0.4% of total for procedures.">71 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_clustering.F90"> Source File</a>
+              <a href="../src/tox_clustering_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_clustering.f90.html'>tox_clustering.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_clustering_c.f90.html'>tox_clustering_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_clustering_c.html'>tox_clustering_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">linkage_clustering_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine linkage_clustering_c(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr) bind(C, name="linkage_clustering_c")  
+    <h2>public  subroutine linkage_clustering_c(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr) bind(C, name="linkage_clustering_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='../module/tox_clustering_impl.html'>tox_clustering_impl</a></li>
                   <li class="list-inline-item"><a href='../module/tox_clustering.html'>tox_clustering</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +167,12 @@
     </div>
 
 
-    <p>C-compatible wrapper for linkage_clustering</p>
+    <div class="alert alert-info">
+<p class="alert-title h4">Note</p>
+<p>The bottom triangle is used as scratch and restored from the top triangle before
+returning, on success or on error, so the matrix comes back unchanged. There is no
+need to copy it before calling.</p>
+</div>
 
 
     <h3>Arguments</h3>
@@ -184,7 +188,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~21"></span>
+              <span class="anchor" id="variable-distances~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -197,14 +201,17 @@
                 <p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p>
 <div class="alert alert-info">
 <p class="alert-title h4">Note</p>
-<p>This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-So there is no need to copy an existing distance matrix, just pass the original.</p>
+<p>The bottom triangle is used as scratch and restored from the top triangle before
+returning, on success or on error, so the matrix comes back unchanged. There is no
+need to copy it before calling.</p>
 </div>
+<p>Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+distance-matrix naming convention in the generated wrapper.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~72"></span>
+              <span class="anchor" id="variable-n_points~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -219,7 +226,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-merge_i~3"></span>
+              <span class="anchor" id="variable-merge_i"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -234,7 +241,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-merge_j~3"></span>
+              <span class="anchor" id="variable-merge_j"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -249,7 +256,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-heights~3"></span>
+              <span class="anchor" id="variable-heights"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -264,7 +271,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cluster_sizes~5"></span>
+              <span class="anchor" id="variable-cluster_sizes"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -279,7 +286,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-method~3"></span>
+              <span class="anchor" id="variable-method"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
@@ -289,7 +296,9 @@ So there is no need to copy an existing distance matrix, just pass the original.
             <td>::</td>
             <td><strong>method</strong></td>
             <td>
-                <p>used algorithm</p>
+                <p>used algorithm
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
 <table>
 <thead>
 <tr>
@@ -300,15 +309,15 @@ So there is no need to copy an existing distance matrix, just pass the original.
 <tbody>
 <tr>
 <td>Average / UPGMA</td>
-<td>"average"</td>
+<td><a href="../module/tox_clustering_impl.html#variable-method_average">METHOD_AVERAGE</a></td>
 </tr>
 <tr>
 <td>Weighted / WPGMA</td>
-<td>"weighted"</td>
+<td><a href="../module/tox_clustering_impl.html#variable-method_weighted">METHOD_WEIGHTED</a></td>
 </tr>
 <tr>
 <td>Ward</td>
-<td>"ward"</td>
+<td><a href="../module/tox_clustering_impl.html#variable-method_ward">METHOD_WARD</a></td>
 </tr>
 </tbody>
 </table>
@@ -316,7 +325,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~240"></span>
+              <span class="anchor" id="variable-ierr~53"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -326,7 +335,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -363,7 +372,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

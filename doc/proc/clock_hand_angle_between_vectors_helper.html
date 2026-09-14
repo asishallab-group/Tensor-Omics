@@ -90,20 +90,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">29 statements</a>
+                 title=" 0.2% of total for procedures.">33 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_relative_axis_plane_tools.F90"> Source File</a>
+              <a href="../src/tox_relative_axis_plane_tools_impl.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_relative_axis_plane_tools_impl.f90.html'>tox_relative_axis_plane_tools_impl.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_relative_axis_plane_tools_impl.html'>tox_relative_axis_plane_tools_impl</a></li>
             <li class="breadcrumb-item active" aria-current="page">clock_hand_angle_between_vectors_helper</li>
           </ol>
         </nav>
@@ -151,13 +151,23 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine clock_hand_angle_between_vectors_helper(v1, v2, n_dims, signed_angle, selected_axes_for_signed)  
+    <h2>public pure subroutine clock_hand_angle_between_vectors_helper(v1, v2, n_dims, orientation_reference, signed_angle, undefined_sign)  
 </h2>
     
 
-    <p>(no input validation) Compute the signed clock hand angle between two RAP-projected and normalized vectors.
-Calculates the signed rotation angle between two normalized vectors in RAP space.
-For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes for directionality.</p>
+    <p>Compute the signed clock hand angle between two RAP-projected and normalized vectors.</p>
+<p>The unsigned angle is <code>acos(v1 . v2)</code>. The sign is the caller's convention: the rotation
+from <code>v1</code> to <code>v2</code> sweeps through the plane the two span, and <code>orientation_reference</code> says
+which way round that plane is positive. Concretely, the sign is that of
+<code>orientation_reference . (v2 - (v1 . v2) v1)</code> -- the reference measured against the part
+of <code>v2</code> perpendicular to <code>v1</code>, which is the direction the rotation actually moves in.</p>
+<p>In two dimensions this reduces to the familiar determinant when the reference is <code>v1</code>
+turned a quarter turn; there is simply no such canonical quarter turn in higher ones.</p>
+<p><code>undefined_sign</code> reports the one case with no answer: the reference is orthogonal to the
+rotation, so it orients nothing. Parallel <code>v1</code>/<code>v2</code> are not that case -- the angle is
+then 0 or pi and the sign does not matter, so the unsigned angle is returned as is.</p>
+<p>Shared compute core: the single-vector angle, reused per field by
+<a href="../proc/clock_hand_angles_for_shift_vectors_impl.html">clock_hand_angles_for_shift_vectors_impl</a>.</p>
 
 
     <h3>Arguments</h3>
@@ -173,7 +183,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~3"></span>
+              <span class="anchor" id="variable-v1~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -188,7 +198,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~3"></span>
+              <span class="anchor" id="variable-v2~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -203,7 +213,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~21"></span>
+              <span class="anchor" id="variable-n_dims~27"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -218,7 +228,26 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angle~2"></span>
+              <span class="anchor" id="variable-orientation_reference~6"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims)
+            </td>
+            <td>::</td>
+            <td><strong>orientation_reference</strong></td>
+            <td>
+                <p>Orients the plane the rotation happens in, so the angle can carry a sign. A
+rotation from one vector to another has no inherent direction above two
+dimensions -- and in RAP space not even in two, since the axes are tissues or
+factors and carry no handedness -- so the caller states which way round counts
+as positive. The sign is that of this vector's component along the rotation.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-signed_angle~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out)</td>
@@ -228,22 +257,22 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
             <td>::</td>
             <td><strong>signed_angle</strong></td>
             <td>
-                <p>Signed angle between vectors in radians [-π, π]</p>
+                <p>Signed angle between vectors in radians [-pi, pi]</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed~3"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-undefined_sign~2"></span>
+              logical(kind=c_bool),
             </td>
-<td>intent(in),</td>
+<td>intent(out)</td>
               <td></td>            <td>
-              dimension(3)
+              
             </td>
             <td>::</td>
-            <td><strong>selected_axes_for_signed</strong></td>
+            <td><strong>undefined_sign</strong></td>
             <td>
-                <p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
+                <p><code>.true.</code> when the reference orients nothing, so no sign could be given</p>
             </td>
         </tr>
     </tbody>
@@ -280,7 +309,7 @@ For 2D/3D: automatic directionality calculation. For &gt;3D: uses selected axes 
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

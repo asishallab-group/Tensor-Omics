@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">30 statements</a>
+                 title=" 0.1% of total for procedures.">21 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -155,7 +154,6 @@
 </h2>
     
 
-    <p>Identifies neofunctionalization for genes by checking whether the difference of expression to its ancestor exceeds the threshold for the respective axis.</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +169,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestors"></span>
+              <span class="anchor" id="variable-ancestors~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -181,12 +179,14 @@
             <td>::</td>
             <td><strong>ancestors</strong></td>
             <td>
-                <p>RAP projected unit length expression vector of ancestral ortholog</p>
+                <p>RAP projected unit length expression vector of ancestral ortholog
+The minimum valid value is <code>-1.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~24"></span>
+              <span class="anchor" id="variable-n_families~23"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -201,7 +201,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~5"></span>
+              <span class="anchor" id="variable-genes~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -211,12 +211,14 @@
             <td>::</td>
             <td><strong>genes</strong></td>
             <td>
-                <p>RAP projected unit length expression vectors of genes</p>
+                <p>RAP projected unit length expression vectors of genes
+The minimum valid value is <code>-1.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~22"></span>
+              <span class="anchor" id="variable-n_axes~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -231,7 +233,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~28"></span>
+              <span class="anchor" id="variable-gene_to_fam~19"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -241,12 +243,15 @@
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes</p>
+                <p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>genes</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~65"></span>
+              <span class="anchor" id="variable-n_genes~50"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -261,7 +266,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-thresholds"></span>
+              <span class="anchor" id="variable-thresholds~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -271,13 +276,15 @@
             <td>::</td>
             <td><strong>thresholds</strong></td>
             <td>
-                <p>threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis</p>
+                <p>threshold per axis that defines significant change in expression, may be a percentile of all genes' changes per axis
+The minimum valid value is <code>-1.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-neofunc"></span>
-              logical,
+              <span class="anchor" id="variable-neofunc~3"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
@@ -291,7 +298,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~299"></span>
+              <span class="anchor" id="variable-ierr~202"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -301,7 +308,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -338,7 +345,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

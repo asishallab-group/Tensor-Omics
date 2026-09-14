@@ -85,25 +85,24 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">61 statements</a>
+                 title=" 0.1% of total for procedures.">25 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_utils.F90"> Source File</a>
+              <a href="../src/f42_stats.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
             <li class="breadcrumb-item active" aria-current="page">loess_smooth_2d</li>
           </ol>
         </nav>
@@ -155,8 +154,7 @@
 </h2>
     
 
-    <p>Performs LOESS smoothing on a set of data points.
-Smooths <code>y_ref</code> at <code>x_query</code> using reference points <code>x_ref</code>, <code>y_ref</code>, and kernel parameters.
+    <p>Smooths <code>y_ref</code> at <code>x_query</code> using reference points <code>x_ref</code>, <code>y_ref</code>, and kernel parameters.
 The user must pre-filter data and provide only valid indices in indices_used.</p>
 
 
@@ -173,7 +171,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_total"></span>
+              <span class="anchor" id="variable-n_total~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -188,7 +186,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_target"></span>
+              <span class="anchor" id="variable-n_target~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -203,52 +201,54 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x_ref"></span>
+              <span class="anchor" id="variable-x_ref~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_total)
             </td>
             <td>::</td>
-            <td><strong>x_ref</strong>(n_total)</td>
+            <td><strong>x_ref</strong></td>
             <td>
                 <p>Reference x-coordinates.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y_ref"></span>
+              <span class="anchor" id="variable-y_ref~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_total)
             </td>
             <td>::</td>
-            <td><strong>y_ref</strong>(n_total)</td>
+            <td><strong>y_ref</strong></td>
             <td>
                 <p>Reference y-coordinates (length n_total).</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-indices_used"></span>
+              <span class="anchor" id="variable-indices_used~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_used)
             </td>
             <td>::</td>
-            <td><strong>indices_used</strong>(n_used)</td>
+            <td><strong>indices_used</strong></td>
             <td>
-                <p>Indices of reference points used for smoothing (only valid indices).</p>
+                <p>Indices of reference points used for smoothing (only valid indices).
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_total</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_used"></span>
+              <span class="anchor" id="variable-n_used~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -263,22 +263,22 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x_query"></span>
+              <span class="anchor" id="variable-x_query~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_target)
             </td>
             <td>::</td>
-            <td><strong>x_query</strong>(n_target)</td>
+            <td><strong>x_query</strong></td>
             <td>
                 <p>Target x-coordinates to smooth.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kernel_sigma"></span>
+              <span class="anchor" id="variable-kernel_sigma~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -288,12 +288,13 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
             <td>::</td>
             <td><strong>kernel_sigma</strong></td>
             <td>
-                <p>Bandwidth parameter for the kernel.</p>
+                <p>Bandwidth parameter for the kernel.
+The minimum valid value is <code>0.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kernel_cutoff"></span>
+              <span class="anchor" id="variable-kernel_cutoff~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -303,27 +304,28 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
             <td>::</td>
             <td><strong>kernel_cutoff</strong></td>
             <td>
-                <p>Cutoff for the kernel, not used if zero</p>
+                <p>Cutoff for the kernel, not used if zero
+The minimum valid value is <code>0.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y_out"></span>
+              <span class="anchor" id="variable-y_out~3"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_target)
             </td>
             <td>::</td>
-            <td><strong>y_out</strong>(n_target)</td>
+            <td><strong>y_out</strong></td>
             <td>
                 <p>Output smoothed values (length n_target).</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~74"></span>
+              <span class="anchor" id="variable-ierr~272"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -333,7 +335,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -370,7 +372,7 @@ The user must pre-filter data and provide only valid indices in indices_used.</p
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

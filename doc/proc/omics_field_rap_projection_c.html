@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.5% of total for procedures.">65 statements</a>
+                 title=" 0.3% of total for procedures.">55 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_relative_axis_plane_tools.F90"> Source File</a>
+              <a href="../src/tox_relative_axis_plane_tools_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_relative_axis_plane_tools_c.f90.html'>tox_relative_axis_plane_tools_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_relative_axis_plane_tools_c.html'>tox_relative_axis_plane_tools_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">omics_field_RAP_projection_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine omics_field_RAP_projection_c(vecs, n_axes, n_vecs, vecs_selection_mask, n_selected_vecs, axes_selection_mask, n_selected_axes, projections, ierr) bind(C, name="omics_field_RAP_projection_c")  
+    <h2>public  subroutine omics_field_RAP_projection_c(fields, n_axes, n_fields, fields_selection_mask, n_selected_fields, axes_selection_mask, n_selected_axes, projections, ierr) bind(C, name="omics_field_RAP_projection_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,9 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +166,6 @@
     </div>
 
 
-    <p>C/Python wrapper for omics_field_RAP_projection</p>
 
 
     <h3>Arguments</h3>
@@ -184,22 +181,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs~4"></span>
+              <span class="anchor" id="variable-fields"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_axes, 2, n_vecs), target
+              dimension(n_axes, 2, n_fields), target
             </td>
             <td>::</td>
-            <td><strong>vecs</strong></td>
+            <td><strong>fields</strong></td>
             <td>
-                <p>matrix with vector fields, first n rows mean vector origin, last n rows vector targets</p>
+                <p>matrix with vector fields; each field holds two vectors, the origin first and the target second</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_axes~19"></span>
+              <span class="anchor" id="variable-n_axes~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -214,7 +211,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vecs~4"></span>
+              <span class="anchor" id="variable-n_fields"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -222,29 +219,29 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_vecs</strong></td>
+            <td><strong>n_fields</strong></td>
             <td>
-                <p>number of vectors</p>
+                <p>number of vectors per axis</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-vecs_selection_mask~4"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-fields_selection_mask"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_vecs), target
+              dimension(n_fields), target
             </td>
             <td>::</td>
-            <td><strong>vecs_selection_mask</strong></td>
+            <td><strong>fields_selection_mask</strong></td>
             <td>
-                <p>mask for selecting vectors</p>
+                <p><code>.true.</code> for vectors where projection is to be computed</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_vecs~5"></span>
+              <span class="anchor" id="variable-n_selected_fields"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -252,15 +249,15 @@
               target
             </td>
             <td>::</td>
-            <td><strong>n_selected_vecs</strong></td>
+            <td><strong>n_selected_fields</strong></td>
             <td>
-                <p>count of selected vectors</p>
+                <p>count of <code>.true.</code> values in <code>fields_selection_mask</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-axes_selection_mask~6"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-axes_selection_mask~3"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
@@ -269,12 +266,12 @@
             <td>::</td>
             <td><strong>axes_selection_mask</strong></td>
             <td>
-                <p>mask for selecting axes</p>
+                <p><code>.true.</code> for axes to be included in RAP</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_selected_axes~10"></span>
+              <span class="anchor" id="variable-n_selected_axes~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -284,17 +281,17 @@
             <td>::</td>
             <td><strong>n_selected_axes</strong></td>
             <td>
-                <p>count of selected axes</p>
+                <p>count of <code>.true.</code> values in <code>axes_selection_mask</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-projections~6"></span>
+              <span class="anchor" id="variable-projections~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_selected_axes, n_selected_vecs), target
+              dimension(n_selected_axes, n_selected_fields), target
             </td>
             <td>::</td>
             <td><strong>projections</strong></td>
@@ -304,7 +301,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~296"></span>
+              <span class="anchor" id="variable-ierr~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -314,7 +311,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -351,7 +348,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

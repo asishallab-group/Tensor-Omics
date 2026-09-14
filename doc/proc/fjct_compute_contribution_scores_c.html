@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">35 statements</a>
+                 title=" 0.2% of total for procedures.">40 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_data_integration_per_family.F90"> Source File</a>
+              <a href="../src/tox_data_integration_per_family_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_integration_per_family.f90.html'>tox_data_integration_per_family.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_integration_per_family_c.f90.html'>tox_data_integration_per_family_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_data_integration_per_family_c.html'>tox_data_integration_per_family_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">fjct_compute_contribution_scores_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine fjct_compute_contribution_scores_c(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores, ierr) bind(C, name="fjct_compute_contribution_scores_c")  
+    <h2>public  subroutine fjct_compute_contribution_scores_c(global_js_divergences, total_included_n_reps_per_f, k_families, support_weights, contribution_scores, ierr) bind(C, name="fjct_compute_contribution_scores_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_data_integration.html'>tox_data_integration</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_data_integration_per_family.html'>tox_data_integration_per_family</a></li>
               </ul>
             </li>
         </ul>
@@ -167,7 +166,12 @@
     </div>
 
 
-    <p>C-compatible wrapper for <a href="../interface/fjct_compute_contribution_scores.html">fjct_compute_contribution_scores</a></p>
+    <p>Combines</p>
+<ol>
+<li>how divergent the family is between the studies (<code>global_js_divergences</code>), and</li>
+<li>how much residual support the family has overall (<code>total_included_n_reps_per_f</code>),</li>
+</ol>
+<p>using the outputs of <code>fjct_compute_jsd</code>, collected for the analyzed sub-neighborhoods.</p>
 
 
     <h3>Arguments</h3>
@@ -183,7 +187,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-global_js_divergences~5"></span>
+              <span class="anchor" id="variable-global_js_divergences~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -193,12 +197,13 @@
             <td>::</td>
             <td><strong>global_js_divergences</strong></td>
             <td>
-                <p>Per-sub-neighborhood weighted global JSD</p>
+                <p>Per-sub-neighborhood weighted global JSD
+The minimum valid value is <code>0.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-total_included_n_reps_per_f~5"></span>
+              <span class="anchor" id="variable-total_included_n_reps_per_f~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -208,12 +213,13 @@
             <td>::</td>
             <td><strong>total_included_n_reps_per_f</strong></td>
             <td>
-                <p>Per-sub-neighborhood <code>total_included_n_reps</code></p>
+                <p>Per-sub-neighborhood <code>total_included_n_reps</code>
+The minimum valid value is <code>0_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-k_families~5"></span>
+              <span class="anchor" id="variable-k_families~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -228,7 +234,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-support_weights~5"></span>
+              <span class="anchor" id="variable-support_weights~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -238,14 +244,12 @@
             <td>::</td>
             <td><strong>support_weights</strong></td>
             <td>
-                <p>Per-sub-neighborhood calculated support weight (ratio between its
-<code>total_included_n_reps</code> and <code>sum(total_included_n_reps_per_f)</code>,
-zero if there were no replicates included at all)</p>
+                <p>Per-sub-neighborhood calculated support weight (ratio between its <code>total_included_n_reps</code> and <code>sum(total_included_n_reps_per_f)</code>, zero if there were no replicates included at all)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-contribution_scores~5"></span>
+              <span class="anchor" id="variable-contribution_scores~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -255,13 +259,12 @@ zero if there were no replicates included at all)</p>
             <td>::</td>
             <td><strong>contribution_scores</strong></td>
             <td>
-                <p>Per-sub-neighborhood calculated contribution
-( <script type="math/tex"> support\_weights_i * global\_js\_divergences_i </script> )</p>
+                <p>Per-sub-neighborhood calculated contribution ( <script type="math/tex"> support\_weights_i * global\_js\_divergences_i </script> )</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~277"></span>
+              <span class="anchor" id="variable-ierr~325"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -271,7 +274,7 @@ zero if there were no replicates included at all)</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -308,7 +311,7 @@ zero if there were no replicates included at all)</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
