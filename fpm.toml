@@ -16,6 +16,7 @@ include-dir = ["."]
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 ifx.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip", "iomp5"]
+nvfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 
 optimization.ifx.flags = "-xHost -align array64byte -qopt-zmm-usage=high -qopt-prefetch=3 -qopt-matmul"
 optimization.nvfortran.flags = "-Mconcur -fopenmp -stdpar=multicore"
@@ -25,6 +26,9 @@ diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -st
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
 
 default.linux.flags = "-fPIC"
+# nvfortran treats a backslash in a string as a C escape unless told otherwise; standard Fortran,
+# gfortran and ifx treat it as an ordinary character (`"\"` is one character long).
+default.nvfortran.flags = "-Mbackslash"
 
 [[test]]
 name = "run_tests"
