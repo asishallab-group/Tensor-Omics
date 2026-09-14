@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.0% of total for modules and submodules.">89 statements</a>
+                 title=" 0.4% of total for modules and submodules.">85 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -143,7 +143,8 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_variable_timeseries">normalize_variable_timeseries</a>
             <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_single_trajectory">normalize_single_trajectory</a>
-            <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_all_trajectories_alloc">normalize_all_trajectories_alloc</a>
+            <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_all_trajectories">normalize_all_trajectories</a>
+            <a class="list-group-item" href="../module/tox_trajectory_normalization.html#proc-normalize_all_trajectories_expert">normalize_all_trajectories_expert</a>
         </div>
       </div>
     </div>
@@ -162,18 +163,20 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Module for min-max normalization of factor trajectories over time.
-Each factor's time series is independently rescaled to <code>[0,1]</code> per sample/entity.</p>
+      <p>Min-max normalization of factor trajectories over time.</p>
+<p>Each factor's time series is rescaled to <code>[0,1]</code> independently, per sample -- so trajectories
+of very different magnitudes can be compared by shape. <code>normalize_single_trajectory</code> does one;
+<code>normalize_all_trajectories</code> does a whole tensor of them in one call.</p>
+<p>Generated from <a href="../module/tox_trajectory_normalization_impl.html">tox_trajectory_normalization_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='f42_utils.html'>f42_utils</a></li>
+                  <li class="list-inline-item"><a href='tox_trajectory_normalization_impl.html'>tox_trajectory_normalization_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -193,15 +196,11 @@ Each factor's time series is independently rescaled to <code>[0,1]</code> per sa
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_variable_timeseries"></span> <h3>public pure subroutine <a href='../proc/normalize_variable_timeseries.html'>normalize_variable_timeseries</a>(v, v_norm, n_points, ierr, status)  
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_variable_timeseries"></span> <h3>public pure subroutine <a href='../proc/normalize_variable_timeseries.html'>normalize_variable_timeseries</a>(v, v_norm, n_points, status, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Normalize a single variable across time using min-max scaling</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/normalize_variable_timeseries_impl.html">normalize_variable_timeseries_impl</a>.</p><a href="../proc/normalize_variable_timeseries.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -216,37 +215,37 @@ Each factor's time series is independently rescaled to <code>[0,1]</code> per sa
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v"></span>
+              <span class="anchor" id="variable-v~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>v</strong>(n_points)</td>
+            <td><strong>v</strong></td>
             <td>
 <p>Original time series</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v_norm"></span>
+              <span class="anchor" id="variable-v_norm~3"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>v_norm</strong>(n_points)</td>
+            <td><strong>v_norm</strong></td>
             <td>
 <p>Normalized time series</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~58"></span>
+              <span class="anchor" id="variable-n_points~46"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -261,22 +260,7 @@ Each factor's time series is independently rescaled to <code>[0,1]</code> per sa
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~199"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-status"></span>
+              <span class="anchor" id="variable-status~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -289,6 +273,21 @@ Each factor's time series is independently rescaled to <code>[0,1]</code> per sa
 <p>Status code for specific warnings</p>
             </td>
         </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~296"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
     </tbody>
   </table>
 
@@ -297,16 +296,11 @@ Each factor's time series is independently rescaled to <code>[0,1]</code> per sa
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_single_trajectory"></span> <h3>public pure subroutine <a href='../proc/normalize_single_trajectory.html'>normalize_single_trajectory</a>(trajectory, trajectory_norm, n_factors, n_timepoints, ierr, status)  
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_single_trajectory"></span> <h3>public pure subroutine <a href='../proc/normalize_single_trajectory.html'>normalize_single_trajectory</a>(trajectory, trajectory_norm, n_factors, n_timepoints, status, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Normalize all factors in a single trajectory independently across time
-Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/normalize_single_trajectory_impl.html">normalize_single_trajectory_impl</a>.</p><a href="../proc/normalize_single_trajectory.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -321,37 +315,37 @@ Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory"></span>
+              <span class="anchor" id="variable-trajectory~7"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_timepoints, n_factors)
             </td>
             <td>::</td>
-            <td><strong>trajectory</strong>(n_timepoints,n_factors)</td>
+            <td><strong>trajectory</strong></td>
             <td>
 <p>Original trajectory for one sample</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectory_norm"></span>
+              <span class="anchor" id="variable-trajectory_norm~3"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_timepoints, n_factors)
             </td>
             <td>::</td>
-            <td><strong>trajectory_norm</strong>(n_timepoints,n_factors)</td>
+            <td><strong>trajectory_norm</strong></td>
             <td>
 <p>Normalized trajectory for one sample</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors"></span>
+              <span class="anchor" id="variable-n_factors~31"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -366,7 +360,7 @@ Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints"></span>
+              <span class="anchor" id="variable-n_timepoints~44"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -381,22 +375,7 @@ Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~200"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-status~2"></span>
+              <span class="anchor" id="variable-status~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -406,7 +385,22 @@ Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p
             <td>::</td>
             <td><strong>status</strong></td>
             <td>
-<p>Status code for specific warnings</p>
+<p>Status code for specific warnings, one per factor</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~297"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -417,17 +411,11 @@ Input: <code>trajectory(n_timepoints, n_factors)</code> for ONE sample/entity</p
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_alloc"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories_alloc.html'>normalize_all_trajectories_alloc</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, ierr, status)  
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories.html'>normalize_all_trajectories</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, status, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Normalize all trajectories across multiple entities
-Input: <code>trajectories(n_factors, n_samples, n_timepoints)</code>
-Normalizes each factor independently across time for each sample</p>
+          
+  <p>Validates its inputs, prepares what <a href="../proc/normalize_all_trajectories_impl.html">normalize_all_trajectories_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/normalize_all_trajectories_expert.html">normalize_all_trajectories_expert</a> to prepare it yourself.</p><a href="../proc/normalize_all_trajectories.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -442,37 +430,37 @@ Normalizes each factor independently across time for each sample</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories"></span>
+              <span class="anchor" id="variable-trajectories~26"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_factors, n_samples, n_timepoints)
             </td>
             <td>::</td>
-            <td><strong>trajectories</strong>(n_factors,n_samples,n_timepoints)</td>
+            <td><strong>trajectories</strong></td>
             <td>
 <p>Original trajectories</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories_norm"></span>
+              <span class="anchor" id="variable-trajectories_norm~4"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_factors, n_samples, n_timepoints)
             </td>
             <td>::</td>
-            <td><strong>trajectories_norm</strong>(n_factors,n_samples,n_timepoints)</td>
+            <td><strong>trajectories_norm</strong></td>
             <td>
 <p>Normalized trajectories</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~2"></span>
+              <span class="anchor" id="variable-n_factors~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -487,7 +475,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~11"></span>
+              <span class="anchor" id="variable-n_samples~37"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -502,7 +490,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~2"></span>
+              <span class="anchor" id="variable-n_timepoints~45"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -517,22 +505,7 @@ Normalizes each factor independently across time for each sample</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~201"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-status~3"></span>
+              <span class="anchor" id="variable-status~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -542,7 +515,182 @@ Normalizes each factor independently across time for each sample</p>
             <td>::</td>
             <td><strong>status</strong></td>
             <td>
-<p>Status code for specific warnings</p>
+<p>Status code for specific warnings, one per factor per sample</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~298"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-normalize_all_trajectories_expert"></span> <h3>public pure subroutine <a href='../proc/normalize_all_trajectories_expert.html'>normalize_all_trajectories_expert</a>(trajectories, trajectories_norm, n_factors, n_samples, n_timepoints, tmp_series, tmp_series_norm, status, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/normalize_all_trajectories_impl.html">normalize_all_trajectories_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/normalize_all_trajectories.html">normalize_all_trajectories</a> does both.</p><a href="../proc/normalize_all_trajectories_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories~27"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories</strong></td>
+            <td>
+<p>Original trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-trajectories_norm~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples, n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>trajectories_norm</strong></td>
+            <td>
+<p>Normalized trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~33"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_factors</strong></td>
+            <td>
+<p>Number of factors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_samples~38"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_samples</strong></td>
+            <td>
+<p>Number of samples/entities</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_timepoints~46"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_timepoints</strong></td>
+            <td>
+<p>Number of time points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_series~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_series</strong></td>
+            <td>
+<p>Work array: one factor's time series, gathered contiguously</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_series_norm~4"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_timepoints)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_series_norm</strong></td>
+            <td>
+<p>Work array: the normalized time series</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-status~11"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_factors, n_samples)
+            </td>
+            <td>::</td>
+            <td><strong>status</strong></td>
+            <td>
+<p>Status code for specific warnings, one per factor per sample</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~299"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -575,7 +723,7 @@ Normalizes each factor independently across time for each sample</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

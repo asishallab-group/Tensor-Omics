@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">18 statements</a>
+                 title=" 0.1% of total for procedures.">20 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -155,8 +154,7 @@
 </h2>
     
 
-    <p>This subroutine prefilters the genes for subfunctionalization,
-as genes that are already too close in angle to the ancestor don't match the pattern and don't need to be tried as subset extensions.</p>
+    <p>This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.</p>
 
 
     <h3>Arguments</h3>
@@ -172,7 +170,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_angles"></span>
+              <span class="anchor" id="variable-gene_angles~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -182,12 +180,14 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <td>::</td>
             <td><strong>gene_angles</strong></td>
             <td>
-                <p>vector, holding the angles between ancestor and genes (0&lt;=angle&lt;=Pi)</p>
+                <p>vector, holding the angles between ancestor and genes (0&lt;=angle&lt;=Pi)
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>PI</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-threshold~4"></span>
+              <span class="anchor" id="variable-threshold~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -202,7 +202,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~71"></span>
+              <span class="anchor" id="variable-n_genes~56"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -227,12 +227,14 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>number of families</p>
+                <p>number of families
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~29"></span>
+              <span class="anchor" id="variable-gene_to_fam~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -242,12 +244,14 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <td>::</td>
             <td><strong>gene_to_fam</strong></td>
             <td>
-                <p>a mapping of gene index to family index, so gene i is related to <code>gene_angles(i)</code> and part of family <code>j=gene_to_fam(i)</code>.</p>
+                <p>a mapping of gene index to family index, so gene i is related to <code>gene_angles(i)</code> and part of family <code>j=gene_to_fam(i)</code>.
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-masks"></span>
+              <span class="anchor" id="variable-masks~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -257,12 +261,12 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <td>::</td>
             <td><strong>masks</strong></td>
             <td>
-                <p>bit mask that will have indices of genes kept by pattern set to 1, else 0</p>
+                <p>bit mask that will have the indices of genes kept by this pattern set to 1, else 0</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~8"></span>
+              <span class="anchor" id="variable-n_mask_chunks~20"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -272,12 +276,13 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes</p>
+                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes
+The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~308"></span>
+              <span class="anchor" id="variable-ierr~208"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -324,7 +329,7 @@ as genes that are already too close in angle to the ancestor don't match the pat
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

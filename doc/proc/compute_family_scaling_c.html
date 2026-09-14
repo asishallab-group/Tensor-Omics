@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">50 statements</a>
+                 title=" 0.6% of total for procedures.">108 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_get_outliers.F90"> Source File</a>
+              <a href="../src/tox_get_outliers_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_get_outliers_c.f90.html'>tox_get_outliers_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_get_outliers_c.html'>tox_get_outliers_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_family_scaling_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, ierr) bind(C, name="compute_family_scaling_c")  
+    <h2>public  subroutine compute_family_scaling_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, ierr) bind(C, name="compute_family_scaling_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_get_outliers_impl.html'>tox_get_outliers_impl</a></li>
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,9 +167,7 @@
     </div>
 
 
-    <p>C wrapper for compute_family_scaling (main version with automatic allocation).
-Calls compute_family_scaling_alloc with C-compatible types for external interface.
-This is the recommended version for most users as it handles memory allocation automatically.</p>
+    <p>Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.</p>
 
 
     <h3>Arguments</h3>
@@ -185,7 +183,7 @@ This is the recommended version for most users as it handles memory allocation a
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~30"></span>
+              <span class="anchor" id="variable-n_genes~75"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -200,7 +198,7 @@ This is the recommended version for most users as it handles memory allocation a
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~9"></span>
+              <span class="anchor" id="variable-n_families~31"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -210,82 +208,84 @@ This is the recommended version for most users as it handles memory allocation a
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Total number of families</p>
+                <p>Total number of gene families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~6"></span>
+              <span class="anchor" id="variable-distances~16"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>distances</strong>(n_genes)</td>
+            <td><strong>distances</strong></td>
             <td>
-                <p>Array of Euclidean distances for each gene</p>
+                <p>Array of Euclidean distances for each gene
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~11"></span>
+              <span class="anchor" id="variable-gene_to_fam~31"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
+            <td><strong>gene_to_fam</strong></td>
             <td>
                 <p>Mapping of each gene to its family (1-based)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~5"></span>
+              <span class="anchor" id="variable-dscale~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>dscale</strong>(n_families)</td>
+            <td><strong>dscale</strong></td>
             <td>
-                <p>Output: array of scaling factors per family</p>
+                <p>Array of scaling factors per family (output)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~4"></span>
+              <span class="anchor" id="variable-loess_x~3"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_x</strong>(n_families)</td>
+            <td><strong>loess_x</strong></td>
             <td>
-                <p>Reference x-coordinates for LOESS</p>
+                <p>Reference x-coordinates for LOESS smoothing</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~4"></span>
+              <span class="anchor" id="variable-loess_y~3"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_y</strong>(n_families)</td>
+            <td><strong>loess_y</strong></td>
             <td>
-                <p>Reference y-coordinates for LOESS</p>
+                <p>Reference y-coordinates for LOESS smoothing</p>
             </td>
         </tr>
         <tr>
@@ -293,19 +293,135 @@ This is the recommended version for most users as it handles memory allocation a
               <span class="anchor" id="variable-indices_used~5"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>indices_used</strong>(n_families)</td>
+            <td><strong>indices_used</strong></td>
             <td>
                 <p>Indices of reference points used for smoothing</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~174"></span>
+              <span class="anchor" id="variable-span~18"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>span</strong></td>
+            <td>
+                <p>Span parameter for LOESS smoothing, passed straight to
+<a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
+procedure's own range rather than to the NaN tolerance the distance data carries.
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-degree~18"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>degree</strong></td>
+            <td>
+                <p>Degree of the LOESS polynomial
+The default value is <code>2_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-mode~2"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(6), target
+            </td>
+            <td>::</td>
+            <td><strong>mode</strong></td>
+            <td>
+                <p>Mode for LOESS fitting
+The default value is <code>'robust'</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plain LOESS fitting</td>
+<td><a href="../module/tox_get_outliers_impl.html#variable-mode_plain">MODE_PLAIN</a></td>
+</tr>
+<tr>
+<td>Robust LOESS fitting</td>
+<td><a href="../module/tox_get_outliers_impl.html#variable-mode_robust">MODE_ROBUST</a></td>
+</tr>
+</tbody>
+</table>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_iters~6"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_iters</strong></td>
+            <td>
+                <p>Number of iterations for robust LOESS fitting
+The default value is <code>3_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-low_sd_cutoff~2"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>low_sd_cutoff</strong></td>
+            <td>
+                <p>cutoff used to filter families with low std</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-excluded_low_sd~2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_families), target
+            </td>
+            <td>::</td>
+            <td><strong>excluded_low_sd</strong></td>
+            <td>
+                <p>Mask to save those families that have low sd</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~300"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -352,7 +468,7 @@ This is the recommended version for most users as it handles memory allocation a
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

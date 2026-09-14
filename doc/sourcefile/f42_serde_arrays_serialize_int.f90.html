@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for source files.">99 statements</a>
+                 title=" 0.3% of total for source files.">55 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -143,18 +143,7 @@
   
   
   
-      <div class="card mb-4">
-      <a data-bs-toggle="collapse" href="#subs-0"
-         aria-expanded="false" aria-controls="subs-0">
-         <h4 class="card-header bg-primary text-white">Subroutines</h4>
-      </a>
-      <div id="subs-0" class="collapse">
-        <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../proc/serialize_int_nd_c.html">serialize_int_nd_c</a>
-        </div>
-      </div>
-    </div>
-
+  
   
   
   
@@ -183,26 +172,26 @@
 <a id="ln-2" name="ln-2" href="#ln-2"></a>
 <a id="ln-3" name="ln-3" href="#ln-3"></a><span class="c">!&gt; Module for serializing integer arrays into files</span>
 <a id="ln-4" name="ln-4" href="#ln-4"></a><span class="k">module </span><span class="n">f42_serde_arrays_serialize_int</span>
-<a id="ln-5" name="ln-5" href="#ln-5"></a><span class="w">    </span><span class="k">use </span><span class="n">safeguard</span>
-<a id="ln-6" name="ln-6" href="#ln-6"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">iso_fortran_env</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">int32</span><span class="p">,</span><span class="w"> </span><span class="n">real64</span>
-<a id="ln-7" name="ln-7" href="#ln-7"></a><span class="w">    </span><span class="k">use </span><span class="n">f42_serde_arrays_utils</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">write_file_header</span><span class="p">,</span><span class="w"> </span><span class="n">INTEGER_TYPE_CODE</span>
-<a id="ln-8" name="ln-8" href="#ln-8"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_errors</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">set_ok</span><span class="p">,</span><span class="w"> </span><span class="n">is_err</span><span class="p">,</span><span class="w"> </span><span class="n">validate_in_range_int</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_WRITE_DATA</span><span class="p">,</span><span class="w"> </span><span class="n">set_err</span>
-<a id="ln-9" name="ln-9" href="#ln-9"></a><span class="w">    </span><span class="k">implicit none</span>
-<a id="ln-10" name="ln-10" href="#ln-10"></a>
-<a id="ln-11" name="ln-11" href="#ln-11"></a><span class="k">    private</span>
-<a id="ln-12" name="ln-12" href="#ln-12"></a><span class="k">    public</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">serialize_int_1d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_2d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_3d</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-13" name="ln-13" href="#ln-13"></a><span class="w">              </span><span class="n">serialize_int_4d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_5d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_helper</span>
-<a id="ln-14" name="ln-14" href="#ln-14"></a>
-<a id="ln-15" name="ln-15" href="#ln-15"></a><span class="k">contains</span>
-<a id="ln-16" name="ln-16" href="#ln-16"></a><span class="w">    </span><span class="c">!&gt; AUTHOR_AARON_SCHROEDER</span>
-<a id="ln-17" name="ln-17" href="#ln-17"></a><span class="w">    </span><span class="c">!| Subroutine to serialize a flat integer array into a file</span>
-<a id="ln-18" name="ln-18" href="#ln-18"></a><span class="w">    </span><span class="k">subroutine </span><span class="n">serialize_int_helper</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span><span class="w"> </span><span class="n">n_elements</span><span class="p">,</span><span class="w"> </span><span class="n">orig_shape</span><span class="p">,</span><span class="w"> </span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
+<a id="ln-5" name="ln-5" href="#ln-5"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">iso_fortran_env</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">int32</span><span class="p">,</span><span class="w"> </span><span class="n">real64</span>
+<a id="ln-6" name="ln-6" href="#ln-6"></a><span class="w">    </span><span class="k">use </span><span class="n">f42_serde_arrays_utils</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">write_file_header</span><span class="p">,</span><span class="w"> </span><span class="n">INTEGER_TYPE_CODE</span>
+<a id="ln-7" name="ln-7" href="#ln-7"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_errors</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">set_ok</span><span class="p">,</span><span class="w"> </span><span class="n">is_err</span><span class="p">,</span><span class="w"> </span><span class="n">validate_in_range_int</span><span class="p">,</span><span class="w"> </span><span class="n">ERR_WRITE_DATA</span><span class="p">,</span><span class="w"> </span><span class="n">set_err</span>
+<a id="ln-8" name="ln-8" href="#ln-8"></a><span class="w">    </span><span class="n">M_IMPLICIT_NONE</span>
+<a id="ln-9" name="ln-9" href="#ln-9"></a>
+<a id="ln-10" name="ln-10" href="#ln-10"></a><span class="w">    </span><span class="k">private</span>
+<a id="ln-11" name="ln-11" href="#ln-11"></a><span class="k">    public</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">serialize_int_1d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_2d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_3d</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
+<a id="ln-12" name="ln-12" href="#ln-12"></a><span class="w">              </span><span class="n">serialize_int_4d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_5d</span><span class="p">,</span><span class="w"> </span><span class="n">serialize_int_helper</span>
+<a id="ln-13" name="ln-13" href="#ln-13"></a>
+<a id="ln-14" name="ln-14" href="#ln-14"></a><span class="k">contains</span>
+<a id="ln-15" name="ln-15" href="#ln-15"></a><span class="w">    </span><span class="c">!&gt; M_EXPORT_C</span>
+<a id="ln-16" name="ln-16" href="#ln-16"></a><span class="w">    </span><span class="c">!| summary: Subroutine to serialize a flat integer array into a file</span>
+<a id="ln-17" name="ln-17" href="#ln-17"></a><span class="w">    </span><span class="c">!| AUTHOR_AARON_SCHROEDER</span>
+<a id="ln-18" name="ln-18" href="#ln-18"></a><span class="w">    </span><span class="k">subroutine </span><span class="n">serialize_int_helper</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span><span class="w"> </span><span class="n">n_elements</span><span class="p">,</span><span class="w"> </span><span class="n">arr_shape</span><span class="p">,</span><span class="w"> </span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
 <a id="ln-19" name="ln-19" href="#ln-19"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_elements</span>
 <a id="ln-20" name="ln-20" href="#ln-20"></a><span class="w">            </span><span class="c">!! Number of strings in `arr`</span>
 <a id="ln-21" name="ln-21" href="#ln-21"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(</span><span class="n">n_elements</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">arr</span>
 <a id="ln-22" name="ln-22" href="#ln-22"></a><span class="w">            </span><span class="c">!! Array to be serialized</span>
-<a id="ln-23" name="ln-23" href="#ln-23"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(:),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">orig_shape</span>
-<a id="ln-24" name="ln-24" href="#ln-24"></a><span class="w">            </span><span class="c">!! Original shape of the flattened array `arr`</span>
+<a id="ln-23" name="ln-23" href="#ln-23"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(:),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">arr_shape</span>
+<a id="ln-24" name="ln-24" href="#ln-24"></a><span class="w">            </span><span class="c">!! Extents of `arr`, one per dimension</span>
 <a id="ln-25" name="ln-25" href="#ln-25"></a><span class="w">        </span><span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=*</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">filename</span>
 <a id="ln-26" name="ln-26" href="#ln-26"></a><span class="w">            </span><span class="c">!! Name of the file to write to</span>
 <a id="ln-27" name="ln-27" href="#ln-27"></a><span class="w">        </span><span class="kt">integer</span><span class="p">(</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">out</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">ierr</span>
@@ -216,7 +205,7 @@
 <a id="ln-35" name="ln-35" href="#ln-35"></a>
 <a id="ln-36" name="ln-36" href="#ln-36"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">is_err</span><span class="p">(</span><span class="n">ierr</span><span class="p">))</span><span class="w"> </span><span class="k">return</span>
 <a id="ln-37" name="ln-37" href="#ln-37"></a>
-<a id="ln-38" name="ln-38" href="#ln-38"></a><span class="k">        call </span><span class="n">write_file_header</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">unit</span><span class="p">,</span><span class="w"> </span><span class="n">INTEGER_TYPE_CODE</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="n">orig_shape</span><span class="p">,</span><span class="w"> </span><span class="nb">kind</span><span class="o">=</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="n">orig_shape</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
+<a id="ln-38" name="ln-38" href="#ln-38"></a><span class="k">        call </span><span class="n">write_file_header</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">unit</span><span class="p">,</span><span class="w"> </span><span class="n">INTEGER_TYPE_CODE</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="n">arr_shape</span><span class="p">,</span><span class="w"> </span><span class="nb">kind</span><span class="o">=</span><span class="n">int32</span><span class="p">),</span><span class="w"> </span><span class="n">arr_shape</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
 <a id="ln-39" name="ln-39" href="#ln-39"></a><span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">is_err</span><span class="p">(</span><span class="n">ierr</span><span class="p">))</span><span class="w"> </span><span class="k">return</span>
 <a id="ln-40" name="ln-40" href="#ln-40"></a>
 <a id="ln-41" name="ln-41" href="#ln-41"></a><span class="w">        </span><span class="c">! Write the entire array as a contiguous block</span>
@@ -292,52 +281,6 @@
 <a id="ln-111" name="ln-111" href="#ln-111"></a><span class="w">    </span><span class="k">end subroutine </span><span class="n">serialize_int_5d</span>
 <a id="ln-112" name="ln-112" href="#ln-112"></a>
 <a id="ln-113" name="ln-113" href="#ln-113"></a><span class="k">end module </span><span class="n">f42_serde_arrays_serialize_int</span>
-<a id="ln-114" name="ln-114" href="#ln-114"></a>
-<a id="ln-115" name="ln-115" href="#ln-115"></a><span class="c">!&gt; C binding for the subroutine to serialize a flat integer array into a file.</span>
-<a id="ln-116" name="ln-116" href="#ln-116"></a><span class="k">subroutine </span><span class="n">serialize_int_nd_c</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span><span class="w"> </span><span class="n">orig_shape</span><span class="p">,</span><span class="w"> </span><span class="n">n_dims</span><span class="p">,</span><span class="w"> </span><span class="p">&amp;</span>
-<a id="ln-117" name="ln-117" href="#ln-117"></a><span class="w">                                 </span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">fn_len</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span><span class="w"> </span><span class="k">bind</span><span class="p">(</span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">name</span><span class="o">=</span><span class="s2">"serialize_int_nd_c"</span><span class="p">)</span>
-<a id="ln-118" name="ln-118" href="#ln-118"></a><span class="w">    </span><span class="k">use</span><span class="p">,</span><span class="w"> </span><span class="k">intrinsic</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="nb">iso_c_binding</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="kt">c_char</span><span class="p">,</span><span class="w"> </span><span class="kt">c_int</span>
-<a id="ln-119" name="ln-119" href="#ln-119"></a><span class="kt">    </span><span class="k">use </span><span class="n">f42_serde_arrays_serialize_int</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">serialize_int_helper</span>
-<a id="ln-120" name="ln-120" href="#ln-120"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_conversions</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">c_char_1d_as_string</span>
-<a id="ln-121" name="ln-121" href="#ln-121"></a><span class="w">    </span><span class="k">use </span><span class="n">tox_errors</span><span class="p">,</span><span class="w"> </span><span class="k">only</span><span class="p">:</span><span class="w"> </span><span class="n">is_err</span><span class="p">,</span><span class="w"> </span><span class="n">map_err_arg_pos</span>
-<a id="ln-122" name="ln-122" href="#ln-122"></a><span class="w">    </span><span class="n">M_USE_NULL_VALIDATION</span>
-<a id="ln-123" name="ln-123" href="#ln-123"></a><span class="w">    </span><span class="k">implicit none</span>
-<a id="ln-124" name="ln-124" href="#ln-124"></a>
-<a id="ln-125" name="ln-125" href="#ln-125"></a><span class="w">    </span><span class="c">! Arguments</span>
-<a id="ln-126" name="ln-126" href="#ln-126"></a><span class="w">    </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_dims</span>
-<a id="ln-127" name="ln-127" href="#ln-127"></a><span class="w">        </span><span class="c">!! Number of dimensions of the expected array (`size(orig_shape)`)</span>
-<a id="ln-128" name="ln-128" href="#ln-128"></a><span class="w">    </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(</span><span class="n">n_dims</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">orig_shape</span>
-<a id="ln-129" name="ln-129" href="#ln-129"></a><span class="w">        </span><span class="c">!! Original shape of the flattened array `arr` -&gt; for a 2D array it would be `[n_elements, n_contained_arrays]`</span>
-<a id="ln-130" name="ln-130" href="#ln-130"></a><span class="w">    </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(</span><span class="nb">product</span><span class="p">(</span><span class="n">orig_shape</span><span class="p">)),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">arr</span>
-<a id="ln-131" name="ln-131" href="#ln-131"></a><span class="w">        </span><span class="c">!! Input array to be serialized</span>
-<a id="ln-132" name="ln-132" href="#ln-132"></a><span class="w">    </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">fn_len</span>
-<a id="ln-133" name="ln-133" href="#ln-133"></a><span class="w">        </span><span class="c">!! Length of the filename</span>
-<a id="ln-134" name="ln-134" href="#ln-134"></a><span class="w">    </span><span class="kt">character</span><span class="p">(</span><span class="nb">kind</span><span class="o">=</span><span class="kt">c_char</span><span class="p">,</span><span class="w"> </span><span class="nb">len</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span><span class="w"> </span><span class="k">dimension</span><span class="p">(</span><span class="n">fn_len</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">in</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w">  </span><span class="kd">::</span><span class="w"> </span><span class="n">filename</span>
-<a id="ln-135" name="ln-135" href="#ln-135"></a><span class="w">        </span><span class="c">!! c_char array representing the filename</span>
-<a id="ln-136" name="ln-136" href="#ln-136"></a><span class="w">    </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">),</span><span class="w"> </span><span class="k">intent</span><span class="p">(</span><span class="n">out</span><span class="p">),</span><span class="w"> </span><span class="k">target</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">ierr</span>
-<a id="ln-137" name="ln-137" href="#ln-137"></a><span class="w">        </span><span class="c">!! Error code</span>
-<a id="ln-138" name="ln-138" href="#ln-138"></a>
-<a id="ln-139" name="ln-139" href="#ln-139"></a><span class="w">    </span><span class="kt">character</span><span class="p">(</span><span class="nb">len</span><span class="o">=</span><span class="p">:),</span><span class="w"> </span><span class="k">allocatable</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">filename_f</span>
-<a id="ln-140" name="ln-140" href="#ln-140"></a><span class="w">    </span><span class="kt">integer</span><span class="p">(</span><span class="kt">c_int</span><span class="p">)</span><span class="w"> </span><span class="kd">::</span><span class="w"> </span><span class="n">n_elements</span>
-<a id="ln-141" name="ln-141" href="#ln-141"></a>
-<a id="ln-142" name="ln-142" href="#ln-142"></a><span class="w">    </span><span class="n">M_CHECK_IERR_NON_NULL</span>
-<a id="ln-143" name="ln-143" href="#ln-143"></a><span class="w">    </span><span class="n">M_CHECK_NON_NULL</span><span class="p">(</span><span class="n">fn_len</span><span class="p">)</span>
-<a id="ln-144" name="ln-144" href="#ln-144"></a><span class="w">    </span><span class="n">M_CHECK_NON_NULL</span><span class="p">(</span><span class="n">arr</span><span class="p">)</span>
-<a id="ln-145" name="ln-145" href="#ln-145"></a><span class="w">    </span><span class="n">M_CHECK_NON_NULL</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-<a id="ln-146" name="ln-146" href="#ln-146"></a><span class="w">    </span><span class="n">M_CHECK_NON_NULL</span><span class="p">(</span><span class="n">n_dims</span><span class="p">)</span>
-<a id="ln-147" name="ln-147" href="#ln-147"></a><span class="w">    </span><span class="n">M_CHECK_NON_NULL</span><span class="p">(</span><span class="n">orig_shape</span><span class="p">)</span>
-<a id="ln-148" name="ln-148" href="#ln-148"></a>
-<a id="ln-149" name="ln-149" href="#ln-149"></a><span class="w">    </span><span class="n">n_elements</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">size</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span><span class="w"> </span><span class="nb">kind</span><span class="o">=</span><span class="kt">c_int</span><span class="p">)</span>
-<a id="ln-150" name="ln-150" href="#ln-150"></a>
-<a id="ln-151" name="ln-151" href="#ln-151"></a><span class="w">    </span><span class="c">! Convert filename from c_char array to Fortran string</span>
-<a id="ln-152" name="ln-152" href="#ln-152"></a><span class="w">    </span><span class="k">call </span><span class="n">c_char_1d_as_string</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="w"> </span><span class="n">filename_f</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
-<a id="ln-153" name="ln-153" href="#ln-153"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">is_err</span><span class="p">(</span><span class="n">ierr</span><span class="p">))</span><span class="w"> </span><span class="k">return</span>
-<a id="ln-154" name="ln-154" href="#ln-154"></a>
-<a id="ln-155" name="ln-155" href="#ln-155"></a><span class="k">    call </span><span class="n">serialize_int_helper</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span><span class="w"> </span><span class="n">n_elements</span><span class="p">,</span><span class="w"> </span><span class="n">orig_shape</span><span class="p">,</span><span class="w"> </span><span class="n">filename_f</span><span class="p">,</span><span class="w"> </span><span class="n">ierr</span><span class="p">)</span>
-<a id="ln-156" name="ln-156" href="#ln-156"></a><span class="w">    </span><span class="c">! n_elements (helper arg 2) is derived from `arr` here rather than exposed as a C argument, so</span>
-<a id="ln-157" name="ln-157" href="#ln-157"></a><span class="w">    </span><span class="c">! remap any error reported against it back onto `arr` (C-visible arg 1).</span>
-<a id="ln-158" name="ln-158" href="#ln-158"></a><span class="w">    </span><span class="k">call </span><span class="n">map_err_arg_pos</span><span class="p">(</span><span class="n">ierr</span><span class="p">,</span><span class="w"> </span><span class="mi">2_c_int</span><span class="p">,</span><span class="w"> </span><span class="mi">1_c_int</span><span class="p">)</span>
-<a id="ln-159" name="ln-159" href="#ln-159"></a><span class="k">end subroutine </span><span class="n">serialize_int_nd_c</span>
 </pre></div>
 
       </section>
@@ -359,7 +302,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

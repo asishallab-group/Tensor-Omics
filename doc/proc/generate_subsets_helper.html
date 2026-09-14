@@ -90,20 +90,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.8% of total for procedures.">106 statements</a>
+                 title=" 0.6% of total for procedures.">106 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_paralog_analysis.F90"> Source File</a>
+              <a href="../src/tox_paralog_analysis_impl.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_paralog_analysis.f90.html'>tox_paralog_analysis.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_paralog_analysis_impl.f90.html'>tox_paralog_analysis_impl.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></li>
             <li class="breadcrumb-item active" aria-current="page">generate_subsets_helper</li>
           </ol>
         </nav>
@@ -159,7 +159,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
+                  <li class="list-inline-item"><a href='../module/f42_math_impl.html'>f42_math_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -204,7 +204,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~4"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -219,7 +219,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~4"></span>
+              <span class="anchor" id="variable-n_mask_chunks~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -234,7 +234,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-pattern~2"></span>
+              <span class="anchor" id="variable-pattern"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -248,18 +248,18 @@ also, prepare residual, so the extending gene just needs to be included in one o
 <table>
 <thead>
 <tr>
-<th>Pattern</th>
+<th>Mode</th>
 <th>Value</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Dosage Effect</td>
-<td>0_int32</td>
+<td><a href="../module/tox_paralog_analysis_impl.html#variable-mode_dosage_pattern">MODE_DOSAGE_PATTERN</a></td>
 </tr>
 <tr>
 <td>Subfunctionalization</td>
-<td>1_int32</td>
+<td><a href="../module/tox_paralog_analysis_impl.html#variable-mode_subfunc_pattern">MODE_SUBFUNC_PATTERN</a></td>
 </tr>
 </tbody>
 </table>
@@ -267,7 +267,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor~4"></span>
+              <span class="anchor" id="variable-ancestor~2"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -282,7 +282,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~9"></span>
+              <span class="anchor" id="variable-genes~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -297,7 +297,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~69"></span>
+              <span class="anchor" id="variable-n_genes~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -312,7 +312,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~30"></span>
+              <span class="anchor" id="variable-n_dims~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -327,7 +327,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_paralog_vector~4"></span>
+              <span class="anchor" id="variable-tmp_paralog_vector~2"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -342,7 +342,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~4"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -357,7 +357,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets~4"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -372,7 +372,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results~4"></span>
+              <span class="anchor" id="variable-n_results~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -417,7 +417,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dosage_max_angle~2"></span>
+              <span class="anchor" id="variable-dosage_max_angle"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -427,12 +427,12 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>dosage_max_angle</strong></td>
             <td>
-                <p>in dosage mode maximum angle in radians that a subset candidate must not exceed, otherwise pruned, default is Pi</p>
+                <p>maximum angle in radians that a subset candidate must not exceed, otherwise pruned, default is Pi</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dosage_gain_gamma~2"></span>
+              <span class="anchor" id="variable-dosage_gain_gamma"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -442,12 +442,12 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>dosage_gain_gamma</strong></td>
             <td>
-                <p>in dosage mode required positive magnitude gain for dosage, default 0.1</p>
+                <p>positive magnitude gain for dosage, default 0.1</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_rdi_threshold~2"></span>
+              <span class="anchor" id="variable-subfunc_rdi_threshold"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -462,7 +462,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_paralog_norms~2"></span>
+              <span class="anchor" id="variable-subfunc_paralog_norms"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -472,12 +472,12 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>subfunc_paralog_norms</strong></td>
             <td>
-                <p>in subfunctionalization mode needed for subset pruning, holds the euclidean norms of genes (you can use the <code>norm</code> from <code>f42_utils</code> function for this)</p>
+                <p>euclidean norms of the genes, used for subset pruning (<code>norm</code> from <code>f42_vector_impl</code> computes them)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-subfunc_sorted_paralog_norms_perm~2"></span>
+              <span class="anchor" id="variable-subfunc_sorted_paralog_norms_perm"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -487,12 +487,12 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>subfunc_sorted_paralog_norms_perm</strong></td>
             <td>
-                <p>in subfunctionalization mode needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor</p>
+                <p>ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_subfunc_work_array~2"></span>
+              <span class="anchor" id="variable-tmp_subfunc_work_array"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -502,12 +502,12 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <td>::</td>
             <td><strong>tmp_subfunc_work_array</strong></td>
             <td>
-                <p>in subfunctionalization mode needed for efficient check of minimum value after a certain index</p>
+                <p>work array for checking the minimum value after a given index efficiently</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~303"></span>
+              <span class="anchor" id="variable-ierr~38"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -554,7 +554,7 @@ also, prepare residual, so the extending gene just needs to be included in one o
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.6% of total for modules and submodules.">306 statements</a>
+                 title=" 0.4% of total for modules and submodules.">70 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -123,20 +123,7 @@
         <div id="sidebar">
       <h3>Contents</h3>
   
-      <div class="card mb-4">
-      <a data-bs-toggle="collapse" href="#vars-0"
-         aria-expanded="false" aria-controls="vars-0">
-         <h4 class="card-header bg-primary text-white">Variables</h4>
-      </a>
-      <div id="vars-0" class="collapse">
-        <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/tox_clustering.html#variable-method_average">METHOD_AVERAGE</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#variable-method_weighted">METHOD_WEIGHTED</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#variable-method_ward">METHOD_WARD</a>
-        </div>
-      </div>
-    </div>
-
+  
   
   
   
@@ -156,17 +143,7 @@
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_clustering.html#proc-cluster_factor_trajectories_k_means">cluster_factor_trajectories_k_means</a>
             <a class="list-group-item" href="../module/tox_clustering.html#proc-k_means_clustering">k_means_clustering</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-k_means_clustering_helper">k_means_clustering_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-k_means_recompute_cluster_centroids_helper">k_means_recompute_cluster_centroids_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-k_means_assign_cluster_helper">k_means_assign_cluster_helper</a>
             <a class="list-group-item" href="../module/tox_clustering.html#proc-linkage_clustering">linkage_clustering</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-linkage_clustering_helper">linkage_clustering_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-recover_distance_matrix_helper">recover_distance_matrix_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-get_cluster_data_linkage_helper">get_cluster_data_linkage_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-merge_distances_xpgma_linkage_helper">merge_distances_xPGMA_linkage_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-merge_distances_ward_linkage_helper">merge_distances_ward_linkage_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-post_merge_distances_helper">post_merge_distances_helper</a>
-            <a class="list-group-item" href="../module/tox_clustering.html#proc-get_min_distance_indices_helper">get_min_distance_indices_helper</a>
         </div>
       </div>
     </div>
@@ -185,18 +162,22 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Module for clustering routines used in tensor-omics: k-means for factor/trajectory
-grouping and hierarchical (agglomerative) linkage clustering on precomputed distance matrices.</p>
+      <p>Clustering for tensor omics: k-means over factors and trajectories, and hierarchical
+(agglomerative) linkage clustering over a precomputed distance matrix.</p>
+<p><code>k_means_clustering</code> partitions points in n dimensions; <code>cluster_factor_trajectories_k_means</code>
+applies the same to whole time series, treating each factor's trajectory as one point.
+<code>linkage_clustering</code> takes the distances already computed and merges under the linkage
+criterion asked for, so the same matrix can be re-clustered without recomputing it.</p>
+<p>Generated from <a href="../module/tox_clustering_impl.html">tox_clustering_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='tox_clustering_impl.html'>tox_clustering_impl</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/ieee_arithmetic'>ieee_arithmetic</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -207,74 +188,6 @@ grouping and hierarchical (agglomerative) linkage clustering on precomputed dist
       <br>
 
 
-        <section>
-          <h2>Variables</h2>
-            <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-<th></th><th scope="col">Initial</th>        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-method_average"></span>
-              integer(kind=int32),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>METHOD_AVERAGE</strong></td>
-<td> =</td>
-                <td>0</td>
-            <td>
-                <p>Method code for average linkage clustering in <a href="../proc/linkage_clustering.html">linkage_clustering</a></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-method_weighted"></span>
-              integer(kind=int32),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>METHOD_WEIGHTED</strong></td>
-<td> =</td>
-                <td>1</td>
-            <td>
-                <p>Method code for weighted linkage clustering in <a href="../proc/linkage_clustering.html">linkage_clustering</a></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-method_ward"></span>
-              integer(kind=int32),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>METHOD_WARD</strong></td>
-<td> =</td>
-                <td>2</td>
-            <td>
-                <p>Method code for ward linkage clustering in <a href="../proc/linkage_clustering.html">linkage_clustering</a></p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-        </section>
-        <br>
 
 
 
@@ -284,15 +197,11 @@ parameter
         <section>
           <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-cluster_factor_trajectories_k_means"></span> <h3>public pure subroutine <a href='../proc/cluster_factor_trajectories_k_means.html'>cluster_factor_trajectories_k_means</a>(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations)  
+    <div class="card-header codesum"><span class="anchor" id="proc-cluster_factor_trajectories_k_means"></span> <h3>public pure subroutine <a href='../proc/cluster_factor_trajectories_k_means.html'>cluster_factor_trajectories_k_means</a>(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, max_iterations, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Performs k-means clustering on factor trajectories, so factor evolution over time</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/cluster_factor_trajectories_k_means_impl.html">cluster_factor_trajectories_k_means_impl</a>.</p><a href="../proc/cluster_factor_trajectories_k_means.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -307,7 +216,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters"></span>
+              <span class="anchor" id="variable-n_clusters~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -317,12 +226,14 @@ parameter
             <td>::</td>
             <td><strong>n_clusters</strong></td>
             <td>
-<p>number (<code>k</code>) of clusters</p>
+<p>number (<code>k</code>) of clusters
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~3"></span>
+              <span class="anchor" id="variable-trajectories~6"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -337,7 +248,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~5"></span>
+              <span class="anchor" id="variable-n_factors~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -352,7 +263,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~13"></span>
+              <span class="anchor" id="variable-n_samples~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -367,7 +278,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~5"></span>
+              <span class="anchor" id="variable-n_timepoints~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -382,7 +293,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~4"></span>
+              <span class="anchor" id="variable-centroids~9"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -393,12 +304,12 @@ parameter
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/cluster_factor_trajectories_k_means.html#variable-centroids~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/cluster_factor_trajectories_k_means.html#variable-centroids~9" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-labels"></span>
+              <span class="anchor" id="variable-labels~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -408,12 +319,12 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>labels</strong></td>
             <td>
-<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/cluster_factor_trajectories_k_means.html#variable-labels" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/cluster_factor_trajectories_k_means.html#variable-labels~6" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-label_counts"></span>
+              <span class="anchor" id="variable-label_counts~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -428,22 +339,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~235"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_iterations"></span>
+              <span class="anchor" id="variable-max_iterations~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -456,144 +352,9 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
 <p>number of maximum iterations of the clustering</p>
             </td>
         </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-k_means_clustering"></span> <h3>public pure subroutine <a href='../proc/k_means_clustering.html'>k_means_clustering</a>(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>k-means clustering algorithm:</p><a href="../proc/k_means_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_clusters</strong></td>
-            <td>
-<p>number (<code>k</code>) of clusters</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-data_points"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>data_points</strong></td>
-            <td>
-<p>matrix with data points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~60"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dims~11"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dims</strong></td>
-            <td>
-<p>number of elements a point has</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-centroids~5"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_clusters)
-            </td>
-            <td>::</td>
-            <td><strong>centroids</strong></td>
-            <td>
-<p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering.html#variable-centroids~5" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-labels~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>labels</strong></td>
-            <td>
-<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/k_means_clustering.html#variable-labels~2" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-label_counts~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_clusters)
-            </td>
-            <td>::</td>
-            <td><strong>label_counts</strong></td>
-            <td>
-<p>holds the number of points having the respective label assigned</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~236"></span>
+              <span class="anchor" id="variable-ierr~105"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -603,22 +364,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-<p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_iterations~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>max_iterations</strong></td>
-            <td>
-<p>number of maximum iterations of the clustering, default <code>300_int32</code></p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -629,15 +375,11 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-k_means_clustering_helper"></span> <h3>public pure subroutine <a href='../proc/k_means_clustering_helper.html'>k_means_clustering_helper</a>(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations)  
+    <div class="card-header codesum"><span class="anchor" id="proc-k_means_clustering"></span> <h3>public pure subroutine <a href='../proc/k_means_clustering.html'>k_means_clustering</a>(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>(no input validation) k-means clustering algorithm:</p><a href="../proc/k_means_clustering_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+          
+  <p>Validates its inputs, then calls <a href="../proc/k_means_clustering_impl.html">k_means_clustering_impl</a>.</p><a href="../proc/k_means_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -652,7 +394,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~3"></span>
+              <span class="anchor" id="variable-n_clusters~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -662,12 +404,14 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>n_clusters</strong></td>
             <td>
-<p>number (<code>k</code>) of clusters</p>
+<p>number (<code>k</code>) of clusters
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-data_points~2"></span>
+              <span class="anchor" id="variable-data_points~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -682,142 +426,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~61"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dims~12"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dims</strong></td>
-            <td>
-<p>number of elements a point has</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-centroids~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_clusters)
-            </td>
-            <td>::</td>
-            <td><strong>centroids</strong></td>
-            <td>
-<p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering_helper.html#variable-centroids~6" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-labels~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>labels</strong></td>
-            <td>
-<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/k_means_clustering_helper.html#variable-labels~3" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-label_counts~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_clusters)
-            </td>
-            <td>::</td>
-            <td><strong>label_counts</strong></td>
-            <td>
-<p>holds the number of points having the respective label assigned</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_iterations~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td>optional</td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>max_iterations</strong></td>
-            <td>
-<p>number of maximum iterations of the clustering, default <code>300_int32</code></p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-k_means_recompute_cluster_centroids_helper"></span> <h3>public pure subroutine <a href='../proc/k_means_recompute_cluster_centroids_helper.html'>k_means_recompute_cluster_centroids_helper</a>(data_points, n_points, n_dims, centroids, n_clusters, labels, label_counts)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper to recompute the centroids in k-means by taking the mean of assigned points</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-data_points~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>data_points</strong></td>
-            <td>
-<p>matrix with data points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~62"></span>
+              <span class="anchor" id="variable-n_points~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -847,7 +456,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~7"></span>
+              <span class="anchor" id="variable-centroids~10"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -858,45 +467,30 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td><strong>centroids</strong></td>
             <td>
 <p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_recompute_cluster_centroids_helper.html#variable-centroids~7" class="pull-right"><emph>Read more&hellip;</emph></a>
+The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_clustering.html#variable-centroids~10" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~4"></span>
+              <span class="anchor" id="variable-labels~7"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_clusters</strong></td>
-            <td>
-<p>number (<code>k</code>) of clusters</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-labels~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
+<td>intent(out),</td>
               <td></td>            <td>
               dimension(n_points)
             </td>
             <td>::</td>
             <td><strong>labels</strong></td>
             <td>
-<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/k_means_recompute_cluster_centroids_helper.html#variable-labels~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>array of labels, each index corresponds to the respective point's index, so first label is first point's label.</p><a href="../proc/k_means_clustering.html#variable-labels~7" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-label_counts~4"></span>
+              <span class="anchor" id="variable-label_counts~7"></span>
               integer(kind=int32),
             </td>
-<td>intent(in),</td>
+<td>intent(out),</td>
               <td></td>            <td>
               dimension(n_clusters)
             </td>
@@ -906,129 +500,25 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
 <p>holds the number of points having the respective label assigned</p>
             </td>
         </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-k_means_assign_cluster_helper"></span> <h3>public pure subroutine <a href='../proc/k_means_assign_cluster_helper.html'>k_means_assign_cluster_helper</a>(i_point, n_clusters, data_points, n_points, n_dims, centroids, label)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper routine to assign a cluster's label to a point in k-means</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-i_point~11"></span>
+              <span class="anchor" id="variable-max_iterations~6"></span>
               integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>i_point</strong></td>
-            <td>
-<p>index of the point that should be assigned a cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_clusters~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_clusters</strong></td>
-            <td>
-<p>number (<code>k</code>) of clusters</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-data_points~4"></span>
-              real(kind=real64),
             </td>
 <td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>data_points</strong></td>
-            <td>
-<p>matrix with data points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~63"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>n_points</strong></td>
+            <td><strong>max_iterations</strong></td>
             <td>
-<p>number of points to cluster</p>
+<p>number of maximum iterations of the clustering.
+The default value is <code>300_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~14"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dims</strong></td>
-            <td>
-<p>number of elements a point has</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-centroids~8"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_dims, n_clusters)
-            </td>
-            <td>::</td>
-            <td><strong>centroids</strong></td>
-            <td>
-<p>matrix with initial centroids of the clusters, could be random data or actual points or unassigned garbage.
-The centroids should be unique. This is not checked in this routine.</p><a href="../proc/k_means_assign_cluster_helper.html#variable-centroids~8" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-label~3"></span>
+              <span class="anchor" id="variable-ierr~106"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1036,9 +526,9 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
               
             </td>
             <td>::</td>
-            <td><strong>label</strong></td>
+            <td><strong>ierr</strong></td>
             <td>
-<p>assigned label</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -1052,161 +542,8 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
     <div class="card-header codesum"><span class="anchor" id="proc-linkage_clustering"></span> <h3>public pure subroutine <a href='../proc/linkage_clustering.html'>linkage_clustering</a>(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Perform linkage clustering on a distance matrix.</p><a href="../proc/linkage_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~13"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_points, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering.html#variable-distances~13" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~64"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-merge_i"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points - 1)
-            </td>
-            <td>::</td>
-            <td><strong>merge_i</strong></td>
-            <td>
-<p>holds cluster labels of the merged node pair at iteration k -&gt; positives relate to leafs/data point indices, negatives to inner nodes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-merge_j"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points - 1)
-            </td>
-            <td>::</td>
-            <td><strong>merge_j</strong></td>
-            <td>
-<p>holds cluster labels of the merged node pair at iteration k -&gt; positives relate to leafs/data point indices, negatives to inner nodes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-heights"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points - 1)
-            </td>
-            <td>::</td>
-            <td><strong>heights</strong></td>
-            <td>
-<p>height of the shorter branch of the merge, e.g. if (A,B)+(C) merges to ((A,B),C), the branch to (A,B) is shorter</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-cluster_sizes"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points - 1)
-            </td>
-            <td>::</td>
-            <td><strong>cluster_sizes</strong></td>
-            <td>
-<p>size of cluster at iteration k</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-method"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>method</strong></td>
-            <td>
-<p>used algorithm</p><a href="../proc/linkage_clustering.html#variable-method" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~237"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-linkage_clustering_helper"></span> <h3>public pure subroutine <a href='../proc/linkage_clustering_helper.html'>linkage_clustering_helper</a>(distances, n_points, merge_i, merge_j, heights, cluster_sizes, method)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Perform linkage clustering on a distance matrix.</p><a href="../proc/linkage_clustering_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+          
+  <p>Validates its inputs, then calls <a href="../proc/linkage_clustering_impl.html">linkage_clustering_impl</a>.</p><a href="../proc/linkage_clustering.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1231,12 +568,12 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>distances</strong></td>
             <td>
-<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering_helper.html#variable-distances~14" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p><a href="../proc/linkage_clustering.html#variable-distances~14" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~65"></span>
+              <span class="anchor" id="variable-n_points~33"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1251,7 +588,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-merge_i~2"></span>
+              <span class="anchor" id="variable-merge_i~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1266,7 +603,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-merge_j~2"></span>
+              <span class="anchor" id="variable-merge_j~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1281,7 +618,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-heights~2"></span>
+              <span class="anchor" id="variable-heights~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -1296,7 +633,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cluster_sizes~2"></span>
+              <span class="anchor" id="variable-cluster_sizes~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -1311,7 +648,7 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-method~2"></span>
+              <span class="anchor" id="variable-method~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1321,161 +658,14 @@ The centroids should be unique. This is not checked in this routine.</p><a href=
             <td>::</td>
             <td><strong>method</strong></td>
             <td>
-<p>used algorithm</p><a href="../proc/linkage_clustering_helper.html#variable-method~2" class="pull-right"><emph>Read more&hellip;</emph></a>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-recover_distance_matrix_helper"></span> <h3>public pure subroutine <a href='../proc/recover_distance_matrix_helper.html'>recover_distance_matrix_helper</a>(distances, n_points)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper to recover a distance matrix from its top triangle.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~15"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_points, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>top triangle holds distances, bottom triangle will be recovered</p>
+<p>used algorithm
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p><a href="../proc/linkage_clustering.html#variable-method~3" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~66"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-get_cluster_data_linkage_helper"></span> <h3>public pure subroutine <a href='../proc/get_cluster_data_linkage_helper.html'>get_cluster_data_linkage_helper</a>(distances, n_points, cluster_sizes, idx, weight, cluster_label)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper for linkage clustering to get the size/weight and label of a cluster
-by using the self-distance as indicator in which iteration the cluster was merged</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~16"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_points, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>distance matrix, holding the distances between points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~67"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-cluster_sizes~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_points - 1)
-            </td>
-            <td>::</td>
-            <td><strong>cluster_sizes</strong></td>
-            <td>
-<p>size of cluster at iteration k</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx</strong></td>
-            <td>
-<p>index of cluster in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-weight~2"></span>
+              <span class="anchor" id="variable-ierr~107"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1483,530 +673,9 @@ by using the self-distance as indicator in which iteration the cluster was merge
               
             </td>
             <td>::</td>
-            <td><strong>weight</strong></td>
+            <td><strong>ierr</strong></td>
             <td>
-<p>number of leafs of cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-cluster_label~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>cluster_label</strong></td>
-            <td>
-<p>index/label of cluster</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-merge_distances_xpgma_linkage_helper"></span> <h3>public pure subroutine <a href='../proc/merge_distances_xpgma_linkage_helper.html'>merge_distances_xPGMA_linkage_helper</a>(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper for *PGMA algorithms for updating the distance matrix on merge of two clusters</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~17"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_points, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>distance matrix, holding the distances between points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~68"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx_a~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx_A</strong></td>
-            <td>
-<p>row index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx_b~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx_B</strong></td>
-            <td>
-<p>column index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-size_a~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>size_A</strong></td>
-            <td>
-<p>cluster size of cluster at <code>idx_A</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-size_b~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>size_B</strong></td>
-            <td>
-<p>cluster size of cluster at <code>idx_B</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-iteration_k~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>iteration_k</strong></td>
-            <td>
-<p>iteration of current merge</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-merge_distances_ward_linkage_helper"></span> <h3>public pure subroutine <a href='../proc/merge_distances_ward_linkage_helper.html'>merge_distances_ward_linkage_helper</a>(distances, n_points, idx_A, idx_B, size_A, size_B, iteration_k, cluster_sizes, dist_AB)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper for ward algorithm for updating the distance matrix on merge of two clusters</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~18"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_points, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>distance matrix, holding the distances between points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~69"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx_a~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx_A</strong></td>
-            <td>
-<p>row index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx_b~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx_B</strong></td>
-            <td>
-<p>column index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-size_a~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>size_A</strong></td>
-            <td>
-<p>cluster size of cluster at <code>idx_A</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-size_b~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>size_B</strong></td>
-            <td>
-<p>cluster size of cluster at <code>idx_B</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-iteration_k~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>iteration_k</strong></td>
-            <td>
-<p>iteration of current merge</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-cluster_sizes~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n_points - 1)
-            </td>
-            <td>::</td>
-            <td><strong>cluster_sizes</strong></td>
-            <td>
-<p>size of cluster at iteration k, needed for ward algorithm</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-dist_ab~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>dist_AB</strong></td>
-            <td>
-<p>distance between cluster A and B</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-post_merge_distances_helper"></span> <h3>public pure subroutine <a href='../proc/post_merge_distances_helper.html'>post_merge_distances_helper</a>(distances, n_points, idx_A, idx_B, iteration_k)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper for doing last updates after merge: disable merged cluster, update self-distance to current iteration</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~19"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(n_points, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>distance matrix, holding the distances between points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_points~70"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_points</strong></td>
-            <td>
-<p>number of points to cluster</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx_a~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx_A</strong></td>
-            <td>
-<p>row index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-idx_b~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>idx_B</strong></td>
-            <td>
-<p>column index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-iteration_k~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>iteration_k</strong></td>
-            <td>
-<p>iteration of current merge</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-get_min_distance_indices_helper"></span> <h3>public pure subroutine <a href='../proc/get_min_distance_indices_helper.html'>get_min_distance_indices_helper</a>(distances, n, row_idx, col_idx, min_dist)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Helper routine to find the indices of the minimum value a distance matrix.</p><a href="../proc/get_min_distance_indices_helper.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-distances~20"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(n, n)
-            </td>
-            <td>::</td>
-            <td><strong>distances</strong></td>
-            <td>
-<p>distance matrix, holding the distances between points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n~19"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n</strong></td>
-            <td>
-<p>number of rows and columns of square matrix <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-row_idx"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>row_idx</strong></td>
-            <td>
-<p>row index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-col_idx"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>col_idx</strong></td>
-            <td>
-<p>column index of min distance in <code>distances</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-min_dist~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>min_dist</strong></td>
-            <td>
-<p>min distance</p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -2039,7 +708,7 @@ by using the self-distance as indicator in which iteration the cluster was merge
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

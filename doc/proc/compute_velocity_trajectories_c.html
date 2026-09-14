@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">37 statements</a>
+                 title=" 0.2% of total for procedures.">36 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_trajectory_contribution_analysis.F90"> Source File</a>
+              <a href="../src/tox_trajectory_contribution_analysis_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_trajectory_contribution_analysis.f90.html'>tox_trajectory_contribution_analysis.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_trajectory_contribution_analysis_c.f90.html'>tox_trajectory_contribution_analysis_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_trajectory_contribution_analysis_c.html'>tox_trajectory_contribution_analysis_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_velocity_trajectories_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine compute_velocity_trajectories_c(trajectories, n_factors, n_samples, n_timepoints, velocity, ierr) bind(C, name="compute_velocity_trajectories_c")  
+    <h2>public  subroutine compute_velocity_trajectories_c(trajectories, velocity, n_factors, n_samples, n_timepoints, ierr) bind(C, name="compute_velocity_trajectories_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_trajectory_contribution_analysis.html'>tox_trajectory_contribution_analysis</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +166,6 @@
     </div>
 
 
-    <p>C wrapper for compute_velocity_trajectories</p>
 
 
     <h3>Arguments</h3>
@@ -184,7 +181,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~15"></span>
+              <span class="anchor" id="variable-trajectories~18"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -194,12 +191,27 @@
             <td>::</td>
             <td><strong>trajectories</strong></td>
             <td>
-                <p>input trajectories in layout (n_factors, n_samples, n_timepoints)</p>
+                <p>input position trajectories</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~19"></span>
+              <span class="anchor" id="variable-velocity~7"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(max(0_int32, n_timepoints - 1), n_factors, n_samples), target
+            </td>
+            <td>::</td>
+            <td><strong>velocity</strong></td>
+            <td>
+                <p>output velocity trajectories</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_factors~21"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -214,7 +226,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~29"></span>
+              <span class="anchor" id="variable-n_samples~22"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -229,7 +241,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~27"></span>
+              <span class="anchor" id="variable-n_timepoints~29"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -244,23 +256,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-velocity~9"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(max(0, n_timepoints - 1), n_factors, n_samples), target
-            </td>
-            <td>::</td>
-            <td><strong>velocity</strong></td>
-            <td>
-                <p>output velocity in layout (n_timepoints-1, n_factors, n_samples)
-time-first layout keeps velocity(:,factor,sample) contiguous</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~261"></span>
+              <span class="anchor" id="variable-ierr~191"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -270,8 +266,7 @@ time-first layout keeps velocity(:,factor,sample) contiguous</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>error code</p>
-<p>Null-pointer validation</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -308,7 +303,7 @@ time-first layout keeps velocity(:,factor,sample) contiguous</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

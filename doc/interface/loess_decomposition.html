@@ -94,15 +94,15 @@
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_loess.F90"> Source File</a>
+              <a href="../src/tox_loess_impl.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/tox_loess.html'>tox_loess</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_loess_impl.f90.html'>tox_loess_impl.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_loess_impl.html'>tox_loess_impl</a></li>
             <li class="breadcrumb-item active" aria-current="page">loess_decomposition</li>
           </ol>
         </nav>
@@ -206,19 +206,19 @@ It initializes the integer and real workspace arrays based on the input paramete
               <span class="anchor" id="variable-int_workspace"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>int_workspace</strong>(int_workspace_size)</td>
             <td>
-                <p>Integer workspace array</p>
+                <p>Integer workspace array, laid out and populated here; nothing in it is read</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size"></span>
+              <span class="anchor" id="variable-int_workspace_size~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -233,7 +233,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size"></span>
+              <span class="anchor" id="variable-real_workspace_size~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -251,19 +251,19 @@ It initializes the integer and real workspace arrays based on the input paramete
               <span class="anchor" id="variable-real_workspace"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>real_workspace</strong>(real_workspace_size)</td>
             <td>
-                <p>Real workspace array</p>
+                <p>Real workspace array, whose first entries are set here; nothing in it is read</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dim"></span>
+              <span class="anchor" id="variable-n_dim~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -278,7 +278,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~20"></span>
+              <span class="anchor" id="variable-n~24"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -293,7 +293,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~9"></span>
+              <span class="anchor" id="variable-span~25"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -308,7 +308,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~9"></span>
+              <span class="anchor" id="variable-degree~25"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -323,7 +323,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_neighborhood_size"></span>
+              <span class="anchor" id="variable-max_neighborhood_size~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -338,7 +338,7 @@ It initializes the integer and real workspace arrays based on the input paramete
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-save_factorization"></span>
+              <span class="anchor" id="variable-save_factorization~10"></span>
               logical,
             </td>
 <td>intent(in)</td>
@@ -376,7 +376,7 @@ It initializes the integer and real workspace arrays based on the input paramete
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

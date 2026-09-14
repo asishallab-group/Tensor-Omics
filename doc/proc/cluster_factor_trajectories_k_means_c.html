@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">55 statements</a>
+                 title=" 0.3% of total for procedures.">60 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_clustering.F90"> Source File</a>
+              <a href="../src/tox_clustering_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_clustering.f90.html'>tox_clustering.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_clustering_c.f90.html'>tox_clustering_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_clustering_c.html'>tox_clustering_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">cluster_factor_trajectories_k_means_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, ierr, max_iterations) bind(C, name="cluster_factor_trajectories_k_means_c")  
+    <h2>public  subroutine cluster_factor_trajectories_k_means_c(n_clusters, trajectories, n_factors, n_samples, n_timepoints, centroids, labels, label_counts, max_iterations, ierr) bind(C, name="cluster_factor_trajectories_k_means_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,8 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_clustering.html'>tox_clustering</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,7 +166,6 @@
     </div>
 
 
-    <p>C-compatible wrapper for cluster_factor_trajectories_k_means</p>
 
 
     <h3>Arguments</h3>
@@ -183,7 +181,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~7"></span>
+              <span class="anchor" id="variable-n_clusters"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -193,12 +191,14 @@
             <td>::</td>
             <td><strong>n_clusters</strong></td>
             <td>
-                <p>number (<code>k</code>) of clusters</p>
+                <p>number (<code>k</code>) of clusters
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_samples*n_timepoints</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-trajectories~4"></span>
+              <span class="anchor" id="variable-trajectories~2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -213,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_factors~6"></span>
+              <span class="anchor" id="variable-n_factors~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -228,7 +228,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~14"></span>
+              <span class="anchor" id="variable-n_samples~2"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -243,7 +243,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_timepoints~6"></span>
+              <span class="anchor" id="variable-n_timepoints~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -258,7 +258,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~10"></span>
+              <span class="anchor" id="variable-centroids~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
@@ -275,7 +275,7 @@ The centroids should be unique. This is not checked in this routine.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-labels~6"></span>
+              <span class="anchor" id="variable-labels"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -291,7 +291,7 @@ The centroids should be unique. This is not checked in this routine.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-label_counts~6"></span>
+              <span class="anchor" id="variable-label_counts"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -306,22 +306,7 @@ The centroids should be unique. This is not checked in this routine.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~239"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-                <p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_iterations~5"></span>
+              <span class="anchor" id="variable-max_iterations"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -332,6 +317,21 @@ The centroids should be unique. This is not checked in this routine.</p>
             <td><strong>max_iterations</strong></td>
             <td>
                 <p>number of maximum iterations of the clustering</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~51"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -368,7 +368,7 @@ The centroids should be unique. This is not checked in this routine.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

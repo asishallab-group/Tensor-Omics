@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">35 statements</a>
+                 title=" 0.2% of total for procedures.">34 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_paralog_analysis.F90"> Source File</a>
+              <a href="../src/tox_paralog_analysis_impl_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_paralog_analysis.f90.html'>tox_paralog_analysis.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_paralog_analysis_impl_c.f90.html'>tox_paralog_analysis_impl_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_paralog_analysis_impl_c.html'>tox_paralog_analysis_impl_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">calc_work_arr_paralog_subsets_size_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine calc_work_arr_paralog_subsets_size_c(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr) bind(C, name="calc_work_arr_paralog_subsets_size_c")  
+    <h2>public  subroutine calc_work_arr_paralog_subsets_size_c(max_subset_size, n_genes, work_array_size, filtered_paralogs_mask, n_mask_chunks, ierr) bind(C, name="calc_work_arr_paralog_subsets_size_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_paralog_analysis.html'>tox_paralog_analysis</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_paralog_analysis_impl.html'>tox_paralog_analysis_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -167,7 +166,10 @@
     </div>
 
 
-    <p>C-compatible wrapper for <code>calc_work_arr_paralog_subsets_size</code></p>
+    <p>The <code>detect_*</code> subroutines need a work array for the to be tested subsets.
+In worst case, all need to be tried and subsets that cannot be extended will be kept as results.
+This is the reason why the work array holds the results as well, as all subsets that are stored in the array can be results as well.</p>
+<p>This subroutine calculates the needed size for the work array.</p>
 
 
     <h3>Arguments</h3>
@@ -193,17 +195,19 @@
             <td>::</td>
             <td><strong>max_subset_size</strong></td>
             <td>
-                <p>maximum size that a subset must not exceed.</p>
+                <p>maximum size that a subset must not exceed. Zero is in range and means there is
+nothing to size a work array for, which is reported back as a size of zero.
+The minimum valid value is <code>0_int32</code>.</p>
 <div class="alert alert-warning">
 <p class="alert-title h4">Warning</p>
 <p>If the desired size is too large and leads to an integer overflow, <code>max_subset_size</code> will be set to the maximum valid size.</p>
-<p>Also, size will be set to number of paralogs in <code>filtered_paralogs_mask</code> if larger.</p>
+<p>Also, size will be set to number of genes in <code>filtered_paralogs_mask</code> if larger.</p>
 </div>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~80"></span>
+              <span class="anchor" id="variable-n_genes~34"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +217,7 @@
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                <p>number of paralogs</p>
+                <p>number of genes</p>
             </td>
         </tr>
         <tr>
@@ -243,12 +247,12 @@
             <td>::</td>
             <td><strong>filtered_paralogs_mask</strong></td>
             <td>
-                <p>Output mask with all paralogs disabled that did not pass the filter</p>
+                <p>Output mask with all genes disabled that did not pass the filter</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~16"></span>
+              <span class="anchor" id="variable-n_mask_chunks~14"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -263,7 +267,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~319"></span>
+              <span class="anchor" id="variable-ierr~142"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -310,7 +314,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

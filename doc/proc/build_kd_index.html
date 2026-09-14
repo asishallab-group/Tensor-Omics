@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">18 statements</a>
+                 title=" 0.2% of total for procedures.">39 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,11 +150,10 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
+    <h2>public pure subroutine build_kd_index(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)  
 </h2>
     
 
-    <p>Build a k-d tree index using a stack-based, non-recursive approach.</p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +169,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-points~2"></span>
+              <span class="anchor" id="variable-points~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -186,7 +184,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~2"></span>
+              <span class="anchor" id="variable-n_dimensions~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -201,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~51"></span>
+              <span class="anchor" id="variable-n_points~61"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -216,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-kd_indices~2"></span>
+              <span class="anchor" id="variable-kd_indices~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -231,7 +229,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~2"></span>
+              <span class="anchor" id="variable-dimension_order~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -241,72 +239,14 @@
             <td>::</td>
             <td><strong>dimension_order</strong></td>
             <td>
-                <p>Dimension order (by variance)</p>
+                <p>Dimension order (by variance)
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_workspace</strong></td>
-            <td>
-                <p>Workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_value_buffer~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_value_buffer</strong></td>
-            <td>
-                <p>Workspace for sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_points)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation</strong></td>
-            <td>
-                <p>Workspace for sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(3, n_points)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_recursion_stack</strong></td>
-            <td>
-                <p>Stack for l, r, depth</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~148"></span>
+              <span class="anchor" id="variable-ierr~345"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -316,7 +256,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -353,7 +293,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
