@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.4% of total for modules and submodules.">123 statements</a>
+                 title=" 0.4% of total for modules and submodules.">71 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -133,7 +133,18 @@
   
   
   
-  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#funcs-0"
+         aria-expanded="false" aria-controls="funcs-0">
+         <h4 class="card-header bg-primary text-white">Functions</h4>
+      </a>
+      <div id="funcs-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/tox_conversions.html#proc-c_char_as_view">c_char_as_view</a>
+        </div>
+      </div>
+    </div>
+
       <div class="card mb-4">
       <a data-bs-toggle="collapse" href="#subs-0"
          aria-expanded="false" aria-controls="subs-0">
@@ -145,10 +156,6 @@
             <a class="list-group-item" href="../module/tox_conversions.html#proc-logical_as_c_int">logical_as_c_int</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-c_char_as_char">c_char_as_char</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-char_as_c_char">char_as_c_char</a>
-            <a class="list-group-item" href="../module/tox_conversions.html#proc-c_char_1d_as_string">c_char_1d_as_string</a>
-            <a class="list-group-item" href="../module/tox_conversions.html#proc-string_as_c_char_1d">string_as_c_char_1d</a>
-            <a class="list-group-item" href="../module/tox_conversions.html#proc-c_char_2d_as_string">c_char_2d_as_string</a>
-            <a class="list-group-item" href="../module/tox_conversions.html#proc-string_as_c_char_2d">string_as_c_char_2d</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-int32_as_c_int64">int32_as_c_int64</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-c_int64_as_int32">c_int64_as_int32</a>
             <a class="list-group-item" href="../module/tox_conversions.html#proc-int32_as_c_size">int32_as_c_size</a>
@@ -176,14 +183,16 @@
       <p>Module with conversion helpers between Fortran-native types and their <code>iso_c_binding</code> counterparts.
 Used by the C interface wrapper subroutines throughout tensor-omics to translate arguments (logicals,
 characters/strings, and fixed-width integer kinds) crossing the Fortran/C boundary.</p>
+<p>It keeps its <code>tox_</code> name for continuity, but it lives in <code>src/f42/</code> because it is C-interop
+glue with no exports of its own -- infrastructure the binding layer stands on.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
@@ -200,6 +209,59 @@ characters/strings, and fixed-width integer kinds) crossing the Fortran/C bounda
 
 
 
+        <section>
+          <h2>Functions</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-c_char_as_view"></span> <h3>public  function <a href='../proc/c_char_as_view.html'>c_char_as_view</a>(buffer) result(view)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>A zero-copy Fortran view of a <code>c_char</code> buffer, ending at the first NUL if there is one.</p><a href="../proc/c_char_as_view.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-buffer~3"></span>
+              character(kind=c_char, len=1),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(:), target, contiguous
+            </td>
+            <td>::</td>
+            <td><strong>buffer</strong></td>
+            <td>
+<p>the C buffer, NUL-terminated or blank-padded</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+    <h4>
+    Return Value
+    <small>character(len=:), pointer</small>
+    </h4>
+    <p>the buffer read as one Fortran string, up to the first NUL</p>
+
+    </div>
+  </div>
+
+        </section>
+        <br>
 
         <section>
           <h2>Subroutines</h2>
@@ -430,272 +492,6 @@ characters/strings, and fixed-width integer kinds) crossing the Fortran/C bounda
             <td><strong>c_val</strong></td>
             <td>
 <p>the element that will hold the c_char (ASCII) representation of the character</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-c_char_1d_as_string"></span> <h3>public pure subroutine <a href='../proc/c_char_1d_as_string.html'>c_char_1d_as_string</a>(c_char_array, str_out, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Converts a 1D c_char array to string</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-c_char_array"></span>
-              character(kind=c_char, len=1),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>c_char_array</strong></td>
-            <td>
-<p>c int array, representing characters</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-str_out"></span>
-              character(len=:),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              allocatable
-            </td>
-            <td>::</td>
-            <td><strong>str_out</strong></td>
-            <td>
-<p>Fortran string, length determined by occuring null char in <code>c_char_array</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~143"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-string_as_c_char_1d"></span> <h3>public pure subroutine <a href='../proc/string_as_c_char_1d.html'>string_as_c_char_1d</a>(str, c_char_array)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Converts a string to 1D c_char array</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-str"></span>
-              character(len=*),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>str</strong></td>
-            <td>
-<p>Fortran string to be converted</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-c_char_array~2"></span>
-              character(kind=c_char, len=1),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>c_char_array</strong></td>
-            <td>
-<p>c int array, representing chars of <code>str</code>, will always end with null char. If array too small, it will hold fitting trimmed <code>str</code>.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-c_char_2d_as_string"></span> <h3>public pure subroutine <a href='../proc/c_char_2d_as_string.html'>c_char_2d_as_string</a>(c_char_array, str_out, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Converts a 2D c_char array to 1D string array</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-c_char_array~3"></span>
-              character(kind=c_char, len=1),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:, :)
-            </td>
-            <td>::</td>
-            <td><strong>c_char_array</strong></td>
-            <td>
-<p>c int array, columns as ascii arrays</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-str_out~2"></span>
-              character(len=:),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:), allocatable
-            </td>
-            <td>::</td>
-            <td><strong>str_out</strong></td>
-            <td>
-<p>Fortran array of resulting strings</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~144"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-string_as_c_char_2d"></span> <h3>public pure subroutine <a href='../proc/string_as_c_char_2d.html'>string_as_c_char_2d</a>(strings, c_char_array)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Converts a 1D string array to 2D c_char array</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-strings~2"></span>
-              character(len=*),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(:)
-            </td>
-            <td>::</td>
-            <td><strong>strings</strong></td>
-            <td>
-<p>Fortran array of strings</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-c_char_array~4"></span>
-              character(kind=c_char, len=1),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(:, :)
-            </td>
-            <td>::</td>
-            <td><strong>c_char_array</strong></td>
-            <td>
-<p>c int array, columns as ascii arrays</p>
             </td>
         </tr>
     </tbody>
@@ -1082,7 +878,7 @@ characters/strings, and fixed-width integer kinds) crossing the Fortran/C bounda
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

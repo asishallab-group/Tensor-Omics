@@ -85,25 +85,24 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">29 statements</a>
+                 title=" 0.1% of total for procedures.">21 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_utils.F90"> Source File</a>
+              <a href="../src/f42_stats.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_utils.f90.html'>f42_utils.F90</a></li>
-                <li class="breadcrumb-item"><a href='../module/f42_utils.html'>f42_utils</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_stats.f90.html'>f42_stats.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_stats.html'>f42_stats</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_scaled_distance_quantile</li>
           </ol>
         </nav>
@@ -151,16 +150,15 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, perm, quantile, c_const)  
+    <h2>public pure subroutine compute_scaled_distance_quantile(n_genes, rdi, sorted_rdi, quantile, c_const, ierr)  
 </h2>
     
 
-    <p>Calculate the empirical quantile (effect-size measure) of scaled expression distances (RDI).
-This is NOT a null-hypothesis-testing p-value: each distance is compared against the
+    <p>This is NOT a null-hypothesis-testing p-value: each distance is compared against the
 observed distribution it was drawn from, not an independently generated null distribution.
 It instead measures how extreme an observed distance is relative to all observed distances.</p>
 <p>Implements:
-  Q(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
+Q(d) = ( #{di in D | di &gt;= d} + c ) / ( |D| + c )</p>
 <p>Because distances are non-negative, a one-sided upper-tail quantile is used.</p>
 <p>Assumptions / preconditions:
 - sorted_rdi(1:n_genes) contains the empirical distribution D.
@@ -180,7 +178,7 @@ It instead measures how extreme an observed distance is relative to all observed
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~5"></span>
+              <span class="anchor" id="variable-n_genes~63"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -195,67 +193,56 @@ It instead measures how extreme an observed distance is relative to all observed
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi"></span>
+              <span class="anchor" id="variable-rdi~6"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>rdi</strong>(n_genes)</td>
+            <td><strong>rdi</strong></td>
             <td>
-                <p>empirical distribution D</p>
+                <p>empirical distribution D
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi"></span>
+              <span class="anchor" id="variable-sorted_rdi~6"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>sorted_rdi</strong>(n_genes)</td>
+            <td><strong>sorted_rdi</strong></td>
             <td>
-                <p>empirical distribution D with non negative values</p>
+                <p>empirical distribution D with non negative values
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~25"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
-            <td>
-                <p>Permutation array with sorted indices for sorted_rdi</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-quantile"></span>
+              <span class="anchor" id="variable-quantile~6"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>quantile</strong>(n_genes)</td>
+            <td><strong>quantile</strong></td>
             <td>
                 <p>Output array to store the computed quantile for each gene.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-c_const"></span>
+              <span class="anchor" id="variable-c_const~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -266,6 +253,21 @@ It instead measures how extreme an observed distance is relative to all observed
             <td><strong>c_const</strong></td>
             <td>
                 <p>Constant used in the computation, typically 1</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~277"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -302,7 +304,7 @@ It instead measures how extreme an observed distance is relative to all observed
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

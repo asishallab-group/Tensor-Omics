@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.7% of total for modules and submodules.">145 statements</a>
+                 title=" 0.8% of total for modules and submodules.">145 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -183,16 +183,23 @@ order: magic number (<a href="../module/f42_serde_arrays_utils.html#variable-arr
 type code, number of dimensions <code>ndim</code>, then <code>ndim</code> dimension sizes. The
 raw array payload follows immediately after the header, written as one
 contiguous block by the type-specific serializers.</p>
+<p>The header does NOT record the width of an element, so the payload is only
+readable by a build that agrees with the writer on the storage size of the
+type code. Logical arrays changed width once: they are now written as
+<code>logical(c_bool)</code>, one byte per element, where earlier builds wrote the
+default logical kind at four. A logical <code>.bin</code> file written before that
+change therefore decodes to garbage here rather than failing, and one
+written here does the same there. No other type code has moved.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='f42_serde_utils.html'>f42_serde_utils</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
               </ul>
             </li>
         </ul>
@@ -269,7 +276,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~71"></span>
+              <span class="anchor" id="variable-filename~23"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -284,7 +291,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unit~19"></span>
+              <span class="anchor" id="variable-unit~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -299,7 +306,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-type_code~2"></span>
+              <span class="anchor" id="variable-type_code"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -309,7 +316,7 @@ parameter
             <td>::</td>
             <td><strong>type_code</strong></td>
             <td>
-<p>type code of the array</p><a href="../proc/write_file_header.html#variable-type_code~2" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>type code of the array</p><a href="../proc/write_file_header.html#variable-type_code" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
@@ -329,7 +336,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dims~2"></span>
+              <span class="anchor" id="variable-dims"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -344,7 +351,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~267"></span>
+              <span class="anchor" id="variable-ierr~116"></span>
               integer(kind=int32),
             </td>
 <td>intent(inout)</td>
@@ -392,7 +399,7 @@ responsibility to close it.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~72"></span>
+              <span class="anchor" id="variable-filename~24"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -437,7 +444,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unit~20"></span>
+              <span class="anchor" id="variable-unit~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -452,7 +459,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~268"></span>
+              <span class="anchor" id="variable-ierr~117"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -496,7 +503,7 @@ responsibility to close it.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~73"></span>
+              <span class="anchor" id="variable-filename~25"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -511,7 +518,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-unit~21"></span>
+              <span class="anchor" id="variable-unit~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -526,7 +533,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-type_code~4"></span>
+              <span class="anchor" id="variable-type_code~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -536,12 +543,12 @@ responsibility to close it.</p>
             <td>::</td>
             <td><strong>type_code</strong></td>
             <td>
-<p>type code of the array</p><a href="../proc/read_file_header_helper.html#variable-type_code~4" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>type code of the array</p><a href="../proc/read_file_header_helper.html#variable-type_code~3" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ndims~2"></span>
+              <span class="anchor" id="variable-ndims"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -556,7 +563,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dims~4"></span>
+              <span class="anchor" id="variable-dims~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -571,7 +578,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~269"></span>
+              <span class="anchor" id="variable-ierr~118"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -598,9 +605,10 @@ responsibility to close it.</p>
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+        <dt>Category</dt><dd>C-binding</dd>
     </dl>
 
-  <p>Get the metadata of an array file</p>
+  <p>Get the metadata of an array file</p><a href="../proc/get_array_metadata.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -615,7 +623,7 @@ responsibility to close it.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~74"></span>
+              <span class="anchor" id="variable-filename~26"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -640,7 +648,8 @@ responsibility to close it.</p>
             <td>::</td>
             <td><strong>dims_out</strong>(dims_out_capacity)</td>
             <td>
-<p>Array to store output dimensions</p>
+<p>Array to store output dimensions
+The first <code>ndims</code> elements will hold the results.</p>
             </td>
         </tr>
         <tr>
@@ -660,7 +669,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ndims~3"></span>
+              <span class="anchor" id="variable-ndims~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -675,7 +684,7 @@ responsibility to close it.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-type_code~5"></span>
+              <span class="anchor" id="variable-type_code~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -685,12 +694,12 @@ responsibility to close it.</p>
             <td>::</td>
             <td><strong>type_code</strong></td>
             <td>
-<p>Type code of the serialized array</p><a href="../proc/get_array_metadata.html#variable-type_code~5" class="pull-right"><emph>Read more&hellip;</emph></a>
+<p>Type code of the serialized array</p><a href="../proc/get_array_metadata.html#variable-type_code~4" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~270"></span>
+              <span class="anchor" id="variable-ierr~119"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -733,7 +742,7 @@ responsibility to close it.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

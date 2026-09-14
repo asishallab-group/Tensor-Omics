@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for procedures.">90 statements</a>
+                 title=" 0.4% of total for procedures.">72 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_loess.F90"> Source File</a>
+              <a href="../src/tox_loess_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_loess.f90.html'>tox_loess.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_loess_c.f90.html'>tox_loess_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_loess_c.html'>tox_loess_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">loess_fit_plain_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine loess_fit_plain_c(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr) bind(C, name="loess_fit_plain_c")  
+    <h2>public  subroutine loess_fit_plain_c(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, fitted_values, ierr) bind(C, name="loess_fit_plain_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_loess.html'>tox_loess</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,9 +166,10 @@
     </div>
 
 
-    <p>Perform plain LOESS fitting.
-Fits a LOESS model to the data using the specified smoothing parameter.
-Outputs the smoothed response variable array.</p>
+    <p>Data too degenerate to fit is answered directly, by the observations themselves; see
+<a href="../proc/loess_degenerate_fit.html">loess_degenerate_fit</a>.
+Fits a LOESS model to the data using the specified smoothing parameter and outputs the smoothed
+response array.</p>
 
 
     <h3>Arguments</h3>
@@ -185,7 +185,7 @@ Outputs the smoothed response variable array.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~27"></span>
+              <span class="anchor" id="variable-n~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -200,7 +200,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~8"></span>
+              <span class="anchor" id="variable-x~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -215,7 +215,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y~6"></span>
+              <span class="anchor" id="variable-y~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -230,7 +230,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~17"></span>
+              <span class="anchor" id="variable-weights~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -245,7 +245,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-eval_points~4"></span>
+              <span class="anchor" id="variable-eval_points~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -260,7 +260,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~14"></span>
+              <span class="anchor" id="variable-span~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -270,12 +270,14 @@ Outputs the smoothed response variable array.</p>
             <td>::</td>
             <td><strong>span</strong></td>
             <td>
-                <p>Smoothing parameter for LOESS</p>
+                <p>Smoothing parameter for LOESS
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~14"></span>
+              <span class="anchor" id="variable-degree~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -285,7 +287,9 @@ Outputs the smoothed response variable array.</p>
             <td>::</td>
             <td><strong>degree</strong></td>
             <td>
-                <p>Degree of the LOESS polynomial</p>
+                <p>Degree of the LOESS polynomial
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -305,8 +309,8 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-compute_influence~4"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-compute_influence~5"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
@@ -315,13 +319,14 @@ Outputs the smoothed response variable array.</p>
             <td>::</td>
             <td><strong>compute_influence</strong></td>
             <td>
-                <p>Influence calculation flag (0 for false, non-zero for true)</p>
+                <p>Influence calculation flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-save_factorization~5"></span>
-              integer(kind=c_int),
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
@@ -330,87 +335,13 @@ Outputs the smoothed response variable array.</p>
             <td>::</td>
             <td><strong>save_factorization</strong></td>
             <td>
-                <p>Save matrix factorization flag (0 for false, non-zero for true)</p>
+                <p>Save matrix factorization flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace~7"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(*), target
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace</strong></td>
-            <td>
-                <p>Integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace_size~8"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-                <p>Required size of the integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace~7"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(inout),</td>
-              <td></td>            <td>
-              dimension(*), target
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace</strong></td>
-            <td>
-                <p>Real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~8"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-                <p>Required size of the real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-hat_diag~5"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n), target
-            </td>
-            <td>::</td>
-            <td><strong>hat_diag</strong></td>
-            <td>
-                <p>Diagonal elements of the hat matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-fitted_values~6"></span>
+              <span class="anchor" id="variable-fitted_values~5"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -425,7 +356,7 @@ Outputs the smoothed response variable array.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~282"></span>
+              <span class="anchor" id="variable-ierr~47"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -472,7 +403,7 @@ Outputs the smoothed response variable array.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

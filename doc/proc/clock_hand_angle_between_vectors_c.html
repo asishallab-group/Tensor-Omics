@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">35 statements</a>
+                 title=" 0.2% of total for procedures.">38 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_relative_axis_plane_tools.F90"> Source File</a>
+              <a href="../src/tox_relative_axis_plane_tools_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_relative_axis_plane_tools.f90.html'>tox_relative_axis_plane_tools.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_relative_axis_plane_tools_c.f90.html'>tox_relative_axis_plane_tools_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_relative_axis_plane_tools_c.html'>tox_relative_axis_plane_tools_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">clock_hand_angle_between_vectors_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine clock_hand_angle_between_vectors_c(v1, v2, n_dims, signed_angle, selected_axes_for_signed, ierr) bind(C, name="clock_hand_angle_between_vectors_c")  
+    <h2>public  subroutine clock_hand_angle_between_vectors_c(v1, v2, n_dims, orientation_reference, signed_angle, ierr) bind(C, name="clock_hand_angle_between_vectors_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,8 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_relative_axis_plane_tools.html'>tox_relative_axis_plane_tools</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,6 +166,9 @@
     </div>
 
 
+    <p>The unsigned angle is <code>acos(v1 . v2)</code>; <code>orientation_reference</code> supplies the sign by saying
+which way round the plane the two vectors span counts as positive. Reports
+<code>ERR_INVALID_INPUT</code> when the reference is orthogonal to the rotation and so orients nothing.</p>
 
 
     <h3>Arguments</h3>
@@ -182,7 +184,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-v1~4"></span>
+              <span class="anchor" id="variable-v1"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -197,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-v2~4"></span>
+              <span class="anchor" id="variable-v2"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -212,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~25"></span>
+              <span class="anchor" id="variable-n_dims"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -227,7 +229,26 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-signed_angle~3"></span>
+              <span class="anchor" id="variable-orientation_reference"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_dims), target
+            </td>
+            <td>::</td>
+            <td><strong>orientation_reference</strong></td>
+            <td>
+                <p>Orients the plane the rotation happens in, so the angle can carry a sign. A
+rotation from one vector to another has no inherent direction above two
+dimensions -- and in RAP space not even in two, since the axes are tissues or
+factors and carry no handedness -- so the caller states which way round counts
+as positive. The sign is that of this vector's component along the rotation.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-signed_angle"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -237,27 +258,12 @@
             <td>::</td>
             <td><strong>signed_angle</strong></td>
             <td>
-                <p>Signed angle between vectors in radians [-π, π]</p>
+                <p>Signed angle between vectors in radians [-pi, pi]</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-selected_axes_for_signed~6"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(in),</td>
-              <td></td>            <td>
-              dimension(3), target
-            </td>
-            <td>::</td>
-            <td><strong>selected_axes_for_signed</strong></td>
-            <td>
-                <p>Indices of 3 different axes to use for directionality calculation (ignored if n_dims &lt;= 3, all indices must be unique)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~293"></span>
+              <span class="anchor" id="variable-ierr~27"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -304,7 +310,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

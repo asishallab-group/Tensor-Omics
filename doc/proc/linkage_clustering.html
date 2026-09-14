@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">16 statements</a>
+                 title=" 0.1% of total for procedures.">17 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -155,11 +154,11 @@
 </h2>
     
 
-    <p>Perform linkage clustering on a distance matrix.</p>
-<div class="alert alert-info">
+    <div class="alert alert-info">
 <p class="alert-title h4">Note</p>
-<p>This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-So there is no need to copy an existing distance matrix, just pass the original.</p>
+<p>The bottom triangle is used as scratch and restored from the top triangle before
+returning, on success or on error, so the matrix comes back unchanged. There is no
+need to copy it before calling.</p>
 </div>
 
 
@@ -176,7 +175,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~13"></span>
+              <span class="anchor" id="variable-distances~14"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -189,14 +188,17 @@ So there is no need to copy an existing distance matrix, just pass the original.
                 <p>symmetric distance matrix, holding the positive distances between points. Distance of X-&gt;X is always zero.</p>
 <div class="alert alert-info">
 <p class="alert-title h4">Note</p>
-<p>This subroutine operates in-place in the bottom triangle of the distance matrix and recovers it using the top triangle once done or on error.
-So there is no need to copy an existing distance matrix, just pass the original.</p>
+<p>The bottom triangle is used as scratch and restored from the top triangle before
+returning, on success or on error, so the matrix comes back unchanged. There is no
+need to copy it before calling.</p>
 </div>
+<p>Its structure (symmetry, non-negativity, zero diagonal) is validated by the
+distance-matrix naming convention in the generated wrapper.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~64"></span>
+              <span class="anchor" id="variable-n_points~33"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -211,7 +213,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-merge_i"></span>
+              <span class="anchor" id="variable-merge_i~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -226,7 +228,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-merge_j"></span>
+              <span class="anchor" id="variable-merge_j~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -241,7 +243,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-heights"></span>
+              <span class="anchor" id="variable-heights~3"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -256,7 +258,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-cluster_sizes"></span>
+              <span class="anchor" id="variable-cluster_sizes~5"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -271,7 +273,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-method"></span>
+              <span class="anchor" id="variable-method~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -281,7 +283,9 @@ So there is no need to copy an existing distance matrix, just pass the original.
             <td>::</td>
             <td><strong>method</strong></td>
             <td>
-                <p>used algorithm</p>
+                <p>used algorithm
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
 <table>
 <thead>
 <tr>
@@ -292,15 +296,15 @@ So there is no need to copy an existing distance matrix, just pass the original.
 <tbody>
 <tr>
 <td>Average / UPGMA</td>
-<td>0</td>
+<td><a href="../module/tox_clustering_impl.html#variable-method_average">METHOD_AVERAGE</a></td>
 </tr>
 <tr>
 <td>Weighted / WPGMA</td>
-<td>1</td>
+<td><a href="../module/tox_clustering_impl.html#variable-method_weighted">METHOD_WEIGHTED</a></td>
 </tr>
 <tr>
 <td>Ward</td>
-<td>2</td>
+<td><a href="../module/tox_clustering_impl.html#variable-method_ward">METHOD_WARD</a></td>
 </tr>
 </tbody>
 </table>
@@ -308,7 +312,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~237"></span>
+              <span class="anchor" id="variable-ierr~107"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -318,7 +322,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -355,7 +359,7 @@ So there is no need to copy an existing distance matrix, just pass the original.
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

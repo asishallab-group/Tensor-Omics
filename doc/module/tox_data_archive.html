@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title="10.0% of total for modules and submodules.">857 statements</a>
+                 title=" 5.2% of total for modules and submodules.">992 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -193,6 +193,10 @@
             <a class="list-group-item" href="../module/tox_data_archive.html#proc-extract_and_parse_manifest">extract_and_parse_manifest</a>
             <a class="list-group-item" href="../module/tox_data_archive.html#proc-save_tox_data">save_tox_data</a>
             <a class="list-group-item" href="../module/tox_data_archive.html#proc-read_tox_data">read_tox_data</a>
+            <a class="list-group-item" href="../module/tox_data_archive.html#proc-resolve_tox_data_files">resolve_tox_data_files</a>
+            <a class="list-group-item" href="../module/tox_data_archive.html#proc-cleanup_tox_data_files">cleanup_tox_data_files</a>
+            <a class="list-group-item" href="../module/tox_data_archive.html#proc-get_tox_data_dims">get_tox_data_dims</a>
+            <a class="list-group-item" href="../module/tox_data_archive.html#proc-read_tox_data_into">read_tox_data_into</a>
         </div>
       </div>
     </div>
@@ -226,11 +230,11 @@ fixed TensorOmics data set schema; <code>create_zip_archive</code>/<code>extract
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
-                  <li class="list-inline-item"><a href='config.html'>config</a></li>
+                  <li class="list-inline-item"><a href='f42_config.html'>f42_config</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_data_read_write.html'>tox_data_read_write</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -425,7 +429,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-size"></span>
+              <span class="anchor" id="variable-size~2"></span>
               integer(kind=c_size_t),
             </td>
 <td></td>
@@ -825,7 +829,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-index"></span>
+              <span class="anchor" id="variable-index~2"></span>
               integer(kind=c_int64_t),
             </td>
 <td></td>
@@ -1210,7 +1214,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-index~2"></span>
+              <span class="anchor" id="variable-index~3"></span>
               integer(kind=c_int64_t),
             </td>
 <td></td>
@@ -1362,9 +1366,10 @@ parameter
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+        <dt>Category</dt><dd>C-binding</dd>
     </dl>
 
-  <p>Creates a zip archive with generic file lists</p>
+  <p>Creates a zip archive with generic file lists</p><a href="../proc/create_zip_archive.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1379,7 +1384,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename"></span>
+              <span class="anchor" id="variable-zip_filename~5"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1394,7 +1399,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys"></span>
+              <span class="anchor" id="variable-keys~2"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1409,7 +1414,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames"></span>
+              <span class="anchor" id="variable-filenames~2"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1424,7 +1429,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~53"></span>
+              <span class="anchor" id="variable-ierr~258"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1468,7 +1473,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~2"></span>
+              <span class="anchor" id="variable-zip_filename~6"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1483,7 +1488,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~2"></span>
+              <span class="anchor" id="variable-keys~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -1498,7 +1503,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~2"></span>
+              <span class="anchor" id="variable-filenames~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -1513,7 +1518,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~54"></span>
+              <span class="anchor" id="variable-ierr~259"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1557,7 +1562,7 @@ parameter
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~23"></span>
+              <span class="anchor" id="variable-filename~76"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1572,7 +1577,7 @@ parameter
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~55"></span>
+              <span class="anchor" id="variable-ierr~260"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1593,7 +1598,7 @@ parameter
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-get_zip_entry_name"></span> <h3>public  subroutine <a href='../proc/get_zip_entry_name.html'>get_zip_entry_name</a>(zip_handle, entry_index, entry_name, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-get_zip_entry_name"></span> <h3>public  subroutine <a href='../proc/get_zip_entry_name.html'>get_zip_entry_name</a>(zip_handle, entry_index, entry_name)  
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
@@ -1601,7 +1606,10 @@ parameter
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
-  <p>Helper function to get the name of a ZIP entry</p>
+  <p>Helper function to get the name of a ZIP entry
+<code>entry_name</code> is a <strong>view into libzip's own memory</strong>, not a copy: it is valid only while
+<code>zip_handle</code> is open, and must not be kept past <code>zip_close</code>. The one caller uses it
+inside the loop that reads the archive, which is exactly that window.</p>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1651,27 +1659,12 @@ parameter
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              allocatable
+              pointer
             </td>
             <td>::</td>
             <td><strong>entry_name</strong></td>
             <td>
-<p>Name of the entry</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~56"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
+<p>Name of the entry, ending at libzip's NUL. Unassociated if the entry has no name.</p>
             </td>
         </tr>
     </tbody>
@@ -1721,7 +1714,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~24"></span>
+              <span class="anchor" id="variable-filename~77"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1736,7 +1729,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~57"></span>
+              <span class="anchor" id="variable-ierr~261"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1797,7 +1790,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~25"></span>
+              <span class="anchor" id="variable-filename~78"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1842,7 +1835,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~58"></span>
+              <span class="anchor" id="variable-ierr~262"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1867,7 +1860,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
@@ -1886,7 +1879,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~3"></span>
+              <span class="anchor" id="variable-keys~4"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1901,7 +1894,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~3"></span>
+              <span class="anchor" id="variable-filenames~4"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -1931,7 +1924,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~59"></span>
+              <span class="anchor" id="variable-ierr~263"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1956,7 +1949,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
 </h3></div>
     <div class="card-body">
               <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
     </dl>
 
@@ -1990,7 +1983,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~4"></span>
+              <span class="anchor" id="variable-keys~5"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2005,7 +1998,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-values"></span>
+              <span class="anchor" id="variable-values~10"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2020,7 +2013,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~60"></span>
+              <span class="anchor" id="variable-ierr~264"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2079,7 +2072,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-keys~5"></span>
+              <span class="anchor" id="variable-keys~6"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2094,7 +2087,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-filenames~4"></span>
+              <span class="anchor" id="variable-filenames~5"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2109,7 +2102,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~61"></span>
+              <span class="anchor" id="variable-ierr~265"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2136,9 +2129,10 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
               <dl class="dl-horizontal">
         <dt>Author</dt><dd><a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></dd>
         <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+        <dt>Category</dt><dd>C-binding</dd>
     </dl>
 
-  <p>Save standard tox data</p>
+  <p>Save standard tox data</p><a href="../proc/save_tox_data.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -2153,7 +2147,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~3"></span>
+              <span class="anchor" id="variable-zip_filename~7"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2168,7 +2162,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~62"></span>
+              <span class="anchor" id="variable-ierr~266"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2183,7 +2177,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids"></span>
+              <span class="anchor" id="variable-gene_ids~12"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2198,7 +2192,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file"></span>
+              <span class="anchor" id="variable-gene_ids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2213,7 +2207,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression"></span>
+              <span class="anchor" id="variable-expression~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2228,7 +2222,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file"></span>
+              <span class="anchor" id="variable-expression_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2243,7 +2237,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family"></span>
+              <span class="anchor" id="variable-gene_to_family~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -2258,7 +2252,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file"></span>
+              <span class="anchor" id="variable-gene_to_family_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2273,7 +2267,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids"></span>
+              <span class="anchor" id="variable-family_ids~6"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2288,7 +2282,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file"></span>
+              <span class="anchor" id="variable-family_ids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2303,7 +2297,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids"></span>
+              <span class="anchor" id="variable-family_centroids~16"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2318,7 +2312,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file"></span>
+              <span class="anchor" id="variable-family_centroids_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2333,7 +2327,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors"></span>
+              <span class="anchor" id="variable-shift_vectors~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -2348,7 +2342,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file"></span>
+              <span class="anchor" id="variable-shift_vectors_file~2"></span>
               character(len=*),
             </td>
 <td>intent(in),</td>
@@ -2392,7 +2386,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-zip_filename~4"></span>
+              <span class="anchor" id="variable-zip_filename~8"></span>
               character(len=*),
             </td>
 <td>intent(in)</td>
@@ -2407,7 +2401,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~63"></span>
+              <span class="anchor" id="variable-ierr~267"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -2422,7 +2416,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids~2"></span>
+              <span class="anchor" id="variable-gene_ids~13"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2437,7 +2431,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_file~2"></span>
+              <span class="anchor" id="variable-gene_ids_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2452,7 +2446,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression~2"></span>
+              <span class="anchor" id="variable-expression~4"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2467,7 +2461,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_file~2"></span>
+              <span class="anchor" id="variable-expression_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2482,7 +2476,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family~2"></span>
+              <span class="anchor" id="variable-gene_to_family~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -2497,7 +2491,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_family_file~2"></span>
+              <span class="anchor" id="variable-gene_to_family_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2512,7 +2506,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids~2"></span>
+              <span class="anchor" id="variable-family_ids~7"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2527,7 +2521,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_ids_file~2"></span>
+              <span class="anchor" id="variable-family_ids_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2542,7 +2536,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~2"></span>
+              <span class="anchor" id="variable-family_centroids~17"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2557,7 +2551,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids_file~2"></span>
+              <span class="anchor" id="variable-family_centroids_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2572,7 +2566,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~2"></span>
+              <span class="anchor" id="variable-shift_vectors~15"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -2587,7 +2581,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors_file~2"></span>
+              <span class="anchor" id="variable-shift_vectors_file~3"></span>
               character(len=:),
             </td>
 <td>intent(out),</td>
@@ -2598,6 +2592,825 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
             <td><strong>shift_vectors_file</strong></td>
             <td>
 <p>Name of the shift vectors file in the zip archive</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-resolve_tox_data_files"></span> <h3>public  subroutine <a href='../proc/resolve_tox_data_files.html'>resolve_tox_data_files</a>(zip_filename, gene_ids_file, expression_file, gene_to_family_file, family_ids_file, family_centroids_file, shift_vectors_file, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Resolve the six standard members of a tox data archive to extracted filenames</p><a href="../proc/resolve_tox_data_files.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename~9"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Name of the zip file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids_file~4"></span>
+              character(len=:),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              allocatable
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids_file</strong></td>
+            <td>
+<p>Extracted member filenames, empty when the member is absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_file~4"></span>
+              character(len=:),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              allocatable
+            </td>
+            <td>::</td>
+            <td><strong>expression_file</strong></td>
+            <td>
+<p>Extracted member filenames, empty when the member is absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family_file~4"></span>
+              character(len=:),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              allocatable
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family_file</strong></td>
+            <td>
+<p>Extracted member filenames, empty when the member is absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids_file~4"></span>
+              character(len=:),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              allocatable
+            </td>
+            <td>::</td>
+            <td><strong>family_ids_file</strong></td>
+            <td>
+<p>Extracted member filenames, empty when the member is absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids_file~4"></span>
+              character(len=:),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              allocatable
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids_file</strong></td>
+            <td>
+<p>Extracted member filenames, empty when the member is absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors_file~4"></span>
+              character(len=:),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              allocatable
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors_file</strong></td>
+            <td>
+<p>Extracted member filenames, empty when the member is absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~268"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-cleanup_tox_data_files"></span> <h3>public  subroutine <a href='../proc/cleanup_tox_data_files.html'>cleanup_tox_data_files</a>(gene_ids_file, expression_file, gene_to_family_file, family_ids_file, family_centroids_file, shift_vectors_file)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+    </dl>
+
+  <p>Best-effort deletion of the temporary files an extraction leaves behind</p><a href="../proc/cleanup_tox_data_files.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids_file~5"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids_file</strong></td>
+            <td>
+<p>Extracted member filenames to remove (skipped when empty)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression_file~5"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>expression_file</strong></td>
+            <td>
+<p>Extracted member filenames to remove (skipped when empty)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family_file~5"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family_file</strong></td>
+            <td>
+<p>Extracted member filenames to remove (skipped when empty)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids_file~5"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>family_ids_file</strong></td>
+            <td>
+<p>Extracted member filenames to remove (skipped when empty)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids_file~5"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids_file</strong></td>
+            <td>
+<p>Extracted member filenames to remove (skipped when empty)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors_file~5"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors_file</strong></td>
+            <td>
+<p>Extracted member filenames to remove (skipped when empty)</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-get_tox_data_dims"></span> <h3>public  subroutine <a href='../proc/get_tox_data_dims.html'>get_tox_data_dims</a>(zip_filename, n_gene_ids, gene_id_len, n_expression_rows, n_expression_cols, n_gene_to_family, n_family_ids, family_id_len, n_family_centroids_rows, n_family_centroids_cols, n_shift_vectors_rows, n_shift_vectors_cols, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+        <dt>Category</dt><dd>C-binding</dd>
+    </dl>
+
+  <p>Report the shape of every member of a tox data archive</p><a href="../proc/get_tox_data_dims.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename~10"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Name of the zip file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_ids~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_ids</strong></td>
+            <td>
+<p>Number of gene ids, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_id_len~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>gene_id_len</strong></td>
+            <td>
+<p>String length of each gene id, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_rows~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_rows</strong></td>
+            <td>
+<p>Rows (samples) of the expression matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_cols~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_cols</strong></td>
+            <td>
+<p>Columns (genes) of the expression matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_to_family~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_to_family</strong></td>
+            <td>
+<p>Number of gene-to-family entries, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_ids~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_family_ids</strong></td>
+            <td>
+<p>Number of family ids, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_id_len~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>family_id_len</strong></td>
+            <td>
+<p>String length of each family id, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_rows~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_rows</strong></td>
+            <td>
+<p>Rows (samples) of the family centroids matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_cols~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_cols</strong></td>
+            <td>
+<p>Columns (families) of the family centroids matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_rows~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_rows</strong></td>
+            <td>
+<p>Rows of the shift vectors matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_cols~3"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_cols</strong></td>
+            <td>
+<p>Columns of the shift vectors matrix, 0 if absent</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~269"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-read_tox_data_into"></span> <h3>public  subroutine <a href='../proc/read_tox_data_into.html'>read_tox_data_into</a>(zip_filename, n_gene_ids, gene_id_len, gene_ids, n_expression_rows, n_expression_cols, expression, n_gene_to_family, gene_to_family, n_family_ids, family_id_len, family_ids, n_family_centroids_rows, n_family_centroids_cols, family_centroids, n_shift_vectors_rows, n_shift_vectors_cols, shift_vectors, ierr)  
+</h3></div>
+    <div class="card-body">
+              <dl class="dl-horizontal">
+        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
+        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
+        <dt>Category</dt><dd>C-binding</dd>
+    </dl>
+
+  <p>Read a tox data archive into caller-provided buffers</p><a href="../proc/read_tox_data_into.html" class="pull-right"><emph>Read more&hellip;</emph></a>
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-zip_filename~11"></span>
+              character(len=*),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>zip_filename</strong></td>
+            <td>
+<p>Name of the zip file</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_ids~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_ids</strong></td>
+            <td>
+<p>Number of gene ids.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_ids</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_id_len~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>gene_id_len</strong></td>
+            <td>
+<p>String length of each gene id.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>gene_id_len</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_ids~14"></span>
+              character(len=gene_id_len),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_gene_ids)
+            </td>
+            <td>::</td>
+            <td><strong>gene_ids</strong></td>
+            <td>
+<p>Gene ids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_rows~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_rows</strong></td>
+            <td>
+<p>Rows (samples) of the expression matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expression_rows</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_cols~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_expression_cols</strong></td>
+            <td>
+<p>Columns (genes) of the expression matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_expression_cols</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-expression~5"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_expression_rows, n_expression_cols)
+            </td>
+            <td>::</td>
+            <td><strong>expression</strong></td>
+            <td>
+<p>Expression vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_to_family~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_to_family</strong></td>
+            <td>
+<p>Number of gene-to-family entries.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_gene_to_family</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_to_family~13"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_gene_to_family)
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_family</strong></td>
+            <td>
+<p>Gene to family mapping</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_ids~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_family_ids</strong></td>
+            <td>
+<p>Number of family ids.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_ids</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_id_len~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>family_id_len</strong></td>
+            <td>
+<p>String length of each family id.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>family_id_len</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_ids~8"></span>
+              character(len=family_id_len),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_family_ids)
+            </td>
+            <td>::</td>
+            <td><strong>family_ids</strong></td>
+            <td>
+<p>Family ids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_rows~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_rows</strong></td>
+            <td>
+<p>Rows (samples) of the family centroids matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_centroids_rows</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_cols~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_cols</strong></td>
+            <td>
+<p>Columns (families) of the family centroids matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_family_centroids_cols</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-family_centroids~18"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_family_centroids_rows, n_family_centroids_cols)
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids</strong></td>
+            <td>
+<p>Family centroids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_rows~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_rows</strong></td>
+            <td>
+<p>Rows of the shift vectors matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_vectors_rows</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_cols~4"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_cols</strong></td>
+            <td>
+<p>Columns of the shift vectors matrix.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>n_shift_vectors_cols</code> output produced by <a href="../proc/get_tox_data_dims.html">get_tox_data_dims</a>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors~16"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_shift_vectors_rows, n_shift_vectors_cols)
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors</strong></td>
+            <td>
+<p>Shift vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~271"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -2630,7 +3443,7 @@ streaming it through a fixed-size buffer rather than reading it into memory whol
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
