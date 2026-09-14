@@ -41,16 +41,20 @@ contains
         integer(int32) :: i_dim
         real(real64) :: vector_norm
 
-        ! The norm is a derived quantity, so its zero / non-finite guards are runtime checks here.
+        call set_ok(ierr)
+
+        ! The norm is a derived quantity, so its non-finite / zero guards are runtime checks here.
         vector_norm = norm(vector)
-        if (is_close(vector_norm, 0.0_real64)) then
+        call validate_in_range_real(vector_norm, ierr)
+        if (is_err(ierr)) return
+
+        ! Only an exactly zero norm is rejected: the zero vector alone has no direction, and any
+        ! other norm, however tiny, still divides the vector into a unit one. A finite norm is
+        ! never negative, so `<=` is that exact test without comparing reals for equality.
+        if (vector_norm <= 0.0_real64) then
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
-
-        ! check for nan, inf
-        call validate_in_range_real(vector_norm, ierr)
-        if (is_err(ierr)) return
 
         do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
             vector(i_dim) = vector(i_dim)/vector_norm
