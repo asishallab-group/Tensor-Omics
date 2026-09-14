@@ -1,8 +1,8 @@
 # The pure-R helpers in r/data_prep.R. No Fortran stands behind them, so unlike the binding suites
 # this one checks values: R is the only place they can be tested.
 #
-# Both helpers treat ROWS as genes (`n_genes <- nrow(input_matrix)`, NA handling per row), whatever
-# their roxygen says; these cases pin that behaviour down.
+# Both helpers take genes as rows and tissues as columns (`n_genes <- nrow(input_matrix)`, NA
+# handling per row); these cases pin that down.
 
 source("r/test_helpers.R")
 source("r/data_prep.R")
