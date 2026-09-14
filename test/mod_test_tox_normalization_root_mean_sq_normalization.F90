@@ -14,7 +14,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_root_mean_sq_normalization() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(14))
+    allocate(all_tests(15))
     
     all_tests(1) = test_case("test_root_mean_sq_normalization_basic", test_root_mean_sq_normalization_basic)
     all_tests(2) = test_case("test_root_mean_sq_normalization_constant_rows", test_root_mean_sq_normalization_constant_rows)
@@ -30,6 +30,7 @@ contains
     all_tests(12) = test_case("test_empty_matrix", test_empty_matrix)
     all_tests(13) = test_case("test_symmetric_rows", test_symmetric_rows)
     all_tests(14) = test_case("test_rms_rejects_nan_and_inf", test_rms_rejects_nan_and_inf)
+    all_tests(15) = test_case("test_rms_extreme_magnitudes", test_rms_extreme_magnitudes)
   end function get_all_tests_tox_normalization_root_mean_sq_normalization
 
   !> Test that root_mean_sq_normalization normalizes values correctly.
@@ -261,5 +262,21 @@ contains
                             "test_rms_rejects_nan_and_inf: must reject "//merge("NaN", "Inf", i_bad == 1))
     end do
   end subroutine test_rms_rejects_nan_and_inf
+
+  !> A gene whose squares leave the real64 range is still scaled by its RMS: [1e200, 7e200] has
+  !| RMS sqrt((1 + 49)/2) * 1e200 = 5e200 and becomes [0.2, 1.4]. Summing the squares directly
+  !| overflows to Inf, and dividing by Inf zeroed the gene.
+  subroutine test_rms_extreme_magnitudes()
+    real(real64) :: expr(2, 1), normalized(2, 1), expected(2, 1)
+    integer(int32) :: ierr
+
+    expr(:, 1) = [1.0e200_real64, 7.0e200_real64]
+    expected(:, 1) = [0.2_real64, 1.4_real64]
+
+    call root_mean_sq_normalization(1, 2, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_extreme_magnitudes: ierr")
+    call assert_equal_array_real(normalized, expected, 2, 4*epsilon(1.0_real64), &
+                                 "test_rms_extreme_magnitudes: [1e200, 7e200] must become [0.2, 1.4]")
+  end subroutine test_rms_extreme_magnitudes
 
 end module mod_test_tox_normalization_root_mean_sq_normalization
