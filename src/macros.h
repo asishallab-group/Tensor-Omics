@@ -38,7 +38,15 @@
 ! `(type, external)` form (F2018) makes it a compile error at the call site instead.
 !
 ! Use this instead of a bare `implicit none` in every module.
+!
+! nvfortran (checked on 25.7) accepts no specifier list at all -- not `(type, external)`, not
+! either half -- so there it falls back to the plain form. Types are still checked everywhere;
+! the external-procedure check then comes from the gfortran and ifx builds, which CI runs.
+#ifdef __NVCOMPILER
+#define M_IMPLICIT_NONE implicit none
+#else
 #define M_IMPLICIT_NONE implicit none (type, external)
+#endif
 
 #define M_DEFAULT_VAL(OPT_ARG, LOC_VAR, DEFAULT_VAL) if (present(OPT_ARG)) then; LOC_VAR = OPT_ARG; else; LOC_VAR = DEFAULT_VAL; endif
 
