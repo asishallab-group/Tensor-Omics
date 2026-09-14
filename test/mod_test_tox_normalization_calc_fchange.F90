@@ -15,13 +15,36 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_calc_fchange() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(4))
+    allocate(all_tests(5))
 
     all_tests(1) = test_case("test_calc_fchange_values", test_calc_fchange_values)
     all_tests(2) = test_case("test_calc_fchange_index_bounds", test_calc_fchange_index_bounds)
     all_tests(3) = test_case("test_calc_fchange_dimensions", test_calc_fchange_dimensions)
     all_tests(4) = test_case("test_calc_fchange_rejects_nan_and_inf", test_calc_fchange_rejects_nan_and_inf)
+    all_tests(5) = test_case("test_calc_fchange_overflow", test_calc_fchange_overflow)
   end function get_all_tests_tox_normalization_calc_fchange
+
+  !> A fold change is a difference, and huge - (-huge) has no finite value: that is ERR_NAN_INF
+  !| rather than an Inf in the result, as TOX writes no NaN or Inf. Right at the edge, huge - 0
+  !| is still representable and comes back exactly.
+  subroutine test_calc_fchange_overflow()
+    integer(int32) :: ierr
+    integer(int32), dimension(1) :: control_tissues, condition_tissues
+    real(real64), dimension(2, 1) :: expr
+    real(real64), dimension(1, 1) :: fold_changes
+
+    control_tissues = [1]
+    condition_tissues = [2]
+
+    expr(:, 1) = [0d0, huge(1d0)]
+    call calc_fchange(1, 2, 1, control_tissues, condition_tissues, expr, fold_changes, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_fchange_overflow: huge - 0 is representable")
+    call assert_equal_real(fold_changes(1, 1), huge(1d0), 0d0, "test_calc_fchange_overflow: huge - 0 = huge")
+
+    expr(:, 1) = [-huge(1d0), huge(1d0)]
+    call calc_fchange(1, 2, 1, control_tissues, condition_tissues, expr, fold_changes, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "test_calc_fchange_overflow: huge - (-huge) overflows")
+  end subroutine test_calc_fchange_overflow
 
   !> Each pair is condition minus control, gene by gene. Three tissues, two genes, and four pairs
   !| covering what a caller can do: two conditions against one control, a condition listed before
