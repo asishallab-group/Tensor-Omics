@@ -1,295 +1,200 @@
-# Test Suite Framework
+# Tests
 
-## Overview
+TensorOmics is tested in three languages, each with its own job (see "Where to Test What" in
+`misc/Fortran_Coding_Guides.tex`):
 
-This framework provides a robust and scalable system for organizing and executing unit tests in Fortran. It allows running individual tests, complete test suites, or all project tests with simple and clear syntax.
+- **Fortran** is the single source of truth for numerical correctness: expected values, every
+  early exit, every bound.
+- **Python and R** test the bindings only: every published procedure can be called, returns the
+  documented type and shape, and raises the documented error. The bindings are generated, but their
+  tests are not.
 
-## System Architecture
+Every module has one suite per language, named `mod_test_<module>`.
 
-### Main Components
+## Layout
 
-1. **`run_tests.F90`** - Main program that handles command line arguments
-2. **Test Modules** - Each module (suite) contains tests for a specific functionality
-3. **`test_framework/`** - The `asserts` assertion library and the `test_suite` registry, a local
-   fpm package the tests take as a dev-dependency. fpm lets a test source use only library modules
-   and modules in its own directory or below, so as a library the framework is visible to suites
-   in subdirectories of `test/` as well.
-
-### File Structure
 ```
-test_framework/                          # Local fpm package, a dev-dependency of tensor_omics
+test_framework/                          # The Fortran test framework, a local fpm package
+├── fpm.toml                             # (a dev-dependency of tensor_omics, see below)
 └── src/
-    ├── asserts.F90                      # Assertion library
-    └── test_suite.F90                   # Suite registry
+    ├── asserts.F90                      # Assertions
+    └── test_suite.F90                   # Suite registry, running, reporting
 test/
-├── run_tests.F90                        # Main program
+├── run_tests.F90                        # The test program: registers every suite
 ├── mod_test_sorting.F90                 # A suite in a single file
-└── mod_test_tox_normalization/          # A suite with one child module per procedure
-    ├── mod_test_tox_normalization.F90   # The suite itself, gathering the children's cases
-    ├── mod_test_tox_normalization_calc_fchange.F90
-    └── ...
+├── mod_test_tox_normalization/          # A suite with one child module per procedure
+│   ├── mod_test_tox_normalization.F90   # The suite itself, gathering the children's cases
+│   ├── mod_test_tox_normalization_calc_fchange.F90
+│   ├── ...
+│   └── mod_test_tox_normalization_fixtures.F90   # Data the children share
+└── test_files/                          # Input files for the tox_data suites
+python/test/mod_test_<module>.py         # Python binding suites
+r/test/mod_test_<module>.R               # R binding suites
 ```
 
-## System Usage
+The framework is a package of its own because fpm lets a test source use only library modules and
+modules in its own directory or below. As a library, `asserts` and `test_suite` are visible to a
+suite in any subdirectory of `test/`. It uses only the intrinsic modules: tensor_omics depends on
+it, so it cannot depend back on tensor_omics.
 
-### Command Syntax
+## Running
 
 ```bash
-# Run all tests from all suites
-./test_runner.sh
-
-# Run all tests from a specific suite
-./test_runner.sh <suite_name>
-
-# Run specific tests from a suite
-./test_runner.sh <suite_name> <test1,test2,test3>
+./test_runner.sh                             # every Fortran suite
+./test_runner.sh tox_normalization           # one suite
+./test_runner.sh tox_normalization test_calc_fchange_values,test_log2_values   # some cases
+./run_all_tests.sh                           # Fortran, then every Python and R suite
 ```
 
-### Usage Examples
+`test_runner.sh` builds the library and the tests, then runs `run_tests`. Before that, it runs the
+kinds test: eight builds, each forcing one C-kind mismatch that `f42_safeguard` must reject. Set
+`TOX_SKIP_KINDS_TEST=1` to skip it while iterating. `run_all_tests.sh` exits non-zero if any part
+fails.
 
-```bash
-# Run all tests
-./test_runner.sh
+Both take the build options of `build.sh`. Every `--name[=value]` can also be set as the environment
+variable `TOX_NAME`:
 
-# Run all normalization tests
-./test_runner.sh normalization
+| Option | Effect |
+|---|---|
+| `--compiler=gfortran\|ifx\|nvfortran` | the compiler (or `$FC`, `$TOX_COMPILER`); gfortran by default |
+| `--diagnostics` | runtime checks and every warning the compiler has (`-fcheck=all -Wall -Wextra ...`) |
+| `--max-performance` | optimized build |
+| `--debug` | run the tests under `gdb` |
+| `--directive=NAME` | define the preprocessor symbol `NAME`, e.g. `NO_R_BINDING` |
+| `--override-flags="..."` / `--override-link-flags="..."` | replace the compiler / link flags |
+| `--clean-build` | rebuild everything |
+| `--skip-code-generation` | build the generated bindings as they are in the tree |
 
-# Run specific normalization tests
-./test_runner.sh normalization test_identity_matrix,test_zero_rows
+The test runner has a few variables of its own: `TOX_TEST_TARGET` names another test program, and
+`TOX_KEEP_FILES`, `TOX_KEEP_ZIP`, `TOX_KEEP_TXT` and `TOX_KEEP_BIN` keep the files the `tox_data`
+suites write.
 
-# Run multiple normalization tests
-./test_runner.sh normalization test_normalize_by_std_dev_basic,test_large_random_matrix,test_single_nonzero
-```
+### Output
 
-## How to Add a New Test
+Each case prints `✓ <name> passed.` or `✗ <name> failed (<n> assertion(s)).`, followed by the
+failed assertions. A failed assertion does not stop its case: every check in it runs and is
+reported. The run ends with `All <n> test cases passed.`, or with how many failed across how many
+suites, and then exits with status 1.
 
-### 1. Add Test to an Existing Module
+## Writing Fortran tests
 
-To add a new test to an existing module (e.g., `mod_test_normalize_by_std_dev.f90`):
-
-#### Step 1: Write the test subroutine
-```fortran
-!> @brief Test description
-subroutine test_my_new_test()
-  ! Declare variables
-  real(8), dimension(2,2) :: mat, result, expected
-  
-  ! Set up test data
-  mat = reshape([1.0d0, 2.0d0, 3.0d0, 4.0d0], [2,2])
-  
-  ! Execute function under test
-  call my_function_to_test(2, 2, mat, result)
-  
-  ! Define expected result
-  expected = reshape([0.5d0, 1.0d0, 1.5d0, 2.0d0], [2,2])
-  
-  ! Validate result
-  call assert_equal_array_real(result, expected, 4, 1d-12, "my_new_test: result failure")
-end subroutine test_my_new_test
-```
-
-#### Step 2: Register the test in the `get_all_tests()` function
-```fortran
-function get_all_tests() result(all_tests)
-  type(test_case) :: all_tests(14)  ! Increment the number
-  
-  ! ...existing tests...
-  all_tests(13) = test_case("test_symmetric_rows", test_symmetric_rows)
-  all_tests(14) = test_case("test_my_new_test", test_my_new_test)  ! Add this line
-end function get_all_tests
-```
-
-#### Step 3: Update the counter in functions that use the array
-```fortran
-subroutine run_all_tests_normalize_by_std_dev()
-  type(test_case) :: all_tests(14)  ! Change from 13 to 14
-  ! ...rest of function...
-end subroutine
-
-subroutine run_named_tests_normalize_by_std_dev(test_names)
-  type(test_case) :: all_tests(14)  ! Change from 13 to 14
-  ! ...rest of function...
-end subroutine
-```
-
-### 2. Create a New Test Module
-
-#### Step 1: Create the module file
-Create `test/mod_test_my_new_functionality.f90`:
+### A suite in one file
 
 ```fortran
-! filepath: test/mod_test_my_new_functionality.f90
-!> @brief Unit test suite for my_new_functionality.
-module mod_test_my_new_functionality
-  use asserts
-  implicit none
-  public
-
-  ! Abstract interface for all test procedures
-  abstract interface
-    subroutine test_interface()
-    end subroutine test_interface
-  end interface
-
-  ! Type to hold test name and procedure pointer
-  type :: test_case
-    character(len=64) :: name
-    procedure(test_interface), pointer, nopass :: test_proc => null()
-  end type test_case
+!> The `tox_foo` cases: ...
+module mod_test_tox_foo
+    use asserts
+    use, intrinsic :: iso_fortran_env, only: real64, int32
+    use tox_foo
+    use tox_errors
+    use test_suite, only: test_case
+    implicit none
+    public
 
 contains
 
-  !> @brief Get array of all available tests.
-  function get_all_tests() result(all_tests)
-    type(test_case) :: all_tests(2)  ! Number of tests
-    
-    all_tests(1) = test_case("test_my_first_test", test_my_first_test)
-    all_tests(2) = test_case("test_my_second_test", test_my_second_test)
-  end function get_all_tests
+    !> Get array of all available tests.
+    function get_all_tests_tox_foo() result(all_tests)
+        type(test_case), allocatable :: all_tests(:)
 
-  !> @brief Run all tests in this module.
-  subroutine run_all_tests_my_new_functionality()
-    type(test_case) :: all_tests(2)
-    integer :: i
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(all_tests)
-      call all_tests(i)%test_proc()
-      print *, trim(all_tests(i)%name), " passed."
-    end do
-    print *, "All my_new_functionality tests passed successfully."
-  end subroutine run_all_tests_my_new_functionality
+        allocate (all_tests(2))
+        all_tests(1) = test_case("test_foo_values", test_foo_values)
+        all_tests(2) = test_case("test_foo_dimensions", test_foo_dimensions)
+    end function get_all_tests_tox_foo
 
-  !> @brief Run specific tests by name.
-  subroutine run_named_tests_my_new_functionality(test_names)
-    character(len=*), intent(in) :: test_names(:)
-    type(test_case) :: all_tests(2)
-    integer :: i, j
-    logical :: found
-    
-    all_tests = get_all_tests()
-    
-    do i = 1, size(test_names)
-      found = .false.
-      do j = 1, size(all_tests)
-        if (trim(test_names(i)) == trim(all_tests(j)%name)) then
-          call all_tests(j)%test_proc()
-          print *, trim(test_names(i)), " passed."
-          found = .true.
-          exit
-        end if
-      end do
-      if (.not. found) then
-        print *, "Unknown test: ", trim(test_names(i))
-      end if
-    end do
-  end subroutine run_named_tests_my_new_functionality
+    !> What this case establishes, and how the expected values are derived.
+    subroutine test_foo_values()
+        real(real64) :: expr(2, 2), result(2, 2), expected(2, 2)
+        integer(int32) :: ierr
 
-  !> @brief My first test
-  subroutine test_my_first_test()
-    ! Implement test here
-    call assert_true(.true., "test_my_first_test: dummy test")
-  end subroutine test_my_first_test
-
-  !> @brief My second test
-  subroutine test_my_second_test()
-    ! Implement test here
-    call assert_true(.true., "test_my_second_test: dummy test")
-  end subroutine test_my_second_test
-
-end module mod_test_my_new_functionality
+        expr(:, 1) = [1.0_real64, 7.0_real64]
+        ...
+        call foo(2, 2, expr, result, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_foo_values: ierr")
+        call assert_equal_array_real(result, expected, 4, 1e-12_real64, "test_foo_values: ...")
+    end subroutine test_foo_values
+    ...
+end module mod_test_tox_foo
 ```
 
-#### Step 2: Register the module in `run_tests.f90`
+Register it in `test/run_tests.F90`, beside the others:
 
-**Add the use statement:**
 ```fortran
-program main
-  use mod_test_normalize_by_std_dev
-  use mod_test_my_new_functionality  ! Add this line
-  implicit none
+use mod_test_tox_foo, only: get_all_tests_tox_foo
+...
+call add_suite("tox_foo", get_all_tests_tox_foo)
 ```
 
-**Register the suite in `initialize_suites()`:**
-```fortran
-subroutine initialize_suites()
-  ! Start with empty registry
-  allocate(available_suites(0))
-  
-  ! Add each suite
-  call add_suite("normalization", run_all_tests_normalize_by_std_dev, run_named_tests_normalize_by_std_dev)
-  call add_suite("my_new_functionality", run_all_tests_my_new_functionality, run_named_tests_my_new_functionality)  ! Add this line
-end subroutine initialize_suites
+To add a case, write its subroutine, raise the `allocate` count and add its `test_case` line.
+
+### A suite with one module per procedure
+
+A module with several published procedures gets a directory, `test/mod_test_<module>/`, holding:
+- the suite module `mod_test_<module>.F90`, which only concatenates its children's arrays (see
+  `mod_test_tox_normalization.F90`);
+- one child per procedure, `mod_test_<module>_<procedure>.F90`, each with its own
+  `get_all_tests_<module>_<procedure>()`;
+- data the children share in a module of their own (e.g. `mod_test_tox_normalization_fixtures.F90`).
+
+`run_tests` registers only the suite module; it never sees the children. Test-case names must be
+unique within the suite.
+
+### What makes a good case
+
+- **Hand-derived expected values.** An expectation computed with the code's own formula cannot
+  fail. Prefer inputs whose results are exact, and say in the comment how you got them.
+- **Every early exit, bound and dimension on its own.** Setting all dimensions to zero at once
+  exercises only the first check. Test both sides of each bound: the last valid value and the
+  first invalid one.
+- **The documented errors.** Compare `get_err_code(ierr)` with an `ERR_*` name, never a literal.
+  `assert_err(ierr, ERR_X, msg, arg_pos)` also checks which argument was blamed.
+- **NaN and Inf are rejected.** TOX takes no NaN or Inf and writes none, except in preprocessing
+  such as data integration. A procedure's suite checks that it rejects both.
+- **No array temporaries.** Assign array constructors to variables rather than passing
+  expressions; `--diagnostics` warns about temporaries.
+- **Assertions that can fail.** A size fixed at compile time, or `no NaN` after an exact
+  comparison, checks nothing.
+
+### Assertions
+
+All in `test_framework/src/asserts.F90`; each takes the failure message as its last argument (before
+optional ones).
+
+| Assertion | Checks |
+|---|---|
+| `assert_true(cond, msg)`, `assert_false(cond, msg)` | a condition, default or `c_bool` logical |
+| `assert_equal_int(a, b, msg)`, `assert_not_equal_int` | integers |
+| `assert_equal_real(actual, expected, tol, msg)`, `assert_not_equal_real` | reals, within an absolute tolerance |
+| `assert_equal_array_real(actual, expected, n, tol, msg)` | the first `n` elements; any rank, by sequence association |
+| `assert_allclose_array_real` | arrays within a tolerance |
+| `assert_equal_array_int`, `assert_equal_array_char`, `assert_equal_array_logical` | arrays of other types |
+| `assert_equal_complex`, `assert_not_equal_complex`, `assert_equal_array_complex` | complex values |
+| `assert_in_range_real(value, min, max, msg)`, `assert_in_range_int` | a value within bounds |
+| `assert_no_nan_real(array, n, msg)`, `assert_no_inf_real` | no NaN / no Inf |
+| `assert_sorted_real`, `assert_sorted_int`, `assert_unique_int`, `assert_permutation` | ordering properties |
+| `assert_contains_int`, `assert_array_int_contains`, `assert_sum_equal` | membership and sums |
+| `assert_string_equal`, `assert_string_contains` | strings |
+| `assert_err(ierr, expected_code, msg, arg_pos)` | an error code, and optionally the argument it blames |
+
+## Writing Python and R tests
+
+A binding suite is `python/test/mod_test_<module>.py` or `r/test/mod_test_<module>.R`. Every
+function named `test_*` in it is a case:
+
+```python
+def test_calc_fchange():
+    result = calc_fchange(np.array([1, 1], dtype=np.int32), np.array([2, 3], dtype=np.int32), averages)
+    _assert_matrix(result, (2, N_GENES), "calc_fchange")
+
+def test_calc_fchange_rejects_a_tissue_past_the_last():
+    assert_error(lambda: calc_fchange(...), "there are only three tissues", ERR_INVALID_INPUT)
+
+if __name__ == '__main__':
+    run_all_tests(globals().values())
 ```
 
-## Available Assertion Functions
-
-The `asserts` module provides the following functions for validating results:
-
-### Basic Assertions
-- `assert_true(condition, message)` - Verifies that a condition is true
-- `assert_false(condition, message)` - Verifies that a condition is false
-
-### Numerical Assertions
-- `assert_equal_real(actual, expected, tolerance, message)` - Compares real numbers
-- `assert_equal_int(actual, expected, message)` - Compares integers
-- `assert_in_range_real(value, min_val, max_val, message)` - Verifies range
-
-### Array Assertions
-- `assert_equal_array_real(actual, expected, size, tolerance, message)` - Compares real arrays
-- `assert_no_nan_real(array, size, message)` - Verifies absence of NaN
-
-### Assertion Usage Example
-```fortran
-subroutine test_assertion_examples()
-  real(8) :: result, expected
-  integer :: int_result
-  real(8), dimension(3) :: array_result, array_expected
-  
-  ! Basic equality test
-  result = 2.0d0
-  expected = 2.0d0
-  call assert_equal_real(result, expected, 1d-12, "Real equality failed")
-  
-  ! Integer test
-  int_result = 5
-  call assert_equal_int(int_result, 5, "Integer equality failed")
-  
-  ! Range test
-  call assert_in_range_real(result, 1.5d0, 2.5d0, "Value out of range")
-  
-  ! Array test
-  array_result = [1.0d0, 2.0d0, 3.0d0]
-  array_expected = [1.0d0, 2.0d0, 3.0d0]
-  call assert_equal_array_real(array_result, array_expected, 3, 1d-12, "Arrays differ")
-  
-  ! Condition test
-  call assert_true(result > 1.0d0, "Condition false")
-end subroutine test_assertion_examples
-```
-
-## Requirements
-
-### Naming Convention
-- **Modules:** `mod_test_<functionality>.f90` - **REQUIRED:** Must start with `mod_test_` because compilation occurs in alphabetical order and test modules must compile before `run_tests.f90`
-- **Test subroutines:** `test_<specific_description>()`
-- **Suite names:** use underscores to separate words
-
-### Module Structure
-- **Each module represents one main Fortran function. You can use the _r wrapper to call your subroutine.**
-- **Each test within that module must be a separate subroutine**
-- **All suites must implement two required subroutines:**
-  - `run_all_tests_<suite_name>()` - Runs all tests in the suite
-  - `run_named_tests_<suite_name>(test_names)` - Runs specific tests by name
-
-### Test Structure
-1. **Arrange:** Set up test data
-2. **Act:** Execute the function under test
-3. **Assert:** Validate the results
-
-## System Advantages
-
-1. **Scalable:** Adding new tests requires minimal code
-2. **No merge conflicts:** Each developer can add suites independently
-3. **Flexible:** Allows running individual tests or in groups
+In R the file ends with `run_all_tests()`, and the error check is
+`assert_error(expr, msg, ERR_INVALID_INPUT)`. Omitting the code demands an error that is not a
+TensorOmics error, such as the binding's own type or shape check. Run a suite from the repository
+root, `python3 python/test/mod_test_tox_normalization.py` or
+`Rscript r/test/mod_test_tox_normalization.R`, after a build; `run_all_tests.sh` runs them all.
