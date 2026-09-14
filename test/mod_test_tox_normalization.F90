@@ -1,11 +1,11 @@
 !> The `tox_normalization` suite: one suite for the module, as #194 asks, with a child module
-!| per published procedure, `mod_test_tox_normalization_<procedure>.F90`. This module only gathers
-!| the children's cases; `run_tests` sees one suite and never knows the children exist.
+!| per published procedure in `test/mod_test_tox_normalization/`, named
+!| `mod_test_tox_normalization_<procedure>.F90`, plus the fixtures they share. This module only
+!| gathers the children's cases; `run_tests` sees one suite and never knows the children exist.
 !|
-!| The children sit beside this file rather than in a subdirectory of their own. fpm lets a test
-!| source use only library modules and modules in its own directory or below (the scope rule
-!| documented in fpm_targets.f90), so a child in `test/mod_test_tox_normalization/` could not
-!| reach `asserts` or `test_suite` one level up. The shared prefix keeps them together instead.
+!| The children can live in a subdirectory because `asserts` and `test_suite` are a library, the
+!| test_framework package: fpm lets a test source use only library modules and modules in its own
+!| directory or below, so they could not reach framework modules sitting in `test/` itself.
 module mod_test_tox_normalization
     use test_suite, only: test_case
     use mod_test_tox_normalization_calc_fchange, only: get_all_tests_tox_normalization_calc_fchange
