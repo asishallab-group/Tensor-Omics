@@ -1,250 +1,131 @@
-!> Unit test suite for root_mean_sq_normalization routine.
+!> The `root_mean_sq_normalization` cases: hand-derived RMS scalings, the properties the scaling
+!| has, the genes it leaves alone, magnitudes past the real64 range, and the input checks.
 module mod_test_tox_normalization_root_mean_sq_normalization
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
-  use, intrinsic :: ieee_arithmetic, only: ieee_is_finite, ieee_value, ieee_quiet_nan, ieee_positive_inf
+  use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
   use tox_normalization
-  use test_suite
+  use test_suite, only: test_case
   use tox_errors
   implicit none
   public
+
+  real(real64), parameter :: TOL = 4*epsilon(1.0_real64)
 
 contains
 
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_root_mean_sq_normalization() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(15))
-    
-    all_tests(1) = test_case("test_root_mean_sq_normalization_basic", test_root_mean_sq_normalization_basic)
-    all_tests(2) = test_case("test_root_mean_sq_normalization_constant_rows", test_root_mean_sq_normalization_constant_rows)
-    all_tests(3) = test_case("test_root_mean_sq_normalization_large_numbers", test_root_mean_sq_normalization_large_numbers)
-    all_tests(4) = test_case("test_identity_matrix", test_identity_matrix)
-    all_tests(5) = test_case("test_zero_rows", test_zero_rows)
-    all_tests(6) = test_case("test_negative_rows", test_negative_rows)
-    all_tests(7) = test_case("test_large_random_matrix", test_large_random_matrix)
-    all_tests(8) = test_case("test_single_nonzero", test_single_nonzero)
-    all_tests(9) = test_case("test_small_large_values", test_small_large_values)
-    all_tests(10) = test_case("test_nan_inf_input", test_nan_inf_input)
-    all_tests(11) = test_case("test_single_row_col", test_single_row_col)
-    all_tests(12) = test_case("test_empty_matrix", test_empty_matrix)
-    all_tests(13) = test_case("test_symmetric_rows", test_symmetric_rows)
-    all_tests(14) = test_case("test_rms_rejects_nan_and_inf", test_rms_rejects_nan_and_inf)
-    all_tests(15) = test_case("test_rms_extreme_magnitudes", test_rms_extreme_magnitudes)
+    allocate(all_tests(8))
+
+    all_tests(1) = test_case("test_rms_values", test_rms_values)
+    all_tests(2) = test_case("test_rms_identity", test_rms_identity)
+    all_tests(3) = test_case("test_rms_scale_and_sign", test_rms_scale_and_sign)
+    all_tests(4) = test_case("test_rms_near_zero_genes_pass_through", test_rms_near_zero_genes_pass_through)
+    all_tests(5) = test_case("test_rms_single_replicate", test_rms_single_replicate)
+    all_tests(6) = test_case("test_rms_extreme_magnitudes", test_rms_extreme_magnitudes)
+    all_tests(7) = test_case("test_rms_rejects_nan_and_inf", test_rms_rejects_nan_and_inf)
+    all_tests(8) = test_case("test_rms_dimensions", test_rms_dimensions)
   end function get_all_tests_tox_normalization_root_mean_sq_normalization
 
-  !> Test that root_mean_sq_normalization normalizes values correctly.
-  subroutine test_root_mean_sq_normalization_basic()
-    real(real64), dimension(2,2) :: mat, result, expected
-    real(real64), dimension(2) :: std_dev
-    integer(int32) :: i_tissue, i_gene, ierr
-
-    mat = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [2,2])
-    call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-
-    do i_gene = 1, 2
-      std_dev(i_gene) = sqrt((mat(1,i_gene)**2 + mat(2,i_gene)**2) / 2.0d0)
-      do i_tissue = 1, 2
-        expected(i_tissue, i_gene) = mat(i_tissue, i_gene) / std_dev(i_gene)
-      end do
-    end do
-    call assert_equal_array_real(result, expected, 4, 1d-12, "root_mean_sq_normalization: basic normalization failed")
-  end subroutine test_root_mean_sq_normalization_basic
-
-  !> Test that root_mean_sq_normalization handles constant rows (should normalize to 1).
-  subroutine test_root_mean_sq_normalization_constant_rows()
-    real(real64), dimension(2,2) :: mat, result, expected
+  !> Each gene is divided by sqrt(mean(x**2)) over its replicates: [1, 7] has RMS 5 and becomes
+  !| [0.2, 1.4], [-3, 3] has RMS 3 and becomes [-1, 1], and a constant [5, 5] becomes [1, 1].
+  subroutine test_rms_values()
+    real(real64), dimension(2, 3) :: expr, normalized, expected
     integer(int32) :: ierr
 
-    mat = reshape([5.0d0, 5.0d0, 5.0d0, 5.0d0], [2,2])
-    call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
+    expr(:, 1) = [1.0_real64, 7.0_real64]
+    expr(:, 2) = [-3.0_real64, 3.0_real64]
+    expr(:, 3) = [5.0_real64, 5.0_real64]
+    expected(:, 1) = [0.2_real64, 1.4_real64]
+    expected(:, 2) = [-1.0_real64, 1.0_real64]
+    expected(:, 3) = [1.0_real64, 1.0_real64]
 
-    expected = 1.0d0
+    call root_mean_sq_normalization(3, 2, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_values: ierr")
+    call assert_equal_array_real(normalized, expected, 6, TOL, "test_rms_values: x/sqrt(mean(x**2))")
+  end subroutine test_rms_values
 
-    call assert_true(all(result == 1.0d0), "root_mean_sq_normalization: not all values are 1 for constant rows")
-    call assert_no_nan_real(result, 4, "root_mean_sq_normalization: NaN in result for constant rows")
-  end subroutine test_root_mean_sq_normalization_constant_rows
+  !> The identity matrix: each gene has one 1 among three replicates, RMS sqrt(1/3), so its 1
+  !| becomes sqrt(3) and its zeros stay exactly 0.
+  subroutine test_rms_identity()
+    real(real64), dimension(3, 3) :: expr, normalized, expected
+    integer(int32) :: ierr, i_gene
 
-  !> Test that root_mean_sq_normalization normalizes large numbers properly.
-  subroutine test_root_mean_sq_normalization_large_numbers()
-    real(real64), dimension(2,2) :: mat, result, expected
-    real(real64), dimension(2) :: std_dev
-    integer(int32) :: i_tissue, i_gene, ierr
-
-    mat = reshape([1e6, 2e6, 1e6, 2e6], [2,2])
-    call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-
-    do i_gene = 1, 2
-      std_dev(i_gene) = sqrt((mat(1, i_gene)**2 + mat(2, i_gene)**2) / 2.0d0)
-      do i_tissue = 1, 2
-        expected(i_tissue, i_gene) = mat(i_tissue, i_gene) / std_dev(i_gene)
-      end do
-    end do
-
-    call assert_equal_array_real(result, expected, 4, 1d-12, "root_mean_sq_normalization: large numbers normalization failed")
-    call assert_no_nan_real(result, 4, "root_mean_sq_normalization: NaN in result for large numbers")
-    call assert_true(all(ieee_is_finite(result)), "root_mean_sq_normalization: Inf in result for large numbers")
-  end subroutine test_root_mean_sq_normalization_large_numbers
-
-  !> Test normalization of the identity matrix.
-  subroutine test_identity_matrix()
-    real(real64), dimension(3,3) :: mat, result
-    integer(int32) :: i_tissue, i_gene, ierr
-    mat = 0.0d0
+    expr = 0.0_real64
+    expected = 0.0_real64
     do i_gene = 1, 3
-      mat(i_gene,i_gene) = 1.0d0
+      expr(i_gene, i_gene) = 1.0_real64
+      expected(i_gene, i_gene) = sqrt(3.0_real64)
     end do
-    call root_mean_sq_normalization(3, 3, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    do i_gene = 1, 3
-      call assert_in_range_real(sum(result(:, i_gene)**2)/3.0d0, 1d0-1d-12, 1d0+1d-12, "identity: RMS not 1")
-      do i_tissue = 1, 3
-        if (i_tissue /= i_gene) then 
-          call assert_equal_real(result(i_tissue, i_gene), 0.0d0, 1d-12, "identity: off-diagonal not zero")
-        else
-          call assert_equal_real(result(i_tissue, i_gene), 1d0 / sqrt(1d0 / 3.0d0), 1d-12, "identity: diagonal value not number of tissues/genes")
-        end if
-      end do
-    end do
-  end subroutine test_identity_matrix
 
-  !> Test normalization of rows with all zeros.
-  subroutine test_zero_rows()
-    real(real64), dimension(2,3) :: mat, result
+    call root_mean_sq_normalization(3, 3, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_identity: ierr")
+    call assert_equal_array_real(normalized, expected, 9, TOL, "test_rms_identity: diagonal sqrt(3), zeros stay 0")
+  end subroutine test_rms_identity
+
+  !> The scaling ignores magnitude and keeps sign: a million times a gene normalizes to the gene's
+  !| own result, and its negative to the negated result.
+  subroutine test_rms_scale_and_sign()
+    real(real64), dimension(3, 3) :: expr, normalized
+    real(real64), dimension(3) :: reference
     integer(int32) :: ierr
-    mat = 0.0d0
-    call root_mean_sq_normalization(2, 3, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    call assert_true(all(result == 0.0d0), "zero rows: not all zeros")
-    call assert_no_nan_real(result, 6, "zero rows: NaN in result")
-  end subroutine test_zero_rows
 
-  !> Test normalization of rows with negative values.
-  subroutine test_negative_rows()
-    real(real64), dimension(2,3) :: mat, result, expected
-    real(real64), dimension(3) :: std_dev
-    integer(int32) :: i_tissue, i_gene, ierr
-    mat = reshape([-2.0d0, -4.0d0, -6.0d0, -8.0d0, -10.0d0, -12.0d0], [2,3])
-    call root_mean_sq_normalization(3, 2, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    do i_gene = 1, 3
-      std_dev(i_gene) = sqrt(sum(mat(:,i_gene)**2)/2.0d0)
-      do i_tissue = 1, 2
-        expected(i_tissue, i_gene) = mat(i_tissue, i_gene)/std_dev(i_gene)
-      end do
-    end do
-    call assert_equal_array_real(result, expected, 6, 1d-12, "negative rows: normalization failed")
-  end subroutine test_negative_rows
+    expr(:, 1) = [1.0_real64, 2.0_real64, 3.0_real64]
+    expr(:, 2) = 1.0e6_real64*expr(:, 1)
+    expr(:, 3) = -expr(:, 1)
 
-  !> Test normalization of a large random matrix.
-  subroutine test_large_random_matrix()
-    integer(int32), parameter :: n_genes=20, n_tissues=30
-    real(real64), dimension(n_tissues, n_genes) :: mat, result
-    integer(int32) :: i_gene, ierr
-    integer(int32) :: n_seed
-    integer(int32), allocatable :: seed_array(:)
-    call random_seed(size=n_seed)
-    allocate(seed_array(n_seed))
-    seed_array = 42
-    call random_seed(put=seed_array)
-    deallocate(seed_array)
-    call random_number(mat)
-    call root_mean_sq_normalization(n_genes, n_tissues, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    do i_gene = 1, n_genes
-      call assert_in_range_real(sqrt(sum(result(:, i_gene)**2)/n_tissues), 1d0-1d-10, 1d0+1d-10, "large random: RMS not 1")
-    end do
-    call assert_no_nan_real(result, n_genes*n_tissues, "large random: NaN in result")
-  end subroutine test_large_random_matrix
+    call root_mean_sq_normalization(3, 3, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_scale_and_sign: ierr")
+    reference = normalized(:, 1)
+    call assert_equal_array_real(normalized(:, 2), reference, 3, TOL, "test_rms_scale_and_sign: 1e6 times the gene")
+    reference = -reference
+    call assert_equal_array_real(normalized(:, 3), reference, 3, TOL, "test_rms_scale_and_sign: the negated gene")
+  end subroutine test_rms_scale_and_sign
 
-  !> Test normalization of rows with a single nonzero value.
-  subroutine test_single_nonzero()
-    real(real64), dimension(2,4) :: mat, result, expected
-    integer(int32) :: i, ierr
-    mat = 0.0d0
-    mat(1,3) = 5.0d0
-    mat(2,2) = -7.0d0
-    call root_mean_sq_normalization(2, 4, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    do i = 1, 2
-      expected(i,:) = mat(i,:) / sqrt(sum(mat(i,:)**2)/4.0d0)
-    end do
-    call assert_equal_array_real(result, expected, 8, 1d-12, "single nonzero: normalization failed")
-  end subroutine test_single_nonzero
-
-  !> Test normalization with very small and very large values.
-  subroutine test_small_large_values()
-    real(real64), dimension(2,2) :: mat, result, expected
-    real(real64), dimension(2) :: std_dev
-    integer(int32) :: i_tissue, i_gene, ierr
-    mat = reshape([1e-10, 1e10, 1e-10, 1e10], [2,2])
-    call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    do i_gene = 1, 2
-      std_dev(i_gene) = sqrt(sum(mat(:, i_gene)**2)/2.0d0)
-      do i_tissue = 1, 2
-        expected(i_tissue, i_gene) = mat(i_tissue, i_gene)/std_dev(i_gene)
-      end do
-    end do
-    call assert_equal_array_real(result, expected, 4, 1d-10, "small/large values: normalization failed")
-    call assert_no_nan_real(result, 4, "small/large values: NaN in result")
-  end subroutine test_small_large_values
-
-  !> Test normalization when input contains NaN or Inf.
-  subroutine test_nan_inf_input()
-    real(real64), dimension(2,2) :: mat, result
+  !> A gene whose RMS is at most 1e-12 is left as it is rather than divided by next to nothing: an
+  !| all-zero gene stays zero, and so does a gene of 1e-13 values (FES decided to keep this).
+  subroutine test_rms_near_zero_genes_pass_through()
+    real(real64), dimension(2, 2) :: expr, normalized
     integer(int32) :: ierr
-    mat = reshape([1.0d0, 2.0d0, huge(1.0d0), 4.0d0], [2,2])
-    call root_mean_sq_normalization(2, 2, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    call assert_true(all(ieee_is_finite(result)), "root_mean_sq_normalization: output contains NaN/Inf unexpectedly")
-  end subroutine test_nan_inf_input
 
-  !> Test normalization of a single row and a single column matrix.
-  subroutine test_single_row_col()
-    real(real64), dimension(4, 1) :: mat1, result1, expected1
-    real(real64), dimension(1, 4) :: mat2, result2
-    real(real64) :: std_dev
-    integer(int32) :: i_tissue, ierr
-    mat1 = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [4, 1])
-    call root_mean_sq_normalization(1, 4, mat1, result1, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    std_dev = sqrt(sum(mat1(:, 1)**2)/4.0d0)
-    do i_tissue = 1, 4
-      expected1(i_tissue, 1) = mat1(i_tissue, 1)/std_dev
-    end do
-    call assert_equal_array_real(result1, expected1, 4, 1d-12, "single row: normalization failed")
-    mat2 = reshape([2.0d0, 4.0d0, 6.0d0, 8.0d0], [1, 4])
-    call root_mean_sq_normalization(4, 1, mat2, result2, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    call assert_true(all(abs(result2) == 1.0d0), "single col: normalization failed")
-  end subroutine test_single_row_col
+    expr(:, 1) = 0.0_real64
+    expr(:, 2) = [1.0e-13_real64, -1.0e-13_real64]
 
-  !> Test normalization of an empty matrix.
-  subroutine test_empty_matrix()
-    real(real64), allocatable :: mat(:,:), result(:,:)
+    call root_mean_sq_normalization(2, 2, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_near_zero_genes_pass_through: ierr")
+    call assert_equal_array_real(normalized, expr, 4, 0.0_real64, "test_rms_near_zero_genes_pass_through: must stay unchanged")
+  end subroutine test_rms_near_zero_genes_pass_through
+
+  !> With one replicate a gene's RMS is its own magnitude, so every gene becomes its sign.
+  subroutine test_rms_single_replicate()
+    real(real64), dimension(1, 2) :: expr, normalized, expected
     integer(int32) :: ierr
-    allocate(mat(1,1), result(1,1))
-    call root_mean_sq_normalization(0, 0, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "root_mean_sq_normalization returned error")
-    ! No assertion needed: just check no crash
-  end subroutine test_empty_matrix
 
-  !> Test normalization of symmetric rows.
-  subroutine test_symmetric_rows()
-    real(real64), dimension(3,2) :: mat, result
-    integer(int32) :: i_tissue, ierr
-    mat(:, 1) = [1.0d0, 2.0d0, 3.0d0]
-    mat(:, 2) = [2.0d0, 4.0d0, 6.0d0]
-    call root_mean_sq_normalization(2, 3, mat, result, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "root_mean_sq_normalization returned error")
-    do i_tissue = 1, 3
-      call assert_equal_real(result(i_tissue, 2), result(i_tissue, 1), 1d-12, "symmetric rows: not equal after normalization")
-    end do
-  end subroutine test_symmetric_rows
+    expr(1, :) = [-5.0_real64, 2.0_real64]
+    expected(1, :) = [-1.0_real64, 1.0_real64]
+
+    call root_mean_sq_normalization(2, 1, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_single_replicate: ierr")
+    call assert_equal_array_real(normalized, expected, 2, 0.0_real64, "test_rms_single_replicate: each gene becomes its sign")
+  end subroutine test_rms_single_replicate
+
+  !> A gene whose squares leave the real64 range is still scaled by its RMS: [1e200, 7e200] has
+  !| RMS sqrt((1 + 49)/2) * 1e200 = 5e200 and becomes [0.2, 1.4]. Summing the squares directly
+  !| overflows to Inf, and dividing by Inf zeroed the gene.
+  subroutine test_rms_extreme_magnitudes()
+    real(real64) :: expr(2, 1), normalized(2, 1), expected(2, 1)
+    integer(int32) :: ierr
+
+    expr(:, 1) = [1.0e200_real64, 7.0e200_real64]
+    expected(:, 1) = [0.2_real64, 1.4_real64]
+
+    call root_mean_sq_normalization(1, 2, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_extreme_magnitudes: ierr")
+    call assert_equal_array_real(normalized, expected, 2, TOL, &
+                                 "test_rms_extreme_magnitudes: [1e200, 7e200] must become [0.2, 1.4]")
+  end subroutine test_rms_extreme_magnitudes
 
   !> NaN and Inf are rejected up front rather than carried into the result: TOX writes no NaN.
   subroutine test_rms_rejects_nan_and_inf()
@@ -263,20 +144,18 @@ contains
     end do
   end subroutine test_rms_rejects_nan_and_inf
 
-  !> A gene whose squares leave the real64 range is still scaled by its RMS: [1e200, 7e200] has
-  !| RMS sqrt((1 + 49)/2) * 1e200 = 5e200 and becomes [0.2, 1.4]. Summing the squares directly
-  !| overflows to Inf, and dividing by Inf zeroed the gene.
-  subroutine test_rms_extreme_magnitudes()
-    real(real64) :: expr(2, 1), normalized(2, 1), expected(2, 1)
+  !> Each dimension on its own: zero is ERR_EMPTY_INPUT, negative ERR_INVALID_INPUT.
+  subroutine test_rms_dimensions()
+    real(real64), dimension(1, 1) :: expr, normalized
     integer(int32) :: ierr
 
-    expr(:, 1) = [1.0e200_real64, 7.0e200_real64]
-    expected(:, 1) = [0.2_real64, 1.4_real64]
-
-    call root_mean_sq_normalization(1, 2, expr, normalized, ierr)
-    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_rms_extreme_magnitudes: ierr")
-    call assert_equal_array_real(normalized, expected, 2, 4*epsilon(1.0_real64), &
-                                 "test_rms_extreme_magnitudes: [1e200, 7e200] must become [0.2, 1.4]")
-  end subroutine test_rms_extreme_magnitudes
+    expr = 1.0_real64
+    call root_mean_sq_normalization(0, 1, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_rms_dimensions: n_genes = 0")
+    call root_mean_sq_normalization(1, 0, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "test_rms_dimensions: n_replicates = 0")
+    call root_mean_sq_normalization(-1, 1, expr, normalized, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_rms_dimensions: n_genes = -1")
+  end subroutine test_rms_dimensions
 
 end module mod_test_tox_normalization_root_mean_sq_normalization
