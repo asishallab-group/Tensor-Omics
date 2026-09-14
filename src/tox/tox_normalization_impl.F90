@@ -706,12 +706,15 @@ contains
             do i_group = 1, n_tissues
                 stop_idx = start_idx + reps_per_tissue(i_group) - 1
 
+                ! Each replicate is divided before it is added, so every partial sum stays within the
+                ! largest value's magnitude: the average cannot overflow where the plain sum would.
                 sum_val = 0.0_real64
-                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene) reduce(+:sum_val)
-                    sum_val = sum_val + expr(i_tissue, i_gene)
+                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene, i_group, reps_per_tissue) &
+                        reduce(+:sum_val)
+                    sum_val = sum_val + expr(i_tissue, i_gene)/real(reps_per_tissue(i_group), real64)
                 end do
 
-                tissue_averages(i_group, i_gene) = sum_val / real(reps_per_tissue(i_group), real64)
+                tissue_averages(i_group, i_gene) = sum_val
                 start_idx = stop_idx + 1
             end do
         end do
