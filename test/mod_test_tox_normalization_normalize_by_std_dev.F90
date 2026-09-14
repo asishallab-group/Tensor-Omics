@@ -134,18 +134,21 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_needs_five_varying_genes: five varying genes")
   end subroutine test_std_dev_needs_five_varying_genes
 
-  !> A span must cover enough genes for LOESS: 0, a negative span, and 0.1 of ten genes are
-  !| ERR_INVALID_INPUT. A NaN span is ERR_NAN_INF.
+  !> The span follows tox_loess's rules, as it is the LOESS span: at most 1, so 1 is valid and 1.5
+  !| and 3 are ERR_INVALID_INPUT. At the low end 0, a negative span, and 0.1 of ten genes (too few
+  !| points for LOESS) are ERR_INVALID_INPUT. A NaN span is ERR_NAN_INF.
   subroutine test_std_dev_span_bounds()
     integer(int32), parameter :: n_genes = 10, n_replicates = 6
-    real(real64), parameter :: too_small(3) = [0.0_real64, -1.0_real64, 0.1_real64]
+    real(real64), parameter :: invalid(5) = [0.0_real64, -1.0_real64, 0.1_real64, 1.5_real64, 3.0_real64]
     real(real64), dimension(n_replicates, n_genes) :: expr, normalized
     integer(int32) :: ierr, i_span
 
     call fill_linear_trend(expr)
-    do i_span = 1, size(too_small)
-      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=too_small(i_span), ierr=ierr)
-      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_span_bounds: span too small")
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=1.0_real64, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_span_bounds: span 1 is valid")
+    do i_span = 1, size(invalid)
+      call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=invalid(i_span), ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_span_bounds: span outside (0, 1]")
     end do
 
     call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, span=ieee_value(1.0_real64, ieee_quiet_nan), ierr=ierr)

@@ -117,8 +117,9 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_log2_domain: averages below -1")
   end subroutine test_pipeline_log2_domain
 
-  !> The pipeline passes degree to LOESS, so it must be 0, 1 or 2; -1 and 3 are ERR_INVALID_INPUT
-  !| instead of reaching netlib's ehg182, which stops the whole program.
+  !> The pipeline passes span and degree to LOESS, so they follow tox_loess's rules: degree -1 and
+  !| 3 are ERR_INVALID_INPUT instead of reaching netlib's ehg182, which stops the whole program, and
+  !| so is a span above 1.
   subroutine test_pipeline_degree_bounds()
     integer(int32), parameter :: n_genes = 10, n_replicates = 6, n_tissues = 2
     integer(int32), parameter :: invalid(2) = [-1, 3]
@@ -135,6 +136,10 @@ contains
                                   degree=invalid(i_degree), ierr=ierr)
       call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_degree_bounds: degrees -1 and 3 are invalid")
     end do
+
+    call normalization_pipeline(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, &
+                                span=1.5_real64, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_degree_bounds: a span above 1 is invalid")
   end subroutine test_pipeline_degree_bounds
 
   !> NaN and Inf are rejected up front, before the first step: TOX writes no NaN.
