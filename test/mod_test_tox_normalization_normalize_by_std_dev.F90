@@ -23,7 +23,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(9))
+    allocate(all_tests(10))
 
     all_tests(1) = test_case("test_std_dev", test_std_dev)
     all_tests(2) = test_case("test_std_dev_linear_trend", test_std_dev_linear_trend)
@@ -34,7 +34,31 @@ contains
     all_tests(7) = test_case("test_std_dev_degree_bounds", test_std_dev_degree_bounds)
     all_tests(8) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
     all_tests(9) = test_case("test_std_dev_dimensions", test_std_dev_dimensions)
+    all_tests(10) = test_case("test_std_dev_negative_fit_keeps_sign", test_std_dev_negative_fit_keeps_sign)
   end function get_all_tests_tox_normalization_normalize_by_std_dev
+
+  !> A LOESS fit can dip below zero on non-negative data, and dividing a gene by a negative fitted
+  !| sd flips its sign. Fifteen genes whose sd stays near 0 and then climbs steeply, fitted with the
+  !| default span and degree, do exactly that for genes 4 to 6. Every value here is positive, so
+  !| every normalized value must be too: a non-positive fit falls back to the gene's own sd, as a
+  !| fit near zero already did.
+  subroutine test_std_dev_negative_fit_keeps_sign()
+    integer(int32), parameter :: n_genes = 15, n_replicates = 2
+    real(real64), dimension(n_replicates, n_genes) :: expr, normalized
+    real(real64) :: gene_sd(n_genes), gene_mean
+    integer(int32) :: ierr, i_gene
+
+    ! gene i: mean 100 + 10*i, replicates mean -/+ sd, so a population sd of gene_sd(i)
+    gene_sd = [1d-3, 1d-3, 1d-3, 1d-3, 1d-3, 1d-3, 1d-3, 0.01d0, 0.05d0, 0.2d0, 0.8d0, 2.5d0, 6d0, 12d0, 20d0]
+    do i_gene = 1, n_genes
+      gene_mean = 100d0 + 10d0*real(i_gene, real64)
+      expr(:, i_gene) = [gene_mean - gene_sd(i_gene), gene_mean + gene_sd(i_gene)]
+    end do
+
+    call normalize_by_std_dev(n_genes, n_replicates, expr, normalized, ierr=ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_OK, "test_std_dev_negative_fit_keeps_sign: ierr")
+    call assert_true(all(normalized > 0d0), "test_std_dev_negative_fit_keeps_sign: a positive gene must stay positive")
+  end subroutine test_std_dev_negative_fit_keeps_sign
 
   !> f42_math's std_dev, which the procedure builds its trend from. It belongs to the f42 suites
   !| and moves there with the f42 batch.
