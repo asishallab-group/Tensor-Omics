@@ -133,6 +133,8 @@ contains
         integer(int32), intent(in), optional   :: degree
             !! Degree of the LOESS polynomial
             !! DM_DEFAULT(CM_FAMILY_DEGREE_DEFAULT)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(2_int32)
         integer(int32), intent(in), optional   :: mode
             !! Mode for LOESS fitting
             !! DM_DEFAULT(CM_FAMILY_MODE_DEFAULT)

@@ -20,6 +20,8 @@
 #'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. Degree of the LOESS polynomial
 #'   The default value is `2`.
+#'   The minimum valid value is `0`.
+#'   The maximum valid value is `2`.
 #' @param mode a string, one of "plain", "robust". Mode for LOESS fitting
 #'   The default value is `"robust"`.
 #' @param n_iters a integer scalar. Number of iterations for robust LOESS fitting

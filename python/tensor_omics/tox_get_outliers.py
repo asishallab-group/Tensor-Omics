@@ -135,6 +135,8 @@ def compute_family_scaling(
     degree : int, optional, default 2
         Degree of the LOESS polynomial
         The default value is `2`.
+        The minimum valid value is `0`.
+        The maximum valid value is `2`.
     mode : str, one of 'plain' | 'robust', optional, default 'robust'
         Mode for LOESS fitting
         The default value is `'robust'`.

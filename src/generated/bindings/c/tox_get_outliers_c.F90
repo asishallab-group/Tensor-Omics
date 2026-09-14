@@ -82,6 +82,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
             !! The default value is `'robust'`.
@@ -266,6 +268,8 @@ contains
         integer(c_int), intent(in), target :: degree
             !! Degree of the LOESS polynomial
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         character(len=1, kind=c_char), dimension(6), intent(in), target :: mode
             !! Mode for LOESS fitting
             !! The default value is `'robust'`.
