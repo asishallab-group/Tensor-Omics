@@ -179,8 +179,8 @@ calc_tiss_avg <- function(reps_per_tissue, expr) {
     reps_per_tissue <- .tox_as_integer_vector(reps_per_tissue, "reps_per_tissue")
     expr <- .tox_as_double_matrix(expr, "expr")
     .result <- .Call("calc_tiss_avg_call", reps_per_tissue, expr)
-    .arguments <- c("n_genes", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
-    .sources <- c("expr", "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
+    .arguments <- c("n_genes", "n_replicates", "n_tissues", "reps_per_tissue", "expr", "tissue_averages", "ierr")
+    .sources <- c("expr", "expr", "reps_per_tissue", NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     .result$tissue_averages

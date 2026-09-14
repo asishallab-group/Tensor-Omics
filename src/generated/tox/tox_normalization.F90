@@ -734,6 +734,7 @@ contains
     !| expression per gene.
     pure subroutine calc_tiss_avg(&
             n_genes,&
+            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
@@ -742,36 +743,42 @@ contains
         )
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
         integer(int32), intent(out) :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
-        call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
-        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_tissues, ierr, arg_pos=3_int32)
+        call validate_all_in_range_int(reps_per_tissue, n_tissues, ierr, arg_pos=4_int32, min=1_int32)
         if (is_err(ierr)) return
 #endif
 
         call calc_tiss_avg_impl(&
             n_genes = n_genes,&
+            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&
-            tissue_averages = tissue_averages&
+            tissue_averages = tissue_averages,&
+            ierr = ierr&
         )
+        call clear_err_arg_pos(ierr)
     end subroutine calc_tiss_avg
 
     !> summary: Validates its inputs, then calls [[tox_normalization_impl(module):calc_fchange_impl]].

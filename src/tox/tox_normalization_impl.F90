@@ -633,21 +633,35 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| For each tissue of tissue replicates, this subroutine computes the average
     !| expression per gene.
-    pure subroutine calc_tiss_avg_impl(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
+    pure subroutine calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, expr, tissue_averages, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! DM_MIN(1_int32)
-        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
+        ! Sized by n_replicates, not by sum(reps_per_tissue): only a dimension the array carries
+        ! can be derived from it by the bindings, and so be checked against the sum below.
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
             !! DM_ALLOW_NAN
             !! DM_ALLOW_INFINITE
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        call set_ok(ierr)
+
+        ! sum(reps_per_tissue) must equal n_replicates -- a relation between arguments.
+        if (sum(reps_per_tissue) /= n_replicates) then
+            call set_err(ierr, ERR_SIZE_MISMATCH)
+            return
+        end if
 
         call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
     end subroutine calc_tiss_avg_impl

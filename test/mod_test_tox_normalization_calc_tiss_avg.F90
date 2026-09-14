@@ -14,7 +14,7 @@ contains
   !> Get array of all available tests.
   function get_all_tests_tox_normalization_calc_tiss_avg() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
-    allocate(all_tests(8))
+    allocate(all_tests(9))
     
     all_tests(1) = test_case("test_calc_tiss_avg_three_tissues", test_calc_tiss_avg_three_tissues)
     all_tests(2) = test_case("test_calc_tiss_avg_single_group", test_calc_tiss_avg_single_group)
@@ -24,6 +24,8 @@ contains
     all_tests(6) = test_case("test_calc_tiss_avg_negative_values", test_calc_tiss_avg_negative_values)
     all_tests(7) = test_case("test_calc_tiss_avg_zero_values", test_calc_tiss_avg_zero_values)
     all_tests(8) = test_case("test_calc_tiss_avg_empty_matrix", test_calc_tiss_avg_empty_matrix)
+    all_tests(9) = test_case("test_calc_tiss_avg_reps_not_summing_to_the_replicates", &
+                             test_calc_tiss_avg_reps_not_summing_to_the_replicates)
   end function get_all_tests_tox_normalization_calc_tiss_avg
 
   !> Test tissue averaging with 3 tissues and 2 replicates each (from R test).
@@ -39,7 +41,7 @@ contains
     input_matrix(:, 2) = [7d0, 9d0, 11d0, 8d0, 10d0, 12d0]
     group_c = [2, 2, 2]
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     ! Expected results (column-major):
@@ -67,7 +69,7 @@ contains
     input_matrix(:, 3) = [3d0, 6d0]
     group_c = [2]  ! 2 replicates for single tissue
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     ! Expected: average of samples 1 and 2 (columns 1 and 2)
@@ -93,7 +95,7 @@ contains
     ! Tissue1: 2 replicates (cols 1,2), Tissue2: 3 replicates (cols 3,4,5), Tissue3: 2 replicates (cols 6,7)
     group_c = [2, 3, 2]
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     expected_matrix(:, 1) = [2d0, 7d0, 12d0]
@@ -114,7 +116,7 @@ contains
     input_matrix(:, 2) = [4.0d0, 5.0d0, 6.0d0]
     group_c = [1, 1, 1]  ! Single replicate per tissue
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     ! With single replicates, output should equal input
@@ -136,7 +138,7 @@ contains
     input_matrix(:, 2) = [2d3, 2d9, 2d9, 2d15]
     group_c = [2, 2]
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     expected_matrix(:, 1) = [5.005d8, 5.005d14]
@@ -158,7 +160,7 @@ contains
     input_matrix(:, 2) = [0d0, 0d0, -1d0, 1d0]
     group_c = [2, 2]
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     expected_matrix(:, 1) = [-2d0, -1d0]
@@ -180,7 +182,7 @@ contains
     group_c = [2, 2]
     expected_matrix = 0d0
     
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "calc_tiss_avg returned error")
     
     call assert_equal_array_real(output_matrix, expected_matrix, n_grps * n_gene, 1d-12, &
@@ -193,9 +195,23 @@ contains
     integer(int32), dimension(1) :: group_c
     real(real64), dimension(1) :: input_matrix, output_matrix
     n_gene = 0; n_grps = 0
-    call calc_tiss_avg(n_gene, n_grps, group_c, input_matrix, output_matrix, ierr)
+    call calc_tiss_avg(n_gene, size(input_matrix, 1), n_grps, group_c, input_matrix, output_matrix, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_EMPTY_INPUT, "calc_tiss_avg should return error for empty input")
     ! No further assertion needed: just check no crash
   end subroutine test_calc_tiss_avg_empty_matrix
+
+  !> The replicates must add up to the rows of `expr`. Fewer would shift every gene after the
+  !| first onto the wrong rows; more would read past the end of the matrix.
+  subroutine test_calc_tiss_avg_reps_not_summing_to_the_replicates()
+    integer(int32) :: ierr
+    real(real64), dimension(6, 2) :: input_matrix
+    real(real64), dimension(2, 2) :: output_matrix
+
+    input_matrix = 1d0
+    call calc_tiss_avg(2, 6, 2, [3, 2], input_matrix, output_matrix, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "reps [3, 2] sum to 5, but expr has 6 rows")
+    call calc_tiss_avg(2, 6, 2, [3, 4], input_matrix, output_matrix, ierr)
+    call assert_equal_int(get_err_code(ierr), ERR_SIZE_MISMATCH, "reps [3, 4] sum to 7, but expr has 6 rows")
+  end subroutine test_calc_tiss_avg_reps_not_summing_to_the_replicates
 
 end module mod_test_tox_normalization_calc_tiss_avg

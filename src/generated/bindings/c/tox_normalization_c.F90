@@ -672,6 +672,7 @@ contains
     !| expression per gene.
     subroutine calc_tiss_avg_c(&
             n_genes,&
+            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
@@ -682,31 +683,35 @@ contains
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(c_double), dimension(sum(reps_per_tissue), n_genes), intent(in), target :: expr
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
         integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
         M_CHECK_NON_NULL(n_tissues)
         M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
-        M_CHECK_ARRAY_NON_NULL(expr, (sum(reps_per_tissue)) * n_genes)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
         M_CHECK_ARRAY_NON_NULL(tissue_averages, n_tissues * n_genes)
 
         call calc_tiss_avg(&
             n_genes = n_genes,&
+            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&

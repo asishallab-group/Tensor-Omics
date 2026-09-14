@@ -94,13 +94,13 @@ contains
 
     call quantile_normalization_expert(n_genes, n_tissues, stddev, quantile, rank_means, tmp_col, tmp_perm, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: quantile_normalization returned error")
-    call calc_tiss_avg(n_genes, n_groups, group_sizes, quantile, tiss_avg, ierr)
+    call calc_tiss_avg(n_genes, n_tissues, n_groups, group_sizes, quantile, tiss_avg, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: calc_tiss_avg returned error")
     call log2_transformation(n_genes, n_groups, tiss_avg, log2trans, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: log2_transformation returned error")
 
     ! Manual stepwise normalization without quantile
-    call calc_tiss_avg(n_genes, n_groups, group_sizes, stddev, buf_avg_no_quant, ierr)
+    call calc_tiss_avg(n_genes, n_tissues, n_groups, group_sizes, stddev, buf_avg_no_quant, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: calc_tiss_avg (no quantile) returned error")
     call log2_transformation(n_genes, n_groups, buf_avg_no_quant, log2trans_no_quant, ierr)
     call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pipeline_vs_manual: log2_transformation (no quantile) returned error")
