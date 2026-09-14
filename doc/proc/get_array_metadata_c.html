@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">45 statements</a>
+                 title=" 0.3% of total for procedures.">47 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/f42_serde_arrays_utils.F90"> Source File</a>
+              <a href="../src/f42_serde_arrays_utils_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/f42_serde_arrays_utils.f90.html'>f42_serde_arrays_utils.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/f42_serde_arrays_utils_c.f90.html'>f42_serde_arrays_utils_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/f42_serde_arrays_utils_c.html'>f42_serde_arrays_utils_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">get_array_metadata_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine get_array_metadata_c(filename, fn_len, dims_out, dims_out_capacity, ndims, type_code, ierr) bind(C, name="get_array_metadata_c")  
+    <h2>public  subroutine get_array_metadata_c(filename, filename_strlen, dims_out, dims_out_capacity, ndims, type_code, ierr) bind(C, name="get_array_metadata_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,9 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/f42_serde_arrays_utils.html'>f42_serde_arrays_utils</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +166,6 @@
     </div>
 
 
-    <p>C binding for the subroutine to get the dimensions of an array file</p>
 
 
     <h3>Arguments</h3>
@@ -184,22 +181,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-filename~75"></span>
+              <span class="anchor" id="variable-filename~95"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(filename_strlen), target
             </td>
             <td>::</td>
-            <td><strong>filename</strong>(fn_len)</td>
+            <td><strong>filename</strong></td>
             <td>
-                <p>Array of ASCII characters representing the filename</p>
+                <p>Name of the file</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fn_len~10"></span>
+              <span class="anchor" id="variable-filename_strlen~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -207,9 +204,9 @@
               target
             </td>
             <td>::</td>
-            <td><strong>fn_len</strong></td>
+            <td><strong>filename_strlen</strong></td>
             <td>
-                <p>Length of the filename array</p>
+                <p>length of the strings in <code>filename</code></p>
             </td>
         </tr>
         <tr>
@@ -219,12 +216,13 @@
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(dims_out_capacity), target
             </td>
             <td>::</td>
-            <td><strong>dims_out</strong>(dims_out_capacity)</td>
+            <td><strong>dims_out</strong></td>
             <td>
-                <p>Output array for dimensions</p>
+                <p>Array to store output dimensions
+The first <code>ndims</code> elements will hold the results.</p>
             </td>
         </tr>
         <tr>
@@ -244,7 +242,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ndims~4"></span>
+              <span class="anchor" id="variable-ndims~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -254,12 +252,12 @@
             <td>::</td>
             <td><strong>ndims</strong></td>
             <td>
-                <p>Output variable for the number of dimensions</p>
+                <p>number of dimensions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-type_code~6"></span>
+              <span class="anchor" id="variable-type_code~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -304,7 +302,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~271"></span>
+              <span class="anchor" id="variable-ierr~365"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -351,7 +349,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

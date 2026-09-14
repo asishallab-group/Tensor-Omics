@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 3.2% of total for modules and submodules.">273 statements</a>
+                 title=" 1.1% of total for modules and submodules.">216 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -123,39 +123,14 @@
         <div id="sidebar">
       <h3>Contents</h3>
   
-      <div class="card mb-4">
-      <a data-bs-toggle="collapse" href="#vars-0"
-         aria-expanded="false" aria-controls="vars-0">
-         <h4 class="card-header bg-primary text-white">Variables</h4>
-      </a>
-      <div id="vars-0" class="collapse">
-        <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/tox_loess.html#variable-eps_loess">EPS_LOESS</a>
-        </div>
-      </div>
-    </div>
-
   
   
   
   
   
   
-      <div class="card mb-4">
-      <a data-bs-toggle="collapse" href="#inters-0"
-         aria-expanded="false" aria-controls="inters-0">
-         <h4 class="card-header bg-primary text-white">Interfaces</h4>
-      </a>
-      <div id="inters-0" class="collapse">
-        <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/tox_loess.html#interface-loess_decomposition">loess_decomposition</a>
-            <a class="list-group-item" href="../module/tox_loess.html#interface-loess_fitting">loess_fitting</a>
-            <a class="list-group-item" href="../module/tox_loess.html#interface-loess_evaluation">loess_evaluation</a>
-            <a class="list-group-item" href="../module/tox_loess.html#interface-loess_robust_weights">loess_robust_weights</a>
-        </div>
-      </div>
-    </div>
-
+  
+  
   
   
   
@@ -166,10 +141,10 @@
       </a>
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
-            <a class="list-group-item" href="../module/tox_loess.html#proc-tox_loess_required_workspace">tox_loess_required_workspace</a>
             <a class="list-group-item" href="../module/tox_loess.html#proc-loess_fit_plain">loess_fit_plain</a>
+            <a class="list-group-item" href="../module/tox_loess.html#proc-loess_fit_plain_expert">loess_fit_plain_expert</a>
             <a class="list-group-item" href="../module/tox_loess.html#proc-loess_fit_robust">loess_fit_robust</a>
-            <a class="list-group-item" href="../module/tox_loess.html#proc-loess_alloc">loess_alloc</a>
+            <a class="list-group-item" href="../module/tox_loess.html#proc-loess_fit_robust_expert">loess_fit_robust_expert</a>
         </div>
       </div>
     </div>
@@ -188,13 +163,18 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Wraps the netlib LOESS (<code>dloess</code>/<code>lowesd</code> family) Fortran routines for local polynomial regression smoothing.
-This module exposes the netlib subroutines through Fortran interfaces (see below) and provides
-higher-level wrappers (<a href="../proc/loess_fit_plain.html">loess_fit_plain</a>, <a href="../proc/loess_fit_robust.html">loess_fit_robust</a>,
-<a href="../proc/loess_alloc.html">loess_alloc</a>) that size the required integer/real workspace and
-handle degenerate inputs (a single data point, a near-constant <code>x</code>, or too few unique <code>x</code> values for
-the requested polynomial degree) before delegating to the netlib fitting/evaluation routines. The
-netlib routines themselves are not re-documented here beyond their calling convention.</p>
+      <p>LOESS local polynomial regression smoothing, over the netlib <code>dloess</code>/<code>lowesd</code> family.</p>
+<p>Two fits: <code>loess_fit_plain</code> and <code>loess_fit_robust</code>, the latter reweighting against outliers over
+a number of iterations. There is deliberately no combined entry point dispatching on a mode --
+a caller chooses the routine, and supplies the weights and the evaluation points it wants.</p>
+<p>A sample too degenerate to fit (fewer distinct points than the degree needs) is answered
+directly from the observations rather than handed to netlib, which cannot fit one and dies
+inside its decomposition instead of reporting. Nothing about that is visible to a caller
+beyond the result.</p>
+<p><code>tox_loess_required_workspace</code> sizes the workspace for a caller that wants to own it; the
+mode and iteration constants and <code>EPS_LOESS</code> are here for the same reason. The netlib
+routines themselves are not re-documented beyond their calling convention.</p>
+<p>Generated from <a href="../module/tox_loess_impl.html">tox_loess_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
@@ -202,8 +182,10 @@ netlib routines themselves are not re-documented here beyond their calling conve
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
+                  <li class="list-inline-item"><a href='f42_safeguard.html'>f42_safeguard</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
+                  <li class="list-inline-item"><a href='tox_loess_impl.html'>tox_loess_impl</a></li>
               </ul>
             </li>
         </ul>
@@ -214,61 +196,20 @@ netlib routines themselves are not re-documented here beyond their calling conve
       <br>
 
 
-        <section>
-          <h2>Variables</h2>
-            <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Visibility</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-<th></th><th scope="col">Initial</th>        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-eps_loess"></span>
-              real(kind=real64),
-            </td>
-              <td>public,</td>
-            <td>
-parameter               
-            </td>
-            <td>::</td>
-            <td><strong>EPS_LOESS</strong></td>
-<td> =</td>
-                <td>1.0e-12_real64</td>
-            <td>
-                <p>Minimum allowed LOESS <code>span</code> and a general-purpose small epsilon used across this module
-(and by callers such as <a href="../proc/compute_family_scaling.html">compute_family_scaling</a>) to
-guard against division/log by (near-)zero.</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
 
-        </section>
-        <br>
+
+
+
 
 
         <section>
-          <h2>Interfaces</h2>
+          <h2>Subroutines</h2>
               <div class="card">
-    <div class="card-header bg-light codesum">
-      <span class="anchor" id="interface-loess_decomposition"></span>
-      <h3>public        interface <a href='../interface/loess_decomposition.html'>loess_decomposition</a> 
-      </h3>
-    </div>
-    <ul class="list-group">
-          <li class="list-group-item">
-                <h3>
-    public  subroutine lowesd(iv19_code, int_workspace, int_workspace_size, real_workspace_size, real_workspace, n_dim, n, span, degree, max_neighborhood_size, save_factorization)  
-
-    </h3>
-  <p>Perform LOESS decomposition.
-This subroutine computes the decomposition of the LOESS model.
-It initializes the integer and real workspace arrays based on the input parameters.</p>
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_plain"></span> <h3>public  subroutine <a href='../proc/loess_fit_plain.html'>loess_fit_plain</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, fitted_values, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, prepares what <a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/loess_fit_plain_expert.html">loess_fit_plain_expert</a> to prepare it yourself.</p><a href="../proc/loess_fit_plain.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -283,98 +224,7 @@ It initializes the integer and real workspace arrays based on the input paramete
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-iv19_code"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>iv19_code</strong></td>
-            <td>
-                <p>Packed netlib <code>iv(19)</code> model-selection code (family/surface/statistics digits); see
-<a href="../proc/loess_fit_plain.html">loess_fit_plain</a> for the fixed value used by this codebase.</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace</strong>(int_workspace_size)</td>
-            <td>
-                <p>Integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace_size"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-                <p>Length of the integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-                <p>Length of the real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace</strong>(real_workspace_size)</td>
-            <td>
-                <p>Real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_dim"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_dim</strong></td>
-            <td>
-                <p>Dimensionality of the data</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n~20"></span>
+              <span class="anchor" id="variable-n"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -384,12 +234,72 @@ It initializes the integer and real workspace arrays based on the input paramete
             <td>::</td>
             <td><strong>n</strong></td>
             <td>
-                <p>Number of data points</p>
+<p>Total number of data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~9"></span>
+              <span class="anchor" id="variable-x"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>x</strong></td>
+            <td>
+<p>Predictor variable array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-y"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>y</strong></td>
+            <td>
+<p>Response variable array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-weights"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>weights</strong></td>
+            <td>
+<p>Weight array for data points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-eval_points"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n, 1)
+            </td>
+            <td>::</td>
+            <td><strong>eval_points</strong></td>
+            <td>
+<p>Evaluation points (x values at which the fitted curve is computed)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-span"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -399,12 +309,14 @@ It initializes the integer and real workspace arrays based on the input paramete
             <td>::</td>
             <td><strong>span</strong></td>
             <td>
-                <p>Smoothing parameter for LOESS</p>
+<p>Smoothing parameter for LOESS
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~9"></span>
+              <span class="anchor" id="variable-degree"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -414,7 +326,9 @@ It initializes the integer and real workspace arrays based on the input paramete
             <td>::</td>
             <td><strong>degree</strong></td>
             <td>
-                <p>Degree of the LOESS polynomial</p>
+<p>Degree of the LOESS polynomial
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -429,317 +343,39 @@ It initializes the integer and real workspace arrays based on the input paramete
             <td>::</td>
             <td><strong>max_neighborhood_size</strong></td>
             <td>
-                <p>Maximum neighborhood size</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-save_factorization"></span>
-              logical,
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>save_factorization</strong></td>
-            <td>
-                <p>Save matrix factorization flag</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-          </li>
-    </ul>
-  </div>
-
-              <div class="card">
-    <div class="card-header bg-light codesum">
-      <span class="anchor" id="interface-loess_fitting"></span>
-      <h3>public        interface <a href='../interface/loess_fitting.html'>loess_fitting</a> 
-      </h3>
-    </div>
-    <ul class="list-group">
-          <li class="list-group-item">
-                <h3>
-    public  subroutine lowesb(x, y, weights, hat_diag, compute_influence, int_workspace, int_workspace_size, real_workspace_size, real_workspace)  
-
-    </h3>
-  <p>Perform LOESS fitting.
-This subroutine fits the LOESS model to the data.
-It uses the input predictor and response variables to compute the diagonal elements of the hat matrix.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-x~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>x</strong>(*)</td>
-            <td>
-                <p>Predictor variable array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-y"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>y</strong>(*)</td>
-            <td>
-                <p>Response variable array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-weights~14"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>weights</strong>(*)</td>
-            <td>
-                <p>Weight array for data points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-hat_diag"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>hat_diag</strong>(*)</td>
-            <td>
-                <p>Diagonal elements of the hat matrix</p>
+<p>Maximum neighborhood size</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-compute_influence"></span>
-              logical,
+              logical(kind=c_bool),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>compute_influence</strong></td>
             <td>
-                <p>Influence calculation flag</p>
+<p>Influence calculation flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace~2"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-save_factorization"></span>
+              logical(kind=c_bool),
             </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>int_workspace</strong>(int_workspace_size)</td>
+            <td><strong>save_factorization</strong></td>
             <td>
-                <p>Integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace_size~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-                <p>Length of the integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-                <p>Length of the real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace</strong>(real_workspace_size)</td>
-            <td>
-                <p>Real workspace array</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-          </li>
-    </ul>
-  </div>
-
-              <div class="card">
-    <div class="card-header bg-light codesum">
-      <span class="anchor" id="interface-loess_evaluation"></span>
-      <h3>public        interface <a href='../interface/loess_evaluation.html'>loess_evaluation</a> 
-      </h3>
-    </div>
-    <ul class="list-group">
-          <li class="list-group-item">
-                <h3>
-    public  subroutine lowese(int_workspace, int_workspace_size, real_workspace_size, real_workspace, n, eval_points, fitted_values)  
-
-    </h3>
-  <p>Perform LOESS evaluation.
-This subroutine evaluates the LOESS model.
-It computes the smoothed response variable array based on the input predictor variables.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace</strong>(int_workspace_size)</td>
-            <td>
-                <p>Integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-int_workspace_size~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-                <p>Length of the integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-                <p>Length of the real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace</strong>(real_workspace_size)</td>
-            <td>
-                <p>Real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n~21"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n</strong></td>
-            <td>
-                <p>Number of data points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-eval_points"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>eval_points</strong>(n,1)</td>
-            <td>
-                <p>x-values at which to evaluate the fitted LOESS curve (evaluation points)</p>
+<p>Save matrix factorization flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
@@ -747,39 +383,44 @@ It computes the smoothed response variable array based on the input predictor va
               <span class="anchor" id="variable-fitted_values"></span>
               real(kind=real64),
             </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>fitted_values</strong></td>
+            <td>
+<p>Fitted (smoothed) values of y at the evaluation points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr"></span>
+              integer(kind=int32),
+            </td>
 <td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>fitted_values</strong>(n)</td>
+            <td><strong>ierr</strong></td>
             <td>
-                <p>Smoothed response variable array</p>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
   </table>
 
 
-          </li>
-    </ul>
+    </div>
   </div>
 
               <div class="card">
-    <div class="card-header bg-light codesum">
-      <span class="anchor" id="interface-loess_robust_weights"></span>
-      <h3>public        interface <a href='../interface/loess_robust_weights.html'>loess_robust_weights</a> 
-      </h3>
-    </div>
-    <ul class="list-group">
-          <li class="list-group-item">
-                <h3>
-    public  subroutine lowesw(residuals, n, robust_weights, permutation_indices)  
-
-    </h3>
-  <p>Compute robust weights for LOESS.
-This subroutine computes the robust weights for the LOESS model.
-It uses the residuals to update the weights for robust fitting.</p>
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_plain_expert"></span> <h3>public  subroutine <a href='../proc/loess_fit_plain_expert.html'>loess_fit_plain_expert</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, fitted_values, ierr)  
+</h3></div>
+    <div class="card-body">
+          
+  <p>Validates its inputs, then calls <a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/loess_fit_plain.html">loess_fit_plain</a> does both.</p><a href="../proc/loess_fit_plain_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -794,22 +435,7 @@ It uses the residuals to update the weights for robust fitting.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-residuals"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>residuals</strong>(n)</td>
-            <td>
-                <p>Residuals array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n~22"></span>
+              <span class="anchor" id="variable-n~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -819,82 +445,89 @@ It uses the residuals to update the weights for robust fitting.</p>
             <td>::</td>
             <td><strong>n</strong></td>
             <td>
-                <p>Number of data points</p>
+<p>Total number of data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-robust_weights"></span>
+              <span class="anchor" id="variable-x~2"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>robust_weights</strong>(n)</td>
+            <td><strong>x</strong></td>
             <td>
-                <p>Robust weights array</p>
+<p>Predictor variable array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation_indices"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-y~2"></span>
+              real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>y</strong></td>
+            <td>
+<p>Response variable array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-weights~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>weights</strong></td>
+            <td>
+<p>Weight array for data points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-eval_points~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n, 1)
+            </td>
+            <td>::</td>
+            <td><strong>eval_points</strong></td>
+            <td>
+<p>Evaluation points (x values at which the fitted curve is computed)</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-span~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>permutation_indices</strong>(n)</td>
+            <td><strong>span</strong></td>
             <td>
-                <p>Permutation indices array</p>
+<p>Smoothing parameter for LOESS
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
-    </tbody>
-  </table>
-
-
-          </li>
-    </ul>
-  </div>
-
-        </section>
-        <br>
-
-
-
-
-        <section>
-          <h2>Subroutines</h2>
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-tox_loess_required_workspace"></span> <h3>public  subroutine <a href='../proc/tox_loess_required_workspace.html'>tox_loess_required_workspace</a>(n_dim, max_neighborhood_size, int_workspace_size, real_workspace_size, save_factorization)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Recommend workspace sizes based on Netlib exact formulas.
-Computes the required sizes for integer and real workspace arrays.
-These sizes depend on the dimensionality of the data and the maximum neighborhood size.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dim~2"></span>
+              <span class="anchor" id="variable-degree~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -902,9 +535,11 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
               
             </td>
             <td>::</td>
-            <td><strong>n_dim</strong></td>
+            <td><strong>degree</strong></td>
             <td>
-<p>Dimensionality of the data</p>
+<p>Degree of the LOESS polynomial
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -924,47 +559,143 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~4"></span>
-              integer(kind=int32),
+              <span class="anchor" id="variable-compute_influence~2"></span>
+              logical(kind=c_bool),
             </td>
-<td>intent(out)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
+            <td><strong>compute_influence</strong></td>
             <td>
-<p>Required size of the integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-<p>Required size of the real workspace array</p>
+<p>Influence calculation flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-save_factorization~2"></span>
-              logical,
+              logical(kind=c_bool),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>save_factorization</strong></td>
+            <td>
+<p>Save matrix factorization flag
+The default value is <code>.false.</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_int_workspace~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(int_workspace_size)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_int_workspace</strong></td>
+            <td>
+<p>Integer workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-int_workspace_size~2"></span>
+              integer(kind=int32),
             </td>
 <td>intent(in)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>save_factorization</strong></td>
+            <td><strong>int_workspace_size</strong></td>
             <td>
-<p>Save matrix factorization flag</p>
+<p>Required size of the integer workspace array
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
+The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_fit_plain_expert.html#variable-int_workspace_size~2" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_real_workspace~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(real_workspace_size)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_real_workspace</strong></td>
+            <td>
+<p>Real workspace array</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-real_workspace_size~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(in)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>real_workspace_size</strong></td>
+            <td>
+<p>Required size of the real workspace array
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
+The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_fit_plain_expert.html#variable-real_workspace_size~2" class="pull-right"><emph>Read more&hellip;</emph></a>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-tmp_hat_diag~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>tmp_hat_diag</strong></td>
+            <td>
+<p>Diagonal elements of the hat matrix</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-fitted_values~2"></span>
+              real(kind=real64),
+            </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n)
+            </td>
+            <td>::</td>
+            <td><strong>fitted_values</strong></td>
+            <td>
+<p>Fitted (smoothed) values of y at the evaluation points</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~2"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+<p>Error code</p>
             </td>
         </tr>
     </tbody>
@@ -975,19 +706,11 @@ These sizes depend on the dimensionality of the data and the maximum neighborhoo
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_plain"></span> <h3>public  subroutine <a href='../proc/loess_fit_plain.html'>loess_fit_plain</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, fitted_values, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_robust"></span> <h3>public  subroutine <a href='../proc/loess_fit_robust.html'>loess_fit_robust</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, fitted_values, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Perform plain LOESS fitting.
-Fits a LOESS model to the data using the specified smoothing parameter.
-Outputs the smoothed response variable array. Caller-provided workspace must already be
-sized via <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>; no input validation
-beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-size bounds is performed here.</p>
+          
+  <p>Validates its inputs, prepares what <a href="../proc/loess_fit_robust_impl.html">loess_fit_robust_impl</a> needs, then calls it. The entry point to reach for first; see <a href="../proc/loess_fit_robust_expert.html">loess_fit_robust_expert</a> to prepare it yourself.</p><a href="../proc/loess_fit_robust.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1002,7 +725,7 @@ beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-siz
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~23"></span>
+              <span class="anchor" id="variable-n~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1017,67 +740,67 @@ beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-siz
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~4"></span>
+              <span class="anchor" id="variable-x~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>x</strong>(n)</td>
+            <td><strong>x</strong></td>
             <td>
 <p>Predictor variable array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y~2"></span>
+              <span class="anchor" id="variable-y~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>y</strong>(n)</td>
+            <td><strong>y</strong></td>
             <td>
 <p>Response variable array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~15"></span>
+              <span class="anchor" id="variable-weights~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>weights</strong>(n)</td>
+            <td><strong>weights</strong></td>
             <td>
 <p>Weight array for data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-eval_points~2"></span>
+              <span class="anchor" id="variable-eval_points~3"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n, 1)
             </td>
             <td>::</td>
-            <td><strong>eval_points</strong>(n,1)</td>
+            <td><strong>eval_points</strong></td>
             <td>
 <p>Evaluation points (x values at which the fitted curve is computed)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~10"></span>
+              <span class="anchor" id="variable-span~3"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1087,12 +810,14 @@ beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-siz
             <td>::</td>
             <td><strong>span</strong></td>
             <td>
-<p>Smoothing parameter for LOESS</p>
+<p>Smoothing parameter for LOESS
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~10"></span>
+              <span class="anchor" id="variable-degree~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1102,7 +827,9 @@ beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-siz
             <td>::</td>
             <td><strong>degree</strong></td>
             <td>
-<p>Degree of the LOESS polynomial</p>
+<p>Degree of the LOESS polynomial
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -1122,127 +849,71 @@ beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-siz
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-compute_influence~2"></span>
-              logical,
+              <span class="anchor" id="variable-compute_influence~3"></span>
+              logical(kind=c_bool),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>compute_influence</strong></td>
             <td>
-<p>Influence calculation flag</p>
+<p>Influence calculation flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-save_factorization~3"></span>
-              logical,
+              logical(kind=c_bool),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>save_factorization</strong></td>
             <td>
-<p>Save matrix factorization flag</p>
+<p>Save matrix factorization flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace~4"></span>
+              <span class="anchor" id="variable-n_iters"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>int_workspace</strong>(int_workspace_size)</td>
+            <td><strong>n_iters</strong></td>
             <td>
-<p>Integer workspace array</p>
+<p>Number of robust iterations
+The minimum valid value is <code>1_int32</code>.
+The default value is <code>3_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>int_workspace_size</strong></td>
-            <td>
-<p>Required size of the integer workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace~4"></span>
+              <span class="anchor" id="variable-fitted_values~3"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>real_workspace</strong>(real_workspace_size)</td>
-            <td>
-<p>Real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-real_workspace_size~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>real_workspace_size</strong></td>
-            <td>
-<p>Required size of the real workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-hat_diag~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>hat_diag</strong>(n)</td>
-            <td>
-<p>Diagonal elements of the hat matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-fitted_values~2"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>fitted_values</strong>(n)</td>
+            <td><strong>fitted_values</strong></td>
             <td>
 <p>Fitted (smoothed) values of y at the evaluation points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~278"></span>
+              <span class="anchor" id="variable-ierr~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1263,21 +934,11 @@ beyond <code>n</code>, <code>span</code>, <code>degree</code>, and workspace-siz
   </div>
 
               <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_robust"></span> <h3>public  subroutine <a href='../proc/loess_fit_robust.html'>loess_fit_robust</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, int_workspace, int_workspace_size, real_workspace, real_workspace_size, hat_diag, robust_weights, combined_weights, residuals, permutation_indices, fitted_values, ierr)  
+    <div class="card-header codesum"><span class="anchor" id="proc-loess_fit_robust_expert"></span> <h3>public  subroutine <a href='../proc/loess_fit_robust_expert.html'>loess_fit_robust_expert</a>(n, x, y, weights, eval_points, span, degree, max_neighborhood_size, compute_influence, save_factorization, n_iters, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_hat_diag, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, fitted_values, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Perform robust LOESS fitting with bisquare reweighting.
-Fits a LOESS model to the data using robust iterations to handle outliers.
-The robust fitting process iterates n_iters times, each iteration:
- - Combines original weights with robust weights (down-weights from previous iteration)
- - Runs LOESS fitting with combined weights
- - Computes residuals (y - fitted values)
- - Updates robust weights using bisquare function (suppresses large residuals)</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/loess_fit_robust_impl.html">loess_fit_robust_impl</a> with what you supply. The expert entry point: it allocates nothing and prepares nothing; <a href="../proc/loess_fit_robust.html">loess_fit_robust</a> does both.</p><a href="../proc/loess_fit_robust_expert.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -1292,7 +953,7 @@ The robust fitting process iterates n_iters times, each iteration:
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n~24"></span>
+              <span class="anchor" id="variable-n~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1307,67 +968,67 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-x~5"></span>
+              <span class="anchor" id="variable-x~4"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>x</strong>(n)</td>
+            <td><strong>x</strong></td>
             <td>
 <p>Predictor variable array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-y~3"></span>
+              <span class="anchor" id="variable-y~4"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>y</strong>(n)</td>
+            <td><strong>y</strong></td>
             <td>
 <p>Response variable array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-weights~16"></span>
+              <span class="anchor" id="variable-weights~4"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>weights</strong>(n)</td>
+            <td><strong>weights</strong></td>
             <td>
 <p>Weight array for data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-eval_points~3"></span>
+              <span class="anchor" id="variable-eval_points~4"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n, 1)
             </td>
             <td>::</td>
-            <td><strong>eval_points</strong>(n,1)</td>
+            <td><strong>eval_points</strong></td>
             <td>
 <p>Evaluation points (x values at which the fitted curve is computed)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~11"></span>
+              <span class="anchor" id="variable-span~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -1377,12 +1038,14 @@ The robust fitting process iterates n_iters times, each iteration:
             <td>::</td>
             <td><strong>span</strong></td>
             <td>
-<p>Smoothing parameter for LOESS</p>
+<p>Smoothing parameter for LOESS
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~11"></span>
+              <span class="anchor" id="variable-degree~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1392,7 +1055,9 @@ The robust fitting process iterates n_iters times, each iteration:
             <td>::</td>
             <td><strong>degree</strong></td>
             <td>
-<p>Degree of the LOESS polynomial</p>
+<p>Degree of the LOESS polynomial
+The minimum valid value is <code>0_int32</code>.
+The maximum valid value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -1412,67 +1077,71 @@ The robust fitting process iterates n_iters times, each iteration:
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-compute_influence~3"></span>
-              logical,
+              <span class="anchor" id="variable-compute_influence~4"></span>
+              logical(kind=c_bool),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>compute_influence</strong></td>
             <td>
-<p>Influence calculation flag</p>
+<p>Influence calculation flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
               <span class="anchor" id="variable-save_factorization~4"></span>
-              logical,
+              logical(kind=c_bool),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>save_factorization</strong></td>
             <td>
-<p>Save matrix factorization flag</p>
+<p>Save matrix factorization flag
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~4"></span>
+              <span class="anchor" id="variable-n_iters~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
-              <td></td>            <td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
               
             </td>
             <td>::</td>
             <td><strong>n_iters</strong></td>
             <td>
-<p>Number of robust iterations</p>
+<p>Number of robust iterations
+The minimum valid value is <code>1_int32</code>.
+The default value is <code>3_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace~5"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(int_workspace_size)
             </td>
             <td>::</td>
-            <td><strong>int_workspace</strong>(int_workspace_size)</td>
+            <td><strong>tmp_int_workspace</strong></td>
             <td>
 <p>Integer workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-int_workspace_size~6"></span>
+              <span class="anchor" id="variable-int_workspace_size~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1482,27 +1151,29 @@ The robust fitting process iterates n_iters times, each iteration:
             <td>::</td>
             <td><strong>int_workspace_size</strong></td>
             <td>
-<p>Required size of the integer workspace array</p>
+<p>Required size of the integer workspace array
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
+The minimum valid value is <code>10000_int32</code>.</p><a href="../proc/loess_fit_robust_expert.html#variable-int_workspace_size~4" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace~5"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~4"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(real_workspace_size)
             </td>
             <td>::</td>
-            <td><strong>real_workspace</strong>(real_workspace_size)</td>
+            <td><strong>tmp_real_workspace</strong></td>
             <td>
 <p>Real workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-real_workspace_size~6"></span>
+              <span class="anchor" id="variable-real_workspace_size~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -1512,206 +1183,84 @@ The robust fitting process iterates n_iters times, each iteration:
             <td>::</td>
             <td><strong>real_workspace_size</strong></td>
             <td>
-<p>Required size of the real workspace array</p>
+<p>Required size of the real workspace array
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.
+The minimum valid value is <code>100000_int32</code>.</p><a href="../proc/loess_fit_robust_expert.html#variable-real_workspace_size~4" class="pull-right"><emph>Read more&hellip;</emph></a>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-hat_diag~3"></span>
+              <span class="anchor" id="variable-tmp_hat_diag~4"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>hat_diag</strong>(n)</td>
+            <td><strong>tmp_hat_diag</strong></td>
             <td>
 <p>Diagonal elements of the hat matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-robust_weights~2"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~2"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>robust_weights</strong>(n)</td>
+            <td><strong>tmp_robust_weights</strong></td>
             <td>
 <p>Robust bisquare weights (updated each iteration, initialized to 1.0)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-combined_weights"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~2"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>combined_weights</strong>(n)</td>
+            <td><strong>tmp_combined_weights</strong></td>
             <td>
 <p>Combined weights: product of user weights and robust weights (weights(i) * robust_weights(i))</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-residuals~2"></span>
+              <span class="anchor" id="variable-tmp_residuals~2"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>residuals</strong>(n)</td>
+            <td><strong>tmp_residuals</strong></td>
             <td>
 <p>Residuals (y - fitted_values), used to compute bisquare robust weights</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-permutation_indices~2"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~2"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>permutation_indices</strong>(n)</td>
+            <td><strong>tmp_permutation_indices</strong></td>
             <td>
 <p>Permutation indices array (from NetLib bisquare weight computation)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-fitted_values~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>fitted_values</strong>(n)</td>
-            <td>
-<p>Fitted (smoothed) values of y at the evaluation points</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~279"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-loess_alloc"></span> <h3>public  subroutine <a href='../proc/loess_alloc.html'>loess_alloc</a>(x, y, span, degree, fitted_values, mode, n_iters, ierr)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Wrapper subroutine for LOESS fitting (plain or robust).
-This subroutine selects between plain and robust LOESS fitting based on the mode.
-It dynamically allocates the required arrays and computes workspace sizes, and handles
-degenerate inputs (single point, near-constant <code>x</code>, or fewer unique <code>x</code> values than the
-polynomial degree requires) by falling back to an identity/copy mapping instead of calling
-into netlib.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read more&hellip;</emph></a>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-x~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>x</strong>(:)</td>
-            <td>
-<p>Predictor variable array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-y~4"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>y</strong>(:)</td>
-            <td>
-<p>Response variable array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-span~12"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>span</strong></td>
-            <td>
-<p>Smoothing parameter for LOESS</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-degree~12"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>degree</strong></td>
-            <td>
-<p>Degree of the LOESS polynomial</p>
             </td>
         </tr>
         <tr>
@@ -1719,49 +1268,19 @@ into netlib.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read
               <span class="anchor" id="variable-fitted_values~4"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n)
             </td>
             <td>::</td>
-            <td><strong>fitted_values</strong>(size(y))</td>
+            <td><strong>fitted_values</strong></td>
             <td>
-<p>Fitted (smoothed) values of y</p>
+<p>Fitted (smoothed) values of y at the evaluation points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~7"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>mode</strong></td>
-            <td>
-<p>Mode of operation: 0 for plain, 1 for robust</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_iters~5"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_iters</strong></td>
-            <td>
-<p>Number of robust iterations (only used when mode = 1)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~280"></span>
+              <span class="anchor" id="variable-ierr~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -1804,7 +1323,7 @@ into netlib.</p><a href="../proc/loess_alloc.html" class="pull-right"><emph>Read
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

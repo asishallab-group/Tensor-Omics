@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for procedures.">88 statements</a>
+                 title=" 0.7% of total for procedures.">131 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_data_validation.F90"> Source File</a>
+              <a href="../src/tox_data_validation_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_validation.f90.html'>tox_data_validation.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_data_validation_c.f90.html'>tox_data_validation_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_data_validation_c.html'>tox_data_validation_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">validate_data_structure_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine validate_data_structure_c(n_genes, n_families, n_samples, gene_ids_raw, gene_ids_len, gene_family_ids_raw, fam_len, gene_to_fam, expression_vectors, family_centroids, shift_vectors, ierr) bind(C, name="validate_data_structure_c")  
+    <h2>public  subroutine validate_data_structure_c(n_genes, n_families, n_samples, gene_ids, gene_ids_strlen, n_gene_ids_elements, gene_family_ids, gene_family_ids_strlen, n_gene_family_ids_elements, gene_to_fam, n_gene_to_fam_elements, expression_vectors, n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2, family_centroids, n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2, shift_vectors, n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2, ierr) bind(C, name="validate_data_structure_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
                   <li class="list-inline-item"><a href='../module/tox_data_validation.html'>tox_data_validation</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +166,6 @@
     </div>
 
 
-    <p>C Binding to validate data structure</p>
 
 
     <h3>Arguments</h3>
@@ -184,7 +181,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~44"></span>
+              <span class="anchor" id="variable-n_genes~26"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -194,12 +191,12 @@
             <td>::</td>
             <td><strong>n_genes</strong></td>
             <td>
-                <p>Number of genes</p>
+                <p>Expected number of genes</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~22"></span>
+              <span class="anchor" id="variable-n_families~13"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -209,12 +206,12 @@
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Number of families</p>
+                <p>Expected number of families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_samples~9"></span>
+              <span class="anchor" id="variable-n_samples~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -224,27 +221,27 @@
             <td>::</td>
             <td><strong>n_samples</strong></td>
             <td>
-                <p>Number of samples</p>
+                <p>Expected number of samples</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_raw~5"></span>
+              <span class="anchor" id="variable-gene_ids"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(gene_ids_strlen, n_gene_ids_elements), target
             </td>
             <td>::</td>
-            <td><strong>gene_ids_raw</strong>(gene_ids_len,n_genes)</td>
+            <td><strong>gene_ids</strong></td>
             <td>
-                <p>Pointer to gene ids array</p>
+                <p>Gene ids</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_ids_len~5"></span>
+              <span class="anchor" id="variable-gene_ids_strlen"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -252,29 +249,44 @@
               target
             </td>
             <td>::</td>
-            <td><strong>gene_ids_len</strong></td>
+            <td><strong>gene_ids_strlen</strong></td>
             <td>
-                <p>Length of gene ids</p>
+                <p>length of the strings in <code>gene_ids</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_family_ids_raw"></span>
+              <span class="anchor" id="variable-n_gene_ids_elements"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_gene_ids_elements</strong></td>
+            <td>
+                <p>number of elements in <code>gene_ids</code></p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-gene_family_ids"></span>
               character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(gene_family_ids_strlen, n_gene_family_ids_elements), target
             </td>
             <td>::</td>
-            <td><strong>gene_family_ids_raw</strong>(fam_len,n_families)</td>
+            <td><strong>gene_family_ids</strong></td>
             <td>
-                <p>Pointer to family ids array</p>
+                <p>Gene family ids</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fam_len"></span>
+              <span class="anchor" id="variable-gene_family_ids_strlen"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -282,14 +294,14 @@
               target
             </td>
             <td>::</td>
-            <td><strong>fam_len</strong></td>
+            <td><strong>gene_family_ids_strlen</strong></td>
             <td>
-                <p>Length of the family indices</p>
+                <p>length of the strings in <code>gene_family_ids</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~24"></span>
+              <span class="anchor" id="variable-n_gene_family_ids_elements"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -297,59 +309,191 @@
               target
             </td>
             <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
+            <td><strong>n_gene_family_ids_elements</strong></td>
             <td>
-                <p>Pointer to gene to family array</p>
+                <p>number of elements in <code>gene_family_ids</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~20"></span>
-              real(kind=c_double),
+              <span class="anchor" id="variable-gene_to_fam~9"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_gene_to_fam_elements), target
+            </td>
+            <td>::</td>
+            <td><strong>gene_to_fam</strong></td>
+            <td>
+                <p>gene to family mapping</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_gene_to_fam_elements"></span>
+              integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               target
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(n_samples,n_genes)</td>
+            <td><strong>n_gene_to_fam_elements</strong></td>
             <td>
-                <p>Pointer to expression vectors</p>
+                <p>number of elements in <code>gene_to_fam</code></p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-family_centroids~10"></span>
+              <span class="anchor" id="variable-expression_vectors~8"></span>
               real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_expression_vectors_elements_dim_1, n_expression_vectors_elements_dim_2), target
+            </td>
+            <td>::</td>
+            <td><strong>expression_vectors</strong></td>
+            <td>
+                <p>Expression vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_expression_vectors_elements_dim_1"></span>
+              integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               target
             </td>
             <td>::</td>
-            <td><strong>family_centroids</strong>(n_samples,n_families)</td>
+            <td><strong>n_expression_vectors_elements_dim_1</strong></td>
             <td>
-                <p>Pointer to family centroids</p>
+                <ol>
+<li>dimension of <code>expression_vectors</code></li>
+</ol>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-shift_vectors~8"></span>
-              real(kind=c_double),
+              <span class="anchor" id="variable-n_expression_vectors_elements_dim_2"></span>
+              integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
               target
             </td>
             <td>::</td>
-            <td><strong>shift_vectors</strong>(2*n_samples,n_genes)</td>
+            <td><strong>n_expression_vectors_elements_dim_2</strong></td>
             <td>
-                <p>Pointer to shift vectors</p>
+                <ol>
+<li>dimension of <code>expression_vectors</code></li>
+</ol>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~197"></span>
+              <span class="anchor" id="variable-family_centroids~2"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_family_centroids_elements_dim_1, n_family_centroids_elements_dim_2), target
+            </td>
+            <td>::</td>
+            <td><strong>family_centroids</strong></td>
+            <td>
+                <p>Family centroids</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_elements_dim_1"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_elements_dim_1</strong></td>
+            <td>
+                <ol>
+<li>dimension of <code>family_centroids</code></li>
+</ol>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_family_centroids_elements_dim_2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_family_centroids_elements_dim_2</strong></td>
+            <td>
+                <ol>
+<li>dimension of <code>family_centroids</code></li>
+</ol>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-shift_vectors~2"></span>
+              real(kind=c_double),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              dimension(n_shift_vectors_elements_dim_1, n_shift_vectors_elements_dim_2), target
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors</strong></td>
+            <td>
+                <p>Shift vectors</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_elements_dim_1"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_elements_dim_1</strong></td>
+            <td>
+                <ol>
+<li>dimension of <code>shift_vectors</code></li>
+</ol>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-n_shift_vectors_elements_dim_2"></span>
+              integer(kind=c_int),
+            </td>
+<td>intent(in),</td>
+              <td></td>            <td>
+              target
+            </td>
+            <td>::</td>
+            <td><strong>n_shift_vectors_elements_dim_2</strong></td>
+            <td>
+                <ol>
+<li>dimension of <code>shift_vectors</code></li>
+</ol>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~80"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -396,7 +540,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

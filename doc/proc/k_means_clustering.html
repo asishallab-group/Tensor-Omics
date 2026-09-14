@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">20 statements</a>
+                 title=" 0.1% of total for procedures.">19 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,12 +150,11 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, max_iterations)  
+    <h2>public pure subroutine k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, max_iterations, ierr)  
 </h2>
     
 
-    <p>k-means clustering algorithm:</p>
-<ol>
+    <ol>
 <li>Assigns each data point to one of <code>k</code> clusters whose centroid is clostest</li>
 <li>Recalculates the centroids using the mean of its assigned points</li>
 <li>repeat 1-2 until assignment remains unchanged</li>
@@ -176,7 +174,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_clusters~2"></span>
+              <span class="anchor" id="variable-n_clusters~8"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -186,12 +184,14 @@
             <td>::</td>
             <td><strong>n_clusters</strong></td>
             <td>
-                <p>number (<code>k</code>) of clusters</p>
+                <p>number (<code>k</code>) of clusters
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_points</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-data_points"></span>
+              <span class="anchor" id="variable-data_points~5"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -206,7 +206,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_points~60"></span>
+              <span class="anchor" id="variable-n_points~32"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -221,7 +221,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~11"></span>
+              <span class="anchor" id="variable-n_dims~13"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -236,7 +236,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-centroids~5"></span>
+              <span class="anchor" id="variable-centroids~10"></span>
               real(kind=real64),
             </td>
 <td>intent(inout),</td>
@@ -253,7 +253,7 @@ The centroids should be unique. This is not checked in this routine.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-labels~2"></span>
+              <span class="anchor" id="variable-labels~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -269,7 +269,7 @@ The centroids should be unique. This is not checked in this routine.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-label_counts~2"></span>
+              <span class="anchor" id="variable-label_counts~7"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -284,22 +284,7 @@ The centroids should be unique. This is not checked in this routine.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~236"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-                <p>Error code</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-max_iterations~2"></span>
+              <span class="anchor" id="variable-max_iterations~6"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -309,7 +294,23 @@ The centroids should be unique. This is not checked in this routine.</p>
             <td>::</td>
             <td><strong>max_iterations</strong></td>
             <td>
-                <p>number of maximum iterations of the clustering, default <code>300_int32</code></p>
+                <p>number of maximum iterations of the clustering.
+The default value is <code>300_int32</code>.</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~106"></span>
+              integer(kind=int32),
+            </td>
+<td>intent(out)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>ierr</strong></td>
+            <td>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -346,7 +347,7 @@ The centroids should be unique. This is not checked in this routine.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

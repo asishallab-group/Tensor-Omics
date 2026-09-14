@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">24 statements</a>
+                 title=" 0.3% of total for procedures.">48 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,11 +150,10 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine detect_subfunctionalization(ancestor, genes, n_genes, n_dims, rdi_threshold, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, tmp_active_mask, tmp_paralog_vector, paralog_norms, sorted_paralog_norms_perm, tmp_work_array, ierr)  
+    <h2>public pure subroutine detect_subfunctionalization(ancestor, genes, n_genes, n_dims, filtered_paralogs_mask, n_mask_chunks, n_results, max_subset_size, work_arr_paralog_subsets, n_paralog_subsets, rdi_threshold, paralog_norms, sorted_paralog_norms_perm, ierr)  
 </h2>
     
 
-    <p>Identifies subsets of paralogs exhibiting significant angles to the <code>ancestor</code></p>
 
 
     <h3>Arguments</h3>
@@ -171,7 +169,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-ancestor~2"></span>
+              <span class="anchor" id="variable-ancestor~9"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -186,7 +184,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-genes~7"></span>
+              <span class="anchor" id="variable-genes~14"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -201,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~67"></span>
+              <span class="anchor" id="variable-n_genes~53"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -216,7 +214,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dims~28"></span>
+              <span class="anchor" id="variable-n_dims~21"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -231,22 +229,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi_threshold"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>rdi_threshold</strong></td>
-            <td>
-                <p>max allowed residual distance from <code>ancestor</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-filtered_paralogs_mask~2"></span>
+              <span class="anchor" id="variable-filtered_paralogs_mask~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -256,12 +239,12 @@
             <td>::</td>
             <td><strong>filtered_paralogs_mask</strong></td>
             <td>
-                <p>bit mask with genes' indices kept by pattern set to 1, else 0. Use <code>filter_paralogs_by_pattern</code> for its calculation</p>
+                <p>bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching <code>filter_paralogs_by_pattern_*</code> routine</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_mask_chunks~2"></span>
+              <span class="anchor" id="variable-n_mask_chunks~17"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -271,12 +254,13 @@
             <td>::</td>
             <td><strong>n_mask_chunks</strong></td>
             <td>
-                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation</p>
+                <p>number of 32 bit chunks a mask needs to encode <code>n_genes</code> genes. Use subroutine <code>mask_chunk_count</code> for calculation
+The minimum valid value is <code>(n_genes + 31) / 32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_results~2"></span>
+              <span class="anchor" id="variable-n_results~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -291,7 +275,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-max_subset_size~2"></span>
+              <span class="anchor" id="variable-max_subset_size~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -301,12 +285,20 @@
             <td>::</td>
             <td><strong>max_subset_size</strong></td>
             <td>
-                <p>maximum subset size of checked gene subsets. <strong><em>USE <code>calc_work_arr_paralog_subsets_size</code> TO DETERMINE THIS NUMBER</em></strong></p>
+                <p>maximum subset size of checked gene subsets. Too large a value is capped to the
+maximum valid size. The bindings cap it automatically while sizing the work
+array; a Fortran caller caps it by calling
+<a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a> first.
+Zero is in range and means there is no subset to check -- the sizing routine reports
+it whenever the filtered families hold a single gene each. It reports a work array
+of zero slots along with it, which this routine does not accept, so a caller that
+gets zero back has nothing to detect and should not call here at all.
+The minimum valid value is <code>0_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-work_arr_paralog_subsets~2"></span>
+              <span class="anchor" id="variable-work_arr_paralog_subsets~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
@@ -325,7 +317,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_paralog_subsets~2"></span>
+              <span class="anchor" id="variable-n_paralog_subsets~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -335,42 +327,29 @@
             <td>::</td>
             <td><strong>n_paralog_subsets</strong></td>
             <td>
-                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>. <strong><em>USE <code>calc_work_arr_paralog_subsets_size</code> TO DETERMINE THIS NUMBER</em></strong></p>
+                <p>number of gene subsets that can be stored in <code>work_arr_paralog_subsets</code>.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>work_array_size</code> output produced by <a href="../proc/calc_work_arr_paralog_subsets_size.html">calc_work_arr_paralog_subsets_size</a>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_active_mask~2"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_mask_chunks)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_active_mask</strong></td>
-            <td>
-                <p>working array to hold the extended subsets</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_paralog_vector~2"></span>
+              <span class="anchor" id="variable-rdi_threshold~4"></span>
               real(kind=real64),
             </td>
-<td>intent(out),</td>
+<td>intent(in)</td>
               <td></td>            <td>
-              dimension(n_dims)
+              
             </td>
             <td>::</td>
-            <td><strong>tmp_paralog_vector</strong></td>
+            <td><strong>rdi_threshold</strong></td>
             <td>
-                <p>vector used for pruning subsets</p>
+                <p>max allowed residual distance from <code>ancestor</code>
+The minimum valid value is <code>0.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-paralog_norms"></span>
+              <span class="anchor" id="variable-paralog_norms~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
@@ -380,12 +359,13 @@
             <td>::</td>
             <td><strong>paralog_norms</strong></td>
             <td>
-                <p>needed for subset pruning, holds the euclidean norms of genes (you can use the <code>norm</code> function from <code>f42_utils</code> function for this)</p>
+                <p>euclidean norms of the genes, used for subset pruning (<code>norm</code> from <code>f42_vector_impl</code> computes them)
+The minimum valid value is <code>0.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_paralog_norms_perm"></span>
+              <span class="anchor" id="variable-sorted_paralog_norms_perm~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -395,27 +375,14 @@
             <td>::</td>
             <td><strong>sorted_paralog_norms_perm</strong></td>
             <td>
-                <p>needed for subset pruning, as the minimum norm of the genes that could extend a subset should not be lower than the subset angle to the ancestor</p>
+                <p>ascending permutation of the norms, for subset pruning: the smallest norm among the genes that could extend a subset must not fall below the subset's angle to the ancestor
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_genes</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_work_array~3"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_genes)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_work_array</strong></td>
-            <td>
-                <p>needed for efficient check of minimum value after a certain index</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~301"></span>
+              <span class="anchor" id="variable-ierr~205"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -462,7 +429,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

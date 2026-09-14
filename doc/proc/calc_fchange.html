@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/VivianBass" target="_blank" >Vivian Bass</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">26 statements</a>
+                 title=" 0.1% of total for procedures.">18 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -155,8 +154,7 @@
 </h2>
     
 
-    <p>Calculate <code>log2 fold changes</code> between condition and control groups.
-For each control-condition pair, this subroutine computes the <code>log2 fold change</code>
+    <p>For each control-condition pair, this subroutine computes the <code>log2 fold change</code>
 by subtracting the expression value in the control group from the corresponding
 value in the condition group, for all genes.</p>
 
@@ -174,7 +172,7 @@ value in the condition group, for all genes.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~57"></span>
+              <span class="anchor" id="variable-n_genes~74"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -189,7 +187,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~8"></span>
+              <span class="anchor" id="variable-n_tissues~16"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -204,7 +202,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_pairs~2"></span>
+              <span class="anchor" id="variable-n_pairs~3"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -219,7 +217,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-control_tissues"></span>
+              <span class="anchor" id="variable-control_tissues~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -229,12 +227,14 @@ value in the condition group, for all genes.</p>
             <td>::</td>
             <td><strong>control_tissues</strong></td>
             <td>
-                <p>Control tissue indices</p>
+                <p>Control tissue indices
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_tissues</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-condition_tissues"></span>
+              <span class="anchor" id="variable-condition_tissues~2"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -244,7 +244,9 @@ value in the condition group, for all genes.</p>
             <td>::</td>
             <td><strong>condition_tissues</strong></td>
             <td>
-                <p>Condition tissue indices</p>
+                <p>Condition tissue indices
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_tissues</code>.</p>
             </td>
         </tr>
         <tr>
@@ -259,12 +261,14 @@ value in the condition group, for all genes.</p>
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-                <p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
+                <p>Gene Expression matrix, from <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a>
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-fold_changes"></span>
+              <span class="anchor" id="variable-fold_changes~2"></span>
               real(kind=real64),
             </td>
 <td>intent(out),</td>
@@ -279,7 +283,7 @@ value in the condition group, for all genes.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~226"></span>
+              <span class="anchor" id="variable-ierr~294"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -289,7 +293,7 @@ value in the condition group, for all genes.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -326,7 +330,7 @@ value in the condition group, for all genes.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

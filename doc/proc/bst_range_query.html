@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">26 statements</a>
+                 title=" 0.1% of total for procedures.">24 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,11 +150,10 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine bst_range_query(values, sorted_indices, n_values, lower_bound, upper_bound, output_indices, n_matches, ierr)  
+    <h2>public pure subroutine bst_range_query(values, n_values, lower_bound, upper_bound, output_indices, n_matches, ierr)  
 </h2>
     
 
-    <p>Perform a 1D range query over the sorted index.</p>
 
 
     <h3>Arguments</h3>
@@ -171,37 +169,22 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-values~4"></span>
+              <span class="anchor" id="variable-values~14"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>values</strong>(n_values)</td>
+            <td><strong>values</strong></td>
             <td>
                 <p>Input real array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_indices~3"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>sorted_indices</strong>(n_values)</td>
-            <td>
-                <p>Permutation index array (sorted)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_values~2"></span>
+              <span class="anchor" id="variable-n_values~12"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -216,7 +199,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-lower_bound"></span>
+              <span class="anchor" id="variable-lower_bound~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -226,12 +209,13 @@
             <td>::</td>
             <td><strong>lower_bound</strong></td>
             <td>
-                <p>Lower bound of range (inclusive)</p>
+                <p>Lower bound of range (inclusive)
+The maximum valid value is <code>upper_bound</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-upper_bound"></span>
+              <span class="anchor" id="variable-upper_bound~4"></span>
               real(kind=real64),
             </td>
 <td>intent(in)</td>
@@ -246,22 +230,23 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-output_indices"></span>
+              <span class="anchor" id="variable-output_indices~4"></span>
               integer(kind=int32),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_values)
             </td>
             <td>::</td>
-            <td><strong>output_indices</strong>(n_values)</td>
+            <td><strong>output_indices</strong></td>
             <td>
-                <p>Output array of matching indices</p>
+                <p>Output array of matching indices.
+The first <code>n_matches</code> elements will hold the results.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_matches"></span>
+              <span class="anchor" id="variable-n_matches~4"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -276,7 +261,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~68"></span>
+              <span class="anchor" id="variable-ierr~357"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -286,7 +271,7 @@
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -323,7 +308,7 @@
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
