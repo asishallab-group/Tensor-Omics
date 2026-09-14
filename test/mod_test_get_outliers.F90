@@ -5,7 +5,7 @@ module mod_test_get_outliers
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
   use test_suite
-  use tox_errors, only: get_err_code
+  use tox_errors, only: get_err_code, ERR_INVALID_INPUT
   implicit none
   public
 
@@ -14,7 +14,7 @@ contains
   !> @brief Get array of all available tests (as subroutine, not function).
   function get_all_tests_get_outliers() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
-    allocate(all_tests(26))
+    allocate(all_tests(27))
 
     all_tests(1) = test_case("test_scaling_basic", test_scaling_basic)
     all_tests(2) = test_case("test_rdi_basic", test_rdi_basic)
@@ -42,6 +42,7 @@ contains
     all_tests(24) = test_case("test_scaling_performance_benchmark",test_scaling_performance_benchmark)
     all_tests(25) = test_case("test_family_scaling_non_finite_distance", test_family_scaling_non_finite_distance)
     all_tests(26) = test_case("test_family_scaling_fallback_returns_linear_scale", test_family_scaling_fallback_returns_linear_scale)
+    all_tests(27) = test_case("test_family_scaling_degree_bounds", test_family_scaling_degree_bounds)
 
   end function get_all_tests_get_outliers
 
@@ -1178,6 +1179,36 @@ contains
     call assert_equal_array_real(dscale, expected_stddev, n_families, 1e-12_real64, &
                                  'fallback: dscale is the median standard deviation')
   end subroutine test_family_scaling_fallback_returns_linear_scale
+
+  !> The LOESS degree must be 0, 1 or 2, the local models LOESS knows; -1 and 3 are
+  !| ERR_INVALID_INPUT. Unchecked, they reached netlib's ehg182, which stops the whole program --
+  !| the caller's Python or R session with it.
+  subroutine test_family_scaling_degree_bounds()
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    integer(int32), parameter :: n_families = 8, genes_per_fam = 3, n_genes = n_families*genes_per_fam
+    integer(int32), parameter :: invalid(2) = [-1, 3]
+    real(real64) :: distances(n_genes), dscale(n_families), loess_x(n_families), loess_y(n_families)
+    real(real64) :: low_sd_cutoff
+    integer(int32) :: gene_to_fam(n_genes), indices_used(n_families), excluded_low_sd(n_families)
+    integer(int32) :: ierr, i_family, i_member, i_gene, i_degree
+
+    i_gene = 0
+    do i_family = 1, n_families
+      do i_member = 1, genes_per_fam
+        i_gene = i_gene + 1
+        gene_to_fam(i_gene) = i_family
+        distances(i_gene) = real(i_family, real64) + 0.1_real64*real(i_member, real64)
+      end do
+    end do
+
+    do i_degree = 1, size(invalid)
+      call compute_family_scaling(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, &
+                                  degree=invalid(i_degree), low_sd_cutoff=low_sd_cutoff, &
+                                  excluded_low_sd=excluded_low_sd, ierr=ierr)
+      call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, &
+                            "test_family_scaling_degree_bounds: degrees -1 and 3 are invalid")
+    end do
+  end subroutine test_family_scaling_degree_bounds
 
 end module mod_test_get_outliers
 
