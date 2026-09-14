@@ -13,7 +13,7 @@ module tox_data_integration_jsd_impl
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use f42_math_impl, only: clamp, is_close
     use f42_sort_impl, only: sort_array_heapsort
-    use f42_stats_impl, only: calc_percentile_impl
+    use f42_stats_impl, only: calc_quantile_impl
     M_IMPLICIT_NONE
 contains
 
@@ -21,11 +21,11 @@ contains
     !| AUTHOR_FRANZ_ERIC_SILL
     !| This takes the pool already built; `determine_study_shared_residual_range` builds it from
     !| the neighborhood residuals of two studies first, if that is what is at hand.
-    pure subroutine determine_shared_residual_range_impl(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
+    pure subroutine determine_shared_residual_range_impl(abs_residual_pool, abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile_level)
         integer(int32), intent(in) :: pool_size
             !! Size of pool of residuals `abs_residual_pool`, usually `(n_reps_S1 + n_reps_2)*n_neighbors*n_points`
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+        real(real64), intent(in), optional :: residual_range_quantile_level
+            !! Quantile level in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(0.95)
@@ -40,12 +40,12 @@ contains
             !! DM_MAX(pool_size)
 
         integer(int32) :: i_pool, last_non_nan
-        real(real64) :: actual_quantile
+        real(real64) :: actual_quantile_level
 
-        M_DEFAULT_VAL(residual_range_quantile, actual_quantile, 0.95_real64)
+        M_DEFAULT_VAL(residual_range_quantile_level, actual_quantile_level, 0.95_real64)
 
         last_non_nan = pool_size
-        ! NaN is always last -> find last non-NaN index for percentile calculation
+        ! NaN is always last -> find last non-NaN index for the quantile calculation
         do i_pool = last_non_nan, 1, -1
             if (ieee_is_nan(abs_residual_pool(abs_residual_pool_perm(i_pool)))) then
                 last_non_nan = last_non_nan - 1
@@ -59,7 +59,7 @@ contains
             return
         end if
 
-        call calc_percentile_impl(abs_residual_pool, pool_size, abs_residual_pool_perm, actual_quantile, &
+        call calc_quantile_impl(abs_residual_pool, pool_size, abs_residual_pool_perm, actual_quantile_level, &
                                   shared_residual_range, n_considered=last_non_nan)
     end subroutine determine_shared_residual_range_impl
 
@@ -68,7 +68,7 @@ contains
     !| Pools the absolute residuals of both studies, sorts them, and takes the quantile exactly
     !| as `determine_shared_residual_range` does.
     pure subroutine determine_study_shared_residual_range_impl(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, &
-                                                                 tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile)
+                                                                 tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile_level)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
         integer(int32), intent(in) :: n_reps_S2
@@ -87,8 +87,8 @@ contains
             !! Work array holding the pooled absolute residuals of both studies
         integer(int32), dimension((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), intent(out) :: tmp_abs_residual_pool_perm
             !! Work array for the permutation that sorts `tmp_abs_residual_pool`
-        real(real64), intent(in), optional :: residual_range_quantile
-            !! Quantile in [0,1] for determining the residual range
+        real(real64), intent(in), optional :: residual_range_quantile_level
+            !! Quantile level in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(0.95)
@@ -122,7 +122,7 @@ contains
 
         call sort_array_heapsort(tmp_abs_residual_pool, tmp_abs_residual_pool_perm)
 
-        call determine_shared_residual_range_impl(tmp_abs_residual_pool, tmp_abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
+        call determine_shared_residual_range_impl(tmp_abs_residual_pool, tmp_abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile_level)
     end subroutine determine_study_shared_residual_range_impl
 
     !> summary: Summarize the neighborhood residuals in absolute histogram counts and probability mass functions

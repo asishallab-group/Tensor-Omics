@@ -11,11 +11,11 @@ import ctypes
 # Path configuration to import your functions
 # Adjust the path if your module is in a different directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from tensor_omics import compute_scaled_distance_quantile as _compute_scaled_distance_quantile
+from tensor_omics import compute_scaled_distance_tail_probability as _compute_scaled_distance_tail_probability
 from test_helpers import run_all_tests
 
 
-def compute_scaled_distance_quantile(distribution, c_const):
+def compute_scaled_distance_tail_probability(distribution, c_const):
     """Clamp-prep in front of the Fortran routine, which takes rdi and the distribution.
 
     Negatives are invalid and clamped to zero. The permutation that sorts the clamped
@@ -28,7 +28,7 @@ def compute_scaled_distance_quantile(distribution, c_const):
     sorted_rdi = dist.copy()
     sorted_rdi[sorted_rdi < 0.0] = 0.0
 
-    return _compute_scaled_distance_quantile(dist, sorted_rdi, float(c_const))
+    return _compute_scaled_distance_tail_probability(dist, sorted_rdi, float(c_const))
 
 
 def _assert_allclose(a, b, tol=1e-12, msg=""):
@@ -38,12 +38,12 @@ def _assert_allclose(a, b, tol=1e-12, msg=""):
         raise AssertionError(msg or f"Arrays not close.\nExpected: {b}\nGot: {a}")
 
 
-def _naive_scaled_distance_quantile(distribution, c_const):
+def _naive_scaled_distance_tail_probability(distribution, c_const):
     """
     Naive reference implementation that matches your documented behavior:
-    - distribution values < 0 are "invalid": quantile=1 for those genes
+    - distribution values < 0 are "invalid": tail_probability=1 for those genes
     - distribution is clamped to 0 for building the empirical distribution D
-    - Upper-tail one-sided quantile with >=
+    - One-sided upper-tail probability with >=
     """
     dist = np.asarray(distribution, dtype=np.float64)
     n = dist.size
@@ -68,99 +68,99 @@ def _naive_scaled_distance_quantile(distribution, c_const):
 
 
 # =====================
-# Tests for compute_scaled_distance_quantile
+# Tests for compute_scaled_distance_tail_probability
 # =====================
 
-def test_empirical_p_values_basic():
+def test_tail_probability_basic():
     distribution = np.array([0.5, 1.2, 0.8, 0.3], dtype=np.float64)
     c_const = 1.0
 
-    quantile = compute_scaled_distance_quantile(distribution, c_const)
+    tail_probability = compute_scaled_distance_tail_probability(distribution, c_const)
 
-    # Verify quantile is within [0, 1]
-    assert np.all(quantile >= 0.0) and np.all(quantile <= 1.0), "quantile must be in [0,1]"
+    # Verify tail_probability is within [0, 1]
+    assert np.all(tail_probability >= 0.0) and np.all(tail_probability <= 1.0), "tail_probability must be in [0,1]"
 
     # Verify against naive implementation
-    expected = _naive_scaled_distance_quantile(distribution, c_const)
-    _assert_allclose(quantile, expected, tol=1e-12, msg="Basic test: quantile mismatch vs naive reference")
+    expected = _naive_scaled_distance_tail_probability(distribution, c_const)
+    _assert_allclose(tail_probability, expected, tol=1e-12, msg="Basic test: tail_probability mismatch vs naive reference")
 
 
-def test_empirical_p_values_all_zeros():
+def test_tail_probability_all_zeros():
     distribution = np.array([0, 0, 0, 0, 0], dtype=np.float64)
     c_const = 1.0
 
-    quantile = compute_scaled_distance_quantile(distribution, c_const)
+    tail_probability = compute_scaled_distance_tail_probability(distribution, c_const)
 
     # All elements >= 0, and distribution D is all zeros:
     # count_ge = n for d=0 => (n+c)/(n+c) = 1
     expected = np.ones_like(distribution, dtype=np.float64)
-    _assert_allclose(quantile, expected, tol=0.0, msg="All zeros: expected all ones")
+    _assert_allclose(tail_probability, expected, tol=0.0, msg="All zeros: expected all ones")
 
 
-def test_empirical_p_values_negative_values():
+def test_tail_probability_negative_values():
     distribution = np.array([-0.5, 1.2, -0.8, 0.3], dtype=np.float64)
     c_const = 1.0
 
-    quantile = compute_scaled_distance_quantile(distribution, c_const)
+    tail_probability = compute_scaled_distance_tail_probability(distribution, c_const)
 
-    # Verify quantile for negative values are 1
-    assert np.all(quantile[distribution < 0.0] == 1.0), "Negative inputs must return quantile=1"
+    # Verify tail_probability for negative values are 1
+    assert np.all(tail_probability[distribution < 0.0] == 1.0), "Negative inputs must return tail_probability=1"
 
     # Verify against naive implementation
-    expected = _naive_scaled_distance_quantile(distribution, c_const)
-    _assert_allclose(quantile, expected, tol=1e-12, msg="Negative values: quantile mismatch vs naive reference")
+    expected = _naive_scaled_distance_tail_probability(distribution, c_const)
+    _assert_allclose(tail_probability, expected, tol=1e-12, msg="Negative values: tail_probability mismatch vs naive reference")
 
 
-def test_empirical_p_values_large_distribution():
+def test_tail_probability_large_distribution():
     rng = np.random.default_rng(42)  # reproducible
     distribution = rng.uniform(0.0, 10.0, size=1000).astype(np.float64)
     c_const = 1.0
 
-    quantile = compute_scaled_distance_quantile(distribution, c_const)
+    tail_probability = compute_scaled_distance_tail_probability(distribution, c_const)
 
-    # Verify quantile is within [0, 1]
-    assert np.all(quantile >= 0.0) and np.all(quantile <= 1.0), "quantile must be in [0,1]"
+    # Verify tail_probability is within [0, 1]
+    assert np.all(tail_probability >= 0.0) and np.all(tail_probability <= 1.0), "tail_probability must be in [0,1]"
 
     # Spot-check a handful against naive (avoid O(n^2) full check for 1000 if you want faster tests)
-    expected = _naive_scaled_distance_quantile(distribution, c_const)
+    expected = _naive_scaled_distance_tail_probability(distribution, c_const)
     idx = np.array([0, 1, 2, 10, 123, 999], dtype=int)
-    _assert_allclose(quantile[idx], expected[idx], tol=1e-12, msg="Large dist: spot-check mismatch vs naive")
+    _assert_allclose(tail_probability[idx], expected[idx], tol=1e-12, msg="Large dist: spot-check mismatch vs naive")
 
 
 # Optional extra tests (recommended)
 
-def test_empirical_p_values_monotonicity_on_sorted_inputs():
+def test_tail_probability_monotonicity_on_sorted_inputs():
     distribution = np.array([0.0, 0.5, 1.0, 2.0, 4.0], dtype=np.float64)
     c_const = 1.0
 
-    quantile = compute_scaled_distance_quantile(distribution, c_const)
+    tail_probability = compute_scaled_distance_tail_probability(distribution, c_const)
 
-    # For increasing d, quantile(d) should be non-increasing (upper tail)
-    assert np.all(quantile[:-1] >= quantile[1:]), "quantile must be non-increasing as d increases"
+    # For increasing d, tail_probability(d) should be non-increasing (upper tail)
+    assert np.all(tail_probability[:-1] >= tail_probability[1:]), "tail_probability must be non-increasing as d increases"
 
 
-def test_empirical_p_values_extremes():
+def test_tail_probability_extremes():
     rdi = np.array([-1.0, 0.0, 10.0, 3.0], dtype=np.float64)
     c_const = 1.0
 
-    quantile = compute_scaled_distance_quantile(rdi, c_const)
+    tail_probability = compute_scaled_distance_tail_probability(rdi, c_const)
 
     n = rdi.size
     denom = n + c_const
 
     # negative -> 1
-    assert quantile[0] == 1.0, "negative -> quantile=1"
+    assert tail_probability[0] == 1.0, "negative -> tail_probability=1"
 
     # d=0 -> all clamped values >=0 -> count=n -> 1
-    assert abs(quantile[1] - 1.0) <= 0.0, "d=0 -> quantile=1"
+    assert abs(tail_probability[1] - 1.0) <= 0.0, "d=0 -> tail_probability=1"
 
     # d=10 is IN the distribution and is the max -> count=1 -> (1+c)/(n+c)
     expected = (1.0 + c_const) / denom
-    assert abs(quantile[2] - expected) < 1e-12, "d==max (10) -> quantile=(1+c)/(n+c)"
+    assert abs(tail_probability[2] - expected) < 1e-12, "d==max (10) -> tail_probability=(1+c)/(n+c)"
 
     # d=3 -> values >=3 are [3,10] -> count=2 -> (2+c)/(n+c)
     expected = (2.0 + c_const) / denom
-    assert abs(quantile[3] - expected) < 1e-12, "d=3 -> quantile=(2+c)/(n+c)"
+    assert abs(tail_probability[3] - expected) < 1e-12, "d=3 -> tail_probability=(2+c)/(n+c)"
 
 
 if __name__ == "__main__":

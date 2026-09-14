@@ -112,18 +112,18 @@ SEXP compute_rdi_call(SEXP distances, SEXP gene_to_fam, SEXP dscale) {
     return _out;
 }
 
-SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP percentile) {
+SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP quantile_level) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_genes = (int) Rf_length(rdi);
 
     // scalar inputs, pulled from their length-1 vectors
-    double percentile_v = Rf_asReal(percentile);
+    double quantile_level_v = Rf_asReal(quantile_level);
 
     // outputs and work space
     unsigned char* is_outlier_c = tox_bool_alloc(n_genes);
     double threshold = 0;
-    SEXP quantile = PROTECT(Rf_allocVector(REALSXP, n_genes)); nprot++;
+    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); nprot++;
     int ierr = 0;
 
     identify_outliers_c(
@@ -133,8 +133,8 @@ SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP percentil
         INTEGER(perm),
         is_outlier_c,
         &threshold,
-        REAL(quantile),
-        &percentile_v,
+        REAL(tail_probability),
+        &quantile_level_v,
         &ierr
     );
 
@@ -144,33 +144,33 @@ SEXP identify_outliers_call(SEXP rdi, SEXP sorted_rdi, SEXP perm, SEXP percentil
     SEXP _out = PROTECT(Rf_allocVector(VECSXP, 4)); nprot++;
     SET_VECTOR_ELT(_out, 0, is_outlier);
     SET_VECTOR_ELT(_out, 1, Rf_ScalarReal(threshold));
-    SET_VECTOR_ELT(_out, 2, quantile);
+    SET_VECTOR_ELT(_out, 2, tail_probability);
     SET_VECTOR_ELT(_out, 3, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 4)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("is_outlier"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("threshold"));
-    SET_STRING_ELT(_nms, 2, Rf_mkChar("quantile"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("tail_probability"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;
 }
 
-SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEXP percentile) {
+SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEXP quantile_level) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_genes = (int) Rf_length(distances);
 
     // scalar inputs, pulled from their length-1 vectors
     int n_families_v = Rf_asInteger(n_families);
-    double percentile_v = Rf_asReal(percentile);
+    double quantile_level_v = Rf_asReal(quantile_level);
 
     // outputs and work space
     unsigned char* is_outlier_c = tox_bool_alloc(n_genes);
     SEXP loess_x = PROTECT(Rf_allocVector(REALSXP, n_families_v)); nprot++;
     SEXP loess_y = PROTECT(Rf_allocVector(REALSXP, n_families_v)); nprot++;
     SEXP loess_n = PROTECT(Rf_allocVector(INTSXP, n_families_v)); nprot++;
-    SEXP quantile = PROTECT(Rf_allocVector(REALSXP, n_genes)); nprot++;
+    SEXP tail_probability = PROTECT(Rf_allocVector(REALSXP, n_genes)); nprot++;
     int ierr = 0;
 
     detect_outliers_c(
@@ -182,9 +182,9 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
         REAL(loess_x),
         REAL(loess_y),
         INTEGER(loess_n),
-        REAL(quantile),
+        REAL(tail_probability),
         &ierr,
-        &percentile_v
+        &quantile_level_v
     );
 
     // convert the outputs back
@@ -195,14 +195,14 @@ SEXP detect_outliers_call(SEXP n_families, SEXP distances, SEXP gene_to_fam, SEX
     SET_VECTOR_ELT(_out, 1, loess_x);
     SET_VECTOR_ELT(_out, 2, loess_y);
     SET_VECTOR_ELT(_out, 3, loess_n);
-    SET_VECTOR_ELT(_out, 4, quantile);
+    SET_VECTOR_ELT(_out, 4, tail_probability);
     SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(ierr));
     SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 6)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("is_outlier"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("loess_x"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("loess_y"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("loess_n"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("quantile"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("tail_probability"));
     SET_STRING_ELT(_nms, 5, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
