@@ -214,6 +214,8 @@ def normalization_pipeline(
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
+        The minimum valid value is `EPS_LOESS`.
+        The maximum valid value is `1.0`.
     degree : int, optional, default 2
         LOESS degree parameter.
         The default value is `2`.
@@ -299,6 +301,8 @@ def normalize_by_std_dev(
     span : float, optional, default 0.7
         LOESS span parameter.
         The default value is `0.7`.
+        The minimum valid value is `EPS_LOESS`.
+        The maximum valid value is `1.0`.
     degree : int, optional, default 2
         LOESS degree parameter.
         The default value is `2`.

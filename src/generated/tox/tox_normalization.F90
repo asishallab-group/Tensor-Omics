@@ -18,7 +18,7 @@ module tox_normalization
     use tox_normalization_impl, only: normalize_by_std_dev_impl, normalize_unit_length_impl, quantile_normalization_impl, root_mean_sq_normalization_impl
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use tox_loess_impl, only: tox_loess_required_workspace
+    use tox_loess_impl, only: EPS_LOESS, tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
     use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
     use tox_errors, only: validate_in_range_int, validate_in_range_real
@@ -97,6 +97,8 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -128,7 +130,7 @@ contains
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
-        call validate_in_range_real(span, ierr, arg_pos=7_int32)
+        call validate_in_range_real(span, ierr, arg_pos=7_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=8_int32, min=0_int32, max=2_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
@@ -274,6 +276,8 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -292,7 +296,7 @@ contains
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=12_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=14_int32)
-        call validate_in_range_real(span, ierr, arg_pos=22_int32)
+        call validate_in_range_real(span, ierr, arg_pos=22_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=23_int32, min=0_int32, max=2_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
@@ -351,6 +355,8 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -378,7 +384,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
-        call validate_in_range_real(span, ierr, arg_pos=5_int32)
+        call validate_in_range_real(span, ierr, arg_pos=5_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=6_int32, min=0_int32, max=2_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
@@ -514,6 +520,8 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -528,7 +536,7 @@ contains
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=10_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=12_int32)
-        call validate_in_range_real(span, ierr, arg_pos=20_int32)
+        call validate_in_range_real(span, ierr, arg_pos=20_int32, min=EPS_LOESS, max=1.0_real64)
         call validate_in_range_int(degree, ierr, arg_pos=21_int32, min=0_int32, max=2_int32)
         call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return

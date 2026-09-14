@@ -92,6 +92,8 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -220,6 +222,8 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -312,6 +316,8 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
@@ -424,6 +430,8 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.

@@ -18,7 +18,7 @@ module tox_normalization_impl
                           validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH
     use f42_math_impl, only: is_close, logx_helper, above, mean, std_dev
     use f42_vector_impl, only: norm
-    use tox_loess_impl, only: loess_fit_robust_impl
+    use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
 #define CM_LOESS_DEGREE_DEFAULT 2_int32
@@ -138,6 +138,8 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! DM_DEFAULT(CM_LOESS_SPAN_DEFAULT)
+            !! DM_MIN(EPS_LOESS)
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)
@@ -283,6 +285,8 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! DM_DEFAULT(CM_LOESS_SPAN_DEFAULT)
+            !! DM_MIN(EPS_LOESS)
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)

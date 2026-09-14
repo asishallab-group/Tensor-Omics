@@ -30,6 +30,8 @@ normalize_unit_length <- function(vector) {
 #'   e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
 #' @param span a numeric scalar. LOESS span parameter.
 #'   The default value is `0.7`.
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. LOESS degree parameter.
 #'   The default value is `2`.
 #'   The minimum valid value is `0`.
@@ -63,6 +65,8 @@ normalization_pipeline <- function(expr, reps_per_tissue, span = 0.7, degree = 2
 #' @param expr a numeric matrix. Gene Expression matrix
 #' @param span a numeric scalar. LOESS span parameter.
 #'   The default value is `0.7`.
+#'   The minimum valid value is `EPS_LOESS`.
+#'   The maximum valid value is `1.0`.
 #' @param degree a integer scalar. LOESS degree parameter.
 #'   The default value is `2`.
 #'   The minimum valid value is `0`.
