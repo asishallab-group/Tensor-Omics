@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.7% of total for procedures.">92 statements</a>
+                 title=" 0.4% of total for procedures.">71 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_get_outliers.F90"> Source File</a>
+              <a href="../src/tox_get_outliers_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_get_outliers_c.f90.html'>tox_get_outliers_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_get_outliers_c.html'>tox_get_outliers_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">detect_outliers_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, tmp_work_array, tmp_perm, tmp_stack_left, tmp_stack_right, is_outlier, loess_x, loess_y, loess_n, quantile, ierr, percentile) bind(C, name="detect_outliers_c")  
+    <h2>public  subroutine detect_outliers_c(n_genes, n_families, distances, gene_to_fam, is_outlier, loess_x, loess_y, loess_n, quantile, ierr, percentile) bind(C, name="detect_outliers_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,10 +158,7 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,8 +166,10 @@
     </div>
 
 
-    <p>C wrapper for detect_outliers.
-Calls detect_outliers with C-compatible types for external interface.</p>
+    <p>Orchestrates the full pipeline: per-family scaling via
+<a href="../proc/compute_family_scaling_impl.html">compute_family_scaling_impl</a>, the RDI per gene via
+<a href="../proc/compute_rdi_impl.html">compute_rdi_impl</a>, then flags outliers via
+<a href="../proc/identify_outliers_impl.html">identify_outliers_impl</a>.</p>
 
 
     <h3>Arguments</h3>
@@ -185,7 +185,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~33"></span>
+              <span class="anchor" id="variable-n_genes~80"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -200,7 +200,7 @@ Calls detect_outliers with C-compatible types for external interface.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~11"></span>
+              <span class="anchor" id="variable-n_families~33"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -210,112 +210,54 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Total number of families</p>
+                <p>Total number of gene families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~8"></span>
+              <span class="anchor" id="variable-distances~20"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>distances</strong>(n_genes)</td>
+            <td><strong>distances</strong></td>
             <td>
-                <p>Array of Euclidean distances for each gene to its centroid</p>
+                <p>Array of Euclidean distances for each gene to its centroid
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~13"></span>
+              <span class="anchor" id="variable-gene_to_fam~35"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
+            <td><strong>gene_to_fam</strong></td>
             <td>
                 <p>Gene-to-family mapping (1-based indexing)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_work_array~2"></span>
-              real(kind=c_double),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_work_array</strong>(n_genes)</td>
-            <td>
-                <p>Work array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_perm~4"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_perm</strong>(n_genes)</td>
-            <td>
-                <p>Permutation array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_stack_left~10"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_stack_left</strong>(n_genes)</td>
-            <td>
-                <p>Stack array for left indices during sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_stack_right~10"></span>
-              integer(kind=c_int),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              target
-            </td>
-            <td>::</td>
-            <td><strong>tmp_stack_right</strong>(n_genes)</td>
-            <td>
-                <p>Stack array for right indices during sorting</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
               <span class="anchor" id="variable-is_outlier~4"></span>
-              integer(kind=c_int),
+              logical(kind=c_bool),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>is_outlier</strong>(n_genes)</td>
+            <td><strong>is_outlier</strong></td>
             <td>
-                <p>Output integer array indicating outliers (1=outlier, 0=not)</p>
+                <p>Output boolean array indicating outliers</p>
             </td>
         </tr>
         <tr>
@@ -325,12 +267,12 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_x</strong>(n_families)</td>
+            <td><strong>loess_x</strong></td>
             <td>
-                <p>Reference x-coordinates for LOESS</p>
+                <p>Reference x-coordinates.</p>
             </td>
         </tr>
         <tr>
@@ -340,12 +282,12 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_y</strong>(n_families)</td>
+            <td><strong>loess_y</strong></td>
             <td>
-                <p>Reference y-coordinates for LOESS</p>
+                <p>Reference y-coordinates (length n_total).</p>
             </td>
         </tr>
         <tr>
@@ -355,25 +297,25 @@ Calls detect_outliers with C-compatible types for external interface.</p>
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_n</strong>(n_families)</td>
+            <td><strong>loess_n</strong></td>
             <td>
-                <p>Indices of reference points used for smoothing</p>
+                <p>Indices of reference points used for smoothing.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-quantile~6"></span>
+              <span class="anchor" id="variable-quantile~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>quantile</strong>(n_genes)</td>
+            <td><strong>quantile</strong></td>
             <td>
                 <p>Empirical one-sided upper-tail quantile (effect-size measure) for each gene, i.e. how extreme an
 observed distance is relative to all observed distances -- NOT a null-hypothesis-testing p-value.
@@ -383,7 +325,7 @@ upper-tail quantile is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~177"></span>
+              <span class="anchor" id="variable-ierr~305"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -398,7 +340,7 @@ upper-tail quantile is used.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-percentile~8"></span>
+              <span class="anchor" id="variable-percentile~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -408,7 +350,10 @@ upper-tail quantile is used.</p>
             <td>::</td>
             <td><strong>percentile</strong></td>
             <td>
-                <p>Percentile threshold as a fraction in [0,1] for outlier detection</p>
+                <p>Percentile threshold as a fraction in [0,1] for outlier detection.
+The default value is <code>0.95_real64</code>.
+The minimum valid value is <code>0.0_real64</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
     </tbody>
@@ -445,7 +390,7 @@ upper-tail quantile is used.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

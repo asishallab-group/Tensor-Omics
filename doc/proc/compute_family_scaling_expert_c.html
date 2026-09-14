@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 1.2% of total for procedures.">160 statements</a>
+                 title=" 1.2% of total for procedures.">216 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_get_outliers.F90"> Source File</a>
+              <a href="../src/tox_get_outliers_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_get_outliers.f90.html'>tox_get_outliers.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_get_outliers_c.f90.html'>tox_get_outliers_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_get_outliers_c.html'>tox_get_outliers_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">compute_family_scaling_expert_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_iv, liv, tmp_wv, lv, tmp_diagl, tmp_w_init, tmp_z_mat, tmp_rw, tmp_ww, tmp_res, tmp_pi, tmp_yhat, span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr) bind(C, name="compute_family_scaling_expert_c")  
+    <h2>public  subroutine compute_family_scaling_expert_c(n_genes, n_families, distances, gene_to_fam, dscale, loess_x, loess_y, indices_used, tmp_perm, tmp_stack_left, tmp_stack_right, tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, tmp_diagl, tmp_weights, tmp_eval_points, tmp_robust_weights, tmp_combined_weights, tmp_residuals, tmp_permutation_indices, tmp_fitted_values, span, degree, mode, n_iters, low_sd_cutoff, excluded_low_sd, tmp_means_aux, ierr) bind(C, name="compute_family_scaling_expert_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -157,9 +158,8 @@
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
               <ul class="list-inline">
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
+                  <li class="list-inline-item"><a href='../module/tox_get_outliers_impl.html'>tox_get_outliers_impl</a></li>
                   <li class="list-inline-item"><a href='../module/tox_get_outliers.html'>tox_get_outliers</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,9 +167,7 @@
     </div>
 
 
-    <p>C wrapper for compute_family_scaling expert version.
-Calls compute_family_scaling with C-compatible types for external interface.
-This wrapper is designed for external use, providing additional arguments for advanced configurations.</p>
+    <p>Uses LOESS on the median/stddev of intra-family distances for scaling, regardless of orthologs.</p>
 
 
     <h3>Arguments</h3>
@@ -185,7 +183,7 @@ This wrapper is designed for external use, providing additional arguments for ad
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~34"></span>
+              <span class="anchor" id="variable-n_genes~76"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -200,7 +198,7 @@ This wrapper is designed for external use, providing additional arguments for ad
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~12"></span>
+              <span class="anchor" id="variable-n_families~32"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -210,82 +208,84 @@ This wrapper is designed for external use, providing additional arguments for ad
             <td>::</td>
             <td><strong>n_families</strong></td>
             <td>
-                <p>Total number of families</p>
+                <p>Total number of gene families</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~9"></span>
+              <span class="anchor" id="variable-distances~17"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>distances</strong>(n_genes)</td>
+            <td><strong>distances</strong></td>
             <td>
-                <p>Array of Euclidean distances for each gene</p>
+                <p>Array of Euclidean distances for each gene
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~14"></span>
+              <span class="anchor" id="variable-gene_to_fam~32"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
+            <td><strong>gene_to_fam</strong></td>
             <td>
                 <p>Mapping of each gene to its family (1-based)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~7"></span>
+              <span class="anchor" id="variable-dscale~4"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>dscale</strong>(n_families)</td>
+            <td><strong>dscale</strong></td>
             <td>
-                <p>Output: array of scaling factors per family</p>
+                <p>Array of scaling factors per family (output)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_x~6"></span>
+              <span class="anchor" id="variable-loess_x~4"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_x</strong>(n_families)</td>
+            <td><strong>loess_x</strong></td>
             <td>
-                <p>Reference x-coordinates for LOESS</p>
+                <p>Reference x-coordinates for LOESS smoothing</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-loess_y~6"></span>
+              <span class="anchor" id="variable-loess_y~4"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>loess_y</strong>(n_families)</td>
+            <td><strong>loess_y</strong></td>
             <td>
-                <p>Reference y-coordinates for LOESS</p>
+                <p>Reference y-coordinates for LOESS smoothing</p>
             </td>
         </tr>
         <tr>
@@ -293,79 +293,79 @@ This wrapper is designed for external use, providing additional arguments for ad
               <span class="anchor" id="variable-indices_used~6"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>indices_used</strong>(n_families)</td>
+            <td><strong>indices_used</strong></td>
             <td>
                 <p>Indices of reference points used for smoothing</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_perm~5"></span>
+              <span class="anchor" id="variable-tmp_perm~6"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>tmp_perm</strong>(n_genes)</td>
+            <td><strong>tmp_perm</strong></td>
             <td>
-                <p>Temporary array for permutation</p>
+                <p>Permutation array for sorting gene distances</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_left~11"></span>
+              <span class="anchor" id="variable-tmp_stack_left~10"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>tmp_stack_left</strong>(n_genes)</td>
+            <td><strong>tmp_stack_left</strong></td>
             <td>
-                <p>Temporary array for left stack</p>
+                <p>Stack array for left indices during sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_stack_right~11"></span>
+              <span class="anchor" id="variable-tmp_stack_right~10"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_genes), target
             </td>
             <td>::</td>
-            <td><strong>tmp_stack_right</strong>(n_genes)</td>
+            <td><strong>tmp_stack_right</strong></td>
             <td>
-                <p>Temporary array for right stack</p>
+                <p>Stack array for right indices during sorting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_iv~3"></span>
+              <span class="anchor" id="variable-tmp_int_workspace~15"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(int_workspace_size), target
             </td>
             <td>::</td>
-            <td><strong>tmp_iv</strong>(liv)</td>
+            <td><strong>tmp_int_workspace</strong></td>
             <td>
-                <p>Integer workspace array for LOESS</p>
+                <p>Integer workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-liv~3"></span>
+              <span class="anchor" id="variable-int_workspace_size~16"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -373,29 +373,52 @@ This wrapper is designed for external use, providing additional arguments for ad
               target
             </td>
             <td>::</td>
-            <td><strong>liv</strong></td>
+            <td><strong>int_workspace_size</strong></td>
             <td>
-                <p>Length of integer workspace array</p>
+                <p>Length of integer workspace.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>int_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Producer input</th>
+<th>Supplied by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>n_dim</td>
+<td>1_int32</td>
+</tr>
+<tr>
+<td>max_neighborhood_size</td>
+<td>n_families</td>
+</tr>
+<tr>
+<td>save_factorization</td>
+<td>.false.</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_wv~3"></span>
+              <span class="anchor" id="variable-tmp_real_workspace~15"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(real_workspace_size), target
             </td>
             <td>::</td>
-            <td><strong>tmp_wv</strong>(lv)</td>
+            <td><strong>tmp_real_workspace</strong></td>
             <td>
-                <p>Real workspace array for LOESS</p>
+                <p>Real workspace array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-lv~3"></span>
+              <span class="anchor" id="variable-real_workspace_size~16"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -403,9 +426,32 @@ This wrapper is designed for external use, providing additional arguments for ad
               target
             </td>
             <td>::</td>
-            <td><strong>lv</strong></td>
+            <td><strong>real_workspace_size</strong></td>
             <td>
-                <p>Length of real workspace array</p>
+                <p>Length of real workspace.
+It is <em>VERY IMPORTANT</em> to compute this argument from the <code>real_workspace_size</code> output produced by <a href="../proc/tox_loess_required_workspace.html">tox_loess_required_workspace</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Producer input</th>
+<th>Supplied by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>n_dim</td>
+<td>1_int32</td>
+</tr>
+<tr>
+<td>max_neighborhood_size</td>
+<td>n_families</td>
+</tr>
+<tr>
+<td>save_factorization</td>
+<td>.false.</td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
@@ -415,122 +461,122 @@ This wrapper is designed for external use, providing additional arguments for ad
             </td>
 <td>intent(inout),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_diagl</strong>(n_genes)</td>
+            <td><strong>tmp_diagl</strong></td>
             <td>
-                <p>Diagonal elements for LOESS</p>
+                <p>Diagonal elements of the weight matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_w_init~3"></span>
+              <span class="anchor" id="variable-tmp_weights~7"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_w_init</strong>(n_genes)</td>
+            <td><strong>tmp_weights</strong></td>
             <td>
                 <p>Initial weights for LOESS</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_z_mat~3"></span>
+              <span class="anchor" id="variable-tmp_eval_points~9"></span>
               real(kind=c_double),
             </td>
 <td>intent(inout),</td>
               <td></td>            <td>
-              target
+              dimension(n_families, 1), target
             </td>
             <td>::</td>
-            <td><strong>tmp_z_mat</strong>(n_genes,1)</td>
+            <td><strong>tmp_eval_points</strong></td>
             <td>
-                <p>Z matrix for LOESS</p>
+                <p>Z matrix for LOESS fitting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_rw~3"></span>
+              <span class="anchor" id="variable-tmp_robust_weights~12"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_rw</strong>(n_genes)</td>
+            <td><strong>tmp_robust_weights</strong></td>
             <td>
-                <p>Residual weights for LOESS</p>
+                <p>Residuals for robust LOESS fitting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_ww~3"></span>
+              <span class="anchor" id="variable-tmp_combined_weights~12"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_ww</strong>(n_genes)</td>
+            <td><strong>tmp_combined_weights</strong></td>
             <td>
-                <p>Working weights for LOESS</p>
+                <p>Working weights array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_res~3"></span>
+              <span class="anchor" id="variable-tmp_residuals~12"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_res</strong>(n_genes)</td>
+            <td><strong>tmp_residuals</strong></td>
             <td>
-                <p>Residuals for LOESS</p>
+                <p>Residuals array</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_pi~3"></span>
+              <span class="anchor" id="variable-tmp_permutation_indices~12"></span>
               integer(kind=c_int),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_pi</strong>(n_genes)</td>
+            <td><strong>tmp_permutation_indices</strong></td>
             <td>
-                <p>Pi values for LOESS</p>
+                <p>Permutation indices for robust LOESS fitting</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_yhat~3"></span>
+              <span class="anchor" id="variable-tmp_fitted_values~3"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_yhat</strong>(n_genes)</td>
+            <td><strong>tmp_fitted_values</strong></td>
             <td>
-                <p>Temporary array for predicted values</p>
+                <p>Output array for LOESS predictions</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~3"></span>
+              <span class="anchor" id="variable-span~19"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -540,12 +586,17 @@ This wrapper is designed for external use, providing additional arguments for ad
             <td>::</td>
             <td><strong>span</strong></td>
             <td>
-                <p>Span parameter for LOESS</p>
+                <p>Span parameter for LOESS smoothing, passed straight to
+<a href="../proc/loess_fit_plain_impl.html">loess_fit_plain_impl</a>, so it is held to that
+procedure's own range rather than to the NaN tolerance the distance data carries.
+The default value is <code>0.7_real64</code>.
+The minimum valid value is <code>EPS_LOESS</code>.
+The maximum valid value is <code>1.0_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~3"></span>
+              <span class="anchor" id="variable-degree~19"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -555,27 +606,47 @@ This wrapper is designed for external use, providing additional arguments for ad
             <td>::</td>
             <td><strong>degree</strong></td>
             <td>
-                <p>Degree of polynomial for LOESS</p>
+                <p>Degree of the LOESS polynomial
+The default value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-mode~6"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-mode~3"></span>
+              character(kind=c_char, len=1),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              target
+              dimension(6), target
             </td>
             <td>::</td>
             <td><strong>mode</strong></td>
             <td>
-                <p>Mode for LOESS</p>
+                <p>Mode for LOESS fitting
+The default value is <code>'robust'</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plain LOESS fitting</td>
+<td><a href="../module/tox_get_outliers_impl.html#variable-mode_plain">MODE_PLAIN</a></td>
+</tr>
+<tr>
+<td>Robust LOESS fitting</td>
+<td><a href="../module/tox_get_outliers_impl.html#variable-mode_robust">MODE_ROBUST</a></td>
+</tr>
+</tbody>
+</table>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_iters~3"></span>
+              <span class="anchor" id="variable-n_iters~7"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -585,7 +656,8 @@ This wrapper is designed for external use, providing additional arguments for ad
             <td>::</td>
             <td><strong>n_iters</strong></td>
             <td>
-                <p>Number of iterations for LOESS</p>
+                <p>Number of iterations for robust LOESS fitting
+The default value is <code>3_int32</code>.</p>
             </td>
         </tr>
         <tr>
@@ -610,10 +682,10 @@ This wrapper is designed for external use, providing additional arguments for ad
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>excluded_low_sd</strong>(n_families)</td>
+            <td><strong>excluded_low_sd</strong></td>
             <td>
                 <p>Mask to save those families that have low sd</p>
             </td>
@@ -623,19 +695,19 @@ This wrapper is designed for external use, providing additional arguments for ad
               <span class="anchor" id="variable-tmp_means_aux~3"></span>
               real(kind=c_double),
             </td>
-<td>intent(inout),</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              target
+              dimension(n_families), target
             </td>
             <td>::</td>
-            <td><strong>tmp_means_aux</strong>(n_families)</td>
+            <td><strong>tmp_means_aux</strong></td>
             <td>
                 <p>Work array for saving raw means</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~178"></span>
+              <span class="anchor" id="variable-ierr~301"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -682,7 +754,7 @@ This wrapper is designed for external use, providing additional arguments for ad
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

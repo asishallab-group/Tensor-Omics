@@ -89,7 +89,7 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.6% of total for modules and submodules.">48 statements</a>
+                 title=" 0.2% of total for modules and submodules.">29 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -142,7 +142,6 @@
       <div id="subs-0" class="collapse">
         <div class="list-group list-group-flush">
             <a class="list-group-item" href="../module/tox_shift_vectors.html#proc-compute_shift_vector_field">compute_shift_vector_field</a>
-            <a class="list-group-item" href="../module/tox_shift_vectors.html#proc-compute_shift_vector_field_helper">compute_shift_vector_field_helper</a>
         </div>
       </div>
     </div>
@@ -161,7 +160,11 @@
     </div>
 
     <div class="col-md-9" id='text'>
-      <p>Module for computing the shift vector field for all genes.</p>
+      <p>The shift vector field: where each gene sits relative to its family's centroid.</p>
+<p>One vector per gene, from the centroid of the family it belongs to to the gene itself. It is
+the input the relative-axis plane tools project and measure angles in, and what the
+paralog-pattern detection reads a gene's direction and magnitude off.</p>
+<p>Generated from <a href="../module/tox_shift_vectors_impl.html">tox_shift_vectors_impl</a>; do not edit -- regenerate instead.</p>
 <br>          <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
       <div class="card-body">
@@ -169,8 +172,8 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+                  <li class="list-inline-item"><a href='tox_shift_vectors_impl.html'>tox_shift_vectors_impl</a></li>
                   <li class="list-inline-item"><a href='tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='safeguard.html'>safeguard</a></li>
               </ul>
             </li>
         </ul>
@@ -193,13 +196,8 @@
     <div class="card-header codesum"><span class="anchor" id="proc-compute_shift_vector_field"></span> <h3>public pure subroutine <a href='../proc/compute_shift_vector_field.html'>compute_shift_vector_field</a>(n_tissues, n_genes, n_families, expression_vectors, family_centroids, gene_to_fam, shift_vectors, ierr)  
 </h3></div>
     <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://gitlab.rlp.net/alexander.schwarzpaul" target="_blank" >Alexander Schwarzpaul</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>Compute the shift vector field for all genes.
-Computes the shift vectors by substracting the corresponding family centroid from the expression vector.</p>
+          
+  <p>Validates its inputs, then calls <a href="../proc/compute_shift_vector_field_impl.html">compute_shift_vector_field_impl</a>.</p><a href="../proc/compute_shift_vector_field.html" class="pull-right"><emph>Read more&hellip;</emph></a>
 
   <h4>Arguments</h4>
       <table class="table table-striped varlist">
@@ -214,7 +212,7 @@ Computes the shift vectors by substracting the corresponding family centroid fro
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~12"></span>
+              <span class="anchor" id="variable-n_tissues~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -229,7 +227,7 @@ Computes the shift vectors by substracting the corresponding family centroid fro
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~82"></span>
+              <span class="anchor" id="variable-n_genes~61"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -244,7 +242,7 @@ Computes the shift vectors by substracting the corresponding family centroid fro
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_families~31"></span>
+              <span class="anchor" id="variable-n_families~29"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -259,165 +257,15 @@ Computes the shift vectors by substracting the corresponding family centroid fro
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expression_vectors~24"></span>
+              <span class="anchor" id="variable-expression_vectors~26"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_tissues, n_genes)
             </td>
             <td>::</td>
-            <td><strong>expression_vectors</strong>(n_tissues,n_genes)</td>
-            <td>
-<p>Gene expression matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-family_centroids~14"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>family_centroids</strong>(n_tissues,n_families)</td>
-            <td>
-<p>Family centroid matrix</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-gene_to_fam~35"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
-            <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-shift_vectors~12"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>shift_vectors</strong>(n_tissues,2,n_genes)</td>
-            <td>
-<p>Output, real matrix array, stores the centroid of the gene's family in <code>shift_vectors(:, 1, i_gene)</code> (zero vector if no family assigned) and the shift vectors in <code>shift_vectors(:, 2, i_gene)</code></p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~322"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>ierr</strong></td>
-            <td>
-<p>Error code: 0 - success, non-zero = error</p>
-            </td>
-        </tr>
-    </tbody>
-  </table>
-
-
-    </div>
-  </div>
-
-              <div class="card">
-    <div class="card-header codesum"><span class="anchor" id="proc-compute_shift_vector_field_helper"></span> <h3>public pure subroutine <a href='../proc/compute_shift_vector_field_helper.html'>compute_shift_vector_field_helper</a>(n_tissues, n_genes, n_families, expression_vectors, family_centroids, gene_to_fam, shift_vectors)  
-</h3></div>
-    <div class="card-body">
-              <dl class="dl-horizontal">
-        <dt>Author</dt><dd><a href="https://gitlab.rlp.net/alexander.schwarzpaul" target="_blank" >Alexander Schwarzpaul</a></dd>
-        <dt>License</dt><dd><a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></dd>
-    </dl>
-
-  <p>(no input validation) Compute the shift vector field for all genes.
-Computes the shift vectors by substracting the corresponding family centroid from the expression vector.</p>
-
-  <h4>Arguments</h4>
-      <table class="table table-striped varlist">
-    <thead>
-      <tr>
-        <th scope="col">Type</th>
-<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
-        <th scope="col"></th>
-        <th scope="col">Name</th>
-        <th scope="col"></th>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_tissues~13"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_tissues</strong></td>
-            <td>
-<p>Expression vector dimension</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_genes~83"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_genes</strong></td>
-            <td>
-<p>Total number of genes</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-n_families~32"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>n_families</strong></td>
-            <td>
-<p>Total number of families</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-expression_vectors~25"></span>
-              real(kind=real64),
-            </td>
-<td>intent(in)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>expression_vectors</strong>(n_tissues,n_genes)</td>
+            <td><strong>expression_vectors</strong></td>
             <td>
 <p>Gene expression matrix</p>
             </td>
@@ -427,29 +275,32 @@ Computes the shift vectors by substracting the corresponding family centroid fro
               <span class="anchor" id="variable-family_centroids~15"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_tissues, n_families)
             </td>
             <td>::</td>
-            <td><strong>family_centroids</strong>(n_tissues,n_families)</td>
+            <td><strong>family_centroids</strong></td>
             <td>
 <p>Family centroid matrix</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~36"></span>
+              <span class="anchor" id="variable-gene_to_fam~28"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
+            <td><strong>gene_to_fam</strong></td>
             <td>
-<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes</p>
+<p>Index mapping -&gt; each index <code>i</code> holds the family index for the corresponding gene in <code>expression_vectors</code>, using <code>0_int32</code> for unassigned genes
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_families</code>.
+The value <code>0_int32</code> is additionally accepted.</p>
             </td>
         </tr>
         <tr>
@@ -457,14 +308,29 @@ Computes the shift vectors by substracting the corresponding family centroid fro
               <span class="anchor" id="variable-shift_vectors~13"></span>
               real(kind=real64),
             </td>
+<td>intent(out),</td>
+              <td></td>            <td>
+              dimension(n_tissues, 2, n_genes)
+            </td>
+            <td>::</td>
+            <td><strong>shift_vectors</strong></td>
+            <td>
+<p>Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector</p>
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-ierr~257"></span>
+              integer(kind=int32),
+            </td>
 <td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>shift_vectors</strong>(n_tissues,2,n_genes)</td>
+            <td><strong>ierr</strong></td>
             <td>
-<p>Output, real matrix array, stores the centroid of the gene's family in <code>shift_vectors(:, 1, i_gene)</code> (zero vector if no family assigned) and the shift vectors in <code>shift_vectors(:, 2, i_gene)</code></p>
+<p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -497,7 +363,7 @@ Computes the shift vectors by substracting the corresponding family centroid fro
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

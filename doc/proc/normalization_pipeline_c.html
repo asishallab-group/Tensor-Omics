@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.4% of total for procedures.">58 statements</a>
+                 title=" 0.3% of total for procedures.">58 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization.F90"> Source File</a>
+              <a href="../src/tox_normalization_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_c.f90.html'>tox_normalization_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_normalization_c.html'>tox_normalization_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">normalization_pipeline_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2> subroutine normalization_pipeline_c(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile, ierr) bind(C, name="normalization_pipeline_c")  
+    <h2>public  subroutine normalization_pipeline_c(n_genes, n_replicates, expr, log_transformed_expr, reps_per_tissue, n_tissues, span, degree, use_quantile, ierr) bind(C, name="normalization_pipeline_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,9 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_conversions.html'>tox_conversions</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -168,7 +166,7 @@
     </div>
 
 
-    <p>C wrapper for <a href="../proc/normalization_pipeline_alloc.html">normalization_pipeline_alloc</a></p>
+    <p>Final result is in log_transformed_expr. If fold change is needed, call calc_fchange separately.</p>
 
 
     <h3>Arguments</h3>
@@ -184,7 +182,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~64"></span>
+              <span class="anchor" id="variable-n_genes~35"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -199,7 +197,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_replicates~12"></span>
+              <span class="anchor" id="variable-n_replicates"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -209,12 +207,12 @@
             <td>::</td>
             <td><strong>n_replicates</strong></td>
             <td>
-                <p>Number of tissues (columns)</p>
+                <p>Number of replicates per gene</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~29"></span>
+              <span class="anchor" id="variable-expr~3"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -224,12 +222,14 @@
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-                <p>Gene Expression matrix</p>
+                <p>Gene Expression matrix
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-log_transformed_expr~2"></span>
+              <span class="anchor" id="variable-log_transformed_expr"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -244,7 +244,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-reps_per_tissue~5"></span>
+              <span class="anchor" id="variable-reps_per_tissue"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -255,12 +255,12 @@
             <td><strong>reps_per_tissue</strong></td>
             <td>
                 <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the <code>expr(1:2, i_gene)</code> related to the first tissue and <code>expr(3:, i_gene)</code> related to the second one.</p>
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~11"></span>
+              <span class="anchor" id="variable-n_tissues~5"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -275,7 +275,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-span~8"></span>
+              <span class="anchor" id="variable-span~10"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -285,12 +285,13 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <td>::</td>
             <td><strong>span</strong></td>
             <td>
-                <p>LOESS span parameter</p>
+                <p>LOESS span parameter.
+The default value is <code>0.7_real64</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-degree~8"></span>
+              <span class="anchor" id="variable-degree~10"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -300,13 +301,14 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <td>::</td>
             <td><strong>degree</strong></td>
             <td>
-                <p>LOESS degree parameter</p>
+                <p>LOESS degree parameter.
+The default value is <code>2_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-use_quantile~2"></span>
-              integer(kind=c_int),
+              <span class="anchor" id="variable-use_quantile"></span>
+              logical(kind=c_bool),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
@@ -315,12 +317,13 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <td>::</td>
             <td><strong>use_quantile</strong></td>
             <td>
-                <p>Use quantile normalization (0/1 logical)</p>
+                <p>Use quantile normalization.
+The default value is <code>.false.</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~233"></span>
+              <span class="anchor" id="variable-ierr~151"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -367,7 +370,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

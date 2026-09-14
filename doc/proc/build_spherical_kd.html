@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/schroederaaron" target="_blank" >Aaron Schröder</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.1% of total for procedures.">13 statements</a>
+                 title=" 0.2% of total for procedures.">39 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,14 +150,13 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine build_spherical_kd(vectors, n_dimensions, n_vectors, sphere_indices, dimension_order, tmp_workspace, tmp_value_buffer, tmp_permutation, tmp_recursion_stack, ierr)  
+    <h2>public pure subroutine build_spherical_kd(points, n_dimensions, n_points, kd_indices, dimension_order, ierr)  
 </h2>
     
 
-    <p>Build a k-d tree index over points assumed to lie on the unit sphere (unit vectors), with
-caller-provided workspace (no internal allocation). See
-<a href="../proc/build_spherical_kd_alloc.html">build_spherical_kd_alloc</a> for the allocating variant and
-a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
+    <p>This is a thin, semantically-named wrapper: partitioning is identical to
+<a href="../proc/build_kd_index_impl.html">build_kd_index_impl</a> (plain per-axis median splits);
+callers are responsible for ensuring <code>points</code> are actually unit-normalized beforehand.</p>
 
 
     <h3>Arguments</h3>
@@ -174,22 +172,22 @@ a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-vectors"></span>
+              <span class="anchor" id="variable-points~11"></span>
               real(kind=real64),
             </td>
 <td>intent(in),</td>
               <td></td>            <td>
-              dimension(n_dimensions, n_vectors)
+              dimension(n_dimensions, n_points)
             </td>
             <td>::</td>
-            <td><strong>vectors</strong></td>
+            <td><strong>points</strong></td>
             <td>
-                <p>Input unit vectors</p>
+                <p>Data points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_dimensions~7"></span>
+              <span class="anchor" id="variable-n_dimensions~10"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -204,7 +202,7 @@ a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_vectors"></span>
+              <span class="anchor" id="variable-n_points~63"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -212,29 +210,29 @@ a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
               
             </td>
             <td>::</td>
-            <td><strong>n_vectors</strong></td>
+            <td><strong>n_points</strong></td>
             <td>
-                <p>Number of vectors</p>
+                <p>Number of points</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sphere_indices"></span>
+              <span class="anchor" id="variable-kd_indices~11"></span>
               integer(kind=int32),
             </td>
 <td>intent(out),</td>
               <td></td>            <td>
-              dimension(n_vectors)
+              dimension(n_points)
             </td>
             <td>::</td>
-            <td><strong>sphere_indices</strong></td>
+            <td><strong>kd_indices</strong></td>
             <td>
-                <p>Output index array</p>
+                <p>Output index array (k-d tree order)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dimension_order~5"></span>
+              <span class="anchor" id="variable-dimension_order~9"></span>
               integer(kind=int32),
             </td>
 <td>intent(in),</td>
@@ -244,72 +242,14 @@ a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
             <td>::</td>
             <td><strong>dimension_order</strong></td>
             <td>
-                <p>Dimension order</p>
+                <p>Dimension order (by variance)
+The minimum valid value is <code>1_int32</code>.
+The maximum valid value is <code>n_dimensions</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tmp_workspace~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_workspace</strong></td>
-            <td>
-                <p>Workspace array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_value_buffer~6"></span>
-              real(kind=real64),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_value_buffer</strong></td>
-            <td>
-                <p>Value buffer</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_permutation~6"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_permutation</strong></td>
-            <td>
-                <p>Permutation array</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-tmp_recursion_stack~4"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(out),</td>
-              <td></td>            <td>
-              dimension(3, n_vectors)
-            </td>
-            <td>::</td>
-            <td><strong>tmp_recursion_stack</strong></td>
-            <td>
-                <p>Stack for recursive calls</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-ierr~151"></span>
+              <span class="anchor" id="variable-ierr~347"></span>
               integer(kind=int32),
             </td>
 <td>intent(out)</td>
@@ -319,7 +259,7 @@ a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -356,7 +296,7 @@ a note on why this delegates to the plain (non-spherical) k-d partitioning.</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

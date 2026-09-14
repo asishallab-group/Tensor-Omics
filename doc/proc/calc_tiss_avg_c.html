@@ -89,19 +89,20 @@
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.3% of total for procedures.">35 statements</a>
+                 title=" 0.2% of total for procedures.">38 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
               <i class="fa fa-code"></i>
-              <a href="../src/tox_normalization.F90"> Source File</a>
+              <a href="../src/tox_normalization_c.F90"> Source File</a>
             </li>
         </ul>
       </div>
       <div class="col">
         <nav aria-label="breadcrumb">
           <ol class="breadcrumb justify-content-end mb-0">
-                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization.f90.html'>tox_normalization.F90</a></li>
+                <li class="breadcrumb-item"><a href='../sourcefile/tox_normalization_c.f90.html'>tox_normalization_c.F90</a></li>
+                <li class="breadcrumb-item"><a href='../module/tox_normalization_c.html'>tox_normalization_c</a></li>
             <li class="breadcrumb-item active" aria-current="page">calc_tiss_avg_c</li>
           </ol>
         </nav>
@@ -149,7 +150,7 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>pure subroutine calc_tiss_avg_c(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr) bind(C, name="calc_tiss_avg_c")  
+    <h2>public  subroutine calc_tiss_avg_c(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages, ierr) bind(C, name="calc_tiss_avg_c")  
 </h2>
         <div class="card mb-4">
       <h3 class="card-header card-title bg-light">Uses</h3>
@@ -158,8 +159,6 @@
             <li class="list-group-item">
               <ul class="list-inline">
                   <li class="list-inline-item"><a href='../module/tox_normalization.html'>tox_normalization</a></li>
-                  <li class="list-inline-item"><a href='../module/tox_errors.html'>tox_errors</a></li>
-                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_c_binding'>iso_c_binding</a></li>
               </ul>
             </li>
         </ul>
@@ -167,7 +166,8 @@
     </div>
 
 
-    <p>C wrapper for <a href="../proc/calc_tiss_avg.html">calc_tiss_avg</a></p>
+    <p>For each tissue of tissue replicates, this subroutine computes the average
+expression per gene.</p>
 
 
     <h3>Arguments</h3>
@@ -183,7 +183,7 @@
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~62"></span>
+              <span class="anchor" id="variable-n_genes~43"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -198,7 +198,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_tissues~9"></span>
+              <span class="anchor" id="variable-n_tissues~8"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -213,7 +213,7 @@
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-reps_per_tissue~4"></span>
+              <span class="anchor" id="variable-reps_per_tissue~3"></span>
               integer(kind=c_int),
             </td>
 <td>intent(in),</td>
@@ -224,12 +224,13 @@
             <td><strong>reps_per_tissue</strong></td>
             <td>
                 <p>Number of replicates per tissue in <code>expr</code>. It describes, which slices in <code>expr</code> relate to which tissue,
-e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the <code>expr(1:2, i_gene)</code> related to the first tissue and <code>expr(3:, i_gene)</code> related to the second one.</p>
+e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
+The minimum valid value is <code>1_int32</code>.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-expr~27"></span>
+              <span class="anchor" id="variable-expr~11"></span>
               real(kind=c_double),
             </td>
 <td>intent(in),</td>
@@ -239,12 +240,14 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <td>::</td>
             <td><strong>expr</strong></td>
             <td>
-                <p>Gene Expression matrix</p>
+                <p>Gene Expression matrix
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-tissue_averages~3"></span>
+              <span class="anchor" id="variable-tissue_averages"></span>
               real(kind=c_double),
             </td>
 <td>intent(out),</td>
@@ -259,7 +262,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-ierr~231"></span>
+              <span class="anchor" id="variable-ierr~159"></span>
               integer(kind=c_int),
             </td>
 <td>intent(out),</td>
@@ -269,7 +272,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <td>::</td>
             <td><strong>ierr</strong></td>
             <td>
-                <p>Error code</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -306,7 +309,7 @@ e.g. <code>[2,3]</code> means <code>5</code> total replicates per gene, with the
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>

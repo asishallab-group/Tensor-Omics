@@ -847,7 +847,7 @@
       "  factor_idx = ${3:factor_idx},",
       "  dependent_idx = ${4:dependent_idx},",
       "  sample_idx = ${5:sample_idx},",
-      "  baseline_mode = ${6|raw,mean,min|},",
+      "  baseline_mode = ${6|baseline_raw,baseline_mean,baseline_min|},",
       "  n_permutations = ${7:n_permutations},",
       "  random_seed = ${8:NULL}",
       ")"
@@ -872,7 +872,7 @@
       "${1:result} <- compute_contributions(",
       "  factor = ${2:factor},",
       "  dependent = ${3:dependent},",
-      "  baseline_mode = ${4|raw,mean,min|}",
+      "  baseline_mode = ${4|baseline_raw,baseline_mean,baseline_min|}",
       ")"
     ]
   },
@@ -884,7 +884,7 @@
       "  trajectories = ${2:trajectories},",
       "  factor_indices = ${3:factor_indices},",
       "  dependent_indices = ${4:dependent_indices},",
-      "  baseline_mode = ${5|raw,mean,min|}",
+      "  baseline_mode = ${5|baseline_raw,baseline_mean,baseline_min|}",
       ")"
     ]
   },
@@ -895,7 +895,7 @@
       "${1:result} <- compute_baselines_factor_dependent(",
       "  factor = ${2:factor},",
       "  dependent = ${3:dependent},",
-      "  baseline_mode = ${4|raw,mean,min|}",
+      "  baseline_mode = ${4|baseline_raw,baseline_mean,baseline_min|}",
       ")"
     ]
   },
@@ -943,7 +943,7 @@
     "body": [
       "${1:result} <- compute_velocity_acceleration_contributions(",
       "  trajectories = ${2:trajectories},",
-      "  baseline_mode = ${3|raw,mean,min|}",
+      "  baseline_mode = ${3|baseline_raw,baseline_mean,baseline_min|}",
       ")"
     ]
   },

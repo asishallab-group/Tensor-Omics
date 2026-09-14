@@ -85,12 +85,11 @@
     <div class="row align-items-center justify-content-between" id="info-bar">
       <div class="col">
         <ul class="list-inline" style="margin-bottom:0px;display:inline">
-            <li class="list-inline-item" id="meta-author"><i class="fa fa-pencil"></i> <a href="https://github.com/qwerdenkerXD" target="_blank" >Franz-Eric Sill</a></li>
             <li class="list-inline-item" id="meta-license"><i class="fa fa-legal"></i> <a rel="license" href="https://opensource.org/licenses/MIT">MIT</a></li>
 
             <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
               <a data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-html="true"
-                 title=" 0.2% of total for procedures.">33 statements</a>
+                 title=" 0.1% of total for procedures.">26 statements</a>
             </li>
 
             <li class="list-inline-item" id="source-file">
@@ -151,12 +150,11 @@
     </div>
     
     <div class="col-md-9" id='text'>
-    <h2>public pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, stack_left, stack_right)  
+    <h2>public pure subroutine compute_rdi(n_genes, distances, gene_to_fam, dscale, rdi, sorted_rdi, perm, ierr)  
 </h2>
     
 
-    <p>Compute the hybrid RDI (Relative Distance Index) for each gene.
-RDI = Euclidean distance / family scaling factor</p>
+    <p>RDI = Euclidean distance / family scaling factor</p>
 
 
     <h3>Arguments</h3>
@@ -172,7 +170,7 @@ RDI = Euclidean distance / family scaling factor</p>
     <tbody>
         <tr>
             <td>
-              <span class="anchor" id="variable-n_genes~27"></span>
+              <span class="anchor" id="variable-n_genes~86"></span>
               integer(kind=int32),
             </td>
 <td>intent(in)</td>
@@ -187,122 +185,111 @@ RDI = Euclidean distance / family scaling factor</p>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-distances~4"></span>
+              <span class="anchor" id="variable-distances~24"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>distances</strong>(n_genes)</td>
+            <td><strong>distances</strong></td>
             <td>
-                <p>Array of Euclidean distances for each gene to its centroid</p>
+                <p>Array of Euclidean distances for each gene to its centroid
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-gene_to_fam~9"></span>
+              <span class="anchor" id="variable-gene_to_fam~39"></span>
               integer(kind=int32),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>gene_to_fam</strong>(n_genes)</td>
+            <td><strong>gene_to_fam</strong></td>
             <td>
                 <p>Gene-to-family mapping (1-based indexing)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-dscale~3"></span>
+              <span class="anchor" id="variable-dscale~9"></span>
               real(kind=real64),
             </td>
-<td>intent(in)</td>
+<td>intent(in),</td>
               <td></td>            <td>
-              
+              dimension(:)
             </td>
             <td>::</td>
-            <td><strong>dscale</strong>(:)</td>
+            <td><strong>dscale</strong></td>
             <td>
-                <p>Array of scaling factors for each family</p>
+                <p>Array of scaling factors for each family
+NaN is permitted for this value.
+Infinite values are permitted for this value.</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-rdi~3"></span>
+              <span class="anchor" id="variable-rdi~11"></span>
               real(kind=real64),
             </td>
-<td>intent(out)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>rdi</strong>(n_genes)</td>
+            <td><strong>rdi</strong></td>
             <td>
                 <p>Output array of RDI values for each gene</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-sorted_rdi~3"></span>
+              <span class="anchor" id="variable-sorted_rdi~11"></span>
               real(kind=real64),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>sorted_rdi</strong>(n_genes)</td>
+            <td><strong>sorted_rdi</strong></td>
             <td>
                 <p>Work array for sorting (dimension n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-perm~29"></span>
+              <span class="anchor" id="variable-perm~25"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out),</td>
               <td></td>            <td>
-              
+              dimension(n_genes)
             </td>
             <td>::</td>
-            <td><strong>perm</strong>(n_genes)</td>
+            <td><strong>perm</strong></td>
             <td>
                 <p>Permutation array for sorting (dimension n_genes, should be pre-initialized with 1:n_genes)</p>
             </td>
         </tr>
         <tr>
             <td>
-              <span class="anchor" id="variable-stack_left"></span>
+              <span class="anchor" id="variable-ierr~328"></span>
               integer(kind=int32),
             </td>
-<td>intent(inout)</td>
+<td>intent(out)</td>
               <td></td>            <td>
               
             </td>
             <td>::</td>
-            <td><strong>stack_left</strong>(n_genes)</td>
+            <td><strong>ierr</strong></td>
             <td>
-                <p>Stack array for sorting (dimension n_genes)</p>
-            </td>
-        </tr>
-        <tr>
-            <td>
-              <span class="anchor" id="variable-stack_right"></span>
-              integer(kind=int32),
-            </td>
-<td>intent(inout)</td>
-              <td></td>            <td>
-              
-            </td>
-            <td>::</td>
-            <td><strong>stack_right</strong>(n_genes)</td>
-            <td>
-                <p>Stack array for sorting (dimension n_genes)</p>
+                <p>Error code; zero on success, non-zero on failure.</p>
             </td>
         </tr>
     </tbody>
@@ -339,7 +326,7 @@ RDI = Euclidean distance / family scaling factor</p>
             <p class="text-end">
               Documentation generated by
               <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
- on 2026-08-18 09:58 +0000             </p>
+ on 2026-09-14 09:28 +0000             </p>
           </div>
         </div>
         <br>
