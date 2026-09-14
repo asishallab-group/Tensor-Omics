@@ -16,6 +16,7 @@ on:
       - python/**
       - src/**
       - test/**
+      - test_framework/**
       - test_runner.sh
       - build.sh
       - build_utils.sh

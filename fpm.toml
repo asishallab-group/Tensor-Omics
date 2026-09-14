@@ -12,6 +12,12 @@ type = "shared"
 # also what a project depending on this one would need.
 include-dir = ["."]
 
+# The Fortran test framework (asserts, test_suite). A library of its own so that a suite in a
+# subdirectory of test/ can use it: fpm lets a test source see only library modules and modules in
+# its own directory or below. See test_framework/fpm.toml.
+[dev-dependencies]
+test_framework = { path = "test_framework" }
+
 [features]
 unknown-compiler.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
 gfortran.build.link = ["loess-netlib", "loess-netlib-drotg", "xxhash", "zip"]
@@ -25,6 +31,14 @@ diagnostics.ifx.flags = "-g -traceback -check all -warn all -diag-enable=all -st
 diagnostics.gfortran.flags = "-g -fbacktrace -fcheck=all -Wall -Wextra -Warray-temporaries -Wrealloc-lhs-all -std=f2023 -pedantic"
 
 default.linux.flags = "-fPIC"
+
+# fpm links the root library against every package it knows, the test_framework dev-dependency
+# included and even without --tests (resolve_target_linking in fpm_targets.f90). Without these
+# flags, libtensor_omics.so would record a NEEDED libtest_framework.so that it never uses, and
+# the Python and R bindings could not load it. The linker keeps only libraries something
+# references.
+default.linux.link-time-flags = "-Wl,--as-needed"
+default.macos.link-time-flags = "-Wl,-dead_strip_dylibs"
 
 [[test]]
 name = "run_tests"

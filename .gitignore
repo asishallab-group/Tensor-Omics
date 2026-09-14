@@ -25,13 +25,22 @@
 !/LICENSE
 
 # test
+# A suite with one child module per procedure keeps them in test/mod_test_<module>/, beside the
+# parent test/mod_test_<module>.F90 that gathers them.
 !/test
 !/test/test_files
 !/test/test_files/**/*
 !/test/mod_test*.[fF]90
+!/test/mod_test_*/
+!/test/mod_test_*/*.[fF]90
 !/test/run_tests.[Ff]90
-!/test/test_suite.[Ff]90
-!/test/asserts.[Ff]90
+
+# test_framework: asserts and test_suite, a local fpm package the tests take as a dev-dependency,
+# so that a suite in a subdirectory of test/ can use them (fpm scopes test sources to their dir)
+!/test_framework
+!/test_framework/fpm.toml
+!/test_framework/src
+!/test_framework/src/*.[fF]90
 
 # src
 !/src

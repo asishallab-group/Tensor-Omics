@@ -8,18 +8,26 @@ This framework provides a robust and scalable system for organizing and executin
 
 ### Main Components
 
-1. **`run_tests.f90`** - Main program that handles command line arguments
+1. **`run_tests.F90`** - Main program that handles command line arguments
 2. **Test Modules** - Each module (suite) contains tests for a specific functionality
-3. **`asserts.f90`** - Assertion function library for validating results
+3. **`test_framework/`** - The `asserts` assertion library and the `test_suite` registry, a local
+   fpm package the tests take as a dev-dependency. fpm lets a test source use only library modules
+   and modules in its own directory or below, so as a library the framework is visible to suites
+   in subdirectories of `test/` as well.
 
 ### File Structure
 ```
+test_framework/                          # Local fpm package, a dev-dependency of tensor_omics
+└── src/
+    ├── asserts.F90                      # Assertion library
+    └── test_suite.F90                   # Suite registry
 test/
-├── run_tests.f90                     # Main program
-├── asserts.f90                       # Assertion library
-├── mod_test_normalize_by_std_dev.f90 # Normalization tests
-├── mod_test_sorting.f90              # Sorting tests
-└── mod_test_quantile_normalization.f90 # Quantile normalization tests
+├── run_tests.F90                        # Main program
+├── mod_test_sorting.F90                 # A suite in a single file
+├── mod_test_tox_normalization.F90       # A suite gathering one child module per procedure...
+└── mod_test_tox_normalization/          # ...which live here, named after the procedure
+    ├── mod_test_tox_normalization_calc_fchange.F90
+    └── ...
 ```
 
 ## System Usage
