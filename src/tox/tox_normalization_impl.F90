@@ -33,8 +33,6 @@ contains
             !! number of elements in `vector`
         real(real64), dimension(n_dims), intent(inout) :: vector
             !! Vector that will be normalized to unit length
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -80,8 +78,6 @@ contains
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
@@ -604,8 +600,6 @@ contains
             !! Number of tissues
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_tissues, n_genes), intent(out) :: transformed_expr
             !! Log-transformed `expr`
         integer(int32), intent(out) :: ierr

@@ -20,7 +20,8 @@ module tox_normalization
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use tox_loess_impl, only: tox_loess_required_workspace
     use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, clear_err_arg_pos
-    use tox_errors, only: set_err, validate_all_in_range_int, validate_dimension_size, validate_in_range_real
+    use tox_errors, only: set_err, validate_all_in_range_int, validate_all_in_range_real, validate_dimension_size
+    use tox_errors, only: validate_in_range_real
     M_IMPLICIT_NONE
     private
 
@@ -48,14 +49,13 @@ contains
             !! number of elements in `vector`
         real(real64), dimension(n_dims), intent(inout) :: vector
             !! Vector that will be normalized to unit length
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(int32), intent(out) :: ierr
             !! Error code
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_dims, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(vector, n_dims, ierr, arg_pos=1_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -89,8 +89,6 @@ contains
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
@@ -129,6 +127,7 @@ contains
         call validate_dimension_size(n_replicates, ierr, arg_pos=2_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=6_int32)
         call validate_in_range_real(span, ierr, arg_pos=7_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -238,8 +237,6 @@ contains
             !! | save_factorization    | .false.     |
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
@@ -291,6 +288,7 @@ contains
         call validate_dimension_size(int_workspace_size, ierr, arg_pos=12_int32)
         call validate_dimension_size(real_workspace_size, ierr, arg_pos=14_int32)
         call validate_in_range_real(span, ierr, arg_pos=22_int32)
+        call validate_all_in_range_real(expr, n_replicates * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 
@@ -711,8 +709,6 @@ contains
             !! Number of tissues
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(real64), dimension(n_tissues, n_genes), intent(out) :: transformed_expr
             !! Log-transformed `expr`
         integer(int32), intent(out) :: ierr
@@ -722,6 +718,7 @@ contains
 #ifndef NO_INPUT_VALIDATION
         call validate_dimension_size(n_genes, ierr, arg_pos=1_int32)
         call validate_dimension_size(n_tissues, ierr, arg_pos=2_int32)
+        call validate_all_in_range_real(expr, n_tissues * n_genes, ierr, arg_pos=3_int32)
         if (is_err(ierr)) return
 #endif
 

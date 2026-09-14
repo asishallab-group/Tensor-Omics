@@ -45,8 +45,6 @@ contains
             !! number of elements in `vector`
         real(c_double), dimension(n_dims), intent(inout), target :: vector
             !! Vector that will be normalized to unit length
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -86,8 +84,6 @@ contains
             !! Number of tissues
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
@@ -188,8 +184,6 @@ contains
             !! | save_factorization    | .false.     |
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
@@ -650,8 +644,6 @@ contains
             !! Number of tissues
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: transformed_expr
             !! Log-transformed `expr`
         integer(c_int), intent(out), target :: ierr

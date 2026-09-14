@@ -6,11 +6,7 @@
 #' are the ones an error message reports.
 #'
 #' @param vector a numeric vector. Vector that will be normalized to unit length
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a numeric vector. Vector that will be normalized to unit length
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @export
 normalize_unit_length <- function(vector) {
     vector <- .tox_as_double_vector(vector, "vector")
@@ -30,8 +26,6 @@ normalize_unit_length <- function(vector) {
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @param reps_per_tissue a integer vector. Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
 #'   e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
 #' @param span a numeric scalar. LOESS span parameter.
@@ -148,8 +142,6 @@ quantile_normalization <- function(expr) {
 #' are the ones an error message reports.
 #'
 #' @param expr a numeric matrix. Gene Expression matrix, from \code{\link{calc_tiss_avg}}
-#'   NaN is permitted for this value.
-#'   Infinite values are permitted for this value.
 #' @return a numeric matrix. Log-transformed `expr`
 #' @export
 log2_transformation <- function(expr) {

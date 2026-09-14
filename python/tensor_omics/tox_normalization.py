@@ -156,8 +156,6 @@ def normalize_unit_length(
     ----------
     vector : np.ndarray[np.float64] of shape (n_dims,), modified in place
         Vector that will be normalized to unit length
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
@@ -210,8 +208,6 @@ def normalization_pipeline(
     ----------
     expr : np.ndarray[np.float64] of shape (n_replicates, n_genes,), column-major (order='F')
         Gene Expression matrix
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
     reps_per_tissue : np.ndarray[np.int32] of shape (n_tissues,)
         Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
         e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
@@ -507,8 +503,6 @@ def log2_transformation(
     ----------
     expr : np.ndarray[np.float64] of shape (n_tissues, n_genes,), column-major (order='F')
         Gene Expression matrix, from :func:`tensor_omics.calc_tiss_avg`
-        NaN is permitted for this value.
-        Infinite values are permitted for this value.
 
     Returns
     -------
