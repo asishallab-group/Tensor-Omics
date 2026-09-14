@@ -459,20 +459,17 @@ contains
 
         ! Local variables
         integer(int32) :: i_gene, i_tissue
-        real(real64) :: std_dev, temp_sum
+        real(real64) :: rms
 
         ! Loop over each gene
-        do concurrent (i_gene = 1:n_genes) local(temp_sum, std_dev) shared(n_replicates, expr)
-            temp_sum = 0.0_real64
-            do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene) reduce(+:temp_sum)
-                temp_sum = temp_sum + expr(i_tissue, i_gene)**2
-            end do
+        do concurrent (i_gene = 1:n_genes) local(rms) shared(n_replicates, expr)
+            ! sqrt(mean(x**2)) is norm(x)/sqrt(n), and f42's norm is scaled: squares past the real64
+            ! range neither overflow, which divided the gene by Inf into zeros, nor underflow.
+            rms = norm(expr(:, i_gene))/sqrt(real(n_replicates, real64))
 
-            std_dev = sqrt(temp_sum/real(n_replicates, kind=real64))
-
-            if (.not. is_close(std_dev, 0.0_real64)) then
-                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, std_dev)
-                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / std_dev
+            if (.not. is_close(rms, 0.0_real64)) then
+                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, rms)
+                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / rms
                 end do
             end if
         end do
