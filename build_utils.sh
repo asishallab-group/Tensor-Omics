@@ -314,6 +314,34 @@ function find_and_mv_libs() {
   done <<< "$1"
 }
 
+# fpm links a library only in a run that recompiles one of its objects, and records nothing for
+# the next run. A run that compiles changed library sources and then fails before the link -- a
+# test that does not compile stops it a level short -- leaves the library older than its own
+# objects, and every later run finds them up to date: "Project is up to date", and the tests and
+# the bindings keep loading the old code. The build state cannot see this (no input changed); the
+# clean builds on branch switches used to wipe it away by accident. So a library older than any
+# object `fpm build --list` names for it ($1) is removed here, before the build, and fpm links it
+# again -- which also repairs a tree an earlier run left behind.
+function remove_stale_libraries() {
+  declare line library newest_object=""
+  declare -a libraries=()
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    if [[ $line == *.so || $line == *.a ]]; then
+      libraries+=("$line")
+    elif [[ $line == *.o && -e $line && ( -z $newest_object || $line -nt $newest_object ) ]]; then
+      newest_object="$line"
+    fi
+  done <<< "$1"
+  [[ $newest_object ]] || return 0
+  for library in "${libraries[@]}"; do
+    if [[ -e $library && $newest_object -nt $library ]]; then
+      warning "'$library' is older than its object '$newest_object' -- an earlier build stopped before linking it. Relinking."
+      rm -f "$library"
+    fi
+  done
+}
+
 function echo_compiler() {
   echo "$COLOR_COPPER$1$COLOR_CREAM"
 }

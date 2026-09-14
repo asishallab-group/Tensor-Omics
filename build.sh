@@ -32,6 +32,8 @@ fpm build --compiler "$COMPILER"
 find_and_mv_libs "$(fpm build --compiler "$COMPILER" --list 2>&1)" "$root/external"
 cd $root
 # tox
+# a library older than its own objects is one an earlier, failed build never linked
+remove_stale_libraries "$(utils_fpm list 2>&1)"
 utils_fpm build
 
 check_exit_code "Build with fpm failed"
