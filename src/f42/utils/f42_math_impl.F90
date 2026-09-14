@@ -166,23 +166,23 @@ contains
     !| a tiny `x` -- `1 + 1e-15` is `1.00000000000000111` -- so `log(1 + x)` is 11% off there.
     !| Fortran has no `log1p` intrinsic. This takes the rounded `u = 1 + x` and corrects for the
     !| rounding it suffered, `log(u)*x/(u - 1)` (Goldberg, "What Every Computer Scientist Should Know
-    !| About Floating-Point Arithmetic", Theorem 4), exact to a few ulps. The correction relies on
-    !| `u - 1` being evaluated as written, which value-unsafe optimizations such as `-ffast-math`
-    !| may not do.
+    !| About Floating-Point Arithmetic", Theorem 4), exact to a few ulps.
+    !|
+    !| The correction relies on `(1 + x) - 1` being evaluated as written, so it is spelled out in
+    !| parentheses, which the Fortran standard requires a compiler to respect. gfortran does by
+    !| default; ifx only with `-assume protect_parens`, which fpm.toml sets for every ifx build.
+    !| Held in a variable instead, ifx folds `u - 1` back to `x` even then.
     !|
     !| (no input validation) Ensure `x > -1`; yields a NaN/Inf result otherwise.
     pure real(real64) function log1p(x)
         real(real64), intent(in) :: x
             !! Argument, must be `> -1`
 
-        real(real64) :: u
-
-        u = 1.0_real64 + x
-        if (u == 1.0_real64) then
+        if ((1.0_real64 + x) == 1.0_real64) then
             ! `x` is below half an ulp of 1, where log(1 + x) = x to double precision
             log1p = x
         else
-            log1p = log(u)*(x/(u - 1.0_real64))
+            log1p = log(1.0_real64 + x)*(x/((1.0_real64 + x) - 1.0_real64))
         end if
     end function log1p
 
