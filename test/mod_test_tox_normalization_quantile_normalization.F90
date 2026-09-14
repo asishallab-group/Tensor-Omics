@@ -16,7 +16,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_tox_normalization_quantile_normalization() result(all_tests)
         type(test_case),allocatable :: all_tests(:)
-        allocate(all_tests(9))
+        allocate(all_tests(10))
 
         all_tests(1) = test_case("test_error_zero_dimensions", test_error_zero_dimensions)
         all_tests(2) = test_case("test_error_negative_dimensions", test_error_negative_dimensions)
@@ -27,6 +27,8 @@ contains
         all_tests(7) = test_case("test_ties", test_ties)
         all_tests(8) = test_case("test_already_normalized", test_already_normalized)
         all_tests(9) = test_case("test_random", test_random)
+        all_tests(10) = test_case("test_ties_share_the_mean_of_their_rank_means", &
+                                  test_ties_share_the_mean_of_their_rank_means)
     end function get_all_tests_tox_normalization_quantile_normalization
 
     ! ============================================================
@@ -264,6 +266,46 @@ contains
 
         call assert_no_nan_real(means, n_genes, "random: no NaN in rank_means")
         call assert_no_inf_real(means, n_genes, "random: no Inf in rank_means")
+    end subroutine
+
+
+    !> Tied values within a replicate share the mean of the rank means their ranks span, so equal
+    !| inputs stay equal. The rank means themselves do not change: ties only decide who gets them.
+    subroutine test_ties_share_the_mean_of_their_rank_means()
+        integer(int32), parameter :: n_genes = 4, n_replicates = 2
+        real(real64) :: expr(n_replicates, n_genes), normalized(n_replicates, n_genes)
+        real(real64) :: expected(n_replicates, n_genes), expected_means(n_genes)
+        real(real64) :: tmp(n_genes), means(n_genes)
+        integer(int32) :: perm(n_genes), ierr
+
+        ! Replicate 1 ties genes 2 and 3 at ranks 2 and 3. The rank means of the sorted replicates
+        ! [1, 3, 3, 5] and [2, 4, 6, 8] are [1.5, 3.5, 4.5, 6.5], so genes 2 and 3 of replicate 1
+        ! both get (3.5 + 4.5)/2 = 4; replicate 2 has no ties.
+        expr(1, :) = [1.0_real64, 3.0_real64, 3.0_real64, 5.0_real64]
+        expr(2, :) = [2.0_real64, 4.0_real64, 6.0_real64, 8.0_real64]
+        expected_means = [1.5_real64, 3.5_real64, 4.5_real64, 6.5_real64]
+        expected(1, :) = [1.5_real64, 4.0_real64, 4.0_real64, 6.5_real64]
+        expected(2, :) = expected_means
+
+        call quantile_normalization_expert(n_genes, n_replicates, expr, normalized, means, tmp, perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "one tie: ierr must be OK")
+        call assert_equal_array_real(means, expected_means, n_genes, TOL, "one tie: rank means")
+        call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
+                                     "one tie: genes 2 and 3 of replicate 1 must share (3.5 + 4.5)/2")
+
+        ! A constant replicate is one tie over every rank. The rank means of [4, 4, 4, 4] and
+        ! [1, 2, 3, 6] are [2.5, 3, 3.5, 5], so every gene of replicate 1 gets their mean, 3.5.
+        expr(1, :) = 4.0_real64
+        expr(2, :) = [1.0_real64, 2.0_real64, 3.0_real64, 6.0_real64]
+        expected_means = [2.5_real64, 3.0_real64, 3.5_real64, 5.0_real64]
+        expected(1, :) = 3.5_real64
+        expected(2, :) = expected_means
+
+        call quantile_normalization_expert(n_genes, n_replicates, expr, normalized, means, tmp, perm, ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "constant replicate: ierr must be OK")
+        call assert_equal_array_real(means, expected_means, n_genes, TOL, "constant replicate: rank means")
+        call assert_equal_array_real(normalized, expected, n_genes*n_replicates, TOL, &
+                                     "constant replicate: every gene must get the mean of all rank means")
     end subroutine
 
 end module mod_test_tox_normalization_quantile_normalization
