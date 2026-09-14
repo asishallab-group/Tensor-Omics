@@ -1,0 +1,6 @@
+pytest>=8
+
+# parsing the Fortran sources
+FORD>=7
+pcpp>=1.30
+numpy>=2

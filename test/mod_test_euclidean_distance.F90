@@ -44,7 +44,7 @@ contains
         expected = sqrt(27.0_real64)
 
         call euclidean_distance(vec1, vec2, 3, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-12_real64, "Standard 3D vectors")
     end subroutine test_euclidean_distance_3d
 
@@ -58,7 +58,7 @@ contains
         expected = 5.0_real64
 
         call euclidean_distance(vec1, vec2, 2, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-12_real64, "2D vector to origin")
     end subroutine test_euclidean_distance_2d_origin
 
@@ -72,7 +72,7 @@ contains
         expected = 3.0_real64
 
         call euclidean_distance(vec1, vec2, 1, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-12_real64, "1D vectors")
     end subroutine test_euclidean_distance_1d
 
@@ -86,7 +86,7 @@ contains
         expected = 0.0_real64
 
         call euclidean_distance(vec1, vec2, 3, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-15_real64, "Identical vectors")
     end subroutine test_euclidean_distance_identical
 
@@ -104,7 +104,7 @@ contains
         expected = sqrt(10.0_real64)  ! sqrt(1^2 + 1^2 + ... + 1^2)
 
         call euclidean_distance(vec1, vec2, 10, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-12_real64, "10D unit-shift vectors")
     end subroutine test_euclidean_distance_high_dim
 
@@ -118,7 +118,7 @@ contains
         expected = 0.0_real64
 
         call euclidean_distance(vec1, vec2, 3, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-15_real64, "Zero vectors")
     end subroutine test_euclidean_distance_zero_vectors
 
@@ -132,7 +132,7 @@ contains
         expected = sqrt(2.0_real64)*1e-15_real64
 
         call euclidean_distance(vec1, vec2, 2, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-27_real64, "Very small numbers")
     end subroutine test_euclidean_distance_small_numbers
 
@@ -146,7 +146,7 @@ contains
         expected = sqrt(2.0_real64)*1e15_real64
 
         call euclidean_distance(vec1, vec2, 2, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e3_real64, "Very large numbers")
     end subroutine test_euclidean_distance_large_numbers
 
@@ -160,7 +160,7 @@ contains
         expected = 10.0_real64
 
         call euclidean_distance(vec1, vec2, 2, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, expected, 1e-12_real64, "Mixed positive/negative")
     end subroutine test_euclidean_distance_mixed_signs
 
@@ -195,7 +195,7 @@ contains
         ! Compute distances
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Verify results
         call assert_equal_real(distances(1), expected_distances(1), 1e-12_real64, "Gene 1 distance")
@@ -218,7 +218,7 @@ contains
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         call assert_equal_real(distances(1), 0.0_real64, 1e-15_real64, "Single gene/family")
     end subroutine test_distance_to_centroid_single
@@ -244,7 +244,7 @@ contains
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         call assert_equal_real(distances(1), sqrt(real(d, real64)), 1e-10_real64, "High-dim gene 1")
         call assert_equal_real(distances(2), 0.0_real64, 1e-15_real64, "High-dim gene 2")
@@ -277,7 +277,7 @@ contains
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Check that valid gene has proper distance
         call assert_equal_real(distances(1), sqrt(5.0_real64), 1e-12_real64, "Valid gene distance")
@@ -297,7 +297,7 @@ contains
         vec2 = [1.0_real64 + eps, 1.0_real64 + eps]
 
         call euclidean_distance(vec1, vec2, 2, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, sqrt(2.0_real64)*eps, eps*10, "Machine epsilon precision")
     end subroutine test_numerical_precision_epsilon
 
@@ -310,7 +310,7 @@ contains
         vec2 = [1.234567890123457_real64, 2.345678901234568_real64, 3.456789012345679_real64]
 
         call euclidean_distance(vec1, vec2, 3, result, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
         call assert_equal_real(result, sqrt(3.0_real64)*1e-15_real64, 1e-14_real64, "High precision vectors")
     end subroutine test_numerical_precision_close
 
@@ -339,7 +339,7 @@ contains
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Verify some results are computed
         call assert_true(any(distances > 0.0_real64), "Performance test: distances computed")
@@ -367,7 +367,7 @@ contains
 
         call distance_to_centroid(n_genes, n_families, genes, centroids, &
                                   gene_to_fam, distances, d, ierr)
-        call assert_equal_int(ierr, ERR_OK, "Unexpected error")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "Unexpected error")
 
         ! Verify the pattern gives expected results
         ! Gene 1: [1,10,100,1000] vs Centroid 1: [1.5,15,150,1500]

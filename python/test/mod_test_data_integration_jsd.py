@@ -1,25 +1,29 @@
 """
 Comprehensive Python test suite for data integration and Jensen–Shannon divergence functions in tensoromics.
-Uses tensoromics_functions.py wrapper function (mirrors Fortran test suite)
+Uses tensor_omics.py wrapper function (mirrors Fortran test suite)
 """
 import numpy as np
 import sys
 import os
 
-# Add parent directory to path to import tensoromics_functions
+# Add parent directory to path to import tensor_omics
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from test_helpers import run_all_tests, assert_error
-from tensoromics_functions import (
-    tox_determine_shared_residual_range,
-    tox_determine_shared_residual_range_expert,
-    tox_build_residual_histograms,
-    tox_build_residual_histograms_filtered,
-    tox_compute_divergence_per_reference_point,
-    tox_compute_weighted_global_divergence,
+from tensor_omics import (
+    determine_study_shared_residual_range,
+    determine_shared_residual_range_expert,
+    build_residual_histograms,
+    compute_divergence_per_reference_point,
+    compute_weighted_global_divergence,
     gjct_permutation_test,
-    gjct_permutation_test_filtered,
 )
+from tensor_omics.error_handling import ERR_INVALID_INPUT
+
+# The filtered variants are gone: filtering is now the optional `neighbor_mask` /
+# `neighbor_mask_S1`/`_S2` argument of the base routine.
+build_residual_histograms_filtered = build_residual_histograms
+gjct_permutation_test_filtered = gjct_permutation_test
 
 
 TOL = 1e-12
@@ -42,24 +46,24 @@ def test_tox_determine_shared_residual_range():
     S2[:, 0, 1] = [5,  7,  9]
     S2[:, 1, 1] = [0,  1,  2]
 
-    R = tox_determine_shared_residual_range(S1, S2, 0.95)
+    R = determine_study_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 10.65) < TOL, f"Test 1 failed: expected 10.65, got {R}"
 
     # ============================================================
     # Test 2 — Custom quantile (median, q=0.5)
     # ============================================================
-    R = tox_determine_shared_residual_range(S1, S2, 0.5)
+    R = determine_study_shared_residual_range(S1, S2, 0.5)
     assert abs(R - 4.0) < TOL, f"Test 2 failed: expected 4.0, got {R}"
 
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    assert_error(lambda: tox_determine_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_study_shared_residual_range(S1, S2, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 4 — Quantile > 1 → error
     # ============================================================
-    assert_error(lambda: tox_determine_shared_residual_range(S1, S2, 1.5), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_study_shared_residual_range(S1, S2, 1.5), "Test 4 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -79,7 +83,7 @@ def test_tox_determine_shared_residual_range():
     S1[0, 0, 0] = np.nan
     S2[2, 1, 1] = np.nan
 
-    R = tox_determine_shared_residual_range(S1, S2, 0.95)
+    R = determine_study_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 11.0) < TOL, f"Test 5 failed: expected 11.0, got {R}"
 
     # ============================================================
@@ -88,7 +92,7 @@ def test_tox_determine_shared_residual_range():
     S1[:, :, :] = 0
     S2[:, :, :] = 0
 
-    R = tox_determine_shared_residual_range(S1, S2, 0.95)
+    R = determine_study_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 0.0) < TOL, f"Test 6 failed: expected 0.0, got {R}"
 
     # ============================================================
@@ -97,7 +101,7 @@ def test_tox_determine_shared_residual_range():
     S1 = np.array([[[3.0]]], dtype=np.float64, order="F")
     S2 = np.array([[[-4.0]]], dtype=np.float64, order="F")
 
-    R = tox_determine_shared_residual_range(S1, S2, 0.95)
+    R = determine_study_shared_residual_range(S1, S2, 0.95)
     assert abs(R - 3.95) < TOL, f"Test 7 failed: expected 3.95, got {R}"
 
 
@@ -126,24 +130,24 @@ def test_tox_determine_shared_residual_range_expert():
     ], dtype=np.float64, order="F")
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm)
+    R = determine_shared_residual_range_expert(pool, perm)
     assert abs(R - 10.85) < TOL, f"Test 1 failed: expected 10.85, got {R}"
 
     # ============================================================
     # Test 2 — Custom quantile (median, q=0.5)
     # ============================================================
-    R = tox_determine_shared_residual_range_expert(pool, perm, 0.5)
+    R = determine_shared_residual_range_expert(pool, perm, 0.5)
     assert abs(R - 5.0) < TOL, f"Test 2 failed: expected 5.0, got {R}"
 
     # ============================================================
     # Test 3 — Quantile < 0 → error
     # ============================================================
-    assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_shared_residual_range_expert(pool, perm, -1.0), "Test 3 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 4 — Quantile > 1 → error
     # ============================================================
-    assert_error(lambda: tox_determine_shared_residual_range_expert(pool, perm, 1.5), "Test 4 failed: expected ERR_INVALID_INPUT")
+    assert_error(lambda: determine_shared_residual_range_expert(pool, perm, 1.5), "Test 4 failed: expected ERR_INVALID_INPUT", ERR_INVALID_INPUT)
 
     # ============================================================
     # Test 5 — NaNs must be ignored
@@ -159,7 +163,7 @@ def test_tox_determine_shared_residual_range_expert():
     S2[3, 2] = np.nan
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm, 0.95)
+    R = determine_shared_residual_range_expert(pool, perm, 0.95)
     assert abs(R - 11.0) < TOL, f"Test 5 failed: expected 11.0, got {R}"
 
     # ============================================================
@@ -169,7 +173,7 @@ def test_tox_determine_shared_residual_range_expert():
     S2 = np.zeros((4, 3), dtype=np.float64, order="F")
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm, 0.95)
+    R = determine_shared_residual_range_expert(pool, perm, 0.95)
     assert abs(R - 0.0) < TOL, f"Test 6 failed: expected 0.0, got {R}"
 
     # ============================================================
@@ -179,7 +183,7 @@ def test_tox_determine_shared_residual_range_expert():
     S2 = np.array([[-4.0]], dtype=np.float64, order="F")
 
     pool, perm = make_pool(S1, S2)
-    R = tox_determine_shared_residual_range_expert(pool, perm, 0.95)
+    R = determine_shared_residual_range_expert(pool, perm, 0.95)
     assert abs(R - 3.95) < TOL, f"Test 7 failed: expected 3.95, got {R}"
 
 
@@ -200,16 +204,17 @@ def test_tox_build_residual_histograms():
     E[:, 0, 2] = [2.5, -3.0, 1.2]
     E[:, 1, 2] = [0.4, -0.1, 0.0]
 
-    counts, pmf, included = tox_build_residual_histograms_filtered(E, R, n_bins, neighbor_mask=np.full((n_neighbors, n_points), False, order="F")).values()
+    counts, pmf, included = build_residual_histograms_filtered(E, R, n_bins, neighbor_mask=np.full((n_neighbors, n_points), False, order="F")).values()
 
     assert np.all(counts == 0), "All counts should be zero"
     assert np.allclose(pmf, 0.0, atol=TOL), "All pmfs should be zero"
     assert np.all(included == 0), "All included should be zero"
 
-    def filtered(E, R, n_bins): return tox_build_residual_histograms_filtered(E, R, n_bins, neighbor_mask=np.full(E.shape, True, order="F"))
+    # the mask is per (neighbor, point), not per residual
+    def filtered(E, R, n_bins): return build_residual_histograms_filtered(E, R, n_bins, neighbor_mask=np.full(E.shape[1:], True, order="F"))
 
-    for func in (tox_build_residual_histograms, filtered):
-        print(f"... test {func.__name__.replace("filtered", "tox_build_residual_histograms_filtered")}")
+    for func in (build_residual_histograms, filtered):
+        print(f"... test {func.__name__.replace("filtered", "build_residual_histograms_filtered")}")
 
         E = np.zeros((n_reps, n_neighbors, n_points), dtype=np.float64, order="F")
         E[:, 0, 0] = [-2.0, -0.5, 0.2]
@@ -221,7 +226,7 @@ def test_tox_build_residual_histograms():
         out = func(E, R, n_bins)
         counts = out["counts"]
         pmf = out["pmf"]
-        included = out["included_n_residuals"]
+        included = out["included_n_reps"]
 
         expected_counts = np.array([
             [2, 1, 2, 1],
@@ -251,7 +256,7 @@ def test_tox_build_residual_histograms():
         out = func(E, R, n_bins)
         counts = out["counts"]
         pmf = out["pmf"]
-        included = out["included_n_residuals"]
+        included = out["included_n_reps"]
 
         expected_counts = np.array([
             [0, 0, 4, 0],
@@ -279,7 +284,7 @@ def test_tox_build_residual_histograms():
         out = func(E, R, n_bins)
         counts = out["counts"]
         pmf = out["pmf"]
-        included = out["included_n_residuals"]
+        included = out["included_n_reps"]
 
         assert np.all(counts == 0), "Test 3: counts mismatch"
         assert np.all(pmf == 0), "Test 3: pmf mismatch"
@@ -304,7 +309,7 @@ def test_tox_build_residual_histograms():
         out = func(E, R, n_bins)
         counts = out["counts"]
         pmf = out["pmf"]
-        included = out["included_n_residuals"]
+        included = out["included_n_reps"]
 
         expected_counts = np.array([
             [1, 1, 2, 2],
@@ -338,7 +343,7 @@ def test_tox_compute_divergence_per_reference_point():
 
     q = p.copy(order="F")
 
-    jsd = tox_compute_divergence_per_reference_point(p, q)
+    jsd = compute_divergence_per_reference_point(p, q)
     expected = np.zeros(n_points, dtype=np.float64)
 
     assert np.allclose(jsd, expected, atol=TOL), "Test 1 failed: identical PMFs → JSD must be zero"
@@ -352,7 +357,7 @@ def test_tox_compute_divergence_per_reference_point():
     p[0, 0] = 1.0
     q[0, 1] = 1.0
 
-    jsd = tox_compute_divergence_per_reference_point(p, q)
+    jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
     expected[0] = np.log(2.0)
@@ -370,7 +375,7 @@ def test_tox_compute_divergence_per_reference_point():
     p[0, :] = [0.5, 0.5, 0.0, 0.0]
     q[0, :] = [0.0, 1.0, 0.0, 0.0]
 
-    jsd = tox_compute_divergence_per_reference_point(p, q)
+    jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
     expected[0] = 0.5 * (
@@ -390,7 +395,7 @@ def test_tox_compute_divergence_per_reference_point():
     p[0, 0] = 1.0
     q[0, 2] = 1.0
 
-    jsd = tox_compute_divergence_per_reference_point(p, q)
+    jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
     expected[0] = np.log(2.0)
@@ -412,7 +417,7 @@ def test_tox_compute_divergence_per_reference_point():
         [0.5, 1.0, 0.25, 0.25],
     ], dtype=np.float64, order="F")
 
-    jsd = tox_compute_divergence_per_reference_point(p, q)
+    jsd = compute_divergence_per_reference_point(p, q)
 
     expected = np.zeros(n_points, dtype=np.float64)
     expected[1] = 0.5 * (1.0 * np.log(1.0 / 0.5))
@@ -429,7 +434,7 @@ def test_tox_compute_weighted_global_divergence():
     n1  = np.array([5, 5, 5, 5], dtype=np.int32)
     n2  = np.array([5, 5, 5, 5], dtype=np.int32)
 
-    global_jsd, w = tox_compute_weighted_global_divergence(jsd, n1, n2).values()
+    global_jsd, w = compute_weighted_global_divergence(jsd, n1, n2).values()
 
     expected_weights = np.array([0.25, 0.25, 0.25, 0.25], dtype=np.float64)
 
@@ -443,7 +448,7 @@ def test_tox_compute_weighted_global_divergence():
     n1  = np.array([10, 20, 30, 40], dtype=np.int32)
     n2  = np.array([ 0, 10, 10, 10], dtype=np.int32)
 
-    global_jsd, w = tox_compute_weighted_global_divergence(jsd, n1, n2).values()
+    global_jsd, w = compute_weighted_global_divergence(jsd, n1, n2).values()
 
     expected_weights = np.array([10, 30, 40, 50], dtype=np.float64) / 130.0
 
@@ -465,7 +470,7 @@ def test_tox_compute_weighted_global_divergence():
     n1  = np.array([0, 10, 0, 5], dtype=np.int32)
     n2  = np.array([0,  0, 0, 5], dtype=np.int32)
 
-    global_jsd, w = tox_compute_weighted_global_divergence(jsd, n1, n2).values()
+    global_jsd, w = compute_weighted_global_divergence(jsd, n1, n2).values()
 
     expected_weights = np.array([0.0, 0.5, 0.0, 0.5], dtype=np.float64)
 
@@ -479,7 +484,7 @@ def test_tox_compute_weighted_global_divergence():
     n1  = np.array([0, 0, 0, 0], dtype=np.int32)
     n2  = np.array([0, 0, 0, 0], dtype=np.int32)
 
-    global_jsd, w = tox_compute_weighted_global_divergence(jsd, n1, n2).values()
+    global_jsd, w = compute_weighted_global_divergence(jsd, n1, n2).values()
 
     expected_weights = np.zeros(4, dtype=np.float64)
 
@@ -493,7 +498,7 @@ def test_tox_compute_weighted_global_divergence():
     n1  = np.array([5, 0, 10, 5], dtype=np.int32)
     n2  = np.array([5, 5,  0, 5], dtype=np.int32)
 
-    global_jsd, w = tox_compute_weighted_global_divergence(jsd, n1, n2).values()
+    global_jsd, w = compute_weighted_global_divergence(jsd, n1, n2).values()
 
     expected_weights = np.array([10, 5, 10, 10], dtype=np.float64) / 35.0
 
@@ -541,13 +546,16 @@ def test_gjct_permutation_test_python():
         shared_residual_range=10.0,
         n_permutations=n_permutations,
         random_seed=random_seed,
-        neighbor_mask_S1=np.full(S1.shape, False, order="F"), neighbor_mask_S2=np.full(S2.shape, False, order="F")
+        neighbor_mask_S1=np.full(S1.shape[1:], False, order="F"), neighbor_mask_S2=np.full(S2.shape[1:], False, order="F")
     )
     assert np.isclose(res_p1["p_value"], 1/3), "For no included neighbors, p-value should be 1/3 ((0+1)/(n_permutations+1))"
 
     def filtered(S1, S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations, random_seed):
-        return gjct_permutation_test_filtered(S1, S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations,
-            np.full(S1.shape, True, order="F"), np.full(S2.shape, True, order="F"), random_seed
+        return gjct_permutation_test_filtered(
+            S1, S2, global_jsd_observed, n_bins, shared_residual_range, n_permutations,
+            random_seed=random_seed,
+            neighbor_mask_S1=np.full(S1.shape[1:], True, order="F"),
+            neighbor_mask_S2=np.full(S2.shape[1:], True, order="F"),
         )
 
     for func in (gjct_permutation_test, filtered):

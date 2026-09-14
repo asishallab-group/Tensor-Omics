@@ -34,7 +34,7 @@ contains
         expected = vector/sqrt(sum(vector**2))
 
         call normalize_unit_length(vector, n_dims, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_normalize_unit_length: normal vector ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length: normal vector ierr")
         call assert_equal_array_real(vector, expected, n_dims, TOL, "test_normalize_unit_length: normal vector result")
 
         ! -------------------------------
@@ -43,7 +43,7 @@ contains
         vector = [0.0_real64, 0.0_real64, 0.0_real64]
 
         call normalize_unit_length(vector, n_dims, ierr)
-        call assert_equal_int(ierr, ERR_DIVISION_BY_ZERO, "test_normalize_unit_length: zero vector should trigger ERR_DIVISION_BY_ZERO")
+        call assert_equal_int(get_err_code(ierr), ERR_DIVISION_BY_ZERO, "test_normalize_unit_length: zero vector should trigger ERR_DIVISION_BY_ZERO")
 
         ! -------------------------------
         ! Case 3: Already normalized
@@ -52,7 +52,7 @@ contains
         expected = vector
 
         call normalize_unit_length(vector, n_dims, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_normalize_unit_length: already normalized vector ierr")
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_normalize_unit_length: already normalized vector ierr")
         call assert_equal_array_real(vector, expected, n_dims, 0.0_real64, "test_normalize_unit_length: already normalized vector result")
 
         ! -------------------------------
@@ -62,7 +62,7 @@ contains
         expected = vector
 
         call normalize_unit_length(vector, n_dims, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_normalize_unit_length: vector with NaN should trigger ERR_NAN_INF")
+        call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "test_normalize_unit_length: vector with NaN should trigger ERR_NAN_INF")
 
         ! -------------------------------
         ! Case 5: Infinity
@@ -71,7 +71,7 @@ contains
         expected = vector
 
         call normalize_unit_length(vector, n_dims, ierr)
-        call assert_equal_int(ierr, ERR_NAN_INF, "test_normalize_unit_length: vector with Infinity should trigger ERR_NAN_INF")
+        call assert_equal_int(get_err_code(ierr), ERR_NAN_INF, "test_normalize_unit_length: vector with Infinity should trigger ERR_NAN_INF")
     end subroutine test_normalize_unit_length
 
 end module mod_test_normalization_unit_length

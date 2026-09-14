@@ -1,21 +1,17 @@
 import sys
 import os
 import numpy as np
-import ctypes
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-# Load library
-dll_path = os.path.abspath("build/libtensor-omics.so")
-ctypes.CDLL("libgomp.so.1", mode=ctypes.RTLD_GLOBAL)
-ctypes.CDLL("libzip.so", mode=ctypes.RTLD_GLOBAL)
-ctypes.CDLL("libxxhash.so", mode=ctypes.RTLD_GLOBAL)
-lib = ctypes.CDLL(dll_path)
+# the generated package loads the shared library itself
 
 
-from tensoromics_functions_tox_data import (
+import zipfile
+
+from tensor_omics import (
     read_expression_vectors_tsv,
     read_orthofinder_file,
-    filter_unassigned_genes,
+    get_unassigned_mask,
     read_gene_ids_from_tsv_file,
     validate_all_data,
     validate_data_structure,
@@ -25,21 +21,45 @@ from tensoromics_functions_tox_data import (
     validate_gene_to_family_mapping,
     validate_shift_vectors,
     save_tox_data,
-    read_tox_data,
+    read_tox_data_into,
     create_zip_archive,
-    extract_zip_archive
-)
-from tensoromics_functions import (
-    tox_group_centroid,
-    tox_compute_shift_vector_field,
-    tox_serialize_int_nd,
-    tox_deserialize_int_nd,
-    tox_serialize_real_nd,
-    tox_deserialize_real_nd,
-    tox_serialize_char_nd,
-    tox_deserialize_char_nd
+    group_centroid_all,
+    compute_shift_vector_field,
+    serialize_int_helper, serialize_real_helper, serialize_char_helper,
+    deserialize_int_helper, deserialize_real_helper, deserialize_char_helper,
 )
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_FILE_OPEN, ERR_INVALID_INPUT
+
+
+# The generated deserialize helpers read the file's own shape and hand back an array already
+# in it, so serialize needs only the array and deserialize only the filename.
+def tox_serialize_int_nd(a, f): serialize_int_helper(np.asfortranarray(a, dtype=np.int32), f)
+def tox_deserialize_int_nd(f): return deserialize_int_helper(f)
+def tox_serialize_real_nd(a, f): serialize_real_helper(np.asfortranarray(a, dtype=np.float64), f)
+def tox_deserialize_real_nd(f): return deserialize_real_helper(f)
+
+
+def tox_serialize_char_nd(array, filename):
+    serialize_char_helper(np.asfortranarray(array), filename)
+
+
+def tox_deserialize_char_nd(filename):
+    return deserialize_char_helper(filename)
+
+
+def extract_zip_archive(zip_filename):
+    """Extract an archive and return its manifest as a key -> filename mapping.
+
+    The Fortran-side extractor is no longer exported; the manifest is plain text:
+    a count, the two string lengths, then alternating key/filename lines.
+    """
+    with zipfile.ZipFile(zip_filename) as archive:
+        archive.extractall()
+        manifest = archive.read("manifest.txt").decode().splitlines()
+    n_entries = int(manifest[0])
+    body = manifest[3:]
+    return {body[2 * i].strip(): body[2 * i + 1].strip() for i in range(n_entries)}
 
 
 # ---- Example: replicate Fortran test logic in Python ----
@@ -58,27 +78,27 @@ def test_calls():
     kallisto_expr = np.zeros((n_samples, n_genes), dtype=np.float64, order='F')
 
     # Read gene IDs from first file
-    gene_ids = read_gene_ids_from_tsv_file(file, n_genes, gene_len, n_header_rows=1, gene_col=1)
+    gene_ids = read_gene_ids_from_tsv_file(file[0], gene_len, n_genes, n_header_rows=1, gene_col=1)
 
-    # Read 6-replicate files
-
-    kallisto_expr = read_expression_vectors_tsv(
+    # expression_vectors is filled in place
+    read_expression_vectors_tsv(
         file_list=file,
-        gene_ids=gene_ids,  # Now accepts numpy array
-        n_samples=67,
+        gene_ids=gene_ids,
+        expression_vectors=kallisto_expr,
         n_header_rows=1,
         gene_col=1,
-        value_cols=value_cols,
+        value_cols=np.asarray(value_cols, dtype=np.int32),
+        start_row=1,
         delimiter="\t"
     )
 
     # Read family mapping
-    family_result = read_orthofinder_file("material/Orthogroups.tsv", gene_ids, family_len, n_families)
+    family_result = read_orthofinder_file("material/Orthogroups.tsv", gene_ids, family_len, n_families, n_genes)
     family_ids = family_result['family_ids']
     gene_to_fam = family_result['gene_to_fam']
 
     # Filter out genes without family assignments
-    filter_result = filter_unassigned_genes(gene_to_fam)
+    filter_result = get_unassigned_mask(gene_to_fam)
     mask = np.array(filter_result['mask'], dtype=bool)
     n_genes_kept = filter_result['n_genes_kept']
 
@@ -94,17 +114,17 @@ def test_calls():
     validate_string_array_uniqueness(family_ids)
     validate_expression_data(kallisto_expr, True)
 
-    ortholog_set = np.array([True for i in range(n_genes_kept)])
-
-    centroids = tox_group_centroid(filtered_kallisto_expr, filtered_gene_to_fam, n_families, "all", ortholog_set)
+    centroids = group_centroid_all(filtered_kallisto_expr, filtered_gene_to_fam, n_families)
 
     validate_family_centroids(centroids)
 
-    shift_vectors_result = tox_compute_shift_vector_field(filtered_kallisto_expr, centroids, filtered_gene_to_fam)
-    shift_vectors = shift_vectors_result
+    shift_vectors_result = compute_shift_vector_field(filtered_kallisto_expr, centroids, filtered_gene_to_fam)
+    # the validators and the archive use the flattened (2 * n_tissues, n_genes) layout
+    shift_vectors = np.asfortranarray(
+        np.vstack([shift_vectors_result[:, 0, :], shift_vectors_result[:, 1, :]]))
 
     validate_shift_vectors(shift_vectors, filtered_kallisto_expr, centroids, filtered_gene_to_fam,
-                          n_genes_kept, n_samples, n_families)
+                          n_samples)
 
     validate_gene_to_family_mapping(filtered_gene_to_fam, n_families)
 
@@ -120,26 +140,28 @@ def test_calls():
         if os.path.exists(archive_name):
             os.remove(archive_name)
 
-    save_tox_data("archive_1_py.test.zip", gene_ids=filtered_gene_ids, gene_ids_name="gene_ids_v1.test.bin",
-                          expression_vectors=filtered_kallisto_expr, expression_vectors_name="kallisto_data_v1.test.bin")
+    save_tox_data("archive_1_py.test.zip", gene_ids=filtered_gene_ids, gene_ids_file="gene_ids_v1.test.bin",
+                  expression=filtered_kallisto_expr, expression_file="kallisto_data_v1.test.bin")
 
-    save_tox_data("archive_2_py.test.zip", family_centroids=centroids, family_centroids_name="centroids.test.bin")
-    save_tox_data("archive_3_py.test.zip", family_centroids=centroids, gene_ids=kallisto_expr)
-    save_tox_data("archive_3_py.test.zip", family_centroids=centroids, gene_ids=kallisto_expr)
+    save_tox_data("archive_2_py.test.zip", family_centroids=centroids, family_centroids_file="centroids.test.bin")
 
-    save_tox_data("archive_4_py.test.zip", gene_ids=filtered_gene_ids, gene_ids_name="gene_ids_v1.test.bin",
-                  expression_vectors=filtered_kallisto_expr, expression_vectors_name="kallisto_data_v1.test.bin",
-                  gene_to_fam=filtered_gene_to_fam, gene_to_fam_name="gene_to_fam_v1.test.bin",
-                  family_ids=family_ids, family_ids_name="family_ids_v1.test.bin",
-                  family_centroids=centroids, family_centroids_name="family_centroids_v1.test.bin",
-                  shift_vectors=shift_vectors, shift_vectors_name="shift_vectors_v1.test.bin")
+    save_tox_data("archive_4_py.test.zip", gene_ids=filtered_gene_ids, gene_ids_file="gene_ids_v1.test.bin",
+                  expression=filtered_kallisto_expr, expression_file="kallisto_data_v1.test.bin",
+                  gene_to_family=filtered_gene_to_fam, gene_to_family_file="gene_to_fam_v1.test.bin",
+                  family_ids=family_ids, family_ids_file="family_ids_v1.test.bin",
+                  family_centroids=centroids, family_centroids_file="family_centroids_v1.test.bin",
+                  shift_vectors=shift_vectors, shift_vectors_file="shift_vectors_v1.test.bin")
 
-    result_1 = read_tox_data("archive_4_py.test.zip", load_gene_ids=True, load_expression_vectors=True,
-                             load_gene_to_fam=True, load_family_ids=True, load_family_centroids=True, load_shift_vectors=True)
-    result_2 = read_tox_data("archive_4_py.test.zip", load_gene_ids=True, load_gene_to_fam=True)
-    assert_error(lambda: read_tox_data("archive_1_f.test.zip", True, True, True, True, True, True), "Expected error for test_archive_1_f (not existing)")
-    assert_error(lambda: read_tox_data(zip_filename="archive_1_R.test.zip", load_gene_ids=True, load_expression_vectors=True,
-                 load_gene_to_fam=True, load_family_ids=True, load_family_centroids=True, load_shift_vectors=True), "Expected error for test_archive_1_R (not existing)")
+    # read_tox_data_into sizes every output from the archive itself, so there is
+    # nothing left to select: it reads back whatever the archive holds
+    result = read_tox_data_into("archive_4_py.test.zip")
+    assert len(result["gene_ids"]) == n_genes_kept
+    assert result["expression"].shape == filtered_kallisto_expr.shape
+    assert np.array_equal(result["gene_to_family"], filtered_gene_to_fam)
+    assert np.allclose(result["family_centroids"], centroids)
+
+    assert_error(lambda: read_tox_data_into("archive_1_f.test.zip"), "Expected error for test_archive_1_f (not existing)", ERR_FILE_OPEN)
+    assert_error(lambda: read_tox_data_into("archive_1_R.test.zip"), "Expected error for test_archive_1_R (not existing)", ERR_FILE_OPEN)
 
 
 # ---- NEW TESTS: Non-standard arrays and direct create_zip_archive calls ----
@@ -244,7 +266,7 @@ def test_non_standard_arrays():
         os.remove("manifest.txt")
 
     # Test 4: Error handling - mismatched keys and filenames
-    assert_error(lambda: create_zip_archive("error.test.zip", ["key1", "key2"], ["file1.test.bin"]), "Expected error for mismatching key-file mapping")  # Mismatched lengths
+    assert_error(lambda: create_zip_archive("error.test.zip", ["key1", "key2"], ["file1.test.bin"]), "Expected error for mismatching key-file mapping", ERR_INVALID_INPUT)  # Mismatched lengths
 
     # Cleanup temporary files
     temp_files = [

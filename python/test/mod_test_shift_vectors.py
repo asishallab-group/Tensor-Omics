@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Python test suite for shift vector field (mirrors Fortran unit tests)
-Uses the modular tensoromics_functions module
+Uses the modular tensor_omics module
 """
 
 import numpy as np
@@ -10,8 +10,9 @@ import sys
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
-from tensoromics_functions import tox_compute_shift_vector_field
+from tensor_omics import compute_shift_vector_field
 from test_helpers import run_all_tests, assert_error
+from tensor_omics.error_handling import ERR_EMPTY_INPUT, ERR_INVALID_INPUT
 
 
 # 1. Test correct mapping between families and genes
@@ -27,7 +28,8 @@ def test_correct_family_mapping():
         [3.0, 2.0, 1.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2, 3], dtype=np.int32)
-    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = np.vstack([shift_vectors[:, 0, :], shift_vectors[:, 1, :]])
     # Expected: rows 0..2 = centroid, rows 3..5 = shift
     expected_centroids = np.array([
         [5.0, 4.0, 3.0],
@@ -56,7 +58,7 @@ def test_invalid_family_mapping():
     # gene_to_centroid contains invalid mapping (3)
     gene_to_centroid = np.array([1, 3], dtype=np.int32)
     # Check that error is raised
-    assert_error(lambda: tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error")
+    assert_error(lambda: compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error", ERR_INVALID_INPUT)
 
 
 # 3. Test for zero distance between paralog and centroid
@@ -72,7 +74,8 @@ def test_zero_distance():
         [3.0, 6.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2], dtype=np.int32)
-    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = np.vstack([shift_vectors[:, 0, :], shift_vectors[:, 1, :]])
     expected_shift_vectors = np.array([
         [1.0, 4.0],
         [2.0, 5.0],
@@ -95,7 +98,8 @@ def test_multiple_genes_per_family():
         [20.0, 40.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2, 1, 2], dtype=np.int32)
-    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = np.vstack([shift_vectors[:, 0, :], shift_vectors[:, 1, :]])
     expected_shift_vectors = np.array([
         [10.0, 30.0, 10.0, 30.0],
         [20.0, 40.0, 20.0, 40.0],
@@ -116,7 +120,8 @@ def test_single_gene_per_family():
         [20.0, 40.0, 60.0, 80.0]
     ], dtype=np.float64)
     gene_to_centroid = np.array([1, 2, 3, 4], dtype=np.int32)
-    shift_vectors = tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid)
+    shift_vectors = np.vstack([shift_vectors[:, 0, :], shift_vectors[:, 1, :]])
     expected_shift_vectors = np.array([
         [10.0, 30.0, 50.0, 70.0],
         [20.0, 40.0, 60.0, 80.0],
@@ -132,7 +137,7 @@ def test_dimension_edge_cases():
     family_centroids = np.empty((1, 1), dtype=np.float64)
     gene_to_centroid = np.empty((0,), dtype=np.int32)
     # Check that error is raised
-    assert_error(lambda: tox_compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error")
+    assert_error(lambda: compute_shift_vector_field(expression_vectors, family_centroids, gene_to_centroid), "Expected error", ERR_EMPTY_INPUT)
 
 
 if __name__ == "__main__":

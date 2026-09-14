@@ -3,19 +3,35 @@
 !! expected behavior in tests of any kind (numeric, string, array, etc).
 module asserts
     use, intrinsic :: iso_fortran_env, only: error_unit, real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
+    use test_suite, only: record_assertion_failure
     use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET, COLOR_GREEN, COLOR_YELLOW, COLOR_LIGHT_GRAY
+    use tox_errors, only: get_err_code, get_err_arg_pos, ERR_OK
     implicit none
     private
+    public :: assert_err
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
     public :: assert_equal_real, assert_not_equal_real, assert_equal_array_int
     public :: assert_equal_array_real, assert_no_nan_real, assert_no_inf_real
     public :: assert_in_range_real, assert_in_range_int, assert_contains_int, assert_sorted_int
-    public :: assert_sorted_real, assert_same_shape, assert_string_equal
+    public :: assert_sorted_real, assert_string_equal
     public :: assert_string_contains, assert_allclose_array_real
     public :: assert_sum_equal, assert_unique_int, assert_permutation
     public :: assert_equal_array_char, assert_equal_array_logical
     public :: assert_equal_complex, assert_not_equal_complex, assert_equal_array_complex
+
+    !| `assert_true` and `assert_false` are generic over the logical kind on purpose: most
+    !| callers pass a comparison expression, which is default kind, while a caller testing an
+    !| element of a `logical(c_bool)` array (or `any`/`all` of one) passes `c_bool`. Accepting
+    !| both keeps the kind change out of every call site.
+    interface assert_true
+        module procedure assert_true_default, assert_true_c_bool
+    end interface assert_true
+
+    interface assert_false
+        module procedure assert_false_default, assert_false_c_bool
+    end interface assert_false
 
     public :: operator(//)
     interface operator(//)
@@ -30,7 +46,7 @@ contains
         character(*), intent(in) :: msg
         character(*), intent(in), optional :: additional_msg, got, expected, tol, at
 
-        logical :: comma
+        logical(c_bool) :: comma
 
         write (error_unit, "(A)", advance="no") COLOR_RED // "ASSERTION FAILED" // COLOR_CREAM // ": " // COLOR_ERROR // trim(msg)
         if (present(additional_msg)) then
@@ -70,7 +86,8 @@ contains
             write (error_unit, "(A)") COLOR_LIGHT_GRAY // "    )" // COLOR_RESET
         end if
 
-        stop 1
+        ! Fails the test case, not the process: see `failures_in_case` in test_suite for why.
+        call record_assertion_failure()
     end subroutine assertion_error
 
     !> Assert that two complex numbers are equal within a tolerance.
@@ -95,8 +112,8 @@ contains
 
     !> Assert that two complex arrays are equal within a tolerance.
     subroutine assert_equal_array_complex(a, b, n, tol, msg)
-        complex(real64), intent(in) :: a(n), b(n)
         integer(int32), intent(in) :: n
+        complex(real64), intent(in) :: a(n), b(n)
         real(real64), intent(in) :: tol
         character(*), intent(in) :: msg
         integer(int32) :: i, n_diff
@@ -111,10 +128,14 @@ contains
     end subroutine
 
     !> Assert that two logical arrays are equal within a tolerance.
-    subroutine assert_equal_array_logical(a, b, n, msg)
-        logical, intent(in) :: a(n), b(n)
+    subroutine assert_equal_array_logical(a, b, n, msg, n_rows)
         integer(int32), intent(in) :: n
+        logical(c_bool), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
         n_diff = count(a .neqv. b)
         if (n_diff > 0) then
@@ -122,12 +143,12 @@ contains
                 if (a(i) .neqv. b(i)) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
-                got=logical_to_str(a(i)), expected=logical_to_str(b(i)), at=""//i)
+                got=logical_to_str(a(i)), expected=logical_to_str(b(i)), at=position_text(i, n_rows))
         end if
     end subroutine
 
     !> Assert that a logical condition is true.
-    subroutine assert_true(cond, msg)
+    subroutine assert_true_default(cond, msg)
         logical, intent(in) :: cond
         character(*), intent(in) :: msg
         if (.not. cond) then
@@ -135,9 +156,27 @@ contains
         end if
     end subroutine
 
+    !> Assert that a `logical(c_bool)` condition is true.
+    subroutine assert_true_c_bool(cond, msg)
+        logical(c_bool), intent(in) :: cond
+        character(*), intent(in) :: msg
+        if (.not. cond) then
+            call assertion_error(msg, got=".false.", expected=".true.")
+        end if
+    end subroutine
+
     !> Assert that a logical condition is false.
-    subroutine assert_false(cond, msg)
+    subroutine assert_false_default(cond, msg)
         logical, intent(in) :: cond
+        character(*), intent(in) :: msg
+        if (cond) then
+            call assertion_error(msg, got=".true.", expected=".false.")
+        end if
+    end subroutine
+
+    !> Assert that a `logical(c_bool)` condition is false.
+    subroutine assert_false_c_bool(cond, msg)
+        logical(c_bool), intent(in) :: cond
         character(*), intent(in) :: msg
         if (cond) then
             call assertion_error(msg, got=".true.", expected=".false.")
@@ -150,6 +189,32 @@ contains
         character(*), intent(in) :: msg
         if (a /= b) then
             call assertion_error(trim(msg), got=""//a, expected=""//b)
+        end if
+    end subroutine
+
+    !> Assert an error code, comparing the code and -- when asked -- the argument it blames.
+    !|
+    !| `ierr` packs both, so a mismatch reported as a single number ("expected 202, got 80201")
+    !| costs the reader an unpacking step every time. This reports them apart. Omitting
+    !| `arg_pos` checks the code alone, which is what a caller that does not care which dummy
+    !| was rejected wants; `ERR_OK` needs no position either.
+    subroutine assert_err(ierr, expected_code, msg, arg_pos)
+        integer(int32), intent(in) :: ierr, expected_code
+        character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: arg_pos
+
+        if (get_err_code(ierr) /= expected_code) then
+            call assertion_error(trim(msg), additional_msg="wrong error code", &
+                                 got=""//get_err_code(ierr)//" at argument "//get_err_arg_pos(ierr), &
+                                 expected=""//expected_code)
+            return
+        end if
+
+        if (present(arg_pos)) then
+            if (get_err_arg_pos(ierr) /= arg_pos) then
+                call assertion_error(trim(msg), additional_msg="right error code, wrong argument", &
+                                     got=""//get_err_arg_pos(ierr), expected=""//arg_pos)
+            end if
         end if
     end subroutine
 
@@ -181,9 +246,14 @@ contains
     end subroutine
 
     !> Assert that two integer arrays are equal.
-    subroutine assert_equal_array_int(a, b, n, msg)
-        integer(int32), intent(in) :: a(n), b(n), n
+    subroutine assert_equal_array_int(a, b, n, msg, n_rows)
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
         n_diff = count(a /= b)
         if (n_diff > 0) then
@@ -191,15 +261,19 @@ contains
                 if (a(i) /= b(i)) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
-                got=""//a(i), expected=""//b(i), at=""//i)
+                got=""//a(i), expected=""//b(i), at=position_text(i, n_rows))
         end if
     end subroutine
 
     !> Assert that two real arrays are equal within a tolerance.
-    subroutine assert_equal_array_real(a, b, n, tol, msg)
-        real(real64), intent(in) :: a(n), b(n), tol
+    subroutine assert_equal_array_real(a, b, n, tol, msg, n_rows)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n), b(n), tol
         character(*), intent(in) :: msg
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
         integer(int32) :: i, n_diff
         n_diff = count(abs(a - b) > tol)
         if (n_diff > 0) then
@@ -207,16 +281,16 @@ contains
                 if (abs(a(i) - b(i)) > tol) exit
             end do
             call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ", &
-                got=""//a(i), expected=""//b(i), tol=""//tol, at=""//i)
+                got=""//a(i), expected=""//b(i), tol=""//tol, at=position_text(i, n_rows))
         end if
     end subroutine
 
     !> Asserts that two character arrays are equal
     subroutine assert_equal_array_char(a, b, clen, n, msg)
         integer(int32), INTENT(IN) :: clen
+        integer, intent(in) :: n
         character(len=clen), intent(in) :: a(n), b(n)
         character(*), intent(in) :: msg
-        integer, intent(in) :: n
         integer(int32) :: i, n_diff
         n_diff = count(a /= b)
         if (n_diff > 0) then
@@ -230,8 +304,8 @@ contains
 
     !> Assert that a real array contains no NaN values.
     subroutine assert_no_nan_real(a, n, msg)
-        real(real64), intent(in) :: a(n)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n)
         character(*), intent(in) :: msg
         integer :: i
 
@@ -244,8 +318,8 @@ contains
 
     !> Assert that a real array contains no Inf values.
     subroutine assert_no_inf_real(a, n, msg)
-        real(real64), intent(in) :: a(n)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n)
         character(*), intent(in) :: msg
         integer :: i
         do i = 1, n
@@ -275,7 +349,8 @@ contains
 
     !> Assert that an integer array contains a given value.
     subroutine assert_contains_int(arr, n, val, msg)
-        integer(int32), intent(in) :: arr(n), n, val
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n), val
         character(*), intent(in) :: msg
         if (.not. any(arr == val)) then
             call assertion_error(msg, additional_msg="value not found in array", &
@@ -285,38 +360,32 @@ contains
 
     !> Assert that an integer array is sorted in non-decreasing order.
     subroutine assert_sorted_int(arr, n, msg)
-        integer(int32), intent(in) :: arr(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
                 call assertion_error(msg, additional_msg="not sorted", &
                     got=arr(i - 1) // " > " // arr(i), at=""//i)
+                return
             end if
         end do
     end subroutine
 
     !> Assert that a real array is sorted in non-decreasing order.
     subroutine assert_sorted_real(arr, n, msg)
-        real(real64), intent(in) :: arr(n)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i
         do i = 2, n
             if (arr(i) < arr(i - 1)) then
                 call assertion_error(msg, additional_msg="not sorted", &
                     got=arr(i - 1) // " > " // arr(i), at=""//i)
+                return
             end if
         end do
-    end subroutine
-
-    !> Assert that two arrays have the same shape (1D only).
-    subroutine assert_same_shape(n1, n2, msg)
-        integer(int32), intent(in) :: n1, n2
-        character(*), intent(in) :: msg
-        if (n1 /= n2) then
-            call assertion_error(msg, additional_msg="shapes differ", got=n1 // " and " // n2)
-        end if
     end subroutine
 
     !> Assert that two strings are equal.
@@ -347,42 +416,59 @@ contains
     end subroutine
 
     !> Assert that two real arrays are close within relative and absolute tolerance.
-    subroutine assert_allclose_array_real(a, b, n, rtol, atol, msg)
-        real(real64), intent(in) :: a(n), b(n), rtol, atol
+    subroutine assert_allclose_array_real(a, b, n, rtol, atol, msg, n_rows)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: a(n), b(n), rtol, atol
         character(*), intent(in) :: msg
-        integer :: i
+        integer(int32), intent(in), optional :: n_rows
+            !! Number of rows, when `a` and `b` are a flattened matrix. The position is then
+            !! reported as `(row, column)` instead of as an index into the flattened array,
+            !! which is what the caller is actually looking at.
+        integer :: i, n_diff
         real(real64) :: thresh
+
+        n_diff = count(abs(a - b) > atol + rtol*abs(b))
+        if (n_diff == 0) return
+
         do i = 1, n
             thresh = atol + rtol*abs(b(i))
-            if (abs(a(i) - b(i)) > thresh) then
-                call assertion_error(msg, additional_msg="|got - expected| = " // abs(a(i) - b(i)) // &
-                    " exceeds atol + rtol*|expected| = " // thresh, got=""//a(i), expected=""//b(i), at=""//i)
-            end if
+            if (abs(a(i) - b(i)) > thresh) exit
         end do
+        call assertion_error(msg, additional_msg=n_diff // " of " // n // " elements differ, " // &
+            "|got - expected| = " // abs(a(i) - b(i)) // " exceeds atol + rtol*|expected| = " // thresh, &
+            got=""//a(i), expected=""//b(i), at=position_text(i, n_rows))
     end subroutine
 
     !> Assert that the sum of an array equals an expected value.
-    subroutine assert_sum_equal(arr, n, expected, msg)
-        real(real64), intent(in) :: arr(n), expected
+    subroutine assert_sum_equal(arr, n, expected, msg, tol)
         integer(int32), intent(in) :: n
+        real(real64), intent(in) :: arr(n), expected
         character(*), intent(in) :: msg
-        real(real64) :: s
+        real(real64), intent(in), optional :: tol
+            !! Defaults to 1e-12, which suits a sum of a handful of terms and is far too tight
+            !! for a long one, where the rounding error grows with the number of additions.
+        real(real64) :: s, actual_tol
+
+        actual_tol = 1e-12_real64
+        if (present(tol)) actual_tol = tol
+
         s = sum(arr)
-        if (abs(s - expected) > 1e-12_real64) then
-            call assertion_error(msg, got="sum=" // s, expected=""//expected)
+        if (abs(s - expected) > actual_tol) then
+            call assertion_error(msg, got="sum=" // s, expected=""//expected, tol=""//actual_tol)
         end if
     end subroutine
 
     !> Assert that all elements in an integer array are unique.
     subroutine assert_unique_int(arr, n, msg)
-        integer(int32), intent(in) :: arr(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i, j
         do i = 1, n - 1
             do j = i + 1, n
                 if (arr(i) == arr(j)) then
                     call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=i // " and " // j)
+                    return
                 end if
             end do
         end do
@@ -390,26 +476,45 @@ contains
 
     !> Assert that an integer array is a permutation of 1..n.
     subroutine assert_permutation(arr, n, msg)
-        integer(int32), intent(in) :: arr(n), n
+        integer(int32), intent(in) :: n
+        integer(int32), intent(in) :: arr(n)
         character(*), intent(in) :: msg
         integer :: i
-        logical :: found(n)
+        logical(c_bool) :: found(n)
         found = .false.
         do i = 1, n
             if (arr(i) < 1 .or. arr(i) > n) then
                 call assertion_error(msg, additional_msg="value out of range for permutation", &
                     got=""//arr(i), expected="value in [1, " // n // "]", at=""//i)
+                return  ! `found` is indexed by the value below, so it has to be in range first
             end if
             if (found(arr(i))) then
                 call assertion_error(msg, additional_msg="duplicate value", got=""//arr(i), at=""//i)
+                return
             end if
             found(arr(i)) = .true.
         end do
     end subroutine
 
+    !> Where in an array a mismatch is, as `(row, column)` when the caller says how the flat
+    !| array is shaped and as a plain index otherwise. Column-major, as Fortran stores it.
+    function position_text(i, n_rows) result(text)
+        integer(int32), intent(in) :: i
+        integer(int32), intent(in), optional :: n_rows
+        character(len=:), allocatable :: text
+
+        if (present(n_rows)) then
+            if (n_rows > 0) then
+                text = "(" // (mod(i - 1, n_rows) + 1) // ", " // ((i - 1)/n_rows + 1) // ")"
+                return
+            end if
+        end if
+        text = ""//i
+    end function position_text
+
     !> Renders a logical as ".true."/".false." for use in assertion diagnostics.
     pure function logical_to_str(l) result(str_out)
-        logical, intent(in) :: l
+        logical(c_bool), intent(in) :: l
         character(len=:), allocatable :: str_out
         if (l) then
             str_out = ".true."

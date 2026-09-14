@@ -4,6 +4,11 @@ module mod_test_clustering
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
     use tox_clustering
+    ! the method parameters and the k-means compute helpers are the kernel's, not the wrappers'
+    use tox_clustering_impl, only: METHOD_AVERAGE, METHOD_WEIGHTED, METHOD_WARD, &
+                                     k_means_assign_cluster_helper, k_means_recompute_cluster_centroids_helper, &
+                                     get_min_distance_indices_helper, merge_distances_xpgma_linkage_helper, &
+                                     merge_distances_ward_linkage_helper
     use tox_errors
     use test_suite, only: test_case
     implicit none
@@ -257,7 +262,7 @@ contains
             passed_dist = orig_dist
 
             call linkage_clustering(passed_dist, n_points, merge_i, merge_j, heights, cluster_sizes, methods(i_method), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_linkage_methods: "//method_name//": reference case ierr")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_linkage_methods: "//method_name//": reference case ierr")
             call assert_equal_array_real(passed_dist, orig_dist, size(orig_dist, kind=int32), 0.0_real64, "test_linkage_methods: "//method_name//": reference output matrix doesn't match input matrix")
             do i = 1, n_points - 1
                 call assert_equal_int(min(merge_i(i), merge_j(i)), expected_merge_i(i, i_method), "test_linkage_methods: "//method_name//": reference merge_i")
@@ -284,7 +289,7 @@ contains
             passed_dist = orig_dist
 
             call linkage_clustering(passed_dist, n_points, merge_i, merge_j, heights, cluster_sizes, methods(i_method), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_linkage_methods: "//method_name//": equal-distance case ierr")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_linkage_methods: "//method_name//": equal-distance case ierr")
             call assert_equal_array_real(passed_dist, orig_dist, size(orig_dist, kind=int32), 0.0_real64, "test_linkage_methods: "//method_name//": equal-distance output matrix doesn't match input matrix")
             call assert_equal_array_real(heights, expected_heights(:, i_method), size(expected_heights, 1, kind=int32), TOL, "test_linkage_methods: "//method_name//": equal-distance heights")
 
@@ -303,7 +308,7 @@ contains
             passed_dist = orig_dist
 
             call linkage_clustering(passed_dist, n_points, merge_i, merge_j, heights, cluster_sizes, methods(i_method), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_linkage_methods: "//method_name//": two-point case ierr")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_linkage_methods: "//method_name//": two-point case ierr")
             call assert_equal_array_real(passed_dist, orig_dist, size(orig_dist, kind=int32), 0.0_real64, "test_linkage_methods: "//method_name//": two-point output matrix doesn't match input matrix")
             call assert_equal_array_real(heights, expected_heights(:, i_method), size(expected_heights, 1, kind=int32), TOL, "test_linkage_methods: "//method_name//": two-point height")
 
@@ -320,7 +325,7 @@ contains
             passed_dist = orig_dist
 
             call linkage_clustering(passed_dist, n_points, merge_i, merge_j, heights, cluster_sizes, methods(i_method), ierr)
-            call assert_equal_int(ierr, ERR_OK, "test_linkage_methods: "//method_name//": single-point case ierr")
+            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_linkage_methods: "//method_name//": single-point case ierr")
 
             ! -------------------------------
             ! Case 5: NaN in distance matrix
@@ -384,8 +389,8 @@ contains
         expected_centroids(:, 2) = [9.0_real64, 9.0_real64]
 
         ! Call clustering routine
-        call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr)
-        call assert_equal_int(ierr, ERR_OK, "test_k_means_clustering: expected OK status")
+        call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr=ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_k_means_clustering: expected OK status")
 
         ! Validate final centroids
         call assert_equal_array_real(centroids(:, 1), expected_centroids(:, 1), n_dims, TOL, "test_k_means_clustering: centroid(:,1) mismatch")
@@ -411,8 +416,8 @@ contains
         expected_centroids(:, 2) = [20.0_real64/3, 20.0_real64/3]
 
         ! Call clustering routine
-        call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr, 1_int32)
-        call assert_equal_int(ierr, ERR_OK, "test_k_means_clustering: expected OK status")
+        call k_means_clustering(n_clusters, data_points, n_points, n_dims, centroids, labels, label_counts, ierr=ierr, max_iterations=1_int32)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_k_means_clustering: expected OK status")
 
         ! Validate final centroids
         call assert_equal_array_real(centroids(:, 1), expected_centroids(:, 1), n_dims, TOL, "test_k_means_clustering: centroid(:,1) mismatch")

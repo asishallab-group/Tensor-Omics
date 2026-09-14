@@ -4,26 +4,31 @@ source build_utils.sh
 
 init "$@"
 
+generate_code
+
 if [[ -z "$TOX_SKIP_KINDS_TEST" ]]; then
   bash -s -- "$@" <<'EOF'
   source build_utils.sh
   echo 
 
-  function get_directives() {
-    echo '"--directive='OPEN_PAREN=\('" "--directive='CLOSE_PAREN=\)'" "--directive='$1\(KIND\)=KIND\(KIND\)'" "--directive='$2\(KIND\)=$1 OPEN_PAREN KIND CLOSE_PAREN'" "--directive='$3\(KIND\)=$1 OPEN_PAREN 2 CLOSE_PAREN'"'
-  }
   failed=0
-  c_int=("--directive=TEST_KIND_MISMATCH_C_INT" $(get_directives integer int32 c_int) "--directive='c_int64_t(KIND)=integer OPEN_PAREN KIND CLOSE_PAREN'" "--directive='c_size_t(KIND)=integer OPEN_PAREN KIND CLOSE_PAREN'")
-  c_double=("--directive=TEST_KIND_MISMATCH_C_DOUBLE" $(get_directives real real64 c_double))
-  c_double_complex=("--directive=TEST_KIND_MISMATCH_C_DOUBLE_COMPLEX" "$(get_directives complex real64 c_double_complex)")
-  for d in c_int c_double c_double_complex; do
-    msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$d"
-    declare -n directives="$d"
-    if [[ $(bash build.sh "$@" "${directives[@]}" 1>kinds.out 2>/dev/null ; grep "Divi.*zero" kinds.out) ]]; then
+  # One directive per kind, and nothing else. Each TEST_KIND_MISMATCH_* redefines its kind
+  # inside f42_safeguard only, and the safeguard depends on nothing, so it compiles before
+  # any module that declares with a C kind -- which is what makes its own guard, and not
+  # some unrelated declaration, the error this looks for. (Macro-rewrites of int32, real64
+  # and c_int used to ride along here. They never reached the compiler: the quoting split
+  # them into stray positional arguments, and the guards fired without them anyway.)
+  for kind in c_int c_double c_double_complex c_char c_bool c_size_t c_int64_t c_signed_char; do
+    directive="--directive=TEST_KIND_MISMATCH_${kind^^}"
+    msg_prefix="Testing safeguard for mismatch for $COLOR_COPPER$kind"
+    # these builds are meant to fail in the preprocessor, so regenerating for each of them
+    # would only cost time -- the build below does it once for the run
+    bash build.sh "$@" --skip-code-generation "$directive" 1>kinds.out 2>/dev/null
+    if file_matches 'Divi.*zero' kinds.out; then
       stderr "$msg_prefix$COLOR_CREAM: ${COLOR_GREEN}success"
     else
       stderr "$msg_prefix$COLOR_CREAM: ${COLOR_RED}failure"
-      cat kinds.out >&2
+      printf '%s\n' "$(<kinds.out)" >&2
       failed=1
     fi
   done
@@ -33,10 +38,10 @@ EOF
   check_exit_code "Kind Mismatch Test failed"
 
   stderr "Compiling src/"
-  bash build.sh --clean-build "$@" --compiler="$COMPILER"
+  bash build.sh "$@" --skip-code-generation --compiler="$COMPILER"
   check_exit_code "Build failed"
 else
-  bash build.sh "$@" --compiler="$COMPILER"
+  bash build.sh "$@" --compiler="$COMPILER" --skip-code-generation
   check_exit_code "Build failed"
 fi
 
@@ -44,11 +49,6 @@ rm -f *.test.*
 rm -f manifest.txt
 
 stderr "Running tests..."
-
-# By default same behavior as compiling manually, as fpm has some struggles sometimes with correct linking, e.g. some routine changes in src, but the tests use the old implementation.
-if [[ -z $TOX_REUSE_MOD_FILES ]]; then
-  rm -f build/$COMPILER_*/**/*mod_test*
-fi
 
 # Run the executable
 utils_fpm test ${TOX_TEST_TARGET:-run_tests}
