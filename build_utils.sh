@@ -29,6 +29,11 @@ function file_matches() {
   [[ -f "$2" && "$(<"$2")" =~ $1 ]]
 }
 
+# $1 without its trailing whitespace (instead of `sed 's/[[:space:]]*$//'`).
+function trim_trailing() {
+  printf '%s' "${1%"${1##*[![:space:]]}"}"
+}
+
 function init() {
   handle_args "$@"
   # --compiler beats global $TOX_COMPILER beats global $FC
@@ -214,8 +219,12 @@ function get_flags_and_features() {
     # are read from nvfortran's own configuration, so this is right on any machine, and a no-op
     # where the system linker is first anyway. (NVCOMPILER_LINKER is NVIDIA's own switch for the
     # linker itself, for anyone who prefers to fix it in the environment.)
-    LINK_FLAGS="$LINK_FLAGS$(nvfortran -show 2>/dev/null |
-      awk -F= '/^(DEFSTDOBJDIR|GCCDIR) /{gsub(/[ \t]+$/, "", $2); printf " -L%s", $2}')"
+    declare key value
+    while IFS='=' read -r key value; do  # -show prints `NAME   =value`, padded
+      case "$key" in
+        "DEFSTDOBJDIR "* | "GCCDIR "*) LINK_FLAGS="$LINK_FLAGS -L$(trim_trailing "$value")" ;;
+      esac
+    done < <(nvfortran -show 2>/dev/null)
   fi
   if [[ "$TOX_OVERRIDE_LINK_FLAGS" ]]; then
     # The compiler's own feature -- what get_compiler put in $FEATURES -- carries nothing but
