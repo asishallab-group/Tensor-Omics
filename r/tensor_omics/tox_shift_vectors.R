@@ -13,7 +13,7 @@
 #'   The minimum valid value is `1`.
 #'   The maximum valid value is `n_families`.
 #'   The value `0` is additionally accepted.
-#' @return a numeric array of rank 3. Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first (a zero vector if no family is assigned), then the shift vector
+#' @return a numeric array of rank 3. Output, real matrix array. For each gene it holds two vectors: the centroid of the gene's family first, then the shift vector from that centroid to the gene. A gene with no family assigned has no centroid to shift from, so both of its vectors are zero
 #' @export
 compute_shift_vector_field <- function(expression_vectors, family_centroids, gene_to_fam) {
     expression_vectors <- .tox_as_double_matrix(expression_vectors, "expression_vectors")

@@ -51,14 +51,19 @@ contains
         real(real64), dimension(n_tissues, n_genes), intent(in) :: genes
             !! Gene expression matrix (n_tissues × n_genes), column-major
         real(real64), dimension(n_tissues, n_families), intent(in) :: centroids
-            !! Family centroid matrix (n_tissues × n_families), column-major, `CM_DISTANCE_SENTINEL` for unassigned genes
+            !! Family centroid matrix (n_tissues × n_families), column-major
         integer(int32), dimension(n_genes), intent(in) :: gene_to_fam
             !! M_GENE_TO_FAM_DOC(genes)
             !! DM_MIN(1_int32)
             !! DM_MAX(n_families)
             !! DM_SENTINEL(M_GENE_TO_FAM_SENTINEL)
         real(real64), dimension(n_genes), intent(out) :: distances
-            !! Output distances array
+            !! Euclidean distance from each gene to its own family's centroid. A gene carrying
+            !! `M_GENE_TO_FAM_SENTINEL` in `gene_to_fam` has no centroid to measure against and
+            !! receives `CM_DISTANCE_SENTINEL` instead of a distance -- a value no Euclidean
+            !! distance can take, so that summarising this array without excluding those genes is
+            !! visibly wrong rather than quietly biased. Which genes those are is `gene_to_fam`,
+            !! not a negative entry here.
 
         integer(int32) :: i_gene, family_idx
 

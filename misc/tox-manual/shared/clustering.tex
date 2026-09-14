@@ -1,0 +1,161 @@
+%% clustering.tex -- shared sub-recipe. k-means and hierarchical linkage, the
+%% two general-purpose grouping methods the library provides.
+
+\begin{recipe}[label=sub:clustering]{Clustering Points and Trajectories}
+
+\recipepurpose{Group things that behave alike: genes by expression vector,
+  samples by whole time course, or anything else you can place in the space or
+  give pairwise distances for. Two ordinary methods --- k-means and
+  agglomerative linkage --- with the conventions Tensor Omics wraps them in.}
+
+\nomaintainer
+
+\begin{requiredinputs}
+  \item For k-means: points as \code{(n\_dims, n\_points)}, one per column, and
+        an initial centroid per cluster. There is no seeding routine ---
+        supplying the centroids \emph{is} the seeding decision, and their count
+        is $k$.
+  \item For clustering whole trajectories: \code{(n\_factors, n\_samples,
+        n\_timepoints)}, and one centroid per cluster of length
+        \code{n\_factors}$\times$\code{n\_timepoints}.
+  \item For linkage: a symmetric distance matrix with a zero diagonal and no
+        negative entries. Computing it is not part of this step.
+\end{requiredinputs}
+
+\begin{prerequisites}
+  \item None in the library. If you are clustering expression, normalize first
+        --- otherwise the grouping follows overall magnitude.
+\end{prerequisites}
+
+\begin{workflow}
+  \step{Decide what a \emph{point} is. Clustering genes, one column is a gene.
+        Clustering samples by their evolution, one whole trajectory is one
+        point --- that is
+        \code{cluster\_factor\_trajectories\_k\_means}, and it is a different
+        question from grouping the individual (sample, timepoint) states,
+        which is plain \code{k\_means\_clustering} over the same values.}
+  \step{For k-means, choose $k$ and the initial centroids together, since the
+        array you pass carries both. Run \code{k\_means\_clustering}; the
+        centroid array comes back holding the final centroids.}
+  \step{For linkage, compute the distance matrix yourself and pass it with a
+        criterion. The same matrix can be re-clustered under another criterion
+        without recomputing it, and comes back unchanged either way.}
+  \step{Read the merge sequence. Each step reports the two things merged, the
+        height at which they met, and the size of the resulting cluster. Cut
+        the tree at a height of your choosing --- the library does not cut it
+        for you.}
+\end{workflow}
+
+\examplescript{python/examples/clustering.py}{%
+  Clusters three planted blobs with k-means, groups four trajectories of which
+  two rise and two fall, and prints an average-linkage tree merge by merge with
+  the sign convention decoded. All data is synthetic and separable, so the
+  expected grouping is obvious.}
+
+\begin{codefragment}[language=Python,caption={Fragments to edit: k and its seeds, and the linkage criterion}]
+import numpy as np
+from tensor_omics import k_means_clustering, linkage_clustering
+
+# --- k-means: the centroid array carries BOTH k and the seeds
+points = np.asfortranarray(data)      # (n_dims, n_points)
+centroids = np.asfortranarray(seeds)  # (n_dims, k)
+res = k_means_clustering(points, centroids, max_iterations=300)
+labels = res["labels"]                # 1-based, one per point
+# centroids now holds the FINAL centroids: modified in place
+
+# --- linkage: your distance matrix, their criterion --------
+tree = linkage_clustering(
+    np.asfortranarray(distances),     # symmetric, zero diagonal
+    "average")                        # or "weighted" / "ward"
+
+# positive entry = data point, NEGATIVE = the node made at
+# that step. This is the opposite of R's hclust.
+for k in range(len(tree["heights"])):
+    i, j = tree["merge_i"][k], tree["merge_j"][k]
+    height = tree["heights"][k]
+\end{codefragment}
+
+\begin{parameters}
+  \param{centroids}{Both the number of clusters and where the search starts}{%
+    $k$ is the number of columns. The values may be real data points or
+    arbitrary --- but they must be distinct, which is \emph{not} checked}
+  \param{max\_iterations}{When k-means gives up short of convergence}{Default
+    \code{300}. Raise it only if you have reason to think it is stopping early;
+    a k-means that needs many more usually has a seeding problem instead}
+  \param{method}{The linkage criterion, i.e.\ how the distance between two
+    clusters is defined}{\optn{average}, \optn{weighted} or \optn{ward}. Note
+    what is \emph{not} here: \optn{single} and \optn{complete} are rejected}
+\end{parameters}
+
+\begin{expectedresults}
+  On the example's three separated blobs, k-means recovers them exactly
+  ($12/12/12$) and the final centroids sit within $0.1$ of the planted ones.
+  The four trajectories split two and two, rising against falling. The linkage
+  heights agree with a standard implementation --- they match
+  \cmd{scipy.cluster.hierarchy.linkage} to floating-point tolerance for all
+  three criteria --- and the last merge of the same eight points comes at
+  $0.863$ under \optn{average}, $1.069$ under \optn{weighted} and $1.134$ under
+  \optn{ward}, which is a useful reminder that heights are comparable within a
+  criterion and not across them.
+\end{expectedresults}
+
+\begin{pitfall}[Pitfall: the seeding is yours, and duplicates are not caught]
+  There is no k-means++ here, and no check that your initial centroids differ.
+  Passing the same point $k$ times is accepted and returns $k$ populated
+  clusters --- an arbitrary split of the data with no meaning at all. Seed from
+  distinct data points, and since the outcome depends on that seeding, run it
+  more than once from different seeds before believing a partition.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: the centroid array is overwritten]
+  \code{centroids} is modified in place: the array you pass in comes back
+  holding the \emph{final} centroids, which is how you retrieve them. Keep a
+  copy first if you wanted your seeds afterwards, and do not reuse the same
+  array across runs expecting the same starting point.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: the merge sign convention is the reverse of R's]
+  In the merge arrays a \emph{positive} entry is a data point and a
+  \emph{negative} entry is the inner node created at that step, so $-2$ means
+  whatever step~2 produced. R's \cmd{hclust} uses exactly the opposite
+  convention, negatives for singletons. Code ported from R will build a
+  mirrored tree without any error being raised.
+\end{pitfall}
+
+\begin{pitfall}[Pitfall: expecting the distance matrix to be consumed]
+  The matrix is declared as modified in place, and its lower triangle really is
+  used as scratch --- but it is restored from the upper triangle before the
+  call returns, on success and on error alike. There is no need to copy it
+  defensively. It must, however, genuinely be a distance matrix: asymmetry, a
+  negative entry or a non-zero diagonal each fail the call with
+  \code{ToxInputError: invalid input arguments (argument 'distances')}.
+\end{pitfall}
+
+\begin{interpretation}
+  The two methods answer differently shaped questions. k-means returns a
+  partition at the $k$ you chose and says nothing about whether $k$ was right:
+  every point gets a label, and a run on structureless data returns $k$ tidy
+  clusters just the same. Linkage returns a whole hierarchy and leaves the cut
+  to you, so the height at which groups merge is itself the evidence --- a
+  merge far above the ones below it marks a real separation, and a tree that
+  merges at steadily rising heights is telling you there is no natural number
+  of groups.
+
+  Whichever you use, the clustering describes the space you built, not biology
+  directly. Cluster raw expression and you group by overall magnitude; cluster
+  normalized vectors and you group by expression shape; cluster trajectories
+  and you group by how things developed rather than where they ended. The
+  choice made in the earlier recipes decides what your clusters mean.
+\end{interpretation}
+
+\begin{references}
+  \reference{Lloyd (1982). Least squares quantization in PCM. \emph{IEEE
+    Transactions on Information Theory} 28(2):129--137.}
+  \reference{Ward (1963). Hierarchical grouping to optimize an objective
+    function. \emph{Journal of the American Statistical Association}
+    58(301):236--244.}
+  \reference{M\"ullner (2011). Modern hierarchical, agglomerative clustering
+    algorithms. \emph{arXiv}:1109.2378.}
+\end{references}
+
+\end{recipe}

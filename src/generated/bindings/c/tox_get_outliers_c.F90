@@ -6,8 +6,10 @@
 !|
 !| The pipeline is three steps, each callable on its own. `compute_rdi` turns raw distances into
 !| a relative distance index, scaled per family so families of different spread are comparable.
-!| `compute_family_scaling` fits that scaling with LOESS against family size. `identify_outliers`
-!| applies the threshold and reports which genes exceed it.
+!| `compute_family_scaling` produces that scaling: it fits each family's spread -- the standard
+!| deviation of its members' distances -- against its mean distance with LOESS over all families,
+!| so that a family too small for a usable empirical estimate is scaled by the trend instead.
+!| `identify_outliers` applies the threshold and reports which genes exceed it.
 !|
 !| `detect_outliers` runs all three in one call, and is the entry point to reach for first.
 module tox_get_outliers_c
@@ -59,7 +61,7 @@ contains
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Mapping of each gene to its family (1-based)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(c_double), dimension(n_families), intent(out), target :: dscale
             !! Array of scaling factors per family (output)
         real(c_double), dimension(n_families), intent(out), target :: loess_x
@@ -213,7 +215,7 @@ contains
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Mapping of each gene to its family (1-based)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(c_double), dimension(n_families), intent(out), target :: dscale
             !! Array of scaling factors per family (output)
         real(c_double), dimension(n_families), intent(out), target :: loess_x
@@ -386,7 +388,7 @@ contains
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(c_double), dimension(n_dscale_elements), intent(in), target :: dscale
             !! Array of scaling factors for each family
             !! NaN is permitted for this value.
@@ -449,7 +451,7 @@ contains
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         real(c_double), dimension(n_dscale_elements), intent(in), target :: dscale
             !! Array of scaling factors for each family
             !! NaN is permitted for this value.
@@ -592,7 +594,7 @@ contains
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         logical(c_bool), dimension(n_genes), intent(out), target :: is_outlier
             !! Output boolean array indicating outliers
         real(c_double), dimension(n_families), intent(out), target :: loess_x
@@ -711,7 +713,7 @@ contains
             !! NaN is permitted for this value.
             !! Infinite values are permitted for this value.
         integer(c_int), dimension(n_genes), intent(in), target :: gene_to_fam
-            !! Gene-to-family mapping (1-based indexing)
+            !! Index mapping -> each index `i` holds the family index for the corresponding gene in `distances`, using `0_int32` for unassigned genes
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_perm
             !! Permutation array for sorting
         integer(c_int), dimension(n_genes), intent(out), target :: tmp_stack_left

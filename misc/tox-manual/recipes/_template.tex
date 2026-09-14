@@ -17,8 +17,9 @@
 % One or two sentences: what biological question does this answer?
 \recipepurpose{TODO: state the purpose.}
 
-% Ownership: the researcher currently developing/applying this workflow.
-\recipemaintainer{TODO: Name}
+% Ownership. Use \nomaintainer unless one person owns this workflow; it prints
+% the team as the maintainer. \recipemaintainer{Name} names an individual.
+\nomaintainer
 
 % The data the user must have before starting.
 \begin{requiredinputs}
@@ -50,7 +51,7 @@ MIN_COUNT=10
 
 % Parameters worth deliberate choice: what each controls, and how to choose.
 \begin{parameters}
-  \param{--min-count}{TODO: what it controls}{TODO: when to raise/lower it}
+  \param{-{}-min-count}{TODO: what it controls}{TODO: when to raise/lower it}
 \end{parameters}
 
 % What the user should see at intermediate checkpoints.
