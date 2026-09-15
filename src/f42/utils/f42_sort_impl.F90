@@ -211,6 +211,26 @@ contains
         call heapsort_real(array, perm, size(array, kind=int32), size(perm, kind=int32))
     end subroutine sort_real_heapsort_expl_size
 
+    !> M_EXPORT_C
+    !| summary: Sort a real vector, returning the permutation (ascending, NaN last)
+    !| AUTHOR_LASZLO_LANG
+    pure subroutine sort_real_get_perm(array, n, perm, ierr)
+        integer(int32), intent(in) :: n
+            !! elements of `array`
+        real(real64), intent(in) :: array(n)
+            !! values to sort
+        integer(int32), intent(out) :: perm(n)
+            !! permutation that sorts `array` ascending, NaN last
+        integer(int32), intent(out) :: ierr
+            !! Error code
+
+        integer(int32) :: i
+
+        call set_ok(ierr)
+        perm = [(i, i = 1, n)]
+        call sort_real_heapsort_expl_size(array, perm, n)
+    end subroutine sort_real_get_perm
+
     !> AUTHOR_MOHAMED_AKDI
     !| Sort an integer array indirectly using heapsort.
     !| Similar to `sort_real_heapsort`, but for integer input.

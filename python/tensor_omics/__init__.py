@@ -49,6 +49,9 @@ from .f42_serde_arrays_serialize_real import (
 from .f42_serde_arrays_utils import (
     get_array_metadata,
 )
+from .f42_sort_impl import (
+    sort_real_get_perm,
+)
 from .f42_stats import (
     loess_smooth_2d,
     compute_edf,
@@ -331,6 +334,7 @@ __all__ = [
     "serialize_int_helper",
     "serialize_logical_helper",
     "serialize_real_helper",
+    "sort_real_get_perm",
     "tox_loess_required_workspace",
     "validate_all_data",
     "validate_data_structure",
