@@ -5,6 +5,7 @@ module mod_test_kd_tree
     use tox_errors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
+    use, intrinsic :: iso_c_binding, only: c_bool
     use test_suite, only: test_case
     implicit none
     public
@@ -273,7 +274,7 @@ contains
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points), neighbor_count, ierr
-        logical :: vicinity_mask(n_points), expected_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points), expected_mask(n_points)
 
         points(:, 1) = [0.0_real64, 0.0_real64]
         points(:, 2) = [1.0_real64, 0.0_real64]
@@ -302,7 +303,7 @@ contains
                          "test_vicinity_vectors_basic_2d: vicinity_vectors_alloc")
         if (.not. is_ok(ierr)) return
 
-        call assert_true(all(vicinity_mask .eqv. expected_mask), &
+        call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_basic_2d: expected mask")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, radius, &
@@ -329,7 +330,7 @@ contains
         integer(int32) :: tmp_mask_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH)
         integer(int32) :: tmp_count_stack(KD_STACK_ENTRY_SIZE, KD_TRAVERSAL_STACK_DEPTH)
         integer(int32) :: alloc_count, helper_count, ierr
-        logical :: alloc_mask(n_points), helper_mask(n_points)
+        logical(c_bool) :: alloc_mask(n_points), helper_mask(n_points)
 
         points(:, 1) = [0.0_real64, 0.0_real64]
         points(:, 2) = [1.0_real64, 0.0_real64]
@@ -361,7 +362,7 @@ contains
         call vicinity_vectors_helper(query_point, points, n_dimensions, n_points, radius, &
                                      dimension_order, kd_indices, tmp_mask_stack, helper_mask)
 
-        call assert_true(all(helper_mask .eqv. alloc_mask), &
+        call assert_true(logical(all(helper_mask .eqv. alloc_mask)), &
                          "test_vicinity_vectors_helper_matches_alloc: masks agree")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, radius, &
@@ -393,7 +394,7 @@ contains
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points), neighbor_count, ierr
-        logical :: vicinity_mask(n_points), expected_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points), expected_mask(n_points)
 
         points(:, 1) = [0.0_real64, 0.0_real64]
         points(:, 2) = [0.0_real64, 0.0_real64]
@@ -420,7 +421,7 @@ contains
                          "test_vicinity_vectors_zero_radius_duplicates: mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_true(all(vicinity_mask .eqv. expected_mask), &
+        call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_zero_radius_duplicates: expected mask")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
@@ -444,7 +445,7 @@ contains
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points), neighbor_count, ierr
-        logical :: vicinity_mask(n_points), expected_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points), expected_mask(n_points)
 
         points(:, 1) = [1.0_real64, 0.0_real64]
         points(:, 2) = [-1.0_real64, 0.0_real64]
@@ -471,7 +472,7 @@ contains
                          "test_vicinity_vectors_boundary_inclusive: mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_true(all(vicinity_mask .eqv. expected_mask), &
+        call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_boundary_inclusive: expected mask")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 1.0_real64, &
@@ -495,7 +496,7 @@ contains
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points), neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(:, 1) = [0.0_real64, 0.0_real64]
         points(:, 2) = [1.0_real64, 0.0_real64]
@@ -520,7 +521,7 @@ contains
                          "test_vicinity_vectors_no_matches: mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_false(any(vicinity_mask), &
+        call assert_false(logical(any(vicinity_mask)), &
                           "test_vicinity_vectors_no_matches: mask is empty")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.5_real64, &
@@ -544,7 +545,7 @@ contains
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points), neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(:, 1) = [-2.0_real64, -2.0_real64]
         points(:, 2) = [-1.0_real64, 1.0_real64]
@@ -570,7 +571,7 @@ contains
                          "test_vicinity_vectors_all_matches: mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_true(all(vicinity_mask), &
+        call assert_true(logical(all(vicinity_mask)), &
                          "test_vicinity_vectors_all_matches: all points selected")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 10.0_real64, &
@@ -594,7 +595,7 @@ contains
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points), neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(:, 1) = [2.0_real64, -1.0_real64]
         dimension_order = [1_int32, 2_int32]
@@ -616,7 +617,7 @@ contains
                          "test_vicinity_vectors_single_point: exact mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_true(vicinity_mask(1), &
+        call assert_true(logical(vicinity_mask(1)), &
                          "test_vicinity_vectors_single_point: point selected")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
@@ -638,7 +639,7 @@ contains
                          "test_vicinity_vectors_single_point: distant mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_false(vicinity_mask(1), &
+        call assert_false(logical(vicinity_mask(1)), &
                           "test_vicinity_vectors_single_point: distant point excluded")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, 0.0_real64, &
@@ -663,7 +664,7 @@ contains
         integer(int32) :: tmp_workspace(n_points), tmp_permutation(n_points)
         integer(int32) :: tmp_recursion_stack(3, n_points)
         integer(int32) :: neighbor_count, expected_count, i_point, ierr
-        logical :: vicinity_mask(n_points), expected_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points), expected_mask(n_points)
 
         do i_point = 1_int32, n_points
             points(1, i_point) = real(i_point - 1_int32, real64)
@@ -695,7 +696,7 @@ contains
                          "test_vicinity_vectors_large_1d_bruteforce: mask call")
         if (.not. is_ok(ierr)) return
 
-        call assert_true(all(vicinity_mask .eqv. expected_mask), &
+        call assert_true(logical(all(vicinity_mask .eqv. expected_mask)), &
                          "test_vicinity_vectors_large_1d_bruteforce: brute-force mask")
 
         call vicinity_vectors_count_alloc(query_point, points, n_dimensions, n_points, radius, &
@@ -717,7 +718,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(1, :) = [0.0_real64, 1.0_real64, 2.0_real64]
         query_point = [0.0_real64]
@@ -745,7 +746,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(:, 1) = [0.0_real64, 0.0_real64]
         points(:, 2) = [1.0_real64, 0.0_real64]
@@ -776,7 +777,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(:, 1) = [0.0_real64, 0.0_real64]
         points(:, 2) = [1.0_real64, 0.0_real64]
@@ -807,7 +808,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(1, :) = [0.0_real64, 1.0_real64, 2.0_real64]
         query_point = [0.0_real64]
@@ -835,7 +836,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         points(1, :) = [0.0_real64, 1.0_real64, 2.0_real64]
         query_point = [0.0_real64]
@@ -863,7 +864,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         query_point = [0.0_real64]
         dimension_order = [1_int32]
@@ -889,7 +890,7 @@ contains
         real(real64) :: points(n_dimensions, n_points), query_point(n_dimensions)
         integer(int32) :: dimension_order(n_dimensions), kd_indices(n_points)
         integer(int32) :: neighbor_count, ierr
-        logical :: vicinity_mask(n_points)
+        logical(c_bool) :: vicinity_mask(n_points)
 
         kd_indices = [1_int32]
 

@@ -11,6 +11,7 @@ module f42_kd_tree
     use safeguard
     use f42_utils, only: sort_array_heapsort, init_perm
     use, intrinsic :: iso_fortran_env, only: int32, real64
+    use, intrinsic :: iso_c_binding, only: c_bool
     use tox_errors, only: set_ok, validate_dimension_size, validate_all_in_range_int, &
                           validate_all_in_range_real, validate_in_range_real, &
                           validate_in_range_int, is_err, set_err, ERR_ALLOC_FAIL
@@ -357,7 +358,7 @@ contains
         !! Sequence of k-d tree split dimensions
         integer(int32), intent(in) :: kd_indices(n_points)
         !! K-d tree index sequence
-        logical, intent(out) :: vicinity_mask(n_points)
+        logical(c_bool), intent(out) :: vicinity_mask(n_points)
         !! Mask indicating points within the search radius
         integer(int32), intent(out) :: ierr
         !! Error code
@@ -407,7 +408,7 @@ contains
         integer(int32), intent(inout) :: tmp_stack(CM_KD_STACK_ENTRY_SIZE, &
                                                    CM_KD_TRAVERSAL_STACK_DEPTH)
         !! Preallocated k-d tree traversal stack
-        logical, intent(out) :: vicinity_mask(n_points)
+        logical(c_bool), intent(out) :: vicinity_mask(n_points)
         !! Mask indicating points within the search radius
 
         integer(int32) :: stack_top, left_idx, right_idx, mid_idx, current_dim, current_depth, point_idx
