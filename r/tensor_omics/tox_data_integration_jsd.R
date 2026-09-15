@@ -102,6 +102,34 @@ determine_study_shared_residual_range <- function(neighborhood_residuals_S1, nei
     .result$shared_residual_range
 }
 
+#' Compute the shared residual range [-R, R] from the neighborhood residuals of N studies
+#'
+#' N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
+#' residuals of every study, sorts them, and takes the quantile exactly as
+#' `determine_shared_residual_range` does.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::determine_all_studies_shared_residual_range}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param neighborhood_residuals a numeric array of rank 4. Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
+#'   NaN is permitted for this value.
+#' @param residual_range_quantile a numeric scalar. Quantile in [0,1] for determining the residual range
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.95`.
+#' @return a numeric scalar. Computed residual range (R)
+#' @export
+determine_all_studies_shared_residual_range <- function(neighborhood_residuals, residual_range_quantile = 0.95) {
+    neighborhood_residuals <- .tox_as_double_array(neighborhood_residuals, "neighborhood_residuals", 4L)
+    residual_range_quantile <- .tox_as_double_scalar(residual_range_quantile, "residual_range_quantile")
+    .result <- .Call("determine_all_studies_shared_residual_range_call", neighborhood_residuals, residual_range_quantile)
+    .arguments <- c("neighborhood_residuals", "n_studies", "max_n_reps_all_studies", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr")
+    .sources <- c(NA_character_, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$shared_residual_range
+}
+
 #' Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
 #'
 #' The probability mass function `pmf(residual, bin)` is actually a matrix.
@@ -138,9 +166,40 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
     )
 }
 
+#' Normalize histogram counts into a probability mass function
+#'
+#' The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that
+#' already holds a study's `counts` -- untouched by anything that perturbed scratch copies
+#' downstream of it -- can re-derive `pmf` without re-binning residuals.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_jsd::calc_pmf}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param counts a integer matrix. Absolute counts of a residual per bin
+#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point
+#'   The minimum valid value is `0`.
+#' @return a numeric matrix. `counts` normalized to `0 <= pmf(:, i) <= 1` and `sum(pmf(:, i)) == 1`
+#' @export
+calc_pmf <- function(counts, included_n_reps) {
+    counts <- .tox_as_integer_matrix(counts, "counts")
+    included_n_reps <- .tox_as_integer_vector(included_n_reps, "included_n_reps")
+    if (length(included_n_reps) != dim(counts)[1])
+        .tox_shape_error("included_n_reps", length(included_n_reps), "counts", dim(counts)[1])
+
+    .result <- .Call("calc_pmf_call", counts, included_n_reps)
+    .arguments <- c("counts", "included_n_reps", "n_points", "n_bins", "pmf", "ierr")
+    .sources <- c(NA_character_, NA_character_, "counts", "counts", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$pmf
+}
+
 #' Compute the Jensen-Shannon divergence per reference point from two histograms
 #'
-#' Takes the probabilities `pmf` produced by `build_residual_histograms`.
+#' Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD
+#' computed from the KL divergences lies in `[0, ln 2]`; the final step below rescales it by
+#' `LOG_2` onto `[0, 1]`.
 #'
 #' Generated from the Fortran procedure \code{tox_data_integration_jsd::compute_divergence_per_reference_point}, whose argument names
 #' are the ones an error message reports.
@@ -151,7 +210,8 @@ build_residual_histograms <- function(neighborhood_residuals, shared_residual_ra
 #' @param pmf_S2 a numeric matrix. Computed normalized histogram counts for study 2
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
-#' @return a numeric vector. Jensen-Shannon divergence per reference point
+#' @return a numeric vector. Jensen-Shannon divergence per reference point, rescaled by `LOG_2` onto `[0, 1]`
+#'   (rather than its natural `[0, ln 2]` range)
 #' @export
 compute_divergence_per_reference_point <- function(pmf_S1, pmf_S2) {
     pmf_S1 <- .tox_as_double_matrix(pmf_S1, "pmf_S1")

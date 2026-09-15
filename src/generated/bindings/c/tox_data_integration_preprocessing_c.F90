@@ -25,6 +25,8 @@ module tox_data_integration_preprocessing_c
     public :: pool_study_means_expert_c
     public :: construct_neighborhoods_c
     public :: construct_neighborhoods_expert_c
+    public :: construct_neighborhoods_ranged_c
+    public :: construct_neighborhoods_ranged_expert_c
 
 contains
 
@@ -478,6 +480,161 @@ contains
             ierr = ierr&
         )
     end subroutine construct_neighborhoods_expert_c
+
+    !> summary: C-wrapper for [[tox_data_integration_preprocessing(module):construct_neighborhoods_ranged(subroutine)]]
+    !| Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+    !| two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(subroutine)]]'s
+    !| distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+    !| reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+    !| genes tied with the span's edge value are never split from it), which a candidate
+    !| admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+    !| without needing the gathered residuals.
+    subroutine construct_neighborhoods_ranged_c(&
+            n_points,&
+            x_star,&
+            n_genes_S,&
+            mean_S,&
+            n_neighbors,&
+            neighborhood_indices,&
+            neighborhood_range,&
+            ierr&
+        ) bind(C, name="construct_neighborhoods_ranged_c")
+        use tox_data_integration_preprocessing, only: construct_neighborhoods_ranged
+
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points
+        integer(c_int), intent(in), target :: n_genes_S
+            !! Number of genes in the current study
+        integer(c_int), intent(in), target :: n_neighbors
+            !! Number of neighbors to select per reference point
+            !! The minimum valid value is `1_int32`.
+        real(c_double), dimension(n_points), intent(in), target :: x_star
+            !! Mean-expression reference points
+            !! NaN is permitted for this value.
+        real(c_double), dimension(n_genes_S), intent(in), target :: mean_S
+            !! Per-gene mean expression values
+            !! NaN is permitted for this value.
+        integer(c_int), dimension(n_neighbors, n_points), intent(out), target :: neighborhood_indices
+            !! Indices of selected neighborhood genes per reference point.
+            !!
+            !! @note
+            !! All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+            !! `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+            !! ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+            !! limitation, ported as-is from 125-stabilize-jscomp).
+            !! @endnote
+        integer(c_int), dimension(2, n_points), intent(out), target :: neighborhood_range
+            !! For each reference point, the `[min_idx, max_idx]` of the included genes. The
+            !! index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+            !! would be the min value. In case of duplicate means, `min_idx` points to the first
+            !! appearance of the value and `max_idx` to the last, so even though their related
+            !! mean value is the min/max in the neighborhood, the actual gene might not be
+            !! included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_genes_S)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_ARRAY_NON_NULL(x_star, n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_S, n_genes_S)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points)
+
+        call construct_neighborhoods_ranged(&
+            n_points = n_points,&
+            x_star = x_star,&
+            n_genes_S = n_genes_S,&
+            mean_S = mean_S,&
+            n_neighbors = n_neighbors,&
+            neighborhood_indices = neighborhood_indices,&
+            neighborhood_range = neighborhood_range,&
+            ierr = ierr&
+        )
+    end subroutine construct_neighborhoods_ranged_c
+
+    !> summary: C-wrapper for [[tox_data_integration_preprocessing(module):construct_neighborhoods_ranged_expert(subroutine)]]
+    !| Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+    !| two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(subroutine)]]'s
+    !| distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+    !| reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+    !| genes tied with the span's edge value are never split from it), which a candidate
+    !| admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+    !| without needing the gathered residuals.
+    subroutine construct_neighborhoods_ranged_expert_c(&
+            n_points,&
+            x_star,&
+            n_genes_S,&
+            mean_S,&
+            mean_S_perm,&
+            n_neighbors,&
+            neighborhood_indices,&
+            neighborhood_range,&
+            ierr&
+        ) bind(C, name="construct_neighborhoods_ranged_expert_c")
+        use tox_data_integration_preprocessing, only: construct_neighborhoods_ranged_expert
+
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points
+        integer(c_int), intent(in), target :: n_genes_S
+            !! Number of genes in the current study
+        integer(c_int), intent(in), target :: n_neighbors
+            !! Number of neighbors to select per reference point
+            !! The minimum valid value is `1_int32`.
+        real(c_double), dimension(n_points), intent(in), target :: x_star
+            !! Mean-expression reference points
+            !! NaN is permitted for this value.
+        real(c_double), dimension(n_genes_S), intent(in), target :: mean_S
+            !! Per-gene mean expression values
+            !! NaN is permitted for this value.
+        integer(c_int), dimension(n_genes_S), intent(in), target :: mean_S_perm
+            !! Sorting permutation for `mean_S`
+        integer(c_int), dimension(n_neighbors, n_points), intent(out), target :: neighborhood_indices
+            !! Indices of selected neighborhood genes per reference point.
+            !!
+            !! @note
+            !! All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+            !! `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+            !! ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+            !! limitation, ported as-is from 125-stabilize-jscomp).
+            !! @endnote
+        integer(c_int), dimension(2, n_points), intent(out), target :: neighborhood_range
+            !! For each reference point, the `[min_idx, max_idx]` of the included genes. The
+            !! index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+            !! would be the min value. In case of duplicate means, `min_idx` points to the first
+            !! appearance of the value and `max_idx` to the last, so even though their related
+            !! mean value is the min/max in the neighborhood, the actual gene might not be
+            !! included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_genes_S)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_ARRAY_NON_NULL(x_star, n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_S, n_genes_S)
+        M_CHECK_ARRAY_NON_NULL(mean_S_perm, n_genes_S)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points)
+
+        call construct_neighborhoods_ranged_expert(&
+            n_points = n_points,&
+            x_star = x_star,&
+            n_genes_S = n_genes_S,&
+            mean_S = mean_S,&
+            mean_S_perm = mean_S_perm,&
+            n_neighbors = n_neighbors,&
+            neighborhood_indices = neighborhood_indices,&
+            neighborhood_range = neighborhood_range,&
+            ierr = ierr&
+        )
+    end subroutine construct_neighborhoods_ranged_expert_c
 
 end module tox_data_integration_preprocessing_c
 #endif

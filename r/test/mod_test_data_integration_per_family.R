@@ -132,7 +132,7 @@ test_fjct <- function() {
   expected_js_divergences <- c(
     0.0,
     0.0,
-    0.5 * log(2.0)
+    (0.5 * log(2.0)) / log(2.0)  # rescaled onto 0..1 by dividing through LOG_2 = log(2): 0.5*log(2)/log(2) = 0.5
   )
 
   expected_weights <- c(0,0,1)

@@ -12,7 +12,7 @@ module tox_data_integration_preprocessing_impl
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite, ieee_value, ieee_quiet_nan
     use f42_math_impl, only: clamp
-    use f42_sort_impl, only: sort_array_heapsort
+    use f42_sort_impl, only: sort_array_heapsort, binary_search_insertion
     use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
 
@@ -295,4 +295,138 @@ contains
             end do
         end do
     end subroutine construct_neighborhoods_impl
+
+    !> summary: Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
+    !| AUTHOR_LASZLO_LANG
+    !| Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+    !| two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(subroutine)]]'s
+    !| distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+    !| reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+    !| genes tied with the span's edge value are never split from it), which a candidate
+    !| admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+    !| without needing the gathered residuals.
+    pure subroutine construct_neighborhoods_ranged_impl(n_points, x_star, n_genes_S, mean_S, mean_S_perm, n_neighbors, &
+                                                          neighborhood_indices, neighborhood_range)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_genes_S
+            !! Number of genes in the current study
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors to select per reference point
+            !! DM_MIN(1_int32)
+        real(real64), intent(in) :: x_star(n_points)
+            !! Mean-expression reference points
+            !! DM_ALLOW_NAN
+        real(real64), intent(in) :: mean_S(n_genes_S)
+            !! Per-gene mean expression values
+            !! DM_ALLOW_NAN
+        integer(int32), intent(in) :: mean_S_perm(n_genes_S)
+            !! Sorting permutation for `mean_S`
+        integer(int32), intent(out) :: neighborhood_indices(n_neighbors, n_points)
+            !! Indices of selected neighborhood genes per reference point.
+            !!
+            !! @note
+            !! All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+            !! `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+            !! ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+            !! limitation, ported as-is from 125-stabilize-jscomp).
+            !! @endnote
+        integer(int32), intent(out) :: neighborhood_range(2, n_points)
+            !! For each reference point, the `[min_idx, max_idx]` of the included genes. The
+            !! index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+            !! would be the min value. In case of duplicate means, `min_idx` points to the first
+            !! appearance of the value and `max_idx` to the last, so even though their related
+            !! mean value is the min/max in the neighborhood, the actual gene might not be
+            !! included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+
+        integer(int32) :: i_point, i_neighbor, gene_idx, left_gene, right_gene, x_star_idx, last_gene
+        real(real64) :: x_star_val
+
+        ! Process each reference point
+        do concurrent(i_point=1:n_points) local(last_gene, x_star_val, x_star_idx, left_gene, right_gene) &
+                shared(x_star, neighborhood_indices, n_neighbors, mean_S, mean_S_perm)
+            associate ( &
+                nhood_range_min => neighborhood_range(1, i_point), &
+                nhood_range_max => neighborhood_range(2, i_point) &
+                )
+                x_star_val = x_star(i_point)
+
+                ! If x_star is NaN, all gene expressions/residuals are NaN -> first element
+                if (ieee_is_nan(x_star_val)) then
+                    x_star_idx = 1
+                else
+                    x_star_idx = binary_search_insertion(mean_S, mean_S_perm, x_star_val)
+                end if
+
+                if (x_star_idx == 1) then
+                    nhood_range_min = 1_int32
+                    nhood_range_max = min(n_genes_S, n_neighbors)
+
+                    ! The first `n_neighbors` genes are the closest to `x_star_val`
+                    do concurrent(i_neighbor=1:n_neighbors) local(gene_idx) shared(n_genes_S, neighborhood_indices, i_point)
+                        if (i_neighbor <= n_genes_S) then
+                            gene_idx = mean_S_perm(i_neighbor)
+                        else
+                            gene_idx = i_neighbor
+                        end if
+                        neighborhood_indices(i_neighbor, i_point) = gene_idx
+                    end do
+                else
+                    ! Collect the closest values around x_star_val
+                    left_gene = x_star_idx - 1
+                    right_gene = x_star_idx
+                    do i_neighbor = 1, n_neighbors
+                        ! if no values lower than x_star are left, fill with right side
+                        if (left_gene < 1) then
+                            ! In case both indices are out of range, fill up to `n_neighbors`
+                            if (right_gene > n_genes_S) then
+                                neighborhood_indices(i_neighbor, i_point) = i_neighbor
+                            else
+                                neighborhood_indices(i_neighbor, i_point) = mean_S_perm(right_gene)
+                                right_gene = right_gene + 1
+                            end if
+                        ! if no values higher than x_star are left, fill with left side
+                        else if (right_gene > n_genes_S) then
+                            neighborhood_indices(i_neighbor, i_point) = mean_S_perm(left_gene)
+                            left_gene = left_gene - 1
+                        else
+                            ! if right side is closer than left side of x_star, take right side, else left side
+                            ! Note: In the sorted array, NaNs are always last -> right side
+                            ! -> if condition is false because of NaN it is because right value is NaN or both
+                            if (mean_S(mean_S_perm(right_gene)) - x_star_val < x_star_val - mean_S(mean_S_perm(left_gene))) then
+                                neighborhood_indices(i_neighbor, i_point) = mean_S_perm(right_gene)
+                                right_gene = right_gene + 1
+                            else
+                                neighborhood_indices(i_neighbor, i_point) = mean_S_perm(left_gene)
+                                left_gene = left_gene - 1
+                            end if
+                        end if
+                    end do
+                    nhood_range_min = left_gene + 1
+                    nhood_range_max = right_gene - 1
+                end if
+
+                last_gene = nhood_range_min
+                do i_neighbor = last_gene - 1, 1, -1
+                    if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
+                        last_gene = i_neighbor
+                    else
+                        exit
+                    end if
+                end do
+                nhood_range_min = last_gene
+
+                last_gene = nhood_range_max
+                do i_neighbor = last_gene + 1, n_genes_S
+                    if (mean_S(mean_S_perm(i_neighbor)) == mean_S(mean_S_perm(last_gene))) then
+                        last_gene = i_neighbor
+                    else
+                        exit
+                    end if
+                end do
+                nhood_range_max = last_gene
+            end associate
+        end do
+    end subroutine construct_neighborhoods_ranged_impl
 end module tox_data_integration_preprocessing_impl

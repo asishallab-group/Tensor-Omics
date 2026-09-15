@@ -19,7 +19,10 @@ module tox_data_integration_jsd_c
     public :: determine_shared_residual_range_expert_c
     public :: determine_study_shared_residual_range_c
     public :: determine_study_shared_residual_range_expert_c
+    public :: determine_all_studies_shared_residual_range_c
+    public :: determine_all_studies_shared_residual_range_expert_c
     public :: build_residual_histograms_c
+    public :: calc_pmf_c
     public :: compute_divergence_per_reference_point_c
     public :: compute_weighted_global_divergence_c
 
@@ -256,6 +259,136 @@ contains
         )
     end subroutine determine_study_shared_residual_range_expert_c
 
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_all_studies_shared_residual_range(subroutine)]]
+    !| N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
+    !| residuals of every study, sorts them, and takes the quantile exactly as
+    !| `determine_shared_residual_range` does.
+    subroutine determine_all_studies_shared_residual_range_c(&
+            neighborhood_residuals,&
+            n_studies,&
+            max_n_reps_all_studies,&
+            n_neighbors,&
+            n_points,&
+            shared_residual_range,&
+            residual_range_quantile,&
+            ierr&
+        ) bind(C, name="determine_all_studies_shared_residual_range_c")
+        use tox_data_integration_jsd, only: determine_all_studies_shared_residual_range
+
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(in), target :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(c_int), intent(in), target :: n_neighbors
+            !! Number of neighbors in the studies
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points in the studies
+        real(c_double), dimension(max_n_reps_all_studies, n_neighbors, n_points, n_studies), intent(in), target :: neighborhood_residuals
+            !! Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(c_double), intent(out), target :: shared_residual_range
+            !! Computed residual range (R)
+        real(c_double), intent(in), target :: residual_range_quantile
+            !! Quantile in [0,1] for determining the residual range
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_studies)
+        M_CHECK_NON_NULL(max_n_reps_all_studies)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(shared_residual_range)
+        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_residuals, max_n_reps_all_studies * n_neighbors * n_points * n_studies)
+
+        call determine_all_studies_shared_residual_range(&
+            neighborhood_residuals = neighborhood_residuals,&
+            n_studies = n_studies,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_neighbors = n_neighbors,&
+            n_points = n_points,&
+            shared_residual_range = shared_residual_range,&
+            residual_range_quantile = residual_range_quantile,&
+            ierr = ierr&
+        )
+    end subroutine determine_all_studies_shared_residual_range_c
+
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):determine_all_studies_shared_residual_range_expert(subroutine)]]
+    !| N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
+    !| residuals of every study, sorts them, and takes the quantile exactly as
+    !| `determine_shared_residual_range` does.
+    subroutine determine_all_studies_shared_residual_range_expert_c(&
+            neighborhood_residuals,&
+            n_studies,&
+            max_n_reps_all_studies,&
+            n_neighbors,&
+            n_points,&
+            tmp_abs_residual_pool,&
+            tmp_abs_residual_pool_perm,&
+            shared_residual_range,&
+            residual_range_quantile,&
+            ierr&
+        ) bind(C, name="determine_all_studies_shared_residual_range_expert_c")
+        use tox_data_integration_jsd, only: determine_all_studies_shared_residual_range_expert
+
+        integer(c_int), intent(in), target :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(c_int), intent(in), target :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(c_int), intent(in), target :: n_neighbors
+            !! Number of neighbors in the studies
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points in the studies
+        real(c_double), dimension(max_n_reps_all_studies, n_neighbors, n_points, n_studies), intent(in), target :: neighborhood_residuals
+            !! Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
+            !! NaN is permitted for this value.
+        real(c_double), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out), target :: tmp_abs_residual_pool
+            !! Work array holding the pooled absolute residuals of every study
+        integer(c_int), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out), target :: tmp_abs_residual_pool_perm
+            !! Work array for the permutation that sorts `tmp_abs_residual_pool`
+        real(c_double), intent(out), target :: shared_residual_range
+            !! Computed residual range (R)
+        real(c_double), intent(in), target :: residual_range_quantile
+            !! Quantile in [0,1] for determining the residual range
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.95`.
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_studies)
+        M_CHECK_NON_NULL(max_n_reps_all_studies)
+        M_CHECK_NON_NULL(n_neighbors)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(shared_residual_range)
+        M_CHECK_NON_NULL(residual_range_quantile)
+        M_CHECK_ARRAY_NON_NULL(neighborhood_residuals, max_n_reps_all_studies * n_neighbors * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(tmp_abs_residual_pool, (max_n_reps_all_studies*n_neighbors*n_points*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tmp_abs_residual_pool_perm, (max_n_reps_all_studies*n_neighbors*n_points*n_studies))
+
+        call determine_all_studies_shared_residual_range_expert(&
+            neighborhood_residuals = neighborhood_residuals,&
+            n_studies = n_studies,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_neighbors = n_neighbors,&
+            n_points = n_points,&
+            tmp_abs_residual_pool = tmp_abs_residual_pool,&
+            tmp_abs_residual_pool_perm = tmp_abs_residual_pool_perm,&
+            shared_residual_range = shared_residual_range,&
+            residual_range_quantile = residual_range_quantile,&
+            ierr = ierr&
+        )
+    end subroutine determine_all_studies_shared_residual_range_expert_c
+
     !> summary: C-wrapper for [[tox_data_integration_jsd(module):build_residual_histograms(subroutine)]]
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.
     subroutine build_residual_histograms_c(&
@@ -325,8 +458,57 @@ contains
         )
     end subroutine build_residual_histograms_c
 
+    !> summary: C-wrapper for [[tox_data_integration_jsd(module):calc_pmf(subroutine)]]
+    !| The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that
+    !| already holds a study's `counts` -- untouched by anything that perturbed scratch copies
+    !| downstream of it -- can re-derive `pmf` without re-binning residuals.
+    subroutine calc_pmf_c(&
+            counts,&
+            included_n_reps,&
+            n_points,&
+            n_bins,&
+            pmf,&
+            ierr&
+        ) bind(C, name="calc_pmf_c")
+        use tox_data_integration_jsd, only: calc_pmf
+
+        integer(c_int), intent(in), target :: n_points
+            !! Number of reference points in the study
+        integer(c_int), intent(in), target :: n_bins
+            !! Number of equally sized histogram bins in range [-R,R]
+        integer(c_int), dimension(n_points, n_bins), intent(in), target :: counts
+            !! Absolute counts of a residual per bin
+            !! The minimum valid value is `0_int32`.
+        integer(c_int), dimension(n_points), intent(in), target :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point
+            !! The minimum valid value is `0_int32`.
+        real(c_double), dimension(n_points, n_bins), intent(out), target :: pmf
+            !! `counts` normalized to `0 <= pmf(:, i) <= 1` and `sum(pmf(:, i)) == 1`
+        integer(c_int), intent(out), target :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        M_CHECK_IERR_NON_NULL
+        call set_ok(ierr)
+        M_CHECK_NON_NULL(n_points)
+        M_CHECK_NON_NULL(n_bins)
+        M_CHECK_ARRAY_NON_NULL(counts, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points)
+        M_CHECK_ARRAY_NON_NULL(pmf, n_points * n_bins)
+
+        call calc_pmf(&
+            counts = counts,&
+            included_n_reps = included_n_reps,&
+            n_points = n_points,&
+            n_bins = n_bins,&
+            pmf = pmf,&
+            ierr = ierr&
+        )
+    end subroutine calc_pmf_c
+
     !> summary: C-wrapper for [[tox_data_integration_jsd(module):compute_divergence_per_reference_point(subroutine)]]
-    !| Takes the probabilities `pmf` produced by `build_residual_histograms`.
+    !| Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD
+    !| computed from the KL divergences lies in `[0, ln 2]`; the final step below rescales it by
+    !| `LOG_2` onto `[0, 1]`.
     subroutine compute_divergence_per_reference_point_c(&
             pmf_S1,&
             pmf_S2,&
@@ -350,7 +532,8 @@ contains
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
         real(c_double), dimension(n_points), intent(out), target :: js_divergences
-            !! Jensen-Shannon divergence per reference point
+            !! Jensen-Shannon divergence per reference point, rescaled by `LOG_2` onto `[0, 1]`
+            !! (rather than its natural `[0, ln 2]` range)
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 

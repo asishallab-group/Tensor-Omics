@@ -4,11 +4,8 @@ module mod_test_data_integration
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
-    ! an internal helper of the permutation test, so it stays in the kernel module
-    use tox_data_integration_stats_impl, only: shuffle_reference_point_helper
     use tox_errors
     use f42_math_impl, only: above, below
-    use f42_random_impl, only: init_random, shuffle_vector
     use test_suite, only: test_case
 
     implicit none
@@ -20,34 +17,32 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(21))
+        allocate (all_tests(19))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
         all_tests(4) = test_case("test_compute_weighted_global_divergence", test_compute_weighted_global_divergence)
-        all_tests(5) = test_case("test_shuffle_reference_point_helper", test_shuffle_reference_point_helper)
-        all_tests(6) = test_case("test_gjct_permutation_test", test_gjct_permutation_test)
 
-        all_tests(7) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
-        all_tests(8) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
-        all_tests(9) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
-        all_tests(10) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
+        all_tests(5) = test_case("test_compute_gene_means_basic", test_compute_gene_means_basic)
+        all_tests(6) = test_case("test_compute_gene_means_with_nan", test_compute_gene_means_with_nan)
+        all_tests(7) = test_case("test_compute_gene_means_all_nan", test_compute_gene_means_all_nan)
+        all_tests(8) = test_case("test_compute_gene_means_invalid_input", test_compute_gene_means_invalid_input)
 
-        all_tests(11) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
-        all_tests(12) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
-        all_tests(13) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
-        all_tests(14) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
+        all_tests(9) = test_case("test_compute_residuals_basic", test_compute_residuals_basic)
+        all_tests(10) = test_case("test_compute_residuals_with_nan", test_compute_residuals_with_nan)
+        all_tests(11) = test_case("test_compute_residuals_all_nan", test_compute_residuals_all_nan)
+        all_tests(12) = test_case("test_compute_residuals_invalid_input", test_compute_residuals_invalid_input)
 
-        all_tests(15) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
-        all_tests(16) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
-        all_tests(17) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
-        all_tests(18) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(13) = test_case("test_pool_means_alloc_basic", test_pool_means_alloc_basic)
+        all_tests(14) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
+        all_tests(15) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
+        all_tests(16) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
 
-        all_tests(19) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
-        all_tests(20) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
+        all_tests(17) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
+        all_tests(18) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
 
-        all_tests(21) = test_case("test_fjct", test_fjct)
-        ! all_tests(22) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
+        all_tests(19) = test_case("test_fjct", test_fjct)
+        ! all_tests(20) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
     end function get_all_tests_data_integration
 
     !> Test the fjct_compute_jsd function.
@@ -134,7 +129,9 @@ contains
         ! -> pmf values point 3 = [0, 0, 1.0]
         expected_included_n_reps_S2 = [0, 0, 0] ! no neighbor included
         expected_total_included_n_reps = 3_int32
-        expected_js_divergences = [0.0_real64, 0.0_real64, 0.5_real64*log(2.0_real64)] ! s1 pmf val is 1.0, s2 is 0 -> mean is 0.5 -> jsd is 0.5*log(2)
+        ! s1 pmf val is 1.0, s2 is 0 -> mean is 0.5 -> jsd is 0.5*log(2), rescaled onto 0..1 by
+        ! dividing through LOG_2 = log(2): (0.5*log(2))/log(2) = 0.5
+        expected_js_divergences = [0.0_real64, 0.0_real64, (0.5_real64*log(2.0_real64))/log(2.0_real64)]
         expected_weights = [0.0_real64, 0.0_real64, 1.0_real64]
         call fjct_compute_jsd( &
             family_idx, gene_to_family_S1, gene_to_family_S2, n_genes_S1, n_genes_S2, neighborhood_residuals_S1, neighborhood_residuals_S2, &
@@ -157,142 +154,6 @@ contains
         call assert_equal_array_real(support_weights, expected_support_weights, k_families, TOL, "test_fjct: Contribution scores: support weights mismatch")
         call assert_equal_array_real(contribution_scores, expected_contribution_scores, k_families, TOL, "test_fjct: Contribution scores: support weights mismatch")
     end subroutine test_fjct
-
-    !> Test the gjct_permutation_test function with a simple synthetic example.
-    subroutine test_gjct_permutation_test
-        integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 1, n_points = 2, n_permutations = 2, n_bins = 4
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), target :: S_12, expected_S_12
-        ! the residuals are shuffled in the work copies the kernel is given, so the shuffle is
-        ! asserted on those; the caller's own S1/S2 stay untouched
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors*n_points), target :: shuffled_S_12
-        real(real64), dimension(:, :, :), pointer :: S1, S2
-        real(real64), dimension(:, :, :), pointer :: tmp_residuals_S1, tmp_residuals_S2
-        real(real64), dimension(:, :), pointer :: tmp_pool
-        real(real64), dimension(:), pointer :: S1_flat, S2_flat
-        integer(int32), parameter :: random_seed = 666
-        integer(int32) :: ierr, i_permutation
-        real(real64) :: p_value, global_jsd_observed
-        real(real64), dimension(n_permutations) :: jsd_null
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors), target :: tmp_pool_flat
-        integer(int32), dimension(n_points, n_bins) :: tmp_counts
-        real(real64), dimension(n_points, n_bins) :: tmp_pmf_S1
-        real(real64), dimension(n_points, n_bins) :: tmp_pmf_S2
-        integer(int32), dimension(n_points) :: tmp_included_n_reps_S1
-        integer(int32), dimension(n_points) :: tmp_included_n_reps_S2
-        real(real64), dimension(n_points) :: tmp_js_divergences
-        real(real64), dimension(n_points) :: tmp_weights
-
-        call init_random(random_seed)
-
-        tmp_pool(1:n_reps_S1 + n_reps_S2, 1:n_neighbors) => tmp_pool_flat
-        tmp_residuals_S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => shuffled_S_12(1:n_reps_S1*n_neighbors*n_points)
-        tmp_residuals_S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => shuffled_S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        ! ============================================================
-        ! Test 1 — Test randomness with seed
-        ! ============================================================
-        !
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-
-        ! Simulate two permutations
-        expected_S_12 = S_12
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => expected_S_12(1:n_reps_S1*n_neighbors*n_points)
-        S1_flat(1:n_reps_S1*n_neighbors*n_points) => expected_S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => expected_S_12(n_reps_S1*n_neighbors*n_points + 1:)
-        S2_flat(1:n_reps_S2*n_neighbors*n_points) => expected_S_12(n_reps_S1*n_neighbors*n_points + 1:)
-        do i_permutation = 1, n_permutations
-            ! First point
-            tmp_pool_flat(1:n_reps_S1*n_neighbors) = S1_flat(1:n_reps_S1*n_neighbors)
-            tmp_pool_flat(n_reps_S1*n_neighbors + 1:) = S2_flat(1:n_reps_S2*n_neighbors)
-            call shuffle_vector(tmp_pool_flat)
-            S1_flat(1:n_reps_S1*n_neighbors) = tmp_pool_flat(1:n_reps_S1*n_neighbors)
-            S2_flat(1:n_reps_S2*n_neighbors) = tmp_pool_flat(n_reps_S1*n_neighbors + 1:)
-
-            ! Second point
-            tmp_pool_flat(1:n_reps_S1*n_neighbors) = S1_flat(n_reps_S1*n_neighbors + 1:)
-            tmp_pool_flat(n_reps_S1*n_neighbors + 1:) = S2_flat(n_reps_S2*n_neighbors + 1:)
-            call shuffle_vector(tmp_pool_flat)
-            S1_flat(n_reps_S1*n_neighbors + 1:) = tmp_pool_flat(1:n_reps_S1*n_neighbors)
-            S2_flat(n_reps_S2*n_neighbors + 1:) = tmp_pool_flat(n_reps_S1*n_neighbors + 1:)
-        end do
-
-        ! for ifx: expected_shuffle = [2, 3, 6, 1, 5, 6, 1, -7, -4, 2, 4, 8, 3, 8]
-
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        global_jsd_observed = 0.0_real64
-        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, random_seed=random_seed, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 1: unexpected error")
-
-        call assert_equal_array_real(shuffled_S_12, expected_S_12, size(S_12, kind=int32), 0.0_real64, "test_gjct_permutation_test: Test 1: concatenated S1, S2 does not match the expected permutation")
-
-        ! ============================================================
-        ! Test 2 — Test randomness without seed
-        ! ============================================================
-        !
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        call init_random(random_seed)
-        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 2: 1. call, unexpected error")
-        call assert_equal_array_real(shuffled_S_12, expected_S_12, size(S_12, kind=int32), 0.0_real64, "test_gjct_permutation_test: Test 2: 1. call, concatenated S1, S2 does not match the expected permutation")
-
-        call gjct_permutation_test_expert(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr, tmp_residuals_S1=tmp_residuals_S1, tmp_residuals_S2=tmp_residuals_S2, tmp_pool=tmp_pool, tmp_counts=tmp_counts, tmp_pmf_S1=tmp_pmf_S1, tmp_pmf_S2=tmp_pmf_S2, tmp_included_n_reps_S1=tmp_included_n_reps_S1, tmp_included_n_reps_S2=tmp_included_n_reps_S2, tmp_js_divergences=tmp_js_divergences, tmp_weights=tmp_weights)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 2: 2. call, unexpected error")
-        call assert_true(any(shuffled_S_12 /= expected_S_12), "test_gjct_permutation_test: Test 2: 2. call, concatenated S1, S2 should not match the expected permutation")
-
-        ! ============================================================
-        ! Test 3 — Test p value
-        ! ============================================================
-        !
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-        S1(1:n_reps_S1, 1:n_neighbors, 1:n_points) => S_12(1:n_reps_S1*n_neighbors*n_points)
-        S2(1:n_reps_S2, 1:n_neighbors, 1:n_points) => S_12(n_reps_S1*n_neighbors*n_points + 1:)
-
-        ! all should be greater or equal -> p_value=1
-        global_jsd_observed = 0.0_real64
-
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 3: unexpected error")
-
-        call assert_equal_real(p_value, 1.0_real64, TOL, "test_gjct_permutation_test: Test 3: for zero observed jsd, p_value should be 1")
-
-        ! no one should be greater or equal -> p_value=1/(n_permutations+1)=1/3
-        global_jsd_observed = huge(0.0_real64)
-        call gjct_permutation_test(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range=10.0_real64, n_permutations=2_int32, jsd_null=jsd_null, p_value=p_value, ierr=ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_gjct_permutation_test: Test 3: unexpected error")
-
-        call assert_equal_real(p_value, 1.0_real64/3.0_real64, TOL, "test_gjct_permutation_test: Test 3: for max observed jsd, p_value should be 1/3")
-    end subroutine test_gjct_permutation_test
-
-    !> Test the shuffle_reference_point_helper function with a simple synthetic example.
-    subroutine test_shuffle_reference_point_helper
-        integer(int32), parameter :: n_reps_S1 = 4, n_reps_S2 = 3, n_neighbors = 2
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors), target :: S_12, expected_S_12
-        real(real64), dimension(:), pointer :: S1, S2
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors) :: pool_flat
-        integer(int32), parameter :: random_seed = 666
-
-        call init_random(random_seed)
-
-        S_12 = [1, 2, 3, 4, 5, 6, -7, 8, 2, -4, 6, 8, 1, 3]
-        S1(1:n_reps_S1*n_neighbors) => S_12(1:n_reps_S1*n_neighbors)
-        S2(1:n_reps_S2*n_neighbors) => S_12(n_reps_S1*n_neighbors + 1:)
-
-        expected_S_12 = S_12
-        call shuffle_vector(expected_S_12)
-        ! for ifx: expected_S_12 = [-7, 4, 6, 3, 2, 8, 8, 5, -4, 6, 2, 3, 1, 1]
-
-        call init_random(random_seed)
-
-        call shuffle_reference_point_helper(S1, S2, n_reps_S1, n_reps_S2, n_neighbors, pool_flat)
-
-        call assert_equal_array_real(pool_flat, S_12, size(S_12, kind=int32), TOL, "test_shuffle_reference_point_helper: pool should match concatenated S1, S2")
-        call assert_equal_array_real(S_12, expected_S_12, size(S_12, kind=int32), TOL, "test_shuffle_reference_point_helper: concatenated S1, S2 does not match the expected permutation")
-    end subroutine test_shuffle_reference_point_helper
 
     !> Test the determine_shared_residual_range function with a simple synthetic example.
     subroutine test_determine_shared_residual_range
@@ -612,7 +473,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_divergence_per_reference_point: Test 2: ierr OK")
 
         expected_jsd = 0.0_real64
-        expected_jsd(1) = log(2.0_real64)
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2): log(2)/log(2) = 1.0
+        expected_jsd(1) = log(2.0_real64)/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 2: disjoint PMFs → JSD=log(2)")
         call assert_equal_real(jsd(2), 0.0_real64, TOL, "test_compute_divergence_per_reference_point: Test 2: rows 2,3 are zero PMFs → JSD=0")
         call assert_equal_real(jsd(3), 0.0_real64, TOL, "test_compute_divergence_per_reference_point: Test 2: rows 2,3 are zero PMFs → JSD=0")
@@ -643,9 +505,11 @@ contains
 
         ! Compute expected value analytically
         expected_jsd = 0.0_real64
-        expected_jsd(1) = 0.5_real64*( &
-                          0.5_real64*log(2.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) &
-                          + log(1.0_real64/0.75_real64))
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2):
+        ! 0.5*(0.5*log(2) + 0.5*log(2/3) + log(1/0.75)) / log(2) ≈ 0.31127812445913283
+        expected_jsd(1) = (0.5_real64*( &
+                           0.5_real64*log(2.0_real64) + 0.5_real64*log(2.0_real64/3.0_real64) &
+                           + log(1.0_real64/0.75_real64)))/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 3: analytic partial-overlap JSD")
 
         ! ============================================================
@@ -671,7 +535,8 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_divergence_per_reference_point: Test 4: ierr OK")
 
         expected_jsd = 0.0_real64
-        expected_jsd(1) = log(2.0_real64)
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2): log(2)/log(2) = 1.0
+        expected_jsd(1) = log(2.0_real64)/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 4: zero-probability bins handled correctly")
 
         ! ============================================================
@@ -695,8 +560,9 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_compute_divergence_per_reference_point: Test 5: ierr OK")
 
         expected_jsd = 0.0_real64
-        expected_jsd(2) = 0.5*(1.0_real64*log(1.0_real64/0.5_real64))
-        expected_jsd(3) = 0.5*(1.0_real64*log(1.0_real64/0.5_real64))
+        ! rescaled onto 0..1 by dividing through LOG_2 = log(2): 0.5*(1.0*log(1.0/0.5))/log(2) = 0.5
+        expected_jsd(2) = (0.5*(1.0_real64*log(1.0_real64/0.5_real64)))/log(2.0_real64)
+        expected_jsd(3) = (0.5*(1.0_real64*log(1.0_real64/0.5_real64)))/log(2.0_real64)
         call assert_equal_array_real(jsd, expected_jsd, size(jsd, kind=int32), TOL, "test_compute_divergence_per_reference_point: Test 5: mixed patterns")
     end subroutine test_compute_divergence_per_reference_point
 

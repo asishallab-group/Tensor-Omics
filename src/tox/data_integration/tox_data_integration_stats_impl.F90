@@ -2,154 +2,158 @@
 
 !> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Permutation Test
 !|
-!| A permutation test estimating an empirical p-value for the weighted global JSD. Under the null
-!| hypothesis that both studies are exchangeable, S1/S2 residuals are repeatedly shuffled within
-!| each reference point's pooled neighborhood and the JSD is recomputed, giving a null
-!| distribution against which the observed value is compared.
+!| A permutation test estimating an empirical p-value for each study's weighted global JSD
+!| against the consensus pmf. Under the null hypothesis that a study is exchangeable with the
+!| pool, every reference point's pooled consensus histogram counts are repeatedly resampled
+!| without replacement (GSL's multivariate hypergeometric distribution) into each study's own
+!| draw size, the pmf/JSD/weighted global JSD are recomputed from that resample, and the observed
+!| value is compared against the resulting null distribution.
 !|
-!| Work copies are shuffled, never the caller's arrays.
+!| Generalized to K studies; the pooled resampling pool (`tmp_mean_pmf_counts`) is a work copy
+!| reset every permutation, so the caller's own `mean_pmf_counts` is left untouched.
 module tox_data_integration_stats_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: int32, real64
-    use, intrinsic :: iso_c_binding, only: c_bool
-    use f42_random_impl, only: init_random, shuffle_vector
-    use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
+    use f42_random_gsl, only: rng_t, create_rng, destroy_rng, random_multiv_hypergeom
+    use tox_data_integration_jsd_impl, only: compute_divergence_per_reference_point_impl, &
+                                             compute_weighted_global_divergence_impl, calc_pmf_impl
+    use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
     M_IMPLICIT_NONE
 contains
 
-    !> summary: Estimate how likely the observed divergence is to occur by chance
-    !| AUTHOR_FRANZ_ERIC_SILL
-    !| Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in
-    !| the work copies, so the caller's own arrays are left untouched.
-    subroutine gjct_permutation_test_impl( &
-        neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, global_jsd_observed, n_bins, shared_residual_range, n_permutations, jsd_null, p_value, &
-        tmp_residuals_S1, tmp_residuals_S2, tmp_pool, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, tmp_included_n_reps_S1, tmp_included_n_reps_S2, tmp_js_divergences, tmp_weights, &
-        random_seed, neighbor_mask_S1, neighbor_mask_S2 &
-        )
-        integer(int32), intent(in) :: n_reps_S1
-            !! Number of replicates in study 1
-        integer(int32), intent(in) :: n_reps_S2
-            !! Number of replicates in study 2
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        integer(int32), intent(in) :: n_points
-            !! Number of reference points in the studies
-        real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S1
-            !! Computed neighborhood residuals for study 1, NaN is explicitly allowed for missing values
-            !! DM_ALLOW_NAN
-        real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(in) :: neighborhood_residuals_S2
-            !! Computed neighborhood residuals for study 2, NaN is explicitly allowed for missing values
-            !! DM_ALLOW_NAN
-        real(real64), intent(in) :: global_jsd_observed
-            !! Observed global JSD value for both studies
-        integer(int32), intent(in) :: n_bins
-            !! Number of equally sized histogram bins used for the studies
-        real(real64), intent(in) :: shared_residual_range
-            !! Computed residual range for both studies
-            !! DM_MIN(0.0_real64)
+    !> summary: Estimate how likely each study's observed weighted global JSD is to occur by chance
+    !| AUTHOR_LASZLO_LANG
+    !| Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its
+    !| hardcoded 2-study shuffle to a K-study GSL `random_multiv_hypergeom` resample from the
+    !| pooled `mean_pmf_counts` (without replacement, per reference point, per study). Impure:
+    !| draws random numbers, so it carries `ierr` for the one genuine runtime failure a validated
+    !| caller cannot foresee -- `create_rng` failing to allocate the GSL generator -- folded in as
+    !| `ERR_ALLOC_FAIL`; a later `random_multiv_hypergeom` failure (which validated,
+    !| internally-consistent inputs should never trigger) is likewise folded in, first failure
+    !| only, without stopping the resampling already in flight, matching
+    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]'s own
+    !| precedent.
+    !|
+    !| Known limitation: ported verbatim from 125-stabilize-jscomp's p-value formula, WITHOUT the
+    !| `(1+count)/(n+1)` Laplace add-one correction -- `p_values(i) = anint(count(i))/n_permutations`,
+    !| so a study whose observed JSD is never reached by any permutation gets `p = 0.0` exactly,
+    !| not the `1/(n_permutations+1)` a Laplace-corrected formula would give. Deliberately ported
+    !| as-is; see the project's JSD-Comp-Test follow-up issue for the fix.
+    subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
+                                          mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
+                                          tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
+                                          tmp_global_js_divergence, random_seed, ierr)
         integer(int32), intent(in) :: n_permutations
             !! Number of permutations to perform
-        real(real64), dimension(n_permutations), intent(out) :: jsd_null
-            !! Vector of global divergence values obtained under the null hypothesis
-        real(real64), intent(out) :: p_value
-            !! Empirical p-value of the permutation test: \( \frac{\text{count}(jsd\_null \ge global\_jsd\_observed) + 1}{n\_permutations + 1} \)
-        real(real64), dimension(n_reps_S1, n_neighbors, n_points), intent(out), target :: tmp_residuals_S1
-            !! Work copy of study 1's residuals, shuffled in place
-        real(real64), dimension(n_reps_S2, n_neighbors, n_points), intent(out), target :: tmp_residuals_S2
-            !! Work copy of study 2's residuals, shuffled in place
-        real(real64), dimension(n_reps_S1 + n_reps_S2, n_neighbors), intent(out), target :: tmp_pool
-            !! Working array for shuffling the concatenated residuals from both studies per reference point
-        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S1
-            !! Working array for study 1's normalized histogram counts
-        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_S2
-            !! Working array for study 2's normalized histogram counts
-        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts
-            !! Working array for the histogram counts
-        integer(int32), dimension(n_points), intent(out) :: tmp_included_n_reps_S1
-            !! Working array for study 1's included replicate counts
-        integer(int32), dimension(n_points), intent(out) :: tmp_included_n_reps_S2
-            !! Working array for study 2's included replicate counts
-        real(real64), dimension(n_points), intent(out) :: tmp_js_divergences
-            !! Working array for the per-reference-point divergences
-        real(real64), dimension(n_points), intent(out) :: tmp_weights
-            !! Working array for the divergence weights
+            !! DM_MIN(0_int32)
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! DM_MIN(1_int32)
+        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf -- the pool each
+            !! permutation resamples from without replacement, per reference point
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_bins, n_points), intent(in) :: mean_pmf
+            !! The consensus pmf built from all studies' pmfs
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+        integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
+            !! DM_MIN(0_int32)
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point, per study -- how
+            !! many elements are drawn (without replacement) from the pooled pool per study
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_studies), intent(in) :: global_jsd_observed
+            !! Observed weighted global JSD of each study against the consensus pmf
+        real(real64), dimension(n_studies), intent(out) :: p_values
+            !! Empirical p-value per study: the fraction of permutations whose resampled global
+            !! JSD reached or exceeded the observed value -- see the known-limitation note above
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf_counts
+            !! Working array for proper resampling per permutation: the remaining pool to draw
+            !! from, reset to `mean_pmf_counts` at the start of every permutation
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_counts
+            !! Working array for one study's resampled histogram counts, one permutation at a time
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: tmp_pmfs
+            !! Working array that holds one permutation's resampled pmfs, all studies
+        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_js_divergences
+            !! Working array for one permutation's per-point JSD values
+        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_weights
+            !! Working array for one permutation's per-point weights
+        real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
+            !! Working array for one permutation's global weighted JSD values
         integer(int32), intent(in), optional :: random_seed
-            !! Seed to use for shuffling
-        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S1
-            !! Optional mask to exclude specific neighbors from study 1 (e.g. for family-wise analysis)
-        logical(c_bool), dimension(n_neighbors, n_points), intent(in), optional :: neighbor_mask_S2
-            !! Optional mask to exclude specific neighbors from study 2 (e.g. for family-wise analysis)
+            !! Seed for the GSL random number generator
+            !! DM_DEFAULT(42_int32)
+        integer(int32), intent(out) :: ierr
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
 
-        integer(int32) :: n_jsd_exceeding_observed, i_permutation, n_residuals_S1, n_residuals_S2, i_point
-        real(real64), dimension(:), pointer :: reference_point_S1, reference_point_S2, pool_flat
+        integer(int32) :: i_permutation, i_point, i_study, draw_ierr
+        real(real64), dimension(n_points, n_bins) :: tmp_pmf_point_major
+        integer(int32), dimension(n_points, n_bins) :: tmp_counts_point_major
+        type(rng_t) :: rng
 
-        if (present(random_seed)) then
-            call init_random(random_seed)
+        call set_ok(ierr)
+        rng = create_rng(ierr, random_seed)
+        if (is_err(ierr)) then
+            ! A genuine runtime failure -- leave every work array in a defined (zeroed) state
+            ! rather than resample with an uninitialized generator.
+            p_values = 0.0_real64
+            tmp_mean_pmf_counts = 0_int32
+            tmp_counts = 0_int32
+            tmp_pmfs = 0.0_real64
+            tmp_js_divergences = 0.0_real64
+            tmp_weights = 0.0_real64
+            tmp_global_js_divergence = 0.0_real64
+            return
         end if
 
-        ! The residuals are shuffled in place, so work on copies and leave the caller's arrays alone
-        tmp_residuals_S1 = neighborhood_residuals_S1
-        tmp_residuals_S2 = neighborhood_residuals_S2
-
-        pool_flat(1:size(tmp_pool, kind=int32)) => tmp_pool
-        n_residuals_S1 = n_reps_S1*n_neighbors
-        n_residuals_S2 = n_reps_S2*n_neighbors
-
-        n_jsd_exceeding_observed = 0_int32
+        p_values = 0.0_real64
         do i_permutation = 1, n_permutations
-            ! 1. shuffle residuals
-            do i_point = 1, n_points
-                reference_point_S1(1:n_residuals_S1) => tmp_residuals_S1(:, :, i_point)
-                reference_point_S2(1:n_residuals_S2) => tmp_residuals_S2(:, :, i_point)
-                call shuffle_reference_point_helper( &
-                    reference_point_S1, reference_point_S2, &
-                    n_reps_S1, n_reps_S2, n_neighbors, pool_flat &
-                    )
+            ! Resample the histogram: each reference point's pooled consensus counts become a
+            ! pool to draw from without replacement, per study. tmp_mean_pmf_counts is refreshed
+            ! every permutation, so previous studies' draws never leak into the next permutation.
+            tmp_mean_pmf_counts = mean_pmf_counts
+            do i_study = 1, n_studies
+                do i_point = 1, n_points
+                    call random_multiv_hypergeom(rng, n_bins, tmp_mean_pmf_counts(:, i_point), &
+                                                 sum(tmp_mean_pmf_counts(:, i_point)), included_n_reps(i_point, i_study), &
+                                                 tmp_counts(:, i_point), draw_ierr)
+                    if (is_err(draw_ierr)) call set_err_once(ierr, get_err_code(draw_ierr))
+                end do
+                tmp_counts_point_major = transpose(tmp_counts)
+                call calc_pmf_impl(tmp_counts_point_major, included_n_reps(:, i_study), n_points, n_bins, tmp_pmf_point_major)
+                tmp_pmfs(:, :, i_study) = transpose(tmp_pmf_point_major)
             end do
 
-            ! 2. Pipeline to determine the global jsd for current permutation
-            call jct_compute_jsd_pipeline_helper(tmp_residuals_S1, tmp_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, tmp_js_divergences, tmp_included_n_reps_S1, tmp_included_n_reps_S2, jsd_null(i_permutation), tmp_weights, tmp_pmf_S1, tmp_pmf_S2, tmp_counts, neighbor_mask_S1, neighbor_mask_S2)
+            do concurrent(i_study=1:n_studies) shared(tmp_pmfs, mean_pmf, n_points, n_bins, tmp_js_divergences, &
+                                                      included_n_reps, mean_pmf_included_n_reps, tmp_global_js_divergence, &
+                                                      tmp_weights, global_jsd_observed, p_values)
+                call compute_divergence_per_reference_point_impl(transpose(tmp_pmfs(:, :, i_study)), transpose(mean_pmf), &
+                                                                 n_points, n_bins, tmp_js_divergences(:, i_study))
+                call compute_weighted_global_divergence_impl(tmp_js_divergences(:, i_study), n_points, &
+                                                              included_n_reps(:, i_study), mean_pmf_included_n_reps, &
+                                                              tmp_global_js_divergence(i_study), tmp_weights(:, i_study))
 
-            if (jsd_null(i_permutation) >= global_jsd_observed) then
-                n_jsd_exceeding_observed = n_jsd_exceeding_observed + 1
-            end if
+                if (tmp_global_js_divergence(i_study) >= global_jsd_observed(i_study)) then
+                    p_values(i_study) = p_values(i_study) + 1.0_real64
+                end if
+            end do
         end do
 
-        ! Add-one (Laplace) smoothing on both the numerator and denominator: this treats the observed
-        ! statistic itself as one additional permutation draw, so the p-value can never be exactly zero
-        ! (which would otherwise happen whenever no null draw reaches the observed JSD).
-        p_value = real(n_jsd_exceeding_observed + 1, real64)/real(n_permutations + 1, real64)
+        if (n_permutations /= 0) then
+            do concurrent(i_study=1:n_studies) shared(p_values, n_permutations)
+                p_values(i_study) = anint(p_values(i_study))/real(n_permutations, real64)
+            end do
+        end if
+
+        call destroy_rng(rng)
     end subroutine gjct_permutation_test_impl
-
-    !> summary: Shuffle the residuals of one reference point between the two studies
-    !| AUTHOR_FRANZ_ERIC_SILL
-    !| Internal helper of `gjct_permutation_test_impl`.
-    subroutine shuffle_reference_point_helper(reference_point_S1, reference_point_S2, n_reps_S1, n_reps_S2, n_neighbors, pool_flat)
-        integer(int32), intent(in) :: n_reps_S1
-            !! Number of replicates in study 1
-        integer(int32), intent(in) :: n_reps_S2
-            !! Number of replicates in study 2
-        integer(int32), intent(in) :: n_neighbors
-            !! Number of neighbors in the studies
-        real(real64), dimension(n_reps_S1*n_neighbors), intent(inout) :: reference_point_S1
-            !! Residuals for one reference point in study 1, will be shuffled in-place
-        real(real64), dimension(n_reps_S2*n_neighbors), intent(inout) :: reference_point_S2
-            !! Residuals for one reference point in study 2, will be shuffled in-place
-        real(real64), dimension((n_reps_S1 + n_reps_S2)*n_neighbors), intent(out) :: pool_flat
-            !! Working array for shuffling the concatenated residuals from both studies per reference point
-
-        integer(int32) :: pool_size, n_residuals_S1
-
-        pool_size = size(pool_flat, kind=int32)
-        n_residuals_S1 = size(reference_point_S1, kind=int32)
-
-        pool_flat(1:n_residuals_S1) = reference_point_S1
-        pool_flat(n_residuals_S1 + 1:pool_size) = reference_point_S2
-
-        call shuffle_vector(pool_flat)
-
-        reference_point_S1 = pool_flat(1:n_residuals_S1)
-        reference_point_S2 = pool_flat(n_residuals_S1 + 1:pool_size)
-    end subroutine shuffle_reference_point_helper
 
 end module tox_data_integration_stats_impl

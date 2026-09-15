@@ -25,4 +25,5 @@ module tox_data_integration_impl
     use tox_data_integration_jsd_impl
     use tox_data_integration_per_family_impl
     use tox_data_integration_stats_impl
+    use tox_data_integration_js_comp_test_impl
 end module tox_data_integration_impl

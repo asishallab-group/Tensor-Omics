@@ -11,7 +11,7 @@ module tox_data_integration_jsd_impl
     use, intrinsic :: iso_fortran_env, only: int32, real64
     use, intrinsic :: iso_c_binding, only: c_bool
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-    use f42_math_impl, only: clamp, is_close
+    use f42_math_impl, only: clamp, is_close, LOG_2
     use f42_sort_impl, only: sort_array_heapsort
     use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
@@ -125,6 +125,61 @@ contains
         call determine_shared_residual_range_impl(tmp_abs_residual_pool, tmp_abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
     end subroutine determine_study_shared_residual_range_impl
 
+    !> summary: Compute the shared residual range [-R, R] from the neighborhood residuals of N studies
+    !| AUTHOR_LASZLO_LANG
+    !| N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
+    !| residuals of every study, sorts them, and takes the quantile exactly as
+    !| `determine_shared_residual_range` does.
+    pure subroutine determine_all_studies_shared_residual_range_impl(neighborhood_residuals, n_studies, max_n_reps_all_studies, n_neighbors, n_points, &
+                                                                       tmp_abs_residual_pool, tmp_abs_residual_pool_perm, shared_residual_range, residual_range_quantile)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! DM_MIN(1_int32)
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors in the studies
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the studies
+        real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points, n_studies), intent(in) :: neighborhood_residuals
+            !! Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
+            !! DM_ALLOW_NAN
+        real(real64), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out) :: tmp_abs_residual_pool
+            !! Work array holding the pooled absolute residuals of every study
+        integer(int32), dimension(max_n_reps_all_studies*n_neighbors*n_points*n_studies), intent(out) :: tmp_abs_residual_pool_perm
+            !! Work array for the permutation that sorts `tmp_abs_residual_pool`
+        real(real64), intent(in), optional :: residual_range_quantile
+            !! Quantile in [0,1] for determining the residual range
+            !! DM_MIN(0.0_real64)
+            !! DM_MAX(1.0_real64)
+            !! DM_DEFAULT(0.95)
+        real(real64), intent(out) :: shared_residual_range
+            !! Computed residual range (R)
+
+        integer(int32) :: i_rep, i_neighbor, i_point, i_study, pool_size, n_predecessors
+
+        pool_size = max_n_reps_all_studies*n_neighbors*n_points*n_studies
+
+        ! Collect the absolute residual values, laid out exactly as a
+        ! (max_n_reps_all_studies, n_neighbors, n_points, n_studies) array would be
+        do concurrent(i_study=1:n_studies)
+            do concurrent(i_point=1:n_points) shared(i_study, max_n_reps_all_studies, n_neighbors, n_points)
+                do concurrent(i_neighbor=1:n_neighbors) local(n_predecessors) shared(i_point, i_study, max_n_reps_all_studies, n_neighbors, n_points)
+                    n_predecessors = (((i_study - 1)*n_points + (i_point - 1))*n_neighbors + (i_neighbor - 1))*max_n_reps_all_studies
+                    do concurrent(i_rep=1:max_n_reps_all_studies) shared(n_predecessors, tmp_abs_residual_pool, tmp_abs_residual_pool_perm, neighborhood_residuals, i_point, i_neighbor, i_study)
+                        tmp_abs_residual_pool(n_predecessors + i_rep) = abs(neighborhood_residuals(i_rep, i_neighbor, i_point, i_study))
+
+                        tmp_abs_residual_pool_perm(n_predecessors + i_rep) = n_predecessors + i_rep
+                    end do
+                end do
+            end do
+        end do
+
+        call sort_array_heapsort(tmp_abs_residual_pool, tmp_abs_residual_pool_perm)
+
+        call determine_shared_residual_range_impl(tmp_abs_residual_pool, tmp_abs_residual_pool_perm, pool_size, shared_residual_range, residual_range_quantile)
+    end subroutine determine_all_studies_shared_residual_range_impl
+
     !> summary: Summarize the neighborhood residuals in absolute histogram counts and probability mass functions
     !| AUTHOR_FRANZ_ERIC_SILL
     !| The probability mass function `pmf(residual, bin)` is actually a matrix.
@@ -200,6 +255,30 @@ contains
         end do
 
         ! 2. calculate pmf
+        call calc_pmf_impl(counts, included_n_reps, n_points, n_bins, pmf)
+    end subroutine build_residual_histograms_impl
+
+    !> summary: Normalize histogram counts into a probability mass function
+    !| AUTHOR_LASZLO_LANG
+    !| The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that
+    !| already holds a study's `counts` -- untouched by anything that perturbed scratch copies
+    !| downstream of it -- can re-derive `pmf` without re-binning residuals.
+    pure subroutine calc_pmf_impl(counts, included_n_reps, n_points, n_bins, pmf)
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points in the study
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins in range [-R,R]
+        integer(int32), dimension(n_points, n_bins), intent(in) :: counts
+            !! Absolute counts of a residual per bin
+            !! DM_MIN(0_int32)
+        integer(int32), dimension(n_points), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point
+            !! DM_MIN(0_int32)
+        real(real64), dimension(n_points, n_bins), intent(out) :: pmf
+            !! `counts` normalized to `0 <= pmf(:, i) <= 1` and `sum(pmf(:, i)) == 1`
+
+        integer(int32) :: i_bin, i_point
+
         do concurrent(i_bin=1:n_bins)
             do concurrent(i_point=1:n_points) shared(pmf, i_bin, included_n_reps, counts)
                 if (included_n_reps(i_point) == 0) then
@@ -209,11 +288,13 @@ contains
                 end if
             end do
         end do
-    end subroutine build_residual_histograms_impl
+    end subroutine calc_pmf_impl
 
     !> summary: Compute the Jensen-Shannon divergence per reference point from two histograms
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| Takes the probabilities `pmf` produced by `build_residual_histograms`.
+    !| Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD
+    !| computed from the KL divergences lies in `[0, ln 2]`; the final step below rescales it by
+    !| `LOG_2` onto `[0, 1]`.
     pure subroutine compute_divergence_per_reference_point_impl(pmf_S1, pmf_S2, n_points, n_bins, js_divergences)
         integer(int32), intent(in) :: n_points
             !! Number of reference points (k)
@@ -228,7 +309,8 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
         real(real64), dimension(n_points), intent(out) :: js_divergences
-            !! Jensen-Shannon divergence per reference point
+            !! Jensen-Shannon divergence per reference point, rescaled by `LOG_2` onto `[0, 1]`
+            !! (rather than its natural `[0, ln 2]` range)
 
         real(real64) :: S_mean, s1_val, s2_val
         integer(int32) :: i_bin, i_point
@@ -258,9 +340,10 @@ contains
             end do
         end do
 
-        ! 2. Compute the js_divergences
+        ! 2. Compute the js_divergences, rescaled by LOG_2 so the result lies in [0,1] instead of
+        ! its natural [0, ln 2] range
         do concurrent(i_point=1:n_points) shared(js_divergences)
-            js_divergences(i_point) = 0.5_real64*js_divergences(i_point)
+            js_divergences(i_point) = (0.5_real64*js_divergences(i_point))/LOG_2
         end do
     end subroutine compute_divergence_per_reference_point_impl
 

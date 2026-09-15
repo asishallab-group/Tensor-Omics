@@ -67,6 +67,23 @@ _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals_S1",
 #: For a derived argument, the one the caller passed it in
 _DETERMINE_STUDY_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, None, "neighborhood_residuals_S1", "neighborhood_residuals_S2", "neighborhood_residuals_S1", "neighborhood_residuals_S1", None, None, None,)
 
+_lib.determine_all_studies_shared_residual_range_c.restype = None
+_lib.determine_all_studies_shared_residual_range_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=4, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENTS = ("neighborhood_residuals", "n_studies", "max_n_reps_all_studies", "n_neighbors", "n_points", "shared_residual_range", "residual_range_quantile", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, None, None,)
+
 _lib.build_residual_histograms_c.restype = None
 _lib.build_residual_histograms_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
@@ -86,6 +103,21 @@ _lib.build_residual_histograms_c.argtypes = (
 _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENTS = ("neighborhood_residuals", "n_reps", "n_neighbors", "n_points", "shared_residual_range", "n_bins", "counts", "pmf", "included_n_reps", "neighbor_mask", "ierr",)
 #: For a derived argument, the one the caller passed it in
 _BUILD_RESIDUAL_HISTOGRAMS_ARGUMENT_SOURCES = (None, "neighborhood_residuals", "neighborhood_residuals", "neighborhood_residuals", None, "counts", None, None, None, None, None,)
+
+_lib.calc_pmf_c.restype = None
+_lib.calc_pmf_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CALC_PMF_ARGUMENTS = ("counts", "included_n_reps", "n_points", "n_bins", "pmf", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CALC_PMF_ARGUMENT_SOURCES = (None, None, "counts", "counts", None, None,)
 
 _lib.compute_divergence_per_reference_point_c.restype = None
 _lib.compute_divergence_per_reference_point_c.argtypes = (
@@ -355,6 +387,75 @@ def determine_study_shared_residual_range(
 
     return shared_residual_range.value
 
+def determine_all_studies_shared_residual_range(
+        neighborhood_residuals,
+        residual_range_quantile=0.95,
+):
+    r"""Compute the shared residual range [-R, R] from the neighborhood residuals of N studies
+
+    N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute
+    residuals of every study, sorts them, and takes the quantile exactly as
+    `determine_shared_residual_range` does.
+
+    Parameters
+    ----------
+    neighborhood_residuals : np.ndarray[np.float64] of shape (max_n_reps_all_studies, n_neighbors, n_points, n_studies,), column-major (order='F')
+        Computed neighborhood residuals for every study, NaN is explicitly allowed for missing values
+        NaN is permitted for this value.
+    residual_range_quantile : float, optional, default 0.95
+        Quantile in [0,1] for determining the residual range
+        The minimum valid value is `0.0`.
+        The maximum valid value is `1.0`.
+        The default value is `0.95`.
+
+    Returns
+    -------
+    shared_residual_range : float
+        Computed residual range (R)
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_jsd::determine_all_studies_shared_residual_range`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        neighborhood_residuals = np.asfortranarray(neighborhood_residuals, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'neighborhood_residuals' must be an array of np.float64: {error}") from None
+    if neighborhood_residuals.ndim != 4:
+        raise ValueError(f"'neighborhood_residuals' must have 4 dimensions, but has {neighborhood_residuals.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_studies = neighborhood_residuals.shape[3]
+    max_n_reps_all_studies = neighborhood_residuals.shape[0]
+    n_neighbors = neighborhood_residuals.shape[1]
+    n_points = neighborhood_residuals.shape[2]
+
+    # outputs and work arrays, which the caller never sees
+    shared_residual_range = ctypes.c_double(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.determine_all_studies_shared_residual_range_c(
+        neighborhood_residuals,
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(ctypes.c_int(max_n_reps_all_studies)),
+        ctypes.byref(ctypes.c_int(n_neighbors)),
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(shared_residual_range),
+        ctypes.byref(ctypes.c_double(residual_range_quantile)),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENTS, _DETERMINE_ALL_STUDIES_SHARED_RESIDUAL_RANGE_ARGUMENT_SOURCES)
+
+    return shared_residual_range.value
+
 def build_residual_histograms(
         neighborhood_residuals,
         shared_residual_range,
@@ -456,13 +557,94 @@ def build_residual_histograms(
         "included_n_reps": included_n_reps,
     }
 
+def calc_pmf(
+        counts,
+        included_n_reps,
+):
+    r"""Normalize histogram counts into a probability mass function
+
+    The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that
+    already holds a study's `counts` -- untouched by anything that perturbed scratch copies
+    downstream of it -- can re-derive `pmf` without re-binning residuals.
+
+    Parameters
+    ----------
+    counts : np.ndarray[np.int32] of shape (n_points, n_bins,), column-major (order='F')
+        Absolute counts of a residual per bin
+        The minimum valid value is `0`.
+    included_n_reps : np.ndarray[np.int32] of shape (n_points,)
+        Count of non-NaN replicates (included ones) per reference point
+        The minimum valid value is `0`.
+
+    Returns
+    -------
+    pmf : np.ndarray[np.float64] of shape (n_points, n_bins,), column-major (order='F'), read-only
+        `counts` normalized to `0 <= pmf(:, i) <= 1` and `sum(pmf(:, i)) == 1`
+        A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_jsd::calc_pmf`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        counts = np.asfortranarray(counts, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'counts' must be an array of np.int32: {error}") from None
+    if counts.ndim != 2:
+        raise ValueError(f"'counts' must have 2 dimensions, but has {counts.ndim}")
+    try:
+        included_n_reps = np.ascontiguousarray(included_n_reps, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'included_n_reps' must be an array of np.int32: {error}") from None
+    if included_n_reps.ndim != 1:
+        raise ValueError(f"'included_n_reps' must have 1 dimension, but has {included_n_reps.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_points = counts.shape[0]
+    n_bins = counts.shape[1]
+
+    # Fortran cannot check that shared extents agree; this can
+    if included_n_reps.shape[0] != n_points:
+        raise ValueError(f"'included_n_reps' has {included_n_reps.shape[0]} along axis 0, but "
+            f"'counts' implies n_points == {n_points}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    pmf = np.empty((n_points, n_bins,), dtype=np.float64, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.calc_pmf_c(
+        counts,
+        included_n_reps,
+        ctypes.byref(ctypes.c_int(n_points)),
+        ctypes.byref(ctypes.c_int(n_bins)),
+        pmf,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CALC_PMF_ARGUMENTS, _CALC_PMF_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    pmf.flags.writeable = False
+
+    return pmf
+
 def compute_divergence_per_reference_point(
         pmf_S1,
         pmf_S2,
 ):
     r"""Compute the Jensen-Shannon divergence per reference point from two histograms
 
-    Takes the probabilities `pmf` produced by `build_residual_histograms`.
+    Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD
+    computed from the KL divergences lies in `[0, ln 2]`; the final step below rescales it by
+    `LOG_2` onto `[0, 1]`.
 
     Parameters
     ----------
@@ -478,7 +660,8 @@ def compute_divergence_per_reference_point(
     Returns
     -------
     js_divergences : np.ndarray[np.float64] of shape (n_points,), read-only
-        Jensen-Shannon divergence per reference point
+        Jensen-Shannon divergence per reference point, rescaled by `LOG_2` onto `[0, 1]`
+        (rather than its natural `[0, ln 2]` range)
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

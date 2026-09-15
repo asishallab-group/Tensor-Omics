@@ -23,6 +23,7 @@
 !|
 !| Generated from [[tox_data_integration_impl(module)]]; do not edit -- regenerate instead.
 module tox_data_integration
+    use tox_data_integration_js_comp_test
     use tox_data_integration_jsd
     use tox_data_integration_per_family
     use tox_data_integration_preprocessing

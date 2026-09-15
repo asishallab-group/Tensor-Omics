@@ -20,7 +20,9 @@ from tensor_omics import (
     construct_neighborhoods,
     pool_means_expert,
     calc_neighborhood_size,
-    construct_neighborhoods
+    construct_neighborhoods,
+    construct_neighborhoods_ranged,
+    construct_neighborhoods_ranged_expert,
 )
 
 
@@ -158,6 +160,86 @@ def test_construct_neighborhoods():
     expected_n_neighbors = calc_neighborhood_size(n_pool, n_points, mean_S)
     result_auto = construct_neighborhoods(x_star, mean_S, resid_S, expected_n_neighbors)
     assert result_auto['neighborhood_residuals'].shape[1] == expected_n_neighbors
+
+
+
+def test_construct_neighborhoods_ranged_basic():
+    """Test construct_neighborhoods_ranged / _expert: basic two-point case, hand-computed
+    from a sorted mean_S with no ties."""
+
+    x_star = np.array([2.0, 10.0], dtype=np.float64, order='F')
+    mean_S = np.array([1.0, 2.5, 9.0, 10.5, 20.0], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2, 3, 4, 5], dtype=np.int32, order='F')  # already ascending, no ties
+    n_neighbors = 2
+
+    def plain(x_star, mean_S, mean_S_perm, n_neighbors):
+        """The plain entry point sorts mean_S itself; mean_S_perm is unused here."""
+        return construct_neighborhoods_ranged(x_star, mean_S, n_neighbors)
+
+    for func in (construct_neighborhoods_ranged_expert, plain):
+        result = func(x_star, mean_S, mean_S_perm, n_neighbors)
+
+        # x_star[0]=2.0: distances to [1,2.5,9,10.5,20] are [1,0.5,7,8.5,18] -> nearest are gene 2, then gene 1
+        np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2, 1], decimal=10)
+        np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
+
+        # x_star[1]=10.0: distances to [1,2.5,9,10.5,20] are [9,7.5,1,0.5,10] -> nearest are gene 4, then gene 3
+        np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 1], [4, 3], decimal=10)
+        np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 1], [3, 4], decimal=10)
+
+
+
+def test_construct_neighborhoods_ranged_tie_extends_range():
+    """Three genes tie on the same mean at the boundary of a single-neighbor neighborhood: only
+    one of them is picked as the neighbor, but neighborhood_range must still be extended to span
+    all three, because a later admissibility gate reasons about the range, not just the picked
+    neighbor."""
+
+    x_star = np.array([3.0], dtype=np.float64, order='F')
+    mean_S = np.array([1.0, 3.0, 3.0, 3.0, 5.0], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2, 3, 4, 5], dtype=np.int32, order='F')  # already ascending
+    n_neighbors = 1
+
+    result = construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, n_neighbors)
+
+    # Binary search lands on the first "3.0" (gene 2); it is closer than gene 1 (distance 0 vs 2),
+    # so gene 2 is the sole neighbor -- but genes 3 and 4 share its mean and must extend the range.
+    np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2], decimal=10)
+    np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [2, 4], decimal=10)
+
+
+
+def test_construct_neighborhoods_ranged_all_nan_means():
+    """When every gene's mean is NaN, the reference point's own value is irrelevant: the routine
+    falls back to the first min(n_genes_S, n_neighbors) positions."""
+
+    x_star = np.array([5.0], dtype=np.float64, order='F')
+    mean_S = np.array([np.nan, np.nan, np.nan], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2, 3], dtype=np.int32, order='F')
+    n_neighbors = 2
+
+    result = construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, n_neighbors)
+
+    np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [1, 2], decimal=10)
+    np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
+
+
+
+def test_construct_neighborhoods_ranged_fewer_genes_than_neighbors():
+    """n_neighbors exceeding the number of genes is a documented, deliberately-preserved
+    limitation: the leftover slots are filled with out-of-range sentinel indices
+    (n_genes_S+1, n_genes_S+2, ...) rather than left undefined."""
+
+    x_star = np.array([2.0], dtype=np.float64, order='F')
+    mean_S = np.array([1.0, 2.0], dtype=np.float64, order='F')
+    mean_S_perm = np.array([1, 2], dtype=np.int32, order='F')
+    n_neighbors = 3
+
+    result = construct_neighborhoods_ranged_expert(x_star, mean_S, mean_S_perm, n_neighbors)
+
+    # gene 2 (distance 0), then gene 1 (distance 1), then both pointers are exhausted -> sentinel 3
+    np.testing.assert_array_almost_equal(result['neighborhood_indices'][:, 0], [2, 1, 3], decimal=10)
+    np.testing.assert_array_almost_equal(result['neighborhood_range'][:, 0], [1, 2], decimal=10)
 
 
 

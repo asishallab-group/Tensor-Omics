@@ -1,0 +1,736 @@
+# Generated. Do not edit.
+
+#' Estimate the histogram bin count for one (n_points, n_neighbors) candidate
+#'
+#' Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
+#' Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
+#' `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
+#' range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
+#' the doubled rule's bin count), clamped to at most
+#' \code{MAX_N_BINS} bins.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::estimate_bin_count}, whose argument names
+#' are the ones an error message reports.
+#'
+#' This entry point seeds \code{residuals_perm} and sorts it by \code{residuals}.
+#' Call \code{estimate_bin_count_expert} to do that yourself.
+#'
+#' @param residuals a numeric vector. Pooled signed residuals across all studies, reference points and neighbors
+#'   NaN is permitted for this value.
+#' @param max_n_reps_all_studies a integer scalar. Maximum number of replicates across all studies
+#'   The minimum valid value is `1`.
+#' @param n_neighbors a integer scalar. Neighborhood size of the candidate under test
+#'   The minimum valid value is `1`.
+#' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
+#' @return a integer scalar. Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+#' @export
+estimate_bin_count <- function(residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range) {
+    residuals <- .tox_as_double_vector(residuals, "residuals")
+    max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    .result <- .Call("estimate_bin_count_call", residuals, max_n_reps_all_studies, n_neighbors, shared_residual_range)
+    .arguments <- c("residuals", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "ierr")
+    .sources <- c(NA_character_, "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$n_bins
+}
+
+#' Estimate the histogram bin count for one (n_points, n_neighbors) candidate
+#'
+#' Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
+#' Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
+#' `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
+#' range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
+#' the doubled rule's bin count), clamped to at most
+#' \code{MAX_N_BINS} bins.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::estimate_bin_count_expert}, whose argument names
+#' are the ones an error message reports.
+#'
+#' The expert entry point: you supply \code{residuals_perm} yourself.
+#' \code{estimate_bin_count} seeds \code{residuals_perm} and sorts it by \code{residuals}.
+#'
+#' @param residuals a numeric vector. Pooled signed residuals across all studies, reference points and neighbors
+#'   NaN is permitted for this value.
+#' @param residuals_perm a integer vector. Sorting permutation for `residuals`, ascending, NaN last
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_residuals`.
+#' @param max_n_reps_all_studies a integer scalar. Maximum number of replicates across all studies
+#'   The minimum valid value is `1`.
+#' @param n_neighbors a integer scalar. Neighborhood size of the candidate under test
+#'   The minimum valid value is `1`.
+#' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
+#' @return a integer scalar. Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+#' @export
+estimate_bin_count_expert <- function(residuals, residuals_perm, max_n_reps_all_studies, n_neighbors, shared_residual_range) {
+    residuals <- .tox_as_double_vector(residuals, "residuals")
+    residuals_perm <- .tox_as_integer_vector(residuals_perm, "residuals_perm")
+    max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    if (length(residuals_perm) != length(residuals))
+        .tox_shape_error("residuals_perm", length(residuals_perm), "residuals", length(residuals))
+
+    .result <- .Call("estimate_bin_count_expert_call", residuals, residuals_perm, max_n_reps_all_studies, n_neighbors, shared_residual_range)
+    .arguments <- c("residuals", "residuals_perm", "n_residuals", "max_n_reps_all_studies", "n_neighbors", "shared_residual_range", "n_bins", "ierr")
+    .sources <- c(NA_character_, NA_character_, "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$n_bins
+}
+
+#' Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
+#'
+#' Ported from the grid-building half of 125-stabilize-jscomp's
+#' `determine_js_comp_test_n_points_n_neighbors_helper`: starting from an initial
+#' `n_points_high` (clamped between MIN_POINTS and MAX_POINTS), repeatedly multiplies by
+#' GAMMA until it would drop below `n_points_low`, and for each distinct resulting
+#' `n_points` candidate pairs it with up to `size(KX_FACTORS)` distinct `n_neighbors`
+#' candidates, calling
+#' \code{\link{estimate_bin_count}} for
+#' each pair's bin count. A duplicate `n_points` or `n_neighbors` value (from clamping or
+#' integer rounding) collapses rather than repeating -- this is real, derived behavior the
+#' grid depends on to avoid redundant candidates at small `max_n_genes_all_studies`, not a
+#' bug: a small enough `max_n_genes_all_studies` collapses the whole grid down to exactly one
+#' candidate.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::generate_js_comp_test_candidates}, whose argument names
+#' are the ones an error message reports.
+#'
+#' This entry point seeds \code{residuals_perm} and sorts it by \code{residuals}.
+#' Call \code{generate_js_comp_test_candidates_expert} to do that yourself.
+#'
+#' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
+#'   The minimum valid value is `1`.
+#' @param residuals a numeric vector. Pooled signed residuals across all studies, reference points and neighbors
+#'   NaN is permitted for this value.
+#' @param max_n_reps_all_studies a integer scalar. Maximum number of replicates across all studies
+#'   The minimum valid value is `1`.
+#' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
+#' @return a named list with elements:
+#'   \item{candidates_n_points_n_neighbors}{a integer matrix. Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
+#'     The first `n_candidates` elements will hold the results.}
+#'   \item{n_bins_candidates}{a integer vector. Per-candidate bin count from estimate_bin_count_impl, one per candidate pair
+#'     The first `n_candidates` elements will hold the results.}
+#' @export
+generate_js_comp_test_candidates <- function(max_n_genes_all_studies, residuals, max_n_reps_all_studies, shared_residual_range) {
+    max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
+    residuals <- .tox_as_double_vector(residuals, "residuals")
+    max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    .result <- .Call("generate_js_comp_test_candidates_call", max_n_genes_all_studies, residuals, max_n_reps_all_studies, shared_residual_range)
+    .arguments <- c("max_n_genes_all_studies", "residuals", "n_residuals", "max_n_reps_all_studies", "shared_residual_range", "candidates_n_points_n_neighbors", "n_bins_candidates", "n_candidates", "ierr")
+    .sources <- c(NA_character_, NA_character_, "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        candidates_n_points_n_neighbors = .result$candidates_n_points_n_neighbors[, seq_len(.result$n_candidates), drop = FALSE],
+        n_bins_candidates = utils::head(.result$n_bins_candidates, .result$n_candidates)
+    )
+}
+
+#' Generate the GAMMA-decay (n_points, n_neighbors) candidate grid
+#'
+#' Ported from the grid-building half of 125-stabilize-jscomp's
+#' `determine_js_comp_test_n_points_n_neighbors_helper`: starting from an initial
+#' `n_points_high` (clamped between MIN_POINTS and MAX_POINTS), repeatedly multiplies by
+#' GAMMA until it would drop below `n_points_low`, and for each distinct resulting
+#' `n_points` candidate pairs it with up to `size(KX_FACTORS)` distinct `n_neighbors`
+#' candidates, calling
+#' \code{\link{estimate_bin_count}} for
+#' each pair's bin count. A duplicate `n_points` or `n_neighbors` value (from clamping or
+#' integer rounding) collapses rather than repeating -- this is real, derived behavior the
+#' grid depends on to avoid redundant candidates at small `max_n_genes_all_studies`, not a
+#' bug: a small enough `max_n_genes_all_studies` collapses the whole grid down to exactly one
+#' candidate.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::generate_js_comp_test_candidates_expert}, whose argument names
+#' are the ones an error message reports.
+#'
+#' The expert entry point: you supply \code{residuals_perm} yourself.
+#' \code{generate_js_comp_test_candidates} seeds \code{residuals_perm} and sorts it by \code{residuals}.
+#'
+#' @param max_n_genes_all_studies a integer scalar. Maximum number of genes across all studies
+#'   The minimum valid value is `1`.
+#' @param residuals a numeric vector. Pooled signed residuals across all studies, reference points and neighbors
+#'   NaN is permitted for this value.
+#' @param residuals_perm a integer vector. Sorting permutation for `residuals`, ascending, NaN last
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `n_residuals`.
+#' @param max_n_reps_all_studies a integer scalar. Maximum number of replicates across all studies
+#'   The minimum valid value is `1`.
+#' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
+#' @return a named list with elements:
+#'   \item{candidates_n_points_n_neighbors}{a integer matrix. Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
+#'     The first `n_candidates` elements will hold the results.}
+#'   \item{n_bins_candidates}{a integer vector. Per-candidate bin count from estimate_bin_count_impl, one per candidate pair
+#'     The first `n_candidates` elements will hold the results.}
+#' @export
+generate_js_comp_test_candidates_expert <- function(max_n_genes_all_studies, residuals, residuals_perm, max_n_reps_all_studies, shared_residual_range) {
+    max_n_genes_all_studies <- .tox_as_integer_scalar(max_n_genes_all_studies, "max_n_genes_all_studies")
+    residuals <- .tox_as_double_vector(residuals, "residuals")
+    residuals_perm <- .tox_as_integer_vector(residuals_perm, "residuals_perm")
+    max_n_reps_all_studies <- .tox_as_integer_scalar(max_n_reps_all_studies, "max_n_reps_all_studies")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    if (length(residuals_perm) != length(residuals))
+        .tox_shape_error("residuals_perm", length(residuals_perm), "residuals", length(residuals))
+
+    .result <- .Call("generate_js_comp_test_candidates_expert_call", max_n_genes_all_studies, residuals, residuals_perm, max_n_reps_all_studies, shared_residual_range)
+    .arguments <- c("max_n_genes_all_studies", "residuals", "residuals_perm", "n_residuals", "max_n_reps_all_studies", "shared_residual_range", "candidates_n_points_n_neighbors", "n_bins_candidates", "n_candidates", "ierr")
+    .sources <- c(NA_character_, NA_character_, NA_character_, "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        candidates_n_points_n_neighbors = .result$candidates_n_points_n_neighbors[, seq_len(.result$n_candidates), drop = FALSE],
+        n_bins_candidates = utils::head(.result$n_bins_candidates, .result$n_candidates)
+    )
+}
+
+#' Test whether every pair of consecutive neighborhoods overlaps by at least a minimum fraction
+#'
+#' Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first
+#' admissibility gate a candidate `(n_points, n_neighbors)` pair must pass, using the
+#' `[min_idx, max_idx]` neighborhood spans
+#' \code{\link{construct_neighborhoods_ranged}}
+#' produces. Named `check_*` rather than 125's `test_*`, a deliberate deviation from the
+#' verbatim port: the generated R binding is published under the Fortran name, and the R test
+#' harness (`r/test_helpers.R`'s `run_all_tests`) discovers every `test_`-prefixed name in the
+#' environment as a test case to run with no arguments -- a `test_`-prefixed export would be
+#' swept up and fail every R suite that sources the package, not just this module's own.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::check_neighborhood_overlaps}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param neighborhood_range a integer matrix. For each reference point, the `[min_idx, max_idx]` neighborhood span, as produced
+#'   by construct_neighborhoods_ranged_impl
+#'   The minimum valid value is `1`.
+#' @param min_neighbor_overlap a numeric scalar. Minimum fractional overlap two consecutive neighborhoods must have
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @return a logical scalar. `TRUE` if every pair of consecutive neighborhoods overlaps by at least
+#'   `min_neighbor_overlap`
+#' @export
+check_neighborhood_overlaps <- function(neighborhood_range, min_neighbor_overlap) {
+    neighborhood_range <- .tox_as_integer_matrix(neighborhood_range, "neighborhood_range")
+    min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
+    .result <- .Call("check_neighborhood_overlaps_call", neighborhood_range, min_neighbor_overlap)
+    .arguments <- c("neighborhood_range", "n_points", "min_neighbor_overlap", "all_have_min_neighbor_overlap", "ierr")
+    .sources <- c(NA_character_, "neighborhood_range", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$all_have_min_neighbor_overlap
+}
+
+#' Test whether every bin of a mean pmf reaches a minimum absolute count
+#'
+#' Ported from 125-stabilize-jscomp's `test_mean_pmf_min_counts_helper`: the second
+#' admissibility gate a candidate `(n_points, n_neighbors)` pair must pass, checked once the
+#' first gate
+#' (\code{\link{check_neighborhood_overlaps}})
+#' has already passed. Named `check_*` rather than 125's `test_*` for the same reason as its
+#' sibling above: a `test_`-prefixed R export collides with the R test harness's own
+#' test-discovery convention.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::check_mean_pmf_min_counts}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the mean pmf
+#'   The minimum valid value is `0`.
+#' @param min_count a integer scalar. Minimum count each bin of the mean pmf must reach
+#'   The minimum valid value is `0`.
+#' @return a logical scalar. `TRUE` if every bin, at every reference point, reaches at least `min_count`
+#' @export
+check_mean_pmf_min_counts <- function(mean_pmf_counts, min_count) {
+    mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
+    min_count <- .tox_as_integer_scalar(min_count, "min_count")
+    .result <- .Call("check_mean_pmf_min_counts_call", mean_pmf_counts, min_count)
+    .arguments <- c("mean_pmf_counts", "n_bins", "n_points", "min_count", "all_bins_have_min_count", "ierr")
+    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$all_bins_have_min_count
+}
+
+#' Test one candidate pair's bootstrapped confidence intervals against the current best, and detect a JSD plateau
+#'
+#' Ported from 125-stabilize-jscomp's `check_plateau_condition_helper`. A search over
+#' candidates (finest resolution to coarsest) stops -- "plateaus" -- either when a new
+#' candidate is no better than the previous best (the short-circuit below: keep the previous
+#' best and stop searching), or once the new candidate's confidence-interval overlap with the
+#' previous best meets the condition `join_method` names. `join_method` replaces
+#' 125-stabilize-jscomp's hand-rolled join-method-range validation macro entirely: the mode
+#' table below is itself the validation, checked against exactly the values it names.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::check_plateau_condition}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param confidence_interval a numeric matrix. JSD confidence interval `[lower, upper]` from bootstrapping, for the candidate
+#'   pair under test
+#' @param best_candidate_pair_confidence_interval a numeric matrix. JSD confidence intervals for the current best candidate pair; overwritten with
+#'   `confidence_interval` unless the new candidate is worse
+#' @param best_candidate_index a integer scalar. Candidate-grid index of the current best candidate pair; overwritten with
+#'   `candidate_index` unless the new candidate is worse
+#' @param best_exceeded_ci_overlap_count a integer scalar. Number of studies whose overlap exceeded `succeeding_ci_overlap` for the current
+#'   best candidate pair; overwritten unless the new candidate is worse
+#'   The minimum valid value is `0`.
+#' @param candidate_index a integer scalar. Candidate-grid index of the candidate pair that produced `confidence_interval`
+#'   The minimum valid value is `1`.
+#' @param join_method a string, one of "join_min", "join_max", "join_median". The way to evaluate all studies' confidence-interval overlaps for the plateau
+#'   condition: METHOD_JOIN_MIN requires every study's overlap to exceed
+#'   `succeeding_ci_overlap`, METHOD_JOIN_MAX requires only one study's overlap to
+#'   exceed it, and METHOD_JOIN_MEDIAN requires a majority
+#'   (`count > (n_studies - 1) / 2`) to exceed it
+#' @param succeeding_ci_overlap a numeric scalar. Minimum fractional overlap an interval in `confidence_interval` must have with its
+#'   respective interval in `best_candidate_pair_confidence_interval` to count as
+#'   "exceeded"
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @return a named list with elements:
+#'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. JSD confidence intervals for the current best candidate pair; overwritten with
+#'     `confidence_interval` unless the new candidate is worse}
+#'   \item{best_candidate_index}{a integer scalar. Candidate-grid index of the current best candidate pair; overwritten with
+#'     `candidate_index` unless the new candidate is worse}
+#'   \item{best_exceeded_ci_overlap_count}{a integer scalar. Number of studies whose overlap exceeded `succeeding_ci_overlap` for the current
+#'     best candidate pair; overwritten unless the new candidate is worse
+#'     The minimum valid value is `0`.}
+#'   \item{plateau_found}{a logical scalar. `TRUE` once the new candidate is no better than the previous best, or once
+#'     `join_method`'s overlap condition is met by the new candidate}
+#' @export
+check_plateau_condition <- function(confidence_interval, best_candidate_pair_confidence_interval, best_candidate_index, best_exceeded_ci_overlap_count, candidate_index, join_method, succeeding_ci_overlap) {
+    confidence_interval <- .tox_as_double_matrix(confidence_interval, "confidence_interval")
+    best_candidate_pair_confidence_interval <- .tox_as_double_matrix(best_candidate_pair_confidence_interval, "best_candidate_pair_confidence_interval")
+    best_candidate_index <- .tox_as_integer_scalar(best_candidate_index, "best_candidate_index")
+    best_exceeded_ci_overlap_count <- .tox_as_integer_scalar(best_exceeded_ci_overlap_count, "best_exceeded_ci_overlap_count")
+    candidate_index <- .tox_as_integer_scalar(candidate_index, "candidate_index")
+    join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
+    succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
+    if (dim(best_candidate_pair_confidence_interval)[2] != dim(confidence_interval)[2])
+        .tox_shape_error("best_candidate_pair_confidence_interval", dim(best_candidate_pair_confidence_interval)[2], "confidence_interval", dim(confidence_interval)[2])
+
+    .result <- .Call("check_plateau_condition_call", confidence_interval, best_candidate_pair_confidence_interval, best_candidate_index, best_exceeded_ci_overlap_count, candidate_index, join_method, succeeding_ci_overlap)
+    .arguments <- c("confidence_interval", "best_candidate_pair_confidence_interval", "n_studies", "best_candidate_index", "best_exceeded_ci_overlap_count", "candidate_index", "join_method", "succeeding_ci_overlap", "plateau_found", "ierr")
+    .sources <- c(NA_character_, NA_character_, "confidence_interval", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval,
+        best_candidate_index = .result$best_candidate_index,
+        best_exceeded_ci_overlap_count = .result$best_exceeded_ci_overlap_count,
+        plateau_found = .result$plateau_found
+    )
+}
+
+#' Build the consensus pmf and its histogram counts from all studies' pmfs
+#'
+#' Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.
+#'
+#' Known limitation: averages over all n_studies including the study being compared against it,
+#' rather than a true leave-one-out background as the manuscript specifies. Deliberately ported
+#' as-is from origin/125-stabilize-jscomp; see the project's JSD-Comp-Test follow-up issue for
+#' the fix.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::create_mean_pmf}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param pmfs a numeric array of rank 3. Per-study probabilities of each bin per reference point, from
+#'   \code{\link{build_residual_histograms}}
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @param counts a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`
+#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study
+#'   The minimum valid value is `0`.
+#' @return a named list with elements:
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
+#'     known-limitation note above}
+#'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates (included ones) per reference point for `mean_pmf`,
+#'     summed across all n_studies}
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the mean pmf -> `sum(counts, dim=3)`}
+#' @export
+create_mean_pmf <- function(pmfs, counts, included_n_reps) {
+    pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
+    counts <- .tox_as_integer_array(counts, "counts", 3L)
+    included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
+    if (dim(counts)[1] != dim(pmfs)[1])
+        .tox_shape_error("counts", dim(counts)[1], "pmfs", dim(pmfs)[1])
+    if (dim(counts)[2] != dim(pmfs)[2])
+        .tox_shape_error("counts", dim(counts)[2], "pmfs", dim(pmfs)[2])
+    if (dim(included_n_reps)[1] != dim(pmfs)[2])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "pmfs", dim(pmfs)[2])
+    if (dim(counts)[3] != dim(pmfs)[3])
+        .tox_shape_error("counts", dim(counts)[3], "pmfs", dim(pmfs)[3])
+    if (dim(included_n_reps)[2] != dim(pmfs)[3])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[2], "pmfs", dim(pmfs)[3])
+
+    .result <- .Call("create_mean_pmf_call", pmfs, counts, included_n_reps)
+    .arguments <- c("pmfs", "counts", "n_bins", "n_points", "n_studies", "included_n_reps", "mean_pmf", "mean_pmf_included_n_reps", "mean_pmf_counts", "ierr")
+    .sources <- c(NA_character_, NA_character_, "pmfs", "pmfs", "pmfs", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        mean_pmf = .result$mean_pmf,
+        mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
+        mean_pmf_counts = .result$mean_pmf_counts
+    )
+}
+
+#' Build only the consensus pmf from all studies' pmfs, without its histogram counts
+#'
+#' Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_only_helper`: useful where the
+#' mean pmf's own counts don't matter, e.g. for the bootstrap confidence interval a later
+#' stage of this port adds.
+#'
+#' Known limitation: averages over all n_studies including the study being compared against it,
+#' rather than a true leave-one-out background as the manuscript specifies. Deliberately ported
+#' as-is from origin/125-stabilize-jscomp; see the project's JSD-Comp-Test follow-up issue for
+#' the fix.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::create_mean_pmf_only}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param pmfs a numeric array of rank 3. Per-study probabilities of each bin per reference point, from
+#'   \code{\link{build_residual_histograms}}
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @return a numeric matrix. The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
+#'   known-limitation note above
+#' @export
+create_mean_pmf_only <- function(pmfs) {
+    pmfs <- .tox_as_double_array(pmfs, "pmfs", 3L)
+    .result <- .Call("create_mean_pmf_only_call", pmfs)
+    .arguments <- c("pmfs", "n_bins", "n_points", "n_studies", "mean_pmf", "ierr")
+    .sources <- c(NA_character_, "pmfs", "pmfs", "pmfs", NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$mean_pmf
+}
+
+#' Bootstrap a confidence interval for each study's global JSD by resampling the pooled consensus histogram
+#'
+#' Ported from 125-stabilize-jscomp's `bootstrap_histogram_helper`. Resamples from the
+#' POOLED/consensus histogram counts (`mean_pmf_counts`), not from each study's own histogram
+#' -- this is 125's deliberate design, preserved as-is (see the plan for this port). Draws
+#' random numbers via
+#' \code{random_multinomial}, so this implementation is
+#' deliberately impure, matching the project's existing precedent for the other
+#' permutation-test module's purity
+#' (\code{\link{perform_permutation_test}}).
+#'
+#' `confidence_interval` is both an input and an output: its incoming `[lower, upper]` values
+#' seed every slot of the top-k/bottom-k heaps (`tmp_bootstrapping_top_k_jsds`) -- ported
+#' verbatim from 125, which fills the whole heap with the *same* incoming reference value
+#' rather than the usual plus/minus-infinity heap initialization, so the observed
+#' (pre-bootstrap) value can only be displaced by a strictly more extreme bootstrap draw. On
+#' return it holds `[largest of the n_bootstrapping_top_k_jsds smallest bootstrap draws,
+#' smallest of the n_bootstrapping_top_k_jsds largest bootstrap draws]`.
+#'
+#' `mean_pmf_counts`/`tmp_pmfs`/`tmp_mean_pmf` are laid out bin-major (`(n_bins, n_points[,
+#' n_studies])`), matching
+#' \code{\link{create_mean_pmf}} and its
+#' own `create_mean_pmf_only_impl` above -- both ported from 125, whose own convention this
+#' is. The already-shipped
+#' \code{\link{compute_divergence_per_reference_point}}
+#' predates 125's own port and instead takes its pmf arguments point-major
+#' (`(n_points, n_bins)`); the two calls below bridge the two conventions with an explicit
+#' `transpose`, rather than picking one shape and silently reinterpreting the other's memory
+#' under it (which would scramble every non-square `(n_bins, n_points)` histogram).
+#'
+#' A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
+#' have foreseen (codegen_guide.md Sec 5.14): every work array and `confidence_interval` are
+#' then left untouched (arrays not yet written to keep their caller-visible defined state) and
+#' `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
+#' internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
+#' failure only, without stopping the resampling already in flight.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::bootstrap_histogram}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param n_bootstraps a integer scalar. Number of bootstrap resamples to perform
+#'   The minimum valid value is `1`.
+#' @param mean_pmf_counts a integer matrix. Absolute counts of a residual per bin for the pooled/consensus pmf, from
+#'   create_mean_pmf_impl -- resampled with replacement each bootstrap
+#'   The minimum valid value is `0`.
+#' @param mean_pmf_included_n_reps a integer vector. Count of non-NaN replicates (included ones) per reference point for the pooled pmf
+#'   The minimum valid value is `0`.
+#' @param included_n_reps a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study --
+#'   how many elements are drawn (with replacement) from the pooled pool per study
+#'   The minimum valid value is `0`.
+#' @param confidence_interval a numeric matrix. Confidence interval to be bootstrapped -- incoming values are the reference values
+#'   that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
+#'   `[lower, upper]` interval per study
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds to size n_bootstrapping_top_k_jsds; not
+#'   otherwise used here
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `2.5`.
+#' @param random_seed a integer scalar. Seed for the GSL random number generator
+#'   The default value is `42`.
+#' @return a numeric matrix. Confidence interval to be bootstrapped -- incoming values are the reference values
+#'   that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
+#'   `[lower, upper]` interval per study
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#' @export
+bootstrap_histogram <- function(n_bootstraps, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
+    n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
+    mean_pmf_counts <- .tox_as_integer_matrix(mean_pmf_counts, "mean_pmf_counts")
+    mean_pmf_included_n_reps <- .tox_as_integer_vector(mean_pmf_included_n_reps, "mean_pmf_included_n_reps")
+    included_n_reps <- .tox_as_integer_matrix(included_n_reps, "included_n_reps")
+    confidence_interval <- .tox_as_double_matrix(confidence_interval, "confidence_interval")
+    two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
+    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    if (length(mean_pmf_included_n_reps) != dim(mean_pmf_counts)[2])
+        .tox_shape_error("mean_pmf_included_n_reps", length(mean_pmf_included_n_reps), "mean_pmf_counts", dim(mean_pmf_counts)[2])
+    if (dim(included_n_reps)[1] != dim(mean_pmf_counts)[2])
+        .tox_shape_error("included_n_reps", dim(included_n_reps)[1], "mean_pmf_counts", dim(mean_pmf_counts)[2])
+    if (dim(confidence_interval)[2] != dim(included_n_reps)[2])
+        .tox_shape_error("confidence_interval", dim(confidence_interval)[2], "included_n_reps", dim(included_n_reps)[2])
+
+    .result <- .Call("bootstrap_histogram_call", n_bootstraps, mean_pmf_counts, mean_pmf_included_n_reps, included_n_reps, confidence_interval, two_sided_bootstrapping_significance_level, random_seed)
+    .arguments <- c("n_bootstraps", "n_bins", "n_points", "n_studies", "mean_pmf_counts", "mean_pmf_included_n_reps", "included_n_reps", "confidence_interval", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c(NA_character_, "mean_pmf_counts", "mean_pmf_counts", "included_n_reps", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    .result$confidence_interval
+}
+
+#' Run the JSD-Comp-Test pipeline for one fixed (n_points, n_neighbors, n_bins) parameter setting
+#'
+#' Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its
+#' neighborhoods
+#' (\code{\link{construct_neighborhoods_ranged}})
+#' and residual histograms
+#' (\code{\link{build_residual_histograms}}), pools
+#' them into the consensus pmf
+#' (\code{\link{create_mean_pmf}}), computes
+#' each study's observed JSD against that consensus
+#' (\code{\link{compute_divergence_per_reference_point}}/\code{\link{compute_weighted_global_divergence}},
+#' called with the consensus pmf as the second argument), runs the permutation test
+#' (\code{\link{gjct_permutation_test}}), and
+#' finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
+#' via
+#' \code{\link{calc_pmf}} -- `mean_pmf`/`mean_pmf_counts`
+#' are NOT re-derived, since they are invariant across permutations by construction (the
+#' permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
+#' itself), exactly as 125 relies on.
+#'
+#' `x_star` is an ordinary input here, not computed by this routine -- 125's own
+#' `js_comp_test_helper` takes it the same way, since a caller running several studies/several
+#' parameter settings is expected to compute the reference points once
+#' (\code{\link{pool_means}}) and reuse
+#' them consistently.
+#'
+#' `construct_neighborhoods_ranged_impl` reports neighbor gene INDICES, not gathered residual
+#' values (unlike its distance-sort sibling
+#' \code{\link{construct_neighborhoods}}),
+#' so this routine gathers each neighbor's actual residual values from `residuals` itself
+#' (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
+#' `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
+#' POINT-major (`(n_points, n_bins)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` here
+#' are BIN-major (`(n_bins, n_points, n_studies)`) to match
+#' \code{\link{create_mean_pmf}}'s own
+#' convention -- every call across that boundary bridges with an explicit `transpose`, exactly
+#' as \code{\link{bootstrap_histogram}} and
+#' \code{\link{gjct_permutation_test}} already do.
+#'
+#' Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is folded
+#' into `ierr` (first failure only), matching that routine's own tolerant precedent.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param n_neighbors a integer scalar. Number of neighbors per neighborhood
+#'   The minimum valid value is `1`.
+#' @param n_bins a integer scalar. Number of equally sized histogram bins
+#'   The minimum valid value is `1`.
+#' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
+#' @param gene_means a numeric matrix. Per-gene mean expression values for all studies
+#'   NaN is permitted for this value.
+#' @param gene_means_perms a integer matrix. Per-study sorting permutation for `gene_means` (ascending, NaN last)
+#'   The minimum valid value is `1`.
+#'   The maximum valid value is `max_n_genes_all_studies`.
+#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
+#'   NaN is permitted for this value.
+#' @param x_star a numeric vector. Mean-expression reference points
+#'   NaN is permitted for this value.
+#' @param n_permutations a integer scalar. Number of permutations, forwarded to gjct_permutation_test_impl
+#'   The minimum valid value is `0`.
+#'   The default value is `1000`.
+#' @param random_seed a integer scalar. Seed for the GSL random number generator
+#'   The default value is `42`.
+#' @return a named list with elements:
+#'   \item{neighborhood_indices}{a integer array of rank 3. Gene indices of the selected neighborhood, per reference point, per study}
+#'   \item{neighborhood_range}{a integer array of rank 3. For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
+#'     produced by construct_neighborhoods_ranged_impl}
+#'   \item{pmfs}{a numeric array of rank 3. `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`}
+#'   \item{counts}{a integer array of rank 3. Absolute counts of a residual per bin for `pmfs`}
+#'   \item{included_n_reps}{a integer matrix. Count of non-NaN replicates (included ones) per reference point, per study}
+#'   \item{mean_pmf}{a numeric matrix. The consensus pmf, from create_mean_pmf_impl}
+#'   \item{mean_pmf_counts}{a integer matrix. Absolute counts of a residual per bin for the consensus pmf}
+#'   \item{mean_pmf_included_n_reps}{a integer vector. Count of non-NaN replicates (included ones) per reference point for the consensus pmf}
+#'   \item{js_divergences}{a numeric matrix. Per-reference-point JSD of each study against the consensus pmf}
+#'   \item{weights}{a numeric matrix. Per-reference-point weights for `global_js_divergence`}
+#'   \item{global_js_divergence}{a numeric vector. Weighted global JSD of each study against the consensus pmf}
+#'   \item{p_values}{a numeric vector. Empirical p-value per study from gjct_permutation_test_impl}
+#' @export
+run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_means, gene_means_perms, residuals, x_star, n_permutations = 1000L, random_seed = 42L) {
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    n_bins <- .tox_as_integer_scalar(n_bins, "n_bins")
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
+    gene_means_perms <- .tox_as_integer_matrix(gene_means_perms, "gene_means_perms")
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    x_star <- .tox_as_double_vector(x_star, "x_star")
+    n_permutations <- .tox_as_integer_scalar(n_permutations, "n_permutations")
+    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    if (dim(gene_means_perms)[2] != dim(gene_means)[2])
+        .tox_shape_error("gene_means_perms", dim(gene_means_perms)[2], "gene_means", dim(gene_means)[2])
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
+    if (dim(gene_means_perms)[1] != dim(gene_means)[1])
+        .tox_shape_error("gene_means_perms", dim(gene_means_perms)[1], "gene_means", dim(gene_means)[1])
+    if (dim(residuals)[2] != dim(gene_means)[1])
+        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+
+    .result <- .Call("run_js_comp_test_call", n_neighbors, n_bins, shared_residual_range, gene_means, gene_means_perms, residuals, x_star, n_permutations, random_seed)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "n_points", "n_neighbors", "n_bins", "shared_residual_range", "gene_means", "gene_means_perms", "residuals", "x_star", "neighborhood_indices", "neighborhood_range", "pmfs", "counts", "included_n_reps", "mean_pmf", "mean_pmf_counts", "mean_pmf_included_n_reps", "js_divergences", "weights", "global_js_divergence", "p_values", "n_permutations", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", "x_star", "neighborhood_indices", "pmfs", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        neighborhood_indices = .result$neighborhood_indices,
+        neighborhood_range = .result$neighborhood_range,
+        pmfs = .result$pmfs,
+        counts = .result$counts,
+        included_n_reps = .result$included_n_reps,
+        mean_pmf = .result$mean_pmf,
+        mean_pmf_counts = .result$mean_pmf_counts,
+        mean_pmf_included_n_reps = .result$mean_pmf_included_n_reps,
+        js_divergences = .result$js_divergences,
+        weights = .result$weights,
+        global_js_divergence = .result$global_js_divergence,
+        p_values = .result$p_values
+    )
+}
+
+#' Search a GAMMA-decay (n_points, n_neighbors) candidate grid for a stable JSD parameter setting
+#'
+#' Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and
+#' `_alloc`, merged into one implementation now that the new `_impl` rules leave no separate
+#' hand-written allocation layer. Pools all studies' residuals and gene means, sorts them once
+#' (\code{sort_real_heapsort_expl_size}), generates the candidate
+#' grid
+#' (\code{\link{generate_js_comp_test_candidates}}),
+#' then walks it from finest to coarsest resolution: for each candidate, builds every study's
+#' neighborhoods and checks the first admissibility gate
+#' (\code{\link{check_neighborhood_overlaps}});
+#' once every study passes, pools the consensus pmf and checks the second gate
+#' (\code{\link{check_mean_pmf_min_counts}});
+#' once that passes too, seeds a confidence interval with the observed JSD, bootstraps it
+#' (\code{\link{bootstrap_histogram}}), and
+#' tests it against the running best candidate for a plateau
+#' (\code{\link{check_plateau_condition}}).
+#' The search stops (`exit`) the moment a plateau is found. Ported verbatim, including the
+#' fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
+#' (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
+#' `-1.0`; if the grid collapsed to a single candidate (see
+#' \code{\link{generate_js_comp_test_candidates}}'s
+#' own small-N collapse note), that one candidate is used regardless of whether it plateaued or
+#' even passed either gate -- the plateau machinery is bypassed entirely, exactly as 125 does.
+#'
+#' Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
+#' (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
+#' \code{MAX_N_BINS} ceiling, so every
+#' bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+#' candidate, rather than carrying a separate recommend-sized dimension argument for it.
+#' `residuals`/`gene_means` are passed to
+#' \code{\link{generate_js_comp_test_candidates}}/\code{sort_real_heapsort_expl_size}
+#' as their own multi-dimensional selves -- both callees declare their matching dummy with an
+#' explicit shape, so standard Fortran sequence association reinterprets the contiguous actual
+#' argument as the flat 1-D array they expect, exactly as 125's own `_alloc` layer did for the
+#' same calls.
+#'
+#' Impure: calls the impure
+#' \code{\link{bootstrap_histogram}}. A GSL
+#' failure it reports is folded into `ierr` (first failure only) without aborting the search,
+#' matching that routine's own tolerant precedent.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::run_js_comp_test_parameter_search}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param gene_means a numeric matrix. Per-gene mean expression values for all studies
+#'   NaN is permitted for this value.
+#' @param residuals a numeric array of rank 3. Matrix of signed residuals per study
+#'   NaN is permitted for this value.
+#' @param shared_residual_range a numeric scalar. Computed residual range (R)
+#'   The minimum valid value is `0.0`.
+#' @param n_bootstraps a integer scalar. Number of bootstraps to perform for a candidate pair
+#'   The minimum valid value is `1`.
+#' @param join_method a string, one of "join_min", "join_max", "join_median". The way to evaluate all studies' confidence-interval overlaps for the plateau
+#'   condition, forwarded to check_plateau_condition_impl
+#' @param min_count_per_mean_bin a integer scalar. Minimum count each bin of the consensus pmf must reach to pass the second
+#'   admissibility gate
+#'   The minimum valid value is `0`.
+#'   The default value is `5`.
+#' @param min_neighbor_overlap a numeric scalar. Minimum fractional overlap two consecutive neighborhoods must have to pass the first
+#'   admissibility gate
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.1`.
+#' @param succeeding_ci_overlap a numeric scalar. Minimum fractional overlap a candidate's confidence interval must have with the
+#'   running best, per `join_method`, to plateau
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `1.0`.
+#'   The default value is `0.9`.
+#' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
+#'   to bootstrap_histogram_impl itself
+#'   The minimum valid value is `0.0`.
+#'   The maximum valid value is `100.0`.
+#'   The default value is `2.5`.
+#' @param random_seed a integer scalar. Seed for the GSL random number generator
+#'   The default value is `42`.
+#' @return a named list with elements:
+#'   \item{n_points}{a integer scalar. The finally chosen candidate's `n_points`}
+#'   \item{n_neighbors}{a integer scalar. The finally chosen candidate's `n_neighbors`}
+#'   \item{n_bins}{a integer scalar. The finally chosen candidate's bin count}
+#'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval for the finally chosen candidate pair;
+#'     `-1.0` throughout if no candidate pair passed both admissibility gates and
+#'     the search fell back to the finest-resolution candidate}
+#' @export
+run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin = 5L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
+    gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
+    residuals <- .tox_as_double_array(residuals, "residuals", 3L)
+    shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
+    n_bootstraps <- .tox_as_integer_scalar(n_bootstraps, "n_bootstraps")
+    join_method <- .tox_as_mode(join_method, "join_method", c("join_min", "join_max", "join_median"))
+    min_count_per_mean_bin <- .tox_as_integer_scalar(min_count_per_mean_bin, "min_count_per_mean_bin")
+    min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
+    succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
+    two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
+    random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
+    if (dim(residuals)[3] != dim(gene_means)[2])
+        .tox_shape_error("residuals", dim(residuals)[3], "gene_means", dim(gene_means)[2])
+    if (dim(residuals)[2] != dim(gene_means)[1])
+        .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
+
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, two_sided_bootstrapping_significance_level, random_seed)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        n_points = .result$n_points,
+        n_neighbors = .result$n_neighbors,
+        n_bins = .result$n_bins,
+        best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval
+    )
+}

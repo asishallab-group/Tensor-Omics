@@ -186,3 +186,112 @@ construct_neighborhoods <- function(x_star, mean_S, resid_S, n_neighbors) {
         neighborhood_indices = .result$neighborhood_indices
     )
 }
+
+#' Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
+#'
+#' Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+#' two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+#' \code{\link{construct_neighborhoods}}'s
+#' distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+#' reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+#' genes tied with the span's edge value are never split from it), which a candidate
+#' admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+#' without needing the gathered residuals.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods_ranged}, whose argument names
+#' are the ones an error message reports.
+#'
+#' This entry point seeds \code{mean_S_perm} and sorts it by \code{mean_S}.
+#' Call \code{construct_neighborhoods_ranged_expert} to do that yourself.
+#'
+#' @param x_star a numeric vector. Mean-expression reference points
+#'   NaN is permitted for this value.
+#' @param mean_S a numeric vector. Per-gene mean expression values
+#'   NaN is permitted for this value.
+#' @param n_neighbors a integer scalar. Number of neighbors to select per reference point
+#'   The minimum valid value is `1`.
+#' @return a named list with elements:
+#'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes per reference point.
+#'
+#'     All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+#'     `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+#'     ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+#'     limitation, ported as-is from 125-stabilize-jscomp).}
+#'   \item{neighborhood_range}{a integer matrix. For each reference point, the `[min_idx, max_idx]` of the included genes. The
+#'     index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+#'     would be the min value. In case of duplicate means, `min_idx` points to the first
+#'     appearance of the value and `max_idx` to the last, so even though their related
+#'     mean value is the min/max in the neighborhood, the actual gene might not be
+#'     included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`}
+#' @export
+construct_neighborhoods_ranged <- function(x_star, mean_S, n_neighbors) {
+    x_star <- .tox_as_double_vector(x_star, "x_star")
+    mean_S <- .tox_as_double_vector(mean_S, "mean_S")
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    .result <- .Call("construct_neighborhoods_ranged_call", x_star, mean_S, n_neighbors)
+    .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "n_neighbors", "neighborhood_indices", "neighborhood_range", "ierr")
+    .sources <- c("x_star", NA_character_, "mean_S", NA_character_, "neighborhood_indices", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        neighborhood_indices = .result$neighborhood_indices,
+        neighborhood_range = .result$neighborhood_range
+    )
+}
+
+#' Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
+#'
+#' Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+#' two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+#' \code{\link{construct_neighborhoods}}'s
+#' distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+#' reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+#' genes tied with the span's edge value are never split from it), which a candidate
+#' admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+#' without needing the gathered residuals.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_preprocessing::construct_neighborhoods_ranged_expert}, whose argument names
+#' are the ones an error message reports.
+#'
+#' The expert entry point: you supply \code{mean_S_perm} yourself.
+#' \code{construct_neighborhoods_ranged} seeds \code{mean_S_perm} and sorts it by \code{mean_S}.
+#'
+#' @param x_star a numeric vector. Mean-expression reference points
+#'   NaN is permitted for this value.
+#' @param mean_S a numeric vector. Per-gene mean expression values
+#'   NaN is permitted for this value.
+#' @param mean_S_perm a integer vector. Sorting permutation for `mean_S`
+#' @param n_neighbors a integer scalar. Number of neighbors to select per reference point
+#'   The minimum valid value is `1`.
+#' @return a named list with elements:
+#'   \item{neighborhood_indices}{a integer matrix. Indices of selected neighborhood genes per reference point.
+#'
+#'     All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+#'     `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+#'     ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+#'     limitation, ported as-is from 125-stabilize-jscomp).}
+#'   \item{neighborhood_range}{a integer matrix. For each reference point, the `[min_idx, max_idx]` of the included genes. The
+#'     index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+#'     would be the min value. In case of duplicate means, `min_idx` points to the first
+#'     appearance of the value and `max_idx` to the last, so even though their related
+#'     mean value is the min/max in the neighborhood, the actual gene might not be
+#'     included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`}
+#' @export
+construct_neighborhoods_ranged_expert <- function(x_star, mean_S, mean_S_perm, n_neighbors) {
+    x_star <- .tox_as_double_vector(x_star, "x_star")
+    mean_S <- .tox_as_double_vector(mean_S, "mean_S")
+    mean_S_perm <- .tox_as_integer_vector(mean_S_perm, "mean_S_perm")
+    n_neighbors <- .tox_as_integer_scalar(n_neighbors, "n_neighbors")
+    if (length(mean_S_perm) != length(mean_S))
+        .tox_shape_error("mean_S_perm", length(mean_S_perm), "mean_S", length(mean_S))
+
+    .result <- .Call("construct_neighborhoods_ranged_expert_call", x_star, mean_S, mean_S_perm, n_neighbors)
+    .arguments <- c("n_points", "x_star", "n_genes_S", "mean_S", "mean_S_perm", "n_neighbors", "neighborhood_indices", "neighborhood_range", "ierr")
+    .sources <- c("x_star", NA_character_, "mean_S", NA_character_, NA_character_, "neighborhood_indices", NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        neighborhood_indices = .result$neighborhood_indices,
+        neighborhood_range = .result$neighborhood_range
+    )
+}

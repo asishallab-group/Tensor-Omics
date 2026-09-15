@@ -1,0 +1,1921 @@
+#include <src/macros.h>
+
+!> # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search
+!|
+!| The data-driven `(n_points, n_neighbors)` parameter-stabilization search this pipeline runs
+!| before the JSD-Comp-Test proper (Issue #126): a GAMMA-decay candidate grid
+!| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]],
+!| each candidate's histogram bin count from
+!| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]]), two
+!| admissibility gates a candidate must pass before it is bootstrapped
+!| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
+!| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
+!| and the plateau check that decides when the search has converged
+!| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
+!| `calc_js_comp_test_candidate_bounds` sizes the candidate-grid work arrays for a caller that
+!| allocates its own. Once a candidate has passed both gates, its bootstrap confidence interval
+!| is resampled from the pooled consensus histogram by
+!| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] (heap
+!| size recommended by
+!| [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_n_top_k_jsds(interface)]]).
+!| Later stages of the port add the K-study permutation test and the top-level orchestrator that
+!| wire these building blocks together.
+!|
+!| Generated from [[tox_data_integration_js_comp_test_impl(module)]]; do not edit -- regenerate instead.
+module tox_data_integration_js_comp_test
+    use f42_safeguard
+    use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, METHOD_JOIN_MIN, bootstrap_histogram_impl
+    use tox_data_integration_js_comp_test_impl, only: calc_js_comp_test_candidate_bounds, calc_js_comp_test_n_top_k_jsds, check_mean_pmf_min_counts_impl, check_neighborhood_overlaps_impl
+    use tox_data_integration_js_comp_test_impl, only: check_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, estimate_bin_count_impl
+    use tox_data_integration_js_comp_test_impl, only: generate_js_comp_test_candidates_impl, run_js_comp_test_impl, run_js_comp_test_parameter_search_impl
+    use, intrinsic :: iso_c_binding, only: c_bool
+    use, intrinsic :: iso_fortran_env, only: int32, real64
+    use f42_sort_impl, only: init_perm, sort_array_heapsort
+    use tox_errors, only: set_ok, is_err, ERR_ALLOC_FAIL, ERR_INVALID_INPUT
+    use tox_errors, only: clear_err_arg_pos, set_err, set_err_once, validate_all_in_range_int
+    use tox_errors, only: validate_all_in_range_real, validate_dimension_size, validate_in_range_int, validate_in_range_real
+    M_IMPLICIT_NONE
+    private
+
+    public :: estimate_bin_count
+    public :: estimate_bin_count_expert
+    public :: generate_js_comp_test_candidates
+    public :: generate_js_comp_test_candidates_expert
+    public :: check_neighborhood_overlaps
+    public :: check_mean_pmf_min_counts
+    public :: check_plateau_condition
+    public :: create_mean_pmf
+    public :: create_mean_pmf_only
+    public :: bootstrap_histogram
+    public :: bootstrap_histogram_expert
+    public :: run_js_comp_test
+    public :: run_js_comp_test_expert
+    public :: run_js_comp_test_parameter_search
+    public :: run_js_comp_test_parameter_search_expert
+
+contains
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):estimate_bin_count_expert]] to prepare it yourself.
+    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
+    !| Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
+    !| `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
+    !| range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
+    !| the doubled rule's bin count), clamped to at most
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins.
+    pure subroutine estimate_bin_count(&
+            residuals,&
+            n_residuals,&
+            max_n_reps_all_studies,&
+            n_neighbors,&
+            shared_residual_range,&
+            n_bins,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), dimension(n_residuals), intent(in) :: residuals
+            !! Pooled signed residuals across all studies, reference points and neighbors
+            !! NaN is permitted for this value.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size of the candidate under test
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), intent(out) :: n_bins
+            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+        integer(int32), dimension(:), allocatable :: residuals_perm
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_residuals, ierr, arg_pos=2_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
+        call validate_all_in_range_real(residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(residuals_perm(n_residuals))
+        call init_perm(residuals_perm)
+        call sort_array_heapsort(residuals, residuals_perm)
+
+        call estimate_bin_count_impl(&
+            residuals = residuals,&
+            residuals_perm = residuals_perm,&
+            n_residuals = n_residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_neighbors = n_neighbors,&
+            shared_residual_range = shared_residual_range,&
+            n_bins = n_bins&
+        )
+    end subroutine estimate_bin_count
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test(module):estimate_bin_count]] does both.
+    !| Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of
+    !| Sturges' rule and the Freedman-Diaconis rule (without doubling the bin width, since
+    !| `shared_residual_range` is already the one-sided half of the full `[-R, R]` histogram
+    !| range, so dividing the full range by the undoubled Freedman-Diaconis width already gives
+    !| the doubled rule's bin count), clamped to at most
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] bins.
+    pure subroutine estimate_bin_count_expert(&
+            residuals,&
+            residuals_perm,&
+            n_residuals,&
+            max_n_reps_all_studies,&
+            n_neighbors,&
+            shared_residual_range,&
+            n_bins,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        real(real64), dimension(n_residuals), intent(in) :: residuals
+            !! Pooled signed residuals across all studies, reference points and neighbors
+            !! NaN is permitted for this value.
+        integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
+            !! Sorting permutation for `residuals`, ascending, NaN last
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_residuals`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_neighbors
+            !! Neighborhood size of the candidate under test
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), intent(out) :: n_bins
+            !! Estimated number of histogram bins, at least 1 and at most MAX_N_BINS
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_all_in_range_real(residuals, n_residuals, ierr, arg_pos=1_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, arg_pos=2_int32, min=1_int32, max=n_residuals)
+        if (is_err(ierr)) return
+#endif
+
+        call estimate_bin_count_impl(&
+            residuals = residuals,&
+            residuals_perm = residuals_perm,&
+            n_residuals = n_residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_neighbors = n_neighbors,&
+            shared_residual_range = shared_residual_range,&
+            n_bins = n_bins&
+        )
+    end subroutine estimate_bin_count_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):generate_js_comp_test_candidates_expert]] to prepare it yourself.
+    !| Ported from the grid-building half of 125-stabilize-jscomp's
+    !| `determine_js_comp_test_n_points_n_neighbors_helper`: starting from an initial
+    !| `n_points_high` (clamped between MIN_POINTS and MAX_POINTS), repeatedly multiplies by
+    !| GAMMA until it would drop below `n_points_low`, and for each distinct resulting
+    !| `n_points` candidate pairs it with up to `size(KX_FACTORS)` distinct `n_neighbors`
+    !| candidates, calling
+    !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] for
+    !| each pair's bin count. A duplicate `n_points` or `n_neighbors` value (from clamping or
+    !| integer rounding) collapses rather than repeating -- this is real, derived behavior the
+    !| grid depends on to avoid redundant candidates at small `max_n_genes_all_studies`, not a
+    !| bug: a small enough `max_n_genes_all_studies` collapses the whole grid down to exactly one
+    !| candidate.
+    pure subroutine generate_js_comp_test_candidates(&
+            max_n_genes_all_studies,&
+            residuals,&
+            n_residuals,&
+            max_n_reps_all_studies,&
+            shared_residual_range,&
+            candidates_n_points_n_neighbors,&
+            n_bins_candidates,&
+            n_candidates,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        real(real64), dimension(n_residuals), intent(in) :: residuals
+            !! Pooled signed residuals across all studies, reference points and neighbors
+            !! NaN is permitted for this value.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), dimension(2, 16), intent(out) :: candidates_n_points_n_neighbors
+            !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
+            !! The first `n_candidates` elements will hold the results.
+        integer(int32), dimension(16), intent(out) :: n_bins_candidates
+            !! Per-candidate bin count from estimate_bin_count_impl, one per candidate pair
+            !! The first `n_candidates` elements will hold the results.
+        integer(int32), intent(out) :: n_candidates
+            !! Number of candidate pairs actually filled (at most MAX_CANDIDATE_PAIRS = 16)
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+        integer(int32), dimension(:), allocatable :: residuals_perm
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_dimension_size(n_residuals, ierr, arg_pos=3_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=5_int32, min=0.0_real64)
+        call validate_all_in_range_real(residuals, n_residuals, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(residuals_perm(n_residuals))
+        call init_perm(residuals_perm)
+        call sort_array_heapsort(residuals, residuals_perm)
+
+        call generate_js_comp_test_candidates_impl(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            residuals = residuals,&
+            residuals_perm = residuals_perm,&
+            n_residuals = n_residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            shared_residual_range = shared_residual_range,&
+            candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
+            n_bins_candidates = n_bins_candidates,&
+            n_candidates = n_candidates&
+        )
+    end subroutine generate_js_comp_test_candidates
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test(module):generate_js_comp_test_candidates]] does both.
+    !| Ported from the grid-building half of 125-stabilize-jscomp's
+    !| `determine_js_comp_test_n_points_n_neighbors_helper`: starting from an initial
+    !| `n_points_high` (clamped between MIN_POINTS and MAX_POINTS), repeatedly multiplies by
+    !| GAMMA until it would drop below `n_points_low`, and for each distinct resulting
+    !| `n_points` candidate pairs it with up to `size(KX_FACTORS)` distinct `n_neighbors`
+    !| candidates, calling
+    !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] for
+    !| each pair's bin count. A duplicate `n_points` or `n_neighbors` value (from clamping or
+    !| integer rounding) collapses rather than repeating -- this is real, derived behavior the
+    !| grid depends on to avoid redundant candidates at small `max_n_genes_all_studies`, not a
+    !| bug: a small enough `max_n_genes_all_studies` collapses the whole grid down to exactly one
+    !| candidate.
+    pure subroutine generate_js_comp_test_candidates_expert(&
+            max_n_genes_all_studies,&
+            residuals,&
+            residuals_perm,&
+            n_residuals,&
+            max_n_reps_all_studies,&
+            shared_residual_range,&
+            candidates_n_points_n_neighbors,&
+            n_bins_candidates,&
+            n_candidates,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_residuals
+            !! Number of pooled residuals
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        real(real64), dimension(n_residuals), intent(in) :: residuals
+            !! Pooled signed residuals across all studies, reference points and neighbors
+            !! NaN is permitted for this value.
+        integer(int32), dimension(n_residuals), intent(in) :: residuals_perm
+            !! Sorting permutation for `residuals`, ascending, NaN last
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `n_residuals`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), dimension(2, 16), intent(out) :: candidates_n_points_n_neighbors
+            !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
+            !! The first `n_candidates` elements will hold the results.
+        integer(int32), dimension(16), intent(out) :: n_bins_candidates
+            !! Per-candidate bin count from estimate_bin_count_impl, one per candidate pair
+            !! The first `n_candidates` elements will hold the results.
+        integer(int32), intent(out) :: n_candidates
+            !! Number of candidate pairs actually filled (at most MAX_CANDIDATE_PAIRS = 16)
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_dimension_size(n_residuals, ierr, arg_pos=4_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_all_in_range_real(residuals, n_residuals, ierr, arg_pos=2_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(residuals_perm, n_residuals, ierr, arg_pos=3_int32, min=1_int32, max=n_residuals)
+        if (is_err(ierr)) return
+#endif
+
+        call generate_js_comp_test_candidates_impl(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            residuals = residuals,&
+            residuals_perm = residuals_perm,&
+            n_residuals = n_residuals,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            shared_residual_range = shared_residual_range,&
+            candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
+            n_bins_candidates = n_bins_candidates,&
+            n_candidates = n_candidates&
+        )
+    end subroutine generate_js_comp_test_candidates_expert
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl]].
+    !| Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first
+    !| admissibility gate a candidate `(n_points, n_neighbors)` pair must pass, using the
+    !| `[min_idx, max_idx]` neighborhood spans
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]
+    !| produces. Named `check_*` rather than 125's `test_*`, a deliberate deviation from the
+    !| verbatim port: the generated R binding is published under the Fortran name, and the R test
+    !| harness (`r/test_helpers.R`'s `run_all_tests`) discovers every `test_`-prefixed name in the
+    !| environment as a test case to run with no arguments -- a `test_`-prefixed export would be
+    !| swept up and fail every R suite that sources the package, not just this module's own.
+    pure subroutine check_neighborhood_overlaps(&
+            neighborhood_range,&
+            n_points,&
+            min_neighbor_overlap,&
+            all_have_min_neighbor_overlap,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), dimension(2, n_points), intent(in) :: neighborhood_range
+            !! For each reference point, the `[min_idx, max_idx]` neighborhood span, as produced
+            !! by construct_neighborhoods_ranged_impl
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: min_neighbor_overlap
+            !! Minimum fractional overlap two consecutive neighborhoods must have
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        logical(c_bool), intent(out) :: all_have_min_neighbor_overlap
+            !! `.true.` if every pair of consecutive neighborhoods overlaps by at least
+            !! `min_neighbor_overlap`
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_points, ierr, arg_pos=2_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=3_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(neighborhood_range, 2 * n_points, ierr, arg_pos=1_int32, min=1_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call check_neighborhood_overlaps_impl(&
+            neighborhood_range = neighborhood_range,&
+            n_points = n_points,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            all_have_min_neighbor_overlap = all_have_min_neighbor_overlap&
+        )
+    end subroutine check_neighborhood_overlaps
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl]].
+    !| Ported from 125-stabilize-jscomp's `test_mean_pmf_min_counts_helper`: the second
+    !| admissibility gate a candidate `(n_points, n_neighbors)` pair must pass, checked once the
+    !| first gate
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]])
+    !| has already passed. Named `check_*` rather than 125's `test_*` for the same reason as its
+    !| sibling above: a `test_`-prefixed R export collides with the R test harness's own
+    !| test-discovery convention.
+    pure subroutine check_mean_pmf_min_counts(&
+            mean_pmf_counts,&
+            n_bins,&
+            n_points,&
+            min_count,&
+            all_bins_have_min_count,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_bins
+            !! Number of histogram bins
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the mean pmf
+            !! The minimum valid value is `0_int32`.
+        integer(int32), intent(in) :: min_count
+            !! Minimum count each bin of the mean pmf must reach
+            !! The minimum valid value is `0_int32`.
+        logical(c_bool), intent(out) :: all_bins_have_min_count
+            !! `.true.` if every bin, at every reference point, reaches at least `min_count`
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_bins, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+        call validate_in_range_int(min_count, ierr, arg_pos=4_int32, min=0_int32)
+        call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=1_int32, min=0_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call check_mean_pmf_min_counts_impl(&
+            mean_pmf_counts = mean_pmf_counts,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            min_count = min_count,&
+            all_bins_have_min_count = all_bins_have_min_count&
+        )
+    end subroutine check_mean_pmf_min_counts
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl]].
+    !| Ported from 125-stabilize-jscomp's `check_plateau_condition_helper`. A search over
+    !| candidates (finest resolution to coarsest) stops -- "plateaus" -- either when a new
+    !| candidate is no better than the previous best (the short-circuit below: keep the previous
+    !| best and stop searching), or once the new candidate's confidence-interval overlap with the
+    !| previous best meets the condition `join_method` names. `join_method` replaces
+    !| 125-stabilize-jscomp's hand-rolled join-method-range validation macro entirely: the mode
+    !| table below is itself the validation, checked against exactly the values it names.
+    pure subroutine check_plateau_condition(&
+            confidence_interval,&
+            best_candidate_pair_confidence_interval,&
+            n_studies,&
+            best_candidate_index,&
+            best_exceeded_ci_overlap_count,&
+            candidate_index,&
+            join_method,&
+            succeeding_ci_overlap,&
+            plateau_found,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(2, n_studies), intent(in) :: confidence_interval
+            !! JSD confidence interval `[lower, upper]` from bootstrapping, for the candidate
+            !! pair under test
+        real(real64), dimension(2, n_studies), intent(inout) :: best_candidate_pair_confidence_interval
+            !! JSD confidence intervals for the current best candidate pair; overwritten with
+            !! `confidence_interval` unless the new candidate is worse
+        integer(int32), intent(inout) :: best_candidate_index
+            !! Candidate-grid index of the current best candidate pair; overwritten with
+            !! `candidate_index` unless the new candidate is worse
+        integer(int32), intent(inout) :: best_exceeded_ci_overlap_count
+            !! Number of studies whose overlap exceeded `succeeding_ci_overlap` for the current
+            !! best candidate pair; overwritten unless the new candidate is worse
+            !! The minimum valid value is `0_int32`.
+        integer(int32), intent(in) :: candidate_index
+            !! Candidate-grid index of the candidate pair that produced `confidence_interval`
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: join_method
+            !! The way to evaluate all studies' confidence-interval overlaps for the plateau
+            !! condition: METHOD_JOIN_MIN requires every study's overlap to exceed
+            !! `succeeding_ci_overlap`, METHOD_JOIN_MAX requires only one study's overlap to
+            !! exceed it, and METHOD_JOIN_MEDIAN requires a majority
+            !! (`count > (n_studies - 1) / 2`) to exceed it
+            !!
+            !! | Method                                  | Value                                                                           |
+            !! |-----------------------------------------|---------------------------------------------------------------------------------|
+            !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MIN(variable)]]    |
+            !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MAX(variable)]]    |
+            !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+        real(real64), intent(in) :: succeeding_ci_overlap
+            !! Minimum fractional overlap an interval in `confidence_interval` must have with its
+            !! respective interval in `best_candidate_pair_confidence_interval` to count as
+            !! "exceeded"
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        logical(c_bool), intent(out) :: plateau_found
+            !! `.true.` once the new candidate is no better than the previous best, or once
+            !! `join_method`'s overlap condition is met by the new candidate
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_studies, ierr, arg_pos=3_int32)
+        call validate_in_range_int(best_exceeded_ci_overlap_count, ierr, arg_pos=5_int32, min=0_int32)
+        call validate_in_range_int(candidate_index, ierr, arg_pos=6_int32, min=1_int32)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=1_int32)
+        call validate_all_in_range_real(best_candidate_pair_confidence_interval, 2 * n_studies, ierr, arg_pos=2_int32)
+        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=7_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call check_plateau_condition_impl(&
+            confidence_interval = confidence_interval,&
+            best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            n_studies = n_studies,&
+            best_candidate_index = best_candidate_index,&
+            best_exceeded_ci_overlap_count = best_exceeded_ci_overlap_count,&
+            candidate_index = candidate_index,&
+            join_method = join_method,&
+            succeeding_ci_overlap = succeeding_ci_overlap,&
+            plateau_found = plateau_found&
+        )
+    end subroutine check_plateau_condition
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl]].
+    !| Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.
+    !|
+    !| Known limitation: averages over all n_studies including the study being compared against it,
+    !| rather than a true leave-one-out background as the manuscript specifies. Deliberately ported
+    !| as-is from origin/125-stabilize-jscomp; see the project's JSD-Comp-Test follow-up issue for
+    !| the fix.
+    pure subroutine create_mean_pmf(&
+            pmfs,&
+            counts,&
+            n_bins,&
+            n_points,&
+            n_studies,&
+            included_n_reps,&
+            mean_pmf,&
+            mean_pmf_included_n_reps,&
+            mean_pmf_counts,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_bins, n_points, n_studies), intent(in) :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        integer(int32), dimension(n_bins, n_points, n_studies), intent(in) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+            !! The minimum valid value is `0_int32`.
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point, per study
+            !! The minimum valid value is `0_int32`.
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+            !! The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
+            !! known-limitation note above
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point for `mean_pmf`,
+            !! summed across all n_studies
+        integer(int32), dimension(n_bins, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the mean pmf -> `sum(counts, dim=3)`
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_bins, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=4_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=5_int32)
+        call validate_all_in_range_real(pmfs, n_bins * n_points * n_studies, ierr, arg_pos=1_int32, min=0.0_real64, max=1.0_real64)
+        call validate_all_in_range_int(counts, n_bins * n_points * n_studies, ierr, arg_pos=2_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=6_int32, min=0_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call create_mean_pmf_impl(&
+            pmfs = pmfs,&
+            counts = counts,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            n_studies = n_studies,&
+            included_n_reps = included_n_reps,&
+            mean_pmf = mean_pmf,&
+            mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
+            mean_pmf_counts = mean_pmf_counts&
+        )
+    end subroutine create_mean_pmf
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_only_impl]].
+    !| Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_only_helper`: useful where the
+    !| mean pmf's own counts don't matter, e.g. for the bootstrap confidence interval a later
+    !| stage of this port adds.
+    !|
+    !| Known limitation: averages over all n_studies including the study being compared against it,
+    !| rather than a true leave-one-out background as the manuscript specifies. Deliberately ported
+    !| as-is from origin/125-stabilize-jscomp; see the project's JSD-Comp-Test follow-up issue for
+    !| the fix.
+    pure subroutine create_mean_pmf_only(&
+            pmfs,&
+            n_bins,&
+            n_points,&
+            n_studies,&
+            mean_pmf,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), dimension(n_bins, n_points, n_studies), intent(in) :: pmfs
+            !! Per-study probabilities of each bin per reference point, from
+            !! [[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+            !! The consensus pmf, built as `mean_pmf = sum(pmfs, dim=3) / n_studies` -- see the
+            !! known-limitation note above
+        integer(int32), intent(out) :: ierr
+            !! Error code; zero on success, non-zero on failure.
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_dimension_size(n_bins, ierr, arg_pos=2_int32)
+        call validate_dimension_size(n_points, ierr, arg_pos=3_int32)
+        call validate_dimension_size(n_studies, ierr, arg_pos=4_int32)
+        call validate_all_in_range_real(pmfs, n_bins * n_points * n_studies, ierr, arg_pos=1_int32, min=0.0_real64, max=1.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        call create_mean_pmf_only_impl(&
+            pmfs = pmfs,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            n_studies = n_studies,&
+            mean_pmf = mean_pmf&
+        )
+    end subroutine create_mean_pmf_only
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):bootstrap_histogram_expert]] to prepare it yourself.
+    !| Ported from 125-stabilize-jscomp's `bootstrap_histogram_helper`. Resamples from the
+    !| POOLED/consensus histogram counts (`mean_pmf_counts`), not from each study's own histogram
+    !| -- this is 125's deliberate design, preserved as-is (see the plan for this port). Draws
+    !| random numbers via
+    !| [[f42_random_gsl(module):random_multinomial(subroutine)]], so this implementation is
+    !| deliberately impure, matching the project's existing precedent for the other
+    !| permutation-test module's purity
+    !| ([[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(interface)]]).
+    !|
+    !| `confidence_interval` is both an input and an output: its incoming `[lower, upper]` values
+    !| seed every slot of the top-k/bottom-k heaps (`tmp_bootstrapping_top_k_jsds`) -- ported
+    !| verbatim from 125, which fills the whole heap with the *same* incoming reference value
+    !| rather than the usual plus/minus-infinity heap initialization, so the observed
+    !| (pre-bootstrap) value can only be displaced by a strictly more extreme bootstrap draw. On
+    !| return it holds `[largest of the n_bootstrapping_top_k_jsds smallest bootstrap draws,
+    !| smallest of the n_bootstrapping_top_k_jsds largest bootstrap draws]`.
+    !|
+    !| `mean_pmf_counts`/`tmp_pmfs`/`tmp_mean_pmf` are laid out bin-major (`(n_bins, n_points[,
+    !| n_studies])`), matching
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] and its
+    !| own `create_mean_pmf_only_impl` above -- both ported from 125, whose own convention this
+    !| is. The already-shipped
+    !| [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| predates 125's own port and instead takes its pmf arguments point-major
+    !| (`(n_points, n_bins)`); the two calls below bridge the two conventions with an explicit
+    !| `transpose`, rather than picking one shape and silently reinterpreting the other's memory
+    !| under it (which would scramble every non-square `(n_bins, n_points)` histogram).
+    !|
+    !| A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
+    !| have foreseen (codegen_guide.md Sec 5.14): every work array and `confidence_interval` are
+    !| then left untouched (arrays not yet written to keep their caller-visible defined state) and
+    !| `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
+    !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
+    !| failure only, without stopping the resampling already in flight.
+    subroutine bootstrap_histogram(&
+            n_bootstraps,&
+            n_bins,&
+            n_points,&
+            n_studies,&
+            mean_pmf_counts,&
+            mean_pmf_included_n_reps,&
+            included_n_reps,&
+            confidence_interval,&
+            two_sided_bootstrapping_significance_level,&
+            random_seed,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstrap resamples to perform
+            !! The minimum valid value is `1_int32`.
+        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the pooled/consensus pmf, from
+            !! create_mean_pmf_impl -- resampled with replacement each bootstrap
+            !! The minimum valid value is `0_int32`.
+        integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point for the pooled pmf
+            !! The minimum valid value is `0_int32`.
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point, per study --
+            !! how many elements are drawn (with replacement) from the pooled pool per study
+            !! The minimum valid value is `0_int32`.
+        real(real64), dimension(2, n_studies), intent(inout) :: confidence_interval
+            !! Confidence interval to be bootstrapped -- incoming values are the reference values
+            !! that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
+            !! `[lower, upper]` interval per study
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
+            !! Forwarded to calc_js_comp_test_n_top_k_jsds to size n_bootstrapping_top_k_jsds; not
+            !! otherwise used here
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `2.5_real64`.
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+            !! The default value is `42_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+        integer(int32) :: n_bootstrapping_top_k_jsds
+        real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
+        integer(int32), dimension(:, :), allocatable :: tmp_counts
+        real(real64), dimension(:, :, :), allocatable :: tmp_pmfs
+        real(real64), dimension(:, :), allocatable :: tmp_mean_pmf
+        real(real64), dimension(:, :), allocatable :: tmp_js_divergences
+        real(real64), dimension(:, :), allocatable :: tmp_weights
+        real(real64), dimension(:), allocatable :: tmp_global_js_divergence
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=9_int32, min=0.0_real64, max=100.0_real64)
+        call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
+        call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=6_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=0_int32)
+        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=8_int32, min=0.0_real64, max=1.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        call calc_js_comp_test_n_top_k_jsds(&
+            n_bootstraps = n_bootstraps,&
+            two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
+            n_top_k = n_bootstrapping_top_k_jsds&
+        )
+        M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
+        M_ALLOCATE(tmp_counts(n_bins, n_points))
+        M_ALLOCATE(tmp_pmfs(n_bins, n_points, n_studies))
+        M_ALLOCATE(tmp_mean_pmf(n_bins, n_points))
+        M_ALLOCATE(tmp_js_divergences(n_points, n_studies))
+        M_ALLOCATE(tmp_weights(n_points, n_studies))
+        M_ALLOCATE(tmp_global_js_divergence(n_studies))
+
+        call bootstrap_histogram_impl(&
+            n_bootstraps = n_bootstraps,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            n_studies = n_studies,&
+            mean_pmf_counts = mean_pmf_counts,&
+            mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
+            included_n_reps = included_n_reps,&
+            n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
+            confidence_interval = confidence_interval,&
+            tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
+            tmp_counts = tmp_counts,&
+            tmp_pmfs = tmp_pmfs,&
+            tmp_mean_pmf = tmp_mean_pmf,&
+            tmp_js_divergences = tmp_js_divergences,&
+            tmp_weights = tmp_weights,&
+            tmp_global_js_divergence = tmp_global_js_divergence,&
+            two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
+            random_seed = random_seed,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine bootstrap_histogram
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test(module):bootstrap_histogram]] does both.
+    !| Ported from 125-stabilize-jscomp's `bootstrap_histogram_helper`. Resamples from the
+    !| POOLED/consensus histogram counts (`mean_pmf_counts`), not from each study's own histogram
+    !| -- this is 125's deliberate design, preserved as-is (see the plan for this port). Draws
+    !| random numbers via
+    !| [[f42_random_gsl(module):random_multinomial(subroutine)]], so this implementation is
+    !| deliberately impure, matching the project's existing precedent for the other
+    !| permutation-test module's purity
+    !| ([[tox_trajectory_contribution_analysis_impl(module):perform_permutation_test_impl(interface)]]).
+    !|
+    !| `confidence_interval` is both an input and an output: its incoming `[lower, upper]` values
+    !| seed every slot of the top-k/bottom-k heaps (`tmp_bootstrapping_top_k_jsds`) -- ported
+    !| verbatim from 125, which fills the whole heap with the *same* incoming reference value
+    !| rather than the usual plus/minus-infinity heap initialization, so the observed
+    !| (pre-bootstrap) value can only be displaced by a strictly more extreme bootstrap draw. On
+    !| return it holds `[largest of the n_bootstrapping_top_k_jsds smallest bootstrap draws,
+    !| smallest of the n_bootstrapping_top_k_jsds largest bootstrap draws]`.
+    !|
+    !| `mean_pmf_counts`/`tmp_pmfs`/`tmp_mean_pmf` are laid out bin-major (`(n_bins, n_points[,
+    !| n_studies])`), matching
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]] and its
+    !| own `create_mean_pmf_only_impl` above -- both ported from 125, whose own convention this
+    !| is. The already-shipped
+    !| [[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]
+    !| predates 125's own port and instead takes its pmf arguments point-major
+    !| (`(n_points, n_bins)`); the two calls below bridge the two conventions with an explicit
+    !| `transpose`, rather than picking one shape and silently reinterpreting the other's memory
+    !| under it (which would scramble every non-square `(n_bins, n_points)` histogram).
+    !|
+    !| A GSL allocation failure in `create_rng` is a genuine runtime error no input check could
+    !| have foreseen (codegen_guide.md Sec 5.14): every work array and `confidence_interval` are
+    !| then left untouched (arrays not yet written to keep their caller-visible defined state) and
+    !| `ierr` reports `ERR_ALLOC_FAIL`. A `random_multinomial` draw failing (which validated,
+    !| internally-consistent inputs should never trigger) is likewise folded into `ierr`, first
+    !| failure only, without stopping the resampling already in flight.
+    subroutine bootstrap_histogram_expert(&
+            n_bootstraps,&
+            n_bins,&
+            n_points,&
+            n_studies,&
+            mean_pmf_counts,&
+            mean_pmf_included_n_reps,&
+            included_n_reps,&
+            n_bootstrapping_top_k_jsds,&
+            confidence_interval,&
+            tmp_bootstrapping_top_k_jsds,&
+            tmp_counts,&
+            tmp_pmfs,&
+            tmp_mean_pmf,&
+            tmp_js_divergences,&
+            tmp_weights,&
+            tmp_global_js_divergence,&
+            two_sided_bootstrapping_significance_level,&
+            random_seed,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
+            !! Number of elements kept at each end of the bootstrap distribution (top-k/bottom-k
+            !! heap size)
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_top_k` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_n_top_k_jsds]].
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstrap resamples to perform
+            !! The minimum valid value is `1_int32`.
+        integer(int32), dimension(n_bins, n_points), intent(in) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the pooled/consensus pmf, from
+            !! create_mean_pmf_impl -- resampled with replacement each bootstrap
+            !! The minimum valid value is `0_int32`.
+        integer(int32), dimension(n_points), intent(in) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point for the pooled pmf
+            !! The minimum valid value is `0_int32`.
+        integer(int32), dimension(n_points, n_studies), intent(in) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point, per study --
+            !! how many elements are drawn (with replacement) from the pooled pool per study
+            !! The minimum valid value is `0_int32`.
+        real(real64), dimension(2, n_studies), intent(inout) :: confidence_interval
+            !! Confidence interval to be bootstrapped -- incoming values are the reference values
+            !! that seed the top-k/bottom-k heaps (see above); overwritten with the bootstrapped
+            !! `[lower, upper]` interval per study
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+        real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
+            !! Working array used as top-k/bottom-k heaps for efficient percentile detection in
+            !! the bootstrapped values -- `(:, 1, :)` the bottom-k (lower bound), `(:, 2, :)` the
+            !! top-k (upper bound)
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_counts
+            !! Working array that holds one bootstrap's resampled histogram counts, one study at a time
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: tmp_pmfs
+            !! Working array that holds one bootstrap's resampled pmfs, all studies
+        real(real64), dimension(n_bins, n_points), intent(out) :: tmp_mean_pmf
+            !! Working array for one bootstrap's own (resampled) mean pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_js_divergences
+            !! Working array for one bootstrap's per-point JSD values
+        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_weights
+            !! Working array for one bootstrap's per-point global-JSD weights
+        real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
+            !! Working array for one bootstrap's global weighted JSD values
+        real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
+            !! Forwarded to calc_js_comp_test_n_top_k_jsds to size n_bootstrapping_top_k_jsds; not
+            !! otherwise used here
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `2.5_real64`.
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+            !! The default value is `42_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(n_points, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_studies, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=8_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=17_int32, min=0.0_real64, max=100.0_real64)
+        call validate_all_in_range_int(mean_pmf_counts, n_bins * n_points, ierr, arg_pos=5_int32, min=0_int32)
+        call validate_all_in_range_int(mean_pmf_included_n_reps, n_points, ierr, arg_pos=6_int32, min=0_int32)
+        call validate_all_in_range_int(included_n_reps, n_points * n_studies, ierr, arg_pos=7_int32, min=0_int32)
+        call validate_all_in_range_real(confidence_interval, 2 * n_studies, ierr, arg_pos=9_int32, min=0.0_real64, max=1.0_real64)
+        if (is_err(ierr)) return
+#endif
+
+        call bootstrap_histogram_impl(&
+            n_bootstraps = n_bootstraps,&
+            n_bins = n_bins,&
+            n_points = n_points,&
+            n_studies = n_studies,&
+            mean_pmf_counts = mean_pmf_counts,&
+            mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
+            included_n_reps = included_n_reps,&
+            n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
+            confidence_interval = confidence_interval,&
+            tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
+            tmp_counts = tmp_counts,&
+            tmp_pmfs = tmp_pmfs,&
+            tmp_mean_pmf = tmp_mean_pmf,&
+            tmp_js_divergences = tmp_js_divergences,&
+            tmp_weights = tmp_weights,&
+            tmp_global_js_divergence = tmp_global_js_divergence,&
+            two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
+            random_seed = random_seed,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine bootstrap_histogram_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):run_js_comp_test_expert]] to prepare it yourself.
+    !| Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its
+    !| neighborhoods
+    !| ([[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]])
+    !| and residual histograms
+    !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]), pools
+    !| them into the consensus pmf
+    !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
+    !| each study's observed JSD against that consensus
+    !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
+    !| called with the consensus pmf as the second argument), runs the permutation test
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]), and
+    !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
+    !| via
+    !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
+    !| are NOT re-derived, since they are invariant across permutations by construction (the
+    !| permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
+    !| itself), exactly as 125 relies on.
+    !|
+    !| `x_star` is an ordinary input here, not computed by this routine -- 125's own
+    !| `js_comp_test_helper` takes it the same way, since a caller running several studies/several
+    !| parameter settings is expected to compute the reference points once
+    !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and reuse
+    !| them consistently.
+    !|
+    !| `construct_neighborhoods_ranged_impl` reports neighbor gene INDICES, not gathered residual
+    !| values (unlike its distance-sort sibling
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(interface)]]),
+    !| so this routine gathers each neighbor's actual residual values from `residuals` itself
+    !| (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
+    !| `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
+    !| POINT-major (`(n_points, n_bins)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` here
+    !| are BIN-major (`(n_bins, n_points, n_studies)`) to match
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
+    !| convention -- every call across that boundary bridges with an explicit `transpose`, exactly
+    !| as [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
+    !| [[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]] already do.
+    !|
+    !| Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is folded
+    !| into `ierr` (first failure only), matching that routine's own tolerant precedent.
+    subroutine run_js_comp_test(&
+            n_studies,&
+            max_n_genes_all_studies,&
+            max_n_reps_all_studies,&
+            n_points,&
+            n_neighbors,&
+            n_bins,&
+            shared_residual_range,&
+            gene_means,&
+            gene_means_perms,&
+            residuals,&
+            x_star,&
+            neighborhood_indices,&
+            neighborhood_range,&
+            pmfs,&
+            counts,&
+            included_n_reps,&
+            mean_pmf,&
+            mean_pmf_counts,&
+            mean_pmf_included_n_reps,&
+            js_divergences,&
+            weights,&
+            global_js_divergence,&
+            p_values,&
+            n_permutations,&
+            random_seed,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points for neighborhoods
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors per neighborhood
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+            !! NaN is permitted for this value.
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
+            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_genes_all_studies`.
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+            !! NaN is permitted for this value.
+        real(real64), dimension(n_points), intent(in) :: x_star
+            !! Mean-expression reference points
+            !! NaN is permitted for this value.
+        integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_indices
+            !! Gene indices of the selected neighborhood, per reference point, per study
+        integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_range
+            !! For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
+            !! produced by construct_neighborhoods_ranged_impl
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: pmfs
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`
+        integer(int32), dimension(n_bins, n_points, n_studies), intent(out) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+        integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point, per study
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+            !! The consensus pmf, from create_mean_pmf_impl
+        integer(int32), dimension(n_bins, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
+            !! Per-reference-point JSD of each study against the consensus pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: weights
+            !! Per-reference-point weights for `global_js_divergence`
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+            !! Weighted global JSD of each study against the consensus pmf
+        real(real64), dimension(n_studies), intent(out) :: p_values
+            !! Empirical p-value per study from gjct_permutation_test_impl
+        integer(int32), intent(in), optional :: n_permutations
+            !! Number of permutations, forwarded to gjct_permutation_test_impl
+            !! The minimum valid value is `0_int32`.
+            !! The default value is `1000_int32`.
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+            !! The default value is `42_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
+            !! the permutation test
+        real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
+        integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
+        real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
+        integer(int32), dimension(:, :), allocatable :: tmp_permutation_mean_pmf_counts
+        integer(int32), dimension(:, :), allocatable :: tmp_permutation_counts
+        real(real64), dimension(:, :, :), allocatable :: tmp_permutation_pmfs
+        real(real64), dimension(:, :), allocatable :: tmp_permutation_js_divergences
+        real(real64), dimension(:, :), allocatable :: tmp_permutation_weights
+        real(real64), dimension(:), allocatable :: tmp_permutation_global_js_divergence
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=7_int32, min=0.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=24_int32, min=0_int32)
+        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=9_int32, min=1_int32, max=max_n_genes_all_studies)
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=10_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=11_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        M_ALLOCATE(tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, n_neighbors, n_points))
+        M_ALLOCATE(tmp_counts_point_major(n_points, n_bins))
+        M_ALLOCATE(tmp_pmf_point_major(n_points, n_bins))
+        M_ALLOCATE(tmp_permutation_mean_pmf_counts(n_bins, n_points))
+        M_ALLOCATE(tmp_permutation_counts(n_bins, n_points))
+        M_ALLOCATE(tmp_permutation_pmfs(n_bins, n_points, n_studies))
+        M_ALLOCATE(tmp_permutation_js_divergences(n_points, n_studies))
+        M_ALLOCATE(tmp_permutation_weights(n_points, n_studies))
+        M_ALLOCATE(tmp_permutation_global_js_divergence(n_studies))
+
+        call run_js_comp_test_impl(&
+            n_studies = n_studies,&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_points = n_points,&
+            n_neighbors = n_neighbors,&
+            n_bins = n_bins,&
+            shared_residual_range = shared_residual_range,&
+            gene_means = gene_means,&
+            gene_means_perms = gene_means_perms,&
+            residuals = residuals,&
+            x_star = x_star,&
+            neighborhood_indices = neighborhood_indices,&
+            neighborhood_range = neighborhood_range,&
+            pmfs = pmfs,&
+            counts = counts,&
+            included_n_reps = included_n_reps,&
+            mean_pmf = mean_pmf,&
+            mean_pmf_counts = mean_pmf_counts,&
+            mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
+            js_divergences = js_divergences,&
+            weights = weights,&
+            global_js_divergence = global_js_divergence,&
+            p_values = p_values,&
+            tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
+            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
+            tmp_permutation_counts = tmp_permutation_counts,&
+            tmp_permutation_pmfs = tmp_permutation_pmfs,&
+            tmp_permutation_js_divergences = tmp_permutation_js_divergences,&
+            tmp_permutation_weights = tmp_permutation_weights,&
+            tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
+            n_permutations = n_permutations,&
+            random_seed = random_seed,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine run_js_comp_test
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test(module):run_js_comp_test]] does both.
+    !| Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its
+    !| neighborhoods
+    !| ([[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]])
+    !| and residual histograms
+    !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]), pools
+    !| them into the consensus pmf
+    !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
+    !| each study's observed JSD against that consensus
+    !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
+    !| called with the consensus pmf as the second argument), runs the permutation test
+    !| ([[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]]), and
+    !| finally re-derives each study's pmf/JSD/weights/global JSD from its own UNTOUCHED `counts`
+    !| via
+    !| [[tox_data_integration_jsd_impl(module):calc_pmf_impl(interface)]] -- `mean_pmf`/`mean_pmf_counts`
+    !| are NOT re-derived, since they are invariant across permutations by construction (the
+    !| permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
+    !| itself), exactly as 125 relies on.
+    !|
+    !| `x_star` is an ordinary input here, not computed by this routine -- 125's own
+    !| `js_comp_test_helper` takes it the same way, since a caller running several studies/several
+    !| parameter settings is expected to compute the reference points once
+    !| ([[tox_data_integration_preprocessing_impl(module):pool_means_impl(interface)]]) and reuse
+    !| them consistently.
+    !|
+    !| `construct_neighborhoods_ranged_impl` reports neighbor gene INDICES, not gathered residual
+    !| values (unlike its distance-sort sibling
+    !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(interface)]]),
+    !| so this routine gathers each neighbor's actual residual values from `residuals` itself
+    !| (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
+    !| `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
+    !| POINT-major (`(n_points, n_bins)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` here
+    !| are BIN-major (`(n_bins, n_points, n_studies)`) to match
+    !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
+    !| convention -- every call across that boundary bridges with an explicit `transpose`, exactly
+    !| as [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
+    !| [[tox_data_integration_stats_impl(module):gjct_permutation_test_impl(interface)]] already do.
+    !|
+    !| Impure: calls the impure `gjct_permutation_test_impl`. A GSL failure it reports is folded
+    !| into `ierr` (first failure only), matching that routine's own tolerant precedent.
+    subroutine run_js_comp_test_expert(&
+            n_studies,&
+            max_n_genes_all_studies,&
+            max_n_reps_all_studies,&
+            n_points,&
+            n_neighbors,&
+            n_bins,&
+            shared_residual_range,&
+            gene_means,&
+            gene_means_perms,&
+            residuals,&
+            x_star,&
+            neighborhood_indices,&
+            neighborhood_range,&
+            pmfs,&
+            counts,&
+            included_n_reps,&
+            mean_pmf,&
+            mean_pmf_counts,&
+            mean_pmf_included_n_reps,&
+            js_divergences,&
+            weights,&
+            global_js_divergence,&
+            p_values,&
+            tmp_neighborhood_residuals_gathered,&
+            tmp_counts_point_major,&
+            tmp_pmf_point_major,&
+            tmp_permutation_mean_pmf_counts,&
+            tmp_permutation_counts,&
+            tmp_permutation_pmfs,&
+            tmp_permutation_js_divergences,&
+            tmp_permutation_weights,&
+            tmp_permutation_global_js_divergence,&
+            n_permutations,&
+            random_seed,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_points
+            !! Number of reference points for neighborhoods
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_neighbors
+            !! Number of neighbors per neighborhood
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_bins
+            !! Number of equally sized histogram bins
+            !! The minimum valid value is `1_int32`.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+            !! NaN is permitted for this value.
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means_perms
+            !! Per-study sorting permutation for `gene_means` (ascending, NaN last)
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `max_n_genes_all_studies`.
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+            !! NaN is permitted for this value.
+        real(real64), dimension(n_points), intent(in) :: x_star
+            !! Mean-expression reference points
+            !! NaN is permitted for this value.
+        integer(int32), dimension(n_neighbors, n_points, n_studies), intent(out) :: neighborhood_indices
+            !! Gene indices of the selected neighborhood, per reference point, per study
+        integer(int32), dimension(2, n_points, n_studies), intent(out) :: neighborhood_range
+            !! For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
+            !! produced by construct_neighborhoods_ranged_impl
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: pmfs
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`
+        integer(int32), dimension(n_bins, n_points, n_studies), intent(out) :: counts
+            !! Absolute counts of a residual per bin for `pmfs`
+        integer(int32), dimension(n_points, n_studies), intent(out) :: included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point, per study
+        real(real64), dimension(n_bins, n_points), intent(out) :: mean_pmf
+            !! The consensus pmf, from create_mean_pmf_impl
+        integer(int32), dimension(n_bins, n_points), intent(out) :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf
+        integer(int32), dimension(n_points), intent(out) :: mean_pmf_included_n_reps
+            !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: js_divergences
+            !! Per-reference-point JSD of each study against the consensus pmf
+        real(real64), dimension(n_points, n_studies), intent(out) :: weights
+            !! Per-reference-point weights for `global_js_divergence`
+        real(real64), dimension(n_studies), intent(out) :: global_js_divergence
+            !! Weighted global JSD of each study against the consensus pmf
+        real(real64), dimension(n_studies), intent(out) :: p_values
+            !! Empirical p-value per study from gjct_permutation_test_impl
+        real(real64), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out) :: tmp_neighborhood_residuals_gathered
+            !! Working array: one study's gathered neighborhood residual values, reused per study
+        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts_point_major
+            !! Working array: one study's point-major histogram counts from build_residual_histograms_impl
+        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
+            !! Working array: one study's point-major pmf, reused both for
+            !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_permutation_mean_pmf_counts
+            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
+        integer(int32), dimension(n_bins, n_points), intent(out) :: tmp_permutation_counts
+            !! Working array forwarded to gjct_permutation_test_impl's own per-study resampled counts
+        real(real64), dimension(n_bins, n_points, n_studies), intent(out) :: tmp_permutation_pmfs
+            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs
+        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_js_divergences
+            !! Working array forwarded to gjct_permutation_test_impl's own per-point JSD values
+        real(real64), dimension(n_points, n_studies), intent(out) :: tmp_permutation_weights
+            !! Working array forwarded to gjct_permutation_test_impl's own per-point weights
+        real(real64), dimension(n_studies), intent(out) :: tmp_permutation_global_js_divergence
+            !! Working array forwarded to gjct_permutation_test_impl's own resampled global JSD values
+        integer(int32), intent(in), optional :: n_permutations
+            !! Number of permutations, forwarded to gjct_permutation_test_impl
+            !! The minimum valid value is `0_int32`.
+            !! The default value is `1000_int32`.
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+            !! The default value is `42_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
+            !! the permutation test
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_int(n_points, ierr, arg_pos=4_int32, min=1_int32)
+        call validate_in_range_int(n_neighbors, ierr, arg_pos=5_int32, min=1_int32)
+        call validate_in_range_int(n_bins, ierr, arg_pos=6_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=7_int32, min=0.0_real64)
+        call validate_in_range_int(n_permutations, ierr, arg_pos=33_int32, min=0_int32)
+        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=8_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_int(gene_means_perms, max_n_genes_all_studies * n_studies, ierr, arg_pos=9_int32, min=1_int32, max=max_n_genes_all_studies)
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=10_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(x_star, n_points, ierr, arg_pos=11_int32, allow_nan=.true._c_bool)
+        if (is_err(ierr)) return
+#endif
+
+        call run_js_comp_test_impl(&
+            n_studies = n_studies,&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            n_points = n_points,&
+            n_neighbors = n_neighbors,&
+            n_bins = n_bins,&
+            shared_residual_range = shared_residual_range,&
+            gene_means = gene_means,&
+            gene_means_perms = gene_means_perms,&
+            residuals = residuals,&
+            x_star = x_star,&
+            neighborhood_indices = neighborhood_indices,&
+            neighborhood_range = neighborhood_range,&
+            pmfs = pmfs,&
+            counts = counts,&
+            included_n_reps = included_n_reps,&
+            mean_pmf = mean_pmf,&
+            mean_pmf_counts = mean_pmf_counts,&
+            mean_pmf_included_n_reps = mean_pmf_included_n_reps,&
+            js_divergences = js_divergences,&
+            weights = weights,&
+            global_js_divergence = global_js_divergence,&
+            p_values = p_values,&
+            tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
+            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
+            tmp_permutation_counts = tmp_permutation_counts,&
+            tmp_permutation_pmfs = tmp_permutation_pmfs,&
+            tmp_permutation_js_divergences = tmp_permutation_js_divergences,&
+            tmp_permutation_weights = tmp_permutation_weights,&
+            tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
+            n_permutations = n_permutations,&
+            random_seed = random_seed,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine run_js_comp_test_expert
+
+    !> summary: Validates its inputs, prepares what [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl]] needs, then calls it. The entry point to reach for first; see [[tox_data_integration_js_comp_test(module):run_js_comp_test_parameter_search_expert]] to prepare it yourself.
+    !| Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and
+    !| `_alloc`, merged into one implementation now that the new `_impl` rules leave no separate
+    !| hand-written allocation layer. Pools all studies' residuals and gene means, sorts them once
+    !| ([[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]), generates the candidate
+    !| grid
+    !| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]),
+    !| then walks it from finest to coarsest resolution: for each candidate, builds every study's
+    !| neighborhoods and checks the first admissibility gate
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]);
+    !| once every study passes, pools the consensus pmf and checks the second gate
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]);
+    !| once that passes too, seeds a confidence interval with the observed JSD, bootstraps it
+    !| ([[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]), and
+    !| tests it against the running best candidate for a plateau
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
+    !| The search stops (`exit`) the moment a plateau is found. Ported verbatim, including the
+    !| fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
+    !| (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
+    !| `-1.0`; if the grid collapsed to a single candidate (see
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]'s
+    !| own small-N collapse note), that one candidate is used regardless of whether it plateaued or
+    !| even passed either gate -- the plateau machinery is bypassed entirely, exactly as 125 does.
+    !|
+    !| Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
+    !| (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] ceiling, so every
+    !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+    !| candidate, rather than carrying a separate recommend-sized dimension argument for it.
+    !| `residuals`/`gene_means` are passed to
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]/[[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
+    !| as their own multi-dimensional selves -- both callees declare their matching dummy with an
+    !| explicit shape, so standard Fortran sequence association reinterprets the contiguous actual
+    !| argument as the flat 1-D array they expect, exactly as 125's own `_alloc` layer did for the
+    !| same calls.
+    !|
+    !| Impure: calls the impure
+    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
+    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
+    !| matching that routine's own tolerant precedent.
+    subroutine run_js_comp_test_parameter_search(&
+            n_studies,&
+            max_n_genes_all_studies,&
+            max_n_reps_all_studies,&
+            gene_means,&
+            residuals,&
+            shared_residual_range,&
+            n_bootstraps,&
+            join_method,&
+            n_points,&
+            n_neighbors,&
+            n_bins,&
+            best_candidate_pair_confidence_interval,&
+            min_count_per_mean_bin,&
+            min_neighbor_overlap,&
+            succeeding_ci_overlap,&
+            two_sided_bootstrapping_significance_level,&
+            random_seed,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+            !! NaN is permitted for this value.
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+            !! NaN is permitted for this value.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstraps to perform for a candidate pair
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: join_method
+            !! The way to evaluate all studies' confidence-interval overlaps for the plateau
+            !! condition, forwarded to check_plateau_condition_impl
+            !!
+            !! | Method                                  | Value                                                                           |
+            !! |-----------------------------------------|---------------------------------------------------------------------------------|
+            !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MIN(variable)]]    |
+            !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MAX(variable)]]    |
+            !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+        integer(int32), intent(out) :: n_points
+            !! The finally chosen candidate's `n_points`
+        integer(int32), intent(out) :: n_neighbors
+            !! The finally chosen candidate's `n_neighbors`
+        integer(int32), intent(out) :: n_bins
+            !! The finally chosen candidate's bin count
+        real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
+            !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
+            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
+            !! the search fell back to the finest-resolution candidate
+        integer(int32), intent(in), optional :: min_count_per_mean_bin
+            !! Minimum count each bin of the consensus pmf must reach to pass the second
+            !! admissibility gate
+            !! The minimum valid value is `0_int32`.
+            !! The default value is `5_int32`.
+        real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Minimum fractional overlap two consecutive neighborhoods must have to pass the first
+            !! admissibility gate
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.1_real64`.
+        real(real64), intent(in), optional :: succeeding_ci_overlap
+            !! Minimum fractional overlap a candidate's confidence interval must have with the
+            !! running best, per `join_method`, to plateau
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.9_real64`.
+        real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
+            !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
+            !! to bootstrap_histogram_impl itself
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `2.5_real64`.
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+            !! The default value is `42_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; folds any GSL allocation failure bootstrap_histogram_impl reports
+        integer(int32) :: max_n_points_candidate
+        integer(int32) :: max_n_neighbors_candidate
+        integer(int32) :: n_bootstrapping_top_k_jsds
+        integer(int32), dimension(:, :), allocatable :: tmp_gene_means_perms
+        integer(int32), dimension(:), allocatable :: tmp_gene_means_perm_all
+        integer(int32), dimension(:), allocatable :: tmp_residuals_perm
+        real(real64), dimension(:), allocatable :: tmp_x_star
+        integer(int32), dimension(:, :), allocatable :: tmp_neighborhood_indices
+        integer(int32), dimension(:, :), allocatable :: tmp_neighborhood_range
+        real(real64), dimension(:, :, :), allocatable :: tmp_neighborhood_residuals_gathered
+        integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
+        real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
+        real(real64), dimension(:, :, :), allocatable :: tmp_pmfs
+        integer(int32), dimension(:, :, :), allocatable :: tmp_counts
+        integer(int32), dimension(:, :), allocatable :: tmp_included_n_reps
+        real(real64), dimension(:, :), allocatable :: tmp_mean_pmf
+        integer(int32), dimension(:, :), allocatable :: tmp_mean_pmf_counts
+        integer(int32), dimension(:), allocatable :: tmp_mean_pmf_included_n_reps
+        real(real64), dimension(:, :), allocatable :: tmp_js_divergences
+        real(real64), dimension(:, :), allocatable :: tmp_weights
+        real(real64), dimension(:), allocatable :: tmp_global_js_divergence
+        real(real64), dimension(:, :), allocatable :: tmp_confidence_interval
+        real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=7_int32, min=1_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=13_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=14_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=15_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=16_int32, min=0.0_real64, max=100.0_real64)
+        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
+        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call calc_js_comp_test_candidate_bounds(&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            max_n_points_candidate = max_n_points_candidate,&
+            max_n_neighbors_candidate = max_n_neighbors_candidate&
+        )
+        call calc_js_comp_test_n_top_k_jsds(&
+            n_bootstraps = n_bootstraps,&
+            two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
+            n_top_k = n_bootstrapping_top_k_jsds&
+        )
+        M_ALLOCATE(tmp_gene_means_perms(max_n_genes_all_studies, n_studies))
+        M_ALLOCATE(tmp_gene_means_perm_all(max_n_genes_all_studies*n_studies))
+        M_ALLOCATE(tmp_residuals_perm(max_n_reps_all_studies*max_n_genes_all_studies*n_studies))
+        M_ALLOCATE(tmp_x_star(max_n_points_candidate))
+        M_ALLOCATE(tmp_neighborhood_indices(max_n_neighbors_candidate, max_n_points_candidate))
+        M_ALLOCATE(tmp_neighborhood_range(2, max_n_points_candidate))
+        M_ALLOCATE(tmp_neighborhood_residuals_gathered(max_n_reps_all_studies, max_n_neighbors_candidate, max_n_points_candidate))
+        M_ALLOCATE(tmp_counts_point_major(max_n_points_candidate, 256))
+        M_ALLOCATE(tmp_pmf_point_major(max_n_points_candidate, 256))
+        M_ALLOCATE(tmp_pmfs(256, max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_counts(256, max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_included_n_reps(max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_mean_pmf(256, max_n_points_candidate))
+        M_ALLOCATE(tmp_mean_pmf_counts(256, max_n_points_candidate))
+        M_ALLOCATE(tmp_mean_pmf_included_n_reps(max_n_points_candidate))
+        M_ALLOCATE(tmp_js_divergences(max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_weights(max_n_points_candidate, n_studies))
+        M_ALLOCATE(tmp_global_js_divergence(n_studies))
+        M_ALLOCATE(tmp_confidence_interval(2, n_studies))
+        M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
+
+        call run_js_comp_test_parameter_search_impl(&
+            n_studies = n_studies,&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            gene_means = gene_means,&
+            residuals = residuals,&
+            shared_residual_range = shared_residual_range,&
+            n_bootstraps = n_bootstraps,&
+            join_method = join_method,&
+            max_n_points_candidate = max_n_points_candidate,&
+            max_n_neighbors_candidate = max_n_neighbors_candidate,&
+            n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
+            n_points = n_points,&
+            n_neighbors = n_neighbors,&
+            n_bins = n_bins,&
+            best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            tmp_gene_means_perms = tmp_gene_means_perms,&
+            tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
+            tmp_residuals_perm = tmp_residuals_perm,&
+            tmp_x_star = tmp_x_star,&
+            tmp_neighborhood_indices = tmp_neighborhood_indices,&
+            tmp_neighborhood_range = tmp_neighborhood_range,&
+            tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
+            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_pmfs = tmp_pmfs,&
+            tmp_counts = tmp_counts,&
+            tmp_included_n_reps = tmp_included_n_reps,&
+            tmp_mean_pmf = tmp_mean_pmf,&
+            tmp_mean_pmf_counts = tmp_mean_pmf_counts,&
+            tmp_mean_pmf_included_n_reps = tmp_mean_pmf_included_n_reps,&
+            tmp_js_divergences = tmp_js_divergences,&
+            tmp_weights = tmp_weights,&
+            tmp_global_js_divergence = tmp_global_js_divergence,&
+            tmp_confidence_interval = tmp_confidence_interval,&
+            tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
+            min_count_per_mean_bin = min_count_per_mean_bin,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            succeeding_ci_overlap = succeeding_ci_overlap,&
+            two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
+            random_seed = random_seed,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine run_js_comp_test_parameter_search
+
+    !> summary: Validates its inputs, then calls [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl]] with what you supply. The expert entry point: it allocates nothing and prepares nothing; [[tox_data_integration_js_comp_test(module):run_js_comp_test_parameter_search]] does both.
+    !| Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and
+    !| `_alloc`, merged into one implementation now that the new `_impl` rules leave no separate
+    !| hand-written allocation layer. Pools all studies' residuals and gene means, sorts them once
+    !| ([[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]), generates the candidate
+    !| grid
+    !| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]),
+    !| then walks it from finest to coarsest resolution: for each candidate, builds every study's
+    !| neighborhoods and checks the first admissibility gate
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]);
+    !| once every study passes, pools the consensus pmf and checks the second gate
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]);
+    !| once that passes too, seeds a confidence interval with the observed JSD, bootstraps it
+    !| ([[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]), and
+    !| tests it against the running best candidate for a plateau
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
+    !| The search stops (`exit`) the moment a plateau is found. Ported verbatim, including the
+    !| fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
+    !| (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
+    !| `-1.0`; if the grid collapsed to a single candidate (see
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]'s
+    !| own small-N collapse note), that one candidate is used regardless of whether it plateaued or
+    !| even passed either gate -- the plateau machinery is bypassed entirely, exactly as 125 does.
+    !|
+    !| Per the plan's work-array translation for this routine specifically: `max_n_bins_all_candidates`
+    !| (data-dependent, not cheaply closed-form in 125) is replaced by the fixed
+    !| [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] ceiling, so every
+    !| bin-dimensioned work array below is sized to MAX_N_BINS and sliced `(1:n_bins, ...)` per
+    !| candidate, rather than carrying a separate recommend-sized dimension argument for it.
+    !| `residuals`/`gene_means` are passed to
+    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]/[[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
+    !| as their own multi-dimensional selves -- both callees declare their matching dummy with an
+    !| explicit shape, so standard Fortran sequence association reinterprets the contiguous actual
+    !| argument as the flat 1-D array they expect, exactly as 125's own `_alloc` layer did for the
+    !| same calls.
+    !|
+    !| Impure: calls the impure
+    !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
+    !| failure it reports is folded into `ierr` (first failure only) without aborting the search,
+    !| matching that routine's own tolerant precedent.
+    subroutine run_js_comp_test_parameter_search_expert(&
+            n_studies,&
+            max_n_genes_all_studies,&
+            max_n_reps_all_studies,&
+            gene_means,&
+            residuals,&
+            shared_residual_range,&
+            n_bootstraps,&
+            join_method,&
+            max_n_points_candidate,&
+            max_n_neighbors_candidate,&
+            n_bootstrapping_top_k_jsds,&
+            n_points,&
+            n_neighbors,&
+            n_bins,&
+            best_candidate_pair_confidence_interval,&
+            tmp_gene_means_perms,&
+            tmp_gene_means_perm_all,&
+            tmp_residuals_perm,&
+            tmp_x_star,&
+            tmp_neighborhood_indices,&
+            tmp_neighborhood_range,&
+            tmp_neighborhood_residuals_gathered,&
+            tmp_counts_point_major,&
+            tmp_pmf_point_major,&
+            tmp_pmfs,&
+            tmp_counts,&
+            tmp_included_n_reps,&
+            tmp_mean_pmf,&
+            tmp_mean_pmf_counts,&
+            tmp_mean_pmf_included_n_reps,&
+            tmp_js_divergences,&
+            tmp_weights,&
+            tmp_global_js_divergence,&
+            tmp_confidence_interval,&
+            tmp_bootstrapping_top_k_jsds,&
+            min_count_per_mean_bin,&
+            min_neighbor_overlap,&
+            succeeding_ci_overlap,&
+            two_sided_bootstrapping_significance_level,&
+            random_seed,&
+            ierr&
+        )
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_genes_all_studies
+            !! Maximum number of genes across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_reps_all_studies
+            !! Maximum number of replicates across all studies
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_points_candidate
+            !! Exact upper bound on the grid's first (largest) `n_points` candidate
+            !! It is *VERY IMPORTANT* to compute this argument from the `max_n_points_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: max_n_neighbors_candidate
+            !! Safe upper bound on the grid's largest `n_neighbors` candidate
+            !! It is *VERY IMPORTANT* to compute this argument from the `max_n_neighbors_candidate` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_candidate_bounds]].
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: n_bootstrapping_top_k_jsds
+            !! Number of elements kept at each end of the bootstrap distribution (top-k/bottom-k
+            !! heap size)
+            !! It is *VERY IMPORTANT* to compute this argument from the `n_top_k` output produced by [[tox_data_integration_js_comp_test_impl(module):calc_js_comp_test_n_top_k_jsds]].
+            !! The minimum valid value is `1_int32`.
+        real(real64), dimension(max_n_genes_all_studies, n_studies), intent(in) :: gene_means
+            !! Per-gene mean expression values for all studies
+            !! NaN is permitted for this value.
+        real(real64), dimension(max_n_reps_all_studies, max_n_genes_all_studies, n_studies), intent(in) :: residuals
+            !! Matrix of signed residuals per study
+            !! NaN is permitted for this value.
+        real(real64), intent(in) :: shared_residual_range
+            !! Computed residual range (R)
+            !! The minimum valid value is `0.0_real64`.
+        integer(int32), intent(in) :: n_bootstraps
+            !! Number of bootstraps to perform for a candidate pair
+            !! The minimum valid value is `1_int32`.
+        integer(int32), intent(in) :: join_method
+            !! The way to evaluate all studies' confidence-interval overlaps for the plateau
+            !! condition, forwarded to check_plateau_condition_impl
+            !!
+            !! | Method                                  | Value                                                                           |
+            !! |-----------------------------------------|---------------------------------------------------------------------------------|
+            !! | Minimum overlap (all studies must pass) | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MIN(variable)]]    |
+            !! | Maximum overlap (any one study passes)  | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MAX(variable)]]    |
+            !! | Median overlap (a majority must pass)   | [[tox_data_integration_js_comp_test_impl(module):METHOD_JOIN_MEDIAN(variable)]] |
+        integer(int32), intent(out) :: n_points
+            !! The finally chosen candidate's `n_points`
+        integer(int32), intent(out) :: n_neighbors
+            !! The finally chosen candidate's `n_neighbors`
+        integer(int32), intent(out) :: n_bins
+            !! The finally chosen candidate's bin count
+        real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
+            !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
+            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
+            !! the search fell back to the finest-resolution candidate
+        integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(out) :: tmp_gene_means_perms
+            !! Working array: each study's own sorting permutation for `gene_means`
+        integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
+            !! Working array: sorting permutation for the flattened, all-studies-pooled `gene_means`
+        integer(int32), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out) :: tmp_residuals_perm
+            !! Working array: sorting permutation for the flattened, all-studies-pooled `residuals`
+        real(real64), dimension(max_n_points_candidate), intent(out) :: tmp_x_star
+            !! Working array: reference points for the candidate whose `n_points` is current,
+            !! recomputed only when `n_points` changes between candidates
+        integer(int32), dimension(max_n_neighbors_candidate, max_n_points_candidate), intent(out) :: tmp_neighborhood_indices
+            !! Working array: one study's neighbor gene indices for the current candidate, reused
+            !! per study
+        integer(int32), dimension(2, max_n_points_candidate), intent(out) :: tmp_neighborhood_range
+            !! Working array: one study's `[min_idx, max_idx]` neighborhood spans for the current
+            !! candidate, reused per study
+        real(real64), dimension(max_n_reps_all_studies, max_n_neighbors_candidate, max_n_points_candidate), intent(out) :: tmp_neighborhood_residuals_gathered
+            !! Working array: one study's gathered neighborhood residual values for the current
+            !! candidate, reused per study
+        integer(int32), dimension(max_n_points_candidate, 256), intent(out) :: tmp_counts_point_major
+            !! Working array: one study's point-major histogram counts for the current candidate,
+            !! reused per study. The `256` is
+            !! [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]], written as a
+            !! literal because a dimension naming a module parameter the generated wrapper never
+            !! `use`s would not compile there -- the same reason MAX_CANDIDATE_PAIRS is written as
+            !! `16` on generate_js_comp_test_candidates_impl's own dummy arguments
+        real(real64), dimension(max_n_points_candidate, 256), intent(out) :: tmp_pmf_point_major
+            !! Working array: one study's point-major pmf for the current candidate, reused per
+            !! study. `256` = MAX_N_BINS, see tmp_counts_point_major above
+        real(real64), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_pmfs
+            !! Working array: every study's bin-major pmf for the current candidate. `256` =
+            !! MAX_N_BINS, see tmp_counts_point_major above
+        integer(int32), dimension(256, max_n_points_candidate, n_studies), intent(out) :: tmp_counts
+            !! Working array: every study's bin-major histogram counts for the current candidate.
+            !! `256` = MAX_N_BINS, see tmp_counts_point_major above
+        integer(int32), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_included_n_reps
+            !! Working array: every study's included-replicate counts for the current candidate
+        real(real64), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf
+            !! Working array: the current candidate's consensus pmf. `256` = MAX_N_BINS, see
+            !! tmp_counts_point_major above
+        integer(int32), dimension(256, max_n_points_candidate), intent(out) :: tmp_mean_pmf_counts
+            !! Working array: the current candidate's consensus histogram counts. `256` =
+            !! MAX_N_BINS, see tmp_counts_point_major above
+        integer(int32), dimension(max_n_points_candidate), intent(out) :: tmp_mean_pmf_included_n_reps
+            !! Working array: the current candidate's consensus included-replicate counts
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_js_divergences
+            !! Working array: the current candidate's per-reference-point JSD values, reused as
+            !! bootstrap_histogram_impl's own scratch once consumed
+        real(real64), dimension(max_n_points_candidate, n_studies), intent(out) :: tmp_weights
+            !! Working array: the current candidate's per-reference-point weights, reused as
+            !! bootstrap_histogram_impl's own scratch once consumed
+        real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
+            !! Working array: the current candidate's observed global JSD per study, reused as
+            !! bootstrap_histogram_impl's own scratch once consumed
+        real(real64), dimension(2, n_studies), intent(out) :: tmp_confidence_interval
+            !! Working array: the current candidate's confidence interval, seeded with the observed
+            !! global JSD and then bootstrapped in place
+        real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
+            !! Working array forwarded to bootstrap_histogram_impl's own top-k/bottom-k heaps
+        integer(int32), intent(in), optional :: min_count_per_mean_bin
+            !! Minimum count each bin of the consensus pmf must reach to pass the second
+            !! admissibility gate
+            !! The minimum valid value is `0_int32`.
+            !! The default value is `5_int32`.
+        real(real64), intent(in), optional :: min_neighbor_overlap
+            !! Minimum fractional overlap two consecutive neighborhoods must have to pass the first
+            !! admissibility gate
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.1_real64`.
+        real(real64), intent(in), optional :: succeeding_ci_overlap
+            !! Minimum fractional overlap a candidate's confidence interval must have with the
+            !! running best, per `join_method`, to plateau
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `1.0_real64`.
+            !! The default value is `0.9_real64`.
+        real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
+            !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
+            !! to bootstrap_histogram_impl itself
+            !! The minimum valid value is `0.0_real64`.
+            !! The maximum valid value is `100.0_real64`.
+            !! The default value is `2.5_real64`.
+        integer(int32), intent(in), optional :: random_seed
+            !! Seed for the GSL random number generator
+            !! The default value is `42_int32`.
+        integer(int32), intent(out) :: ierr
+            !! Error code; folds any GSL allocation failure bootstrap_histogram_impl reports
+
+        call set_ok(ierr)
+#ifndef NO_INPUT_VALIDATION
+        call validate_in_range_int(n_studies, ierr, arg_pos=1_int32, min=1_int32)
+        call validate_in_range_int(max_n_genes_all_studies, ierr, arg_pos=2_int32, min=1_int32)
+        call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
+        call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
+        call validate_in_range_int(n_bootstraps, ierr, arg_pos=7_int32, min=1_int32)
+        call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=9_int32, min=1_int32)
+        call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=10_int32, min=1_int32)
+        call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=11_int32, min=1_int32)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=36_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=37_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=38_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=39_int32, min=0.0_real64, max=100.0_real64)
+        call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
+        call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
+        if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
+        if (is_err(ierr)) return
+#endif
+
+        call run_js_comp_test_parameter_search_impl(&
+            n_studies = n_studies,&
+            max_n_genes_all_studies = max_n_genes_all_studies,&
+            max_n_reps_all_studies = max_n_reps_all_studies,&
+            gene_means = gene_means,&
+            residuals = residuals,&
+            shared_residual_range = shared_residual_range,&
+            n_bootstraps = n_bootstraps,&
+            join_method = join_method,&
+            max_n_points_candidate = max_n_points_candidate,&
+            max_n_neighbors_candidate = max_n_neighbors_candidate,&
+            n_bootstrapping_top_k_jsds = n_bootstrapping_top_k_jsds,&
+            n_points = n_points,&
+            n_neighbors = n_neighbors,&
+            n_bins = n_bins,&
+            best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            tmp_gene_means_perms = tmp_gene_means_perms,&
+            tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
+            tmp_residuals_perm = tmp_residuals_perm,&
+            tmp_x_star = tmp_x_star,&
+            tmp_neighborhood_indices = tmp_neighborhood_indices,&
+            tmp_neighborhood_range = tmp_neighborhood_range,&
+            tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
+            tmp_counts_point_major = tmp_counts_point_major,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_pmfs = tmp_pmfs,&
+            tmp_counts = tmp_counts,&
+            tmp_included_n_reps = tmp_included_n_reps,&
+            tmp_mean_pmf = tmp_mean_pmf,&
+            tmp_mean_pmf_counts = tmp_mean_pmf_counts,&
+            tmp_mean_pmf_included_n_reps = tmp_mean_pmf_included_n_reps,&
+            tmp_js_divergences = tmp_js_divergences,&
+            tmp_weights = tmp_weights,&
+            tmp_global_js_divergence = tmp_global_js_divergence,&
+            tmp_confidence_interval = tmp_confidence_interval,&
+            tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
+            min_count_per_mean_bin = min_count_per_mean_bin,&
+            min_neighbor_overlap = min_neighbor_overlap,&
+            succeeding_ci_overlap = succeeding_ci_overlap,&
+            two_sided_bootstrapping_significance_level = two_sided_bootstrapping_significance_level,&
+            random_seed = random_seed,&
+            ierr = ierr&
+        )
+        call clear_err_arg_pos(ierr)
+    end subroutine run_js_comp_test_parameter_search_expert
+
+end module tox_data_integration_js_comp_test

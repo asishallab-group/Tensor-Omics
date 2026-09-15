@@ -6,3 +6,4 @@
 #define AUTHOR_ASIS_HALLAB author: <a href="https://github.com/asishallab" target="_blank" >Asis Hallab</a>
 #define AUTHOR_ALEXANDER_SCHWARZPAUL author: <a href="https://gitlab.rlp.net/alexander.schwarzpaul" target="_blank" >Alexander Schwarzpaul</a>
 #define AUTHOR_LUKA_FAENSEN author: <a href="https://github.com/studfaensen" target="_blank" >Luka Faensen</a>
+#define AUTHOR_LASZLO_LANG author: <a href="https://github.com/laszlolang" target="_blank" >Laszlo Lang</a>

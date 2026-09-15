@@ -118,6 +118,41 @@ _CONSTRUCT_NEIGHBORHOODS_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S
 #: For a derived argument, the one the caller passed it in
 _CONSTRUCT_NEIGHBORHOODS_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "resid_S", None, None, None, "neighborhood_residuals", None,)
 
+_lib.construct_neighborhoods_ranged_c.restype = None
+_lib.construct_neighborhoods_ranged_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "n_neighbors", "neighborhood_indices", "neighborhood_range", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, "neighborhood_indices", None, None, None,)
+
+_lib.construct_neighborhoods_ranged_expert_c.restype = None
+_lib.construct_neighborhoods_ranged_expert_c.argtypes = (
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENTS = ("n_points", "x_star", "n_genes_S", "mean_S", "mean_S_perm", "n_neighbors", "neighborhood_indices", "neighborhood_range", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES = ("x_star", None, "mean_S", None, None, "neighborhood_indices", None, None, None,)
+
 def compute_gene_means(
         expr,
 ):
@@ -614,4 +649,236 @@ def construct_neighborhoods(
     return {
         "neighborhood_residuals": neighborhood_residuals,
         "neighborhood_indices": neighborhood_indices,
+    }
+
+def construct_neighborhoods_ranged(
+        x_star,
+        mean_S,
+        n_neighbors,
+):
+    r"""Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
+
+    Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+    two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+    :func:`tensor_omics.construct_neighborhoods`'s
+    distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+    reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+    genes tied with the span's edge value are never split from it), which a candidate
+    admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+    without needing the gathered residuals.
+
+    Parameters
+    ----------
+    x_star : np.ndarray[np.float64] of shape (n_points,)
+        Mean-expression reference points
+        NaN is permitted for this value.
+    mean_S : np.ndarray[np.float64] of shape (n_genes_S,)
+        Per-gene mean expression values
+        NaN is permitted for this value.
+    n_neighbors : int
+        Number of neighbors to select per reference point
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        neighborhood_indices : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F'), read-only
+            Indices of selected neighborhood genes per reference point.
+
+            All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+            `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+            ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+            limitation, ported as-is from 125-stabilize-jscomp).
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        neighborhood_range : np.ndarray[np.int32] of shape (2, n_points,), column-major (order='F'), read-only
+            For each reference point, the `[min_idx, max_idx]` of the included genes. The
+            index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+            would be the min value. In case of duplicate means, `min_idx` points to the first
+            appearance of the value and `max_idx` to the last, so even though their related
+            mean value is the min/max in the neighborhood, the actual gene might not be
+            included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods_ranged`, whose argument names are
+    the ones an error message reports.
+
+    This entry point seeds `mean_S_perm` and sorts it by `mean_S`.
+    Call `construct_neighborhoods_ranged_expert` to do that yourself.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        x_star = np.ascontiguousarray(x_star, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
+    if x_star.ndim != 1:
+        raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
+    try:
+        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
+    if mean_S.ndim != 1:
+        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_points = x_star.shape[0]
+    n_genes_S = mean_S.shape[0]
+
+    # outputs and work arrays, which the caller never sees
+    neighborhood_indices = np.empty((n_neighbors, n_points,), dtype=np.int32, order='F')
+    neighborhood_range = np.empty((2, n_points,), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.construct_neighborhoods_ranged_c(
+        ctypes.byref(ctypes.c_int(n_points)),
+        x_star,
+        ctypes.byref(ctypes.c_int(n_genes_S)),
+        mean_S,
+        ctypes.byref(ctypes.c_int(n_neighbors)),
+        neighborhood_indices,
+        neighborhood_range,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_RANGED_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    neighborhood_indices.flags.writeable = False
+    neighborhood_range.flags.writeable = False
+
+    return {
+        "neighborhood_indices": neighborhood_indices,
+        "neighborhood_range": neighborhood_range,
+    }
+
+def construct_neighborhoods_ranged_expert(
+        x_star,
+        mean_S,
+        mean_S_perm,
+        n_neighbors,
+):
+    r"""Construct neighborhood-based residual sets (kNN), with a `[min_idx, max_idx]` range per reference point
+
+    Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +
+    two-pointer kNN construction over a pre-sorted `mean_S`, distinct from
+    :func:`tensor_omics.construct_neighborhoods`'s
+    distance-sort algorithm above. In addition to the neighborhood gene indices, this also
+    reports each reference point's `[min_idx, max_idx]` neighborhood span (tie-extended, so
+    genes tied with the span's edge value are never split from it), which a candidate
+    admissibility gate elsewhere in the JSD-Comp-Test parameter search reasons about directly,
+    without needing the gathered residuals.
+
+    Parameters
+    ----------
+    x_star : np.ndarray[np.float64] of shape (n_points,)
+        Mean-expression reference points
+        NaN is permitted for this value.
+    mean_S : np.ndarray[np.float64] of shape (n_genes_S,)
+        Per-gene mean expression values
+        NaN is permitted for this value.
+    mean_S_perm : np.ndarray[np.int32] of shape (n_genes_S,)
+        Sorting permutation for `mean_S`
+    n_neighbors : int
+        Number of neighbors to select per reference point
+        The minimum valid value is `1`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        neighborhood_indices : np.ndarray[np.int32] of shape (n_neighbors, n_points,), column-major (order='F'), read-only
+            Indices of selected neighborhood genes per reference point.
+
+            All indices are in range `1<=idx<=max(n_neighbors, n_genes_S)`. So in case
+            `n_genes_S` is lower than `n_neighbors`, remaining indices are filled with the
+            ones from `n_genes_S+1...n_neighbors` (a documented, deliberately-preserved
+            limitation, ported as-is from 125-stabilize-jscomp).
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        neighborhood_range : np.ndarray[np.int32] of shape (2, n_points,), column-major (order='F'), read-only
+            For each reference point, the `[min_idx, max_idx]` of the included genes. The
+            index is related to the permutation vector, so e.g. `mean_S(mean_S_perm(min_idx))`
+            would be the min value. In case of duplicate means, `min_idx` points to the first
+            appearance of the value and `max_idx` to the last, so even though their related
+            mean value is the min/max in the neighborhood, the actual gene might not be
+            included. If all mean values are NaN, the range is `[1, min(n_genes_S, n_neighbors)]`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_preprocessing::construct_neighborhoods_ranged_expert`, whose argument names are
+    the ones an error message reports.
+
+    The expert entry point: you supply `mean_S_perm` yourself.
+    `construct_neighborhoods_ranged` seeds `mean_S_perm` and sorts it by `mean_S`.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        x_star = np.ascontiguousarray(x_star, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'x_star' must be an array of np.float64: {error}") from None
+    if x_star.ndim != 1:
+        raise ValueError(f"'x_star' must have 1 dimension, but has {x_star.ndim}")
+    try:
+        mean_S = np.ascontiguousarray(mean_S, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'mean_S' must be an array of np.float64: {error}") from None
+    if mean_S.ndim != 1:
+        raise ValueError(f"'mean_S' must have 1 dimension, but has {mean_S.ndim}")
+    try:
+        mean_S_perm = np.ascontiguousarray(mean_S_perm, dtype=np.int32)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'mean_S_perm' must be an array of np.int32: {error}") from None
+    if mean_S_perm.ndim != 1:
+        raise ValueError(f"'mean_S_perm' must have 1 dimension, but has {mean_S_perm.ndim}")
+
+    # what the inputs already say, rather than asking for it again
+    n_points = x_star.shape[0]
+    n_genes_S = mean_S.shape[0]
+
+    # Fortran cannot check that shared extents agree; this can
+    if mean_S_perm.shape[0] != n_genes_S:
+        raise ValueError(f"'mean_S_perm' has {mean_S_perm.shape[0]} along axis 0, but "
+            f"'mean_S' implies n_genes_S == {n_genes_S}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    neighborhood_indices = np.empty((n_neighbors, n_points,), dtype=np.int32, order='F')
+    neighborhood_range = np.empty((2, n_points,), dtype=np.int32, order='F')
+    ierr = ctypes.c_int(0)
+
+    _lib.construct_neighborhoods_ranged_expert_c(
+        ctypes.byref(ctypes.c_int(n_points)),
+        x_star,
+        ctypes.byref(ctypes.c_int(n_genes_S)),
+        mean_S,
+        mean_S_perm,
+        ctypes.byref(ctypes.c_int(n_neighbors)),
+        neighborhood_indices,
+        neighborhood_range,
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENTS, _CONSTRUCT_NEIGHBORHOODS_RANGED_EXPERT_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    neighborhood_indices.flags.writeable = False
+    neighborhood_range.flags.writeable = False
+
+    return {
+        "neighborhood_indices": neighborhood_indices,
+        "neighborhood_range": neighborhood_range,
     }
