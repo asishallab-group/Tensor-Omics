@@ -20,15 +20,13 @@ module tox_paralog_analysis_impl
     use tox_errors, only: set_ok, set_err, is_err, ERR_INVALID_INPUT, ERR_SIZE_MISMATCH, validate_dimension_size, validate_in_range_int
     use f42_math_impl, only: PI
     use f42_vector_impl, only: add_vector, subtract_vector, norm, angle_between
+    use f42_bit_masks_impl, only: bit_mask_set, bit_mask_clear, bit_mask_last
     M_IMPLICIT_NONE
 
     integer(int32), parameter :: MODE_DOSAGE_PATTERN = 0_int32
         !! Code for detecting dosage effect in [[tox_paralog_analysis_impl(module):detect_patterns_impl(subroutine)]]
     integer(int32), parameter :: MODE_SUBFUNC_PATTERN = 1_int32
         !! Code for detecting subfunctionalization in [[tox_paralog_analysis_impl(module):detect_patterns_impl(subroutine)]]
-
-#define CM_MASK_CHUNK_COUNT (n_genes + 31) / 32
-#define CM_MASK_CHUNK_COUNT_EQUIV ceil(n_genes / 32.0_real64)
 
 contains
 
@@ -83,8 +81,8 @@ contains
         integer(int32), intent(in) :: n_genes
             !! number of vectors in `genes`
         integer(int32), intent(in) :: n_mask_chunks
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes. Use subroutine `mask_chunk_count` for calculation
-            !! DM_MIN(CM_MASK_CHUNK_COUNT)
+            !! number of 32 bit chunks a mask needs to encode `n_genes` genes; `bit_mask_n_words` computes it
+            !! DM_MIN(M_BIT_MASK_N_WORDS(n_genes))
         real(real64), dimension(n_dims), intent(in) :: ancestor
             !! expression vector of ancestral ortholog
         real(real64), dimension(n_dims, n_genes), intent(in) :: genes
@@ -115,7 +113,7 @@ contains
         integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: work_arr_paralog_subsets
             !! working array to hold bitmask encoded subsets for detection.
             !! @note
-            !! Each bitmask is built of 32 bit chunks. `CM_MASK_CHUNK_COUNT` is equivalent to `CM_MASK_CHUNK_COUNT_EQUIV` and represents the number of chunks
+            !! Each column is a bit mask of the `n_genes` genes, laid out as [[f42_bit_masks_impl(module)]] describes.
             !! @endnote
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
             !! bit mask with the genes' indices kept by this pattern set to 1, else 0. Build it with the matching `filter_paralogs_by_pattern_*` routine
@@ -165,7 +163,7 @@ contains
 
         work_arr_paralog_subsets = 0_int32
         n_active_masks = 0_int32
-        last_filtered_paralog_idx = mask_get_first_successor_idx(filtered_paralogs_mask) - 1
+        last_filtered_paralog_idx = bit_mask_last(n_mask_chunks, filtered_paralogs_mask)
 
         if (last_filtered_paralog_idx > n_genes) then
             call set_err(ierr, ERR_INVALID_INPUT)
@@ -175,10 +173,9 @@ contains
         ! initialize first subsets of size 1 to be extended.
         ! The subset with last gene cannot be extended
         do i_gene = 1, last_filtered_paralog_idx - 1
-            if (mask_check_state(filtered_paralogs_mask, i_gene)) then
+            if (M_BIT_MASK_TEST(filtered_paralogs_mask, i_gene)) then
                 n_active_masks = n_active_masks + 1
-                call mask_set_state(work_arr_paralog_subsets(:, n_active_masks), i_gene, .true._c_bool, ierr)
-                if (is_err(ierr)) return
+                call bit_mask_set(n_mask_chunks, work_arr_paralog_subsets(:, n_active_masks), i_gene)
             end if
         end do
 
@@ -227,8 +224,9 @@ contains
             !!
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-        integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: work_arr_paralog_subsets
-            !! working array to hold bitmask encoded subsets for detection.
+        integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(inout) :: work_arr_paralog_subsets
+            !! working array to hold bitmask encoded subsets for detection; the results and active
+            !! subsets already in it are kept
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
             !! bit mask that will have indices of genes kept by pattern set to 1, else 0
         integer(int32), dimension(n_mask_chunks), intent(inout) :: candidate_mask
@@ -271,17 +269,16 @@ contains
                 !TODO optimize: this rebuilds the subset's sum vector from scratch by scanning all n_genes on every call to generate_subsets_helper (once per active mask taken from the work array), instead of carrying the running sum forward from the parent subset that already had it computed. For large gene counts/subset counts this recomputation dominates the runtime of the whole subset-extension search.
                 tmp_paralog_vector = 0
                 do i_gene = 1, n_genes
-                    if (mask_check_state(candidate_mask, i_gene)) then
+                    if (M_BIT_MASK_TEST(candidate_mask, i_gene)) then
                         call add_vector(tmp_paralog_vector, genes(:, i_gene))
                     end if
                 end do
 
                 ! generate extended subsets by adding succeeding genes of the last active gene if suitable.
-                do i_gene = mask_get_first_successor_idx(candidate_mask), n_genes
-                    if (mask_check_state(filtered_paralogs_mask, i_gene)) then
+                do i_gene = bit_mask_last(n_mask_chunks, candidate_mask) + 1_int32, n_genes
+                    if (M_BIT_MASK_TEST(filtered_paralogs_mask, i_gene)) then
                         ! extend subset by current gene
-                        call mask_set_state(candidate_mask, i_gene, .true._c_bool, ierr)
-                        if (is_err(ierr)) return
+                        call bit_mask_set(n_mask_chunks, candidate_mask, i_gene)
 
                         ! compute sum vector of all subset's genes
                         call add_vector(tmp_paralog_vector, genes(:, i_gene))
@@ -302,8 +299,7 @@ contains
 
                         ! revert extension with current gene to efficiently reuse the variables for next gene
                         call subtract_vector(tmp_paralog_vector, genes(:, i_gene))
-                        call mask_set_state(candidate_mask, i_gene, .false._c_bool, ierr)
-                        if (is_err(ierr)) return
+                        call bit_mask_clear(n_mask_chunks, candidate_mask, i_gene)
                     end if
                 end do
             end block
@@ -323,17 +319,16 @@ contains
                 !! also, prepare residual, so the extending gene just needs to be included in one operation and excluded after calculation
                 tmp_paralog_vector = ancestor
                 do i_gene = 1, n_genes
-                    if (mask_check_state(candidate_mask, i_gene)) then
+                    if (M_BIT_MASK_TEST(candidate_mask, i_gene)) then
                         call subtract_vector(tmp_paralog_vector, genes(:, i_gene))
                     end if
                 end do
 
                 ! generate extended subsets by adding succeeding genes of the last active gene if suitable.
-                do i_gene = mask_get_first_successor_idx(candidate_mask), n_genes
-                    if (mask_check_state(filtered_paralogs_mask, i_gene)) then
+                do i_gene = bit_mask_last(n_mask_chunks, candidate_mask) + 1_int32, n_genes
+                    if (M_BIT_MASK_TEST(filtered_paralogs_mask, i_gene)) then
                         ! extend subset by current gene
-                        call mask_set_state(candidate_mask, i_gene, .true._c_bool, ierr)
-                        if (is_err(ierr)) return
+                        call bit_mask_set(n_mask_chunks, candidate_mask, i_gene)
 
                         ! compute residual of current subset
                         call subtract_vector(tmp_paralog_vector, genes(:, i_gene))
@@ -352,8 +347,7 @@ contains
 
                         ! revert extension with current gene to efficiently reuse the variables for next gene
                         call add_vector(tmp_paralog_vector, genes(:, i_gene))
-                        call mask_set_state(candidate_mask, i_gene, .false._c_bool, ierr)
-                        if (is_err(ierr)) return
+                        call bit_mask_clear(n_mask_chunks, candidate_mask, i_gene)
                     end if
                 end do
             end block
@@ -515,8 +509,8 @@ contains
             !! number of active masks in `subsets`
         integer(int32), intent(inout) :: n_new_active_masks
             !! number of new active masks in `subsets`
-        integer(int32), dimension(n_mask_chunks, n_subsets), intent(out) :: subsets
-            !! working array to hold bitmask encoded subsets for detection.
+        integer(int32), dimension(n_mask_chunks, n_subsets), intent(inout) :: subsets
+            !! working array to hold bitmask encoded subsets for detection; the masks already in it are kept
         integer(int32), dimension(n_mask_chunks), intent(in) :: new_active_mask
             !! new active mask to add to `subsets`
         integer(int32), intent(out) :: ierr
@@ -541,19 +535,6 @@ contains
         subsets(:, n_results + n_active_masks + n_new_active_masks) = new_active_mask
     end subroutine add_new_active_mask_helper
 
-    !> M_EXPORT_C
-    !| summary: Determines the needed chunk count for subset bit masks (an integer has only 32 bits)
-    !| AUTHOR_FRANZ_ERIC_SILL
-    pure subroutine mask_chunk_count(n_genes, count)
-        integer(int32), intent(in) :: n_genes
-            !! number of genes
-        integer(int32), intent(out) :: count
-            !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-
-        !! Each bitmask is built of 32 bit chunks. `CM_MASK_CHUNK_COUNT` is equivalent to `CM_MASK_CHUNK_COUNT_EQUIV` and represents the number of chunks
-        count = CM_MASK_CHUNK_COUNT
-    end subroutine mask_chunk_count
-
     !> summary: Prefilters the genes for a pattern, so genes that cannot match it are not tried as subset extensions
     !| AUTHOR_FRANZ_ERIC_SILL
     !| This subroutine prefilters the genes for a specific pattern to reduce detection overhead, as less subsets need to be tried.
@@ -566,7 +547,7 @@ contains
             !! DM_MAX(n_genes)
         integer(int32), intent(in) :: n_mask_chunks
             !! number of 32 bit chunks a mask needs to encode `n_genes` genes
-            !! DM_MIN(CM_MASK_CHUNK_COUNT)
+            !! DM_MIN(M_BIT_MASK_N_WORDS(n_genes))
         integer(int32), intent(in) :: pattern_mode
             !! used pattern for detection
             !!
@@ -600,8 +581,7 @@ contains
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) <= threshold) then
                     family_idx = gene_to_fam(i_gene)
-                    call mask_set_state(masks(:, family_idx), i_gene, .true._c_bool, ierr)
-                    if (is_err(ierr)) return
+                    call bit_mask_set(n_mask_chunks, masks(:, family_idx), i_gene)
                 end if
             end do
         case (MODE_SUBFUNC_PATTERN)
@@ -609,8 +589,7 @@ contains
             do i_gene = 1, n_genes
                 if (gene_angles(i_gene) >= threshold) then
                     family_idx = gene_to_fam(i_gene)
-                    call mask_set_state(masks(:, family_idx), i_gene, .true._c_bool, ierr)
-                    if (is_err(ierr)) return
+                    call bit_mask_set(n_mask_chunks, masks(:, family_idx), i_gene)
                 end if
             end do
         case default
@@ -665,7 +644,7 @@ contains
 
         n_genes_filtered = 0
         do concurrent (i_gene = 1:n_genes) shared(filtered_paralogs_mask) reduce(+:n_genes_filtered)
-            if (mask_check_state(filtered_paralogs_mask, i_gene)) then
+            if (M_BIT_MASK_TEST(filtered_paralogs_mask, i_gene)) then
                 n_genes_filtered = n_genes_filtered + 1
             end if
         end do
@@ -715,75 +694,4 @@ contains
         ! as the subset of size 1 with last gene is not a valid subset, remove it (can not be extended, thus also not part of initialization)
         work_array_size = work_array_size - 1
     end subroutine calc_work_arr_paralog_subsets_size
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Helper function that returns the index after the last active gene in `bit_mask`, so the first succeeding gene.
-    pure function mask_get_first_successor_idx(bit_mask) result(idx)
-        integer(int32), dimension(:), intent(in) :: bit_mask
-            !! chunked mask to mark active genes
-        integer(int32) :: idx
-            !! index of last active gene
-
-        integer(int32) :: i_mask_chunk
-
-        idx = size(bit_mask)*32
-        do i_mask_chunk = size(bit_mask), 1, -1
-            idx = idx - leadz(bit_mask(i_mask_chunk))
-            if (mod(idx, 32) /= 0) exit
-        end do
-        idx = idx + 1
-    end function mask_get_first_successor_idx
-
-    !> AUTHOR_FRANZ_ERIC_SILL
-    !| Sets the state of a bit/gene in `bit_mask`
-    pure subroutine mask_set_state(bit_mask, i_gene, state, ierr)
-        integer(int32), dimension(:), intent(out) :: bit_mask
-            !! chunked mask to mark active paralogs
-        integer(int32), intent(in) :: i_gene
-            !! index of paralog to be marked active
-        logical(c_bool), intent(in) :: state
-            !! state the bit should be set to
-        integer(int32), intent(out) :: ierr
-            !! Error code
-
-        integer(int32) :: i_mask_chunk
-
-        call set_ok(ierr)
-
-        call validate_in_range_int(i_gene, ierr, min=1_int32, max=size(bit_mask, kind=int32)*32_int32)
-        if (is_err(ierr)) return
-
-        i_mask_chunk = (i_gene - 1)/32 + 1
-
-        if (state) then
-            bit_mask(i_mask_chunk) = ibset(bit_mask(i_mask_chunk), mod(i_gene - 1, 32))
-        else
-            bit_mask(i_mask_chunk) = ibclr(bit_mask(i_mask_chunk), mod(i_gene - 1, 32))
-        end if
-    end subroutine mask_set_state
-
-    !> M_EXPORT_C
-    !| summary: Checks the state of a bit/paralog in `bit_mask` -> .true. if 1 else .false.
-    !| AUTHOR_FRANZ_ERIC_SILL
-    pure function mask_check_state(bit_mask, i_gene) result(state)
-        integer(int32), dimension(:), intent(in) :: bit_mask
-            !! chunked mask to mark active paralogs
-        integer(int32), intent(in) :: i_gene
-            !! index of paralog to be marked active
-        logical :: state
-            !! check result
-
-        integer(int32) :: i_mask_chunk, ierr
-
-        call set_ok(ierr)
-        call validate_in_range_int(i_gene, ierr, min=1_int32, max=size(bit_mask, kind=int32)*32_int32)
-
-        if (is_err(ierr)) then
-            state = .false.
-        else
-            i_mask_chunk = (i_gene - 1)/32 + 1
-            state = btest(bit_mask(i_mask_chunk), mod(i_gene - 1, 32))
-        end if
-
-    end function mask_check_state
 end module tox_paralog_analysis_impl

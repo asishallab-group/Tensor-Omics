@@ -35,6 +35,7 @@ program main
     use mod_test_binary_search, only: get_all_tests_binary_search
     use mod_test_root_mean_sq_normalization, only: get_all_tests_root_mean_sq_normalization
     use mod_test_empirical_pvalue, only: get_all_tests_empirical_pvalue
+    use mod_test_f42_bit_masks, only: get_all_tests_f42_bit_masks
     implicit none
 
     integer :: nargs
@@ -75,6 +76,7 @@ program main
     call add_suite("binary_search", get_all_tests_binary_search)
     call add_suite("empirical_pvalue", get_all_tests_empirical_pvalue)
     call add_suite("root_mean_sq_normalization", get_all_tests_root_mean_sq_normalization)
+    call add_suite("f42_bit_masks", get_all_tests_f42_bit_masks)
 
     nargs = command_argument_count()
 

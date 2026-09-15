@@ -671,6 +671,8 @@ end do
 
 Use masks wherever a routine only needs to act on part of its input: they are cheaper than copying, and they keep the calling convention uniform (same array, same shape, one extra \texttt{logical} argument) whether or not filtering is requested.
 
+\paragraph{Bit masks.} A mask that an implementation builds and combines itself -- the members of an ensemble, the candidates of a search, one mask per seed or subset -- is held as a bit mask from \texttt{f42\_bit\_masks\_impl} instead: 32 flags per \texttt{integer(int32)} word, an eighth of the memory of \texttt{logical(c\_bool)}, and whole-mask operations such as \texttt{bit\_mask\_and} or the fused \texttt{bit\_mask\_and\_count} handle 32 flags at once. A mask the user passes in stays a \texttt{logical(c\_bool)} array, because that is what numpy and R build; convert at the edge with \texttt{bit\_mask\_from\_logical\_impl}. The words are plain arrays, not a derived type -- \texttt{misc/bench/bit\_masks/} records why -- so a column \texttt{bit\_masks(:, i\_mask)} of an \texttt{(n\_words, n\_masks)} array is a mask of its own and passes to any procedure without a copy. In hot loops, work on whole words or step from one set flag to the next with \texttt{bit\_mask\_next}; where a loop must test single flags, the \texttt{M\_BIT\_MASK\_TEST} macro does it inline, since a procedure call per flag costs more than the flag. A parallel loop writes a mask word by word, never flag by flag: two iterations setting flags in the same word race.
+
 \subsection{Work Arrays (\texttt{tmp\_})}
 
 Work arrays must be pre-allocated by the caller and passed as explicit arguments to core routines. They follow the \texttt{tmp\_} prefix convention.
