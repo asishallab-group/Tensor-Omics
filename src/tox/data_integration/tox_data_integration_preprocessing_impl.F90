@@ -122,8 +122,16 @@ contains
         else
             ! Compute reference points as empirical quantiles using the permutation
             do concurrent(i_point=1:n_points) local(quantile_level) shared(n_points, pooled_means, pooled_means_perm, n_pool, x_star)
-                ! Fraction in [0,1] as expected by calc_percentile_impl
-                quantile_level = real(i_point, real64)/real(n_points + 1, real64)
+                ! Fraction in [0,1] as expected by calc_percentile_impl. Routed through a
+                ! percentage round-trip (*100.0, then /100.0 inside calc_percentile_rank) rather
+                ! than written as the equivalent direct fraction: 125-stabilize-jscomp's own
+                ! percentile helper took a 0-100 percentage, so its quantile_level carried this
+                ! same intermediate rounding. Simplifying this to a bare fraction changes nothing
+                ! mathematically but rounds to a different double near many rank boundaries --
+                ! confirmed to flip which gene a neighborhood search selects on real, tied data,
+                ! cascading into a measurable global_js_divergence difference from 125. Keep the
+                ! round-trip so this stays bit-for-bit reproducible with 125.
+                quantile_level = (real(i_point, real64)/real(n_points + 1, real64)*100.0_real64)/100.0_real64
 
                 ! Use calc_percentile to compute the value
                 call calc_percentile_impl(pooled_means, size(pooled_means, kind=int32), pooled_means_perm, &

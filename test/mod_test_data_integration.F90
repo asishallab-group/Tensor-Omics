@@ -17,7 +17,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(19))
+        allocate (all_tests(20))
         all_tests(1) = test_case("test_determine_shared_residual_range", test_determine_shared_residual_range)
         all_tests(2) = test_case("test_build_residual_histograms", test_build_residual_histograms)
         all_tests(3) = test_case("test_compute_divergence_per_reference_point", test_compute_divergence_per_reference_point)
@@ -37,11 +37,12 @@ contains
         all_tests(14) = test_case("test_pool_means_alloc_with_nan", test_pool_means_alloc_with_nan)
         all_tests(15) = test_case("test_pool_means_alloc_single_study", test_pool_means_alloc_single_study)
         all_tests(16) = test_case("test_pool_means_alloc_invalid_input", test_pool_means_alloc_invalid_input)
+        all_tests(17) = test_case("test_pool_means_matches_125_quantile_rounding", test_pool_means_matches_125_quantile_rounding)
 
-        all_tests(17) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
-        all_tests(18) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
+        all_tests(18) = test_case("test_construct_neighborhoods_basic", test_construct_neighborhoods_basic)
+        all_tests(19) = test_case("test_construct_neighborhoods_nan_means", test_construct_neighborhoods_nan_means)
 
-        all_tests(19) = test_case("test_fjct", test_fjct)
+        all_tests(20) = test_case("test_fjct", test_fjct)
         ! all_tests(20) = test_case("test_fjct_compute_contribution_scores", test_fjct_compute_contribution_scores)
     end function get_all_tests_data_integration
 
@@ -972,6 +973,28 @@ contains
         call pool_study_means(5, mean_S2, n_genes_S2, mean_S2, 0, N_pool, x_star, ierr)
         call assert_not_equal_int(ierr, ERR_OK, "test_pool_means_alloc_invalid_input: zero points should fail")
     end subroutine test_pool_means_alloc_invalid_input
+
+    ! Test case 13: pool_means reproduces 125-stabilize-jscomp's exact quantile_level rounding.
+    ! n_points=647, pool_size=1000, i_point=216 is a confirmed case where the direct-fraction
+    ! formula (216/648 = 0.3333...) and 125's percentage round-trip (216/648*100.0/100.0) round to
+    ! different doubles, which floor() to different ranks (334 vs 333) -- a genuine index flip, not
+    ! epsilon noise. With a sequential pool [1.0, 2.0, ..., 1000.0], the interpolated x_star equals
+    ! the rank itself, so the two formulas' expected outputs are exactly 334.0 vs 333.99999999999994.
+    subroutine test_pool_means_matches_125_quantile_rounding()
+        integer, parameter :: pool_size = 1000, n_points = 647
+        real(real64) :: pooled_means(pool_size), x_star(n_points)
+        integer(int32) :: n_pool, ierr, i
+
+        pooled_means = [(real(i, real64), i = 1, pool_size)]
+
+        call pool_means(pooled_means, pool_size, n_points, n_pool, x_star, ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_pool_means_matches_125_quantile_rounding: should succeed")
+        call assert_equal_int(n_pool, pool_size, "test_pool_means_matches_125_quantile_rounding: n_pool should equal pool_size")
+        ! 333.99999999999994, not 334.0 -- the direct-fraction formula's (wrong) answer
+        call assert_equal_real(x_star(216), 333.99999999999994_real64, 1.0d-15, &
+                               "test_pool_means_matches_125_quantile_rounding: x_star(216) should match 125's rounding")
+    end subroutine test_pool_means_matches_125_quantile_rounding
 
     !> Test the construct_neighborhoods function with simple synthetic examples.
     subroutine test_construct_neighborhoods_basic()
