@@ -28,7 +28,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_clock_hand_angles_for_shift_vectors() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(7))
+        allocate (all_tests(8))
 
         all_tests(1) = test_case("test_clock_hand_angles_for_shift_vectors_axis_turns", &
                                  test_clock_hand_angles_for_shift_vectors_axis_turns)
@@ -44,6 +44,8 @@ contains
                                  test_clock_hand_angles_for_shift_vectors_mask_count)
         all_tests(7) = test_case("test_clock_hand_angles_for_shift_vectors_rejects_nan_inf", &
                                  test_clock_hand_angles_for_shift_vectors_rejects_nan_inf)
+        all_tests(8) = test_case("test_clock_hand_angles_for_shift_vectors_zero_vector", &
+                                 test_clock_hand_angles_for_shift_vectors_zero_vector)
     end function get_all_tests_clock_hand_angles_for_shift_vectors
 
     !> Three fields from e1, with the reference e2 (counter-clockwise positive): to e2 is +PI/2,
@@ -240,5 +242,36 @@ contains
             call assert_err(ierr, ERR_NAN_INF, "test_clock_hand_angles_for_shift_vectors_rejects_nan_inf: reference", 6_int32)
         end do
     end subroutine test_clock_hand_angles_for_shift_vectors_rejects_nan_inf
+
+
+    !> A selected field with a zero origin or target has no turn to angle and fails the call with
+    !| ERR_DIVISION_BY_ZERO; the same field unselected is not angled, so the call succeeds, and
+    !| the selected field 2, e1 -> e2 under the reference e2, is +PI/2.
+    subroutine test_clock_hand_angles_for_shift_vectors_zero_vector()
+        real(real64) :: fields(2, 2, 2), reference(2), signed_angles(2), one_angle(1)
+        logical(c_bool) :: fields_selection_mask(2)
+        integer(int32) :: ierr
+
+        fields(:, 1, 1) = 0.0_real64
+        fields(:, 2, 1) = [0.0_real64, 1.0_real64]
+        fields(:, 1, 2) = [1.0_real64, 0.0_real64]
+        fields(:, 2, 2) = [0.0_real64, 1.0_real64]
+        reference = [0.0_real64, 1.0_real64]
+
+        fields_selection_mask = .true.
+        call clock_hand_angles_for_shift_vectors(fields, 2, 2, fields_selection_mask, 2, reference, signed_angles, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_clock_hand_angles_for_shift_vectors_zero_vector: zero origin")
+
+        fields(:, 1, 1) = [1.0_real64, 0.0_real64]
+        fields(:, 2, 1) = 0.0_real64
+        call clock_hand_angles_for_shift_vectors(fields, 2, 2, fields_selection_mask, 2, reference, signed_angles, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_clock_hand_angles_for_shift_vectors_zero_vector: zero target")
+
+        fields_selection_mask = [.false., .true.]
+        call clock_hand_angles_for_shift_vectors(fields, 2, 2, fields_selection_mask, 1, reference, one_angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_clock_hand_angles_for_shift_vectors_zero_vector: zero field unselected")
+        call assert_equal_real(one_angle(1), PI/2, ANGLE_TOL, &
+                               "test_clock_hand_angles_for_shift_vectors_zero_vector: e1 -> e2 is +PI/2")
+    end subroutine test_clock_hand_angles_for_shift_vectors_zero_vector
 
 end module mod_test_clock_hand_angles_for_shift_vectors

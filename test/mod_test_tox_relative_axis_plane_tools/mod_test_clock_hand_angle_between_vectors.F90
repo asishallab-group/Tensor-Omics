@@ -33,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_clock_hand_angle_between_vectors() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(15))
+        allocate (all_tests(18))
 
         all_tests(1) = test_case("test_clock_hand_angle_between_vectors_axis_turns", &
                                  test_clock_hand_angle_between_vectors_axis_turns)
@@ -65,6 +65,12 @@ contains
                                   test_clock_hand_angle_between_vectors_small_turn_sign)
         all_tests(15) = test_case("test_clock_hand_angle_between_vectors_short_reference", &
                                   test_clock_hand_angle_between_vectors_short_reference)
+        all_tests(16) = test_case("test_clock_hand_angle_between_vectors_zero_vector", &
+                                  test_clock_hand_angle_between_vectors_zero_vector)
+        all_tests(17) = test_case("test_clock_hand_angle_between_vectors_unnormalized", &
+                                  test_clock_hand_angle_between_vectors_unnormalized)
+        all_tests(18) = test_case("test_clock_hand_angle_between_vectors_extreme_magnitudes", &
+                                  test_clock_hand_angle_between_vectors_extreme_magnitudes)
     end function get_all_tests_clock_hand_angle_between_vectors
 
     !> Quarter and half turns in the plane, from e1, with the reference e2 -- e1 turned a quarter
@@ -467,5 +473,73 @@ contains
         call assert_equal_real(signed_angle, PI/2, ANGLE_TOL, &
                                "test_clock_hand_angle_between_vectors_short_reference: oriented by (0, 1e-13)")
     end subroutine test_clock_hand_angle_between_vectors_short_reference
+
+
+    !> A zero vector has no direction to turn from or to: ERR_DIVISION_BY_ZERO, whether it is v1 or
+    !| v2 and whatever the reference. It used to come back as PI/2, with success.
+    subroutine test_clock_hand_angle_between_vectors_zero_vector()
+        real(real64) :: v1(2), v2(2), zero(2), reference(2), signed_angle
+        integer(int32) :: ierr
+
+        v1 = [1.0_real64, 0.0_real64]
+        v2 = [0.0_real64, 1.0_real64]
+        zero = 0.0_real64
+        reference = [0.0_real64, 1.0_real64]
+
+        call clock_hand_angle_between_vectors(zero, v2, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_clock_hand_angle_between_vectors_zero_vector: v1 = 0")
+        call clock_hand_angle_between_vectors(v1, zero, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_clock_hand_angle_between_vectors_zero_vector: v2 = 0")
+        call clock_hand_angle_between_vectors(zero, zero, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_DIVISION_BY_ZERO, "test_clock_hand_angle_between_vectors_zero_vector: both 0")
+    end subroutine test_clock_hand_angle_between_vectors_zero_vector
+
+    !> The angle between two vectors does not depend on their lengths, so they need not be
+    !| normalized: (2, 0) -> (1, 1) is PI/4 and (3, 0) -> (0, -5) is -PI/2, both oriented by e2.
+    !| The first used to come back as 0, from acos of the dot product 2.
+    subroutine test_clock_hand_angle_between_vectors_unnormalized()
+        real(real64) :: v1(2), v2(2), reference(2), signed_angle
+        integer(int32) :: ierr
+
+        reference = [0.0_real64, 1.0_real64]
+
+        v1 = [2.0_real64, 0.0_real64]
+        v2 = [1.0_real64, 1.0_real64]
+        call clock_hand_angle_between_vectors(v1, v2, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_clock_hand_angle_between_vectors_unnormalized: ierr for (2, 0) -> (1, 1)")
+        call assert_equal_real(signed_angle, PI/4, ANGLE_TOL, &
+                               "test_clock_hand_angle_between_vectors_unnormalized: (2, 0) -> (1, 1) is PI/4")
+
+        v1 = [3.0_real64, 0.0_real64]
+        v2 = [0.0_real64, -5.0_real64]
+        call clock_hand_angle_between_vectors(v1, v2, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_clock_hand_angle_between_vectors_unnormalized: ierr for (3, 0) -> (0, -5)")
+        call assert_equal_real(signed_angle, -PI/2, ANGLE_TOL, &
+                               "test_clock_hand_angle_between_vectors_unnormalized: (3, 0) -> (0, -5) is -PI/2")
+    end subroutine test_clock_hand_angle_between_vectors_unnormalized
+
+    !> Neither a huge nor a tiny length may change an angle: (huge, huge) -> (-huge, huge) is PI/2,
+    !| where the dot product used to overflow to Inf - Inf = NaN, and (2**-600, 0) ->
+    !| (2**-600, 2**-600) is PI/4, where the dot product 2**-1200 used to underflow to 0 and give PI/2.
+    subroutine test_clock_hand_angle_between_vectors_extreme_magnitudes()
+        real(real64) :: v1(2), v2(2), reference(2), signed_angle
+        integer(int32) :: ierr
+
+        reference = [0.0_real64, 1.0_real64]
+
+        v1 = [huge(1.0_real64), huge(1.0_real64)]
+        v2 = [-huge(1.0_real64), huge(1.0_real64)]
+        call clock_hand_angle_between_vectors(v1, v2, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_clock_hand_angle_between_vectors_extreme_magnitudes: ierr for huge")
+        call assert_equal_real(signed_angle, PI/2, ANGLE_TOL, &
+                               "test_clock_hand_angle_between_vectors_extreme_magnitudes: (huge, huge) -> (-huge, huge)")
+
+        v1 = [2.0_real64**(-600), 0.0_real64]
+        v2 = [2.0_real64**(-600), 2.0_real64**(-600)]
+        call clock_hand_angle_between_vectors(v1, v2, 2, reference, signed_angle, ierr)
+        call assert_err(ierr, ERR_OK, "test_clock_hand_angle_between_vectors_extreme_magnitudes: ierr for tiny")
+        call assert_equal_real(signed_angle, PI/4, ANGLE_TOL, &
+                               "test_clock_hand_angle_between_vectors_extreme_magnitudes: (2**-600, 0) -> (2**-600, 2**-600)")
+    end subroutine test_clock_hand_angle_between_vectors_extreme_magnitudes
 
 end module mod_test_clock_hand_angle_between_vectors

@@ -22,7 +22,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_compute_relative_axis_contributions() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(9))
+        allocate (all_tests(10))
 
         all_tests(1) = test_case("test_compute_relative_axis_contributions_values", &
                                  test_compute_relative_axis_contributions_values)
@@ -42,6 +42,8 @@ contains
                                  test_compute_relative_axis_contributions_dimensions)
         all_tests(9) = test_case("test_compute_relative_axis_contributions_rejects_nan_and_inf", &
                                  test_compute_relative_axis_contributions_rejects_nan_and_inf)
+        all_tests(10) = test_case("test_compute_relative_axis_contributions_extreme_magnitudes", &
+                                  test_compute_relative_axis_contributions_extreme_magnitudes)
     end function get_all_tests_compute_relative_axis_contributions
 
     !> A RAP-projected vector: [1, 3, -4] sums to 0, and its absolute values to 1 + 3 + 4 = 8, so
@@ -230,5 +232,31 @@ contains
                             "test_compute_relative_axis_contributions_rejects_nan_and_inf: must reject "//trim(bad_names(i_bad)), 1)
         end do
     end subroutine test_compute_relative_axis_contributions_rejects_nan_and_inf
+
+
+    !> The shares depend on the direction alone, so neither a tiny nor a huge vector may change them:
+    !| [2**-50, -3*2**-50], whose absolute values sum to 2**-48 (3.6e-15), gives 1/4 and 3/4, and
+    !| [huge, -huge], whose absolute values sum past huge, gives 1/2 and 1/2. The zero check used to
+    !| treat every sum below 1e-12 as zero, and the sum of the huge values overflowed to Inf.
+    subroutine test_compute_relative_axis_contributions_extreme_magnitudes()
+        integer(int32) :: ierr
+        real(real64), dimension(2) :: vec, contributions, expected
+
+        vec(1) = 2d0**(-50)
+        vec(2) = -3d0*2d0**(-50)
+        expected = [0.25d0, 0.75d0]
+        call compute_relative_axis_contributions(vec, 2, contributions, ierr)
+        call assert_err(ierr, ERR_OK, "test_compute_relative_axis_contributions_extreme_magnitudes: ierr for tiny")
+        call assert_equal_array_real(contributions, expected, 2, 0d0, &
+                                     "test_compute_relative_axis_contributions_extreme_magnitudes: shares of [2**-50, -3*2**-50]")
+
+        vec(1) = huge(1d0)
+        vec(2) = -huge(1d0)
+        expected = [0.5d0, 0.5d0]
+        call compute_relative_axis_contributions(vec, 2, contributions, ierr)
+        call assert_err(ierr, ERR_OK, "test_compute_relative_axis_contributions_extreme_magnitudes: ierr for huge")
+        call assert_equal_array_real(contributions, expected, 2, 0d0, &
+                                     "test_compute_relative_axis_contributions_extreme_magnitudes: shares of [huge, -huge]")
+    end subroutine test_compute_relative_axis_contributions_extreme_magnitudes
 
 end module mod_test_compute_relative_axis_contributions
