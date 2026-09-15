@@ -24,7 +24,7 @@ test/
 ├── mod_test_sorting.F90                 # A suite in a single file
 ├── mod_test_tox_normalization/          # A suite with one child module per procedure
 │   ├── mod_test_tox_normalization.F90   # The suite itself, gathering the children's cases
-│   ├── mod_test_tox_normalization_calc_fchange.F90
+│   ├── mod_test_calc_fchange.F90
 │   ├── ...
 │   └── mod_test_tox_normalization_fixtures.F90   # Data the children share
 └── test_files/                          # Input files for the tox_data suites
@@ -132,8 +132,11 @@ To add a case, write its subroutine, raise the `allocate` count and add its `tes
 A module with several published procedures gets a directory, `test/mod_test_<module>/`, holding:
 - the suite module `mod_test_<module>.F90`, which only concatenates its children's arrays (see
   `mod_test_tox_normalization.F90`);
-- one child per procedure, `mod_test_<module>_<procedure>.F90`, each with its own
-  `get_all_tests_<module>_<procedure>()`;
+- one child per procedure, `mod_test_<procedure>.F90`, each with its own
+  `get_all_tests_<procedure>()`. The procedure name alone is enough: published names are unique
+  across the library, because Python's namespace is flat, and the directory already names the
+  module. With the module in front, `tox_relative_axis_plane_tools`' children would exceed
+  Fortran's 63-character limit for names;
 - data the children share in a module of their own (e.g. `mod_test_tox_normalization_fixtures.F90`).
 
 `run_tests` registers only the suite module; it never sees the children. Test-case names must be

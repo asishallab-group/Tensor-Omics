@@ -1,6 +1,6 @@
 !> The `log2_transformation` cases: log2(x + 1) where it is exact, the edge of its domain at -1,
 !| the extremes of real64, and the input checks.
-module mod_test_tox_normalization_log2_transformation
+module mod_test_log2_transformation
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
@@ -16,7 +16,7 @@ module mod_test_tox_normalization_log2_transformation
 contains
 
     !> Get array of all available tests.
-    function get_all_tests_tox_normalization_log2_transformation() result(all_tests)
+    function get_all_tests_log2_transformation() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
         allocate (all_tests(8))
@@ -28,7 +28,7 @@ contains
         all_tests(6) = test_case("test_log2_dimensions", test_log2_dimensions)
         all_tests(7) = test_case("test_log2_tiny_values", test_log2_tiny_values)
         all_tests(8) = test_case("test_log1p", test_log1p)
-    end function get_all_tests_tox_normalization_log2_transformation
+    end function get_all_tests_log2_transformation
 
     !> f42_math's log1p, which log2_transformation is built on; it moves to the f42 suites with the
     !| f42 batch. log1p(0) = 0, and below half an ulp of 1 it is x itself; log1p(1) = log(2) and
@@ -156,4 +156,4 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_log2_dimensions: n_genes = -1")
     end subroutine test_log2_dimensions
 
-end module mod_test_tox_normalization_log2_transformation
+end module mod_test_log2_transformation

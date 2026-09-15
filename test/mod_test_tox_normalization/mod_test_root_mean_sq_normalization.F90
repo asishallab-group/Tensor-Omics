@@ -1,6 +1,6 @@
 !> The `root_mean_sq_normalization` cases: hand-derived RMS scalings, the properties the scaling
 !| has, the genes it leaves alone, magnitudes past the real64 range, and the input checks.
-module mod_test_tox_normalization_root_mean_sq_normalization
+module mod_test_root_mean_sq_normalization
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
@@ -15,7 +15,7 @@ module mod_test_tox_normalization_root_mean_sq_normalization
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_tox_normalization_root_mean_sq_normalization() result(all_tests)
+  function get_all_tests_root_mean_sq_normalization() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
     allocate(all_tests(8))
 
@@ -27,7 +27,7 @@ contains
     all_tests(6) = test_case("test_rms_extreme_magnitudes", test_rms_extreme_magnitudes)
     all_tests(7) = test_case("test_rms_rejects_nan_and_inf", test_rms_rejects_nan_and_inf)
     all_tests(8) = test_case("test_rms_dimensions", test_rms_dimensions)
-  end function get_all_tests_tox_normalization_root_mean_sq_normalization
+  end function get_all_tests_root_mean_sq_normalization
 
   !> Each gene is divided by sqrt(mean(x**2)) over its replicates: [1, 7] has RMS 5 and becomes
   !| [0.2, 1.4], [-3, 3] has RMS 3 and becomes [-1, 1], and a constant [5, 5] becomes [1, 1].
@@ -158,4 +158,4 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_rms_dimensions: n_genes = -1")
   end subroutine test_rms_dimensions
 
-end module mod_test_tox_normalization_root_mean_sq_normalization
+end module mod_test_root_mean_sq_normalization

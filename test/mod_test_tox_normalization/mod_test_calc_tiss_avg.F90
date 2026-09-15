@@ -1,6 +1,6 @@
 !> The `calc_tiss_avg` cases: hand-derived tissue averages for every way replicates can be grouped,
 !| the bounds on the replicate counts, and the input checks.
-module mod_test_tox_normalization_calc_tiss_avg
+module mod_test_calc_tiss_avg
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
@@ -13,7 +13,7 @@ module mod_test_tox_normalization_calc_tiss_avg
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_tox_normalization_calc_tiss_avg() result(all_tests)
+  function get_all_tests_calc_tiss_avg() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
     allocate(all_tests(10))
 
@@ -28,7 +28,7 @@ contains
     all_tests(8) = test_case("test_calc_tiss_avg_dimensions", test_calc_tiss_avg_dimensions)
     all_tests(9) = test_case("test_calc_tiss_avg_rejects_nan_and_inf", test_calc_tiss_avg_rejects_nan_and_inf)
     all_tests(10) = test_case("test_calc_tiss_avg_extreme_magnitudes", test_calc_tiss_avg_extreme_magnitudes)
-  end function get_all_tests_tox_normalization_calc_tiss_avg
+  end function get_all_tests_calc_tiss_avg
 
   !> An average is never larger than its largest value, so it must not overflow where the sum
   !| does: two replicates of huge average to huge, and [huge, huge/2] to 0.75*huge. Summing first
@@ -221,4 +221,4 @@ contains
     end do
   end subroutine test_calc_tiss_avg_rejects_nan_and_inf
 
-end module mod_test_tox_normalization_calc_tiss_avg
+end module mod_test_calc_tiss_avg

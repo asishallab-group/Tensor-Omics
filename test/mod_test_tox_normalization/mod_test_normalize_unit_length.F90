@@ -1,6 +1,6 @@
 !> The `normalize_unit_length` cases: hand-derived unit vectors, the only norm it rejects (exactly
 !| zero), magnitudes whose squares leave the real64 range, and the input checks.
-module mod_test_tox_normalization_normalize_unit_length
+module mod_test_normalize_unit_length
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
@@ -14,7 +14,7 @@ module mod_test_tox_normalization_normalize_unit_length
 contains
 
     !> Get array of all available tests.
-    function get_all_tests_tox_normalization_normalize_unit_length() result(all_tests)
+    function get_all_tests_normalize_unit_length() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
 
         allocate (all_tests(7))
@@ -25,7 +25,7 @@ contains
         all_tests(5) = test_case("test_normalize_unit_length_extreme_magnitudes", test_normalize_unit_length_extreme_magnitudes)
         all_tests(6) = test_case("test_normalize_unit_length_rejects_nan_and_inf", test_normalize_unit_length_rejects_nan_and_inf)
         all_tests(7) = test_case("test_normalize_unit_length_dimensions", test_normalize_unit_length_dimensions)
-    end function get_all_tests_tox_normalization_normalize_unit_length
+    end function get_all_tests_normalize_unit_length
 
     !> [3, 4, -12] has norm 13, so it becomes [3, 4, -12]/13; a single entry keeps only its sign.
     subroutine test_normalize_unit_length_values()
@@ -140,4 +140,4 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_normalize_unit_length_dimensions: n_dims = -1")
     end subroutine test_normalize_unit_length_dimensions
 
-end module mod_test_tox_normalization_normalize_unit_length
+end module mod_test_normalize_unit_length

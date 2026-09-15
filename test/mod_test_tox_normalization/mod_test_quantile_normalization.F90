@@ -1,6 +1,6 @@
 !> The `quantile_normalization` cases: hand-derived rank means and the exact matrix each replicate
 !| becomes, ties, the degenerate shapes, and the input checks.
-module mod_test_tox_normalization_quantile_normalization
+module mod_test_quantile_normalization
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
@@ -15,7 +15,7 @@ module mod_test_tox_normalization_quantile_normalization
 contains
 
     !> Get array of all available tests.
-    function get_all_tests_tox_normalization_quantile_normalization() result(all_tests)
+    function get_all_tests_quantile_normalization() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
         allocate (all_tests(9))
 
@@ -29,7 +29,7 @@ contains
         all_tests(7) = test_case("test_quantile_trivial_1x1", test_quantile_trivial_1x1)
         all_tests(8) = test_case("test_quantile_rejects_nan_and_inf", test_quantile_rejects_nan_and_inf)
         all_tests(9) = test_case("test_quantile_dimensions", test_quantile_dimensions)
-    end function get_all_tests_tox_normalization_quantile_normalization
+    end function get_all_tests_quantile_normalization
 
     !> The essence of quantile normalization: replicates that rank the genes differently. The
     !| sorted replicates [2, 4, 6] and [3, 6, 9] give rank means [2.5, 5, 7.5]. Replicate 1 ranks the
@@ -216,4 +216,4 @@ contains
         call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_quantile_dimensions: n_replicates = -5")
     end subroutine test_quantile_dimensions
 
-end module mod_test_tox_normalization_quantile_normalization
+end module mod_test_quantile_normalization

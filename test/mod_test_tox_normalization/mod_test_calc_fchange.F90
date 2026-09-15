@@ -1,6 +1,6 @@
 !> The `calc_fchange` cases: hand-derived fold changes for every way a pair can be formed, the
 !| index bounds, and the input checks.
-module mod_test_tox_normalization_calc_fchange
+module mod_test_calc_fchange
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan, ieee_positive_inf
@@ -13,7 +13,7 @@ module mod_test_tox_normalization_calc_fchange
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_tox_normalization_calc_fchange() result(all_tests)
+  function get_all_tests_calc_fchange() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
     allocate(all_tests(5))
 
@@ -22,7 +22,7 @@ contains
     all_tests(3) = test_case("test_calc_fchange_dimensions", test_calc_fchange_dimensions)
     all_tests(4) = test_case("test_calc_fchange_rejects_nan_and_inf", test_calc_fchange_rejects_nan_and_inf)
     all_tests(5) = test_case("test_calc_fchange_overflow", test_calc_fchange_overflow)
-  end function get_all_tests_tox_normalization_calc_fchange
+  end function get_all_tests_calc_fchange
 
   !> A fold change is a difference, and huge - (-huge) has no finite value: that is ERR_NAN_INF
   !| rather than an Inf in the result, as TOX writes no NaN or Inf. Right at the edge, huge - 0
@@ -143,4 +143,4 @@ contains
     end do
   end subroutine test_calc_fchange_rejects_nan_and_inf
 
-end module mod_test_tox_normalization_calc_fchange
+end module mod_test_calc_fchange

@@ -1,7 +1,7 @@
 !> The `normalize_by_std_dev` cases. Exact values need data LOESS reproduces exactly: genes on a
 !| linear mean-sd trend (mod_test_tox_normalization_fixtures), whose normalization has a closed
 !| form. Around that: an off-trend gene, genes without variance, the bounds, and the input checks.
-module mod_test_tox_normalization_normalize_by_std_dev
+module mod_test_normalize_by_std_dev
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
@@ -21,7 +21,7 @@ module mod_test_tox_normalization_normalize_by_std_dev
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_tox_normalization_normalize_by_std_dev() result(all_tests)
+  function get_all_tests_normalize_by_std_dev() result(all_tests)
     type(test_case), allocatable :: all_tests(:)
     allocate(all_tests(10))
 
@@ -35,7 +35,7 @@ contains
     all_tests(8) = test_case("test_std_dev_rejects_nan_and_inf", test_std_dev_rejects_nan_and_inf)
     all_tests(9) = test_case("test_std_dev_dimensions", test_std_dev_dimensions)
     all_tests(10) = test_case("test_std_dev_negative_fit_keeps_sign", test_std_dev_negative_fit_keeps_sign)
-  end function get_all_tests_tox_normalization_normalize_by_std_dev
+  end function get_all_tests_normalize_by_std_dev
 
   !> A LOESS fit can dip below zero on non-negative data, and dividing a gene by a negative fitted
   !| sd flips its sign. Fifteen genes whose sd stays near 0 and then climbs steeply, fitted with the
@@ -231,4 +231,4 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_std_dev_dimensions: n_genes = -1")
   end subroutine test_std_dev_dimensions
 
-end module mod_test_tox_normalization_normalize_by_std_dev
+end module mod_test_normalize_by_std_dev

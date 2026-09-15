@@ -1,7 +1,7 @@
 !> The `normalization_pipeline` cases: the pipeline must equal its steps run one by one, for one,
 !| two and three tissues (the pipeline reuses different columns of its output as scratch for each),
 !| with and without quantile normalization; then each early exit, and the input checks.
-module mod_test_tox_normalization_normalization_pipeline
+module mod_test_normalization_pipeline
   use asserts
   use, intrinsic :: iso_fortran_env, only: real64, int32
   use, intrinsic :: iso_c_binding, only: c_bool
@@ -16,7 +16,7 @@ module mod_test_tox_normalization_normalization_pipeline
 contains
 
   !> Get array of all available tests.
-  function get_all_tests_tox_normalization_normalization_pipeline() result(all_tests)
+  function get_all_tests_normalization_pipeline() result(all_tests)
     type(test_case),allocatable :: all_tests(:)
     allocate(all_tests(7))
     all_tests(1) = test_case("test_pipeline_matches_its_steps", test_pipeline_matches_its_steps)
@@ -27,7 +27,7 @@ contains
     all_tests(5) = test_case("test_pipeline_degree_bounds", test_pipeline_degree_bounds)
     all_tests(6) = test_case("test_pipeline_rejects_nan_and_inf", test_pipeline_rejects_nan_and_inf)
     all_tests(7) = test_case("test_pipeline_dimensions", test_pipeline_dimensions)
-  end function get_all_tests_tox_normalization_normalization_pipeline
+  end function get_all_tests_normalization_pipeline
 
   !> The pipeline is normalize_by_std_dev, optionally quantile_normalization, calc_tiss_avg and
   !| log2_transformation in a row, and must give what those give one by one. Six replicates as one,
@@ -182,4 +182,4 @@ contains
     call assert_equal_int(get_err_code(ierr), ERR_INVALID_INPUT, "test_pipeline_dimensions: n_genes = -1")
   end subroutine test_pipeline_dimensions
 
-end module mod_test_tox_normalization_normalization_pipeline
+end module mod_test_normalization_pipeline
