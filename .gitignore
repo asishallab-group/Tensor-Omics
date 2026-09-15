@@ -50,6 +50,7 @@
 # misc
 !misc
 !misc/**/*
+misc/STC-experiments/**/*
 
 # material
 !material
