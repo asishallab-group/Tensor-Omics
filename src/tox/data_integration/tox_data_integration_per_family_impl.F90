@@ -12,6 +12,8 @@ module tox_data_integration_per_family_impl
     use f42_math_impl, only: is_close
     use tox_data_integration_jsd_impl, only: jct_compute_jsd_pipeline_helper
     M_IMPLICIT_NONE
+    private
+    public :: fjct_compute_jsd_impl, fjct_compute_masked_jsd_impl, fjct_compute_contribution_scores_impl
 
 contains
 

@@ -300,7 +300,7 @@ contains
 
         integer(int32) :: i_point
         real(real64) :: overlap
-        logical :: all_pass
+        logical(c_bool) :: all_pass
 
         all_pass = .true.
         do concurrent(i_point=1:n_points - 1) local(overlap) shared(neighborhood_range, min_neighbor_overlap) &
@@ -337,7 +337,7 @@ contains
             !! `.true.` if every bin, at every reference point, reaches at least `min_count`
 
         integer(int32) :: i_point, i_bin
-        logical :: all_pass
+        logical(c_bool) :: all_pass
 
         all_pass = .true.
         do concurrent(i_point=1:n_points, i_bin=1:n_bins) shared(mean_pmf_counts, min_count) reduce(.and.:all_pass)
@@ -435,7 +435,7 @@ contains
 
         integer(int32) :: exceeds_min_ci_overlap, i_study
         real(real64) :: overlap
-        logical :: plateau
+        logical(c_bool) :: plateau
 
         exceeds_min_ci_overlap = 0_int32
         do concurrent(i_study=1:n_studies) local(overlap) shared(confidence_interval, &
