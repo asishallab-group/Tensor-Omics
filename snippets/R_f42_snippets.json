@@ -156,6 +156,15 @@
       ")"
     ]
   },
+  "sort_real_get_perm (call)": {
+    "prefix": "f42:sort_real_get_perm",
+    "description": "sort_real_get_perm",
+    "body": [
+      "${1:result} <- sort_real_get_perm(",
+      "  array = ${2:array}",
+      ")"
+    ]
+  },
   "loess_smooth_2d (call)": {
     "prefix": "f42:loess_smooth_2d",
     "description": "Smooths `y_ref` at `x_query` using reference points `x_ref`, `y_ref`, and kernel parameters.",

@@ -99,12 +99,204 @@
       ")"
     ]
   },
+  "tox_data_integration_js_comp_test (import)": {
+    "prefix": "tox:data_integration_js_comp_test.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test import (",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,generate_js_comp_test_candidates,generate_js_comp_test_candidates_expert,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
+      ")"
+    ]
+  },
+  "estimate_bin_count (call)": {
+    "prefix": "tox:estimate_bin_count",
+    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of",
+    "body": [
+      "${1:result} = estimate_bin_count(",
+      "    residuals=${2:residuals},",
+      "    max_n_reps_all_studies=${3:max_n_reps_all_studies},",
+      "    n_neighbors=${4:n_neighbors},",
+      "    shared_residual_range=${5:shared_residual_range},",
+      ")"
+    ]
+  },
+  "estimate_bin_count_expert (call)": {
+    "prefix": "tox:estimate_bin_count_expert",
+    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of",
+    "body": [
+      "${1:result} = estimate_bin_count_expert(",
+      "    residuals=${2:residuals},",
+      "    residuals_perm=${3:residuals_perm},",
+      "    max_n_reps_all_studies=${4:max_n_reps_all_studies},",
+      "    n_neighbors=${5:n_neighbors},",
+      "    shared_residual_range=${6:shared_residual_range},",
+      ")"
+    ]
+  },
+  "generate_js_comp_test_candidates (call)": {
+    "prefix": "tox:generate_js_comp_test_candidates",
+    "description": "Ported from the grid-building half of 125-stabilize-jscomp's",
+    "body": [
+      "${1:result} = generate_js_comp_test_candidates(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    residuals=${3:residuals},",
+      "    max_n_reps_all_studies=${4:max_n_reps_all_studies},",
+      "    shared_residual_range=${5:shared_residual_range},",
+      ")"
+    ]
+  },
+  "generate_js_comp_test_candidates_expert (call)": {
+    "prefix": "tox:generate_js_comp_test_candidates_expert",
+    "description": "Ported from the grid-building half of 125-stabilize-jscomp's",
+    "body": [
+      "${1:result} = generate_js_comp_test_candidates_expert(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      "    residuals=${3:residuals},",
+      "    residuals_perm=${4:residuals_perm},",
+      "    max_n_reps_all_studies=${5:max_n_reps_all_studies},",
+      "    shared_residual_range=${6:shared_residual_range},",
+      ")"
+    ]
+  },
+  "check_neighborhood_overlaps (call)": {
+    "prefix": "tox:check_neighborhood_overlaps",
+    "description": "Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first",
+    "body": [
+      "${1:result} = check_neighborhood_overlaps(",
+      "    neighborhood_range=${2:neighborhood_range},",
+      "    min_neighbor_overlap=${3:min_neighbor_overlap},",
+      ")"
+    ]
+  },
+  "check_mean_pmf_min_counts (call)": {
+    "prefix": "tox:check_mean_pmf_min_counts",
+    "description": "Ported from 125-stabilize-jscomp's `test_mean_pmf_min_counts_helper`: the second",
+    "body": [
+      "${1:result} = check_mean_pmf_min_counts(",
+      "    mean_pmf_counts=${2:mean_pmf_counts},",
+      "    min_count=${3:min_count},",
+      ")"
+    ]
+  },
+  "check_plateau_condition (call)": {
+    "prefix": "tox:check_plateau_condition",
+    "description": "Ported from 125-stabilize-jscomp's `check_plateau_condition_helper`. A search over",
+    "body": [
+      "${1:result} = check_plateau_condition(",
+      "    confidence_interval=${2:confidence_interval},",
+      "    best_candidate_pair_confidence_interval=${3:best_candidate_pair_confidence_interval},",
+      "    best_candidate_index=${4:best_candidate_index},",
+      "    best_exceeded_ci_overlap_count=${5:best_exceeded_ci_overlap_count},",
+      "    candidate_index=${6:candidate_index},",
+      "    join_method=${7|join_min,join_max,join_median|},",
+      "    succeeding_ci_overlap=${8:succeeding_ci_overlap},",
+      ")"
+    ]
+  },
+  "create_mean_pmf (call)": {
+    "prefix": "tox:create_mean_pmf",
+    "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.",
+    "body": [
+      "${1:result} = create_mean_pmf(",
+      "    pmfs=${2:pmfs},",
+      "    counts=${3:counts},",
+      "    included_n_reps=${4:included_n_reps},",
+      ")"
+    ]
+  },
+  "create_mean_pmf_only (call)": {
+    "prefix": "tox:create_mean_pmf_only",
+    "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_only_helper`: useful where the",
+    "body": [
+      "${1:result} = create_mean_pmf_only(",
+      "    pmfs=${2:pmfs},",
+      ")"
+    ]
+  },
+  "bootstrap_histogram (call)": {
+    "prefix": "tox:bootstrap_histogram",
+    "description": "Ported from 125-stabilize-jscomp's `bootstrap_histogram_helper`. Resamples from the",
+    "body": [
+      "bootstrap_histogram(",
+      "    n_bootstraps=${1:n_bootstraps},",
+      "    mean_pmf_counts=${2:mean_pmf_counts},",
+      "    mean_pmf_included_n_reps=${3:mean_pmf_included_n_reps},",
+      "    included_n_reps=${4:included_n_reps},",
+      "    confidence_interval=${5:confidence_interval},",
+      "    two_sided_bootstrapping_significance_level=${6:2.5},",
+      "    random_seed=${7:42},",
+      ")"
+    ]
+  },
+  "run_js_comp_test (call)": {
+    "prefix": "tox:run_js_comp_test",
+    "description": "Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its",
+    "body": [
+      "${1:result} = run_js_comp_test(",
+      "    n_neighbors=${2:n_neighbors},",
+      "    n_bins=${3:n_bins},",
+      "    shared_residual_range=${4:shared_residual_range},",
+      "    gene_means=${5:gene_means},",
+      "    gene_means_perms=${6:gene_means_perms},",
+      "    residuals=${7:residuals},",
+      "    x_star=${8:x_star},",
+      "    n_permutations=${9:1000},",
+      "    random_seed=${10:42},",
+      ")"
+    ]
+  },
+  "run_js_comp_test_parameter_search (call)": {
+    "prefix": "tox:run_js_comp_test_parameter_search",
+    "description": "Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and",
+    "body": [
+      "${1:result} = run_js_comp_test_parameter_search(",
+      "    gene_means=${2:gene_means},",
+      "    residuals=${3:residuals},",
+      "    shared_residual_range=${4:shared_residual_range},",
+      "    n_bootstraps=${5:n_bootstraps},",
+      "    join_method=${6|join_min,join_max,join_median|},",
+      "    min_count_per_mean_bin=${7:5},",
+      "    min_neighbor_overlap=${8:0.1},",
+      "    succeeding_ci_overlap=${9:0.9},",
+      "    two_sided_bootstrapping_significance_level=${10:2.5},",
+      "    random_seed=${11:42},",
+      ")"
+    ]
+  },
+  "tox_data_integration_js_comp_test_impl (import)": {
+    "prefix": "tox:data_integration_js_comp_test_impl.setup",
+    "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
+    "body": [
+      "from tensor_omics.tox_data_integration_js_comp_test_impl import (",
+      "    ${1|calc_js_comp_test_candidate_bounds,calc_js_comp_test_n_top_k_jsds|},",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_candidate_bounds (call)": {
+    "prefix": "tox:calc_js_comp_test_candidate_bounds",
+    "description": "Closed-form from the GAMMA-decay candidate-grid formula",
+    "body": [
+      "${1:result} = calc_js_comp_test_candidate_bounds(",
+      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
+      ")"
+    ]
+  },
+  "calc_js_comp_test_n_top_k_jsds (call)": {
+    "prefix": "tox:calc_js_comp_test_n_top_k_jsds",
+    "description": "Ported from 125-stabilize-jscomp's inline `n_bootstrapping_top_k_jsds` computation in",
+    "body": [
+      "${1:result} = calc_js_comp_test_n_top_k_jsds(",
+      "    n_bootstraps=${2:n_bootstraps},",
+      "    two_sided_bootstrapping_significance_level=${3:2.5},",
+      ")"
+    ]
+  },
   "tox_data_integration_jsd (import)": {
     "prefix": "tox:data_integration_jsd.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) JSD Calculation",
     "body": [
       "from tensor_omics.tox_data_integration_jsd import (",
-      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,build_residual_histograms,compute_divergence_per_reference_point,compute_weighted_global_divergence|},",
+      "    ${1|determine_shared_residual_range,determine_shared_residual_range_expert,determine_study_shared_residual_range,determine_all_studies_shared_residual_range,build_residual_histograms,calc_pmf,compute_divergence_per_reference_point,compute_weighted_global_divergence|},",
       ")"
     ]
   },
@@ -140,6 +332,16 @@
       ")"
     ]
   },
+  "determine_all_studies_shared_residual_range (call)": {
+    "prefix": "tox:determine_all_studies_shared_residual_range",
+    "description": "N-study generalization of `determine_study_shared_residual_range_impl`: pools the absolute",
+    "body": [
+      "${1:result} = determine_all_studies_shared_residual_range(",
+      "    neighborhood_residuals=${2:neighborhood_residuals},",
+      "    residual_range_quantile=${3:0.95},",
+      ")"
+    ]
+  },
   "build_residual_histograms (call)": {
     "prefix": "tox:build_residual_histograms",
     "description": "The probability mass function `pmf(residual, bin)` is actually a matrix.",
@@ -152,9 +354,19 @@
       ")"
     ]
   },
+  "calc_pmf (call)": {
+    "prefix": "tox:calc_pmf",
+    "description": "The counts-to-pmf half of `build_residual_histograms_impl`, factored out so a caller that",
+    "body": [
+      "${1:result} = calc_pmf(",
+      "    counts=${2:counts},",
+      "    included_n_reps=${3:included_n_reps},",
+      ")"
+    ]
+  },
   "compute_divergence_per_reference_point (call)": {
     "prefix": "tox:compute_divergence_per_reference_point",
-    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`.",
+    "description": "Takes the probabilities `pmf` produced by `build_residual_histograms`. The natural JSD",
     "body": [
       "${1:result} = compute_divergence_per_reference_point(",
       "    pmf_S1=${2:pmf_S1},",
@@ -228,7 +440,7 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
     "body": [
       "from tensor_omics.tox_data_integration_preprocessing import (",
-      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods|},",
+      "    ${1|compute_gene_means,compute_residuals,pool_means,pool_means_expert,pool_study_means,construct_neighborhoods,construct_neighborhoods_ranged,construct_neighborhoods_ranged_expert|},",
       ")"
     ]
   },
@@ -295,6 +507,29 @@
       ")"
     ]
   },
+  "construct_neighborhoods_ranged (call)": {
+    "prefix": "tox:construct_neighborhoods_ranged",
+    "description": "Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +",
+    "body": [
+      "${1:result} = construct_neighborhoods_ranged(",
+      "    x_star=${2:x_star},",
+      "    mean_S=${3:mean_S},",
+      "    n_neighbors=${4:n_neighbors},",
+      ")"
+    ]
+  },
+  "construct_neighborhoods_ranged_expert (call)": {
+    "prefix": "tox:construct_neighborhoods_ranged_expert",
+    "description": "Ported from 125-stabilize-jscomp's `construct_neighborhoods_helper`: a binary-search +",
+    "body": [
+      "${1:result} = construct_neighborhoods_ranged_expert(",
+      "    x_star=${2:x_star},",
+      "    mean_S=${3:mean_S},",
+      "    mean_S_perm=${4:mean_S_perm},",
+      "    n_neighbors=${5:n_neighbors},",
+      ")"
+    ]
+  },
   "tox_data_integration_preprocessing_impl (import)": {
     "prefix": "tox:data_integration_preprocessing_impl.setup",
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Preprocessing",
@@ -327,18 +562,16 @@
   },
   "gjct_permutation_test (call)": {
     "prefix": "tox:gjct_permutation_test",
-    "description": "Tests the null hypothesis that both studies are exchangeable. The residuals are shuffled in",
+    "description": "Ported from 125-stabilize-jscomp's `gjct_permutation_test_helper`, generalized from its",
     "body": [
       "${1:result} = gjct_permutation_test(",
-      "    neighborhood_residuals_S1=${2:neighborhood_residuals_S1},",
-      "    neighborhood_residuals_S2=${3:neighborhood_residuals_S2},",
-      "    global_jsd_observed=${4:global_jsd_observed},",
-      "    n_bins=${5:n_bins},",
-      "    shared_residual_range=${6:shared_residual_range},",
-      "    n_permutations=${7:n_permutations},",
-      "    random_seed=${8:None},",
-      "    neighbor_mask_S1=${9:None},",
-      "    neighbor_mask_S2=${10:None},",
+      "    n_permutations=${2:n_permutations},",
+      "    mean_pmf_counts=${3:mean_pmf_counts},",
+      "    mean_pmf=${4:mean_pmf},",
+      "    mean_pmf_included_n_reps=${5:mean_pmf_included_n_reps},",
+      "    included_n_reps=${6:included_n_reps},",
+      "    global_jsd_observed=${7:global_jsd_observed},",
+      "    random_seed=${8:42},",
       ")"
     ]
   },

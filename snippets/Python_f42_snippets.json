@@ -273,6 +273,24 @@
       ")"
     ]
   },
+  "f42_sort_impl (import)": {
+    "prefix": "f42:sort_impl.setup",
+    "description": "Import a function from Indirect sorting -- every routine reorders a permutation vector rather than the data -- plus the searches over a sorted array.",
+    "body": [
+      "from tensor_omics.f42_sort_impl import (",
+      "    ${1|sort_real_get_perm|},",
+      ")"
+    ]
+  },
+  "sort_real_get_perm (call)": {
+    "prefix": "f42:sort_real_get_perm",
+    "description": "sort_real_get_perm",
+    "body": [
+      "${1:result} = sort_real_get_perm(",
+      "    array=${2:array},",
+      ")"
+    ]
+  },
   "f42_stats (import)": {
     "prefix": "f42:stats.setup",
     "description": "Import a function from Descriptive statistics: percentiles, empirical distribution functions, and 2-D LOESS smoothing.",

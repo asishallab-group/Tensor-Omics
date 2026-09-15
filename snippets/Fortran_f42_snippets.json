@@ -506,6 +506,36 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "f42_sort_impl (use)": {
+    "prefix": "f42:sort_impl.use",
+    "description": "use f42_sort_impl, only: ...",
+    "body": [
+      "use f42_sort_impl, only: ${1|sort_real_get_perm|}"
+    ]
+  },
+  "sort_real_get_perm (call)": {
+    "prefix": "f42:sort_real_get_perm",
+    "description": "sort_real_get_perm",
+    "body": [
+      "call sort_real_get_perm( &",
+      "    array=${1:array}, &",
+      "    n=${2:n}, &",
+      "    perm=${3:perm}, &",
+      "    ierr=${4:ierr})"
+    ]
+  },
+  "sort_real_get_perm (call, checked)": {
+    "prefix": "f42:sort_real_get_perm.checked",
+    "description": "sort_real_get_perm (with error check)",
+    "body": [
+      "call sort_real_get_perm( &",
+      "    array=${1:array}, &",
+      "    n=${2:n}, &",
+      "    perm=${3:perm}, &",
+      "    ierr=${4:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "f42_stats (use)": {
     "prefix": "f42:stats.use",
     "description": "use f42_stats, only: ...",
