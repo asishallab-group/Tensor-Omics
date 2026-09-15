@@ -33,7 +33,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95)
+            !! DM_DEFAULT(0.95_real64)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
         real(real64), dimension(pool_size), intent(in) :: abs_residual_pool
@@ -96,7 +96,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95)
+            !! DM_DEFAULT(0.95_real64)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
 
@@ -157,7 +157,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
-            !! DM_DEFAULT(0.95)
+            !! DM_DEFAULT(0.95_real64)
         real(real64), intent(out) :: shared_residual_range
             !! Computed residual range (R)
 

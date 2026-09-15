@@ -55,7 +55,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         integer(int32), dimension(:), allocatable :: abs_residual_pool_perm
@@ -107,7 +107,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -163,7 +163,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:), allocatable :: tmp_abs_residual_pool
@@ -238,7 +238,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -300,7 +300,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
         real(real64), dimension(:), allocatable :: tmp_abs_residual_pool
@@ -371,7 +371,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(int32), intent(out) :: ierr
             !! Error code; zero on success, non-zero on failure.
 

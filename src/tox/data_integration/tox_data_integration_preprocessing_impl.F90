@@ -208,7 +208,7 @@ contains
             !! DM_ALLOW_NAN
         integer(int32), intent(in), optional :: desired_size
             !! Optional desired neighborhood size
-            !! DM_DEFAULT(1000)
+            !! DM_DEFAULT(1000_int32)
         integer(int32) :: n_neighbors
             !! Calculated neighborhood size
 

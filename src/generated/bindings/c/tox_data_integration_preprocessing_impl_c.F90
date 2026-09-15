@@ -46,7 +46,7 @@ contains
             !! NaN is permitted for this value.
         integer(c_int), intent(in), target :: desired_size
             !! Optional desired neighborhood size
-            !! The default value is `1000`.
+            !! The default value is `1000_int32`.
         integer(c_int), intent(out), target :: n_neighbors
             !! Calculated neighborhood size
         integer(c_int), intent(out), target :: ierr

@@ -51,7 +51,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -99,7 +99,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -157,7 +157,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -227,7 +227,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -293,7 +293,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
@@ -359,7 +359,7 @@ contains
             !! Quantile in [0,1] for determining the residual range
             !! The minimum valid value is `0.0_real64`.
             !! The maximum valid value is `1.0_real64`.
-            !! The default value is `0.95`.
+            !! The default value is `0.95_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; zero on success, non-zero on failure.
 
