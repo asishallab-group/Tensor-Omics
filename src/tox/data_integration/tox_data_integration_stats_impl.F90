@@ -19,6 +19,8 @@ module tox_data_integration_stats_impl
                                              compute_weighted_global_divergence_impl, calc_pmf_impl
     use tox_errors, only: set_ok, set_err_once, is_err, get_err_code
     M_IMPLICIT_NONE
+    private
+    public :: gjct_permutation_test_impl
 contains
 
     !> summary: Estimate how likely each study's observed weighted global JSD is to occur by chance

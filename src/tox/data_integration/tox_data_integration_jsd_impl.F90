@@ -15,6 +15,11 @@ module tox_data_integration_jsd_impl
     use f42_sort_impl, only: sort_array_heapsort
     use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
+    private
+    public :: determine_shared_residual_range_impl, determine_study_shared_residual_range_impl, &
+             determine_all_studies_shared_residual_range_impl, build_residual_histograms_impl, calc_pmf_impl, &
+             compute_divergence_per_reference_point_impl, compute_weighted_global_divergence_impl, &
+             jct_compute_jsd_pipeline_helper
 contains
 
     !> summary: Compute the shared residual range [-R, R] from a pooled set of absolute residuals

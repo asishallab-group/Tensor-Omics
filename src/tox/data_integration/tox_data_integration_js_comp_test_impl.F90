@@ -36,6 +36,13 @@ module tox_data_integration_js_comp_test_impl
     use tox_data_integration_preprocessing_impl, only: construct_neighborhoods_ranged_impl, pool_means_impl
     use tox_data_integration_stats_impl, only: gjct_permutation_test_impl
     M_IMPLICIT_NONE
+    private
+    public :: calc_js_comp_test_candidate_bounds, estimate_bin_count_impl, generate_js_comp_test_candidates_impl, &
+             check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, &
+             create_mean_pmf_impl, create_mean_pmf_only_impl, calc_js_comp_test_n_top_k_jsds, &
+             bootstrap_histogram_impl, run_js_comp_test_impl, run_js_comp_test_parameter_search_impl, &
+             METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, KX_FACTORS, MAX_POINTS, MIN_POINTS, GAMMA, &
+             MAX_POINT_CANDIDATES, MAX_CANDIDATE_PAIRS, MAX_N_BINS
 
     ! `join_method`'s mode table (see check_plateau_condition_impl below). The generator derives
     ! a mode argument's required parameter prefix from the argument's own name -- `join_method`

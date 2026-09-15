@@ -15,6 +15,9 @@ module tox_data_integration_preprocessing_impl
     use f42_sort_impl, only: sort_array_heapsort, binary_search_insertion
     use f42_stats_impl, only: calc_percentile_impl
     M_IMPLICIT_NONE
+    private
+    public :: compute_gene_means_impl, compute_residuals_impl, pool_means_impl, pool_study_means_impl, &
+             calc_neighborhood_size, construct_neighborhoods_impl, construct_neighborhoods_ranged_impl
 
 contains
 
