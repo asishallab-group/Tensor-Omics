@@ -127,12 +127,14 @@ contains
         ! mean of v's coordinates ("diagonal_component") from each coordinate of v.
         do concurrent (i_vec = 1:n_selected_vecs) local(diagonal_component) shared(n_selected_axes, selected_vecs)
 
-            ! calculate diagonal component to be subtracted from vectors for projection
+            ! calculate diagonal component to be subtracted from vectors for projection. Each
+            ! coordinate is divided before it is added: a mean is never larger than its largest
+            ! value, but the sum can overflow where the mean does not.
             diagonal_component = 0.0_real64
-            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec) reduce(+:diagonal_component)
-                diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)
+            do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, n_selected_axes) &
+                reduce(+:diagonal_component)
+                diagonal_component = diagonal_component + selected_vecs(i_axis, i_vec)/real(n_selected_axes, real64)
             end do
-            diagonal_component = diagonal_component / n_selected_axes
 
             ! transform vector to its projection
             do concurrent (i_axis = 1:n_selected_axes) shared(selected_vecs, i_vec, diagonal_component)
