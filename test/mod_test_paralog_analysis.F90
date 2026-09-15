@@ -4,11 +4,11 @@ module mod_test_paralog_analysis
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
     use tox_paralog_analysis
-    ! the bit-mask utilities and the work-array sizing routine stayed in the kernel module
-    use tox_paralog_analysis_impl, only: mask_chunk_count, mask_set_state, mask_check_state, &
-                                          mask_get_first_successor_idx, calc_work_arr_paralog_subsets_size, &
-                                          fill_array_with_minvals_for_each_idx, &
+    ! the work-array sizing routine and the helpers stayed in the kernel module; the bit-mask
+    ! utilities moved to f42_bit_masks_impl, whose own suite tests them
+    use tox_paralog_analysis_impl, only: calc_work_arr_paralog_subsets_size, fill_array_with_minvals_for_each_idx, &
                                           add_new_active_mask_helper, add_to_results_helper, take_active_mask_helper
+    use f42_bit_masks_impl, only: bit_mask_set, bit_mask_count
     use test_suite, only: test_case
     use tox_errors
     use f42_math_impl, only: PI
@@ -22,28 +22,24 @@ contains
     !> Get array of all available tests.
     function get_all_tests_paralog_analysis() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(20))
+        allocate (all_tests(16))
 
-        all_tests(1) = test_case("test_paralog_analysis_mask_set_state", test_mask_set_state)
-        all_tests(2) = test_case("test_paralog_analysis_mask_check_state", test_mask_check_state)
-        all_tests(3) = test_case("test_paralog_analysis_mask_get_first_successor_idx", test_mask_get_first_successor_idx)
-        all_tests(4) = test_case("test_paralog_analysis_calc_work_arr_paralog_subsets_size", test_calc_work_arr_paralog_subsets_size)
-        all_tests(5) = test_case("test_paralog_analysis_filter_paralogs_by_pattern", test_filter_paralogs_by_pattern)
-        all_tests(6) = test_case("test_paralog_analysis_mask_chunk_count", test_mask_chunk_count)
-        all_tests(7) = test_case("test_paralog_analysis_add_new_active_mask_helper", test_add_new_active_mask_helper)
-        all_tests(8) = test_case("test_paralog_analysis_add_to_results_helper", test_add_to_results_helper)
-        all_tests(9) = test_case("test_paralog_analysis_take_active_mask_helper", test_take_active_mask_helper)
-        all_tests(10) = test_case("test_paralog_analysis_fill_array_with_minvals_for_each_idx", test_fill_array_with_minvals_for_each_idx)
-        all_tests(11) = test_case("test_paralog_analysis_angle_between", test_angle_between)
-        all_tests(12) = test_case("test_paralog_analysis_detect_patterns_perfect_subfunc_split", test_detect_patterns_perfect_subfunc_split)
-        all_tests(13) = test_case("test_paralog_analysis_detect_patterns_subfunc_at_angle_margin", test_detect_patterns_subfunc_at_angle_margin)
-        all_tests(14) = test_case("test_paralog_analysis_detect_patterns_dosage_effect", test_detect_patterns_dosage_effect)
-        all_tests(15) = test_case("test_paralog_analysis_detect_patterns_dosage_effect_near_angle_margin", test_detect_patterns_dosage_effect_near_angle_margin)
-        all_tests(16) = test_case("test_paralog_analysis_detect_patterns_mixed_results", test_detect_patterns_mixed_results)
-        all_tests(17) = test_case("test_paralog_analysis_detect_patterns_subfunc_floating_point_epsilon", test_detect_patterns_subfunc_floating_point_epsilon)
-        all_tests(18) = test_case("test_paralog_analysis_detect_neofunctionalization", test_detect_neofunctionalization)
-        all_tests(19) = test_case("test_paralog_analysis_detect_patterns_input_validation", test_detect_patterns_input_validation)
-        all_tests(20) = test_case("test_paralog_analysis_detect_neofunctionalization_input_validation", test_detect_neofunctionalization_input_validation)
+        all_tests(1) = test_case("test_paralog_analysis_calc_work_arr_paralog_subsets_size", test_calc_work_arr_paralog_subsets_size)
+        all_tests(2) = test_case("test_paralog_analysis_filter_paralogs_by_pattern", test_filter_paralogs_by_pattern)
+        all_tests(3) = test_case("test_paralog_analysis_add_new_active_mask_helper", test_add_new_active_mask_helper)
+        all_tests(4) = test_case("test_paralog_analysis_add_to_results_helper", test_add_to_results_helper)
+        all_tests(5) = test_case("test_paralog_analysis_take_active_mask_helper", test_take_active_mask_helper)
+        all_tests(6) = test_case("test_paralog_analysis_fill_array_with_minvals_for_each_idx", test_fill_array_with_minvals_for_each_idx)
+        all_tests(7) = test_case("test_paralog_analysis_angle_between", test_angle_between)
+        all_tests(8) = test_case("test_paralog_analysis_detect_patterns_perfect_subfunc_split", test_detect_patterns_perfect_subfunc_split)
+        all_tests(9) = test_case("test_paralog_analysis_detect_patterns_subfunc_at_angle_margin", test_detect_patterns_subfunc_at_angle_margin)
+        all_tests(10) = test_case("test_paralog_analysis_detect_patterns_dosage_effect", test_detect_patterns_dosage_effect)
+        all_tests(11) = test_case("test_paralog_analysis_detect_patterns_dosage_effect_near_angle_margin", test_detect_patterns_dosage_effect_near_angle_margin)
+        all_tests(12) = test_case("test_paralog_analysis_detect_patterns_mixed_results", test_detect_patterns_mixed_results)
+        all_tests(13) = test_case("test_paralog_analysis_detect_patterns_subfunc_floating_point_epsilon", test_detect_patterns_subfunc_floating_point_epsilon)
+        all_tests(14) = test_case("test_paralog_analysis_detect_neofunctionalization", test_detect_neofunctionalization)
+        all_tests(15) = test_case("test_paralog_analysis_detect_patterns_input_validation", test_detect_patterns_input_validation)
+        all_tests(16) = test_case("test_paralog_analysis_detect_neofunctionalization_input_validation", test_detect_neofunctionalization_input_validation)
     end function get_all_tests_paralog_analysis
 
     !> Test the detect_neofunctionalization function with simple synthetic examples.
@@ -891,18 +887,6 @@ contains
         end do
     end subroutine test_add_new_active_mask_helper
 
-    !> Test the mask_chunk_count function with various input configurations.
-    subroutine test_mask_chunk_count
-        integer(int32) :: i, n_chunks, n_expected_chunks
-
-        do n_expected_chunks = 1, 10
-            do i = (n_expected_chunks - 1)*32 + 1, n_expected_chunks*32
-                call mask_chunk_count(i, n_chunks)
-                call assert_equal_int(n_chunks, n_expected_chunks, "mask_chunk_count: calculated chunk count differs from expected")
-            end do
-        end do
-    end subroutine test_mask_chunk_count
-
     !> Test the filter_paralogs_by_pattern function with various input configurations.
     subroutine test_filter_paralogs_by_pattern
         integer(int32), parameter :: n_genes = 16 + 1, n_families = 2, n_mask_chunks = 1
@@ -921,24 +905,15 @@ contains
         paralog_angles(n_genes) = 2*threshold
 
         call filter_paralogs_by_pattern_subfunctionalization(paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
-        n_in_filtered = 0
-        do i_paralog = 1, n_genes
-            if (mask_check_state(masks(:, 1), i_paralog)) then
-                n_in_filtered = n_in_filtered + 1
-            end if
-        end do
+        n_in_filtered = bit_mask_count(n_mask_chunks, masks(:, 1))
         call assert_equal_int(n_in_filtered, count(paralog_angles(:n_genes - 1) >= threshold), "test_filter_paralogs_by_pattern: wrong filtering for subfunctionalization")
-        call assert_true(mask_check_state(masks(:, 2), n_genes), "test_filter_paralogs_by_pattern: second family's gene should be active")
+        ! the second family holds only gene n_genes
+        call assert_equal_int(bit_mask_count(n_mask_chunks, masks(:, 2)), 1_int32, "test_filter_paralogs_by_pattern: second family's gene should be active")
 
         call filter_paralogs_by_pattern_dosage_effect(paralog_angles, threshold, n_genes, n_families, gene_to_fam, masks, n_mask_chunks, ierr)
-        n_in_filtered = 0
-        do i_paralog = 1, n_genes
-            if (mask_check_state(masks(:, 1), i_paralog)) then
-                n_in_filtered = n_in_filtered + 1
-            end if
-        end do
+        n_in_filtered = bit_mask_count(n_mask_chunks, masks(:, 1))
         call assert_equal_int(n_in_filtered, count(paralog_angles(:n_genes - 1) <= threshold), "test_filter_paralogs_by_pattern: wrong filtering for subfunctionalization")
-        call assert_false(mask_check_state(masks(:, 2), n_genes), "test_filter_paralogs_by_pattern: second family's gene should be inactive")
+        call assert_equal_int(bit_mask_count(n_mask_chunks, masks(:, 2)), 0_int32, "test_filter_paralogs_by_pattern: second family's gene should be inactive")
     end subroutine test_filter_paralogs_by_pattern
 
     !> Test the calc_work_arr_paralog_subsets_size function with various input configurations.
@@ -960,8 +935,7 @@ contains
         ! stress the detect_patterns: Exploit an edge case where the whole working array is in use at some point to ensure correct size calculation
         mask_all_active = 0
         do i_gene = 1, n_genes
-            call mask_set_state(mask_all_active, i_gene, .true._c_bool, ierr)
-            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in mask")
+            call bit_mask_set(size(mask_all_active, kind=int32), mask_all_active, i_gene)
 
             subfunc_sorted_paralog_norms_perm(i_gene) = n_genes - i_gene + 1
         end do
@@ -990,113 +964,13 @@ contains
             deallocate (work_arr_paralog_subsets)
         end do
 
+        mask_all_active_overflow = 0
         do i_gene = 1, n_paralogs_overflow
-            call mask_set_state(mask_all_active_overflow, i_gene, .true._c_bool, ierr)
-            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_calc_work_arr_paralog_subsets_size: unexpected error when enabling paralog in oerflow mask")
+            call bit_mask_set(size(mask_all_active_overflow, kind=int32), mask_all_active_overflow, i_gene)
         end do
         max_subset_size_overflown = 16
         call calc_work_arr_paralog_subsets_size(max_subset_size_overflown, n_paralogs_overflow, work_array_size, mask_all_active_overflow, size(mask_all_active_overflow), ierr)
         call assert_not_equal_int(max_subset_size_overflown, 16_int32, "test_calc_work_arr_paralog_subsets_size: for overflow the max subset size should be different to input")
     end subroutine test_calc_work_arr_paralog_subsets_size
-
-    !> Test the mask_set_state function with various paralog indices and states.
-    subroutine test_mask_set_state
-        integer(int32), parameter :: n_genes = 32 + 1 + 27
-        integer(int32), parameter :: mask_size = 2
-        integer(int32), dimension(mask_size) :: expected_mask
-        integer(int32), dimension(mask_size) :: actual_mask
-        integer(int32) :: ierr, paralog
-
-        call set_ok(ierr)
-
-        expected_mask = 0
-        actual_mask = 0
-
-        ! set first paralog
-        paralog = 1
-        expected_mask(1) = ibset(expected_mask(1), paralog - 1)
-        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set first paralog")
-        call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting first paralog")
-
-        ! set last paralog
-        paralog = n_genes
-        expected_mask(2) = ibset(expected_mask(2), paralog - 32 - 1)
-        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
-        call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting last paralog")
-
-        ! set 32nd paralog
-        paralog = 32
-        expected_mask(1) = ibset(expected_mask(1), paralog - 1)
-        call mask_set_state(actual_mask, paralog, .true._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
-        call assert_equal_array_int(actual_mask, expected_mask, mask_size, "test_tox_paralog_analysis_mask_set_state: mismatched mask setting 32nd paralog")
-
-        ! unset all
-        call mask_set_state(actual_mask, 1, .false._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not unset first paralog")
-        call mask_set_state(actual_mask, n_genes, .false._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set last paralog")
-        call mask_set_state(actual_mask, 32, .false._c_bool, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_set_state: could not set 32nd paralog")
-
-        call assert_true(all(actual_mask == 0), "test_tox_paralog_analysis_mask_set_state: not all unset")
-    end subroutine test_mask_set_state
-
-    !> Test the mask_check_state function with various paralog indices and mask configurations.
-    subroutine test_mask_check_state
-        integer(int32), parameter :: n_genes = 32 + 1 + 27
-        integer(int32), parameter :: mask_size = 2
-        integer(int32), dimension(mask_size) :: mask
-        integer(int32) :: paralog, i
-
-        mask = 0
-
-        do i = 1, 32
-            call assert_false(mask_check_state(mask, i), "test_tox_paralog_analysis_mask_check_state: state should be false")
-        end do
-
-        ! set first paralog
-        paralog = 1
-        mask(1) = ibset(mask(1), paralog - 1)
-        call assert_true(mask_check_state(mask, paralog), "test_tox_paralog_analysis_mask_check_state: first paralog wrong state")
-
-        ! set last paralog
-        paralog = n_genes
-        mask(2) = ibset(mask(2), paralog - 32 - 1)
-        call assert_true(mask_check_state(mask, paralog), "test_tox_paralog_analysis_mask_check_state: last paralog wrong state")
-
-        ! set 32nd paralog
-        paralog = 32
-        mask(1) = ibset(mask(1), paralog - 1)
-        call assert_true(mask_check_state(mask, paralog), "test_tox_paralog_analysis_mask_check_state: 32nd paralog wrong state")
-    end subroutine test_mask_check_state
-
-    !> Test the mask_get_first_successor_idx function with various configurations of the mask.
-    subroutine test_mask_get_first_successor_idx
-        integer(int32), parameter :: n_genes = 32 + 1 + 27
-        integer(int32), parameter :: mask_size = 2
-        integer(int32), dimension(mask_size) :: mask
-        integer(int32) :: paralog, ierr
-
-        call set_ok(ierr)
-
-        mask = 0
-
-        call assert_equal_int(mask_get_first_successor_idx(mask), 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
-
-        do paralog = 1, n_genes
-            call mask_set_state(mask, paralog, .true._c_bool, ierr)
-            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
-            call assert_equal_int(mask_get_first_successor_idx(mask), paralog + 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
-        end do
-
-        do paralog = 1, n_genes - 1
-            call mask_set_state(mask, paralog, .false._c_bool, ierr)
-            call assert_equal_int(get_err_code(ierr), ERR_OK, "test_tox_paralog_analysis_mask_get_first_successor_idx: Unexpected error when setting paralog active")
-            call assert_equal_int(mask_get_first_successor_idx(mask), n_genes + 1, "test_tox_paralog_analysis_mask_get_first_successor_idx: wrong number of zeros")
-        end do
-    end subroutine test_mask_get_first_successor_idx
 
 end module mod_test_paralog_analysis

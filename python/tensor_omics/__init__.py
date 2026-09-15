@@ -159,8 +159,6 @@ from .tox_paralog_analysis import (
     filter_paralogs_by_pattern_subfunctionalization,
 )
 from .tox_paralog_analysis_impl import (
-    mask_check_state,
-    mask_chunk_count,
     calc_work_arr_paralog_subsets_size,
 )
 from .tox_relative_axis_plane_tools import (
@@ -276,8 +274,6 @@ __all__ = [
     "loess_fit_robust",
     "loess_smooth_2d",
     "log2_transformation",
-    "mask_check_state",
-    "mask_chunk_count",
     "mean_vector",
     "normalization_pipeline",
     "normalize_all_trajectories",

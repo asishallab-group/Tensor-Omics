@@ -131,8 +131,6 @@ SEXP detect_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP detect_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_dosage_effect_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP filter_paralogs_by_pattern_subfunctionalization_call(SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP mask_check_state_call(SEXP, SEXP);
-SEXP mask_chunk_count_call(SEXP);
 SEXP calc_work_arr_paralog_subsets_size_call(SEXP, SEXP, SEXP);
 SEXP omics_vector_RAP_projection_call(SEXP, SEXP, SEXP);
 SEXP omics_field_RAP_projection_call(SEXP, SEXP, SEXP);
@@ -247,8 +245,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"detect_subfunctionalization_call", (DL_FUNC) &detect_subfunctionalization_call, 8},
     {"filter_paralogs_by_pattern_dosage_effect_call", (DL_FUNC) &filter_paralogs_by_pattern_dosage_effect_call, 5},
     {"filter_paralogs_by_pattern_subfunctionalization_call", (DL_FUNC) &filter_paralogs_by_pattern_subfunctionalization_call, 5},
-    {"mask_check_state_call", (DL_FUNC) &mask_check_state_call, 2},
-    {"mask_chunk_count_call", (DL_FUNC) &mask_chunk_count_call, 1},
     {"calc_work_arr_paralog_subsets_size_call", (DL_FUNC) &calc_work_arr_paralog_subsets_size_call, 3},
     {"omics_vector_RAP_projection_call", (DL_FUNC) &omics_vector_RAP_projection_call, 3},
     {"omics_field_RAP_projection_call", (DL_FUNC) &omics_field_RAP_projection_call, 3},
