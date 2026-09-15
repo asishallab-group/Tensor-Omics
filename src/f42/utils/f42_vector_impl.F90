@@ -51,19 +51,36 @@ contains
     end subroutine angle_between
 
     !> AUTHOR_FRANZ_ERIC_SILL
-    !| Calculates the euclidean norm of a vector
+    !| Calculates the euclidean norm of a vector.
+    !| Scaled by the largest magnitude, as BLAS `dnrm2` does, so that squaring an entry neither
+    !| overflows (past about 1e154) nor underflows to zero (below about 1e-162): a non-zero vector
+    !| of any finite magnitude gets a finite, non-zero norm.
     pure real(real64) function norm(vector)
         real(real64), dimension(:), intent(in) :: vector
-            !! Input vector the norm will be calcuated for
+            !! Input vector the norm will be calculated for
 
         integer(int32) :: i_dim
-        real(real64) :: norm_val
+        real(real64) :: largest, scaled_sum
 
-        norm_val = 0.0_real64
-        do concurrent(i_dim=1:size(vector)) shared(vector) reduce(+:norm_val)
-            norm_val = norm_val + vector(i_dim)**2
+        ! Explicit loops rather than maxval(abs(vector)) and vector/largest, which would build
+        ! array temporaries.
+        largest = 0.0_real64
+        do concurrent(i_dim=1:size(vector)) shared(vector) reduce(max:largest)
+            largest = max(largest, abs(vector(i_dim)))
         end do
-        norm = sqrt(norm_val)
+
+        ! The zero vector and an infinite entry need no scaling: their norm is `largest`. A NaN
+        ! falls through, and the sum below carries it into the result.
+        if (largest <= 0.0_real64 .or. largest > huge(largest)) then
+            norm = largest
+            return
+        end if
+
+        scaled_sum = 0.0_real64
+        do concurrent(i_dim=1:size(vector)) shared(vector, largest) reduce(+:scaled_sum)
+            scaled_sum = scaled_sum + (vector(i_dim)/largest)**2
+        end do
+        norm = largest*sqrt(scaled_sum)
     end function norm
 
     !> AUTHOR_FRANZ_ERIC_SILL

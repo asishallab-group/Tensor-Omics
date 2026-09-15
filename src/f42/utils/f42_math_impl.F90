@@ -162,6 +162,31 @@ contains
     end subroutine logx_helper
 
     !> AUTHOR_FRANZ_ERIC_SILL
+    !| `log(1 + x)`, accurate for tiny `x` as well. Forming `1 + x` first rounds away most digits of
+    !| a tiny `x` -- `1 + 1e-15` is `1.00000000000000111` -- so `log(1 + x)` is 11% off there.
+    !| Fortran has no `log1p` intrinsic. This takes the rounded `u = 1 + x` and corrects for the
+    !| rounding it suffered, `log(u)*x/(u - 1)` (Goldberg, "What Every Computer Scientist Should Know
+    !| About Floating-Point Arithmetic", Theorem 4), exact to a few ulps.
+    !|
+    !| The correction relies on `(1 + x) - 1` being evaluated as written, so it is spelled out in
+    !| parentheses, which the Fortran standard requires a compiler to respect. gfortran does by
+    !| default; ifx only with `-assume protect_parens`, which fpm.toml sets for every ifx build.
+    !| Held in a variable instead, ifx folds `u - 1` back to `x` even then.
+    !|
+    !| (no input validation) Ensure `x > -1`; yields a NaN/Inf result otherwise.
+    pure real(real64) function log1p(x)
+        real(real64), intent(in) :: x
+            !! Argument, must be `> -1`
+
+        if ((1.0_real64 + x) == 1.0_real64) then
+            ! `x` is below half an ulp of 1, where log(1 + x) = x to double precision
+            log1p = x
+        else
+            log1p = log(1.0_real64 + x)*(x/((1.0_real64 + x) - 1.0_real64))
+        end if
+    end function log1p
+
+    !> AUTHOR_FRANZ_ERIC_SILL
     !| Returns the next representable float lower than a value. Helpful for exclusive upper bounds in ranges. Doesn't return denormals, thus `below(0.0_real64)==-tiny(1.0_real64)` and `below(tiny(1.0_real64))==0.0_real64`
     pure real(real64) function below(val)
         real(real64), intent(in) :: val

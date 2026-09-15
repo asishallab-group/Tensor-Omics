@@ -7,8 +7,14 @@ module asserts
     use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
     use test_suite, only: record_assertion_failure
     use test_suite, only: COLOR_RED, COLOR_CREAM, COLOR_ERROR, COLOR_RESET, COLOR_GREEN, COLOR_YELLOW, COLOR_LIGHT_GRAY
-    use tox_errors, only: get_err_code, get_err_arg_pos, ERR_OK
     implicit none
+
+    ! How tox_errors packs an error code: ierr = arg_pos*ARG_POS_FACTOR + code. Stated here rather
+    ! than taken from tox_errors, as this framework is a package tensor_omics depends on, so it
+    ! cannot depend back on tensor_omics. The packing is published API -- the docs root page
+    ! explains it, and the Python and R bindings read it the same way -- and a change to it would
+    ! make assert_err fail loudly, not pass.
+    integer(int32), parameter :: ARG_POS_FACTOR = 10000_int32
     private
     public :: assert_err
     public :: assert_true, assert_false, assert_equal_int, assert_not_equal_int, assert_array_int_contains
@@ -203,17 +209,22 @@ contains
         character(*), intent(in) :: msg
         integer(int32), intent(in), optional :: arg_pos
 
-        if (get_err_code(ierr) /= expected_code) then
+        integer(int32) :: code, position
+
+        code = mod(ierr, ARG_POS_FACTOR)
+        position = ierr/ARG_POS_FACTOR
+
+        if (code /= expected_code) then
             call assertion_error(trim(msg), additional_msg="wrong error code", &
-                                 got=""//get_err_code(ierr)//" at argument "//get_err_arg_pos(ierr), &
+                                 got=""//code//" at argument "//position, &
                                  expected=""//expected_code)
             return
         end if
 
         if (present(arg_pos)) then
-            if (get_err_arg_pos(ierr) /= arg_pos) then
+            if (position /= arg_pos) then
                 call assertion_error(trim(msg), additional_msg="right error code, wrong argument", &
-                                     got=""//get_err_arg_pos(ierr), expected=""//arg_pos)
+                                     got=""//position, expected=""//arg_pos)
             end if
         end if
     end subroutine

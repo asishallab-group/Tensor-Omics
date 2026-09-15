@@ -14,11 +14,12 @@ module tox_normalization_impl
     use f42_safeguard
     use, intrinsic :: iso_fortran_env, only: real64, int32
     use, intrinsic :: iso_c_binding, only: c_bool
+    use, intrinsic :: ieee_arithmetic, only: ieee_is_finite
     use tox_errors, only: set_ok, set_err, ERR_DIVISION_BY_ZERO, ERR_INVALID_INPUT, is_err, &
-                          validate_in_range_real, validate_all_in_range_real, ERR_SIZE_MISMATCH
-    use f42_math_impl, only: is_close, logx_helper, above, mean, std_dev
+                          validate_in_range_real, validate_all_in_range_real, ERR_NAN_INF
+    use f42_math_impl, only: is_close, log1p, LOG_2, above, mean, std_dev
     use f42_vector_impl, only: norm
-    use tox_loess_impl, only: loess_fit_robust_impl
+    use tox_loess_impl, only: loess_fit_robust_impl, EPS_LOESS
 
 #define CM_LOESS_SPAN_DEFAULT 0.7_real64
 #define CM_LOESS_DEGREE_DEFAULT 2_int32
@@ -33,24 +34,26 @@ contains
             !! number of elements in `vector`
         real(real64), dimension(n_dims), intent(inout) :: vector
             !! Vector that will be normalized to unit length
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), intent(out) :: ierr
             !! Error code
 
         integer(int32) :: i_dim
         real(real64) :: vector_norm
 
-        ! The norm is a derived quantity, so its zero / non-finite guards are runtime checks here.
+        call set_ok(ierr)
+
+        ! The norm is a derived quantity, so its non-finite / zero guards are runtime checks here.
         vector_norm = norm(vector)
-        if (is_close(vector_norm, 0.0_real64)) then
+        call validate_in_range_real(vector_norm, ierr)
+        if (is_err(ierr)) return
+
+        ! Only an exactly zero norm is rejected: the zero vector alone has no direction, and any
+        ! other norm, however tiny, still divides the vector into a unit one. A finite norm is
+        ! never negative, so `<=` is that exact test without comparing reals for equality.
+        if (vector_norm <= 0.0_real64) then
             call set_err(ierr, ERR_DIVISION_BY_ZERO)
             return
         end if
-
-        ! check for nan, inf
-        call validate_in_range_real(vector_norm, ierr)
-        if (is_err(ierr)) return
 
         do concurrent (i_dim = 1:n_dims) shared(vector, vector_norm)
             vector(i_dim) = vector(i_dim)/vector_norm
@@ -70,14 +73,15 @@ contains
 
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        ! DM_MIN and DM_MAX of one expression say "equal to" until the generator has DM_EQUALS (#203)
         integer(int32), intent(in) :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! DM_MIN(sum(reps_per_tissue))
+            !! DM_MAX(sum(reps_per_tissue))
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
@@ -138,9 +142,13 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! DM_DEFAULT(CM_LOESS_SPAN_DEFAULT)
+            !! DM_MIN(EPS_LOESS)
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(2_int32)
         logical(c_bool), intent(in), optional :: use_quantile
             !! Use quantile normalization.
             !! DM_DEFAULT(.false.)
@@ -156,18 +164,12 @@ contains
         ! Error handling
         call set_ok(ierr)
 
-        ! sum(reps_per_tissue) must equal n_replicates -- a relation between arguments.
-        if (sum(reps_per_tissue) /= n_replicates) then
-            call set_err(ierr, ERR_SIZE_MISMATCH)
-            return
-        end if
-
         M_DEFAULT_VAL(use_quantile, actual_use_quantile, .false.)
 
         ! Reuse spare columns of the (n_genes, n_tissues) output buffer as scratch space for the
         ! per-gene LOESS x/y/yhat vectors (each length n_genes) below, instead of reading the
         ! passed-in work vectors, since those columns are still unwritten at this point and get
-        ! fully overwritten by calc_tiss_avg_helper further down before they are read as output.
+        ! fully overwritten by calc_tiss_avg_impl further down before they are read as output.
         ! Only the columns that exist (n_tissues >= 2 for column 2, >= 3 for column 3) can be
         ! reused this way; the remaining vectors come from the caller. Column 1 always exists, so
         ! the x vector is never a dummy at all.
@@ -203,7 +205,7 @@ contains
                                     tmp_loess_x_ptr, tmp_loess_y_ptr, tmp_indices_used)
         end if
 
-        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
+        call calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, tmp_expr_copy, log_transformed_expr)
 
         ! Step 4: Log2(x+1) transformation
         call log2_transformation_inplace_helper(n_genes, n_tissues, log_transformed_expr, ierr)
@@ -214,6 +216,9 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_impl(n_genes, n_replicates, expr, normalized_expr, &
                                     tmp_loess_x, tmp_loess_y, tmp_indices_used, tmp_yhat_global, &
                                     tmp_int_workspace, int_workspace_size, tmp_real_workspace, real_workspace_size, &
@@ -226,8 +231,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
 
@@ -283,9 +286,13 @@ contains
         real(real64), intent(in), optional :: span
             !! LOESS span parameter.
             !! DM_DEFAULT(CM_LOESS_SPAN_DEFAULT)
+            !! DM_MIN(EPS_LOESS)
+            !! DM_MAX(1.0_real64)
         integer(int32), intent(in), optional :: degree
             !! LOESS degree parameter.
             !! DM_DEFAULT(CM_LOESS_DEGREE_DEFAULT)
+            !! DM_MIN(0_int32)
+            !! DM_MAX(2_int32)
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -418,7 +425,10 @@ contains
         ! Step 3: apply normalization
         do concurrent (i_valid = 1:n_valid) local(fitted_sd, gene_idx) shared(tmp_yhat_global, tmp_loess_y, tmp_indices_used, expr)
             fitted_sd = tmp_yhat_global(i_valid)
-            if (is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
+            ! A LOESS fit can dip below zero even on non-negative data, and dividing by a negative
+            ! fitted sd would flip the gene's sign. So a fit at or below zero, like one near it,
+            ! falls back to the gene's own sd, which is positive for every gene in the fit.
+            if (fitted_sd <= 0.0_real64 .or. is_close(fitted_sd, 0.0_real64)) fitted_sd = tmp_loess_y(i_valid)
 
             gene_idx = tmp_indices_used(i_valid)
             do concurrent (i_tissue = 1:n_replicates) shared (expr, gene_idx, fitted_sd)
@@ -437,8 +447,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
 
@@ -459,20 +467,17 @@ contains
 
         ! Local variables
         integer(int32) :: i_gene, i_tissue
-        real(real64) :: std_dev, temp_sum
+        real(real64) :: rms
 
         ! Loop over each gene
-        do concurrent (i_gene = 1:n_genes) local(temp_sum, std_dev) shared(n_replicates, expr)
-            temp_sum = 0.0_real64
-            do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene) reduce(+:temp_sum)
-                temp_sum = temp_sum + expr(i_tissue, i_gene)**2
-            end do
+        do concurrent (i_gene = 1:n_genes) local(rms) shared(n_replicates, expr)
+            ! sqrt(mean(x**2)) is norm(x)/sqrt(n), and f42's norm is scaled: squares past the real64
+            ! range neither overflow, which divided the gene by Inf into zeros, nor underflow.
+            rms = norm(expr(:, i_gene))/sqrt(real(n_replicates, real64))
 
-            std_dev = sqrt(temp_sum/real(n_replicates, kind=real64))
-
-            if (.not. is_close(std_dev, 0.0_real64)) then
-                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, std_dev)
-                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / std_dev
+            if (.not. is_close(rms, 0.0_real64)) then
+                do concurrent (i_tissue = 1:n_replicates) shared(expr, i_gene, rms)
+                    expr(i_tissue, i_gene) = expr(i_tissue, i_gene) / rms
                 end do
             end if
         end do
@@ -481,6 +486,9 @@ contains
     !> summary: Quantile normalization of a gene expression matrix (F42-compliant).
     !| AUTHOR_VIVIAN_BASS
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     pure subroutine quantile_normalization_impl(n_genes, n_replicates, expr, normalized_expr, rank_means, tmp_genes_row, tmp_perm)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -488,8 +496,6 @@ contains
             !! Number of replicates per gene
         real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_replicates, n_genes), intent(out) :: normalized_expr
             !! Normalized `expr`
         real(real64), dimension(n_genes), intent(out) :: rank_means
@@ -523,7 +529,8 @@ contains
             !! Permutation vector
 
         ! Locals
-        integer(int32) :: i_gene, i_tissue
+        integer(int32) :: i_gene, i_tissue, i_rank, first_rank, last_rank
+        real(real64) :: tied_mean
 
         ! Initialize rank means
         rank_means = 0.0_real64
@@ -534,7 +541,8 @@ contains
 
         ! === First pass: accumulate values by rank across tissues ===
         do i_tissue = 1, n_replicates
-            ! Prepare current column and initialize permutation
+            ! The sort is indirect: it reorders tmp_perm, which only needs to hold a permutation on
+            ! entry -- the previous replicate's order is as good as the identity set above.
             do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
@@ -553,17 +561,31 @@ contains
             rank_means(i_gene) = rank_means(i_gene) / real(n_replicates, real64)
         end do
 
-        ! === Second pass: assign averaged values by rank ===
+        ! === Second pass: give each value the mean of its rank ===
         do i_tissue = 1, n_replicates
-            ! Prepare column and reset tmp_permutation
             do concurrent (i_gene = 1:n_genes) shared(tmp_genes_row, i_tissue, tmp_perm)
                 tmp_genes_row(i_gene) = expr(i_tissue, i_gene)
             end do
 
             call sort_array_heapsort(tmp_genes_row, tmp_perm)
 
-            do concurrent (i_gene = 1:n_genes) shared(expr, tmp_perm, rank_means, i_tissue)
-                expr(i_tissue, tmp_perm(i_gene)) = rank_means(i_gene)
+            ! Tied values share the mean of the rank means their ranks span, so equal values stay
+            ! equal: the sort leaves ties in no particular order, and ranks alone would split them.
+            first_rank = 1
+            do while (first_rank <= n_genes)
+                ! Sorted ascending, so a value that is not below its successor ties with it.
+                last_rank = first_rank
+                do while (last_rank < n_genes)
+                    if (tmp_genes_row(tmp_perm(last_rank)) < tmp_genes_row(tmp_perm(last_rank + 1))) exit
+                    last_rank = last_rank + 1
+                end do
+
+                tied_mean = sum(rank_means(first_rank:last_rank))/real(last_rank - first_rank + 1, real64)
+                do concurrent (i_rank = first_rank:last_rank) shared(expr, tmp_perm, i_tissue, tied_mean)
+                    expr(i_tissue, tmp_perm(i_rank)) = tied_mean
+                end do
+
+                first_rank = last_rank + 1
             end do
         end do
     end subroutine quantile_normalization_inplace_helper
@@ -571,9 +593,9 @@ contains
     !> summary: Apply `log2(x + 1)` transformation to each element of the input matrix.
     !| AUTHOR_VIVIAN_BASS
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     pure subroutine log2_transformation_impl(n_genes, n_tissues, expr, transformed_expr, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -581,8 +603,6 @@ contains
             !! Number of tissues
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_tissues, n_genes), intent(out) :: transformed_expr
             !! Log-transformed `expr`
         integer(int32), intent(out) :: ierr
@@ -595,9 +615,9 @@ contains
     !> AUTHOR_VIVIAN_BASS
     !| Apply `log2(x + 1)` transformation to each element of the input matrix.
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     pure subroutine log2_transformation_inplace_helper(n_genes, n_tissues, expr, ierr)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -609,22 +629,20 @@ contains
             !! Error code
         ! Locals
         integer(int32) :: i_gene, i_group
-        real(real64) :: expr_val
 
         call set_ok(ierr)
 
         ! Validate every element up front (sequentially, as `ierr` is a shared scalar here) so that
         ! `log2(x + 1)` is only ever evaluated for `x + 1 > 0`, i.e. `x > -1`. With the inputs
         ! guaranteed valid, the transformation itself can run as a race-free `do concurrent` calling
-        ! the non-validating `logx_helper` -- no per-iteration write to the shared `ierr` is needed.
+        ! the non-validating `log1p` -- no per-iteration write to the shared `ierr` is needed.
         call validate_all_in_range_real(expr, n_genes*n_tissues, ierr, min=above(-1.0_real64))
         if (is_err(ierr)) return
 
         ! Apply the log2(x + 1) transformation to every element in the flattened input matrix
         do concurrent(i_gene=1:n_genes) shared(expr, n_tissues)
-            do concurrent(i_group=1:n_tissues) local(expr_val) shared(expr, i_gene)
-                expr_val = expr(i_group, i_gene) + 1.0_real64
-                call logx_helper(expr_val, 2.0_real64, expr(i_group, i_gene))
+            do concurrent(i_group=1:n_tissues) shared(expr, i_gene)
+                expr(i_group, i_gene) = log1p(expr(i_group, i_gene))/LOG_2
             end do
         end do
     end subroutine log2_transformation_inplace_helper
@@ -633,38 +651,23 @@ contains
     !| AUTHOR_VIVIAN_BASS
     !| For each tissue of tissue replicates, this subroutine computes the average
     !| expression per gene.
-    pure subroutine calc_tiss_avg_impl(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
+    pure subroutine calc_tiss_avg_impl(n_genes, n_replicates, n_tissues, reps_per_tissue, expr, tissue_averages)
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
+        ! Sizes expr, rather than sum(reps_per_tissue): the bindings derive a dimension only from an
+        ! array, and the markers check it against the sum. DM_MIN and DM_MAX of one expression say
+        ! "equal to" until the generator has DM_EQUALS (#203).
+        integer(int32), intent(in) :: n_replicates
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! DM_MIN(sum(reps_per_tissue))
+            !! DM_MAX(sum(reps_per_tissue))
         integer(int32), intent(in) :: n_tissues
             !! Number of tissues
         integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! DM_MIN(1_int32)
-        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
-            !! Gene Expression matrix
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
-        real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
-            !! Tissue averages per gene
-
-        call calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
-    end subroutine calc_tiss_avg_impl
-
-    !> AUTHOR_VIVIAN_BASS
-    !| (no input validation) Calculate tissue averages by averaging replicates within each group.
-    !| For each group of tissue replicates, this subroutine computes the average
-    !| expression per gene.
-    pure subroutine calc_tiss_avg_helper(n_genes, n_tissues, reps_per_tissue, expr, tissue_averages)
-        integer(int32), intent(in) :: n_genes
-            !! Number of genes (rows)
-        integer(int32), intent(in) :: n_tissues
-            !! Number of tissues
-        integer(int32), dimension(n_tissues), intent(in) :: reps_per_tissue
-            !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
-            !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
-        real(real64), dimension(sum(reps_per_tissue), n_genes), intent(in) :: expr
+        real(real64), dimension(n_replicates, n_genes), intent(in) :: expr
             !! Gene Expression matrix
         real(real64), dimension(n_tissues, n_genes), intent(out) :: tissue_averages
             !! Tissue averages per gene
@@ -680,23 +683,28 @@ contains
             do i_group = 1, n_tissues
                 stop_idx = start_idx + reps_per_tissue(i_group) - 1
 
+                ! Each replicate is divided before it is added, so every partial sum stays within the
+                ! largest value's magnitude: the average cannot overflow where the plain sum would.
                 sum_val = 0.0_real64
-                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene) reduce(+:sum_val)
-                    sum_val = sum_val + expr(i_tissue, i_gene)
+                do concurrent (i_tissue = start_idx:stop_idx) shared(expr, i_gene, i_group, reps_per_tissue) &
+                        reduce(+:sum_val)
+                    sum_val = sum_val + expr(i_tissue, i_gene)/real(reps_per_tissue(i_group), real64)
                 end do
 
-                tissue_averages(i_group, i_gene) = sum_val / real(reps_per_tissue(i_group), real64)
+                tissue_averages(i_group, i_gene) = sum_val
                 start_idx = stop_idx + 1
             end do
         end do
-    end subroutine calc_tiss_avg_helper
+    end subroutine calc_tiss_avg_impl
 
     !> summary: Calculate `log2 fold changes` between condition and control groups.
     !| AUTHOR_VIVIAN_BASS
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
-    pure subroutine calc_fchange_impl(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes)
+    !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    !| reported as ERR_NAN_INF instead of being written into the result as Inf.
+    pure subroutine calc_fchange_impl(n_genes, n_tissues, n_pairs, control_tissues, condition_tissues, expr, fold_changes, ierr)
         ! === Arguments ===
         integer(int32), intent(in) :: n_genes
             !! Number of genes (rows)
@@ -714,14 +722,16 @@ contains
             !! DM_MAX(n_tissues)
         real(real64), dimension(n_tissues, n_genes), intent(in) :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! DM_ALLOW_NAN
-            !! DM_ALLOW_INFINITE
         real(real64), dimension(n_pairs, n_genes), intent(out) :: fold_changes
             !! Output matrix for fold changes
+        integer(int32), intent(out) :: ierr
+            !! Error code
 
         ! === Locals ===
         integer(int32) :: i_gene, i_pair
         integer(int32) :: control_group, cond_group
+
+        call set_ok(ierr)
 
         ! === Loop over each pair ===
         do concurrent (i_gene = 1:n_genes) shared(n_pairs, control_tissues, condition_tissues, expr, fold_changes)
@@ -729,6 +739,17 @@ contains
                 control_group = control_tissues(i_pair)
                 cond_group = condition_tissues(i_pair)
                 fold_changes(i_pair, i_gene) = expr(cond_group, i_gene) - expr(control_group, i_gene)
+            end do
+        end do
+
+        ! The inputs are finite, but their difference can still overflow. Checked after the
+        ! concurrent loop and sequentially, as `ierr` is a shared scalar.
+        do i_gene = 1, n_genes
+            do i_pair = 1, n_pairs
+                if (.not. ieee_is_finite(fold_changes(i_pair, i_gene))) then
+                    call set_err(ierr, ERR_NAN_INF)
+                    return
+                end if
             end do
         end do
     end subroutine calc_fchange_impl

@@ -45,8 +45,6 @@ contains
             !! number of elements in `vector`
         real(c_double), dimension(n_dims), intent(inout), target :: vector
             !! Vector that will be normalized to unit length
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -81,13 +79,13 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
@@ -96,9 +94,13 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         logical(c_bool), intent(in), target :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
@@ -165,7 +167,9 @@ contains
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
         integer(c_int), intent(in), target :: n_replicates
-            !! Number of replicates per gene
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         integer(c_int), intent(in), target :: int_workspace_size
@@ -188,8 +192,6 @@ contains
             !! | save_factorization    | .false.     |
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: log_transformed_expr
             !! Log-transformed grouped `expr`
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
@@ -224,9 +226,13 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         logical(c_bool), intent(in), target :: use_quantile
             !! Use quantile normalization.
             !! The default value is `.false.`.
@@ -292,6 +298,9 @@ contains
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_c(&
             n_genes,&
             n_replicates,&
@@ -309,16 +318,18 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -345,6 +356,9 @@ contains
     !> summary: C-wrapper for [[tox_normalization(module):normalize_by_std_dev_expert(subroutine)]]
     !| This procedure applies a global stabilization based on the relationship between
     !| gene-wise mean expression and empirical standard deviation.
+    !| Where the fitted trend is at or near zero -- a LOESS fit can dip below zero even on
+    !| non-negative data -- a gene is divided by its own standard deviation instead, so no gene
+    !| changes sign.
     subroutine normalize_by_std_dev_expert_c(&
             n_genes,&
             n_replicates,&
@@ -395,8 +409,6 @@ contains
             !! | save_factorization    | .false.     |
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: tmp_loess_x
@@ -428,9 +440,13 @@ contains
         real(c_double), intent(in), target :: span
             !! LOESS span parameter.
             !! The default value is `0.7_real64`.
+            !! The minimum valid value is `EPS_LOESS`.
+            !! The maximum valid value is `1.0_real64`.
         integer(c_int), intent(in), target :: degree
             !! LOESS degree parameter.
             !! The default value is `2_int32`.
+            !! The minimum valid value is `0_int32`.
+            !! The maximum valid value is `2_int32`.
         integer(c_int), intent(out), target :: ierr
             !! Error code
 
@@ -501,8 +517,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         integer(c_int), intent(out), target :: ierr
@@ -526,6 +540,9 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization(subroutine)]]
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     subroutine quantile_normalization_c(&
             n_genes,&
             n_replicates,&
@@ -542,8 +559,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: rank_means
@@ -571,6 +586,9 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):quantile_normalization_expert(subroutine)]]
     !| Computes average expression per rank across tissues.
+    !| Tied values within a replicate share the mean of the rank means their ranks span, so values
+    !| that are equal before normalization stay equal after it, as in `preprocessCore` and limma's
+    !| `normalizeQuantiles`. The rank means themselves do not depend on ties.
     subroutine quantile_normalization_expert_c(&
             n_genes,&
             n_replicates,&
@@ -589,8 +607,6 @@ contains
             !! Number of replicates per gene
         real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_replicates, n_genes), intent(out), target :: normalized_expr
             !! Normalized `expr`
         real(c_double), dimension(n_genes), intent(out), target :: rank_means
@@ -626,9 +642,9 @@ contains
 
     !> summary: C-wrapper for [[tox_normalization(module):log2_transformation(subroutine)]]
     !| This subroutine performs element-wise `log2(x + 1)` transformation on a
-    !| matrix flattened in column-major order. The `log2` is computed via:
-    !| `log(x + 1) / log(2)`, which is numerically equivalent and avoids the
-    !| non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
+    !| matrix flattened in column-major order. The `log2` is computed as `log1p(x)/log(2)`:
+    !| `log1p` keeps the digits of a tiny `x` that forming `x + 1` would round away, and dividing
+    !| by `log(2)` avoids the non-portable `log2` intrinsic for compatibility with WebAssembly (WASM).
     subroutine log2_transformation_c(&
             n_genes,&
             n_tissues,&
@@ -644,8 +660,6 @@ contains
             !! Number of tissues
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: transformed_expr
             !! Log-transformed `expr`
         integer(c_int), intent(out), target :: ierr
@@ -672,6 +686,7 @@ contains
     !| expression per gene.
     subroutine calc_tiss_avg_c(&
             n_genes,&
+            n_replicates,&
             n_tissues,&
             reps_per_tissue,&
             expr,&
@@ -682,16 +697,18 @@ contains
 
         integer(c_int), intent(in), target :: n_genes
             !! Number of genes (rows)
+        integer(c_int), intent(in), target :: n_replicates
+            !! Number of replicates per gene, the rows of `expr`; `reps_per_tissue` must add up to it
+            !! The minimum valid value is `sum(reps_per_tissue)`.
+            !! The maximum valid value is `sum(reps_per_tissue)`.
         integer(c_int), intent(in), target :: n_tissues
             !! Number of tissues
         integer(c_int), dimension(n_tissues), intent(in), target :: reps_per_tissue
             !! Number of replicates per tissue in `expr`. It describes, which slices in `expr` relate to which tissue,
             !! e.g. `[2,3]` means `5` total replicates per gene, the first two of which belong to the first tissue and the remaining three to the second.
             !! The minimum valid value is `1_int32`.
-        real(c_double), dimension(sum(reps_per_tissue), n_genes), intent(in), target :: expr
+        real(c_double), dimension(n_replicates, n_genes), intent(in), target :: expr
             !! Gene Expression matrix
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_tissues, n_genes), intent(out), target :: tissue_averages
             !! Tissue averages per gene
         integer(c_int), intent(out), target :: ierr
@@ -700,13 +717,15 @@ contains
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(n_genes)
+        M_CHECK_NON_NULL(n_replicates)
         M_CHECK_NON_NULL(n_tissues)
         M_CHECK_ARRAY_NON_NULL(reps_per_tissue, n_tissues)
-        M_CHECK_ARRAY_NON_NULL(expr, (sum(reps_per_tissue)) * n_genes)
+        M_CHECK_ARRAY_NON_NULL(expr, n_replicates * n_genes)
         M_CHECK_ARRAY_NON_NULL(tissue_averages, n_tissues * n_genes)
 
         call calc_tiss_avg(&
             n_genes = n_genes,&
+            n_replicates = n_replicates,&
             n_tissues = n_tissues,&
             reps_per_tissue = reps_per_tissue,&
             expr = expr,&
@@ -719,6 +738,8 @@ contains
     !| For each control-condition pair, this subroutine computes the `log2 fold change`
     !| by subtracting the expression value in the control group from the corresponding
     !| value in the condition group, for all genes.
+    !| A difference too large for real64 -- possible only near `huge`, as in `huge - (-huge)` -- is
+    !| reported as ERR_NAN_INF instead of being written into the result as Inf.
     subroutine calc_fchange_c(&
             n_genes,&
             n_tissues,&
@@ -747,12 +768,10 @@ contains
             !! The maximum valid value is `n_tissues`.
         real(c_double), dimension(n_tissues, n_genes), intent(in), target :: expr
             !! Gene Expression matrix, from [[tox_normalization(module):calc_tiss_avg(subroutine)]]
-            !! NaN is permitted for this value.
-            !! Infinite values are permitted for this value.
         real(c_double), dimension(n_pairs, n_genes), intent(out), target :: fold_changes
             !! Output matrix for fold changes
         integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
+            !! Error code
 
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
