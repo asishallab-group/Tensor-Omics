@@ -4,7 +4,7 @@
 !| what can be read off a vector once it is projected onto one.
 !|
 !| A RAP is picked by selecting axes (tissues) from the full expression space.
-!| `vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+!| `omics_vector_RAP_projection` projects vectors onto it and `omics_field_RAP_projection` a whole
 !| field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
 !| between two vectors -- signed by an orientation reference, so the sign means the same thing in
 !| every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
@@ -29,7 +29,7 @@ contains
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_vecs
-            !! number of vectors per axis
+            !! number of vectors
         integer(int32), intent(in) :: n_selected_vecs
             !! count of `.true.` values in `vecs_selection_mask`
         integer(int32), intent(in) :: n_selected_axes
@@ -70,11 +70,11 @@ contains
         integer(int32), intent(in) :: n_axes
             !! number of axes
         integer(int32), intent(in) :: n_fields
-            !! number of vectors per axis
+            !! number of fields
         real(real64), dimension(n_axes, 2, n_fields), intent(in) :: fields
             !! matrix with vector fields; each field holds two vectors, the origin first and the target second
         logical(c_bool), dimension(n_fields), intent(in) :: fields_selection_mask
-            !! `.true.` for vectors where projection is to be computed
+            !! `.true.` for fields where projection is to be computed
         integer(int32), intent(in) :: n_selected_fields
             !! count of `.true.` values in `fields_selection_mask`
         logical(c_bool), dimension(n_axes), intent(in) :: axes_selection_mask
@@ -112,7 +112,7 @@ contains
         integer(int32), intent(in) :: n_selected_axes
             !! number of selected axes
         integer(int32), intent(in) :: n_selected_vecs
-            !! number of selected vectors per axis
+            !! number of selected vectors
         real(real64), dimension(n_selected_axes, n_selected_vecs), intent(inout) :: selected_vecs
             !! matrix with vectors for selected axes
 
@@ -310,7 +310,7 @@ contains
         signed_angle = sign(1.0_real64, along_rotation)*unsigned_angle
     end subroutine clock_hand_angle_between_vectors_helper
 
-    !> summary: Compute signed rotation angles between for shift vectors, so between their origin and target
+    !> summary: Compute the signed clock hand angle of every selected field, from its origin to its target
     !| AUTHOR_VIVIAN_BASS
     !| Each selected field is angled by the rule of
     !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
@@ -338,7 +338,7 @@ contains
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
         real(real64), dimension(n_selected_fields), intent(out) :: signed_angles
-            !! Signed rotation angles between vector pairs in radians [-π, π]
+            !! Signed rotation angles between vector pairs in radians [-pi, pi]
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -373,7 +373,7 @@ contains
         real(real64), dimension(n_axes), intent(in) :: vec
             !! RAP-projected vector (expression or shift), of any length but zero
         real(real64), dimension(n_axes), intent(out) :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -421,7 +421,7 @@ contains
         real(real64), dimension(n_axes), intent(in) :: vec
             !! RAP-projected shift vector, of any length but zero
         real(real64), dimension(n_axes), intent(out) :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
             !! Error code
 
@@ -437,7 +437,7 @@ contains
         real(real64), dimension(n_axes), intent(in) :: vec
             !! RAP-projected expression vector, of any length but zero
         real(real64), dimension(n_axes), intent(out) :: contributions
-            !! Fractional contribution of each axis (output), values in [0,1], sum to 1
+            !! Fractional contribution of each axis, values in [0,1], sum to 1
         integer(int32), intent(out) :: ierr
             !! Error code
 

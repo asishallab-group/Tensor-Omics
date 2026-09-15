@@ -4,7 +4,7 @@ Relative axis planes (RAPs): planes through higher-dimensional gene expression s
 what can be read off a vector once it is projected onto one.
 
 A RAP is picked by selecting axes (tissues) from the full expression space.
-`vector_RAP_projection` projects a single vector onto it and `field_RAP_projection` a whole
+`omics_vector_RAP_projection` projects vectors onto it and `omics_field_RAP_projection` a whole
 field of them. Within the plane, `clock_hand_angle_between_vectors` measures the signed angle
 between two vectors -- signed by an orientation reference, so the sign means the same thing in
 every dimension -- and `clock_hand_angles_for_shift_vectors` does that for a whole shift
@@ -237,7 +237,7 @@ def omics_field_RAP_projection(
     fields : np.ndarray[np.float64] of shape (n_axes, 2, n_fields,), column-major (order='F')
         matrix with vector fields; each field holds two vectors, the origin first and the target second
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
-        `True` for vectors where projection is to be computed
+        `True` for fields where projection is to be computed
     axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
         `True` for axes to be included in RAP
 
@@ -412,7 +412,7 @@ def clock_hand_angles_for_shift_vectors(
         fields_selection_mask,
         orientation_reference,
 ):
-    r"""Compute signed rotation angles between for shift vectors, so between their origin and target
+    r"""Compute the signed clock hand angle of every selected field, from its origin to its target
 
     Each selected field is angled by the rule of
     :func:`tensor_omics.clock_hand_angle_between_vectors`,
@@ -436,7 +436,7 @@ def clock_hand_angles_for_shift_vectors(
     Returns
     -------
     signed_angles : np.ndarray[np.float64] of shape (n_selected_fields,), read-only
-        Signed rotation angles between vector pairs in radians [-π, π]
+        Signed rotation angles between vector pairs in radians [-pi, pi]
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -523,7 +523,7 @@ def compute_relative_axis_contributions(
     Returns
     -------
     contributions : np.ndarray[np.float64] of shape (n_axes,), read-only
-        Fractional contribution of each axis (output), values in [0,1], sum to 1
+        Fractional contribution of each axis, values in [0,1], sum to 1
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -580,7 +580,7 @@ def relative_axes_changes_from_shift_vector(
     Returns
     -------
     contributions : np.ndarray[np.float64] of shape (n_axes,), read-only
-        Fractional contribution of each axis (output), values in [0,1], sum to 1
+        Fractional contribution of each axis, values in [0,1], sum to 1
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
@@ -637,7 +637,7 @@ def relative_axes_expression_from_expression_vector(
     Returns
     -------
     contributions : np.ndarray[np.float64] of shape (n_axes,), read-only
-        Fractional contribution of each axis (output), values in [0,1], sum to 1
+        Fractional contribution of each axis, values in [0,1], sum to 1
         A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises

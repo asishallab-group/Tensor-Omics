@@ -33,7 +33,7 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
 #' are the ones an error message reports.
 #'
 #' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
-#' @param fields_selection_mask a logical vector. `TRUE` for vectors where projection is to be computed
+#' @param fields_selection_mask a logical vector. `TRUE` for fields where projection is to be computed
 #' @param axes_selection_mask a logical vector. `TRUE` for axes to be included in RAP
 #' @return a numeric matrix. projected vectors
 #' @export
@@ -91,7 +91,7 @@ clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
     .result$signed_angle
 }
 
-#' Compute signed rotation angles between for shift vectors, so between their origin and target
+#' Compute the signed clock hand angle of every selected field, from its origin to its target
 #'
 #' Each selected field is angled by the rule of
 #' \code{\link{clock_hand_angle_between_vectors}},
@@ -109,7 +109,7 @@ clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
 #'   dimensions -- and in RAP space not even in two, since the axes are tissues or
 #'   factors and carry no handedness -- so the caller states which way round counts
 #'   as positive. The sign is that of this vector's component along the rotation.
-#' @return a numeric vector. Signed rotation angles between vector pairs in radians [-π, π]
+#' @return a numeric vector. Signed rotation angles between vector pairs in radians [-pi, pi]
 #' @export
 clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, orientation_reference) {
     fields <- .tox_as_double_array(fields, "fields", 3L)
@@ -138,7 +138,7 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, o
 #' are the ones an error message reports.
 #'
 #' @param vec a numeric vector. RAP-projected vector (expression or shift), of any length but zero
-#' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
+#' @return a numeric vector. Fractional contribution of each axis, values in [0,1], sum to 1
 #' @export
 compute_relative_axis_contributions <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
@@ -158,7 +158,7 @@ compute_relative_axis_contributions <- function(vec) {
 #' are the ones an error message reports.
 #'
 #' @param vec a numeric vector. RAP-projected shift vector, of any length but zero
-#' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
+#' @return a numeric vector. Fractional contribution of each axis, values in [0,1], sum to 1
 #' @export
 relative_axes_changes_from_shift_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
@@ -178,7 +178,7 @@ relative_axes_changes_from_shift_vector <- function(vec) {
 #' are the ones an error message reports.
 #'
 #' @param vec a numeric vector. RAP-projected expression vector, of any length but zero
-#' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
+#' @return a numeric vector. Fractional contribution of each axis, values in [0,1], sum to 1
 #' @export
 relative_axes_expression_from_expression_vector <- function(vec) {
     vec <- .tox_as_double_vector(vec, "vec")
