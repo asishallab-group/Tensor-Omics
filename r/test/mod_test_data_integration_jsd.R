@@ -3,7 +3,22 @@ source("r/test_helpers.R")
 
 TOL <- 1e-12
 
+# Test determine_shared_residual_range (the plain, auto-sorting tier) directly, by cross-checking
+# it against the already-tested _expert tier given the same pool pre-sorted.
 test_determine_shared_residual_range <- function() {
+  pool <- c(1.0, 5.0, 3.0, 8.0, 2.0, 7.0, 4.0)
+  perm <- order(pool)
+
+  R_plain <- determine_shared_residual_range(pool, 0.95)
+  R_expert <- determine_shared_residual_range_expert(pool, perm, 0.95)
+  assert_true(abs(R_plain - R_expert) < TOL)
+
+  # Default residual_range_quantile (0.95)
+  R_plain_default <- determine_shared_residual_range(pool)
+  assert_true(abs(R_plain_default - R_expert) < TOL)
+}
+
+test_determine_study_shared_residual_range <- function() {
 
   # Helper
   approx_equal <- function(a, b) abs(a - b) < TOL
@@ -529,8 +544,8 @@ test_determine_all_studies_shared_residual_range <- function() {
 }
 
 # test_gjct_permutation_test was removed here: gjct_permutation_test was replaced by a K-study,
-# consensus-based version (see tox_data_integration_js_comp_test) -- its own test coverage moved
-# there; the old 2-study test that lived in this file was removed rather than adapted, since the
-# signature is unrelated.
+# consensus-based version (see tox_data_integration_js_comp_test) -- the old 2-study test that
+# lived in this file was removed rather than adapted, since the signature is unrelated. Its own
+# direct test coverage now lives in mod_test_data_integration_stats.R.
 
 run_all_tests()

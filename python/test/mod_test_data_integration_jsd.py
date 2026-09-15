@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from test_helpers import run_all_tests, assert_error
 from tensor_omics import (
+    determine_shared_residual_range,
     determine_study_shared_residual_range,
     determine_shared_residual_range_expert,
     build_residual_histograms,
@@ -23,8 +24,9 @@ from tensor_omics.error_handling import ERR_INVALID_INPUT
 
 # The filtered variant is gone: filtering is now the optional `neighbor_mask` argument of the
 # base routine. gjct_permutation_test itself was replaced by a K-study, consensus-based version
-# (see tox_data_integration_js_comp_test) -- its own test coverage moved there; the old 2-study
-# test that lived in this file was removed rather than adapted, since the signature is unrelated.
+# (see tox_data_integration_js_comp_test) -- the old 2-study test that lived in this file was
+# removed rather than adapted, since the signature is unrelated. Its own direct test coverage now
+# lives in mod_test_data_integration_stats.py.
 build_residual_histograms_filtered = build_residual_histograms
 
 
@@ -32,6 +34,21 @@ TOL = 1e-12
 
 
 def test_tox_determine_shared_residual_range():
+    """Test determine_shared_residual_range (the plain, auto-sorting tier) directly, by cross-
+    checking it against the already-tested _expert tier given the same pool pre-sorted."""
+    pool = np.array([1.0, 5.0, 3.0, 8.0, 2.0, 7.0, 4.0], dtype=np.float64)
+    perm = (np.argsort(pool, kind="mergesort").astype(np.int32) + 1)
+
+    R_plain = determine_shared_residual_range(pool, 0.95)
+    R_expert = determine_shared_residual_range_expert(pool, perm, 0.95)
+    assert abs(R_plain - R_expert) < TOL, f"plain vs expert mismatch: {R_plain} vs {R_expert}"
+
+    # Default residual_range_quantile (0.95)
+    R_plain_default = determine_shared_residual_range(pool)
+    assert abs(R_plain_default - R_expert) < TOL, "plain tier's default quantile should also be 0.95"
+
+
+def test_tox_determine_study_shared_residual_range():
 
     # ============================================================
     # Test 1 — Basic correctness with simple values

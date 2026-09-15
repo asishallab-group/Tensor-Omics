@@ -64,20 +64,41 @@ test_compute_residuals_basic <- function() {
   
 }
 
-# Test 4: Basic pool_means
-test_pool_means_basic <- function() {
-  
+# Test 4: Basic pool_study_means
+test_pool_study_means_basic <- function() {
+
   mean_S1 <- c(10, 12, 14, NA, 18)
   mean_S2 <- c(20, 22, NA, 26, 28)
   n_points <- 3
-  
+
   result <- pool_study_means(mean_S1, mean_S2, n_points)
-  
+
   # Verify
   # Non-NA values: 10,12,14,18 from S1 and 20,22,26,28 from S2 = 8 total
   assert_true(result$n_pool == 8)
   assert_true(length(result$x_star) == n_points)
-  
+
+}
+
+# Test 4b: pool_means (the plain, auto-sorting tier) directly.
+# n_points=647, pool_size=1000, i_point=216 (1-based) is a confirmed case where 125's
+# percentage-round-trip quantile formula and a naive direct-fraction formula round to different
+# doubles, which floor() to different ranks -- a genuine index flip, not epsilon noise (see the
+# Fortran regression test test_pool_means_matches_125_quantile_rounding in
+# test/mod_test_data_integration.F90). With a sequential pool [1.0, ..., 1000.0], the interpolated
+# x_star equals the rank itself, so the fixed formula's expected value is exactly
+# 333.99999999999994, not the direct-fraction formula's (wrong) 334.0.
+test_pool_means_matches_125_quantile_rounding <- function() {
+
+  pooled_means <- as.numeric(1:1000)
+  n_points <- 647
+
+  result <- pool_means(pooled_means, n_points)
+
+  assert_true(result$n_pool == 1000)
+  assert_true(length(result$x_star) == n_points)
+  assert_true(abs(result$x_star[216] - 333.99999999999994) < 1e-12)
+
 }
 
 # Test 5: Basic construct_neighborhoods

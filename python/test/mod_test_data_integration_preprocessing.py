@@ -16,6 +16,7 @@ from tensor_omics import euclidean_distance, distance_to_centroid
 from tensor_omics import (
     compute_gene_means,
     compute_residuals,
+    pool_means,
     pool_study_means,
     construct_neighborhoods,
     pool_means_expert,
@@ -91,7 +92,29 @@ def test_compute_residuals():
 
 
 
-def test_pool_means():
+def test_pool_means_matches_125_quantile_rounding():
+    """Test pool_means (the plain, auto-sorting tier) directly.
+
+    n_points=647, pool_size=1000, i_point=216 (1-based) is a confirmed case where 125's
+    percentage-round-trip quantile formula and a naive direct-fraction formula round to different
+    doubles, which floor() to different ranks -- a genuine index flip, not epsilon noise (see the
+    Fortran regression test test_pool_means_matches_125_quantile_rounding in
+    test/mod_test_data_integration.F90). With a sequential pool [1.0, ..., 1000.0], the
+    interpolated x_star equals the rank itself, so the fixed formula's expected value is exactly
+    333.99999999999994, not the direct-fraction formula's (wrong) 334.0.
+    """
+    pooled_means = np.arange(1, 1001, dtype=np.float64)
+    n_points = 647
+
+    result = pool_means(pooled_means, n_points)
+
+    assert result['n_pool'] == 1000
+    assert len(result['x_star']) == n_points
+    # index 216 (1-based, Fortran) == index 215 (0-based, Python)
+    assert abs(result['x_star'][215] - 333.99999999999994) < 1e-12
+
+
+def test_pool_study_means():
     """Test pool_study_means function"""
 
     # Test 1: Basic pooling
