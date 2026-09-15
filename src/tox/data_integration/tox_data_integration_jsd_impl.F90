@@ -392,7 +392,7 @@ contains
 
     !> summary: Run the pipeline build_residual_histograms => compute_weighted_global_divergence
     !| AUTHOR_FRANZ_ERIC_SILL
-    !| Internal helper: the permutation test and the per-family analysis both drive this.
+    !| Internal helper: the per-family analysis drives this.
     pure subroutine jct_compute_jsd_pipeline_helper(neighborhood_residuals_S1, neighborhood_residuals_S2, n_reps_S1, n_reps_S2, n_neighbors, n_points, n_bins, shared_residual_range, js_divergences, included_n_reps_S1, included_n_reps_S2, global_js_divergence, weights, pmf_S1, pmf_S2, tmp_counts, neighbor_mask_S1, neighbor_mask_S2)
         integer(int32), intent(in) :: n_reps_S1
             !! Number of replicates in study 1
