@@ -356,10 +356,10 @@ contains
     !> Finite input near the top of the range gives a finite projection. [huge, huge] lies on the
     !| diagonal and projects to [0, 0]; [huge, -huge] has mean 0 and stays as it is.
     !|
-    !| BUG: the mean is taken as sum/n, and huge + huge overflows to Inf, so [huge, huge] projects
-    !| to [-Inf, -Inf]: finite input, infinite output, which TOX must never write. Summing
-    !| x_i/n instead cannot overflow where the mean itself does not (calc_tiss_avg had the same
-    !| bug, see test_calc_tiss_avg_extreme_magnitudes).
+    !| Regression: the mean used to be taken as sum/n, and huge + huge overflowed to Inf, so
+    !| [huge, huge] projected to [-Inf, -Inf]: finite input, infinite output, which TOX must never
+    !| write. Summing x_i/n cannot overflow where the mean itself does not (calc_tiss_avg had the
+    !| same bug, see test_calc_tiss_avg_extreme_magnitudes).
     subroutine test_omics_vector_RAP_projection_extreme_magnitudes()
         integer(int32) :: ierr
         real(real64), dimension(2, 2) :: vecs, projections, expected

@@ -416,9 +416,9 @@ contains
     !| target [0, 0] lies on the diagonal and projects to [0, 0]; [huge, -huge] - [0, 0] has mean 0
     !| and stays as it is.
     !|
-    !| BUG: the mean is taken as sum/n, and huge + huge overflows to Inf, so the first shift
-    !| projects to [-Inf, -Inf]: finite input, infinite output, which TOX must never write.
-    !| Summing x_i/n instead cannot overflow where the mean itself does not.
+    !| Regression: the mean used to be taken as sum/n, and huge + huge overflowed to Inf, so the
+    !| first shift projected to [-Inf, -Inf]: finite input, infinite output, which TOX must never
+    !| write. Summing x_i/n cannot overflow where the mean itself does not.
     subroutine test_omics_field_RAP_projection_extreme_magnitudes()
         integer(int32) :: ierr
         real(real64), dimension(2, 2, 2) :: fields

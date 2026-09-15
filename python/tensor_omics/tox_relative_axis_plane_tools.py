@@ -321,18 +321,20 @@ def clock_hand_angle_between_vectors(
         v2,
         orientation_reference,
 ):
-    r"""Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+    r"""Compute the signed clock hand angle between two RAP-projected vectors.
 
-    The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+    The unsigned angle is the one between the two directions; their lengths do not matter, so
+    the vectors need not be normalized. `orientation_reference` supplies the sign by saying
     which way round the plane the two vectors span counts as positive. Reports
+    `ERR_DIVISION_BY_ZERO` when `v1` or `v2` is the zero vector, which has no direction, and
     `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
 
     Parameters
     ----------
     v1 : np.ndarray[np.float64] of shape (n_dims,)
-        First normalized vector in RAP space
+        First vector in RAP space, of any length but zero
     v2 : np.ndarray[np.float64] of shape (n_dims,)
-        Second normalized vector in RAP space
+        Second vector in RAP space, of any length but zero
     orientation_reference : np.ndarray[np.float64] of shape (n_dims,)
         Orients the plane the rotation happens in, so the angle can carry a sign. A
         rotation from one vector to another has no inherent direction above two
@@ -414,8 +416,9 @@ def clock_hand_angles_for_shift_vectors(
 
     Each selected field is angled by the rule of
     :func:`tensor_omics.clock_hand_angle_between_vectors`,
-    with one `orientation_reference` shared by the whole batch. A single field whose rotation
-    the reference fails to orient fails the call.
+    with one `orientation_reference` shared by the whole batch. A single selected field with a
+    zero origin or target fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation
+    the reference fails to orient with `ERR_INVALID_INPUT`.
 
     Parameters
     ----------
@@ -506,14 +509,16 @@ def clock_hand_angles_for_shift_vectors(
 def compute_relative_axis_contributions(
         vec,
 ):
-    r"""Compute the fractional contribution of each axis to a RAP-projected and normalized vector
+    r"""Compute the fractional contribution of each axis to a RAP-projected vector
 
     Shared utility: the shift-vector and expression-vector entry points below both drive it.
+    The shares depend on the vector's direction alone, so it need not be normalized; the zero
+    vector, which has no direction, is `ERR_DIVISION_BY_ZERO`.
 
     Parameters
     ----------
     vec : np.ndarray[np.float64] of shape (n_axes,)
-        RAP-projected and normalized vector (expression or shift)
+        RAP-projected vector (expression or shift), of any length but zero
 
     Returns
     -------
@@ -563,14 +568,14 @@ def compute_relative_axis_contributions(
 def relative_axes_changes_from_shift_vector(
         vec,
 ):
-    r"""Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+    r"""Compute fractional contribution of each axis to a RAP-projected shift vector.
 
     Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
 
     Parameters
     ----------
     vec : np.ndarray[np.float64] of shape (n_axes,)
-        RAP-projected and normalized shift vector
+        RAP-projected shift vector, of any length but zero
 
     Returns
     -------
@@ -620,14 +625,14 @@ def relative_axes_changes_from_shift_vector(
 def relative_axes_expression_from_expression_vector(
         vec,
 ):
-    r"""Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+    r"""Compute fractional contribution of each axis to a RAP-projected expression vector.
 
     Wrapper for single RAP-projected expression vectors
 
     Parameters
     ----------
     vec : np.ndarray[np.float64] of shape (n_axes,)
-        RAP-projected and normalized expression vector
+        RAP-projected expression vector, of any length but zero
 
     Returns
     -------

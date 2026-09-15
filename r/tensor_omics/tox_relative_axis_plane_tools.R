@@ -54,17 +54,19 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
     .result$projections
 }
 
-#' Compute the signed clock hand angle between two RAP-projected and normalized vectors.
+#' Compute the signed clock hand angle between two RAP-projected vectors.
 #'
-#' The unsigned angle is `acos(v1 . v2)`; `orientation_reference` supplies the sign by saying
+#' The unsigned angle is the one between the two directions; their lengths do not matter, so
+#' the vectors need not be normalized. `orientation_reference` supplies the sign by saying
 #' which way round the plane the two vectors span counts as positive. Reports
+#' `ERR_DIVISION_BY_ZERO` when `v1` or `v2` is the zero vector, which has no direction, and
 #' `ERR_INVALID_INPUT` when the reference is orthogonal to the rotation and so orients nothing.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angle_between_vectors}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param v1 a numeric vector. First normalized vector in RAP space
-#' @param v2 a numeric vector. Second normalized vector in RAP space
+#' @param v1 a numeric vector. First vector in RAP space, of any length but zero
+#' @param v2 a numeric vector. Second vector in RAP space, of any length but zero
 #' @param orientation_reference a numeric vector. Orients the plane the rotation happens in, so the angle can carry a sign. A
 #'   rotation from one vector to another has no inherent direction above two
 #'   dimensions -- and in RAP space not even in two, since the axes are tissues or
@@ -93,8 +95,9 @@ clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
 #'
 #' Each selected field is angled by the rule of
 #' \code{\link{clock_hand_angle_between_vectors}},
-#' with one `orientation_reference` shared by the whole batch. A single field whose rotation
-#' the reference fails to orient fails the call.
+#' with one `orientation_reference` shared by the whole batch. A single selected field with a
+#' zero origin or target fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation
+#' the reference fails to orient with `ERR_INVALID_INPUT`.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors}, whose argument names
 #' are the ones an error message reports.
@@ -125,14 +128,16 @@ clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, o
     .result$signed_angles
 }
 
-#' Compute the fractional contribution of each axis to a RAP-projected and normalized vector
+#' Compute the fractional contribution of each axis to a RAP-projected vector
 #'
 #' Shared utility: the shift-vector and expression-vector entry points below both drive it.
+#' The shares depend on the vector's direction alone, so it need not be normalized; the zero
+#' vector, which has no direction, is `ERR_DIVISION_BY_ZERO`.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::compute_relative_axis_contributions}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param vec a numeric vector. RAP-projected and normalized vector (expression or shift)
+#' @param vec a numeric vector. RAP-projected vector (expression or shift), of any length but zero
 #' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
 #' @export
 compute_relative_axis_contributions <- function(vec) {
@@ -145,14 +150,14 @@ compute_relative_axis_contributions <- function(vec) {
     .result$contributions
 }
 
-#' Compute fractional contribution of each axis to a RAP-projected and normalized shift vector.
+#' Compute fractional contribution of each axis to a RAP-projected shift vector.
 #'
 #' Wrapper for shift vectors (e.g. difference between two RAP-projected vectors)
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::relative_axes_changes_from_shift_vector}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param vec a numeric vector. RAP-projected and normalized shift vector
+#' @param vec a numeric vector. RAP-projected shift vector, of any length but zero
 #' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
 #' @export
 relative_axes_changes_from_shift_vector <- function(vec) {
@@ -165,14 +170,14 @@ relative_axes_changes_from_shift_vector <- function(vec) {
     .result$contributions
 }
 
-#' Compute fractional contribution of each axis to a RAP-projected and normalized expression vector.
+#' Compute fractional contribution of each axis to a RAP-projected expression vector.
 #'
 #' Wrapper for single RAP-projected expression vectors
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::relative_axes_expression_from_expression_vector}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param vec a numeric vector. RAP-projected and normalized expression vector
+#' @param vec a numeric vector. RAP-projected expression vector, of any length but zero
 #' @return a numeric vector. Fractional contribution of each axis (output), values in [0,1], sum to 1
 #' @export
 relative_axes_expression_from_expression_vector <- function(vec) {

@@ -10,8 +10,8 @@
 !| enter the dot product is rounded. The expected values are fractions of PI; they meet acos's
 !| result within ANGLE_TOL.
 !|
-!| Three cases are marked BUG: they state the mathematically right result, which the current
-!| implementation misses (identical vectors, a turn below 1e-6 rad, a short reference).
+!| Three cases pin regressions of the old acos form and its absolute is_close floors: identical
+!| vectors, a turn below 1e-6 rad and a short reference.
 module mod_test_clock_hand_angle_between_vectors
     use asserts
     use, intrinsic :: iso_fortran_env, only: real64, int32
@@ -425,9 +425,9 @@ contains
 
         call clock_hand_angle_between_vectors(v1, v1, 2, reference, signed_angle, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_clock_hand_angle_between_vectors_identical_diagonal: ierr")
-        ! BUG: acos is ill-conditioned at 1, where its slope is infinite: it turns the dot
-        ! product's last-bit rounding, 1 - 2**-52, into acos(1 - 2**-52) = 2.1e-8 rad, where the
-        ! answer is 0. atan2(|v2 - (v1 . v2) v1|, v1 . v2) has no such loss (|...| is 2e-16 here).
+        ! Regression: acos(v1 . v2), ill-conditioned at 1 where its slope is infinite, turned the
+        ! dot product's last-bit rounding, 1 - 2**-52, into 2.1e-8 rad, where the answer is 0. The
+        ! atan2 form has no such loss (the part perpendicular to v1 is 2e-16 here).
         call assert_equal_real(signed_angle, 0.0_real64, ANGLE_TOL, &
                                "test_clock_hand_angle_between_vectors_identical_diagonal: a vector and itself")
     end subroutine test_clock_hand_angle_between_vectors_identical_diagonal
@@ -448,9 +448,9 @@ contains
 
         call clock_hand_angle_between_vectors(v1, v2, 2, reference, signed_angle, ierr)
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_clock_hand_angle_between_vectors_small_turn_sign: ierr")
-        ! BUG: the parallel check `perpendicular .isclose. 0` compares sin(angle)**2, the squared
-        ! length of v2's part perpendicular to v1, with is_close's absolute floor 1e-12, so every
-        ! turn below 1e-6 rad counts as parallel and comes back unsigned: this one as +2**-22.
+        ! Regression: the parallel check used to compare sin(angle)**2, the squared length of v2's
+        ! part perpendicular to v1, with is_close's absolute floor 1e-12, so every turn below
+        ! 1e-6 rad counted as parallel and came back unsigned: this one as +2**-22.
         call assert_equal_real(signed_angle, -asin(turn), 1e-9_real64, &
                                "test_clock_hand_angle_between_vectors_small_turn_sign: a clockwise turn of 2**-22 rad")
     end subroutine test_clock_hand_angle_between_vectors_small_turn_sign
@@ -466,9 +466,9 @@ contains
         reference = [0.0_real64, 1e-13_real64]
 
         call clock_hand_angle_between_vectors(v1, v2, 2, reference, signed_angle, ierr)
-        ! BUG: `along_rotation .isclose. 0` compares that component, 1e-13 here, with is_close's
-        ! absolute floor 1e-12, so the reference's length decides whether it orients anything,
-        ! and this one is reported as orienting nothing (ERR_INVALID_INPUT).
+        ! Regression: that component, 1e-13 here, used to be compared with is_close's absolute
+        ! floor 1e-12, so the reference's length decided whether it oriented anything, and this
+        ! one was reported as orienting nothing (ERR_INVALID_INPUT).
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_clock_hand_angle_between_vectors_short_reference: ierr")
         call assert_equal_real(signed_angle, PI/2, ANGLE_TOL, &
                                "test_clock_hand_angle_between_vectors_short_reference: oriented by (0, 1e-13)")
