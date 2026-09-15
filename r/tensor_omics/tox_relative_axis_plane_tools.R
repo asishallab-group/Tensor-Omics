@@ -27,12 +27,15 @@ omics_vector_RAP_projection <- function(vecs, vecs_selection_mask, axes_selectio
     .result$projections
 }
 
-#' Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+#' Project the shifts of selected vector fields onto the RAP constructed from a selected set of axes.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::omics_field_RAP_projection}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
+#' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+#'   family centroid) and the shift from it second (e.g. paralog minus centroid), as
+#'   \code{\link{compute_shift_vector_field}} stores
+#'   them. The shift is projected; the origin does not enter the projection.
 #' @param fields_selection_mask a logical vector. `TRUE` for fields where projection is to be computed
 #' @param axes_selection_mask a logical vector. `TRUE` for axes to be included in RAP
 #' @return a numeric matrix. projected vectors
@@ -72,6 +75,9 @@ omics_field_RAP_projection <- function(fields, fields_selection_mask, axes_selec
 #'   dimensions -- and in RAP space not even in two, since the axes are tissues or
 #'   factors and carry no handedness -- so the caller states which way round counts
 #'   as positive. The sign is that of this vector's component along the rotation.
+#'   For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+#'   determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+#'   projected onto the RAP, gives every angle the same sense of clockwise.
 #' @return a numeric scalar. Signed angle between vectors in radians [-pi, pi]
 #' @export
 clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
@@ -91,24 +97,34 @@ clock_hand_angle_between_vectors <- function(v1, v2, orientation_reference) {
     .result$signed_angle
 }
 
-#' Compute the signed clock hand angle of every selected field, from its origin to its target
+#' Compute the signed clock hand angle of every selected shift, from its origin to the point it reaches
 #'
-#' Each selected field is angled by the rule of
+#' Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from
+#' a family centroid to its paralog, for the fields
+#' \code{\link{compute_shift_vector_field}} stores -- by the
+#' rule of
 #' \code{\link{clock_hand_angle_between_vectors}},
-#' with one `orientation_reference` shared by the whole batch. A single selected field with a
-#' zero origin or target fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation
-#' the reference fails to orient with `ERR_INVALID_INPUT`.
+#' with one `orientation_reference` shared by the whole batch. The rule angles RAP-space
+#' vectors, so project origins and shifts first; projection is linear, so `o + s` of the
+#' projected pair is the projected paralog. A single selected field whose origin or `o + s`
+#' is zero fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation the reference
+#' fails to orient with `ERR_INVALID_INPUT`.
 #'
 #' Generated from the Fortran procedure \code{tox_relative_axis_plane_tools::clock_hand_angles_for_shift_vectors}, whose argument names
 #' are the ones an error message reports.
 #'
-#' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, the origin first and the target second
+#' @param fields a numeric array of rank 3. matrix with vector fields; each field holds two vectors, its origin first and the
+#'   shift from it second, as
+#'   \code{\link{compute_shift_vector_field}} stores them
 #' @param fields_selection_mask a logical vector. TRUE for vector pairs where angle should be computed
 #' @param orientation_reference a numeric vector. Orients the plane the rotation happens in, so the angle can carry a sign. A
 #'   rotation from one vector to another has no inherent direction above two
 #'   dimensions -- and in RAP space not even in two, since the axes are tissues or
 #'   factors and carry no handedness -- so the caller states which way round counts
 #'   as positive. The sign is that of this vector's component along the rotation.
+#'   For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+#'   determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+#'   projected onto the RAP, gives every angle the same sense of clockwise.
 #' @return a numeric vector. Signed rotation angles between vector pairs in radians [-pi, pi]
 #' @export
 clock_hand_angles_for_shift_vectors <- function(fields, fields_selection_mask, orientation_reference) {

@@ -230,12 +230,15 @@ def omics_field_RAP_projection(
         fields_selection_mask,
         axes_selection_mask,
 ):
-    r"""Project selected vector fields (e.g. shift vectors) onto the RAP constructed from a selected set of axes.
+    r"""Project the shifts of selected vector fields onto the RAP constructed from a selected set of axes.
 
     Parameters
     ----------
     fields : np.ndarray[np.float64] of shape (n_axes, 2, n_fields,), column-major (order='F')
-        matrix with vector fields; each field holds two vectors, the origin first and the target second
+        matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+        family centroid) and the shift from it second (e.g. paralog minus centroid), as
+        :func:`tensor_omics.compute_shift_vector_field` stores
+        them. The shift is projected; the origin does not enter the projection.
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
         `True` for fields where projection is to be computed
     axes_selection_mask : np.ndarray[np.bool_] of shape (n_axes,)
@@ -341,6 +344,9 @@ def clock_hand_angle_between_vectors(
         dimensions -- and in RAP space not even in two, since the axes are tissues or
         factors and carry no handedness -- so the caller states which way round counts
         as positive. The sign is that of this vector's component along the rotation.
+        For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+        determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+        projected onto the RAP, gives every angle the same sense of clockwise.
 
     Returns
     -------
@@ -412,18 +418,25 @@ def clock_hand_angles_for_shift_vectors(
         fields_selection_mask,
         orientation_reference,
 ):
-    r"""Compute the signed clock hand angle of every selected field, from its origin to its target
+    r"""Compute the signed clock hand angle of every selected shift, from its origin to the point it reaches
 
-    Each selected field is angled by the rule of
+    Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from
+    a family centroid to its paralog, for the fields
+    :func:`tensor_omics.compute_shift_vector_field` stores -- by the
+    rule of
     :func:`tensor_omics.clock_hand_angle_between_vectors`,
-    with one `orientation_reference` shared by the whole batch. A single selected field with a
-    zero origin or target fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation
-    the reference fails to orient with `ERR_INVALID_INPUT`.
+    with one `orientation_reference` shared by the whole batch. The rule angles RAP-space
+    vectors, so project origins and shifts first; projection is linear, so `o + s` of the
+    projected pair is the projected paralog. A single selected field whose origin or `o + s`
+    is zero fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation the reference
+    fails to orient with `ERR_INVALID_INPUT`.
 
     Parameters
     ----------
     fields : np.ndarray[np.float64] of shape (n_dims, 2, n_fields,), column-major (order='F')
-        matrix with vector fields; each field holds two vectors, the origin first and the target second
+        matrix with vector fields; each field holds two vectors, its origin first and the
+        shift from it second, as
+        :func:`tensor_omics.compute_shift_vector_field` stores them
     fields_selection_mask : np.ndarray[np.bool_] of shape (n_fields,)
         True for vector pairs where angle should be computed
     orientation_reference : np.ndarray[np.float64] of shape (n_dims,)
@@ -432,6 +445,9 @@ def clock_hand_angles_for_shift_vectors(
         dimensions -- and in RAP space not even in two, since the axes are tissues or
         factors and carry no handedness -- so the caller states which way round counts
         as positive. The sign is that of this vector's component along the rotation.
+        For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+        determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+        projected onto the RAP, gives every angle the same sense of clockwise.
 
     Returns
     -------

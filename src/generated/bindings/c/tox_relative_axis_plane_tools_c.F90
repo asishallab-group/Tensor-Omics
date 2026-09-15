@@ -112,7 +112,10 @@ contains
         integer(c_int), intent(in), target :: n_selected_axes
             !! count of `.true.` values in `axes_selection_mask`
         real(c_double), dimension(n_axes, 2, n_fields), intent(in), target :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
+            !! matrix with vector fields; each field holds two vectors, its origin first (e.g. a
+            !! family centroid) and the shift from it second (e.g. paralog minus centroid), as
+            !! [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores
+            !! them. The shift is projected; the origin does not enter the projection.
         logical(c_bool), dimension(n_fields), intent(in), target :: fields_selection_mask
             !! `.true.` for fields where projection is to be computed
         logical(c_bool), dimension(n_axes), intent(in), target :: axes_selection_mask
@@ -174,6 +177,9 @@ contains
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
         real(c_double), intent(out), target :: signed_angle
             !! Signed angle between vectors in radians [-pi, pi]
         integer(c_int), intent(out), target :: ierr
@@ -198,11 +204,16 @@ contains
     end subroutine clock_hand_angle_between_vectors_c
 
     !> summary: C-wrapper for [[tox_relative_axis_plane_tools(module):clock_hand_angles_for_shift_vectors(subroutine)]]
-    !| Each selected field is angled by the rule of
+    !| Each selected field, an origin `o` and a shift `s` from it, turns from `o` to `o + s` -- from
+    !| a family centroid to its paralog, for the fields
+    !| [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores -- by the
+    !| rule of
     !| [[tox_relative_axis_plane_tools_impl(module):clock_hand_angle_between_vectors_impl(subroutine)]],
-    !| with one `orientation_reference` shared by the whole batch. A single selected field with a
-    !| zero origin or target fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation
-    !| the reference fails to orient with `ERR_INVALID_INPUT`.
+    !| with one `orientation_reference` shared by the whole batch. The rule angles RAP-space
+    !| vectors, so project origins and shifts first; projection is linear, so `o + s` of the
+    !| projected pair is the projected paralog. A single selected field whose origin or `o + s`
+    !| is zero fails the call with `ERR_DIVISION_BY_ZERO`, and one whose rotation the reference
+    !| fails to orient with `ERR_INVALID_INPUT`.
     subroutine clock_hand_angles_for_shift_vectors_c(&
             fields,&
             n_dims,&
@@ -222,7 +233,9 @@ contains
         integer(c_int), intent(in), target :: n_selected_fields
             !! Count of .true. values in fields_selection_mask
         real(c_double), dimension(n_dims, 2, n_fields), intent(in), target :: fields
-            !! matrix with vector fields; each field holds two vectors, the origin first and the target second
+            !! matrix with vector fields; each field holds two vectors, its origin first and the
+            !! shift from it second, as
+            !! [[tox_shift_vectors_impl(module):compute_shift_vector_field_impl(subroutine)]] stores them
         logical(c_bool), dimension(n_fields), intent(in), target :: fields_selection_mask
             !! .true. for vector pairs where angle should be computed
         real(c_double), dimension(n_dims), intent(in), target :: orientation_reference
@@ -231,6 +244,9 @@ contains
             !! dimensions -- and in RAP space not even in two, since the axes are tissues or
             !! factors and carry no handedness -- so the caller states which way round counts
             !! as positive. The sign is that of this vector's component along the rotation.
+            !! For three selected tissues, `d x v1`, with `d` the space diagonal, reproduces the
+            !! determinant rule `sign(det[d, v1, v2])`; a fixed vector, such as the anchor axis
+            !! projected onto the RAP, gives every angle the same sense of clockwise.
         real(c_double), dimension(n_selected_fields), intent(out), target :: signed_angles
             !! Signed rotation angles between vector pairs in radians [-pi, pi]
         integer(c_int), intent(out), target :: ierr
