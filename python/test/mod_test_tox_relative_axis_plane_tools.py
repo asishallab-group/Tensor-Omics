@@ -52,7 +52,7 @@ def _vecs():
 
 
 def _fields():
-    """(axes, origin/target, fields): origins from `_vecs`, targets shifted off them."""
+    """(axes, origin/shift, fields): origins from `_vecs`, and shifts off them."""
     fields = np.empty((N_AXES, 2, N_VECS), order='F')
     fields[:, 0, :] = _vecs()
     fields[:, 1, :] = _vecs() ** 1.5
@@ -117,16 +117,17 @@ def test_omics_field_RAP_projection():
     _assert_result(result, (N_SELECTED_AXES, N_SELECTED_VECS), "omics_field_RAP_projection")
 
 
-def test_omics_field_RAP_projection_reads_origin_and_target_off_the_middle_axis():
-    # pass-through only, and only up to sign, which (origin - target or the reverse) is the
-    # Fortran suite's to pin: the selected second field shifts from (1, 2, 6) to 0, whose mean-free
-    # form is (-2, -1, 3); the first field is never selected
+def test_omics_field_RAP_projection_projects_the_selected_shift():
+    # pass-through only: each field is [origin, shift], and the shift is what is projected. The
+    # selected second field's shift (1, 2, 6) is mean-free (-2, -1, 3), whatever its origin (100
+    # here); the first field is never selected
     fields = np.zeros((3, 2, 2), order='F')
     fields[:, :, 0] = 100.0
-    fields[:, 0, 1] = [1.0, 2.0, 6.0]
+    fields[:, 0, 1] = 100.0
+    fields[:, 1, 1] = [1.0, 2.0, 6.0]
     result = omics_field_RAP_projection(fields, [False, True], [True, True, True])
     expected = np.array([[-2.0], [-1.0], [3.0]])
-    assert np.allclose(result, expected) or np.allclose(result, -expected), f"got {result.tolist()}"
+    assert np.allclose(result, expected), f"expected {expected.tolist()}, got {result.tolist()}"
 
 
 def test_omics_field_RAP_projection_rejects_a_mask_of_the_wrong_length():
@@ -193,14 +194,15 @@ def test_clock_hand_angles_for_shift_vectors():
     _assert_result(result, (N_SELECTED_VECS,), "clock_hand_angles_for_shift_vectors", order='C')
 
 
-def test_clock_hand_angles_for_shift_vectors_keeps_origin_first():
-    # pass-through only, the rule of the single-pair test above: the selected second field turns
-    # from e1 to e2, +pi/2; the unselected first turns to -e2 and would give -pi/2, and so would
-    # the second read target first
+def test_clock_hand_angles_for_shift_vectors_turns_from_origin_to_origin_plus_shift():
+    # pass-through only, the rule of the single-pair test above: each field is [origin, shift] and
+    # turns from o to o + s. The selected second field turns from e1 to e1 + (-1, 1) = e2, +pi/2;
+    # reading the shift as the target would give 3pi/4, and the unselected first field turns to
+    # e1 + (-1, -1) = -e2, -pi/2
     fields = np.zeros((2, 2, 2), order='F')
     fields[:, 0, :] = [[1.0, 1.0], [0.0, 0.0]]
-    fields[:, 1, 0] = [0.0, -1.0]
-    fields[:, 1, 1] = [0.0, 1.0]
+    fields[:, 1, 0] = [-1.0, -1.0]
+    fields[:, 1, 1] = [-1.0, 1.0]
     result = clock_hand_angles_for_shift_vectors(fields, [False, True], [-1.0, 1.0])
     assert np.allclose(result, [math.pi / 2]), f"expected [pi/2], got {result.tolist()}"
 

@@ -33,7 +33,7 @@ NON_FINITE_VALUES <- c(NaN, Inf, NA_real_)
   outer(seq_len(N_AXES), seq_len(N_VECS), function(i_axis, i_vec) i_axis * (i_vec + 1) + (i_axis - 1)^2)
 }
 
-# (axes, origin/target, fields): origins from `.vecs`, targets shifted off them
+# (axes, origin/shift, fields): origins from `.vecs`, and shifts off them
 .fields <- function() {
   fields <- array(0, dim = c(N_AXES, 2L, N_VECS))
   fields[, 1, ] <- .vecs()
@@ -109,17 +109,17 @@ test_omics_field_RAP_projection <- function() {
                  c(N_SELECTED_AXES, N_SELECTED_VECS), "omics_field_RAP_projection")
 }
 
-test_omics_field_RAP_projection_reads_origin_and_target_off_the_middle_axis <- function() {
-  # pass-through only, and only up to sign, which (origin - target or the reverse) is the
-  # Fortran suite's to pin: the selected second field shifts from (1, 2, 6) to 0, whose
-  # mean-free form is (-2, -1, 3); the first field is never selected
+test_omics_field_RAP_projection_projects_the_selected_shift <- function() {
+  # pass-through only: each field is [origin, shift], and the shift is what is projected. The
+  # selected second field's shift (1, 2, 6) is mean-free (-2, -1, 3), whatever its origin (100
+  # here); the first field is never selected
   fields <- array(0, dim = c(3L, 2L, 2L))
   fields[, , 1] <- 100
-  fields[, 1, 2] <- c(1, 2, 6)
+  fields[, 1, 2] <- 100
+  fields[, 2, 2] <- c(1, 2, 6)
   result <- as.vector(omics_field_RAP_projection(fields, c(FALSE, TRUE), c(TRUE, TRUE, TRUE)))
   expected <- c(-2, -1, 3)
-  assert_true(isTRUE(all.equal(result, expected)) || isTRUE(all.equal(result, -expected)),
-              paste("got", toString(result)))
+  assert_true(isTRUE(all.equal(result, expected)), paste("expected -2, -1, 3, got", toString(result)))
 }
 
 test_omics_field_RAP_projection_rejects_a_mask_of_the_wrong_length <- function() {
@@ -183,14 +183,15 @@ test_clock_hand_angles_for_shift_vectors <- function() {
                  N_SELECTED_VECS, "clock_hand_angles_for_shift_vectors")
 }
 
-test_clock_hand_angles_for_shift_vectors_keeps_origin_first <- function() {
-  # pass-through only, the rule of the single-pair test above: the selected second field turns
-  # from e1 to e2, +pi/2; the unselected first turns to -e2 and would give -pi/2, and so would
-  # the second read target first
+test_clock_hand_angles_for_shift_vectors_turns_from_origin_to_origin_plus_shift <- function() {
+  # pass-through only, the rule of the single-pair test above: each field is [origin, shift] and
+  # turns from o to o + s. The selected second field turns from e1 to e1 + (-1, 1) = e2, +pi/2;
+  # reading the shift as the target would give 3pi/4, and the unselected first field turns to
+  # e1 + (-1, -1) = -e2, -pi/2
   fields <- array(0, dim = c(2L, 2L, 2L))
   fields[, 1, ] <- c(1, 0)
-  fields[, 2, 1] <- c(0, -1)
-  fields[, 2, 2] <- c(0, 1)
+  fields[, 2, 1] <- c(-1, -1)
+  fields[, 2, 2] <- c(-1, 1)
   result <- clock_hand_angles_for_shift_vectors(fields, c(FALSE, TRUE), c(-1, 1))
   assert_equal_numeric(result, pi / 2, msg = paste("expected pi/2, got", toString(result)))
 }
