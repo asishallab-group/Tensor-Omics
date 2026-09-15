@@ -1104,6 +1104,8 @@ contains
         real(real64) :: tmp_pmfs(n_bins, n_points, n_studies)
         real(real64) :: tmp_js_divergences(n_points, n_studies), tmp_weights(n_points, n_studies)
         real(real64) :: tmp_global_js_divergence(n_studies)
+        real(real64) :: tmp_pmf_point_major(n_points, n_bins)
+        integer(int32) :: tmp_counts_point_major(n_points, n_bins)
         integer(int32) :: ierr
 
         mean_pmf_counts(:, 1) = [5, 3, 2]
@@ -1115,7 +1117,8 @@ contains
         call gjct_permutation_test_expert(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
-                                          tmp_global_js_divergence, ierr=ierr, random_seed=1_int32)
+                                          tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
+                                          ierr=ierr, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_gjct_permutation_test_conservation_of_counts: ierr should be OK")

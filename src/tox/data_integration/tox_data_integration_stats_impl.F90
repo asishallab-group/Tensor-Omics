@@ -42,7 +42,8 @@ contains
     subroutine gjct_permutation_test_impl(n_permutations, n_bins, n_points, n_studies, mean_pmf_counts, mean_pmf, &
                                           mean_pmf_included_n_reps, included_n_reps, global_jsd_observed, p_values, &
                                           tmp_mean_pmf_counts, tmp_counts, tmp_pmfs, tmp_js_divergences, tmp_weights, &
-                                          tmp_global_js_divergence, random_seed, ierr)
+                                          tmp_global_js_divergence, tmp_pmf_point_major, tmp_counts_point_major, &
+                                          random_seed, ierr)
         integer(int32), intent(in) :: n_permutations
             !! Number of permutations to perform
             !! DM_MIN(0_int32)
@@ -88,6 +89,12 @@ contains
             !! Working array for one permutation's per-point weights
         real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
             !! Working array for one permutation's global weighted JSD values
+        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
+            !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
+            !! point-major convention before transposing into tmp_pmfs
+        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts_point_major
+            !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
+            !! before calc_pmf_impl
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! DM_DEFAULT(42_int32)
@@ -95,8 +102,6 @@ contains
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator
 
         integer(int32) :: i_permutation, i_point, i_study, draw_ierr
-        real(real64), dimension(n_points, n_bins) :: tmp_pmf_point_major
-        integer(int32), dimension(n_points, n_bins) :: tmp_counts_point_major
         type(rng_t) :: rng
 
         call set_ok(ierr)
@@ -111,6 +116,8 @@ contains
             tmp_js_divergences = 0.0_real64
             tmp_weights = 0.0_real64
             tmp_global_js_divergence = 0.0_real64
+            tmp_pmf_point_major = 0.0_real64
+            tmp_counts_point_major = 0_int32
             return
         end if
 

@@ -160,6 +160,8 @@ contains
             tmp_js_divergences,&
             tmp_weights,&
             tmp_global_js_divergence,&
+            tmp_pmf_point_major,&
+            tmp_counts_point_major,&
             random_seed,&
             ierr&
         ) bind(C, name="gjct_permutation_test_expert_c")
@@ -210,6 +212,12 @@ contains
             !! Working array for one permutation's per-point weights
         real(c_double), dimension(n_studies), intent(out), target :: tmp_global_js_divergence
             !! Working array for one permutation's global weighted JSD values
+        real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_pmf_point_major
+            !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
+            !! point-major convention before transposing into tmp_pmfs
+        integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts_point_major
+            !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
+            !! before calc_pmf_impl
         integer(c_int), intent(in), target :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
@@ -235,6 +243,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_js_divergences, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_weights, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_global_js_divergence, n_studies)
+        M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, n_points * n_bins)
+        M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, n_points * n_bins)
 
         call gjct_permutation_test_expert(&
             n_permutations = n_permutations,&
@@ -253,6 +263,8 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             tmp_global_js_divergence = tmp_global_js_divergence,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_counts_point_major = tmp_counts_point_major,&
             random_seed = random_seed,&
             ierr = ierr&
         )

@@ -1062,7 +1062,8 @@ contains
                                         mean_pmf_included_n_reps, included_n_reps, global_js_divergence, p_values, &
                                         tmp_permutation_mean_pmf_counts, tmp_permutation_counts, tmp_permutation_pmfs, &
                                         tmp_permutation_js_divergences, tmp_permutation_weights, &
-                                        tmp_permutation_global_js_divergence, random_seed, permutation_ierr)
+                                        tmp_permutation_global_js_divergence, tmp_pmf_point_major, &
+                                        tmp_counts_point_major, random_seed, permutation_ierr)
         if (is_err(permutation_ierr)) call set_err_once(ierr, get_err_code(permutation_ierr))
 
         ! Re-derive each study's own pmf/JSD/weights/global JSD from its UNTOUCHED counts --

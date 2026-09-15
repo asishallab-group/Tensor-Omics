@@ -100,6 +100,8 @@ contains
         real(real64), dimension(:, :), allocatable :: tmp_js_divergences
         real(real64), dimension(:, :), allocatable :: tmp_weights
         real(real64), dimension(:), allocatable :: tmp_global_js_divergence
+        real(real64), dimension(:, :), allocatable :: tmp_pmf_point_major
+        integer(int32), dimension(:, :), allocatable :: tmp_counts_point_major
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -121,6 +123,8 @@ contains
         M_ALLOCATE(tmp_js_divergences(n_points, n_studies))
         M_ALLOCATE(tmp_weights(n_points, n_studies))
         M_ALLOCATE(tmp_global_js_divergence(n_studies))
+        M_ALLOCATE(tmp_pmf_point_major(n_points, n_bins))
+        M_ALLOCATE(tmp_counts_point_major(n_points, n_bins))
 
         call gjct_permutation_test_impl(&
             n_permutations = n_permutations,&
@@ -139,6 +143,8 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             tmp_global_js_divergence = tmp_global_js_divergence,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_counts_point_major = tmp_counts_point_major,&
             random_seed = random_seed,&
             ierr = ierr&
         )
@@ -179,6 +185,8 @@ contains
             tmp_js_divergences,&
             tmp_weights,&
             tmp_global_js_divergence,&
+            tmp_pmf_point_major,&
+            tmp_counts_point_major,&
             random_seed,&
             ierr&
         )
@@ -227,6 +235,12 @@ contains
             !! Working array for one permutation's per-point weights
         real(real64), dimension(n_studies), intent(out) :: tmp_global_js_divergence
             !! Working array for one permutation's global weighted JSD values
+        real(real64), dimension(n_points, n_bins), intent(out) :: tmp_pmf_point_major
+            !! Working array: one study's resampled pmf, point-major, for calc_pmf_impl's
+            !! point-major convention before transposing into tmp_pmfs
+        integer(int32), dimension(n_points, n_bins), intent(out) :: tmp_counts_point_major
+            !! Working array: one study's resampled counts, point-major, transposed from tmp_counts
+            !! before calc_pmf_impl
         integer(int32), intent(in), optional :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
@@ -264,6 +278,8 @@ contains
             tmp_js_divergences = tmp_js_divergences,&
             tmp_weights = tmp_weights,&
             tmp_global_js_divergence = tmp_global_js_divergence,&
+            tmp_pmf_point_major = tmp_pmf_point_major,&
+            tmp_counts_point_major = tmp_counts_point_major,&
             random_seed = random_seed,&
             ierr = ierr&
         )
