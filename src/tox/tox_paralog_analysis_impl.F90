@@ -224,8 +224,9 @@ contains
             !!
         integer(int32), intent(in) :: n_paralog_subsets
             !! number of gene subsets that can be stored in `work_arr_paralog_subsets`. ***USE `calc_work_arr_paralog_subsets_size` TO DETERMINE THIS NUMBER***
-        integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(out) :: work_arr_paralog_subsets
-            !! working array to hold bitmask encoded subsets for detection.
+        integer(int32), dimension(n_mask_chunks, n_paralog_subsets), intent(inout) :: work_arr_paralog_subsets
+            !! working array to hold bitmask encoded subsets for detection; the results and active
+            !! subsets already in it are kept
         integer(int32), dimension(n_mask_chunks), intent(in) :: filtered_paralogs_mask
             !! bit mask that will have indices of genes kept by pattern set to 1, else 0
         integer(int32), dimension(n_mask_chunks), intent(inout) :: candidate_mask
@@ -508,8 +509,8 @@ contains
             !! number of active masks in `subsets`
         integer(int32), intent(inout) :: n_new_active_masks
             !! number of new active masks in `subsets`
-        integer(int32), dimension(n_mask_chunks, n_subsets), intent(out) :: subsets
-            !! working array to hold bitmask encoded subsets for detection.
+        integer(int32), dimension(n_mask_chunks, n_subsets), intent(inout) :: subsets
+            !! working array to hold bitmask encoded subsets for detection; the masks already in it are kept
         integer(int32), dimension(n_mask_chunks), intent(in) :: new_active_mask
             !! new active mask to add to `subsets`
         integer(int32), intent(out) :: ierr
