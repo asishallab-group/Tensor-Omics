@@ -411,7 +411,7 @@ test_run_js_comp_test_parameter_search <- function() {
 
   # ============================================================
   # Test 1 -- no candidate ever plateaus (min_count_per_mean_bin impossibly high): falls back to
-  # the FIRST (finest-resolution) candidate, (n_points, n_neighbors)=(300, 3), and resets
+  # the FIRST (finest-resolution) candidate, (n_points, n_neighbors)=(300, 26), and resets
   # best_candidate_pair_confidence_interval to -1.0 throughout
   # (test_param_search_no_plateau_falls_back_to_finest).
   # ============================================================
@@ -420,17 +420,17 @@ test_run_js_comp_test_parameter_search <- function() {
                                                random_seed = 1L)
 
   assert_equal_int(as.integer(result$n_points), 300L, "expected n_points=300")
-  assert_equal_int(as.integer(result$n_neighbors), 3L, "expected n_neighbors=3")
+  assert_equal_int(as.integer(result$n_neighbors), 26L, "expected n_neighbors=26")
   assert_equal_numeric(result$best_candidate_pair_confidence_interval[, 1], c(-1.0, -1.0), TOL, "study 1 CI reset")
   assert_equal_numeric(result$best_candidate_pair_confidence_interval[, 2], c(-1.0, -1.0), TOL, "study 2 CI reset")
 
   # ============================================================
   # Test 2 -- the GAMMA-decay grid collapses to exactly ONE candidate at
-  # max_n_genes_all_studies=1000 ((n_points, n_neighbors)=(300, 1)); with both admissibility
+  # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(300, 1)); with both admissibility
   # gates relaxed, the sole candidate is returned regardless of plateau, and the bootstrap
   # actually runs (test_param_search_single_candidate_bypasses_plateau).
   # ============================================================
-  max_n_genes_2 <- 1000L
+  max_n_genes_2 <- 100L
   gene_means_2 <- matrix(0.0, nrow = max_n_genes_2, ncol = n_studies)
   residuals_2 <- array(0.0, dim = c(max_n_reps_all_studies, max_n_genes_2, n_studies))
   for (i_study in 1:n_studies) {

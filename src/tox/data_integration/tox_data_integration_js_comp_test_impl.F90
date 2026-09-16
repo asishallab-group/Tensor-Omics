@@ -68,7 +68,7 @@ module tox_data_integration_js_comp_test_impl
     ! dimension expression that names a symbol the wrapper module never `use`s would not compile
     ! there (confirmed against how `emit/fortran_wrapper.py` renders `argument.dimension.extents`
     ! verbatim, with no import path for a bare dimension token).
-    real(real64), parameter :: KX_FACTORS(2) = [2.0_real64, 4.0_real64]
+    real(real64), parameter :: KX_FACTORS(2) = [0.25_real64, 0.5_real64]
         !! Ascending, as part of the neighbor-candidate denominator: first factor gives the
         !! larger neighbor-candidate value, second the smaller
     integer(int32), parameter :: MAX_POINTS = 1500_int32

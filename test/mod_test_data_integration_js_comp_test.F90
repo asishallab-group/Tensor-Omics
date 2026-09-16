@@ -1593,11 +1593,11 @@ contains
     !| `check_plateau_condition` is never even called: `plateau_found` stays `.false.` for the whole
     !| search. With `max_n_genes_all_studies=2000` the GAMMA-decay grid produces two candidates that
     !| both share `n_points=300` (`ceil(4*sqrt(2000))=179`, clamped up to `MIN_POINTS=300`, and a
-    !| single GAMMA step already drops below `n_points_low=300`) with `n_neighbors=3` and `1`
-    !| (`floor(2000/(2*300))=3`, `floor(2000/(4*300))=1`) -- both values derived purely from the
-    !| GAMMA-decay constants and `max_n_genes_all_studies`, independent of the synthetic gene/residual
-    !| data below. Since no candidate ever plateaus, the search must fall back to the FIRST (finest
-    !| resolution) candidate, `(n_points, n_neighbors) = (300, 3)`, and reset
+    !| single GAMMA step already drops below `n_points_low=300`) with `n_neighbors=26` and `13`
+    !| (`floor(2000/(0.25*300))=26`, `max(1,floor(2000/(0.5*300)))=13`) -- both values derived purely
+    !| from the GAMMA-decay constants and `max_n_genes_all_studies`, independent of the synthetic
+    !| gene/residual data below. Since no candidate ever plateaus, the search must fall back to the
+    !| FIRST (finest resolution) candidate, `(n_points, n_neighbors) = (300, 26)`, and reset
     !| `best_candidate_pair_confidence_interval` to `-1.0` throughout.
     subroutine test_param_search_no_plateau_falls_back_to_finest()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2000, max_n_reps_all_studies = 3
@@ -1631,7 +1631,7 @@ contains
         call assert_equal_int(n_points, 300_int32, &
                               "test_param_search_no_plateau_falls_back_to_finest: "// &
                               "falls back to the finest-resolution n_points")
-        call assert_equal_int(n_neighbors, 3_int32, &
+        call assert_equal_int(n_neighbors, 26_int32, &
                               "test_param_search_no_plateau_falls_back_to_finest: "// &
                               "falls back to the finest-resolution n_neighbors")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
@@ -1642,10 +1642,10 @@ contains
                                      "study 2 CI reset to -1.0")
     end subroutine test_param_search_no_plateau_falls_back_to_finest
 
-    !> With `max_n_genes_all_studies=1000`, the GAMMA-decay grid collapses to exactly ONE candidate
-    !| (`floor(1000/(2*300))=1` and `floor(1000/(4*300))=0 -> max(1,0)=1` are the same value, so the
-    !| second `KX_FACTORS` entry does not add a distinct candidate, and a single GAMMA step already
-    !| drops `n_points_high` below `n_points_low=300`): `(n_points, n_neighbors) = (300, 1)`. Both
+    !> With `max_n_genes_all_studies=100`, the GAMMA-decay grid collapses to exactly ONE candidate
+    !| (`floor(100/(0.25*300))=1` and `max(1,floor(100/(0.5*300)))=max(1,0)=1` are the same value, so
+    !| the second `KX_FACTORS` entry does not add a distinct candidate, and a single GAMMA step
+    !| already drops `n_points_high` below `n_points_low=300`): `(n_points, n_neighbors) = (300, 1)`. Both
     !| admissibility gates are relaxed to their most permissive settings
     !| (`min_neighbor_overlap=0.0`, `min_count_per_mean_bin=0`) so the sole candidate exercises the
     !| full pipeline -- both gates pass, `bootstrap_histogram` and `check_plateau_condition` really
@@ -1655,7 +1655,7 @@ contains
     !| reaches by forcing every candidate to fail a gate instead of there only being one to begin
     !| with).
     subroutine test_param_search_single_candidate_bypasses_plateau()
-        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 1000, max_n_reps_all_studies = 3
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 100, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
@@ -1703,12 +1703,14 @@ contains
     !| With `max_n_genes_all_studies=10000`, the GAMMA-decay grid produces exactly FOUR candidates:
     !| `n_points_high = clamp(ceil(4*sqrt(10000)), 300, 1500) = 400`,
     !| `n_points_low = max(300, ceil(0.2*400)) = 300`.
-    !| - i=1: `n_points=400`, neighbors `floor(10000/(2*400))=12` and `floor(10000/(4*400))=6`
-    !|   -> candidates (400,12), (400,6). `n_points_high *= 0.8 -> 320`.
-    !| - i=2: `320 >= 300`, so `n_points=320`, neighbors `floor(10000/(2*320))=15` and
-    !|   `floor(10000/(4*320))=7` -> candidates (320,15), (320,7). `n_points_high *= 0.8 -> 256`.
+    !| - i=1: `n_points=400`, neighbors `floor(10000/(0.25*400))=100` and
+    !|   `max(1,floor(10000/(0.5*400)))=50` -> candidates (400,100), (400,50). `n_points_high *= 0.8
+    !|   -> 320`.
+    !| - i=2: `320 >= 300`, so `n_points=320`, neighbors `floor(10000/(0.25*320))=125` and
+    !|   `max(1,floor(10000/(0.5*320)))=62` -> candidates (320,125), (320,62). `n_points_high *= 0.8
+    !|   -> 256`.
     !| - i=3: `256 < 300` -> loop exits.
-    !| So the grid is `[(400,12), (400,6), (320,15), (320,7)]`.
+    !| So the grid is `[(400,100), (400,50), (320,125), (320,62)]`.
     !|
     !| Every gene's residual and gene mean is the SAME constant across every study (0.0 and 5.0
     !| respectively). This deterministically produces a plateau at the SECOND candidate, regardless
@@ -1730,7 +1732,7 @@ contains
     !|   (candidate 2, once candidate 1 became the new "best") gives overlap 1.0 for every study,
     !|   which exceeds the default `succeeding_ci_overlap=0.9` for every study at once -- so
     !|   METHOD_JOIN_MIN/MAX/MEDIAN would all detect the plateau there. The search must therefore
-    !|   stop at candidate 2 = `(n_points, n_neighbors) = (400, 6)`, never reaching candidates 3/4,
+    !|   stop at candidate 2 = `(n_points, n_neighbors) = (400, 50)`, never reaching candidates 3/4,
     !|   and must NOT fall back to candidate 1 or reset the CI to the `-1.0` sentinel.
     !|
     !| Gate thresholds are relaxed to the same permissive settings
@@ -1776,11 +1778,11 @@ contains
                               "test_param_search_finds_plateau_mid_grid: two admissible candidates evaluated")
         call assert_equal_int(trace_n_points(1), 400_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_points(1)")
-        call assert_equal_int(trace_n_neighbors(1), 12_int32, &
+        call assert_equal_int(trace_n_neighbors(1), 100_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_neighbors(1)")
         call assert_equal_int(trace_n_points(2), 400_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_points(2)")
-        call assert_equal_int(trace_n_neighbors(2), 6_int32, &
+        call assert_equal_int(trace_n_neighbors(2), 50_int32, &
                               "test_param_search_finds_plateau_mid_grid: trace_n_neighbors(2)")
         call assert_equal_array_real(trace_global_js_divergence(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
                                      "test_param_search_finds_plateau_mid_grid: trace_global_js_divergence(:,1) is 0.0")
@@ -1817,13 +1819,13 @@ contains
         call assert_equal_real(trace_delta_max(2), 0.0_real64, TOL, &
                               "test_param_search_finds_plateau_mid_grid: trace_delta_max(2) is 0.0")
 
-        ! The grid's SECOND candidate, (400, 6) -- not the first (finest, 400/12) and not the
+        ! The grid's SECOND candidate, (400, 50) -- not the first (finest, 400/100) and not the
         ! no-plateau fallback's candidate either -- proving the search stopped early at a genuine
         ! plateau rather than running to completion or falling back.
         call assert_equal_int(n_points, 400_int32, &
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "should stop at the second candidate's n_points")
-        call assert_equal_int(n_neighbors, 6_int32, &
+        call assert_equal_int(n_neighbors, 50_int32, &
                               "test_param_search_finds_plateau_mid_grid: "// &
                               "should stop at the second candidate's n_neighbors")
 
@@ -1839,14 +1841,14 @@ contains
 
     !> Same degenerate data as `test_param_search_finds_plateau_mid_grid` (constant gene means and
     !| residuals -> JSD exactly 0.0 and CI exactly [0.0, 0.0] for every candidate in the 4-candidate
-    !| grid `[(400,12), (400,6), (320,15), (320,7)]`), but with `plateau_mode=MODE_PLATEAU_EFFECT_SIZE`.
+    !| grid `[(400,100), (400,50), (320,125), (320,62)]`), but with `plateau_mode=MODE_PLATEAU_EFFECT_SIZE`.
     !| Under the default `plateau_mode` (CI overlap), that test's search stops at the SECOND
     !| candidate. Under effect size alone, `delta_min_consecutive_transitions=2` (the default) needs
     !| TWO consecutive qualifying transitions before it plateaus: the first (candidate 1 -> 2) is
     !| only the first, so the search must continue past candidate 2 -- proving CI overlap is
     !| genuinely ignored under this mode, not just usually also satisfied -- and stop only once the
     !| second consecutive qualifying transition (candidate 2 -> 3) completes, at the THIRD candidate,
-    !| `(320, 15)`.
+    !| `(320, 125)`.
     subroutine test_param_search_effect_size_mode_plateau()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -1883,7 +1885,7 @@ contains
         call assert_equal_int(n_points, 320_int32, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "stops at the THIRD candidate's n_points, later than CI-overlap mode's second")
-        call assert_equal_int(n_neighbors, 15_int32, &
+        call assert_equal_int(n_neighbors, 125_int32, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "stops at the third candidate's n_neighbors")
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
@@ -1937,7 +1939,7 @@ contains
         call assert_equal_int(n_points, 400_int32, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "stops at the second candidate's n_points, same as CI-overlap-only mode")
-        call assert_equal_int(n_neighbors, 6_int32, &
+        call assert_equal_int(n_neighbors, 50_int32, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "stops at the second candidate's n_neighbors")
     end subroutine test_param_search_both_mode_uses_earlier_trigger

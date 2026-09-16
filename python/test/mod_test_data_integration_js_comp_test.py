@@ -454,7 +454,7 @@ def test_run_js_comp_test_parameter_search():
     # Test 1 -- no candidate ever plateaus (min_count_per_mean_bin impossibly high), so the
     # search falls back to the FIRST (finest-resolution) candidate and resets
     # best_candidate_pair_confidence_interval to -1.0 throughout
-    # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=3
+    # (test_param_search_no_plateau_falls_back_to_finest). Both n_points=300 and n_neighbors=26
     # are derived purely from the GAMMA-decay constants and max_n_genes_all_studies=2000.
     # ============================================================
     result = run_js_comp_test_parameter_search(gene_means, residuals, shared_residual_range=1.0, n_bootstraps=10,
@@ -462,7 +462,7 @@ def test_run_js_comp_test_parameter_search():
                                                 random_seed=1)
 
     assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
-    assert result["n_neighbors"] == 3, f"expected n_neighbors=3, got {result['n_neighbors']}"
+    assert result["n_neighbors"] == 26, f"expected n_neighbors=26, got {result['n_neighbors']}"
     np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 0], [-1.0, -1.0],
                                           decimal=12)
     np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 1], [-1.0, -1.0],
@@ -470,12 +470,12 @@ def test_run_js_comp_test_parameter_search():
 
     # ============================================================
     # Test 2 -- the GAMMA-decay grid collapses to exactly ONE candidate at
-    # max_n_genes_all_studies=1000 ((n_points, n_neighbors)=(300, 1)); with both admissibility
+    # max_n_genes_all_studies=100 ((n_points, n_neighbors)=(300, 1)); with both admissibility
     # gates relaxed to their most permissive settings the sole candidate is returned regardless
     # of plateau, and the bootstrap actually runs, giving a real (not -1.0) confidence interval
     # (test_param_search_single_candidate_bypasses_plateau).
     # ============================================================
-    max_n_genes_2 = 1000
+    max_n_genes_2 = 100
     gene_means_2 = np.empty((max_n_genes_2, n_studies), dtype=np.float64, order='F')
     residuals_2 = np.empty((max_n_reps_all_studies, max_n_genes_2, n_studies), dtype=np.float64, order='F')
     for i_study in range(n_studies):
