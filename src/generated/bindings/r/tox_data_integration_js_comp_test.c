@@ -18,7 +18,7 @@ void create_mean_pmf_c(const double*, const int*, const int*, const int*, const 
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const int*, const double*, const double*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const double*, const int*, const char*, int*, int*, int*, double*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const double*, const int*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const double*, const int*, const char*, int*, int*, int*, double*, unsigned char*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const double*, const int*, int*);
 
 SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range) {
     int nprot = 0;
@@ -600,6 +600,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     int n_bins = 0;
     SEXP best_candidate_pair_confidence_interval = PROTECT(Rf_allocVector(REALSXP, 2 * n_studies)); nprot++;
     { SEXP best_candidate_pair_confidence_interval_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(best_candidate_pair_confidence_interval_dim)[0] = 2; INTEGER(best_candidate_pair_confidence_interval_dim)[1] = n_studies; Rf_setAttrib(best_candidate_pair_confidence_interval, R_DimSymbol, best_candidate_pair_confidence_interval_dim); UNPROTECT(1); }
+    unsigned char plateau_established = 0;
     int n_admissible_evaluated = 0;
     SEXP trace_n_points = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
     SEXP trace_n_neighbors = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
@@ -632,6 +633,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         &n_neighbors,
         &n_bins,
         REAL(best_candidate_pair_confidence_interval),
+        &plateau_established,
         &n_admissible_evaluated,
         INTEGER(trace_n_points),
         INTEGER(trace_n_neighbors),
@@ -656,40 +658,42 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 16)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 17)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_points));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(n_neighbors));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(n_bins));
     SET_VECTOR_ELT(_out, 3, best_candidate_pair_confidence_interval);
-    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(n_admissible_evaluated));
-    SET_VECTOR_ELT(_out, 5, trace_n_points);
-    SET_VECTOR_ELT(_out, 6, trace_n_neighbors);
-    SET_VECTOR_ELT(_out, 7, trace_global_js_divergence);
-    SET_VECTOR_ELT(_out, 8, trace_ci_lower);
-    SET_VECTOR_ELT(_out, 9, trace_ci_upper);
-    SET_VECTOR_ELT(_out, 10, trace_ci_width);
-    SET_VECTOR_ELT(_out, 11, trace_ci_width_relative);
-    SET_VECTOR_ELT(_out, 12, trace_delta);
-    SET_VECTOR_ELT(_out, 13, trace_delta_median);
-    SET_VECTOR_ELT(_out, 14, trace_delta_max);
-    SET_VECTOR_ELT(_out, 15, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 16)); nprot++;
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarLogical(plateau_established != 0));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(n_admissible_evaluated));
+    SET_VECTOR_ELT(_out, 6, trace_n_points);
+    SET_VECTOR_ELT(_out, 7, trace_n_neighbors);
+    SET_VECTOR_ELT(_out, 8, trace_global_js_divergence);
+    SET_VECTOR_ELT(_out, 9, trace_ci_lower);
+    SET_VECTOR_ELT(_out, 10, trace_ci_upper);
+    SET_VECTOR_ELT(_out, 11, trace_ci_width);
+    SET_VECTOR_ELT(_out, 12, trace_ci_width_relative);
+    SET_VECTOR_ELT(_out, 13, trace_delta);
+    SET_VECTOR_ELT(_out, 14, trace_delta_median);
+    SET_VECTOR_ELT(_out, 15, trace_delta_max);
+    SET_VECTOR_ELT(_out, 16, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 17)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_points"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_neighbors"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("best_candidate_pair_confidence_interval"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("n_admissible_evaluated"));
-    SET_STRING_ELT(_nms, 5, Rf_mkChar("trace_n_points"));
-    SET_STRING_ELT(_nms, 6, Rf_mkChar("trace_n_neighbors"));
-    SET_STRING_ELT(_nms, 7, Rf_mkChar("trace_global_js_divergence"));
-    SET_STRING_ELT(_nms, 8, Rf_mkChar("trace_ci_lower"));
-    SET_STRING_ELT(_nms, 9, Rf_mkChar("trace_ci_upper"));
-    SET_STRING_ELT(_nms, 10, Rf_mkChar("trace_ci_width"));
-    SET_STRING_ELT(_nms, 11, Rf_mkChar("trace_ci_width_relative"));
-    SET_STRING_ELT(_nms, 12, Rf_mkChar("trace_delta"));
-    SET_STRING_ELT(_nms, 13, Rf_mkChar("trace_delta_median"));
-    SET_STRING_ELT(_nms, 14, Rf_mkChar("trace_delta_max"));
-    SET_STRING_ELT(_nms, 15, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("plateau_established"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("n_admissible_evaluated"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("trace_n_points"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("trace_n_neighbors"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("trace_global_js_divergence"));
+    SET_STRING_ELT(_nms, 9, Rf_mkChar("trace_ci_lower"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("trace_ci_upper"));
+    SET_STRING_ELT(_nms, 11, Rf_mkChar("trace_ci_width"));
+    SET_STRING_ELT(_nms, 12, Rf_mkChar("trace_ci_width_relative"));
+    SET_STRING_ELT(_nms, 13, Rf_mkChar("trace_delta"));
+    SET_STRING_ELT(_nms, 14, Rf_mkChar("trace_delta_median"));
+    SET_STRING_ELT(_nms, 15, Rf_mkChar("trace_delta_max"));
+    SET_STRING_ELT(_nms, 16, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

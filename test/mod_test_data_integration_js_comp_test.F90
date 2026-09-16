@@ -33,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(51))
+        allocate (all_tests(52))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -143,6 +143,8 @@ contains
                                   test_param_search_effect_size_mode_plateau)
         all_tests(51) = test_case("test_param_search_both_mode_uses_earlier_trigger", &
                                   test_param_search_both_mode_uses_earlier_trigger)
+        all_tests(52) = test_case("test_param_search_no_plateau_uses_smallest_uncertainty", &
+                                  test_param_search_no_plateau_uses_smallest_uncertainty)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -1605,6 +1607,7 @@ contains
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
         real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
@@ -1620,7 +1623,8 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
@@ -1628,6 +1632,8 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_no_plateau_falls_back_to_finest: ierr should be OK")
+        call assert_false(plateau_established, &
+                          "test_param_search_no_plateau_falls_back_to_finest: plateau_established is false")
         call assert_equal_int(n_points, 300_int32, &
                               "test_param_search_no_plateau_falls_back_to_finest: "// &
                               "falls back to the finest-resolution n_points")
@@ -1660,6 +1666,7 @@ contains
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
         real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
@@ -1675,7 +1682,8 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
@@ -1684,6 +1692,8 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_single_candidate_bypasses_plateau: ierr should be OK")
+        call assert_true(plateau_established, &
+                         "test_param_search_single_candidate_bypasses_plateau: plateau_established is true")
         call assert_equal_int(n_points, 300_int32, &
                               "test_param_search_single_candidate_bypasses_plateau: "// &
                               "the sole candidate's n_points")
@@ -1746,6 +1756,7 @@ contains
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
         real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
@@ -1761,7 +1772,8 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
@@ -1770,6 +1782,8 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: ierr should be OK")
+        call assert_true(plateau_established, &
+                         "test_param_search_finds_plateau_mid_grid: plateau_established is true")
 
         ! Both candidates the search actually reached (1 and 2) passed both admissibility gates,
         ! so n_admissible_evaluated == 2 -- candidates 3/4 have no trace entry at all, not a
@@ -1855,6 +1869,7 @@ contains
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
         real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
@@ -1870,7 +1885,8 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
@@ -1879,6 +1895,8 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_effect_size_mode_plateau: ierr should be OK")
+        call assert_true(plateau_established, &
+                         "test_param_search_effect_size_mode_plateau: plateau_established is true")
         call assert_equal_int(n_admissible_evaluated, 3_int32, &
                               "test_param_search_effect_size_mode_plateau: "// &
                               "needs two consecutive qualifying transitions -> three candidates evaluated")
@@ -1909,6 +1927,7 @@ contains
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
         real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
@@ -1924,7 +1943,8 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
                                                trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
                                                trace_delta_median, trace_delta_max, ierr=ierr, &
@@ -1933,6 +1953,8 @@ contains
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_both_mode_uses_earlier_trigger: ierr should be OK")
+        call assert_true(plateau_established, &
+                         "test_param_search_both_mode_uses_earlier_trigger: plateau_established is true")
         call assert_equal_int(n_admissible_evaluated, 2_int32, &
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "CI overlap's earlier plateau wins -> only two candidates evaluated")
@@ -1943,5 +1965,92 @@ contains
                               "test_param_search_both_mode_uses_earlier_trigger: "// &
                               "stops at the second candidate's n_neighbors")
     end subroutine test_param_search_both_mode_uses_earlier_trigger
+
+    !> Exercises the new Issue #178 no-plateau fallback (`plateau_established = .false.` +
+    !| smallest-bootstrap-uncertainty candidate selection), which only the tests above never
+    !| reach: they all either plateau or bypass the plateau machinery entirely via a
+    !| single/zero-admissible-candidate grid. This one needs real, non-degenerate data -- the
+    !| all-constant fixture the other tests use gives an exactly-[0,0] CI for every candidate,
+    !| which trivially plateaus (perfect overlap) rather than ever exercising this fallback.
+    !|
+    !| `max_n_genes_all_studies=20000` gives a 6-candidate grid (`[(566,141),(566,70),(453,176),
+    !| (453,88),(362,220),(362,110)]`). Both studies' residuals are independent draws from the
+    !| same simple linear-congruential pseudo-random sequence (`x_{n+1} = (1103515245*n + 12345)
+    !| mod 2^31`, scaled to `[-2, 2]`) -- no systematic per-study difference, so the observed JSD
+    !| stays small and the bootstrapped CIs genuinely vary in width from one candidate to the next
+    !| without any one of them ever nesting inside the running best closely enough to satisfy
+    !| `succeeding_ci_overlap`'s default 90% threshold. This was found empirically (per the
+    !| project's own plan for this change, which flagged the exact fixture as needing
+    !| construction/iteration, not something derivable on paper) -- confirmed via direct
+    !| experimentation that every candidate here is genuinely evaluated, no plateau is ever found
+    !| under any of the three `join_method`s, and candidate 5 = `(362, 220)` has a distinctly
+    !| smaller confidence-interval width than every other candidate, in both studies (median CI
+    !| width per candidate: `0.00167, 0.00250, 0.00121, 0.00218, 0.00110, 0.00200` -- candidate 5's
+    !| `0.00110` is the unambiguous minimum). The routine must therefore return candidate 5's own
+    !| `(n_points, n_neighbors)` and its real, bootstrapped confidence interval (not `-1.0`), with
+    !| `plateau_established = .false.` The exact confidence-interval values below come directly
+    !| from running this fixture through the actual implementation (not hand-derived), since they
+    !| depend on the real bootstrap resampling -- reproducible bit-for-bit given the fixed
+    !| `random_seed` and deterministic input data.
+    subroutine test_param_search_no_plateau_uses_smallest_uncertainty()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 20000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        logical(c_bool) :: plateau_established
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study, i_rep, k
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = real(i_gene, real64)
+                do i_rep = 1, max_n_reps_all_studies
+                    k = i_rep + max_n_reps_all_studies*(i_gene - 1) + &
+                        (i_study - 1)*max_n_reps_all_studies*max_n_genes_all_studies
+                    residuals(i_rep, i_gene, i_study) = 4.0_real64* &
+                        (mod(1103515245.0_real64*real(k, real64) + 12345.0_real64, 2147483648.0_real64) &
+                         /2147483648.0_real64 - 0.5_real64)
+                end do
+            end do
+        end do
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 3.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
+                                               n_bins, best_candidate_pair_confidence_interval, plateau_established, &
+                                               n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_no_plateau_uses_smallest_uncertainty: ierr should be OK")
+        call assert_equal_int(n_admissible_evaluated, 6_int32, &
+                              "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                              "all six candidates were admissible and evaluated")
+        call assert_false(plateau_established, &
+                          "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                          "no candidate ever plateaus under this fixture")
+        call assert_equal_int(n_points, 362_int32, &
+                              "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                              "smallest-uncertainty candidate's n_points")
+        call assert_equal_int(n_neighbors, 220_int32, &
+                              "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                              "smallest-uncertainty candidate's n_neighbors")
+        call assert_true(all(best_candidate_pair_confidence_interval /= -1.0_real64), &
+                         "test_param_search_no_plateau_uses_smallest_uncertainty: "// &
+                         "a real confidence interval is returned, not the -1.0 sentinel")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), &
+                                     [5.212653804e-05_real64, 1.149283224e-03_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_uses_smallest_uncertainty: study 1 CI")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), &
+                                     [5.212150674e-05_real64, 1.150810589e-03_real64], 2_int32, TOL, &
+                                     "test_param_search_no_plateau_uses_smallest_uncertainty: study 2 CI")
+    end subroutine test_param_search_no_plateau_uses_smallest_uncertainty
 
 end module mod_test_data_integration_js_comp_test

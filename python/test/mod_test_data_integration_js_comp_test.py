@@ -463,6 +463,7 @@ def test_run_js_comp_test_parameter_search():
 
     assert result["n_points"] == 300, f"expected n_points=300, got {result['n_points']}"
     assert result["n_neighbors"] == 26, f"expected n_neighbors=26, got {result['n_neighbors']}"
+    assert result["plateau_established"] == False, "no candidate ever plateaus here"
     np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 0], [-1.0, -1.0],
                                           decimal=12)
     np.testing.assert_array_almost_equal(result["best_candidate_pair_confidence_interval"][:, 1], [-1.0, -1.0],
@@ -489,6 +490,7 @@ def test_run_js_comp_test_parameter_search():
 
     assert result2["n_points"] == 300, f"expected n_points=300, got {result2['n_points']}"
     assert result2["n_neighbors"] == 1, f"expected n_neighbors=1, got {result2['n_neighbors']}"
+    assert result2["plateau_established"] == True, "the single-candidate bypass counts as established"
     ci = result2["best_candidate_pair_confidence_interval"]
     assert ci[0, 0] >= 0.0 and ci[1, 0] <= 1.0, \
         "relaxed gates should let bootstrap actually run, giving a real (not -1.0) CI"
@@ -511,8 +513,10 @@ def test_run_js_comp_test_parameter_search():
     # return since every trace_* array already comes back trimmed to exactly that length.
     for key in ("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
                 "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
-                "trace_delta_median", "trace_delta_max"):
+                "trace_delta_median", "trace_delta_max", "plateau_established"):
         assert key in result3, f"missing expected output key '{key}'"
+    assert isinstance(result3["plateau_established"], (bool, np.bool_)), \
+        f"expected plateau_established to be a bool, got {type(result3['plateau_established'])}"
     n_admissible = result3["trace_n_points"].shape[-1]
     assert n_admissible >= 1, f"expected at least one admissible candidate, got {n_admissible}"
     assert result3["trace_global_js_divergence"].shape[-1] == n_admissible

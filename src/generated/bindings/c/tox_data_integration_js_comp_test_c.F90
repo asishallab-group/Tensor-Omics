@@ -1710,6 +1710,7 @@ contains
             n_neighbors,&
             n_bins,&
             best_candidate_pair_confidence_interval,&
+            plateau_established,&
             n_admissible_evaluated,&
             trace_n_points,&
             trace_n_neighbors,&
@@ -1774,8 +1775,20 @@ contains
             !! The finally chosen candidate's bin count
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
-            !! the search fell back to the finest-resolution candidate
+            !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
+            !! smallest-bootstrap-uncertainty candidate could be substituted either (see
+            !! `plateau_established`)
+        logical(c_bool), intent(out), target :: plateau_established
+            !! `.true.` when a real plateau was found (by whichever criterion
+            !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
+            !! begin with. `.false.` when the search exhausted every admissible candidate
+            !! without ever finding one -- Issue #178's own "report that parameter stability could
+            !! not be established". When `.false.` and `plateau_mode` is
+            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+            !! recommendation -- `plateau_established` is what distinguishes that case from an
+            !! actual plateau, not the confidence interval's sentinel value
         integer(c_int), intent(out), target :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -1901,6 +1914,7 @@ contains
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(n_bins)
+        M_CHECK_NON_NULL(plateau_established)
         M_CHECK_NON_NULL(n_admissible_evaluated)
         M_CHECK_NON_NULL(min_count_per_mean_bin)
         M_CHECK_NON_NULL(min_neighbor_overlap)
@@ -1973,6 +1987,7 @@ contains
             n_neighbors = n_neighbors,&
             n_bins = n_bins,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
             trace_n_points = trace_n_points,&
             trace_n_neighbors = trace_n_neighbors,&
@@ -2077,6 +2092,7 @@ contains
             n_neighbors,&
             n_bins,&
             best_candidate_pair_confidence_interval,&
+            plateau_established,&
             n_admissible_evaluated,&
             trace_n_points,&
             trace_n_neighbors,&
@@ -2110,6 +2126,7 @@ contains
             tmp_bootstrapping_top_k_jsds,&
             tmp_prev_global_js_divergence,&
             tmp_delta_perm,&
+            tmp_best_uncertainty_confidence_interval,&
             min_count_per_mean_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2176,8 +2193,20 @@ contains
             !! The finally chosen candidate's bin count
         real(c_double), dimension(2, n_studies), intent(out), target :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
-            !! the search fell back to the finest-resolution candidate
+            !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
+            !! smallest-bootstrap-uncertainty candidate could be substituted either (see
+            !! `plateau_established`)
+        logical(c_bool), intent(out), target :: plateau_established
+            !! `.true.` when a real plateau was found (by whichever criterion
+            !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
+            !! begin with. `.false.` when the search exhausted every admissible candidate
+            !! without ever finding one -- Issue #178's own "report that parameter stability could
+            !! not be established". When `.false.` and `plateau_mode` is
+            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+            !! recommendation -- `plateau_established` is what distinguishes that case from an
+            !! actual plateau, not the confidence interval's sentinel value
         integer(c_int), intent(out), target :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -2295,6 +2324,10 @@ contains
         integer(c_int), dimension(n_studies), intent(out), target :: tmp_delta_perm
             !! Working array forwarded to check_effect_size_plateau_condition_impl's own median
             !! computation
+        real(c_double), dimension(2, n_studies), intent(out), target :: tmp_best_uncertainty_confidence_interval
+            !! Working array: the confidence interval of the admissible candidate with the smallest
+            !! bootstrapped uncertainty seen so far, used only internally by the no-plateau fallback
+            !! (see plateau_established)
         integer(c_int), intent(in), target :: min_count_per_mean_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate
@@ -2370,6 +2403,7 @@ contains
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
         M_CHECK_NON_NULL(n_bins)
+        M_CHECK_NON_NULL(plateau_established)
         M_CHECK_NON_NULL(n_admissible_evaluated)
         M_CHECK_NON_NULL(min_count_per_mean_bin)
         M_CHECK_NON_NULL(min_neighbor_overlap)
@@ -2416,6 +2450,7 @@ contains
         M_CHECK_ARRAY_NON_NULL(tmp_bootstrapping_top_k_jsds, n_bootstrapping_top_k_jsds * 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_prev_global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_delta_perm, n_studies)
+        M_CHECK_ARRAY_NON_NULL(tmp_best_uncertainty_confidence_interval, 2 * n_studies)
         M_CHECK_ARRAY_NON_NULL(plateau_mode, 19)
 
         block
@@ -2467,6 +2502,7 @@ contains
             n_neighbors = n_neighbors,&
             n_bins = n_bins,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
             trace_n_points = trace_n_points,&
             trace_n_neighbors = trace_n_neighbors,&
@@ -2500,6 +2536,7 @@ contains
             tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
             tmp_prev_global_js_divergence = tmp_prev_global_js_divergence,&
             tmp_delta_perm = tmp_delta_perm,&
+            tmp_best_uncertainty_confidence_interval = tmp_best_uncertainty_confidence_interval,&
             min_count_per_mean_bin = min_count_per_mean_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&

@@ -1291,7 +1291,8 @@ contains
                                                        gene_means, residuals, shared_residual_range, n_bootstraps, &
                                                        join_method, max_n_points_candidate, max_n_neighbors_candidate, &
                                                        n_bootstrapping_top_k_jsds, n_points, n_neighbors, n_bins, &
-                                                       best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                                       best_candidate_pair_confidence_interval, plateau_established, &
+                                                       n_admissible_evaluated, &
                                                        trace_n_points, trace_n_neighbors, trace_global_js_divergence, &
                                                        trace_ci_lower, trace_ci_upper, trace_ci_width, &
                                                        trace_ci_width_relative, trace_delta, trace_delta_median, &
@@ -1303,7 +1304,8 @@ contains
                                                        tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, &
                                                        tmp_global_js_divergence, tmp_confidence_interval, &
                                                        tmp_bootstrapping_top_k_jsds, tmp_prev_global_js_divergence, &
-                                                       tmp_delta_perm, min_count_per_mean_bin, min_neighbor_overlap, &
+                                                       tmp_delta_perm, tmp_best_uncertainty_confidence_interval, &
+                                                       min_count_per_mean_bin, min_neighbor_overlap, &
                                                        succeeding_ci_overlap, plateau_mode, delta_median_threshold, &
                                                        delta_max_threshold, delta_epsilon, &
                                                        delta_min_consecutive_transitions, &
@@ -1359,8 +1361,20 @@ contains
             !! The finally chosen candidate's bin count
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
-            !! the search fell back to the finest-resolution candidate
+            !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
+            !! smallest-bootstrap-uncertainty candidate could be substituted either (see
+            !! `plateau_established`)
+        logical(c_bool), intent(out) :: plateau_established
+            !! `.true.` when a real plateau was found (by whichever criterion
+            !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
+            !! begin with. `.false.` when the search exhausted every admissible candidate
+            !! without ever finding one -- Issue #178's own "report that parameter stability could
+            !! not be established". When `.false.` and `plateau_mode` is
+            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+            !! recommendation -- `plateau_established` is what distinguishes that case from an
+            !! actual plateau, not the confidence interval's sentinel value
         integer(int32), intent(out) :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -1479,6 +1493,10 @@ contains
         integer(int32), dimension(n_studies), intent(out) :: tmp_delta_perm
             !! Working array forwarded to check_effect_size_plateau_condition_impl's own median
             !! computation
+        real(real64), dimension(2, n_studies), intent(out) :: tmp_best_uncertainty_confidence_interval
+            !! Working array: the confidence interval of the admissible candidate with the smallest
+            !! bootstrapped uncertainty seen so far, used only internally by the no-plateau fallback
+            !! (see plateau_established)
         integer(int32), intent(in), optional :: min_count_per_mean_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate
@@ -1544,8 +1562,10 @@ contains
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
         integer(int32) :: n_residuals, pool_size, bootstrap_ierr, actual_min_count_per_mean_bin
         integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
+        integer(int32) :: best_uncertainty_candidate_index
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
         real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
+        real(real64) :: best_uncertainty_value, median_ci_width
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found
         logical(c_bool) :: ci_plateau_found, effect_size_plateau_found, has_previous_admissible
 
@@ -1584,6 +1604,8 @@ contains
         best_candidate_pair_confidence_interval = -1.0_real64
         best_candidate_index = 1_int32
         best_exceeded_ci_overlap_count = 0_int32
+        best_uncertainty_value = huge(1.0_real64)
+        best_uncertainty_candidate_index = 1_int32
         plateau_found = logical(.false., kind=c_bool)
         prev_n_points = -1_int32
         n_admissible_evaluated = 0_int32
@@ -1699,6 +1721,23 @@ contains
                 trace_ci_width(1:n_studies, n_admissible_evaluated) &
                 / max(trace_global_js_divergence(1:n_studies, n_admissible_evaluated), actual_delta_epsilon)
 
+            ! Track the admissible candidate with the smallest bootstrapped uncertainty
+            ! (median confidence-interval width across studies), regardless of plateau_mode -- the
+            ! ranking itself doesn't depend on which plateau criterion is selected, only whether the
+            ! fallback branch below actually uses it. tmp_delta_perm was just used above to sort
+            ! `delta`; it must be re-seeded and re-sorted here for trace_ci_width's own order before
+            ! calc_percentile_impl can use it, since calc_percentile_impl trusts whatever order it's
+            ! handed rather than sorting internally.
+            call init_perm(tmp_delta_perm)
+            call sort_array_heapsort(trace_ci_width(1:n_studies, n_admissible_evaluated), tmp_delta_perm)
+            call calc_percentile_impl(trace_ci_width(1:n_studies, n_admissible_evaluated), n_studies, tmp_delta_perm, &
+                                      0.5_real64, median_ci_width)
+            if (median_ci_width < best_uncertainty_value) then
+                best_uncertainty_value = median_ci_width
+                best_uncertainty_candidate_index = i_candidate
+                tmp_best_uncertainty_confidence_interval = tmp_confidence_interval
+            end if
+
             call check_plateau_condition_impl(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, &
                                               best_candidate_index, best_exceeded_ci_overlap_count, i_candidate, join_method, &
                                               actual_succeeding_ci_overlap, ci_plateau_found)
@@ -1724,21 +1763,39 @@ contains
             if (plateau_found) exit
         end do
 
-        ! Final candidate pair: the best one found if a plateau was reached, or if the grid never
-        ! had more than one candidate to begin with (the single-candidate/collapsed-grid path
-        ! bypasses the plateau machinery entirely, exactly as 125 does); otherwise -- no plateau was
-        ! ever found among two or more candidates -- fall back to the finest-resolution (first) one
-        ! and reset the confidence interval to -1.0, signaling that no candidate ever bootstrapped
-        ! successfully.
+        ! Final candidate pair, one of three cases:
+        ! 1. A plateau was reached, or the grid never had more than one candidate to begin with (the
+        !    single-candidate/collapsed-grid path bypasses the plateau machinery entirely, exactly
+        !    as 125 does): use the best candidate found, plateau_established = .true.
+        ! 2. No plateau, plateau_mode is CI-overlap-only, and at least one candidate was ever
+        !    admissible: Issue #178's own fallback -- the admissible candidate with the smallest
+        !    bootstrapped uncertainty, a real (non--1.0) confidence interval, plateau_established =
+        !    .false. Not extended to the effect-size/both modes yet: CI-overlap is the only mode
+        !    whose search+fallback combination has been validated end-to-end against a real
+        !    known-correct baseline so far.
+        ! 3. No plateau, and either plateau_mode isn't CI-overlap-only or zero candidates were ever
+        !    admissible (n_candidates counts the raw grid including gate-failed candidates, so this
+        !    is distinct from case 2's "at least one admissible" -- nothing exists for case 2 to
+        !    select from here): fall back to the finest-resolution (first) candidate and reset the
+        !    confidence interval to -1.0, exactly as before this change, plateau_established =
+        !    .false.
         if (plateau_found .or. n_candidates < 2_int32) then
             n_points = candidates_n_points_n_neighbors(1, best_candidate_index)
             n_neighbors = candidates_n_points_n_neighbors(2, best_candidate_index)
             n_bins = n_bins_candidates(best_candidate_index)
+            plateau_established = logical(.true., kind=c_bool)
+        else if (actual_plateau_mode == MODE_PLATEAU_CI_OVERLAP .and. n_admissible_evaluated >= 1_int32) then
+            n_points = candidates_n_points_n_neighbors(1, best_uncertainty_candidate_index)
+            n_neighbors = candidates_n_points_n_neighbors(2, best_uncertainty_candidate_index)
+            n_bins = n_bins_candidates(best_uncertainty_candidate_index)
+            best_candidate_pair_confidence_interval = tmp_best_uncertainty_confidence_interval
+            plateau_established = logical(.false., kind=c_bool)
         else
             n_points = candidates_n_points_n_neighbors(1, 1)
             n_neighbors = candidates_n_points_n_neighbors(2, 1)
             n_bins = n_bins_candidates(1)
             best_candidate_pair_confidence_interval = -1.0_real64
+            plateau_established = logical(.false., kind=c_bool)
         end if
     end subroutine run_js_comp_test_parameter_search_impl
 

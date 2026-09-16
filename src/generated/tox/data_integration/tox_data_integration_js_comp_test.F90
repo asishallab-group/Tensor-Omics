@@ -1695,6 +1695,7 @@ contains
             n_neighbors,&
             n_bins,&
             best_candidate_pair_confidence_interval,&
+            plateau_established,&
             n_admissible_evaluated,&
             trace_n_points,&
             trace_n_neighbors,&
@@ -1756,8 +1757,20 @@ contains
             !! The finally chosen candidate's bin count
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
-            !! the search fell back to the finest-resolution candidate
+            !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
+            !! smallest-bootstrap-uncertainty candidate could be substituted either (see
+            !! `plateau_established`)
+        logical(c_bool), intent(out) :: plateau_established
+            !! `.true.` when a real plateau was found (by whichever criterion
+            !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
+            !! begin with. `.false.` when the search exhausted every admissible candidate
+            !! without ever finding one -- Issue #178's own "report that parameter stability could
+            !! not be established". When `.false.` and `plateau_mode` is
+            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+            !! recommendation -- `plateau_established` is what distinguishes that case from an
+            !! actual plateau, not the confidence interval's sentinel value
         integer(int32), intent(out) :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -1895,6 +1908,7 @@ contains
         real(real64), dimension(:, :, :), allocatable :: tmp_bootstrapping_top_k_jsds
         real(real64), dimension(:), allocatable :: tmp_prev_global_js_divergence
         integer(int32), dimension(:), allocatable :: tmp_delta_perm
+        real(real64), dimension(:, :), allocatable :: tmp_best_uncertainty_confidence_interval
 
         call set_ok(ierr)
 #ifndef NO_INPUT_VALIDATION
@@ -1903,18 +1917,18 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=7_int32, min=1_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=24_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=25_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=26_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=28_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=29_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=30_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=31_int32, min=1_int32)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=32_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=25_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=26_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=27_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=29_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=30_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=31_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=32_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=33_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=27_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=28_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1950,6 +1964,7 @@ contains
         M_ALLOCATE(tmp_bootstrapping_top_k_jsds(n_bootstrapping_top_k_jsds, 2, n_studies))
         M_ALLOCATE(tmp_prev_global_js_divergence(n_studies))
         M_ALLOCATE(tmp_delta_perm(n_studies))
+        M_ALLOCATE(tmp_best_uncertainty_confidence_interval(2, n_studies))
 
         call run_js_comp_test_parameter_search_impl(&
             n_studies = n_studies,&
@@ -1967,6 +1982,7 @@ contains
             n_neighbors = n_neighbors,&
             n_bins = n_bins,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
             trace_n_points = trace_n_points,&
             trace_n_neighbors = trace_n_neighbors,&
@@ -2000,6 +2016,7 @@ contains
             tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
             tmp_prev_global_js_divergence = tmp_prev_global_js_divergence,&
             tmp_delta_perm = tmp_delta_perm,&
+            tmp_best_uncertainty_confidence_interval = tmp_best_uncertainty_confidence_interval,&
             min_count_per_mean_bin = min_count_per_mean_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&
@@ -2094,6 +2111,7 @@ contains
             n_neighbors,&
             n_bins,&
             best_candidate_pair_confidence_interval,&
+            plateau_established,&
             n_admissible_evaluated,&
             trace_n_points,&
             trace_n_neighbors,&
@@ -2127,6 +2145,7 @@ contains
             tmp_bootstrapping_top_k_jsds,&
             tmp_prev_global_js_divergence,&
             tmp_delta_perm,&
+            tmp_best_uncertainty_confidence_interval,&
             min_count_per_mean_bin,&
             min_neighbor_overlap,&
             succeeding_ci_overlap,&
@@ -2190,8 +2209,20 @@ contains
             !! The finally chosen candidate's bin count
         real(real64), dimension(2, n_studies), intent(out) :: best_candidate_pair_confidence_interval
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
-            !! the search fell back to the finest-resolution candidate
+            !! `-1.0_real64` throughout only when `plateau_established` is `.false.` and no
+            !! smallest-bootstrap-uncertainty candidate could be substituted either (see
+            !! `plateau_established`)
+        logical(c_bool), intent(out) :: plateau_established
+            !! `.true.` when a real plateau was found (by whichever criterion
+            !! `plateau_mode` selected) or the candidate grid never had more than one candidate to
+            !! begin with. `.false.` when the search exhausted every admissible candidate
+            !! without ever finding one -- Issue #178's own "report that parameter stability could
+            !! not be established". When `.false.` and `plateau_mode` is
+            !! `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+            !! still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+            !! candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+            !! recommendation -- `plateau_established` is what distinguishes that case from an
+            !! actual plateau, not the confidence interval's sentinel value
         integer(int32), intent(out) :: n_admissible_evaluated
             !! Number of candidates that passed both admissibility gates and got a JSD/confidence
             !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
@@ -2309,6 +2340,10 @@ contains
         integer(int32), dimension(n_studies), intent(out) :: tmp_delta_perm
             !! Working array forwarded to check_effect_size_plateau_condition_impl's own median
             !! computation
+        real(real64), dimension(2, n_studies), intent(out) :: tmp_best_uncertainty_confidence_interval
+            !! Working array: the confidence interval of the admissible candidate with the smallest
+            !! bootstrapped uncertainty seen so far, used only internally by the no-plateau fallback
+            !! (see plateau_established)
         integer(int32), intent(in), optional :: min_count_per_mean_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate
@@ -2379,18 +2414,18 @@ contains
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=9_int32, min=1_int32)
         call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=10_int32, min=1_int32)
         call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=11_int32, min=1_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=49_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=51_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=53_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=54_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=55_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=56_int32, min=1_int32)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=57_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=51_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=52_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=53_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=55_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=56_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=57_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=58_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=59_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=52_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=54_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -2410,6 +2445,7 @@ contains
             n_neighbors = n_neighbors,&
             n_bins = n_bins,&
             best_candidate_pair_confidence_interval = best_candidate_pair_confidence_interval,&
+            plateau_established = plateau_established,&
             n_admissible_evaluated = n_admissible_evaluated,&
             trace_n_points = trace_n_points,&
             trace_n_neighbors = trace_n_neighbors,&
@@ -2443,6 +2479,7 @@ contains
             tmp_bootstrapping_top_k_jsds = tmp_bootstrapping_top_k_jsds,&
             tmp_prev_global_js_divergence = tmp_prev_global_js_divergence,&
             tmp_delta_perm = tmp_delta_perm,&
+            tmp_best_uncertainty_confidence_interval = tmp_best_uncertainty_confidence_interval,&
             min_count_per_mean_bin = min_count_per_mean_bin,&
             min_neighbor_overlap = min_neighbor_overlap,&
             succeeding_ci_overlap = succeeding_ci_overlap,&

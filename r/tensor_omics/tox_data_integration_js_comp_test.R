@@ -833,8 +833,19 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   \item{n_neighbors}{a integer scalar. The finally chosen candidate's `n_neighbors`}
 #'   \item{n_bins}{a integer scalar. The finally chosen candidate's bin count}
 #'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-#'     `-1.0` throughout if no candidate pair passed both admissibility gates and
-#'     the search fell back to the finest-resolution candidate}
+#'     `-1.0` throughout only when `plateau_established` is `FALSE` and no
+#'     smallest-bootstrap-uncertainty candidate could be substituted either (see
+#'     `plateau_established`)}
+#'   \item{plateau_established}{a logical scalar. `TRUE` when a real plateau was found (by whichever criterion
+#'     `plateau_mode` selected) or the candidate grid never had more than one candidate to
+#'     begin with. `FALSE` when the search exhausted every admissible candidate
+#'     without ever finding one -- Issue #178's own "report that parameter stability could
+#'     not be established". When `FALSE` and `plateau_mode` is
+#'     `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+#'     still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+#'     candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+#'     recommendation -- `plateau_established` is what distinguishes that case from an
+#'     actual plateau, not the confidence interval's sentinel value}
 #'   \item{trace_n_points}{a integer vector. Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
 #'     arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
 #'     candidates_n_points_n_neighbors/n_bins_candidates are in
@@ -894,8 +905,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
     .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, two_sided_bootstrapping_significance_level, random_seed)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -903,6 +914,7 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
         n_neighbors = .result$n_neighbors,
         n_bins = .result$n_bins,
         best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval,
+        plateau_established = .result$plateau_established,
         trace_n_points = utils::head(.result$trace_n_points, .result$n_admissible_evaluated),
         trace_n_neighbors = utils::head(.result$trace_n_neighbors, .result$n_admissible_evaluated),
         trace_global_js_divergence = .result$trace_global_js_divergence[, seq_len(.result$n_admissible_evaluated), drop = FALSE],

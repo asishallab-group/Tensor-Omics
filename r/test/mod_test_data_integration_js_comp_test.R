@@ -421,6 +421,7 @@ test_run_js_comp_test_parameter_search <- function() {
 
   assert_equal_int(as.integer(result$n_points), 300L, "expected n_points=300")
   assert_equal_int(as.integer(result$n_neighbors), 26L, "expected n_neighbors=26")
+  assert_false(result$plateau_established, "no candidate ever plateaus here")
   assert_equal_numeric(result$best_candidate_pair_confidence_interval[, 1], c(-1.0, -1.0), TOL, "study 1 CI reset")
   assert_equal_numeric(result$best_candidate_pair_confidence_interval[, 2], c(-1.0, -1.0), TOL, "study 2 CI reset")
 
@@ -447,6 +448,7 @@ test_run_js_comp_test_parameter_search <- function() {
 
   assert_equal_int(as.integer(result2$n_points), 300L, "expected n_points=300")
   assert_equal_int(as.integer(result2$n_neighbors), 1L, "expected n_neighbors=1")
+  assert_true(result2$plateau_established, "the single-candidate bypass counts as established")
   ci <- result2$best_candidate_pair_confidence_interval
   assert_true(ci[1, 1] >= 0.0 && ci[2, 1] <= 1.0,
               "relaxed gates should let bootstrap actually run, giving a real (not -1.0) CI")
@@ -468,9 +470,10 @@ test_run_js_comp_test_parameter_search <- function() {
   # since every trace_* output already comes back trimmed to exactly that length.
   for (key in c("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
                 "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
-                "trace_delta_median", "trace_delta_max")) {
+                "trace_delta_median", "trace_delta_max", "plateau_established")) {
     assert_true(!is.null(result3[[key]]), paste0("missing expected output '", key, "'"))
   }
+  assert_true(is.logical(result3$plateau_established), "plateau_established should be logical")
   n_admissible <- length(result3$trace_n_points)
   assert_true(n_admissible >= 1L, "expected at least one admissible candidate")
   assert_true(ncol(result3$trace_ci_width) == n_admissible, "trace_ci_width has n_admissible columns")

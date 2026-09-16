@@ -278,6 +278,7 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_bool),
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
@@ -303,9 +304,9 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "plateau_established", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -1920,9 +1921,21 @@ def run_js_comp_test_parameter_search(
             The finally chosen candidate's bin count
         best_candidate_pair_confidence_interval : np.ndarray[np.float64] of shape (2, n_studies,), column-major (order='F'), read-only
             The bootstrapped JSD confidence interval for the finally chosen candidate pair;
-            `-1.0` throughout if no candidate pair passed both admissibility gates and
-            the search fell back to the finest-resolution candidate
+            `-1.0` throughout only when `plateau_established` is `False` and no
+            smallest-bootstrap-uncertainty candidate could be substituted either (see
+            `plateau_established`)
             A result is a value; call `.copy()` to obtain a modifiable array.
+        plateau_established : bool
+            `True` when a real plateau was found (by whichever criterion
+            `plateau_mode` selected) or the candidate grid never had more than one candidate to
+            begin with. `False` when the search exhausted every admissible candidate
+            without ever finding one -- Issue #178's own "report that parameter stability could
+            not be established". When `False` and `plateau_mode` is
+            `MODE_PLATEAU_CI_OVERLAP` and at least one candidate was admissible, the routine
+            still returns a real (non-`-1.0`) candidate and confidence interval: the admissible
+            candidate with the smallest bootstrapped uncertainty, per the issue's own fallback
+            recommendation -- `plateau_established` is what distinguishes that case from an
+            actual plateau, not the confidence interval's sentinel value
         trace_n_points : np.ndarray[np.int32] of shape (16,), read-only
             Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
             arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
@@ -2026,6 +2039,7 @@ def run_js_comp_test_parameter_search(
     n_neighbors = ctypes.c_int(0)
     n_bins = ctypes.c_int(0)
     best_candidate_pair_confidence_interval = np.empty((2, n_studies,), dtype=np.float64, order='F')
+    plateau_established = ctypes.c_bool(0)
     n_admissible_evaluated = ctypes.c_int(0)
     trace_n_points = np.empty((16,), dtype=np.int32, order='C')
     trace_n_neighbors = np.empty((16,), dtype=np.int32, order='C')
@@ -2052,6 +2066,7 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(n_neighbors),
         ctypes.byref(n_bins),
         best_candidate_pair_confidence_interval,
+        ctypes.byref(plateau_established),
         ctypes.byref(n_admissible_evaluated),
         trace_n_points,
         trace_n_neighbors,
@@ -2096,6 +2111,7 @@ def run_js_comp_test_parameter_search(
         "n_neighbors": n_neighbors.value,
         "n_bins": n_bins.value,
         "best_candidate_pair_confidence_interval": best_candidate_pair_confidence_interval,
+        "plateau_established": plateau_established.value,
         "trace_n_points": trace_n_points[..., :n_admissible_evaluated.value],
         "trace_n_neighbors": trace_n_neighbors[..., :n_admissible_evaluated.value],
         "trace_global_js_divergence": trace_global_js_divergence[..., :n_admissible_evaluated.value],
