@@ -493,6 +493,32 @@ def test_run_js_comp_test_parameter_search():
     assert ci[0, 0] >= 0.0 and ci[1, 0] <= 1.0, \
         "relaxed gates should let bootstrap actually run, giving a real (not -1.0) CI"
 
+    # ============================================================
+    # Test 3 -- callability/shape coverage only (numerical correctness of the effect-size
+    # criterion itself is Fortran-only, per this project's testing convention) for the new
+    # Issue #178 diagnostics: plateau_mode as a mode string, the new threshold optionals, and the
+    # trace_* outputs' presence, dtype and shape. Reuses Test 2's single-candidate setup so the
+    # search actually reaches and bootstraps a candidate.
+    # ============================================================
+    result3 = run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range=1.0,
+                                                 n_bootstraps=5, join_method='join_min',
+                                                 min_count_per_mean_bin=0, min_neighbor_overlap=0.0,
+                                                 plateau_mode='plateau_effect_size', delta_median_threshold=0.05,
+                                                 delta_max_threshold=0.10, delta_epsilon=1e-10,
+                                                 delta_min_consecutive_transitions=2, random_seed=1)
+
+    # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the Python
+    # return since every trace_* array already comes back trimmed to exactly that length.
+    for key in ("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
+                "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max"):
+        assert key in result3, f"missing expected output key '{key}'"
+    n_admissible = result3["trace_n_points"].shape[-1]
+    assert n_admissible >= 1, f"expected at least one admissible candidate, got {n_admissible}"
+    assert result3["trace_global_js_divergence"].shape[-1] == n_admissible
+    assert result3["trace_delta"].dtype == np.float64
+    # The first (and here, only) admissible candidate has no predecessor to diff against.
+    np.testing.assert_array_almost_equal(result3["trace_delta"][:, 0], [-1.0, -1.0], decimal=12)
+
 
 def main():
     run_all_tests(globals().values())

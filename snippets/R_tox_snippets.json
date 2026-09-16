@@ -166,6 +166,22 @@
       ")"
     ]
   },
+  "check_effect_size_plateau_condition (call)": {
+    "prefix": "tox:check_effect_size_plateau_condition",
+    "description": "Implements Issue #178's relative-effect-size plateau criterion, complementary to",
+    "body": [
+      "${1:result} <- check_effect_size_plateau_condition(",
+      "  global_js_divergence = ${2:global_js_divergence},",
+      "  prev_global_js_divergence = ${3:prev_global_js_divergence},",
+      "  has_previous = ${4:has_previous},",
+      "  delta_median_threshold = ${5:delta_median_threshold},",
+      "  delta_max_threshold = ${6:delta_max_threshold},",
+      "  delta_epsilon = ${7:delta_epsilon},",
+      "  delta_min_consecutive_transitions = ${8:delta_min_consecutive_transitions},",
+      "  n_consecutive_ok = ${9:n_consecutive_ok}",
+      ")"
+    ]
+  },
   "create_mean_pmf (call)": {
     "prefix": "tox:create_mean_pmf",
     "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.",
@@ -231,8 +247,13 @@
       "  min_count_per_mean_bin = ${7:5L},",
       "  min_neighbor_overlap = ${8:0.1},",
       "  succeeding_ci_overlap = ${9:0.9},",
-      "  two_sided_bootstrapping_significance_level = ${10:2.5},",
-      "  random_seed = ${11:42L}",
+      "  plateau_mode = ${10|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "  delta_median_threshold = ${11:0.05},",
+      "  delta_max_threshold = ${12:0.1},",
+      "  delta_epsilon = ${13:1e-10},",
+      "  delta_min_consecutive_transitions = ${14:2L},",
+      "  two_sided_bootstrapping_significance_level = ${15:2.5},",
+      "  random_seed = ${16:42L}",
       ")"
     ]
   },

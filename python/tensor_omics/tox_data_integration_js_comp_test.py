@@ -152,6 +152,29 @@ _CHECK_PLATEAU_CONDITION_ARGUMENTS = ("confidence_interval", "best_candidate_pai
 #: For a derived argument, the one the caller passed it in
 _CHECK_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "confidence_interval", None, None, None, None, None, None, None,)
 
+_lib.check_effect_size_plateau_condition_c.restype = None
+_lib.check_effect_size_plateau_condition_c.argtypes = (
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_bool),
+    ctypes.POINTER(ctypes.c_int),
+)
+
+#: The wrapped procedure's arguments, so an error can name one
+_CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS = ("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "ierr",)
+#: For a derived argument, the one the caller passed it in
+_CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES = (None, None, "global_js_divergence", None, None, None, None, None, None, None, None, None, None, None,)
+
 _lib.create_mean_pmf_c.restype = None
 _lib.create_mean_pmf_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=3, flags='F_CONTIGUOUS'),
@@ -256,17 +279,31 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     ctypes.POINTER(ctypes.c_int),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.int32, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_double),
+    np.ctypeslib.ndpointer(ndim=1),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_double),
+    ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_double),
     ctypes.POINTER(ctypes.c_int),
     ctypes.POINTER(ctypes.c_int),
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -929,6 +966,165 @@ def check_plateau_condition(
         "plateau_found": plateau_found.value,
     }
 
+def check_effect_size_plateau_condition(
+        global_js_divergence,
+        prev_global_js_divergence,
+        has_previous,
+        delta_median_threshold,
+        delta_max_threshold,
+        delta_epsilon,
+        delta_min_consecutive_transitions,
+        n_consecutive_ok,
+):
+    r"""Test one candidate's per-study JSD against the previous admissible candidate for a relative-effect-size plateau
+
+    Implements Issue #178's relative-effect-size plateau criterion, complementary to
+    :func:`tensor_omics.check_plateau_condition`'s
+    CI-overlap one: for each study `i`, the relative change in observed JSD between successive
+    ADMISSIBLE parameter settings (both admissibility gates already passed),
+    `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
+    delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
+    already-shipped
+    :func:`tensor_omics.calc_percentile`) and maximum (`delta_max`). A
+    plateau is declared once both stay under their respective thresholds for
+    `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
+    via `n_consecutive_ok`, reset the moment either threshold is missed.
+
+    No transition exists for the very first admissible candidate a caller ever passes in
+    (`has_previous = False`): `delta`/`delta_median`/`delta_max` are all set to
+    `-1.0` -- the same not-yet-computed sentinel
+    :func:`tensor_omics.run_js_comp_test_parameter_search`
+    already uses for its own confidence-interval fallback, usable here for the same reason:
+    every quantity this routine tracks is structurally non-negative.
+
+    The 0.05/0.10 defaults `run_js_comp_test_parameter_search_impl` passes for
+    `delta_median_threshold`/`delta_max_threshold` are Issue #178's own suggested starting
+    point, explicitly not yet empirically validated -- see that routine's doc comment.
+
+    Parameters
+    ----------
+    global_js_divergence : np.ndarray[np.float64] of shape (n_studies,)
+        Current admissible candidate's observed global JSD per study
+        The minimum valid value is `0.0`.
+    prev_global_js_divergence : np.ndarray[np.float64] of shape (n_studies,)
+        Previous admissible candidate's observed global JSD per study; ignored when
+        `has_previous` is `False`
+        The minimum valid value is `0.0`.
+    has_previous : bool
+        `False` for the very first admissible candidate a caller has ever passed in, where
+        no transition exists to compute a relative change from
+    delta_median_threshold : float
+        Upper bound the median relative change across studies must stay under for a
+        transition to count toward a plateau
+        The minimum valid value is `above(0.0)`.
+    delta_max_threshold : float
+        Upper bound the largest relative change across studies must stay under for a
+        transition to count toward a plateau
+        The minimum valid value is `above(0.0)`.
+    delta_epsilon : float
+        Small constant preventing division by zero when a study's previous JSD was zero
+        The minimum valid value is `above(0.0)`.
+    delta_min_consecutive_transitions : int
+        Number of consecutive qualifying transitions required to declare a plateau
+        The minimum valid value is `1`.
+    n_consecutive_ok : int
+        Running count of consecutive qualifying transitions; incremented when this
+        transition qualifies, reset to zero otherwise (and whenever `has_previous` is
+        `False`)
+        The minimum valid value is `0`.
+
+    Returns
+    -------
+    dict
+        with keys:
+
+        n_consecutive_ok : int
+            Running count of consecutive qualifying transitions; incremented when this
+            transition qualifies, reset to zero otherwise (and whenever `has_previous` is
+            `False`)
+            The minimum valid value is `0`.
+        delta : np.ndarray[np.float64] of shape (n_studies,), read-only
+            Per-study relative JSD change from the previous admissible candidate; `-1.0`
+            throughout iff `.not. has_previous`
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        delta_median : float
+            Median of `delta` across studies; `-1.0` iff `.not. has_previous`
+        delta_max : float
+            Maximum of `delta` across studies; `-1.0` iff `.not. has_previous`
+        plateau_found : bool
+            `True` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`
+
+    Raises
+    ------
+    ToxError
+        If the underlying Fortran reports an error.
+
+    Notes
+    -----
+    Generated from the Fortran procedure `tox_data_integration_js_comp_test::check_effect_size_plateau_condition`, whose argument names are
+    the ones an error message reports.
+    """
+    # accept anything array-like, converting only when C needs it
+    try:
+        global_js_divergence = np.ascontiguousarray(global_js_divergence, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'global_js_divergence' must be an array of np.float64: {error}") from None
+    if global_js_divergence.ndim != 1:
+        raise ValueError(f"'global_js_divergence' must have 1 dimension, but has {global_js_divergence.ndim}")
+    try:
+        prev_global_js_divergence = np.ascontiguousarray(prev_global_js_divergence, dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise TypeError(f"'prev_global_js_divergence' must be an array of np.float64: {error}") from None
+    if prev_global_js_divergence.ndim != 1:
+        raise ValueError(f"'prev_global_js_divergence' must have 1 dimension, but has {prev_global_js_divergence.ndim}")
+    n_consecutive_ok = ctypes.c_int(n_consecutive_ok)
+
+    # what the inputs already say, rather than asking for it again
+    n_studies = global_js_divergence.shape[0]
+
+    # Fortran cannot check that shared extents agree; this can
+    if prev_global_js_divergence.shape[0] != n_studies:
+        raise ValueError(f"'prev_global_js_divergence' has {prev_global_js_divergence.shape[0]} along axis 0, but "
+            f"'global_js_divergence' implies n_studies == {n_studies}"
+        )
+
+    # outputs and work arrays, which the caller never sees
+    delta = np.empty((n_studies,), dtype=np.float64, order='C')
+    delta_median = ctypes.c_double(0)
+    delta_max = ctypes.c_double(0)
+    plateau_found = ctypes.c_bool(0)
+    ierr = ctypes.c_int(0)
+
+    _lib.check_effect_size_plateau_condition_c(
+        global_js_divergence,
+        prev_global_js_divergence,
+        ctypes.byref(ctypes.c_int(n_studies)),
+        ctypes.byref(ctypes.c_bool(has_previous)),
+        ctypes.byref(ctypes.c_double(delta_median_threshold)),
+        ctypes.byref(ctypes.c_double(delta_max_threshold)),
+        ctypes.byref(ctypes.c_double(delta_epsilon)),
+        ctypes.byref(ctypes.c_int(delta_min_consecutive_transitions)),
+        ctypes.byref(n_consecutive_ok),
+        delta,
+        ctypes.byref(delta_median),
+        ctypes.byref(delta_max),
+        ctypes.byref(plateau_found),
+        ctypes.byref(ierr),
+    )
+
+    check_err_code(ierr.value, _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENTS, _CHECK_EFFECT_SIZE_PLATEAU_CONDITION_ARGUMENT_SOURCES)
+
+    # a result is a value: modify a copy, not this
+    delta.flags.writeable = False
+
+    return {
+        "n_consecutive_ok": n_consecutive_ok.value,
+        "delta": delta,
+        "delta_median": delta_median.value,
+        "delta_max": delta_max.value,
+        "plateau_found": plateau_found.value,
+    }
+
 def create_mean_pmf(
         pmfs,
         counts,
@@ -1565,6 +1761,11 @@ def run_js_comp_test_parameter_search(
         min_count_per_mean_bin=5,
         min_neighbor_overlap=0.1,
         succeeding_ci_overlap=0.9,
+        plateau_mode='plateau_ci_overlap',
+        delta_median_threshold=0.05,
+        delta_max_threshold=0.1,
+        delta_epsilon=1e-10,
+        delta_min_consecutive_transitions=2,
         two_sided_bootstrapping_significance_level=2.5,
         random_seed=42,
 ):
@@ -1585,7 +1786,27 @@ def run_js_comp_test_parameter_search(
     (:func:`tensor_omics.bootstrap_histogram`), and
     tests it against the running best candidate for a plateau
     (:func:`tensor_omics.check_plateau_condition`).
-    The search stops (`exit`) the moment a plateau is found. Ported verbatim, including the
+    `plateau_mode` picks which of that CI-overlap criterion and Issue #178's complementary
+    relative-effect-size one
+    (:func:`tensor_omics.check_effect_size_plateau_condition`)
+    governs the stop condition; both are always computed and traced (`trace_*` below) once a
+    candidate is admissible, regardless of `plateau_mode`, so a caller can compare what either
+    criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
+    plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
+
+    Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
+    empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
+    one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
+    project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
+    default to the issue's own suggested (not yet validated) 0.05/0.10.
+
+    When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
+    `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
+    "best candidate" bookkeeping, `best_candidate_index`/`best_candidate_pair_confidence_interval`
+    are overridden to the candidate that actually triggered the effect-size plateau, so the
+    candidate this routine returns is always the one that stopped the search.
+
+    Ported verbatim, including the
     fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
     (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
     `-1.0`; if the grid collapsed to a single candidate (see
@@ -1645,6 +1866,32 @@ def run_js_comp_test_parameter_search(
         The minimum valid value is `0.0`.
         The maximum valid value is `1.0`.
         The default value is `0.9`.
+    plateau_mode : str, one of 'plateau_ci_overlap' | 'plateau_effect_size' | 'plateau_both', optional, default 'plateau_ci_overlap'
+        Which plateau criterion decides when the search stops
+
+        The default value is `'plateau_ci_overlap'`.
+    delta_median_threshold : float, optional, default 0.05
+        Upper bound the median relative JSD change across studies must stay under for a
+        transition to count toward an effect-size plateau, forwarded to
+        check_effect_size_plateau_condition_impl
+        The minimum valid value is `above(0.0)`.
+        The default value is `0.05`.
+    delta_max_threshold : float, optional, default 0.1
+        Upper bound the largest relative JSD change across studies must stay under for a
+        transition to count toward an effect-size plateau, forwarded to
+        check_effect_size_plateau_condition_impl
+        The minimum valid value is `above(0.0)`.
+        The default value is `0.10`.
+    delta_epsilon : float, optional, default 1e-10
+        Small constant preventing division by zero when a study's previous admissible
+        candidate's JSD was zero, forwarded to check_effect_size_plateau_condition_impl
+        The minimum valid value is `above(0.0)`.
+        The default value is `1.0e-10`.
+    delta_min_consecutive_transitions : int, optional, default 2
+        Number of consecutive qualifying transitions required to declare an effect-size
+        plateau, forwarded to check_effect_size_plateau_condition_impl
+        The minimum valid value is `1`.
+        The default value is `2`.
     two_sided_bootstrapping_significance_level : float, optional, default 2.5
         Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
         to bootstrap_histogram_impl itself
@@ -1671,6 +1918,49 @@ def run_js_comp_test_parameter_search(
             `-1.0` throughout if no candidate pair passed both admissibility gates and
             the search fell back to the finest-resolution candidate
             A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_n_points : np.ndarray[np.int32] of shape (16,), read-only
+            Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
+            arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
+            candidates_n_points_n_neighbors/n_bins_candidates are in
+            generate_js_comp_test_candidates_impl
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_n_neighbors : np.ndarray[np.int32] of shape (16,), read-only
+            Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_global_js_divergence : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_lower : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+            (`L_{i,t}`)
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_upper : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+            (`U_{i,t}`)
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study relative JSD change from the previous admissible
+            candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
+            `-1.0` throughout at the first admissible candidate specifically (no
+            predecessor to diff against) -- every other column within `1:n_admissible_evaluated`
+            holds a real value
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_delta_median : np.ndarray[np.float64] of shape (16,), read-only
+            Per-admissible-candidate median of trace_delta across studies (Delta-tilde_t);
+            `-1.0` at the first admissible candidate, see trace_delta above
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_delta_max : np.ndarray[np.float64] of shape (16,), read-only
+            Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
+            `-1.0` at the first admissible candidate, see trace_delta above
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
 
     Raises
     ------
@@ -1696,6 +1986,7 @@ def run_js_comp_test_parameter_search(
     if residuals.ndim != 3:
         raise ValueError(f"'residuals' must have 3 dimensions, but has {residuals.ndim}")
     join_method = np.array([str(join_method).lower().encode().ljust(11)], dtype="S11")
+    plateau_mode = np.array([str(plateau_mode).lower().encode().ljust(19)], dtype="S19")
 
     # what the inputs already say, rather than asking for it again
     n_studies = gene_means.shape[1]
@@ -1717,6 +2008,15 @@ def run_js_comp_test_parameter_search(
     n_neighbors = ctypes.c_int(0)
     n_bins = ctypes.c_int(0)
     best_candidate_pair_confidence_interval = np.empty((2, n_studies,), dtype=np.float64, order='F')
+    n_admissible_evaluated = ctypes.c_int(0)
+    trace_n_points = np.empty((16,), dtype=np.int32, order='C')
+    trace_n_neighbors = np.empty((16,), dtype=np.int32, order='C')
+    trace_global_js_divergence = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_lower = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_upper = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
+    trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
     ierr = ctypes.c_int(0)
 
     _lib.run_js_comp_test_parameter_search_c(
@@ -1732,9 +2032,23 @@ def run_js_comp_test_parameter_search(
         ctypes.byref(n_neighbors),
         ctypes.byref(n_bins),
         best_candidate_pair_confidence_interval,
+        ctypes.byref(n_admissible_evaluated),
+        trace_n_points,
+        trace_n_neighbors,
+        trace_global_js_divergence,
+        trace_ci_lower,
+        trace_ci_upper,
+        trace_delta,
+        trace_delta_median,
+        trace_delta_max,
         ctypes.byref(ctypes.c_int(min_count_per_mean_bin)),
         ctypes.byref(ctypes.c_double(min_neighbor_overlap)),
         ctypes.byref(ctypes.c_double(succeeding_ci_overlap)),
+        plateau_mode,
+        ctypes.byref(ctypes.c_double(delta_median_threshold)),
+        ctypes.byref(ctypes.c_double(delta_max_threshold)),
+        ctypes.byref(ctypes.c_double(delta_epsilon)),
+        ctypes.byref(ctypes.c_int(delta_min_consecutive_transitions)),
         ctypes.byref(ctypes.c_double(two_sided_bootstrapping_significance_level)),
         ctypes.byref(ctypes.c_int(random_seed)),
         ctypes.byref(ierr),
@@ -1744,10 +2058,26 @@ def run_js_comp_test_parameter_search(
 
     # a result is a value: modify a copy, not this
     best_candidate_pair_confidence_interval.flags.writeable = False
+    trace_n_points.flags.writeable = False
+    trace_n_neighbors.flags.writeable = False
+    trace_global_js_divergence.flags.writeable = False
+    trace_ci_lower.flags.writeable = False
+    trace_ci_upper.flags.writeable = False
+    trace_delta.flags.writeable = False
+    trace_delta_median.flags.writeable = False
+    trace_delta_max.flags.writeable = False
 
     return {
         "n_points": n_points.value,
         "n_neighbors": n_neighbors.value,
         "n_bins": n_bins.value,
         "best_candidate_pair_confidence_interval": best_candidate_pair_confidence_interval,
+        "trace_n_points": trace_n_points[..., :n_admissible_evaluated.value],
+        "trace_n_neighbors": trace_n_neighbors[..., :n_admissible_evaluated.value],
+        "trace_global_js_divergence": trace_global_js_divergence[..., :n_admissible_evaluated.value],
+        "trace_ci_lower": trace_ci_lower[..., :n_admissible_evaluated.value],
+        "trace_ci_upper": trace_ci_upper[..., :n_admissible_evaluated.value],
+        "trace_delta": trace_delta[..., :n_admissible_evaluated.value],
+        "trace_delta_median": trace_delta_median[..., :n_admissible_evaluated.value],
+        "trace_delta_max": trace_delta_max[..., :n_admissible_evaluated.value],
     }

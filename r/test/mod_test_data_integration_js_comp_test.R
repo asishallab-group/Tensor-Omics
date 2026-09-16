@@ -450,6 +450,30 @@ test_run_js_comp_test_parameter_search <- function() {
   ci <- result2$best_candidate_pair_confidence_interval
   assert_true(ci[1, 1] >= 0.0 && ci[2, 1] <= 1.0,
               "relaxed gates should let bootstrap actually run, giving a real (not -1.0) CI")
+
+  # ============================================================
+  # Test 3 -- callability/shape coverage only (numerical correctness of the effect-size criterion
+  # itself is Fortran-only, per this project's testing convention) for the new Issue #178
+  # diagnostics: plateau_mode as a mode string, the new threshold optionals, and the trace_*
+  # outputs' presence and shape. Reuses Test 2's single-candidate setup.
+  # ============================================================
+  result3 <- run_js_comp_test_parameter_search(gene_means_2, residuals_2, shared_residual_range = 1.0,
+                                                n_bootstraps = 5L, join_method = "join_min",
+                                                min_count_per_mean_bin = 0L, min_neighbor_overlap = 0.0,
+                                                plateau_mode = "plateau_effect_size", delta_median_threshold = 0.05,
+                                                delta_max_threshold = 0.10, delta_epsilon = 1e-10,
+                                                delta_min_consecutive_transitions = 2L, random_seed = 1L)
+
+  # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the R return
+  # since every trace_* output already comes back trimmed to exactly that length.
+  for (key in c("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
+                "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max")) {
+    assert_true(!is.null(result3[[key]]), paste0("missing expected output '", key, "'"))
+  }
+  n_admissible <- length(result3$trace_n_points)
+  assert_true(n_admissible >= 1L, "expected at least one admissible candidate")
+  # The first (and here, only) admissible candidate has no predecessor to diff against.
+  assert_equal_numeric(result3$trace_delta[, 1], c(-1.0, -1.0), TOL, "first candidate's delta is the -1.0 sentinel")
 }
 
 run_all_tests()

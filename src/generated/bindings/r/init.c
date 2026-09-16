@@ -80,11 +80,12 @@ SEXP generate_js_comp_test_candidates_expert_call(SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP check_neighborhood_overlaps_call(SEXP, SEXP);
 SEXP check_mean_pmf_min_counts_call(SEXP, SEXP);
 SEXP check_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP check_effect_size_plateau_condition_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP create_mean_pmf_call(SEXP, SEXP, SEXP);
 SEXP create_mean_pmf_only_call(SEXP);
 SEXP bootstrap_histogram_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP run_js_comp_test_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
-SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
+SEXP run_js_comp_test_parameter_search_call(SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP, SEXP);
 SEXP calc_js_comp_test_candidate_bounds_call(SEXP);
 SEXP calc_js_comp_test_n_top_k_jsds_call(SEXP, SEXP);
 SEXP determine_shared_residual_range_call(SEXP, SEXP);
@@ -209,11 +210,12 @@ static const R_CallMethodDef CallEntries[] = {
     {"check_neighborhood_overlaps_call", (DL_FUNC) &check_neighborhood_overlaps_call, 2},
     {"check_mean_pmf_min_counts_call", (DL_FUNC) &check_mean_pmf_min_counts_call, 2},
     {"check_plateau_condition_call", (DL_FUNC) &check_plateau_condition_call, 7},
+    {"check_effect_size_plateau_condition_call", (DL_FUNC) &check_effect_size_plateau_condition_call, 8},
     {"create_mean_pmf_call", (DL_FUNC) &create_mean_pmf_call, 3},
     {"create_mean_pmf_only_call", (DL_FUNC) &create_mean_pmf_only_call, 1},
     {"bootstrap_histogram_call", (DL_FUNC) &bootstrap_histogram_call, 7},
     {"run_js_comp_test_call", (DL_FUNC) &run_js_comp_test_call, 9},
-    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 10},
+    {"run_js_comp_test_parameter_search_call", (DL_FUNC) &run_js_comp_test_parameter_search_call, 15},
     {"calc_js_comp_test_candidate_bounds_call", (DL_FUNC) &calc_js_comp_test_candidate_bounds_call, 1},
     {"calc_js_comp_test_n_top_k_jsds_call", (DL_FUNC) &calc_js_comp_test_n_top_k_jsds_call, 2},
     {"determine_shared_residual_range_call", (DL_FUNC) &determine_shared_residual_range_call, 2},

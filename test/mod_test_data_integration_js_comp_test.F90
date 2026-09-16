@@ -13,11 +13,13 @@ module mod_test_data_integration_js_comp_test
     use tox_data_integration
     use tox_data_integration_js_comp_test, only: estimate_bin_count, generate_js_comp_test_candidates, &
                                                   generate_js_comp_test_candidates_expert, check_neighborhood_overlaps, &
-                                                  check_mean_pmf_min_counts, check_plateau_condition, create_mean_pmf, &
+                                                  check_mean_pmf_min_counts, check_plateau_condition, &
+                                                  check_effect_size_plateau_condition, create_mean_pmf, &
                                                   create_mean_pmf_only, bootstrap_histogram, run_js_comp_test, &
                                                   run_js_comp_test_parameter_search
     use tox_data_integration_js_comp_test_impl, only: METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
-                                                       calc_js_comp_test_n_top_k_jsds
+                                                       MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, &
+                                                       MODE_PLATEAU_BOTH, calc_js_comp_test_n_top_k_jsds
     use tox_errors
     use f42_math_impl, only: above, below
     use test_suite, only: test_case
@@ -31,7 +33,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(44))
+        allocate (all_tests(51))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -126,6 +128,21 @@ contains
                                   test_param_search_single_candidate_bypasses_plateau)
         all_tests(44) = test_case("test_param_search_finds_plateau_mid_grid", &
                                   test_param_search_finds_plateau_mid_grid)
+
+        all_tests(45) = test_case("test_effect_size_plateau_first_candidate_no_delta", &
+                                  test_effect_size_plateau_first_candidate_no_delta)
+        all_tests(46) = test_case("test_effect_size_plateau_single_transition_insufficient", &
+                                  test_effect_size_plateau_single_transition_insufficient)
+        all_tests(47) = test_case("test_effect_size_plateau_two_consecutive_transitions", &
+                                  test_effect_size_plateau_two_consecutive_transitions)
+        all_tests(48) = test_case("test_effect_size_plateau_resets_on_non_qualifying", &
+                                  test_effect_size_plateau_resets_on_non_qualifying)
+        all_tests(49) = test_case("test_effect_size_plateau_median_max_hand_computed", &
+                                  test_effect_size_plateau_median_max_hand_computed)
+        all_tests(50) = test_case("test_param_search_effect_size_mode_plateau", &
+                                  test_param_search_effect_size_mode_plateau)
+        all_tests(51) = test_case("test_param_search_both_mode_uses_earlier_trigger", &
+                                  test_param_search_both_mode_uses_earlier_trigger)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -840,6 +857,207 @@ contains
                                      "best_candidate_pair_confidence_interval must not be overwritten")
     end subroutine test_check_plateau_condition_worse_than_previous_short_circuits
 
+    !> `has_previous = .false.` (the very first admissible candidate): no transition exists, so
+    !| `delta`/`delta_median`/`delta_max` must all be the `-1.0` sentinel, `n_consecutive_ok` must
+    !| stay/reset at 0, and `plateau_found` must be `.false.` -- even though `n_consecutive_ok` is
+    !| deliberately seeded non-zero on entry, to prove `has_previous = .false.` resets it rather
+    !| than merely leaving it untouched.
+    subroutine test_effect_size_plateau_first_candidate_no_delta()
+        integer(int32), parameter :: n_studies = 2
+        real(real64) :: global_js_divergence(n_studies), prev_global_js_divergence(n_studies), delta(n_studies)
+        real(real64) :: delta_median, delta_max
+        integer(int32) :: n_consecutive_ok, ierr
+        logical(c_bool) :: plateau_found
+
+        global_js_divergence = [0.1_real64, 0.2_real64]
+        prev_global_js_divergence = [0.0_real64, 0.0_real64]
+        n_consecutive_ok = 5_int32
+
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.false., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_effect_size_plateau_first_candidate_no_delta: ierr should be OK")
+        call assert_equal_array_real(delta, [-1.0_real64, -1.0_real64], n_studies, TOL, &
+                                     "test_effect_size_plateau_first_candidate_no_delta: "// &
+                                     "delta is the -1.0 sentinel")
+        call assert_equal_real(delta_median, -1.0_real64, TOL, &
+                              "test_effect_size_plateau_first_candidate_no_delta: "// &
+                              "delta_median is the -1.0 sentinel")
+        call assert_equal_real(delta_max, -1.0_real64, TOL, &
+                              "test_effect_size_plateau_first_candidate_no_delta: "// &
+                              "delta_max is the -1.0 sentinel")
+        call assert_equal_int(n_consecutive_ok, 0_int32, &
+                              "test_effect_size_plateau_first_candidate_no_delta: "// &
+                              "n_consecutive_ok is reset to 0, not left at its seeded 5")
+        call assert_false(plateau_found, &
+                          "test_effect_size_plateau_first_candidate_no_delta: "// &
+                          "no plateau on the very first admissible candidate")
+    end subroutine test_effect_size_plateau_first_candidate_no_delta
+
+    !> One qualifying transition (both studies' relative JSD change under threshold) is not enough
+    !| on its own: `delta_min_consecutive_transitions=2` requires two IN A ROW, so `plateau_found`
+    !| must be `.false.` and `n_consecutive_ok` must be exactly 1 after this single call.
+    subroutine test_effect_size_plateau_single_transition_insufficient()
+        integer(int32), parameter :: n_studies = 2
+        real(real64) :: global_js_divergence(n_studies), prev_global_js_divergence(n_studies), delta(n_studies)
+        real(real64) :: delta_median, delta_max
+        integer(int32) :: n_consecutive_ok, ierr
+        logical(c_bool) :: plateau_found
+
+        ! Both studies: relative change = |0.101-0.100|/0.100 = 0.01, well under both thresholds.
+        prev_global_js_divergence = [0.100_real64, 0.100_real64]
+        global_js_divergence = [0.101_real64, 0.101_real64]
+        n_consecutive_ok = 0_int32
+
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_effect_size_plateau_single_transition_insufficient: ierr should be OK")
+        call assert_equal_int(n_consecutive_ok, 1_int32, &
+                              "test_effect_size_plateau_single_transition_insufficient: "// &
+                              "one qualifying transition recorded")
+        call assert_false(plateau_found, &
+                          "test_effect_size_plateau_single_transition_insufficient: "// &
+                          "one transition alone must not plateau")
+    end subroutine test_effect_size_plateau_single_transition_insufficient
+
+    !> Two consecutive qualifying transitions -- exactly `delta_min_consecutive_transitions` -- must
+    !| declare a plateau on the second call.
+    subroutine test_effect_size_plateau_two_consecutive_transitions()
+        integer(int32), parameter :: n_studies = 2
+        real(real64) :: global_js_divergence(n_studies), prev_global_js_divergence(n_studies), delta(n_studies)
+        real(real64) :: delta_median, delta_max
+        integer(int32) :: n_consecutive_ok, ierr
+        logical(c_bool) :: plateau_found
+
+        prev_global_js_divergence = [0.100_real64, 0.100_real64]
+        global_js_divergence = [0.101_real64, 0.101_real64]
+        n_consecutive_ok = 0_int32
+
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+        call assert_false(plateau_found, &
+                          "test_effect_size_plateau_two_consecutive_transitions: "// &
+                          "first of two must not yet plateau")
+
+        prev_global_js_divergence = global_js_divergence
+        global_js_divergence = [0.102_real64, 0.102_real64]
+
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_effect_size_plateau_two_consecutive_transitions: "// &
+                              "ierr should be OK")
+        call assert_equal_int(n_consecutive_ok, 2_int32, &
+                              "test_effect_size_plateau_two_consecutive_transitions: "// &
+                              "two consecutive qualifying transitions recorded")
+        call assert_true(plateau_found, &
+                         "test_effect_size_plateau_two_consecutive_transitions: "// &
+                         "two consecutive qualifying transitions must plateau")
+    end subroutine test_effect_size_plateau_two_consecutive_transitions
+
+    !> A qualifying transition followed by a NON-qualifying one must reset the counter to 0, so a
+    !| third qualifying transition right after is only the first of a new streak, not the second.
+    subroutine test_effect_size_plateau_resets_on_non_qualifying()
+        integer(int32), parameter :: n_studies = 2
+        real(real64) :: global_js_divergence(n_studies), prev_global_js_divergence(n_studies), delta(n_studies)
+        real(real64) :: delta_median, delta_max
+        integer(int32) :: n_consecutive_ok, ierr
+        logical(c_bool) :: plateau_found
+
+        ! Transition 1: qualifies (relative change 0.01).
+        prev_global_js_divergence = [0.100_real64, 0.100_real64]
+        global_js_divergence = [0.101_real64, 0.101_real64]
+        n_consecutive_ok = 0_int32
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+        call assert_equal_int(n_consecutive_ok, 1_int32, &
+                              "test_effect_size_plateau_resets_on_non_qualifying: "// &
+                              "transition 1 qualifies")
+
+        ! Transition 2: a large jump -- relative change 1.0, well past both thresholds -> resets.
+        prev_global_js_divergence = global_js_divergence
+        global_js_divergence = [0.202_real64, 0.202_real64]
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+        call assert_equal_int(n_consecutive_ok, 0_int32, &
+                              "test_effect_size_plateau_resets_on_non_qualifying: "// &
+                              "transition 2 does not qualify -> counter reset")
+        call assert_false(plateau_found, &
+                          "test_effect_size_plateau_resets_on_non_qualifying: "// &
+                          "must not plateau right after a reset")
+
+        ! Transition 3: qualifies again, but this is only the FIRST of a new streak.
+        prev_global_js_divergence = global_js_divergence
+        global_js_divergence = [0.203_real64, 0.203_real64]
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_effect_size_plateau_resets_on_non_qualifying: "// &
+                              "ierr should be OK")
+        call assert_equal_int(n_consecutive_ok, 1_int32, &
+                              "test_effect_size_plateau_resets_on_non_qualifying: "// &
+                              "transition 3 is only the first of a NEW streak")
+        call assert_false(plateau_found, &
+                          "test_effect_size_plateau_resets_on_non_qualifying: "// &
+                          "one transition of a new streak must not plateau")
+    end subroutine test_effect_size_plateau_resets_on_non_qualifying
+
+    !> Three studies with hand-computable, distinct relative changes:
+    !| `prev=[0.10,0.20,0.40]`, `current=[0.11,0.24,0.60]` ->
+    !| `delta = [0.01/0.10, 0.04/0.20, 0.20/0.40] = [0.1, 0.2, 0.5]`.
+    !| Median of `[0.1,0.2,0.5]` is `0.2`, max is `0.5` -- both hand-computed, independent of
+    !| `calc_percentile_impl`'s own internals.
+    subroutine test_effect_size_plateau_median_max_hand_computed()
+        integer(int32), parameter :: n_studies = 3
+        real(real64) :: global_js_divergence(n_studies), prev_global_js_divergence(n_studies), delta(n_studies)
+        real(real64) :: delta_median, delta_max
+        integer(int32) :: n_consecutive_ok, ierr
+        logical(c_bool) :: plateau_found
+
+        prev_global_js_divergence = [0.10_real64, 0.20_real64, 0.40_real64]
+        global_js_divergence = [0.11_real64, 0.24_real64, 0.60_real64]
+        n_consecutive_ok = 0_int32
+
+        call check_effect_size_plateau_condition(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                 logical(.true., kind=c_bool), 0.05_real64, 0.10_real64, 1.0e-10_real64, &
+                                                 2_int32, n_consecutive_ok, delta, delta_median, delta_max, plateau_found, &
+                                                 ierr)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_effect_size_plateau_median_max_hand_computed: ierr should be OK")
+        call assert_equal_array_real(delta, [0.1_real64, 0.2_real64, 0.5_real64], n_studies, TOL, &
+                                     "test_effect_size_plateau_median_max_hand_computed: "// &
+                                     "per-study delta hand-computed")
+        call assert_equal_real(delta_median, 0.2_real64, TOL, &
+                              "test_effect_size_plateau_median_max_hand_computed: "// &
+                              "delta_median hand-computed")
+        call assert_equal_real(delta_max, 0.5_real64, TOL, &
+                              "test_effect_size_plateau_median_max_hand_computed: "// &
+                              "delta_max hand-computed")
+        ! Both well above the default thresholds (0.05/0.10) -> does not qualify as a transition.
+        call assert_equal_int(n_consecutive_ok, 0_int32, &
+                              "test_effect_size_plateau_median_max_hand_computed: "// &
+                              "large delta does not qualify as a plateau transition")
+    end subroutine test_effect_size_plateau_median_max_hand_computed
+
     !> Two studies, one reference point, two bins, hand-computed:
     !| S1 pmf=[0.3,0.7] counts=[3,7] included=10; S2 pmf=[0.5,0.5] counts=[5,5] included=10.
     !| `mean_pmf = ([0.3,0.7]+[0.5,0.5])/2 = [0.4,0.6]`, `mean_pmf_counts = [3+5,7+5] = [8,12]`,
@@ -1385,8 +1603,11 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -1398,7 +1619,9 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, ierr=ierr, &
+                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=1000000_int32, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -1433,8 +1656,11 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 1000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -1446,7 +1672,9 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, ierr=ierr, &
+                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -1510,8 +1738,11 @@ contains
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
-        integer(int32) :: n_points, n_neighbors, n_bins, ierr
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
         do i_study = 1, n_studies
@@ -1523,12 +1754,54 @@ contains
 
         call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
-                                               n_bins, best_candidate_pair_confidence_interval, ierr=ierr, &
+                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_param_search_finds_plateau_mid_grid: ierr should be OK")
+
+        ! Both candidates the search actually reached (1 and 2) passed both admissibility gates,
+        ! so n_admissible_evaluated == 2 -- candidates 3/4 have no trace entry at all, not a
+        ! zero-filled one, since the search stopped before reaching them.
+        call assert_equal_int(n_admissible_evaluated, 2_int32, &
+                              "test_param_search_finds_plateau_mid_grid: two admissible candidates evaluated")
+        call assert_equal_int(trace_n_points(1), 400_int32, &
+                              "test_param_search_finds_plateau_mid_grid: trace_n_points(1)")
+        call assert_equal_int(trace_n_neighbors(1), 12_int32, &
+                              "test_param_search_finds_plateau_mid_grid: trace_n_neighbors(1)")
+        call assert_equal_int(trace_n_points(2), 400_int32, &
+                              "test_param_search_finds_plateau_mid_grid: trace_n_points(2)")
+        call assert_equal_int(trace_n_neighbors(2), 6_int32, &
+                              "test_param_search_finds_plateau_mid_grid: trace_n_neighbors(2)")
+        call assert_equal_array_real(trace_global_js_divergence(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_global_js_divergence(:,1) is 0.0")
+        call assert_equal_array_real(trace_global_js_divergence(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_global_js_divergence(:,2) is 0.0")
+        call assert_equal_array_real(trace_ci_lower(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_lower(:,1) is 0.0")
+        call assert_equal_array_real(trace_ci_upper(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_upper(:,2) is 0.0")
+
+        ! Slot 1 is the first admissible candidate -- no predecessor to diff against, so the
+        ! effect-size trace is the -1.0 sentinel throughout, never a real (mis-)computed value.
+        call assert_equal_array_real(trace_delta(:, 1), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_delta(:,1) is the -1.0 sentinel")
+        call assert_equal_real(trace_delta_median(1), -1.0_real64, TOL, &
+                              "test_param_search_finds_plateau_mid_grid: trace_delta_median(1) is the -1.0 sentinel")
+        call assert_equal_real(trace_delta_max(1), -1.0_real64, TOL, &
+                              "test_param_search_finds_plateau_mid_grid: trace_delta_max(1) is the -1.0 sentinel")
+
+        ! Slot 2 is a real transition (candidate 1 -> candidate 2), both JSD == 0.0, so delta == 0.0
+        ! for both studies -- a genuine computed value, not the sentinel.
+        call assert_equal_array_real(trace_delta(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_delta(:,2) is 0.0")
+        call assert_equal_real(trace_delta_median(2), 0.0_real64, TOL, &
+                              "test_param_search_finds_plateau_mid_grid: trace_delta_median(2) is 0.0")
+        call assert_equal_real(trace_delta_max(2), 0.0_real64, TOL, &
+                              "test_param_search_finds_plateau_mid_grid: trace_delta_max(2) is 0.0")
 
         ! The grid's SECOND candidate, (400, 6) -- not the first (finest, 400/12) and not the
         ! no-plateau fallback's candidate either -- proving the search stopped early at a genuine
@@ -1549,5 +1822,106 @@ contains
                                      "test_param_search_finds_plateau_mid_grid: "// &
                                      "study 2 CI should be exactly [0.0, 0.0]")
     end subroutine test_param_search_finds_plateau_mid_grid
+
+    !> Same degenerate data as `test_param_search_finds_plateau_mid_grid` (constant gene means and
+    !| residuals -> JSD exactly 0.0 and CI exactly [0.0, 0.0] for every candidate in the 4-candidate
+    !| grid `[(400,12), (400,6), (320,15), (320,7)]`), but with `plateau_mode=MODE_PLATEAU_EFFECT_SIZE`.
+    !| Under the default `plateau_mode` (CI overlap), that test's search stops at the SECOND
+    !| candidate. Under effect size alone, `delta_min_consecutive_transitions=2` (the default) needs
+    !| TWO consecutive qualifying transitions before it plateaus: the first (candidate 1 -> 2) is
+    !| only the first, so the search must continue past candidate 2 -- proving CI overlap is
+    !| genuinely ignored under this mode, not just usually also satisfied -- and stop only once the
+    !| second consecutive qualifying transition (candidate 2 -> 3) completes, at the THIRD candidate,
+    !| `(320, 15)`.
+    subroutine test_param_search_effect_size_mode_plateau()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = 5.0_real64
+                residuals(:, i_gene, i_study) = 0.0_real64
+            end do
+        end do
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
+                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_effect_size_mode_plateau: ierr should be OK")
+        call assert_equal_int(n_admissible_evaluated, 3_int32, &
+                              "test_param_search_effect_size_mode_plateau: "// &
+                              "needs two consecutive qualifying transitions -> three candidates evaluated")
+        call assert_equal_int(n_points, 320_int32, &
+                              "test_param_search_effect_size_mode_plateau: "// &
+                              "stops at the THIRD candidate's n_points, later than CI-overlap mode's second")
+        call assert_equal_int(n_neighbors, 15_int32, &
+                              "test_param_search_effect_size_mode_plateau: "// &
+                              "stops at the third candidate's n_neighbors")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_effect_size_mode_plateau: "// &
+                                     "study 1 CI is the triggering candidate's own [0.0, 0.0], from the override")
+        call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_effect_size_mode_plateau: "// &
+                                     "study 2 CI is the triggering candidate's own [0.0, 0.0], from the override")
+    end subroutine test_param_search_effect_size_mode_plateau
+
+    !> Same degenerate data and grid as the two tests above. Under `plateau_mode=MODE_PLATEAU_BOTH`,
+    !| the search must stop at whichever criterion plateaus FIRST -- here that is CI overlap at the
+    !| SECOND candidate (exactly `test_param_search_finds_plateau_mid_grid`'s result), not effect
+    !| size's third-candidate result from `test_param_search_effect_size_mode_plateau` above. This is
+    !| the one case that actually exercises the `select case` `MODE_PLATEAU_BOTH` branch: with only
+    !| one criterion ever selected in the other two tests, BOTH is the only mode where the two
+    !| criteria's plateau points genuinely differ and the earlier one must win.
+    subroutine test_param_search_both_mode_uses_earlier_trigger()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 10000, max_n_reps_all_studies = 3
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        integer(int32) :: n_points, n_neighbors, n_bins, ierr, n_admissible_evaluated
+        real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
+        integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
+        real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
+        integer(int32) :: i_gene, i_study
+
+        do i_study = 1, n_studies
+            do i_gene = 1, max_n_genes_all_studies
+                gene_means(i_gene, i_study) = 5.0_real64
+                residuals(:, i_gene, i_study) = 0.0_real64
+            end do
+        end do
+
+        call run_js_comp_test_parameter_search(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, gene_means, &
+                                               residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
+                                               n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                               trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
+                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
+                                               plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_param_search_both_mode_uses_earlier_trigger: ierr should be OK")
+        call assert_equal_int(n_admissible_evaluated, 2_int32, &
+                              "test_param_search_both_mode_uses_earlier_trigger: "// &
+                              "CI overlap's earlier plateau wins -> only two candidates evaluated")
+        call assert_equal_int(n_points, 400_int32, &
+                              "test_param_search_both_mode_uses_earlier_trigger: "// &
+                              "stops at the second candidate's n_points, same as CI-overlap-only mode")
+        call assert_equal_int(n_neighbors, 6_int32, &
+                              "test_param_search_both_mode_uses_earlier_trigger: "// &
+                              "stops at the second candidate's n_neighbors")
+    end subroutine test_param_search_both_mode_uses_earlier_trigger
 
 end module mod_test_data_integration_js_comp_test

@@ -276,7 +276,7 @@
     "prefix": "tox:data_integration_js_comp_test.use",
     "description": "use tox_data_integration_js_comp_test, only: ...",
     "body": [
-      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,generate_js_comp_test_candidates,generate_js_comp_test_candidates_expert,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
+      "use tox_data_integration_js_comp_test, only: ${1|estimate_bin_count,estimate_bin_count_expert,generate_js_comp_test_candidates,generate_js_comp_test_candidates_expert,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|}"
     ]
   },
   "estimate_bin_count (call)": {
@@ -494,6 +494,49 @@
       "if (is_err(ierr)) return"
     ]
   },
+  "check_effect_size_plateau_condition (call)": {
+    "prefix": "tox:check_effect_size_plateau_condition",
+    "description": "Implements Issue #178's relative-effect-size plateau criterion, complementary to",
+    "body": [
+      "call check_effect_size_plateau_condition( &",
+      "    global_js_divergence=${1:global_js_divergence}, &",
+      "    prev_global_js_divergence=${2:prev_global_js_divergence}, &",
+      "    n_studies=${3:n_studies}, &",
+      "    has_previous=${4:has_previous}, &",
+      "    delta_median_threshold=${5:delta_median_threshold}, &",
+      "    delta_max_threshold=${6:delta_max_threshold}, &",
+      "    delta_epsilon=${7:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions}, &",
+      "    n_consecutive_ok=${9:n_consecutive_ok}, &",
+      "    delta=${10:delta}, &",
+      "    delta_median=${11:delta_median}, &",
+      "    delta_max=${12:delta_max}, &",
+      "    plateau_found=${13:plateau_found}, &",
+      "    ierr=${14:ierr})"
+    ]
+  },
+  "check_effect_size_plateau_condition (call, checked)": {
+    "prefix": "tox:check_effect_size_plateau_condition.checked",
+    "description": "Implements Issue #178's relative-effect-size plateau criterion, complementary to (with error check)",
+    "body": [
+      "call check_effect_size_plateau_condition( &",
+      "    global_js_divergence=${1:global_js_divergence}, &",
+      "    prev_global_js_divergence=${2:prev_global_js_divergence}, &",
+      "    n_studies=${3:n_studies}, &",
+      "    has_previous=${4:has_previous}, &",
+      "    delta_median_threshold=${5:delta_median_threshold}, &",
+      "    delta_max_threshold=${6:delta_max_threshold}, &",
+      "    delta_epsilon=${7:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${8:delta_min_consecutive_transitions}, &",
+      "    n_consecutive_ok=${9:n_consecutive_ok}, &",
+      "    delta=${10:delta}, &",
+      "    delta_median=${11:delta_median}, &",
+      "    delta_max=${12:delta_max}, &",
+      "    plateau_found=${13:plateau_found}, &",
+      "    ierr=${14:ierr})",
+      "if (is_err(ierr)) return"
+    ]
+  },
   "create_mean_pmf (call)": {
     "prefix": "tox:create_mean_pmf",
     "description": "Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.",
@@ -677,12 +720,26 @@
       "    n_neighbors=${10:n_neighbors}, &",
       "    n_bins=${11:n_bins}, &",
       "    best_candidate_pair_confidence_interval=${12:best_candidate_pair_confidence_interval}, &",
-      "    min_count_per_mean_bin=${13:min_count_per_mean_bin}, &",
-      "    min_neighbor_overlap=${14:min_neighbor_overlap}, &",
-      "    succeeding_ci_overlap=${15:succeeding_ci_overlap}, &",
-      "    two_sided_bootstrapping_significance_level=${16:two_sided_bootstrapping_significance_level}, &",
-      "    random_seed=${17:random_seed}, &",
-      "    ierr=${18:ierr})"
+      "    n_admissible_evaluated=${13:n_admissible_evaluated}, &",
+      "    trace_n_points=${14:trace_n_points}, &",
+      "    trace_n_neighbors=${15:trace_n_neighbors}, &",
+      "    trace_global_js_divergence=${16:trace_global_js_divergence}, &",
+      "    trace_ci_lower=${17:trace_ci_lower}, &",
+      "    trace_ci_upper=${18:trace_ci_upper}, &",
+      "    trace_delta=${19:trace_delta}, &",
+      "    trace_delta_median=${20:trace_delta_median}, &",
+      "    trace_delta_max=${21:trace_delta_max}, &",
+      "    min_count_per_mean_bin=${22:min_count_per_mean_bin}, &",
+      "    min_neighbor_overlap=${23:min_neighbor_overlap}, &",
+      "    succeeding_ci_overlap=${24:succeeding_ci_overlap}, &",
+      "    plateau_mode=${25|MODE_PLATEAU_CI_OVERLAP,MODE_PLATEAU_EFFECT_SIZE,MODE_PLATEAU_BOTH|}, &",
+      "    delta_median_threshold=${26:delta_median_threshold}, &",
+      "    delta_max_threshold=${27:delta_max_threshold}, &",
+      "    delta_epsilon=${28:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${29:delta_min_consecutive_transitions}, &",
+      "    two_sided_bootstrapping_significance_level=${30:two_sided_bootstrapping_significance_level}, &",
+      "    random_seed=${31:random_seed}, &",
+      "    ierr=${32:ierr})"
     ]
   },
   "run_js_comp_test_parameter_search (call, checked)": {
@@ -702,12 +759,26 @@
       "    n_neighbors=${10:n_neighbors}, &",
       "    n_bins=${11:n_bins}, &",
       "    best_candidate_pair_confidence_interval=${12:best_candidate_pair_confidence_interval}, &",
-      "    min_count_per_mean_bin=${13:min_count_per_mean_bin}, &",
-      "    min_neighbor_overlap=${14:min_neighbor_overlap}, &",
-      "    succeeding_ci_overlap=${15:succeeding_ci_overlap}, &",
-      "    two_sided_bootstrapping_significance_level=${16:two_sided_bootstrapping_significance_level}, &",
-      "    random_seed=${17:random_seed}, &",
-      "    ierr=${18:ierr})",
+      "    n_admissible_evaluated=${13:n_admissible_evaluated}, &",
+      "    trace_n_points=${14:trace_n_points}, &",
+      "    trace_n_neighbors=${15:trace_n_neighbors}, &",
+      "    trace_global_js_divergence=${16:trace_global_js_divergence}, &",
+      "    trace_ci_lower=${17:trace_ci_lower}, &",
+      "    trace_ci_upper=${18:trace_ci_upper}, &",
+      "    trace_delta=${19:trace_delta}, &",
+      "    trace_delta_median=${20:trace_delta_median}, &",
+      "    trace_delta_max=${21:trace_delta_max}, &",
+      "    min_count_per_mean_bin=${22:min_count_per_mean_bin}, &",
+      "    min_neighbor_overlap=${23:min_neighbor_overlap}, &",
+      "    succeeding_ci_overlap=${24:succeeding_ci_overlap}, &",
+      "    plateau_mode=${25|MODE_PLATEAU_CI_OVERLAP,MODE_PLATEAU_EFFECT_SIZE,MODE_PLATEAU_BOTH|}, &",
+      "    delta_median_threshold=${26:delta_median_threshold}, &",
+      "    delta_max_threshold=${27:delta_max_threshold}, &",
+      "    delta_epsilon=${28:delta_epsilon}, &",
+      "    delta_min_consecutive_transitions=${29:delta_min_consecutive_transitions}, &",
+      "    two_sided_bootstrapping_significance_level=${30:two_sided_bootstrapping_significance_level}, &",
+      "    random_seed=${31:random_seed}, &",
+      "    ierr=${32:ierr})",
       "if (is_err(ierr)) return"
     ]
   },

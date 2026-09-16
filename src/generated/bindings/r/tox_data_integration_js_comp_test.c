@@ -13,11 +13,12 @@ void generate_js_comp_test_candidates_expert_c(const int*, const double*, const 
 void check_neighborhood_overlaps_c(const int*, const int*, const double*, unsigned char*, int*);
 void check_mean_pmf_min_counts_c(const int*, const int*, const int*, const int*, unsigned char*, int*);
 void check_plateau_condition_c(const double*, double*, const int*, int*, int*, const int*, const char*, const double*, unsigned char*, int*);
+void check_effect_size_plateau_condition_c(const double*, const double*, const int*, const unsigned char*, const double*, const double*, const double*, const int*, int*, double*, double*, double*, unsigned char*, int*);
 void create_mean_pmf_c(const double*, const int*, const int*, const int*, const int*, const int*, double*, int*, int*, int*);
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const int*, const double*, const double*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const double*, const int*, const char*, int*, int*, int*, double*, const int*, const double*, const double*, const double*, const int*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const double*, const int*, const char*, int*, int*, int*, double*, int*, int*, int*, double*, double*, double*, double*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const double*, const int*, int*);
 
 SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range) {
     int nprot = 0;
@@ -294,6 +295,62 @@ SEXP check_plateau_condition_call(SEXP confidence_interval, SEXP best_candidate_
     return _out;
 }
 
+SEXP check_effect_size_plateau_condition_call(SEXP global_js_divergence, SEXP prev_global_js_divergence, SEXP has_previous, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP n_consecutive_ok) {
+    int nprot = 0;
+    // derived from the inputs, not asked of the caller
+    int n_studies = (int) Rf_length(global_js_divergence);
+
+    // scalar inputs, pulled from their length-1 vectors
+    unsigned char has_previous_v = (Rf_asLogical(has_previous) == TRUE) ? 1 : 0;
+    double delta_median_threshold_v = Rf_asReal(delta_median_threshold);
+    double delta_max_threshold_v = Rf_asReal(delta_max_threshold);
+    double delta_epsilon_v = Rf_asReal(delta_epsilon);
+    int delta_min_consecutive_transitions_v = Rf_asInteger(delta_min_consecutive_transitions);
+    int n_consecutive_ok_v = Rf_asInteger(n_consecutive_ok);
+
+    // outputs and work space
+    SEXP delta = PROTECT(Rf_allocVector(REALSXP, n_studies)); nprot++;
+    double delta_median = 0;
+    double delta_max = 0;
+    unsigned char plateau_found = 0;
+    int ierr = 0;
+
+    check_effect_size_plateau_condition_c(
+        REAL(global_js_divergence),
+        REAL(prev_global_js_divergence),
+        &n_studies,
+        &has_previous_v,
+        &delta_median_threshold_v,
+        &delta_max_threshold_v,
+        &delta_epsilon_v,
+        &delta_min_consecutive_transitions_v,
+        &n_consecutive_ok_v,
+        REAL(delta),
+        &delta_median,
+        &delta_max,
+        &plateau_found,
+        &ierr
+    );
+
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 6)); nprot++;
+    SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_consecutive_ok_v));
+    SET_VECTOR_ELT(_out, 1, delta);
+    SET_VECTOR_ELT(_out, 2, Rf_ScalarReal(delta_median));
+    SET_VECTOR_ELT(_out, 3, Rf_ScalarReal(delta_max));
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarLogical(plateau_found != 0));
+    SET_VECTOR_ELT(_out, 5, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 6)); nprot++;
+    SET_STRING_ELT(_nms, 0, Rf_mkChar("n_consecutive_ok"));
+    SET_STRING_ELT(_nms, 1, Rf_mkChar("delta"));
+    SET_STRING_ELT(_nms, 2, Rf_mkChar("delta_median"));
+    SET_STRING_ELT(_nms, 3, Rf_mkChar("delta_max"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("plateau_found"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("ierr"));
+    Rf_setAttrib(_out, R_NamesSymbol, _nms);
+    UNPROTECT(nprot);
+    return _out;
+}
+
 SEXP create_mean_pmf_call(SEXP pmfs, SEXP counts, SEXP included_n_reps) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
@@ -513,7 +570,7 @@ SEXP run_js_comp_test_call(SEXP n_neighbors, SEXP n_bins, SEXP shared_residual_r
     return _out;
 }
 
-SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP shared_residual_range, SEXP n_bootstraps, SEXP join_method, SEXP min_count_per_mean_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
+SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEXP shared_residual_range, SEXP n_bootstraps, SEXP join_method, SEXP min_count_per_mean_bin, SEXP min_neighbor_overlap, SEXP succeeding_ci_overlap, SEXP plateau_mode, SEXP delta_median_threshold, SEXP delta_max_threshold, SEXP delta_epsilon, SEXP delta_min_consecutive_transitions, SEXP two_sided_bootstrapping_significance_level, SEXP random_seed) {
     int nprot = 0;
     // derived from the inputs, not asked of the caller
     int n_studies = INTEGER(Rf_getAttrib(gene_means, R_DimSymbol))[1];
@@ -526,11 +583,16 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     int min_count_per_mean_bin_v = Rf_asInteger(min_count_per_mean_bin);
     double min_neighbor_overlap_v = Rf_asReal(min_neighbor_overlap);
     double succeeding_ci_overlap_v = Rf_asReal(succeeding_ci_overlap);
+    double delta_median_threshold_v = Rf_asReal(delta_median_threshold);
+    double delta_max_threshold_v = Rf_asReal(delta_max_threshold);
+    double delta_epsilon_v = Rf_asReal(delta_epsilon);
+    int delta_min_consecutive_transitions_v = Rf_asInteger(delta_min_consecutive_transitions);
     double two_sided_bootstrapping_significance_level_v = Rf_asReal(two_sided_bootstrapping_significance_level);
     int random_seed_v = Rf_asInteger(random_seed);
 
     // convert what Fortran cannot take from R directly
     char* join_method_c = tox_char_in(join_method, 11);
+    char* plateau_mode_c = tox_char_in(plateau_mode, 19);
 
     // outputs and work space
     int n_points = 0;
@@ -538,6 +600,19 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     int n_bins = 0;
     SEXP best_candidate_pair_confidence_interval = PROTECT(Rf_allocVector(REALSXP, 2 * n_studies)); nprot++;
     { SEXP best_candidate_pair_confidence_interval_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(best_candidate_pair_confidence_interval_dim)[0] = 2; INTEGER(best_candidate_pair_confidence_interval_dim)[1] = n_studies; Rf_setAttrib(best_candidate_pair_confidence_interval, R_DimSymbol, best_candidate_pair_confidence_interval_dim); UNPROTECT(1); }
+    int n_admissible_evaluated = 0;
+    SEXP trace_n_points = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
+    SEXP trace_n_neighbors = PROTECT(Rf_allocVector(INTSXP, 16)); nprot++;
+    SEXP trace_global_js_divergence = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_global_js_divergence_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_global_js_divergence_dim)[0] = n_studies; INTEGER(trace_global_js_divergence_dim)[1] = 16; Rf_setAttrib(trace_global_js_divergence, R_DimSymbol, trace_global_js_divergence_dim); UNPROTECT(1); }
+    SEXP trace_ci_lower = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_ci_lower_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_lower_dim)[0] = n_studies; INTEGER(trace_ci_lower_dim)[1] = 16; Rf_setAttrib(trace_ci_lower, R_DimSymbol, trace_ci_lower_dim); UNPROTECT(1); }
+    SEXP trace_ci_upper = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_ci_upper_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_upper_dim)[0] = n_studies; INTEGER(trace_ci_upper_dim)[1] = 16; Rf_setAttrib(trace_ci_upper, R_DimSymbol, trace_ci_upper_dim); UNPROTECT(1); }
+    SEXP trace_delta = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_delta_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_delta_dim)[0] = n_studies; INTEGER(trace_delta_dim)[1] = 16; Rf_setAttrib(trace_delta, R_DimSymbol, trace_delta_dim); UNPROTECT(1); }
+    SEXP trace_delta_median = PROTECT(Rf_allocVector(REALSXP, 16)); nprot++;
+    SEXP trace_delta_max = PROTECT(Rf_allocVector(REALSXP, 16)); nprot++;
     int ierr = 0;
 
     run_js_comp_test_parameter_search_c(
@@ -553,26 +628,58 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         &n_neighbors,
         &n_bins,
         REAL(best_candidate_pair_confidence_interval),
+        &n_admissible_evaluated,
+        INTEGER(trace_n_points),
+        INTEGER(trace_n_neighbors),
+        REAL(trace_global_js_divergence),
+        REAL(trace_ci_lower),
+        REAL(trace_ci_upper),
+        REAL(trace_delta),
+        REAL(trace_delta_median),
+        REAL(trace_delta_max),
         &min_count_per_mean_bin_v,
         &min_neighbor_overlap_v,
         &succeeding_ci_overlap_v,
+        plateau_mode_c,
+        &delta_median_threshold_v,
+        &delta_max_threshold_v,
+        &delta_epsilon_v,
+        &delta_min_consecutive_transitions_v,
         &two_sided_bootstrapping_significance_level_v,
         &random_seed_v,
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 5)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 14)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_points));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(n_neighbors));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(n_bins));
     SET_VECTOR_ELT(_out, 3, best_candidate_pair_confidence_interval);
-    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 5)); nprot++;
+    SET_VECTOR_ELT(_out, 4, Rf_ScalarInteger(n_admissible_evaluated));
+    SET_VECTOR_ELT(_out, 5, trace_n_points);
+    SET_VECTOR_ELT(_out, 6, trace_n_neighbors);
+    SET_VECTOR_ELT(_out, 7, trace_global_js_divergence);
+    SET_VECTOR_ELT(_out, 8, trace_ci_lower);
+    SET_VECTOR_ELT(_out, 9, trace_ci_upper);
+    SET_VECTOR_ELT(_out, 10, trace_delta);
+    SET_VECTOR_ELT(_out, 11, trace_delta_median);
+    SET_VECTOR_ELT(_out, 12, trace_delta_max);
+    SET_VECTOR_ELT(_out, 13, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 14)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_points"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_neighbors"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins"));
     SET_STRING_ELT(_nms, 3, Rf_mkChar("best_candidate_pair_confidence_interval"));
-    SET_STRING_ELT(_nms, 4, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 4, Rf_mkChar("n_admissible_evaluated"));
+    SET_STRING_ELT(_nms, 5, Rf_mkChar("trace_n_points"));
+    SET_STRING_ELT(_nms, 6, Rf_mkChar("trace_n_neighbors"));
+    SET_STRING_ELT(_nms, 7, Rf_mkChar("trace_global_js_divergence"));
+    SET_STRING_ELT(_nms, 8, Rf_mkChar("trace_ci_lower"));
+    SET_STRING_ELT(_nms, 9, Rf_mkChar("trace_ci_upper"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("trace_delta"));
+    SET_STRING_ELT(_nms, 11, Rf_mkChar("trace_delta_median"));
+    SET_STRING_ELT(_nms, 12, Rf_mkChar("trace_delta_max"));
+    SET_STRING_ELT(_nms, 13, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

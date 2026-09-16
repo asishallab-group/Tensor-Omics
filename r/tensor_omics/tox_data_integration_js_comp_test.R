@@ -326,6 +326,92 @@ check_plateau_condition <- function(confidence_interval, best_candidate_pair_con
     )
 }
 
+#' Test one candidate's per-study JSD against the previous admissible candidate for a relative-effect-size plateau
+#'
+#' Implements Issue #178's relative-effect-size plateau criterion, complementary to
+#' \code{\link{check_plateau_condition}}'s
+#' CI-overlap one: for each study `i`, the relative change in observed JSD between successive
+#' ADMISSIBLE parameter settings (both admissibility gates already passed),
+#' `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
+#' delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
+#' already-shipped
+#' \code{\link{calc_percentile}}) and maximum (`delta_max`). A
+#' plateau is declared once both stay under their respective thresholds for
+#' `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
+#' via `n_consecutive_ok`, reset the moment either threshold is missed.
+#'
+#' No transition exists for the very first admissible candidate a caller ever passes in
+#' (`has_previous = FALSE`): `delta`/`delta_median`/`delta_max` are all set to
+#' `-1.0` -- the same not-yet-computed sentinel
+#' \code{\link{run_js_comp_test_parameter_search}}
+#' already uses for its own confidence-interval fallback, usable here for the same reason:
+#' every quantity this routine tracks is structurally non-negative.
+#'
+#' The 0.05/0.10 defaults `run_js_comp_test_parameter_search_impl` passes for
+#' `delta_median_threshold`/`delta_max_threshold` are Issue #178's own suggested starting
+#' point, explicitly not yet empirically validated -- see that routine's doc comment.
+#'
+#' Generated from the Fortran procedure \code{tox_data_integration_js_comp_test::check_effect_size_plateau_condition}, whose argument names
+#' are the ones an error message reports.
+#'
+#' @param global_js_divergence a numeric vector. Current admissible candidate's observed global JSD per study
+#'   The minimum valid value is `0.0`.
+#' @param prev_global_js_divergence a numeric vector. Previous admissible candidate's observed global JSD per study; ignored when
+#'   `has_previous` is `FALSE`
+#'   The minimum valid value is `0.0`.
+#' @param has_previous a logical scalar. `FALSE` for the very first admissible candidate a caller has ever passed in, where
+#'   no transition exists to compute a relative change from
+#' @param delta_median_threshold a numeric scalar. Upper bound the median relative change across studies must stay under for a
+#'   transition to count toward a plateau
+#'   The minimum valid value is `above(0.0)`.
+#' @param delta_max_threshold a numeric scalar. Upper bound the largest relative change across studies must stay under for a
+#'   transition to count toward a plateau
+#'   The minimum valid value is `above(0.0)`.
+#' @param delta_epsilon a numeric scalar. Small constant preventing division by zero when a study's previous JSD was zero
+#'   The minimum valid value is `above(0.0)`.
+#' @param delta_min_consecutive_transitions a integer scalar. Number of consecutive qualifying transitions required to declare a plateau
+#'   The minimum valid value is `1`.
+#' @param n_consecutive_ok a integer scalar. Running count of consecutive qualifying transitions; incremented when this
+#'   transition qualifies, reset to zero otherwise (and whenever `has_previous` is
+#'   `FALSE`)
+#'   The minimum valid value is `0`.
+#' @return a named list with elements:
+#'   \item{n_consecutive_ok}{a integer scalar. Running count of consecutive qualifying transitions; incremented when this
+#'     transition qualifies, reset to zero otherwise (and whenever `has_previous` is
+#'     `FALSE`)
+#'     The minimum valid value is `0`.}
+#'   \item{delta}{a numeric vector. Per-study relative JSD change from the previous admissible candidate; `-1.0`
+#'     throughout iff `.not. has_previous`}
+#'   \item{delta_median}{a numeric scalar. Median of `delta` across studies; `-1.0` iff `.not. has_previous`}
+#'   \item{delta_max}{a numeric scalar. Maximum of `delta` across studies; `-1.0` iff `.not. has_previous`}
+#'   \item{plateau_found}{a logical scalar. `TRUE` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`}
+#' @export
+check_effect_size_plateau_condition <- function(global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok) {
+    global_js_divergence <- .tox_as_double_vector(global_js_divergence, "global_js_divergence")
+    prev_global_js_divergence <- .tox_as_double_vector(prev_global_js_divergence, "prev_global_js_divergence")
+    has_previous <- .tox_as_logical_scalar(has_previous, "has_previous")
+    delta_median_threshold <- .tox_as_double_scalar(delta_median_threshold, "delta_median_threshold")
+    delta_max_threshold <- .tox_as_double_scalar(delta_max_threshold, "delta_max_threshold")
+    delta_epsilon <- .tox_as_double_scalar(delta_epsilon, "delta_epsilon")
+    delta_min_consecutive_transitions <- .tox_as_integer_scalar(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
+    n_consecutive_ok <- .tox_as_integer_scalar(n_consecutive_ok, "n_consecutive_ok")
+    if (length(prev_global_js_divergence) != length(global_js_divergence))
+        .tox_shape_error("prev_global_js_divergence", length(prev_global_js_divergence), "global_js_divergence", length(global_js_divergence))
+
+    .result <- .Call("check_effect_size_plateau_condition_call", global_js_divergence, prev_global_js_divergence, has_previous, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, n_consecutive_ok)
+    .arguments <- c("global_js_divergence", "prev_global_js_divergence", "n_studies", "has_previous", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "n_consecutive_ok", "delta", "delta_median", "delta_max", "plateau_found", "ierr")
+    .sources <- c(NA_character_, NA_character_, "global_js_divergence", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .status <- check_err_code(.result$ierr, .arguments, .sources)
+
+    list(
+        n_consecutive_ok = .result$n_consecutive_ok,
+        delta = .result$delta,
+        delta_median = .result$delta_median,
+        delta_max = .result$delta_max,
+        plateau_found = .result$plateau_found
+    )
+}
+
 #' Build the consensus pmf and its histogram counts from all studies' pmfs
 #'
 #' Ported verbatim from 125-stabilize-jscomp's `create_mean_pmf_helper`.
@@ -639,7 +725,27 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #' (\code{\link{bootstrap_histogram}}), and
 #' tests it against the running best candidate for a plateau
 #' (\code{\link{check_plateau_condition}}).
-#' The search stops (`exit`) the moment a plateau is found. Ported verbatim, including the
+#' `plateau_mode` picks which of that CI-overlap criterion and Issue #178's complementary
+#' relative-effect-size one
+#' (\code{\link{check_effect_size_plateau_condition}})
+#' governs the stop condition; both are always computed and traced (`trace_*` below) once a
+#' candidate is admissible, regardless of `plateau_mode`, so a caller can compare what either
+#' criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
+#' plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
+#'
+#' Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
+#' empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
+#' one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
+#' project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
+#' default to the issue's own suggested (not yet validated) 0.05/0.10.
+#'
+#' When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
+#' `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
+#' "best candidate" bookkeeping, `best_candidate_index`/`best_candidate_pair_confidence_interval`
+#' are overridden to the candidate that actually triggered the effect-size plateau, so the
+#' candidate this routine returns is always the one that stopped the search.
+#'
+#' Ported verbatim, including the
 #' fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
 #' (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
 #' `-1.0`; if the grid collapsed to a single candidate (see
@@ -691,6 +797,27 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   The minimum valid value is `0.0`.
 #'   The maximum valid value is `1.0`.
 #'   The default value is `0.9`.
+#' @param plateau_mode a string, one of "plateau_ci_overlap", "plateau_effect_size", "plateau_both". Which plateau criterion decides when the search stops
+#'
+#'   The default value is `"plateau_ci_overlap"`.
+#' @param delta_median_threshold a numeric scalar. Upper bound the median relative JSD change across studies must stay under for a
+#'   transition to count toward an effect-size plateau, forwarded to
+#'   check_effect_size_plateau_condition_impl
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `0.05`.
+#' @param delta_max_threshold a numeric scalar. Upper bound the largest relative JSD change across studies must stay under for a
+#'   transition to count toward an effect-size plateau, forwarded to
+#'   check_effect_size_plateau_condition_impl
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `0.10`.
+#' @param delta_epsilon a numeric scalar. Small constant preventing division by zero when a study's previous admissible
+#'   candidate's JSD was zero, forwarded to check_effect_size_plateau_condition_impl
+#'   The minimum valid value is `above(0.0)`.
+#'   The default value is `1.0e-10`.
+#' @param delta_min_consecutive_transitions a integer scalar. Number of consecutive qualifying transitions required to declare an effect-size
+#'   plateau, forwarded to check_effect_size_plateau_condition_impl
+#'   The minimum valid value is `1`.
+#'   The default value is `2`.
 #' @param two_sided_bootstrapping_significance_level a numeric scalar. Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
 #'   to bootstrap_histogram_impl itself
 #'   The minimum valid value is `0.0`.
@@ -705,8 +832,35 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   \item{best_candidate_pair_confidence_interval}{a numeric matrix. The bootstrapped JSD confidence interval for the finally chosen candidate pair;
 #'     `-1.0` throughout if no candidate pair passed both admissibility gates and
 #'     the search fell back to the finest-resolution candidate}
+#'   \item{trace_n_points}{a integer vector. Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
+#'     arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
+#'     candidates_n_points_n_neighbors/n_bins_candidates are in
+#'     generate_js_comp_test_candidates_impl
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_n_neighbors}{a integer vector. Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_global_js_divergence}{a numeric matrix. Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_lower}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+#'     (`L_{i,t}`)
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_upper}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+#'     (`U_{i,t}`)
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_delta}{a numeric matrix. Per-admissible-candidate, per-study relative JSD change from the previous admissible
+#'     candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
+#'     `-1.0` throughout at the first admissible candidate specifically (no
+#'     predecessor to diff against) -- every other column within `1:n_admissible_evaluated`
+#'     holds a real value
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_delta_median}{a numeric vector. Per-admissible-candidate median of trace_delta across studies (Delta-tilde_t);
+#'     `-1.0` at the first admissible candidate, see trace_delta above
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_delta_max}{a numeric vector. Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
+#'     `-1.0` at the first admissible candidate, see trace_delta above
+#'     The first `n_admissible_evaluated` elements will hold the results.}
 #' @export
-run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin = 5L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
+run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin = 5L, min_neighbor_overlap = 0.1, succeeding_ci_overlap = 0.9, plateau_mode = "plateau_ci_overlap", delta_median_threshold = 0.05, delta_max_threshold = 0.1, delta_epsilon = 1e-10, delta_min_consecutive_transitions = 2L, two_sided_bootstrapping_significance_level = 2.5, random_seed = 42L) {
     gene_means <- .tox_as_double_matrix(gene_means, "gene_means")
     residuals <- .tox_as_double_array(residuals, "residuals", 3L)
     shared_residual_range <- .tox_as_double_scalar(shared_residual_range, "shared_residual_range")
@@ -715,6 +869,11 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     min_count_per_mean_bin <- .tox_as_integer_scalar(min_count_per_mean_bin, "min_count_per_mean_bin")
     min_neighbor_overlap <- .tox_as_double_scalar(min_neighbor_overlap, "min_neighbor_overlap")
     succeeding_ci_overlap <- .tox_as_double_scalar(succeeding_ci_overlap, "succeeding_ci_overlap")
+    plateau_mode <- .tox_as_mode(plateau_mode, "plateau_mode", c("plateau_ci_overlap", "plateau_effect_size", "plateau_both"))
+    delta_median_threshold <- .tox_as_double_scalar(delta_median_threshold, "delta_median_threshold")
+    delta_max_threshold <- .tox_as_double_scalar(delta_max_threshold, "delta_max_threshold")
+    delta_epsilon <- .tox_as_double_scalar(delta_epsilon, "delta_epsilon")
+    delta_min_consecutive_transitions <- .tox_as_integer_scalar(delta_min_consecutive_transitions, "delta_min_consecutive_transitions")
     two_sided_bootstrapping_significance_level <- .tox_as_double_scalar(two_sided_bootstrapping_significance_level, "two_sided_bootstrapping_significance_level")
     random_seed <- .tox_as_integer_scalar(random_seed, "random_seed")
     if (dim(residuals)[3] != dim(gene_means)[2])
@@ -722,15 +881,23 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
     if (dim(residuals)[2] != dim(gene_means)[1])
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
-    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, two_sided_bootstrapping_significance_level, random_seed)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, two_sided_bootstrapping_significance_level, random_seed)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
         n_points = .result$n_points,
         n_neighbors = .result$n_neighbors,
         n_bins = .result$n_bins,
-        best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval
+        best_candidate_pair_confidence_interval = .result$best_candidate_pair_confidence_interval,
+        trace_n_points = utils::head(.result$trace_n_points, .result$n_admissible_evaluated),
+        trace_n_neighbors = utils::head(.result$trace_n_neighbors, .result$n_admissible_evaluated),
+        trace_global_js_divergence = .result$trace_global_js_divergence[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_lower = .result$trace_ci_lower[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_upper = .result$trace_ci_upper[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_delta = .result$trace_delta[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_delta_median = utils::head(.result$trace_delta_median, .result$n_admissible_evaluated),
+        trace_delta_max = utils::head(.result$trace_delta_max, .result$n_admissible_evaluated)
     )
 }

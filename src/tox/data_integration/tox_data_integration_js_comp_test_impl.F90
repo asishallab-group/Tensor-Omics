@@ -39,10 +39,11 @@ module tox_data_integration_js_comp_test_impl
     private
     public :: calc_js_comp_test_candidate_bounds, estimate_bin_count_impl, generate_js_comp_test_candidates_impl, &
              check_neighborhood_overlaps_impl, check_mean_pmf_min_counts_impl, check_plateau_condition_impl, &
-             create_mean_pmf_impl, create_mean_pmf_only_impl, calc_js_comp_test_n_top_k_jsds, &
-             bootstrap_histogram_impl, run_js_comp_test_impl, run_js_comp_test_parameter_search_impl, &
-             METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, KX_FACTORS, MAX_POINTS, MIN_POINTS, GAMMA, &
-             MAX_POINT_CANDIDATES, MAX_CANDIDATE_PAIRS, MAX_N_BINS
+             check_effect_size_plateau_condition_impl, create_mean_pmf_impl, create_mean_pmf_only_impl, &
+             calc_js_comp_test_n_top_k_jsds, bootstrap_histogram_impl, run_js_comp_test_impl, &
+             run_js_comp_test_parameter_search_impl, METHOD_JOIN_MIN, METHOD_JOIN_MAX, METHOD_JOIN_MEDIAN, &
+             MODE_PLATEAU_CI_OVERLAP, MODE_PLATEAU_EFFECT_SIZE, MODE_PLATEAU_BOTH, KX_FACTORS, MAX_POINTS, MIN_POINTS, &
+             GAMMA, MAX_POINT_CANDIDATES, MAX_CANDIDATE_PAIRS, MAX_N_BINS
 
     ! `join_method`'s mode table (see check_plateau_condition_impl below). The generator derives
     ! a mode argument's required parameter prefix from the argument's own name -- `join_method`
@@ -85,6 +86,35 @@ module tox_data_integration_js_comp_test_impl
         !! Fixed ceiling for a candidate's estimated histogram bin count (see
         !! estimate_bin_count_impl below): later stages of this pipeline size their histogram
         !! work arrays to this fixed bound rather than to a data-dependent one.
+
+    ! `plateau_mode`'s mode table (see run_js_comp_test_parameter_search_impl below). Issue #178:
+    ! CI overlap can be too strict a plateau criterion once bootstrap confidence intervals are very
+    ! narrow, so MODE_PLATEAU_EFFECT_SIZE/MODE_PLATEAU_BOTH let a caller declare a plateau from
+    ! relative-effect-size stability (see check_effect_size_plateau_condition_impl) instead of, or
+    ! in addition to, CI overlap. CM_MODE_PLATEAU_CI_OVERLAP is also plateau_mode's DM_DEFAULT: a
+    ! genuine Fortran parameter can't be named inside a DM_DEFAULT doc-macro, so the value is
+    ! defined once as a preprocessor macro and both the parameter and the default reference it --
+    ! same pattern as tox_get_outliers_impl.F90's CM_FAMILY_MODE_DEFAULT.
+#define CM_MODE_PLATEAU_CI_OVERLAP 0_int32
+    integer(int32), parameter :: MODE_PLATEAU_CI_OVERLAP = CM_MODE_PLATEAU_CI_OVERLAP
+        !! Plateau mode: CI overlap only, exactly the pre-Issue-#178 behavior
+    integer(int32), parameter :: MODE_PLATEAU_EFFECT_SIZE = 1_int32
+        !! Plateau mode: relative-effect-size stability only
+    integer(int32), parameter :: MODE_PLATEAU_BOTH = 2_int32
+        !! Plateau mode: either CI overlap or relative-effect-size stability
+
+    ! Issue #178's suggested defaults for the relative-effect-size plateau criterion. Explicitly
+    ! provisional: the issue itself says "the exact thresholds should be validated empirically",
+    ! and that validation is blocked on 3 separate open issues (KX_FACTORS default, the
+    ! Freedman-Diaconis bin-count overestimate, and the one-sided-vs-symmetric JSD formula
+    ! question) -- see the project's JSD-Comp-Test follow-up issue. All four are exposed as
+    ! optional arguments precisely so a caller can override them once that validation happens,
+    ! without a code change. Defined as CM_ macros, not just parameters, so DM_DEFAULT and
+    ! M_DEFAULT_VAL below share one literal each instead of duplicating it by hand.
+#define CM_DELTA_MEDIAN_THRESHOLD_DEFAULT 0.05_real64
+#define CM_DELTA_MAX_THRESHOLD_DEFAULT 0.10_real64
+#define CM_DELTA_EPSILON_DEFAULT 1.0e-10_real64
+#define CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT 2_int32
 
 contains
 
@@ -469,6 +499,108 @@ contains
         end if
         plateau_found = logical(plateau, kind=c_bool)
     end subroutine check_plateau_condition_impl
+
+    !> summary: Test one candidate's per-study JSD against the previous admissible candidate for a relative-effect-size plateau
+    !| AUTHOR_LASZLO_LANG
+    !| Implements Issue #178's relative-effect-size plateau criterion, complementary to
+    !| [[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]'s
+    !| CI-overlap one: for each study `i`, the relative change in observed JSD between successive
+    !| ADMISSIBLE parameter settings (both admissibility gates already passed),
+    !| `delta(i) = |global_js_divergence(i) - prev_global_js_divergence(i)| / max(prev_global_js_divergence(i),
+    !| delta_epsilon)`, summarized across studies by its median (`delta_median`, via the
+    !| already-shipped
+    !| [[f42_stats_impl(module):calc_percentile_impl(interface)]]) and maximum (`delta_max`). A
+    !| plateau is declared once both stay under their respective thresholds for
+    !| `delta_min_consecutive_transitions` consecutive transitions in a row -- tracked across calls
+    !| via `n_consecutive_ok`, reset the moment either threshold is missed.
+    !|
+    !| No transition exists for the very first admissible candidate a caller ever passes in
+    !| (`has_previous = .false.`): `delta`/`delta_median`/`delta_max` are all set to
+    !| `-1.0_real64` -- the same not-yet-computed sentinel
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| already uses for its own confidence-interval fallback, usable here for the same reason:
+    !| every quantity this routine tracks is structurally non-negative.
+    !|
+    !| The 0.05/0.10 defaults `run_js_comp_test_parameter_search_impl` passes for
+    !| `delta_median_threshold`/`delta_max_threshold` are Issue #178's own suggested starting
+    !| point, explicitly not yet empirically validated -- see that routine's doc comment.
+    pure subroutine check_effect_size_plateau_condition_impl(global_js_divergence, prev_global_js_divergence, n_studies, &
+                                                             has_previous, delta_median_threshold, delta_max_threshold, &
+                                                             delta_epsilon, delta_min_consecutive_transitions, &
+                                                             n_consecutive_ok, delta, delta_median, delta_max, &
+                                                             plateau_found, tmp_delta_perm)
+        integer(int32), intent(in) :: n_studies
+            !! Number of studies
+        real(real64), intent(in) :: global_js_divergence(n_studies)
+            !! Current admissible candidate's observed global JSD per study
+            !! DM_MIN(0.0_real64)
+        real(real64), intent(in) :: prev_global_js_divergence(n_studies)
+            !! Previous admissible candidate's observed global JSD per study; ignored when
+            !! `has_previous` is `.false.`
+            !! DM_MIN(0.0_real64)
+        logical(c_bool), intent(in) :: has_previous
+            !! `.false.` for the very first admissible candidate a caller has ever passed in, where
+            !! no transition exists to compute a relative change from
+        real(real64), intent(in) :: delta_median_threshold
+            !! Upper bound the median relative change across studies must stay under for a
+            !! transition to count toward a plateau
+            !! DM_MIN(above(0.0_real64))
+        real(real64), intent(in) :: delta_max_threshold
+            !! Upper bound the largest relative change across studies must stay under for a
+            !! transition to count toward a plateau
+            !! DM_MIN(above(0.0_real64))
+        real(real64), intent(in) :: delta_epsilon
+            !! Small constant preventing division by zero when a study's previous JSD was zero
+            !! DM_MIN(above(0.0_real64))
+        integer(int32), intent(in) :: delta_min_consecutive_transitions
+            !! Number of consecutive qualifying transitions required to declare a plateau
+            !! DM_MIN(1_int32)
+        integer(int32), intent(inout) :: n_consecutive_ok
+            !! Running count of consecutive qualifying transitions; incremented when this
+            !! transition qualifies, reset to zero otherwise (and whenever `has_previous` is
+            !! `.false.`)
+            !! DM_MIN(0_int32)
+        real(real64), intent(out) :: delta(n_studies)
+            !! Per-study relative JSD change from the previous admissible candidate; `-1.0_real64`
+            !! throughout iff `.not. has_previous`
+        real(real64), intent(out) :: delta_median
+            !! Median of `delta` across studies; `-1.0_real64` iff `.not. has_previous`
+        real(real64), intent(out) :: delta_max
+            !! Maximum of `delta` across studies; `-1.0_real64` iff `.not. has_previous`
+        logical(c_bool), intent(out) :: plateau_found
+            !! `.true.` once `n_consecutive_ok` reaches `delta_min_consecutive_transitions`
+        integer(int32), intent(out) :: tmp_delta_perm(n_studies)
+            !! Working array: sorting permutation for `delta`, used to compute `delta_median`
+
+        integer(int32) :: i_study
+
+        if (.not. has_previous) then
+            delta = -1.0_real64
+            delta_median = -1.0_real64
+            delta_max = -1.0_real64
+            n_consecutive_ok = 0_int32
+            plateau_found = logical(.false., kind=c_bool)
+            return
+        end if
+
+        do concurrent(i_study=1:n_studies) shared(delta, global_js_divergence, prev_global_js_divergence, delta_epsilon)
+            delta(i_study) = abs(global_js_divergence(i_study) - prev_global_js_divergence(i_study)) &
+                            /max(prev_global_js_divergence(i_study), delta_epsilon)
+        end do
+
+        call init_perm(tmp_delta_perm)
+        call sort_array_heapsort(delta, tmp_delta_perm)
+        call calc_percentile_impl(delta, n_studies, tmp_delta_perm, 0.5_real64, delta_median)
+        delta_max = maxval(delta)
+
+        if (delta_median < delta_median_threshold .and. delta_max < delta_max_threshold) then
+            n_consecutive_ok = n_consecutive_ok + 1_int32
+        else
+            n_consecutive_ok = 0_int32
+        end if
+
+        plateau_found = logical(n_consecutive_ok >= delta_min_consecutive_transitions, kind=c_bool)
+    end subroutine check_effect_size_plateau_condition_impl
 
     !> summary: Build the consensus pmf and its histogram counts from all studies' pmfs
     !| AUTHOR_LASZLO_LANG
@@ -1105,7 +1237,27 @@ contains
     !| ([[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]), and
     !| tests it against the running best candidate for a plateau
     !| ([[tox_data_integration_js_comp_test_impl(module):check_plateau_condition_impl(interface)]]).
-    !| The search stops (`exit`) the moment a plateau is found. Ported verbatim, including the
+    !| `plateau_mode` picks which of that CI-overlap criterion and Issue #178's complementary
+    !| relative-effect-size one
+    !| ([[tox_data_integration_js_comp_test_impl(module):check_effect_size_plateau_condition_impl(interface)]])
+    !| governs the stop condition; both are always computed and traced (`trace_*` below) once a
+    !| candidate is admissible, regardless of `plateau_mode`, so a caller can compare what either
+    !| criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
+    !| plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
+    !|
+    !| Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
+    !| empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
+    !| one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
+    !| project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
+    !| default to the issue's own suggested (not yet validated) 0.05/0.10.
+    !|
+    !| When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
+    !| `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
+    !| "best candidate" bookkeeping, `best_candidate_index`/`best_candidate_pair_confidence_interval`
+    !| are overridden to the candidate that actually triggered the effect-size plateau, so the
+    !| candidate this routine returns is always the one that stopped the search.
+    !|
+    !| Ported verbatim, including the
     !| fallback 125 relies on: if no candidate ever plateaus, the search falls back to the FIRST
     !| (finest-resolution) candidate and resets `best_candidate_pair_confidence_interval` to
     !| `-1.0`; if the grid collapsed to a single candidate (see
@@ -1133,17 +1285,22 @@ contains
                                                        gene_means, residuals, shared_residual_range, n_bootstraps, &
                                                        join_method, max_n_points_candidate, max_n_neighbors_candidate, &
                                                        n_bootstrapping_top_k_jsds, n_points, n_neighbors, n_bins, &
-                                                       best_candidate_pair_confidence_interval, tmp_gene_means_perms, &
-                                                       tmp_gene_means_perm_all, tmp_residuals_perm, tmp_x_star, &
-                                                       tmp_neighborhood_indices, tmp_neighborhood_range, &
-                                                       tmp_neighborhood_residuals_gathered, tmp_counts_point_major, &
-                                                       tmp_pmf_point_major, tmp_pmfs, tmp_counts, tmp_included_n_reps, &
-                                                       tmp_mean_pmf, tmp_mean_pmf_counts, tmp_mean_pmf_included_n_reps, &
-                                                       tmp_js_divergences, tmp_weights, tmp_global_js_divergence, &
-                                                       tmp_confidence_interval, tmp_bootstrapping_top_k_jsds, &
-                                                       min_count_per_mean_bin, min_neighbor_overlap, &
-                                                       succeeding_ci_overlap, two_sided_bootstrapping_significance_level, &
-                                                       random_seed, ierr)
+                                                       best_candidate_pair_confidence_interval, n_admissible_evaluated, &
+                                                       trace_n_points, trace_n_neighbors, trace_global_js_divergence, &
+                                                       trace_ci_lower, trace_ci_upper, trace_delta, trace_delta_median, &
+                                                       trace_delta_max, tmp_gene_means_perms, tmp_gene_means_perm_all, &
+                                                       tmp_residuals_perm, tmp_x_star, tmp_neighborhood_indices, &
+                                                       tmp_neighborhood_range, tmp_neighborhood_residuals_gathered, &
+                                                       tmp_counts_point_major, tmp_pmf_point_major, tmp_pmfs, tmp_counts, &
+                                                       tmp_included_n_reps, tmp_mean_pmf, tmp_mean_pmf_counts, &
+                                                       tmp_mean_pmf_included_n_reps, tmp_js_divergences, tmp_weights, &
+                                                       tmp_global_js_divergence, tmp_confidence_interval, &
+                                                       tmp_bootstrapping_top_k_jsds, tmp_prev_global_js_divergence, &
+                                                       tmp_delta_perm, min_count_per_mean_bin, min_neighbor_overlap, &
+                                                       succeeding_ci_overlap, plateau_mode, delta_median_threshold, &
+                                                       delta_max_threshold, delta_epsilon, &
+                                                       delta_min_consecutive_transitions, &
+                                                       two_sided_bootstrapping_significance_level, random_seed, ierr)
         integer(int32), intent(in) :: n_studies
             !! Number of studies
             !! DM_MIN(1_int32)
@@ -1197,6 +1354,48 @@ contains
             !! The bootstrapped JSD confidence interval for the finally chosen candidate pair;
             !! `-1.0_real64` throughout if no candidate pair passed both admissibility gates and
             !! the search fell back to the finest-resolution candidate
+        integer(int32), intent(out) :: n_admissible_evaluated
+            !! Number of candidates that passed both admissibility gates and got a JSD/confidence
+            !! interval computed before the search stopped (by plateau or grid exhaustion) -- the
+            !! number of leading, valid columns/elements in every `trace_*` array below. This is
+            !! Issue #178's own index `t` domain: "position in the ordered sequence of ADMISSIBLE
+            !! parameter pairs" -- a candidate that failed either gate has no `trace_*` entry at
+            !! all, rather than a zero-filled one
+        integer(int32), dimension(16), intent(out) :: trace_n_points
+            !! Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
+            !! arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
+            !! candidates_n_points_n_neighbors/n_bins_candidates are in
+            !! generate_js_comp_test_candidates_impl
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        integer(int32), dimension(16), intent(out) :: trace_n_neighbors
+            !! Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_global_js_divergence
+            !! Per-admissible-candidate, per-study observed global JSD (`J_{i,t}` in Issue #178)
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_lower
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval lower bound
+            !! (`L_{i,t}`)
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
+            !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
+            !! (`U_{i,t}`)
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
+            !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
+            !! candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
+            !! `-1.0_real64` throughout at the first admissible candidate specifically (no
+            !! predecessor to diff against) -- every other column within `1:n_admissible_evaluated`
+            !! holds a real value
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(16), intent(out) :: trace_delta_median
+            !! Per-admissible-candidate median of trace_delta across studies (Delta-tilde_t);
+            !! `-1.0_real64` at the first admissible candidate, see trace_delta above
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(16), intent(out) :: trace_delta_max
+            !! Per-admissible-candidate maximum of trace_delta across studies (Delta^max_t);
+            !! `-1.0_real64` at the first admissible candidate, see trace_delta above
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         integer(int32), dimension(max_n_genes_all_studies, n_studies), intent(out) :: tmp_gene_means_perms
             !! Working array: each study's own sorting permutation for `gene_means`
         integer(int32), dimension(max_n_genes_all_studies*n_studies), intent(out) :: tmp_gene_means_perm_all
@@ -1256,6 +1455,12 @@ contains
             !! global JSD and then bootstrapped in place
         real(real64), dimension(n_bootstrapping_top_k_jsds, 2, n_studies), intent(out) :: tmp_bootstrapping_top_k_jsds
             !! Working array forwarded to bootstrap_histogram_impl's own top-k/bottom-k heaps
+        real(real64), dimension(n_studies), intent(out) :: tmp_prev_global_js_divergence
+            !! Working array: the previous admissible candidate's observed global JSD per study,
+            !! forwarded to check_effect_size_plateau_condition_impl
+        integer(int32), dimension(n_studies), intent(out) :: tmp_delta_perm
+            !! Working array forwarded to check_effect_size_plateau_condition_impl's own median
+            !! computation
         integer(int32), intent(in), optional :: min_count_per_mean_bin
             !! Minimum count each bin of the consensus pmf must reach to pass the second
             !! admissibility gate
@@ -1273,6 +1478,37 @@ contains
             !! DM_MIN(0.0_real64)
             !! DM_MAX(1.0_real64)
             !! DM_DEFAULT(0.9_real64)
+        integer(int32), intent(in), optional :: plateau_mode
+            !! Which plateau criterion decides when the search stops
+            !!
+            !! | Mode | Value |
+            !! |------|-------|
+            !! | CI overlap only (pre-Issue-#178 behavior) | [[tox_data_integration_js_comp_test_impl(module):MODE_PLATEAU_CI_OVERLAP(variable)]] |
+            !! | Relative-effect-size stability only | [[tox_data_integration_js_comp_test_impl(module):MODE_PLATEAU_EFFECT_SIZE(variable)]] |
+            !! | Either criterion | [[tox_data_integration_js_comp_test_impl(module):MODE_PLATEAU_BOTH(variable)]] |
+            !! DM_DEFAULT(CM_MODE_PLATEAU_CI_OVERLAP)
+        real(real64), intent(in), optional :: delta_median_threshold
+            !! Upper bound the median relative JSD change across studies must stay under for a
+            !! transition to count toward an effect-size plateau, forwarded to
+            !! check_effect_size_plateau_condition_impl
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(CM_DELTA_MEDIAN_THRESHOLD_DEFAULT)
+        real(real64), intent(in), optional :: delta_max_threshold
+            !! Upper bound the largest relative JSD change across studies must stay under for a
+            !! transition to count toward an effect-size plateau, forwarded to
+            !! check_effect_size_plateau_condition_impl
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(CM_DELTA_MAX_THRESHOLD_DEFAULT)
+        real(real64), intent(in), optional :: delta_epsilon
+            !! Small constant preventing division by zero when a study's previous admissible
+            !! candidate's JSD was zero, forwarded to check_effect_size_plateau_condition_impl
+            !! DM_MIN(above(0.0_real64))
+            !! DM_DEFAULT(CM_DELTA_EPSILON_DEFAULT)
+        integer(int32), intent(in), optional :: delta_min_consecutive_transitions
+            !! Number of consecutive qualifying transitions required to declare an effect-size
+            !! plateau, forwarded to check_effect_size_plateau_condition_impl
+            !! DM_MIN(1_int32)
+            !! DM_DEFAULT(CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
         real(real64), intent(in), optional :: two_sided_bootstrapping_significance_level
             !! Forwarded to calc_js_comp_test_n_top_k_jsds (sizing n_bootstrapping_top_k_jsds) and
             !! to bootstrap_histogram_impl itself
@@ -1289,13 +1525,21 @@ contains
         integer(int32) :: i_candidate, i_study, i_point, i_neighbor, gene_idx, n_pool
         integer(int32) :: prev_n_points, best_candidate_index, best_exceeded_ci_overlap_count, n_candidates
         integer(int32) :: n_residuals, pool_size, bootstrap_ierr, actual_min_count_per_mean_bin
+        integer(int32) :: actual_plateau_mode, actual_delta_min_consecutive_transitions, n_consecutive_effect_size_ok
         real(real64) :: actual_min_neighbor_overlap, actual_succeeding_ci_overlap
+        real(real64) :: actual_delta_median_threshold, actual_delta_max_threshold, actual_delta_epsilon
         logical(c_bool) :: all_have_min_neighbor_overlap, all_bins_have_min_count, plateau_found
+        logical(c_bool) :: ci_plateau_found, effect_size_plateau_found, has_previous_admissible
 
         call set_ok(ierr)
         M_DEFAULT_VAL(min_count_per_mean_bin, actual_min_count_per_mean_bin, 5_int32)
         M_DEFAULT_VAL(min_neighbor_overlap, actual_min_neighbor_overlap, 0.1_real64)
         M_DEFAULT_VAL(succeeding_ci_overlap, actual_succeeding_ci_overlap, 0.9_real64)
+        M_DEFAULT_VAL(plateau_mode, actual_plateau_mode, CM_MODE_PLATEAU_CI_OVERLAP)
+        M_DEFAULT_VAL(delta_median_threshold, actual_delta_median_threshold, CM_DELTA_MEDIAN_THRESHOLD_DEFAULT)
+        M_DEFAULT_VAL(delta_max_threshold, actual_delta_max_threshold, CM_DELTA_MAX_THRESHOLD_DEFAULT)
+        M_DEFAULT_VAL(delta_epsilon, actual_delta_epsilon, CM_DELTA_EPSILON_DEFAULT)
+        M_DEFAULT_VAL(delta_min_consecutive_transitions, actual_delta_min_consecutive_transitions, CM_DELTA_MIN_CONSECUTIVE_TRANSITIONS_DEFAULT)
 
         n_residuals = max_n_reps_all_studies*max_n_genes_all_studies*n_studies
         pool_size = max_n_genes_all_studies*n_studies
@@ -1324,6 +1568,9 @@ contains
         best_exceeded_ci_overlap_count = 0_int32
         plateau_found = logical(.false., kind=c_bool)
         prev_n_points = -1_int32
+        n_admissible_evaluated = 0_int32
+        n_consecutive_effect_size_ok = 0_int32
+        has_previous_admissible = logical(.false., kind=c_bool)
 
         ! Test candidate pairs, finest resolution to coarsest, and stop at the first JSD plateau.
         do i_candidate = 1, n_candidates
@@ -1389,6 +1636,30 @@ contains
                 tmp_confidence_interval(2, i_study) = tmp_global_js_divergence(i_study)
             end do
 
+            ! Record this admissible candidate's diagnostics and test the relative-effect-size
+            ! plateau criterion (Issue #178) -- always, regardless of plateau_mode, so a caller can
+            ! compare both criteria; only the final select-case below decides which one governs
+            ! `exit`. Must happen here, using the true observed tmp_global_js_divergence, BEFORE
+            ! bootstrap_histogram_impl reuses that same array as its own scratch below -- reading it
+            ! afterward would silently pick up the last bootstrap replicate's value instead of the
+            ! observed one.
+            n_admissible_evaluated = n_admissible_evaluated + 1_int32
+            trace_n_points(n_admissible_evaluated) = n_points
+            trace_n_neighbors(n_admissible_evaluated) = n_neighbors
+            trace_global_js_divergence(1:n_studies, n_admissible_evaluated) = tmp_global_js_divergence
+
+            call check_effect_size_plateau_condition_impl(tmp_global_js_divergence, tmp_prev_global_js_divergence, &
+                                                          n_studies, has_previous_admissible, actual_delta_median_threshold, &
+                                                          actual_delta_max_threshold, actual_delta_epsilon, &
+                                                          actual_delta_min_consecutive_transitions, &
+                                                          n_consecutive_effect_size_ok, &
+                                                          trace_delta(1:n_studies, n_admissible_evaluated), &
+                                                          trace_delta_median(n_admissible_evaluated), &
+                                                          trace_delta_max(n_admissible_evaluated), &
+                                                          effect_size_plateau_found, tmp_delta_perm)
+            tmp_prev_global_js_divergence = tmp_global_js_divergence
+            has_previous_admissible = logical(.true., kind=c_bool)
+
             ! Bootstrap the confidence interval -- same n_bootstraps/random_seed for every
             ! candidate, for comparability. The observed-value scratch above is no longer needed,
             ! so it doubles as bootstrap_histogram_impl's own work arrays, exactly as 125 does.
@@ -1402,9 +1673,31 @@ contains
                                           bootstrap_ierr)
             if (is_err(bootstrap_ierr)) call set_err_once(ierr, get_err_code(bootstrap_ierr))
 
+            trace_ci_lower(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(1, 1:n_studies)
+            trace_ci_upper(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(2, 1:n_studies)
+
             call check_plateau_condition_impl(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, &
                                               best_candidate_index, best_exceeded_ci_overlap_count, i_candidate, join_method, &
-                                              actual_succeeding_ci_overlap, plateau_found)
+                                              actual_succeeding_ci_overlap, ci_plateau_found)
+
+            select case (actual_plateau_mode)
+            case (MODE_PLATEAU_CI_OVERLAP)
+                plateau_found = ci_plateau_found
+            case (MODE_PLATEAU_EFFECT_SIZE)
+                plateau_found = effect_size_plateau_found
+            case default ! MODE_PLATEAU_BOTH
+                plateau_found = logical(ci_plateau_found .or. effect_size_plateau_found, kind=c_bool)
+            end select
+
+            ! check_plateau_condition_impl's own best-candidate bookkeeping tracks its OWN
+            ! (CI-overlap) criterion only. When the effect-size criterion is the one that actually
+            ! plateaued (and plateau_mode gives it a say), override to the candidate that triggered
+            ! it, so the candidate this routine returns is always the one that stopped the search.
+            if (effect_size_plateau_found .and. actual_plateau_mode /= MODE_PLATEAU_CI_OVERLAP) then
+                best_candidate_index = i_candidate
+                best_candidate_pair_confidence_interval = tmp_confidence_interval
+            end if
+
             if (plateau_found) exit
         end do
 
