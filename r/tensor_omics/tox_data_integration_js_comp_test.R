@@ -733,11 +733,14 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #' criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
 #' plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
 #'
-#' Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-#' empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-#' one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-#' project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-#' default to the issue's own suggested (not yet validated) 0.05/0.10.
+#' Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+#' empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+#' both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+#' candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+#' follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+#' not a real discrepancy -- the code's symmetric formula is correct as written.)
+#' `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+#' validated) 0.05/0.10.
 #'
 #' When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
 #' `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -847,6 +850,15 @@ run_js_comp_test <- function(n_neighbors, n_bins, shared_residual_range, gene_me
 #'   \item{trace_ci_upper}{a numeric matrix. Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
 #'     (`U_{i,t}`)
 #'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_width}{a numeric matrix. Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+#'     L_{i,t}`)
+#'     The first `n_admissible_evaluated` elements will hold the results.}
+#'   \item{trace_ci_width_relative}{a numeric matrix. Per-admissible-candidate, per-study relative confidence-interval width
+#'     (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+#'     formula omits this floor, but the same near-zero-JSD instability that motivates
+#'     `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+#'     destabilizes any ratio that divides by it, whichever candidate's `J` it is)
+#'     The first `n_admissible_evaluated` elements will hold the results.}
 #'   \item{trace_delta}{a numeric matrix. Per-admissible-candidate, per-study relative JSD change from the previous admissible
 #'     candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
 #'     `-1.0` throughout at the first admissible candidate specifically (no
@@ -882,8 +894,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
         .tox_shape_error("residuals", dim(residuals)[2], "gene_means", dim(gene_means)[1])
 
     .result <- .Call("run_js_comp_test_parameter_search_call", gene_means, residuals, shared_residual_range, n_bootstraps, join_method, min_count_per_mean_bin, min_neighbor_overlap, succeeding_ci_overlap, plateau_mode, delta_median_threshold, delta_max_threshold, delta_epsilon, delta_min_consecutive_transitions, two_sided_bootstrapping_significance_level, random_seed)
-    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
-    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
+    .arguments <- c("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr")
+    .sources <- c("gene_means", "gene_means", "residuals", NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_, NA_character_)
     .status <- check_err_code(.result$ierr, .arguments, .sources)
 
     list(
@@ -896,6 +908,8 @@ run_js_comp_test_parameter_search <- function(gene_means, residuals, shared_resi
         trace_global_js_divergence = .result$trace_global_js_divergence[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_ci_lower = .result$trace_ci_lower[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_ci_upper = .result$trace_ci_upper[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_width = .result$trace_ci_width[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
+        trace_ci_width_relative = .result$trace_ci_width_relative[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_delta = .result$trace_delta[, seq_len(.result$n_admissible_evaluated), drop = FALSE],
         trace_delta_median = utils::head(.result$trace_delta_median, .result$n_admissible_evaluated),
         trace_delta_max = utils::head(.result$trace_delta_max, .result$n_admissible_evaluated)

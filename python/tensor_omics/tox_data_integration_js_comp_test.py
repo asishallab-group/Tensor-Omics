@@ -285,6 +285,8 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
+    np.ctypeslib.ndpointer(dtype=np.float64, ndim=2, flags='F_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
     ctypes.POINTER(ctypes.c_int),
@@ -301,9 +303,9 @@ _lib.run_js_comp_test_parameter_search_c.argtypes = (
 )
 
 #: The wrapped procedure's arguments, so an error can name one
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENTS = ("n_studies", "max_n_genes_all_studies", "max_n_reps_all_studies", "gene_means", "residuals", "shared_residual_range", "n_bootstraps", "join_method", "n_points", "n_neighbors", "n_bins", "best_candidate_pair_confidence_interval", "n_admissible_evaluated", "trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower", "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta", "trace_delta_median", "trace_delta_max", "min_count_per_mean_bin", "min_neighbor_overlap", "succeeding_ci_overlap", "plateau_mode", "delta_median_threshold", "delta_max_threshold", "delta_epsilon", "delta_min_consecutive_transitions", "two_sided_bootstrapping_significance_level", "random_seed", "ierr",)
 #: For a derived argument, the one the caller passed it in
-_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
+_RUN_JS_COMP_TEST_PARAMETER_SEARCH_ARGUMENT_SOURCES = ("gene_means", "gene_means", "residuals", None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None, None,)
 
 def estimate_bin_count(
         residuals,
@@ -1794,11 +1796,14 @@ def run_js_comp_test_parameter_search(
     criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
     plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
 
-    Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-    empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-    one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-    project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-    default to the issue's own suggested (not yet validated) 0.05/0.10.
+    Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+    empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+    both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+    candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+    follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+    not a real discrepancy -- the code's symmetric formula is correct as written.)
+    `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+    validated) 0.05/0.10.
 
     When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
     `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -1943,6 +1948,19 @@ def run_js_comp_test_parameter_search(
             (`U_{i,t}`)
             The first `n_admissible_evaluated` elements will hold the results.
             A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_width : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+            L_{i,t}`)
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
+        trace_ci_width_relative : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
+            Per-admissible-candidate, per-study relative confidence-interval width
+            (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+            formula omits this floor, but the same near-zero-JSD instability that motivates
+            `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+            destabilizes any ratio that divides by it, whichever candidate's `J` it is)
+            The first `n_admissible_evaluated` elements will hold the results.
+            A result is a value; call `.copy()` to obtain a modifiable array.
         trace_delta : np.ndarray[np.float64] of shape (n_studies, 16,), column-major (order='F'), read-only
             Per-admissible-candidate, per-study relative JSD change from the previous admissible
             candidate (`Delta_{i,t}`), from check_effect_size_plateau_condition_impl;
@@ -2014,6 +2032,8 @@ def run_js_comp_test_parameter_search(
     trace_global_js_divergence = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_ci_lower = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_ci_upper = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_width = np.empty((n_studies, 16,), dtype=np.float64, order='F')
+    trace_ci_width_relative = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta = np.empty((n_studies, 16,), dtype=np.float64, order='F')
     trace_delta_median = np.empty((16,), dtype=np.float64, order='C')
     trace_delta_max = np.empty((16,), dtype=np.float64, order='C')
@@ -2038,6 +2058,8 @@ def run_js_comp_test_parameter_search(
         trace_global_js_divergence,
         trace_ci_lower,
         trace_ci_upper,
+        trace_ci_width,
+        trace_ci_width_relative,
         trace_delta,
         trace_delta_median,
         trace_delta_max,
@@ -2063,6 +2085,8 @@ def run_js_comp_test_parameter_search(
     trace_global_js_divergence.flags.writeable = False
     trace_ci_lower.flags.writeable = False
     trace_ci_upper.flags.writeable = False
+    trace_ci_width.flags.writeable = False
+    trace_ci_width_relative.flags.writeable = False
     trace_delta.flags.writeable = False
     trace_delta_median.flags.writeable = False
     trace_delta_max.flags.writeable = False
@@ -2077,6 +2101,8 @@ def run_js_comp_test_parameter_search(
         "trace_global_js_divergence": trace_global_js_divergence[..., :n_admissible_evaluated.value],
         "trace_ci_lower": trace_ci_lower[..., :n_admissible_evaluated.value],
         "trace_ci_upper": trace_ci_upper[..., :n_admissible_evaluated.value],
+        "trace_ci_width": trace_ci_width[..., :n_admissible_evaluated.value],
+        "trace_ci_width_relative": trace_ci_width_relative[..., :n_admissible_evaluated.value],
         "trace_delta": trace_delta[..., :n_admissible_evaluated.value],
         "trace_delta_median": trace_delta_median[..., :n_admissible_evaluated.value],
         "trace_delta_max": trace_delta_max[..., :n_admissible_evaluated.value],

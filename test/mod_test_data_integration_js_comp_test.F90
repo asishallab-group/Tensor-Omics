@@ -1607,6 +1607,7 @@ contains
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -1621,7 +1622,8 @@ contains
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
                                                n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=1000000_int32, random_seed=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
@@ -1660,6 +1662,7 @@ contains
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -1674,7 +1677,8 @@ contains
                                                residuals, 1.0_real64, 5_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
                                                n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -1742,6 +1746,7 @@ contains
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -1756,7 +1761,8 @@ contains
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
                                                n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                random_seed=1_int32)
 
@@ -1784,6 +1790,14 @@ contains
                                      "test_param_search_finds_plateau_mid_grid: trace_ci_lower(:,1) is 0.0")
         call assert_equal_array_real(trace_ci_upper(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
                                      "test_param_search_finds_plateau_mid_grid: trace_ci_upper(:,2) is 0.0")
+        call assert_equal_array_real(trace_ci_width(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_width(:,1) is 0.0")
+        call assert_equal_array_real(trace_ci_width(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_width(:,2) is 0.0")
+        call assert_equal_array_real(trace_ci_width_relative(:, 1), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_width_relative(:,1) is 0.0")
+        call assert_equal_array_real(trace_ci_width_relative(:, 2), [0.0_real64, 0.0_real64], 2_int32, TOL, &
+                                     "test_param_search_finds_plateau_mid_grid: trace_ci_width_relative(:,2) is 0.0")
 
         ! Slot 1 is the first admissible candidate -- no predecessor to diff against, so the
         ! effect-size trace is the -1.0 sentinel throughout, never a real (mis-)computed value.
@@ -1841,6 +1855,7 @@ contains
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -1855,7 +1870,8 @@ contains
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
                                                n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_EFFECT_SIZE, random_seed=1_int32)
 
@@ -1893,6 +1909,7 @@ contains
         real(real64) :: best_candidate_pair_confidence_interval(2, n_studies)
         integer(int32) :: trace_n_points(16), trace_n_neighbors(16)
         real(real64) :: trace_global_js_divergence(n_studies, 16), trace_ci_lower(n_studies, 16), trace_ci_upper(n_studies, 16)
+        real(real64) :: trace_ci_width(n_studies, 16), trace_ci_width_relative(n_studies, 16)
         real(real64) :: trace_delta(n_studies, 16), trace_delta_median(16), trace_delta_max(16)
         integer(int32) :: i_gene, i_study
 
@@ -1907,7 +1924,8 @@ contains
                                                residuals, 1.0_real64, 10_int32, METHOD_JOIN_MIN, n_points, n_neighbors, &
                                                n_bins, best_candidate_pair_confidence_interval, n_admissible_evaluated, &
                                                trace_n_points, trace_n_neighbors, trace_global_js_divergence, trace_ci_lower, &
-                                               trace_ci_upper, trace_delta, trace_delta_median, trace_delta_max, ierr=ierr, &
+                                               trace_ci_upper, trace_ci_width, trace_ci_width_relative, trace_delta, &
+                                               trace_delta_median, trace_delta_max, ierr=ierr, &
                                                min_count_per_mean_bin=0_int32, min_neighbor_overlap=0.0_real64, &
                                                plateau_mode=MODE_PLATEAU_BOTH, random_seed=1_int32)
 

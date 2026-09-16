@@ -1643,11 +1643,14 @@ contains
     !| criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
     !| plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
     !|
-    !| Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-    !| empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-    !| one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-    !| project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-    !| default to the issue's own suggested (not yet validated) 0.05/0.10.
+    !| Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+    !| empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+    !| both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+    !| candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+    !| follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+    !| not a real discrepancy -- the code's symmetric formula is correct as written.)
+    !| `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+    !| validated) 0.05/0.10.
     !|
     !| When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
     !| `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -1698,6 +1701,8 @@ contains
             trace_global_js_divergence,&
             trace_ci_lower,&
             trace_ci_upper,&
+            trace_ci_width,&
+            trace_ci_width_relative,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -1779,6 +1784,17 @@ contains
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! (`U_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
+            !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+            !! L_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
+            !! Per-admissible-candidate, per-study relative confidence-interval width
+            !! (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+            !! formula omits this floor, but the same near-zero-JSD instability that motivates
+            !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+            !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -1887,18 +1903,18 @@ contains
         call validate_in_range_int(max_n_reps_all_studies, ierr, arg_pos=3_int32, min=1_int32)
         call validate_in_range_real(shared_residual_range, ierr, arg_pos=6_int32, min=0.0_real64)
         call validate_in_range_int(n_bootstraps, ierr, arg_pos=7_int32, min=1_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=22_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=23_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=24_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=26_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=27_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=28_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=29_int32, min=1_int32)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=30_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=24_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=25_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=26_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=28_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=29_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=30_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=31_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=32_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=25_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=27_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -1957,6 +1973,8 @@ contains
             trace_global_js_divergence = trace_global_js_divergence,&
             trace_ci_lower = trace_ci_lower,&
             trace_ci_upper = trace_ci_upper,&
+            trace_ci_width = trace_ci_width,&
+            trace_ci_width_relative = trace_ci_width_relative,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -2021,11 +2039,14 @@ contains
     !| criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
     !| plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
     !|
-    !| Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-    !| empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-    !| one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-    !| project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-    !| default to the issue's own suggested (not yet validated) 0.05/0.10.
+    !| Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+    !| empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+    !| both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+    !| candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+    !| follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+    !| not a real discrepancy -- the code's symmetric formula is correct as written.)
+    !| `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+    !| validated) 0.05/0.10.
     !|
     !| When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
     !| `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -2079,6 +2100,8 @@ contains
             trace_global_js_divergence,&
             trace_ci_lower,&
             trace_ci_upper,&
+            trace_ci_width,&
+            trace_ci_width_relative,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -2195,6 +2218,17 @@ contains
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! (`U_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
+            !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+            !! L_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
+            !! Per-admissible-candidate, per-study relative confidence-interval width
+            !! (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+            !! formula omits this floor, but the same near-zero-JSD instability that motivates
+            !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+            !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -2345,18 +2379,18 @@ contains
         call validate_in_range_int(max_n_points_candidate, ierr, arg_pos=9_int32, min=1_int32)
         call validate_in_range_int(max_n_neighbors_candidate, ierr, arg_pos=10_int32, min=1_int32)
         call validate_in_range_int(n_bootstrapping_top_k_jsds, ierr, arg_pos=11_int32, min=1_int32)
-        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=47_int32, min=0_int32)
-        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=48_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=49_int32, min=0.0_real64, max=1.0_real64)
-        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=51_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=52_int32, min=above(0.0_real64))
-        call validate_in_range_real(delta_epsilon, ierr, arg_pos=53_int32, min=above(0.0_real64))
-        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=54_int32, min=1_int32)
-        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=55_int32, min=0.0_real64, max=100.0_real64)
+        call validate_in_range_int(min_count_per_mean_bin, ierr, arg_pos=49_int32, min=0_int32)
+        call validate_in_range_real(min_neighbor_overlap, ierr, arg_pos=50_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(succeeding_ci_overlap, ierr, arg_pos=51_int32, min=0.0_real64, max=1.0_real64)
+        call validate_in_range_real(delta_median_threshold, ierr, arg_pos=53_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_max_threshold, ierr, arg_pos=54_int32, min=above(0.0_real64))
+        call validate_in_range_real(delta_epsilon, ierr, arg_pos=55_int32, min=above(0.0_real64))
+        call validate_in_range_int(delta_min_consecutive_transitions, ierr, arg_pos=56_int32, min=1_int32)
+        call validate_in_range_real(two_sided_bootstrapping_significance_level, ierr, arg_pos=57_int32, min=0.0_real64, max=100.0_real64)
         call validate_all_in_range_real(gene_means, max_n_genes_all_studies * n_studies, ierr, arg_pos=4_int32, allow_nan=.true._c_bool)
         call validate_all_in_range_real(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies, ierr, arg_pos=5_int32, allow_nan=.true._c_bool)
         if (join_method /= METHOD_JOIN_MIN .and. join_method /= METHOD_JOIN_MAX .and. join_method /= METHOD_JOIN_MEDIAN) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=8_int32)
-        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=50_int32); end if
+        if (present(plateau_mode)) then; if (plateau_mode /= MODE_PLATEAU_CI_OVERLAP .and. plateau_mode /= MODE_PLATEAU_EFFECT_SIZE .and. plateau_mode /= MODE_PLATEAU_BOTH) call set_err_once(ierr, ERR_INVALID_INPUT, arg_pos=52_int32); end if
         if (is_err(ierr)) return
 #endif
 
@@ -2382,6 +2416,8 @@ contains
             trace_global_js_divergence = trace_global_js_divergence,&
             trace_ci_lower = trace_ci_lower,&
             trace_ci_upper = trace_ci_upper,&
+            trace_ci_width = trace_ci_width,&
+            trace_ci_width_relative = trace_ci_width_relative,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&

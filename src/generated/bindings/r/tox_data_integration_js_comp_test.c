@@ -18,7 +18,7 @@ void create_mean_pmf_c(const double*, const int*, const int*, const int*, const 
 void create_mean_pmf_only_c(const double*, const int*, const int*, const int*, double*, int*);
 void bootstrap_histogram_c(const int*, const int*, const int*, const int*, const int*, const int*, const int*, double*, const double*, const int*, int*);
 void run_js_comp_test_c(const int*, const int*, const int*, const int*, const int*, const int*, const double*, const double*, const int*, const double*, const double*, int*, int*, double*, int*, int*, double*, int*, int*, double*, double*, double*, double*, const int*, const int*, int*);
-void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const double*, const int*, const char*, int*, int*, int*, double*, int*, int*, int*, double*, double*, double*, double*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const double*, const int*, int*);
+void run_js_comp_test_parameter_search_c(const int*, const int*, const int*, const double*, const double*, const double*, const int*, const char*, int*, int*, int*, double*, int*, int*, int*, double*, double*, double*, double*, double*, double*, double*, double*, const int*, const double*, const double*, const char*, const double*, const double*, const double*, const int*, const double*, const int*, int*);
 
 SEXP estimate_bin_count_call(SEXP residuals, SEXP max_n_reps_all_studies, SEXP n_neighbors, SEXP shared_residual_range) {
     int nprot = 0;
@@ -609,6 +609,10 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     { SEXP trace_ci_lower_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_lower_dim)[0] = n_studies; INTEGER(trace_ci_lower_dim)[1] = 16; Rf_setAttrib(trace_ci_lower, R_DimSymbol, trace_ci_lower_dim); UNPROTECT(1); }
     SEXP trace_ci_upper = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
     { SEXP trace_ci_upper_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_upper_dim)[0] = n_studies; INTEGER(trace_ci_upper_dim)[1] = 16; Rf_setAttrib(trace_ci_upper, R_DimSymbol, trace_ci_upper_dim); UNPROTECT(1); }
+    SEXP trace_ci_width = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_ci_width_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_width_dim)[0] = n_studies; INTEGER(trace_ci_width_dim)[1] = 16; Rf_setAttrib(trace_ci_width, R_DimSymbol, trace_ci_width_dim); UNPROTECT(1); }
+    SEXP trace_ci_width_relative = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
+    { SEXP trace_ci_width_relative_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_ci_width_relative_dim)[0] = n_studies; INTEGER(trace_ci_width_relative_dim)[1] = 16; Rf_setAttrib(trace_ci_width_relative, R_DimSymbol, trace_ci_width_relative_dim); UNPROTECT(1); }
     SEXP trace_delta = PROTECT(Rf_allocVector(REALSXP, n_studies * 16)); nprot++;
     { SEXP trace_delta_dim = PROTECT(Rf_allocVector(INTSXP, 2)); INTEGER(trace_delta_dim)[0] = n_studies; INTEGER(trace_delta_dim)[1] = 16; Rf_setAttrib(trace_delta, R_DimSymbol, trace_delta_dim); UNPROTECT(1); }
     SEXP trace_delta_median = PROTECT(Rf_allocVector(REALSXP, 16)); nprot++;
@@ -634,6 +638,8 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         REAL(trace_global_js_divergence),
         REAL(trace_ci_lower),
         REAL(trace_ci_upper),
+        REAL(trace_ci_width),
+        REAL(trace_ci_width_relative),
         REAL(trace_delta),
         REAL(trace_delta_median),
         REAL(trace_delta_max),
@@ -650,7 +656,7 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
         &ierr
     );
 
-    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 14)); nprot++;
+    SEXP _out = PROTECT(Rf_allocVector(VECSXP, 16)); nprot++;
     SET_VECTOR_ELT(_out, 0, Rf_ScalarInteger(n_points));
     SET_VECTOR_ELT(_out, 1, Rf_ScalarInteger(n_neighbors));
     SET_VECTOR_ELT(_out, 2, Rf_ScalarInteger(n_bins));
@@ -661,11 +667,13 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     SET_VECTOR_ELT(_out, 7, trace_global_js_divergence);
     SET_VECTOR_ELT(_out, 8, trace_ci_lower);
     SET_VECTOR_ELT(_out, 9, trace_ci_upper);
-    SET_VECTOR_ELT(_out, 10, trace_delta);
-    SET_VECTOR_ELT(_out, 11, trace_delta_median);
-    SET_VECTOR_ELT(_out, 12, trace_delta_max);
-    SET_VECTOR_ELT(_out, 13, Rf_ScalarInteger(ierr));
-    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 14)); nprot++;
+    SET_VECTOR_ELT(_out, 10, trace_ci_width);
+    SET_VECTOR_ELT(_out, 11, trace_ci_width_relative);
+    SET_VECTOR_ELT(_out, 12, trace_delta);
+    SET_VECTOR_ELT(_out, 13, trace_delta_median);
+    SET_VECTOR_ELT(_out, 14, trace_delta_max);
+    SET_VECTOR_ELT(_out, 15, Rf_ScalarInteger(ierr));
+    SEXP _nms = PROTECT(Rf_allocVector(STRSXP, 16)); nprot++;
     SET_STRING_ELT(_nms, 0, Rf_mkChar("n_points"));
     SET_STRING_ELT(_nms, 1, Rf_mkChar("n_neighbors"));
     SET_STRING_ELT(_nms, 2, Rf_mkChar("n_bins"));
@@ -676,10 +684,12 @@ SEXP run_js_comp_test_parameter_search_call(SEXP gene_means, SEXP residuals, SEX
     SET_STRING_ELT(_nms, 7, Rf_mkChar("trace_global_js_divergence"));
     SET_STRING_ELT(_nms, 8, Rf_mkChar("trace_ci_lower"));
     SET_STRING_ELT(_nms, 9, Rf_mkChar("trace_ci_upper"));
-    SET_STRING_ELT(_nms, 10, Rf_mkChar("trace_delta"));
-    SET_STRING_ELT(_nms, 11, Rf_mkChar("trace_delta_median"));
-    SET_STRING_ELT(_nms, 12, Rf_mkChar("trace_delta_max"));
-    SET_STRING_ELT(_nms, 13, Rf_mkChar("ierr"));
+    SET_STRING_ELT(_nms, 10, Rf_mkChar("trace_ci_width"));
+    SET_STRING_ELT(_nms, 11, Rf_mkChar("trace_ci_width_relative"));
+    SET_STRING_ELT(_nms, 12, Rf_mkChar("trace_delta"));
+    SET_STRING_ELT(_nms, 13, Rf_mkChar("trace_delta_median"));
+    SET_STRING_ELT(_nms, 14, Rf_mkChar("trace_delta_max"));
+    SET_STRING_ELT(_nms, 15, Rf_mkChar("ierr"));
     Rf_setAttrib(_out, R_NamesSymbol, _nms);
     UNPROTECT(nprot);
     return _out;

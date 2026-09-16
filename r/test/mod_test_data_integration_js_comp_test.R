@@ -467,11 +467,15 @@ test_run_js_comp_test_parameter_search <- function() {
   # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the R return
   # since every trace_* output already comes back trimmed to exactly that length.
   for (key in c("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
-                "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max")) {
+                "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
+                "trace_delta_median", "trace_delta_max")) {
     assert_true(!is.null(result3[[key]]), paste0("missing expected output '", key, "'"))
   }
   n_admissible <- length(result3$trace_n_points)
   assert_true(n_admissible >= 1L, "expected at least one admissible candidate")
+  assert_true(ncol(result3$trace_ci_width) == n_admissible, "trace_ci_width has n_admissible columns")
+  assert_true(all(dim(result3$trace_ci_width_relative) == dim(result3$trace_ci_width)),
+              "trace_ci_width_relative shape matches trace_ci_width")
   # The first (and here, only) admissible candidate has no predecessor to diff against.
   assert_equal_numeric(result3$trace_delta[, 1], c(-1.0, -1.0), TOL, "first candidate's delta is the -1.0 sentinel")
 }

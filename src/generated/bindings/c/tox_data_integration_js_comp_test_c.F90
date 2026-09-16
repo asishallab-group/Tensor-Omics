@@ -1658,11 +1658,14 @@ contains
     !| criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
     !| plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
     !|
-    !| Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-    !| empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-    !| one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-    !| project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-    !| default to the issue's own suggested (not yet validated) 0.05/0.10.
+    !| Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+    !| empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+    !| both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+    !| candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+    !| follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+    !| not a real discrepancy -- the code's symmetric formula is correct as written.)
+    !| `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+    !| validated) 0.05/0.10.
     !|
     !| When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
     !| `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -1713,6 +1716,8 @@ contains
             trace_global_js_divergence,&
             trace_ci_lower,&
             trace_ci_upper,&
+            trace_ci_width,&
+            trace_ci_width_relative,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -1797,6 +1802,17 @@ contains
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! (`U_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width
+            !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+            !! L_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width_relative
+            !! Per-admissible-candidate, per-study relative confidence-interval width
+            !! (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+            !! formula omits this floor, but the same near-zero-JSD instability that motivates
+            !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+            !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -1904,6 +1920,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_global_js_divergence, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_lower, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_upper, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_width, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_width_relative, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
@@ -1961,6 +1979,8 @@ contains
             trace_global_js_divergence = trace_global_js_divergence,&
             trace_ci_lower = trace_ci_lower,&
             trace_ci_upper = trace_ci_upper,&
+            trace_ci_width = trace_ci_width,&
+            trace_ci_width_relative = trace_ci_width_relative,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&
@@ -2002,11 +2022,14 @@ contains
     !| criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
     !| plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
     !|
-    !| Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-    !| empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-    !| one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-    !| project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-    !| default to the issue's own suggested (not yet validated) 0.05/0.10.
+    !| Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+    !| empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+    !| both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+    !| candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+    !| follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+    !| not a real discrepancy -- the code's symmetric formula is correct as written.)
+    !| `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+    !| validated) 0.05/0.10.
     !|
     !| When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
     !| `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -2060,6 +2083,8 @@ contains
             trace_global_js_divergence,&
             trace_ci_lower,&
             trace_ci_upper,&
+            trace_ci_width,&
+            trace_ci_width_relative,&
             trace_delta,&
             trace_delta_median,&
             trace_delta_max,&
@@ -2179,6 +2204,17 @@ contains
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! (`U_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width
+            !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+            !! L_{i,t}`)
+            !! The first `n_admissible_evaluated` elements will hold the results.
+        real(c_double), dimension(n_studies, 16), intent(out), target :: trace_ci_width_relative
+            !! Per-admissible-candidate, per-study relative confidence-interval width
+            !! (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+            !! formula omits this floor, but the same near-zero-JSD instability that motivates
+            !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+            !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             !! The first `n_admissible_evaluated` elements will hold the results.
         real(c_double), dimension(n_studies, 16), intent(out), target :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -2353,6 +2389,8 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_global_js_divergence, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_lower, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_ci_upper, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_width, n_studies * 16)
+        M_CHECK_ARRAY_NON_NULL(trace_ci_width_relative, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta, n_studies * 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_median, 16)
         M_CHECK_ARRAY_NON_NULL(trace_delta_max, 16)
@@ -2435,6 +2473,8 @@ contains
             trace_global_js_divergence = trace_global_js_divergence,&
             trace_ci_lower = trace_ci_lower,&
             trace_ci_upper = trace_ci_upper,&
+            trace_ci_width = trace_ci_width,&
+            trace_ci_width_relative = trace_ci_width_relative,&
             trace_delta = trace_delta,&
             trace_delta_median = trace_delta_median,&
             trace_delta_max = trace_delta_max,&

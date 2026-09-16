@@ -510,11 +510,15 @@ def test_run_js_comp_test_parameter_search():
     # n_admissible_evaluated is DM_RESULT_SIZE_IS's own count argument, dropped from the Python
     # return since every trace_* array already comes back trimmed to exactly that length.
     for key in ("trace_n_points", "trace_n_neighbors", "trace_global_js_divergence", "trace_ci_lower",
-                "trace_ci_upper", "trace_delta", "trace_delta_median", "trace_delta_max"):
+                "trace_ci_upper", "trace_ci_width", "trace_ci_width_relative", "trace_delta",
+                "trace_delta_median", "trace_delta_max"):
         assert key in result3, f"missing expected output key '{key}'"
     n_admissible = result3["trace_n_points"].shape[-1]
     assert n_admissible >= 1, f"expected at least one admissible candidate, got {n_admissible}"
     assert result3["trace_global_js_divergence"].shape[-1] == n_admissible
+    assert result3["trace_ci_width"].shape[-1] == n_admissible
+    assert result3["trace_ci_width_relative"].shape == result3["trace_ci_width"].shape
+    assert result3["trace_ci_width"].dtype == np.float64
     assert result3["trace_delta"].dtype == np.float64
     # The first (and here, only) admissible candidate has no predecessor to diff against.
     np.testing.assert_array_almost_equal(result3["trace_delta"][:, 0], [-1.0, -1.0], decimal=12)

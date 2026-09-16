@@ -105,12 +105,15 @@ module tox_data_integration_js_comp_test_impl
 
     ! Issue #178's suggested defaults for the relative-effect-size plateau criterion. Explicitly
     ! provisional: the issue itself says "the exact thresholds should be validated empirically",
-    ! and that validation is blocked on 3 separate open issues (KX_FACTORS default, the
-    ! Freedman-Diaconis bin-count overestimate, and the one-sided-vs-symmetric JSD formula
-    ! question) -- see the project's JSD-Comp-Test follow-up issue. All four are exposed as
-    ! optional arguments precisely so a caller can override them once that validation happens,
-    ! without a code change. Defined as CM_ macros, not just parameters, so DM_DEFAULT and
-    ! M_DEFAULT_VAL below share one literal each instead of duplicating it by hand.
+    ! and that validation is blocked on 2 separate open issues (KX_FACTORS default and the
+    ! Freedman-Diaconis bin-count overestimate) -- see the project's JSD-Comp-Test follow-up issue.
+    ! (A third candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the
+    ! same follow-up issue but confirmed by the issue's own author to be a mistake in the issue
+    ! text, not a real discrepancy -- the code's symmetric formula is correct as written.) All four
+    ! thresholds are exposed as optional arguments precisely so a caller can override them once the
+    ! remaining validation happens, without a code change. Defined as CM_ macros, not just
+    ! parameters, so DM_DEFAULT and M_DEFAULT_VAL below share one literal each instead of
+    ! duplicating it by hand.
 #define CM_DELTA_MEDIAN_THRESHOLD_DEFAULT 0.05_real64
 #define CM_DELTA_MAX_THRESHOLD_DEFAULT 0.10_real64
 #define CM_DELTA_EPSILON_DEFAULT 1.0e-10_real64
@@ -1245,11 +1248,14 @@ contains
     !| criterion would have decided. The search stops (`exit`) the moment the SELECTED criterion's
     !| plateau is found -- see `plateau_mode`'s own mode table below for the accepted values.
     !|
-    !| Issue #178 also names 3 blocking dependencies for validating the effect-size thresholds
-    !| empirically -- the KX_FACTORS default, the Freedman-Diaconis bin-count overestimate, and the
-    !| one-sided-vs-symmetric JSD formula question -- all deliberately left as-is here; see the
-    !| project's JSD-Comp-Test follow-up issue. `delta_median_threshold`/`delta_max_threshold`
-    !| default to the issue's own suggested (not yet validated) 0.05/0.10.
+    !| Issue #178 also names 2 blocking dependencies for validating the effect-size thresholds
+    !| empirically -- the KX_FACTORS default and the Freedman-Diaconis bin-count overestimate --
+    !| both deliberately left as-is here; see the project's JSD-Comp-Test follow-up issue. (A third
+    !| candidate blocker, a one-sided-vs-symmetric JSD formula question, was raised in the same
+    !| follow-up issue but confirmed by the issue's own author to be a mistake in the issue text,
+    !| not a real discrepancy -- the code's symmetric formula is correct as written.)
+    !| `delta_median_threshold`/`delta_max_threshold` default to the issue's own suggested (not yet
+    !| validated) 0.05/0.10.
     !|
     !| When `plateau_mode` selects the effect-size criterion (`MODE_PLATEAU_EFFECT_SIZE` or
     !| `MODE_PLATEAU_BOTH`) and it plateaus independently of the CI-overlap criterion's own running
@@ -1287,7 +1293,8 @@ contains
                                                        n_bootstrapping_top_k_jsds, n_points, n_neighbors, n_bins, &
                                                        best_candidate_pair_confidence_interval, n_admissible_evaluated, &
                                                        trace_n_points, trace_n_neighbors, trace_global_js_divergence, &
-                                                       trace_ci_lower, trace_ci_upper, trace_delta, trace_delta_median, &
+                                                       trace_ci_lower, trace_ci_upper, trace_ci_width, &
+                                                       trace_ci_width_relative, trace_delta, trace_delta_median, &
                                                        trace_delta_max, tmp_gene_means_perms, tmp_gene_means_perm_all, &
                                                        tmp_residuals_perm, tmp_x_star, tmp_neighborhood_indices, &
                                                        tmp_neighborhood_range, tmp_neighborhood_residuals_gathered, &
@@ -1380,6 +1387,17 @@ contains
         real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_upper
             !! Per-admissible-candidate, per-study bootstrapped confidence-interval upper bound
             !! (`U_{i,t}`)
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width
+            !! Per-admissible-candidate, per-study confidence-interval width (`W_{i,t} = U_{i,t} -
+            !! L_{i,t}`)
+            !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
+        real(real64), dimension(n_studies, 16), intent(out) :: trace_ci_width_relative
+            !! Per-admissible-candidate, per-study relative confidence-interval width
+            !! (`W_{i,t} / J_{i,t}`), denominator floored at `delta_epsilon` -- the issue's own
+            !! formula omits this floor, but the same near-zero-JSD instability that motivates
+            !! `delta_epsilon` in the `Delta_{i,t}` formula applies here too (a near-zero `J`
+            !! destabilizes any ratio that divides by it, whichever candidate's `J` it is)
             !! DM_RESULT_SIZE_IS(n_admissible_evaluated)
         real(real64), dimension(n_studies, 16), intent(out) :: trace_delta
             !! Per-admissible-candidate, per-study relative JSD change from the previous admissible
@@ -1675,6 +1693,11 @@ contains
 
             trace_ci_lower(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(1, 1:n_studies)
             trace_ci_upper(1:n_studies, n_admissible_evaluated) = tmp_confidence_interval(2, 1:n_studies)
+            trace_ci_width(1:n_studies, n_admissible_evaluated) = &
+                trace_ci_upper(1:n_studies, n_admissible_evaluated) - trace_ci_lower(1:n_studies, n_admissible_evaluated)
+            trace_ci_width_relative(1:n_studies, n_admissible_evaluated) = &
+                trace_ci_width(1:n_studies, n_admissible_evaluated) &
+                / max(trace_global_js_divergence(1:n_studies, n_admissible_evaluated), actual_delta_epsilon)
 
             call check_plateau_condition_impl(tmp_confidence_interval, best_candidate_pair_confidence_interval, n_studies, &
                                               best_candidate_index, best_exceeded_ci_overlap_count, i_candidate, join_method, &
