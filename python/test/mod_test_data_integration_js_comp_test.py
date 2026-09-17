@@ -19,7 +19,6 @@ from tensor_omics import (
     determine_bin_count_occupancy,
     determine_bin_count_occupancy_expert,
     generate_js_comp_test_candidates,
-    generate_js_comp_test_candidates_expert,
     check_neighborhood_overlaps,
     check_mean_pmf_min_counts,
     check_plateau_condition,
@@ -129,8 +128,6 @@ def test_determine_bin_count_occupancy():
 
 
 def test_generate_js_comp_test_candidates():
-    residuals = np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64)
-
     # ============================================================
     # Test 1 -- small-N candidate-grid collapse at its exact threshold
     # (test_generate_js_comp_test_candidates_collapses_at_8742): with
@@ -138,8 +135,10 @@ def test_generate_js_comp_test_candidates():
     # and n_points_low = max(300, ceil(0.2*374)) = 300; after one grid iteration n_points_high
     # becomes 374*0.8=299.2 < 300, so every candidate the grid returns shares n_points=374.
     # ============================================================
-    out = generate_js_comp_test_candidates(8742, residuals, max_n_reps_all_studies=1, shared_residual_range=1.0)
-    candidates = out["candidates_n_points_n_neighbors"]
+    # Issue #187, Step 2.7: candidates_n_points_n_neighbors is now the routine's only
+    # DM_RESULT_SIZE_IS output, so the generated Python wrapper returns the already-trimmed
+    # array directly rather than a dict.
+    candidates = generate_js_comp_test_candidates(8742)
     n_candidates = candidates.shape[1]
     assert n_candidates >= 1, "Test 1 failed: expected at least one candidate"
     assert np.all(candidates[0, :] == candidates[0, 0]), \
@@ -152,8 +151,7 @@ def test_generate_js_comp_test_candidates():
     # n_points_low=300; after one iteration n_points_high becomes 375*0.8=300.0, which is NOT
     # less than n_points_low=300, so a second, distinct n_points=300 candidate appears.
     # ============================================================
-    out2 = generate_js_comp_test_candidates(8743, residuals, max_n_reps_all_studies=1, shared_residual_range=1.0)
-    candidates2 = out2["candidates_n_points_n_neighbors"]
+    candidates2 = generate_js_comp_test_candidates(8743)
     n_candidates2 = candidates2.shape[1]
     n_distinct = len(set(candidates2[0, :].tolist()))
     assert n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values"
@@ -163,17 +161,12 @@ def test_generate_js_comp_test_candidates():
 
     # ============================================================
     # Test 3 -- validation (test_generate_js_comp_test_candidates_validation):
-    # max_n_genes_all_studies must be positive; the expert tier accepts a valid permutation.
+    # max_n_genes_all_studies must be positive. Issue #187, Step 2.7: this routine's `_expert`
+    # tier no longer exists (no tmp_/work-array/permutation left in its signature once the
+    # bin-estimate side effect was removed), so this test no longer exercises it.
     # ============================================================
-    assert_error(lambda: generate_js_comp_test_candidates(0, residuals, max_n_reps_all_studies=1,
-                                                           shared_residual_range=1.0),
+    assert_error(lambda: generate_js_comp_test_candidates(0),
                  "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT)
-
-    residuals_perm = np.array([1, 2, 3, 4, 5], dtype=np.int32)
-    out3 = generate_js_comp_test_candidates_expert(100, residuals, residuals_perm, max_n_reps_all_studies=1,
-                                                    shared_residual_range=1.0)
-    assert out3["candidates_n_points_n_neighbors"].shape[1] >= 1, \
-        "Test 3 failed: expert tier should accept a valid permutation"
 
 
 def test_check_neighborhood_overlaps():
@@ -428,9 +421,7 @@ def test_calc_js_comp_test_candidate_bounds():
     assert bounds["max_n_points_candidate"] == 374, \
         f"expected max_n_points_candidate=374, got {bounds['max_n_points_candidate']}"
 
-    out = generate_js_comp_test_candidates(8742, np.array([1.0, 2.0, 3.0, 4.0, 5.0], dtype=np.float64),
-                                            max_n_reps_all_studies=1, shared_residual_range=1.0)
-    candidates = out["candidates_n_points_n_neighbors"]
+    candidates = generate_js_comp_test_candidates(8742)
     assert bounds["max_n_neighbors_candidate"] >= int(np.max(candidates[1, :])), \
         "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors"
 
@@ -457,13 +448,14 @@ def test_calc_js_comp_test_n_top_k_jsds():
 
 
 def test_run_js_comp_test_two_studies_hand_traceable():
-    # End-to-end, fully closed-form 2-study case (test_run_js_comp_test_two_studies_hand_traceable),
-    # with n_permutations=0 so the permutation loop never executes and the whole pipeline is
-    # deterministic and hand-traceable. See the Fortran fixture's own long-form derivation of
-    # EXPECTED_JSD = 1.5 - 0.75*log2(3).
-    log2_3 = np.log(3.0) / np.log(2.0)
-    expected_jsd = 1.5 - 0.75 * log2_3
-
+    # Call-ability/shape check only (Fortran_Coding_Guides.pdf Sec 17.1) -- the same fixture as
+    # the Fortran suite's own test_run_js_comp_test_two_studies_hand_traceable, which is where the
+    # exact hand-derived closed-form JSD assertions live. Issue #187 removed the mandatory scalar
+    # `n_bins` input (the bin count is now decided per reference point by an internal occupancy
+    # search) and added `n_bins_per_point`/`max_n_bins_per_point` plus several per-point
+    # diagnostics; `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` are now always sized to the fixed
+    # 256-bin ceiling (MAX_N_BINS), of which only the leading `max_n_bins_per_point` rows are
+    # meaningful -- a caller must slice `[:max_n_bins_per_point, ...]` themselves.
     gene_means = np.array([[1.0, 1.0], [5.0, 5.0]], dtype=np.float64, order='F')
     gene_means_perms = np.array([[1, 1], [2, 2]], dtype=np.int32, order='F')
 
@@ -473,29 +465,42 @@ def test_run_js_comp_test_two_studies_hand_traceable():
 
     x_star = np.array([1.0], dtype=np.float64)
 
-    result = run_js_comp_test(n_neighbors=1, n_bins=4, shared_residual_range=4.0, gene_means=gene_means,
+    # min_residuals_per_bin=1 (its default is 10, which this tiny 4-residual fixture could never
+    # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
+    # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
+    result = run_js_comp_test(n_neighbors=1, shared_residual_range=4.0, gene_means=gene_means,
                                gene_means_perms=gene_means_perms, residuals=residuals, x_star=x_star,
-                               n_permutations=0, random_seed=1)
+                               n_permutations=0, random_seed=1, min_residuals_per_bin=1)
+
+    n_points, n_studies = 1, 2
+    assert result["neighborhood_indices"].shape == (1, n_points, n_studies)
+    assert result["neighborhood_range"].shape == (2, n_points, n_studies)
+    assert result["n_bins_per_point"].shape == (n_points,)
+    assert isinstance(result["max_n_bins_per_point"], (int, np.integer))
+    assert result["occupancy_failed"].shape == (n_points,)
+    assert result["n_pooled_residuals"].shape == (n_points,)
+    assert result["min_bin_occupancy"].shape == (n_points,)
+    assert result["mean_bin_occupancy"].shape == (n_points,)
+    assert result["max_bin_occupancy"].shape == (n_points,)
+    assert result["sturges_bins"].shape == (n_points,)
+    assert result["fd_bins"].shape == (n_points,)
+    assert result["pmfs"].shape == (256, n_points, n_studies)
+    assert result["counts"].shape == (256, n_points, n_studies)
+    assert result["included_n_reps"].shape == (n_points, n_studies)
+    assert result["mean_pmf"].shape == (256, n_points)
+    assert result["mean_pmf_counts"].shape == (256, n_points)
+    assert result["mean_pmf_included_n_reps"].shape == (n_points,)
+    assert result["js_divergences"].shape == (n_points, n_studies)
+    assert result["weights"].shape == (n_points, n_studies)
+    assert result["global_js_divergence"].shape == (n_studies,)
+    assert result["p_values"].shape == (n_studies,)
+
+    # A caller must be able to slice down to the meaningful leading bins.
+    max_n_bins = result["max_n_bins_per_point"]
+    assert result["pmfs"][:max_n_bins, ...].shape == (max_n_bins, n_points, n_studies)
 
     assert list(result["neighborhood_indices"][:, 0, 0]) == [1], "study 1 neighbor should be gene 1"
     assert list(result["neighborhood_indices"][:, 0, 1]) == [1], "study 2 neighbor should be gene 1"
-
-    assert list(result["counts"][:, 0, 0]) == [0, 1, 1, 0], "study 1 counts mismatch"
-    assert list(result["counts"][:, 0, 1]) == [1, 0, 0, 1], "study 2 counts mismatch"
-    assert result["included_n_reps"][0, 0] == 2
-    assert result["included_n_reps"][0, 1] == 2
-
-    np.testing.assert_array_almost_equal(result["mean_pmf"][:, 0], [0.25, 0.25, 0.25, 0.25], decimal=12)
-    assert list(result["mean_pmf_counts"][:, 0]) == [1, 1, 1, 1]
-    assert result["mean_pmf_included_n_reps"][0] == 4
-
-    assert abs(result["global_js_divergence"][0] - expected_jsd) < 1e-9, \
-        f"study 1 global JSD mismatch: expected {expected_jsd}, got {result['global_js_divergence'][0]}"
-    assert abs(result["global_js_divergence"][1] - expected_jsd) < 1e-9, \
-        f"study 2 global JSD mismatch: expected {expected_jsd}, got {result['global_js_divergence'][1]}"
-
-    assert abs(result["weights"][0, 0] - 1.0) < TOL
-    assert abs(result["weights"][0, 1] - 1.0) < TOL
 
     assert abs(result["p_values"][0] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0"
     assert abs(result["p_values"][1] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0"

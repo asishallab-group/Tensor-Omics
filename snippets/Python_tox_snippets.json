@@ -104,13 +104,13 @@
     "description": "Import a function from # Jensen-Shannon-Divergence (JSD) Compatibility Test (gJCT) Parameter Search",
     "body": [
       "from tensor_omics.tox_data_integration_js_comp_test import (",
-      "    ${1|estimate_bin_count,estimate_bin_count_expert,generate_js_comp_test_candidates,generate_js_comp_test_candidates_expert,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
+      "    ${1|estimate_bin_count,estimate_bin_count_expert,determine_bin_count_occupancy,determine_bin_count_occupancy_expert,generate_js_comp_test_candidates,check_neighborhood_overlaps,check_mean_pmf_min_counts,check_plateau_condition,check_effect_size_plateau_condition,create_mean_pmf,create_mean_pmf_only,bootstrap_histogram,run_js_comp_test,run_js_comp_test_parameter_search|},",
       ")"
     ]
   },
   "estimate_bin_count (call)": {
     "prefix": "tox:estimate_bin_count",
-    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of",
+    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and",
     "body": [
       "${1:result} = estimate_bin_count(",
       "    residuals=${2:residuals},",
@@ -122,7 +122,7 @@
   },
   "estimate_bin_count_expert (call)": {
     "prefix": "tox:estimate_bin_count_expert",
-    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Takes the maximum of",
+    "description": "Ported from 125-stabilize-jscomp's `estimate_bin_count_helper`. Computes Sturges' rule and",
     "body": [
       "${1:result} = estimate_bin_count_expert(",
       "    residuals=${2:residuals},",
@@ -133,28 +133,45 @@
       ")"
     ]
   },
+  "determine_bin_count_occupancy (call)": {
+    "prefix": "tox:determine_bin_count_occupancy",
+    "description": "Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one",
+    "body": [
+      "${1:result} = determine_bin_count_occupancy(",
+      "    pooled_residuals=${2:pooled_residuals},",
+      "    max_n_reps_all_studies=${3:max_n_reps_all_studies},",
+      "    n_neighbors=${4:n_neighbors},",
+      "    shared_residual_range=${5:shared_residual_range},",
+      "    m_min=${6:3},",
+      "    m_max=${7:120},",
+      "    min_residuals_per_bin=${8:10},",
+      "    gamma_occupancy=${9:1.25},",
+      ")"
+    ]
+  },
+  "determine_bin_count_occupancy_expert (call)": {
+    "prefix": "tox:determine_bin_count_occupancy_expert",
+    "description": "Implements Issue #187's two-stage geometric-search-then-local-refinement algorithm for one",
+    "body": [
+      "${1:result} = determine_bin_count_occupancy_expert(",
+      "    pooled_residuals=${2:pooled_residuals},",
+      "    pooled_residuals_perm=${3:pooled_residuals_perm},",
+      "    max_n_reps_all_studies=${4:max_n_reps_all_studies},",
+      "    n_neighbors=${5:n_neighbors},",
+      "    shared_residual_range=${6:shared_residual_range},",
+      "    m_min=${7:3},",
+      "    m_max=${8:120},",
+      "    min_residuals_per_bin=${9:10},",
+      "    gamma_occupancy=${10:1.25},",
+      ")"
+    ]
+  },
   "generate_js_comp_test_candidates (call)": {
     "prefix": "tox:generate_js_comp_test_candidates",
     "description": "Ported from the grid-building half of 125-stabilize-jscomp's",
     "body": [
       "${1:result} = generate_js_comp_test_candidates(",
       "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      "    residuals=${3:residuals},",
-      "    max_n_reps_all_studies=${4:max_n_reps_all_studies},",
-      "    shared_residual_range=${5:shared_residual_range},",
-      ")"
-    ]
-  },
-  "generate_js_comp_test_candidates_expert (call)": {
-    "prefix": "tox:generate_js_comp_test_candidates_expert",
-    "description": "Ported from the grid-building half of 125-stabilize-jscomp's",
-    "body": [
-      "${1:result} = generate_js_comp_test_candidates_expert(",
-      "    max_n_genes_all_studies=${2:max_n_genes_all_studies},",
-      "    residuals=${3:residuals},",
-      "    residuals_perm=${4:residuals_perm},",
-      "    max_n_reps_all_studies=${5:max_n_reps_all_studies},",
-      "    shared_residual_range=${6:shared_residual_range},",
       ")"
     ]
   },
@@ -174,7 +191,8 @@
     "body": [
       "${1:result} = check_mean_pmf_min_counts(",
       "    mean_pmf_counts=${2:mean_pmf_counts},",
-      "    min_count=${3:min_count},",
+      "    n_bins_per_point=${3:n_bins_per_point},",
+      "    min_count=${4:min_count},",
       ")"
     ]
   },
@@ -246,18 +264,21 @@
   },
   "run_js_comp_test (call)": {
     "prefix": "tox:run_js_comp_test",
-    "description": "Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its",
+    "description": "Ported from 125-stabilize-jscomp's `js_comp_test_helper`, restructured for Issue #187's",
     "body": [
       "${1:result} = run_js_comp_test(",
       "    n_neighbors=${2:n_neighbors},",
-      "    n_bins=${3:n_bins},",
-      "    shared_residual_range=${4:shared_residual_range},",
-      "    gene_means=${5:gene_means},",
-      "    gene_means_perms=${6:gene_means_perms},",
-      "    residuals=${7:residuals},",
-      "    x_star=${8:x_star},",
-      "    n_permutations=${9:1000},",
-      "    random_seed=${10:42},",
+      "    shared_residual_range=${3:shared_residual_range},",
+      "    gene_means=${4:gene_means},",
+      "    gene_means_perms=${5:gene_means_perms},",
+      "    residuals=${6:residuals},",
+      "    x_star=${7:x_star},",
+      "    n_permutations=${8:1000},",
+      "    random_seed=${9:42},",
+      "    min_residuals_per_bin=${10:10},",
+      "    m_min=${11:3},",
+      "    m_max=${12:120},",
+      "    gamma_occupancy=${13:1.25},",
       ")"
     ]
   },
@@ -271,16 +292,21 @@
       "    shared_residual_range=${4:shared_residual_range},",
       "    n_bootstraps=${5:n_bootstraps},",
       "    join_method=${6|join_min,join_max,join_median|},",
-      "    min_count_per_mean_bin=${7:5},",
-      "    min_neighbor_overlap=${8:0.1},",
-      "    succeeding_ci_overlap=${9:0.9},",
-      "    plateau_mode=${10|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
-      "    delta_median_threshold=${11:0.05},",
-      "    delta_max_threshold=${12:0.1},",
-      "    delta_epsilon=${13:1e-10},",
-      "    delta_min_consecutive_transitions=${14:2},",
-      "    two_sided_bootstrapping_significance_level=${15:2.5},",
-      "    random_seed=${16:42},",
+      "    max_n_points_candidate=${7:max_n_points_candidate},",
+      "    max_n_neighbors_candidate=${8:max_n_neighbors_candidate},",
+      "    min_residuals_per_bin=${9:10},",
+      "    min_neighbor_overlap=${10:0.1},",
+      "    succeeding_ci_overlap=${11:0.9},",
+      "    plateau_mode=${12|plateau_ci_overlap,plateau_effect_size,plateau_both|},",
+      "    delta_median_threshold=${13:0.05},",
+      "    delta_max_threshold=${14:0.1},",
+      "    delta_epsilon=${15:1e-10},",
+      "    delta_min_consecutive_transitions=${16:2},",
+      "    m_min=${17:3},",
+      "    m_max=${18:120},",
+      "    gamma_occupancy=${19:1.25},",
+      "    two_sided_bootstrapping_significance_level=${20:2.5},",
+      "    random_seed=${21:42},",
       ")"
     ]
   },
@@ -370,8 +396,9 @@
       "${1:result} = build_residual_histograms(",
       "    neighborhood_residuals=${2:neighborhood_residuals},",
       "    shared_residual_range=${3:shared_residual_range},",
-      "    n_bins=${4:n_bins},",
-      "    neighbor_mask=${5:None},",
+      "    max_n_bins=${4:max_n_bins},",
+      "    n_bins_per_point=${5:n_bins_per_point},",
+      "    neighbor_mask=${6:None},",
       ")"
     ]
   },

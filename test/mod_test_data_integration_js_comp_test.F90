@@ -12,8 +12,7 @@ module mod_test_data_integration_js_comp_test
     use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
     use tox_data_integration
     use tox_data_integration_js_comp_test, only: estimate_bin_count, determine_bin_count_occupancy, &
-                                                  generate_js_comp_test_candidates, &
-                                                  generate_js_comp_test_candidates_expert, check_neighborhood_overlaps, &
+                                                  generate_js_comp_test_candidates, check_neighborhood_overlaps, &
                                                   check_mean_pmf_min_counts, check_plateau_condition, &
                                                   check_effect_size_plateau_condition, create_mean_pmf, &
                                                   create_mean_pmf_only, bootstrap_histogram, run_js_comp_test, &
@@ -35,7 +34,7 @@ contains
     !> Get array of all available tests.
     function get_all_tests_data_integration_js_comp_test() result(all_tests)
         type(test_case), allocatable :: all_tests(:)
-        allocate (all_tests(70))
+        allocate (all_tests(71))
 
         all_tests(1) = test_case("test_construct_neighborhoods_ranged_basic", test_construct_neighborhoods_ranged_basic)
         all_tests(2) = test_case("test_construct_neighborhoods_ranged_tie_extends_range", &
@@ -187,6 +186,8 @@ contains
                                   test_param_search_different_neighborhoods_different_m_j)
         all_tests(70) = test_case("test_param_search_final_n_bins_matches_selected_trace_column", &
                                   test_param_search_final_n_bins_matches_selected_trace_column)
+        all_tests(71) = test_case("test_run_js_comp_test_occupancy_failed_point_still_contributes", &
+                                  test_run_js_comp_test_occupancy_failed_point_still_contributes)
     end function get_all_tests_data_integration_js_comp_test
 
     !> Basic two-reference-point case, computed by hand from a sorted `mean_S`; cross-checked
@@ -615,14 +616,9 @@ contains
     !| `n_points` value is ever produced -- every candidate pair the grid returns must share the
     !| same `n_points`. This is real, derived behavior the grid depends on, not a bug.
     subroutine test_generate_js_comp_test_candidates_collapses_at_8742()
-        integer(int32), parameter :: n_residuals = 5
-        real(real64) :: residuals(n_residuals)
-        integer(int32) :: candidates(2, 16), n_bins_candidates(16), n_candidates, ierr
+        integer(int32) :: candidates(2, 16), n_candidates, ierr
 
-        residuals = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
-
-        call generate_js_comp_test_candidates(8742_int32, residuals, n_residuals, 1_int32, 1.0_real64, &
-                                              candidates, n_bins_candidates, n_candidates, ierr)
+        call generate_js_comp_test_candidates(8742_int32, candidates, n_candidates, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_generate_js_comp_test_candidates_collapses_at_8742: ierr should be OK")
@@ -641,15 +637,10 @@ contains
     !| `n_points_low=300`, so the loop proceeds to a second, distinct `n_points=300` candidate. At
     !| least two distinct `n_points` values must appear in the grid.
     subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_8743()
-        integer(int32), parameter :: n_residuals = 5
-        real(real64) :: residuals(n_residuals)
-        integer(int32) :: candidates(2, 16), n_bins_candidates(16), n_candidates, ierr
+        integer(int32) :: candidates(2, 16), n_candidates, ierr
         integer(int32) :: n_distinct_n_points, i_candidate
 
-        residuals = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
-
-        call generate_js_comp_test_candidates(8743_int32, residuals, n_residuals, 1_int32, 1.0_real64, &
-                                              candidates, n_bins_candidates, n_candidates, ierr)
+        call generate_js_comp_test_candidates(8743_int32, candidates, n_candidates, ierr)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_generate_js_comp_test_candidates_has_two_distinct_at_8743: ierr should be OK")
@@ -673,27 +664,16 @@ contains
                               "last n_points should collapse to 300")
     end subroutine test_generate_js_comp_test_candidates_has_two_distinct_at_8743
 
-    !> `max_n_genes_all_studies` must be positive, and the expert tier's `residuals_perm` is
-    !| bounds-checked exactly like every other permutation argument.
+    !> `max_n_genes_all_studies` must be positive. Issue #187, Step 2.7: this routine's `_expert`
+    !| tier no longer exists (no `tmp_`/work-array/permutation left in its signature once the
+    !| bin-estimate side effect was removed), so this test no longer exercises it.
     subroutine test_generate_js_comp_test_candidates_validation()
-        integer(int32), parameter :: n_residuals = 5
-        real(real64) :: residuals(n_residuals)
-        integer(int32) :: residuals_perm(n_residuals)
-        integer(int32) :: candidates(2, 16), n_bins_candidates(16), n_candidates, ierr
+        integer(int32) :: candidates(2, 16), n_candidates, ierr
 
-        residuals = [1.0_real64, 2.0_real64, 3.0_real64, 4.0_real64, 5.0_real64]
-        residuals_perm = [1, 2, 3, 4, 5]
-
-        call generate_js_comp_test_candidates(0_int32, residuals, n_residuals, 1_int32, 1.0_real64, &
-                                              candidates, n_bins_candidates, n_candidates, ierr)
+        call generate_js_comp_test_candidates(0_int32, candidates, n_candidates, ierr)
         call assert_err(ierr, ERR_INVALID_INPUT, &
                         "test_generate_js_comp_test_candidates_validation: max_n_genes_all_studies=0 rejected", &
                         arg_pos=1_int32)
-
-        call generate_js_comp_test_candidates_expert(100_int32, residuals, residuals_perm, n_residuals, 1_int32, &
-                                                     1.0_real64, candidates, n_bins_candidates, n_candidates, ierr)
-        call assert_equal_int(get_err_code(ierr), ERR_OK, &
-                              "test_generate_js_comp_test_candidates_validation: expert tier accepts a valid permutation")
     end subroutine test_generate_js_comp_test_candidates_validation
 
     !> Three reference points whose neighborhood ranges fully overlap (identical spans): the
@@ -1604,8 +1584,15 @@ contains
     !| One reference point, one neighbor per study (`x_star=1.0` sits exactly on gene 1's mean, so
     !| both studies trivially pick gene 1 -- see test_construct_neighborhoods_ranged_basic's own
     !| binary-search trace for why an exact match gives insertion index 1). Study 1's two replicate
-    !| residuals are `[-1, 1]`, study 2's are `[-3, 3]`, binned into 4 bins spanning `[-4, 4]` (bin
-    !| width 2.0, via `build_residual_histograms_impl`'s own
+    !| residuals are `[-1, 1]`, study 2's are `[-3, 3]`, pooled into `[-1, 1, -3, 3]` (`N_j=4`).
+    !| Issue #187's occupancy search picks the bin count now, not a caller-supplied `n_bins`:
+    !| `min_residuals_per_bin=1` is passed explicitly (its default, 10, could never be satisfied by
+    !| only 4 pooled residuals), and starting from the default `m_min=3`, bin occupancies are
+    !| `[1, 2, 1]` at `m=3` (admissible), `[1, 1, 1, 1]` at `m=4` (still admissible), and
+    !| `[1, 1, 0, 1, 1]` at `m=5` (bin 3 empty, inadmissible) -- the resulting refinement interval
+    !| `(4, 5)` is empty, so `n_bins_per_point(1) = 4` and `occupancy_failed(1) = .false.`,
+    !| reproducing exactly the old caller-supplied `n_bins=4` this test hand-traced before Issue
+    !| #187, spanning `[-4, 4]` (bin width 2.0, via `build_residual_histograms_impl`'s own
     !| `bin_idx = min(n_bins, int((clamped+R)/bin_width)+1)`): study 1 -> pmf `[0, 0.5, 0.5, 0]`,
     !| study 2 -> pmf `[0.5, 0, 0, 0.5]`, mean pmf -> uniform `[0.25, 0.25, 0.25, 0.25]`.
     !|
@@ -1621,7 +1608,7 @@ contains
     !| reps divide out exactly), so `global_js_divergence` equals that same closed form too.
     subroutine test_run_js_comp_test_two_studies_hand_traceable()
         integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
-        integer(int32), parameter :: n_points = 1, n_neighbors = 1, n_bins = 4
+        integer(int32), parameter :: n_points = 1, n_neighbors = 1
         real(real64), parameter :: LOG2_3 = 1.5849625007211562_real64 ! log2(3) = ln(3)/ln(2)
         real(real64), parameter :: EXPECTED_JSD = 1.5_real64 - 0.75_real64*LOG2_3
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
@@ -1630,11 +1617,16 @@ contains
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
         integer(int32) :: neighborhood_range(2, n_points, n_studies)
-        real(real64) :: pmfs(n_bins, n_points, n_studies)
-        integer(int32) :: counts(n_bins, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points)
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -1655,11 +1647,13 @@ contains
 
         x_star = [1.0_real64]
 
-        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, n_bins, &
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
                               4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32)
+                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, "test_run_js_comp_test_two_studies_hand_traceable: ierr should be OK")
 
@@ -1668,18 +1662,25 @@ contains
         call assert_equal_array_int(neighborhood_indices(:, 1, 2), [1], n_neighbors, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 2 neighbor is gene 1")
 
-        call assert_equal_array_int(counts(:, 1, 1), [0, 1, 1, 0], n_bins, &
+        call assert_equal_int(n_bins_per_point(1), 4_int32, &
+                              "test_run_js_comp_test_two_studies_hand_traceable: occupancy search picks 4 bins")
+        call assert_equal_int(max_n_bins_per_point, 4_int32, &
+                              "test_run_js_comp_test_two_studies_hand_traceable: max_n_bins_per_point is 4")
+        call assert_false(occupancy_failed(1), &
+                          "test_run_js_comp_test_two_studies_hand_traceable: occupancy search succeeds")
+
+        call assert_equal_array_int(counts(1:4, 1, 1), [0, 1, 1, 0], 4_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 1 counts")
-        call assert_equal_array_int(counts(:, 1, 2), [1, 0, 0, 1], n_bins, &
+        call assert_equal_array_int(counts(1:4, 1, 2), [1, 0, 0, 1], 4_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: study 2 counts")
         call assert_equal_int(included_n_reps(1, 1), 2_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: study 1 included_n_reps")
         call assert_equal_int(included_n_reps(1, 2), 2_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: study 2 included_n_reps")
 
-        call assert_equal_array_real(mean_pmf(:, 1), [0.25_real64, 0.25_real64, 0.25_real64, 0.25_real64], n_bins, TOL, &
+        call assert_equal_array_real(mean_pmf(1:4, 1), [0.25_real64, 0.25_real64, 0.25_real64, 0.25_real64], 4_int32, TOL, &
                                      "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf should be uniform")
-        call assert_equal_array_int(mean_pmf_counts(:, 1), [1, 1, 1, 1], n_bins, &
+        call assert_equal_array_int(mean_pmf_counts(1:4, 1), [1, 1, 1, 1], 4_int32, &
                                     "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf_counts")
         call assert_equal_int(mean_pmf_included_n_reps(1), 4_int32, &
                               "test_run_js_comp_test_two_studies_hand_traceable: mean_pmf_included_n_reps")
@@ -1702,28 +1703,42 @@ contains
     !> Three studies, same single-point/single-neighbor topology as the hand-traceable case above.
     !| Studies 1 and 2 are identical to each other (residuals `[-1,-1,1,1]`, pmf `[0, 0.5, 0.5, 0]`);
     !| study 3 is a deliberately constructed outlier whose every replicate lands in the SAME bin
-    !| (`[-3.9,-3.9,-3.9,-3.9]`, pmf `[1, 0, 0, 0]`). The consensus mean pmf, averaging all three, is
-    !| `[1/3, 1/3, 1/3, 0]` with `mean_pmf_counts=[4, 4, 4, 0]`. Study 3's own pmf puts everything in
-    !| a bin that holds only 4 of the pooled pool's 12 replicates, so drawing (without replacement,
-    !| `random_multiv_hypergeom`) another 4-for-4 landing entirely in that one bin purely by chance
-    !| is exceedingly rare -- its empirical p-value must come out small, while studies 1/2's own
-    !| draws, being close to what the consensus itself is built from, should not be nearly as
-    !| extreme. A fixed random_seed makes the outcome fully deterministic, so this is not a flaky
-    !| probabilistic assertion.
+    !| (`[-3.9,-3.9,-3.9,-3.9]`, pmf `[1, 0, 0, 0]`). `m_min=4` is passed explicitly so Issue #187's
+    !| occupancy search reproduces exactly the old caller-supplied `n_bins=4` this test hand-traced
+    !| before Issue #187 -- the pooled pool's 4th bin (`[1.333, 4]` at `m=3`'s own width, or
+    !| `[1, 4]` retargeted for `m=4`'s narrower bins) is never populated by any of this fixture's
+    !| residuals, so occupancy fails even at `m=4` (an empty bin can never reach any positive
+    !| `min_residuals_per_bin`) regardless of that threshold's value: `occupancy_failed(1) = .true.`
+    !| and `n_bins_per_point(1) = m_min = 4` by construction, exactly the asymmetry
+    !| `run_js_comp_test_impl`'s own doc block describes -- this occupancy-failed point still gets a
+    !| real histogram and still contributes to `global_js_divergence`/the permutation test below,
+    !| entirely unaffected by the occupancy search's own verdict. The consensus mean pmf, averaging
+    !| all three, is `[1/3, 1/3, 1/3, 0]` with `mean_pmf_counts=[4, 4, 4, 0]`. Study 3's own pmf puts
+    !| everything in a bin that holds only 4 of the pooled pool's 12 replicates, so drawing (without
+    !| replacement, `random_multiv_hypergeom`) another 4-for-4 landing entirely in that one bin
+    !| purely by chance is exceedingly rare -- its empirical p-value must come out small, while
+    !| studies 1/2's own draws, being close to what the consensus itself is built from, should not
+    !| be nearly as extreme. A fixed random_seed makes the outcome fully deterministic, so this is
+    !| not a flaky probabilistic assertion.
     subroutine test_run_js_comp_test_three_studies_outlier_has_small_p_value()
         integer(int32), parameter :: n_studies = 3, max_n_genes_all_studies = 2, max_n_reps_all_studies = 4
-        integer(int32), parameter :: n_points = 1, n_neighbors = 1, n_bins = 4, n_permutations = 500
+        integer(int32), parameter :: n_points = 1, n_neighbors = 1, n_permutations = 500
         real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
         integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
         real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
         real(real64) :: x_star(n_points)
         integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
         integer(int32) :: neighborhood_range(2, n_points, n_studies)
-        real(real64) :: pmfs(n_bins, n_points, n_studies)
-        integer(int32) :: counts(n_bins, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
         integer(int32) :: included_n_reps(n_points, n_studies)
-        real(real64) :: mean_pmf(n_bins, n_points)
-        integer(int32) :: mean_pmf_counts(n_bins, n_points)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
         integer(int32) :: mean_pmf_included_n_reps(n_points)
         real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
         real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
@@ -1743,16 +1758,24 @@ contains
 
         x_star = [1.0_real64]
 
-        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, n_bins, &
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
                               4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
-                              neighborhood_range, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
                               mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
-                              ierr=ierr, n_permutations=n_permutations, random_seed=42_int32)
+                              ierr=ierr, n_permutations=n_permutations, random_seed=42_int32, m_min=4_int32)
 
         call assert_equal_int(get_err_code(ierr), ERR_OK, &
                               "test_run_js_comp_test_three_studies_outlier_has_small_p_value: ierr should be OK")
 
-        call assert_equal_array_int(mean_pmf_counts(:, 1), [4, 4, 4, 0], n_bins, &
+        call assert_equal_int(n_bins_per_point(1), 4_int32, &
+                              "test_run_js_comp_test_three_studies_outlier_has_small_p_value: n_bins_per_point == m_min")
+        call assert_true(occupancy_failed(1), &
+                         "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
+                         "the pooled pool's 4th bin is always empty, so occupancy fails even at m_min")
+
+        call assert_equal_array_int(mean_pmf_counts(1:4, 1), [4, 4, 4, 0], 4_int32, &
                                     "test_run_js_comp_test_three_studies_outlier_has_small_p_value: mean_pmf_counts")
 
         call assert_true(p_values(3) <= 0.05_real64, &
@@ -1765,6 +1788,160 @@ contains
                          "test_run_js_comp_test_three_studies_outlier_has_small_p_value: "// &
                          "the outlier's p-value should be smaller than study 2's")
     end subroutine test_run_js_comp_test_three_studies_outlier_has_small_p_value
+
+    !> Issue #187's own documented asymmetry between `run_js_comp_test` and
+    !| `run_js_comp_test_parameter_search`: THIS routine has no admissibility gate, so a reference
+    !| point whose occupancy search fails even at `m_min` still gets a real histogram built and
+    !| still contributes to `global_js_divergence` -- it is never rejected or skipped, unlike what
+    !| `run_js_comp_test_parameter_search`'s own `check_mean_pmf_min_counts` gate would do to an
+    !| entire candidate containing such a point.
+    !|
+    !| Two reference points, one neighbor per study, 2 studies: point 1 (`x_star=1.0`, gene 1) is
+    !| the SAME well-supported fixture as the hand-traceable test above (residuals `[-1,1]`/`[-3,3]`,
+    !| `min_residuals_per_bin=1` override) and lands on `n_bins_per_point(1)=4`,
+    !| `occupancy_failed(1)=.false.`, closed-form JSD `1.5 - 0.75*log2(3)` for both studies exactly
+    !| as before. Point 2 (`x_star=5.0`, gene 2) is deliberately data-starved: study 1's two
+    !| replicates are both `-3.9`; study 2's are `-3.9`/`3.9` (one of each) -- the pooled pool's
+    !| middle bin (spanning `[-1.333, 1.333]` at the default `m_min=3`) is never populated by any of
+    !| these three-out-of-four-residuals-at--3.9 values, so occupancy fails already at `m_min=3` and
+    !| `n_bins_per_point(2) = m_min = 3` by construction (`FAILURE` per Issue #187's own policy).
+    !|
+    !| At `n_bins_per_point(2)=3`, study 1's own pmf at point 2 is `[1, 0, 0]` (both replicates in
+    !| bin 1), study 2's is `[0.5, 0, 0.5]` (one replicate each in bins 1 and 3); their consensus
+    !| mean pmf is `[0.75, 0, 0.25]`. Working `compute_divergence_per_reference_point_impl`'s own
+    !| formula out by hand for each study against that consensus (bin 2 skipped throughout, since
+    !| `S_mean=0` there for both):
+    !|
+    !| - Study 1: bin 1 contributes `1*ln(1/0.875) + 0.75*ln(0.75/0.875)` (`S_mean=0.875`), bin 3
+    !|   contributes `0.25*ln(0.25/0.125)` (`S_mean=0.125`); halved and rescaled by `/LOG_2` gives
+    !|   `POINT2_JSD_STUDY1 ~= 0.13792538097002990`.
+    !| - Study 2: bin 1 contributes `0.5*ln(0.5/0.625) + 0.75*ln(0.75/0.625)` (`S_mean=0.625`), bin 3
+    !|   contributes `0.5*ln(0.5/0.375) + 0.25*ln(0.25/0.375)` (`S_mean=0.375`); halved and rescaled
+    !|   gives `POINT2_JSD_STUDY2 ~= 0.048794940695398498`.
+    !|
+    !| Both values are real, positive, and clearly distinct from each other, from zero, and from
+    !| point 1's own `1.5 - 0.75*log2(3)` -- proof this occupancy-failed point is not silently
+    !| zeroed, skipped, or coincidentally aliased onto point 1's own value, but genuinely computed
+    !| from its own (degenerate) data. (An earlier draft of this fixture used two disjoint
+    !| single-bin deltas for point 2 -- verified BY RUNNING IT that this codebase's own
+    !| study-vs-consensus JSD convention collapses any two-study, fully-disjoint-single-bin-delta
+    !| pair to the exact same universal constant `1.5 - 0.75*log2(3)` as point 1's own fixture,
+    !| regardless of which bins are involved, which would have made this test's two points
+    !| indistinguishable by pure coincidence -- the asymmetric split used here avoids that trap.)
+    !|
+    !| Both points have `included_n_reps=2` for every study and no NaN anywhere, so
+    !| `compute_weighted_global_divergence_impl`'s weights come out equal (`0.5` each: `(2+4)/12`
+    !| for either point, `total_sample_count=12`). `global_js_divergence` is therefore exactly
+    !| `0.5*point_1_jsd + 0.5*point_2_jsd_study_i` per study -- clearly different from point 1's own
+    !| JSD alone, which is what would happen if point 2's occupancy-failed contribution were instead
+    !| silently rejected or zero-weighted.
+    subroutine test_run_js_comp_test_occupancy_failed_point_still_contributes()
+        integer(int32), parameter :: n_studies = 2, max_n_genes_all_studies = 2, max_n_reps_all_studies = 2
+        integer(int32), parameter :: n_points = 2, n_neighbors = 1
+        real(real64), parameter :: LOG2_3 = 1.5849625007211562_real64 ! log2(3) = ln(3)/ln(2)
+        real(real64), parameter :: POINT1_JSD = 1.5_real64 - 0.75_real64*LOG2_3
+        real(real64), parameter :: POINT2_JSD_STUDY1 = 0.13792538097002990_real64 ! hand-derived, see doc block above
+        real(real64), parameter :: POINT2_JSD_STUDY2 = 0.048794940695398498_real64 ! hand-derived, see doc block above
+        real(real64), parameter :: EXPECTED_GLOBAL_JSD_STUDY1 = 0.5_real64*POINT1_JSD + 0.5_real64*POINT2_JSD_STUDY1
+        real(real64), parameter :: EXPECTED_GLOBAL_JSD_STUDY2 = 0.5_real64*POINT1_JSD + 0.5_real64*POINT2_JSD_STUDY2
+        real(real64) :: gene_means(max_n_genes_all_studies, n_studies)
+        integer(int32) :: gene_means_perms(max_n_genes_all_studies, n_studies)
+        real(real64) :: residuals(max_n_reps_all_studies, max_n_genes_all_studies, n_studies)
+        real(real64) :: x_star(n_points)
+        integer(int32) :: neighborhood_indices(n_neighbors, n_points, n_studies)
+        integer(int32) :: neighborhood_range(2, n_points, n_studies)
+        integer(int32) :: n_bins_per_point(n_points), max_n_bins_per_point
+        logical(c_bool) :: occupancy_failed(n_points)
+        integer(int32) :: n_pooled_residuals(n_points), min_bin_occupancy(n_points), max_bin_occupancy(n_points)
+        real(real64) :: mean_bin_occupancy(n_points)
+        integer(int32) :: sturges_bins(n_points), fd_bins(n_points)
+        real(real64) :: pmfs(256, n_points, n_studies)
+        integer(int32) :: counts(256, n_points, n_studies)
+        integer(int32) :: included_n_reps(n_points, n_studies)
+        real(real64) :: mean_pmf(256, n_points)
+        integer(int32) :: mean_pmf_counts(256, n_points)
+        integer(int32) :: mean_pmf_included_n_reps(n_points)
+        real(real64) :: js_divergences(n_points, n_studies), weights(n_points, n_studies)
+        real(real64) :: global_js_divergence(n_studies), p_values(n_studies)
+        integer(int32) :: ierr
+
+        gene_means(:, 1) = [1.0_real64, 5.0_real64]
+        gene_means(:, 2) = [1.0_real64, 5.0_real64]
+        gene_means_perms(:, 1) = [1, 2]
+        gene_means_perms(:, 2) = [1, 2]
+
+        ! Gene 1 (point 1's neighbor): well-supported, same fixture as the hand-traceable test.
+        residuals(:, 1, 1) = [-1.0_real64, 1.0_real64]
+        residuals(:, 1, 2) = [-3.0_real64, 3.0_real64]
+        ! Gene 2 (point 2's neighbor): deliberately data-starved -- 3 of the 4 pooled residuals sit
+        ! at -3.9, so the pooled pool's middle bin is permanently empty regardless of bin count.
+        residuals(:, 2, 1) = [-3.9_real64, -3.9_real64]
+        residuals(:, 2, 2) = [-3.9_real64, 3.9_real64]
+
+        x_star = [1.0_real64, 5.0_real64]
+
+        call run_js_comp_test(n_studies, max_n_genes_all_studies, max_n_reps_all_studies, n_points, n_neighbors, &
+                              4.0_real64, gene_means, gene_means_perms, residuals, x_star, neighborhood_indices, &
+                              neighborhood_range, n_bins_per_point, max_n_bins_per_point, occupancy_failed, &
+                              n_pooled_residuals, min_bin_occupancy, mean_bin_occupancy, max_bin_occupancy, &
+                              sturges_bins, fd_bins, pmfs, counts, included_n_reps, mean_pmf, mean_pmf_counts, &
+                              mean_pmf_included_n_reps, js_divergences, weights, global_js_divergence, p_values, &
+                              ierr=ierr, n_permutations=0_int32, random_seed=1_int32, min_residuals_per_bin=1_int32)
+
+        call assert_equal_int(get_err_code(ierr), ERR_OK, &
+                              "test_run_js_comp_test_occupancy_failed_point_still_contributes: ierr should be OK")
+
+        call assert_false(occupancy_failed(1), &
+                          "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                          "point 1 is well-supported")
+        call assert_equal_int(n_bins_per_point(1), 4_int32, &
+                              "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                              "point 1's own bin count")
+
+        call assert_true(occupancy_failed(2), &
+                         "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                         "point 2's occupancy search fails even at m_min")
+        call assert_equal_int(n_bins_per_point(2), 3_int32, &
+                              "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                              "point 2's n_bins_per_point == m_min (default 3), per Issue #187's own FAILURE policy")
+
+        call assert_equal_int(max_n_bins_per_point, 4_int32, &
+                              "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                              "max_n_bins_per_point is the wider of the two points' own bin counts")
+
+        ! The occupancy-failed point still gets a REAL, non-skipped, non-zeroed contribution: its
+        ! own weight is positive (both replicates counted, nothing excluded) and its JSD is a real,
+        ! hand-derived, distinct-per-study value, not some sentinel or a value coincidentally
+        ! aliased onto point 1's own JSD.
+        call assert_true(weights(2, 1) > 0.0_real64, &
+                         "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                         "point 2 has a positive, non-skipped weight in study 1")
+        call assert_true(weights(2, 2) > 0.0_real64, &
+                         "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                         "point 2 has a positive, non-skipped weight in study 2")
+        call assert_equal_real(js_divergences(2, 1), POINT2_JSD_STUDY1, 1d-9, &
+                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                               "point 2's own JSD, study 1, is the real, hand-computed value, not a sentinel")
+        call assert_equal_real(js_divergences(2, 2), POINT2_JSD_STUDY2, 1d-9, &
+                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                               "point 2's own JSD, study 2, is the real, hand-computed value, not a sentinel")
+
+        ! The global JSD genuinely reflects point 2's contribution: it clearly differs from point
+        ! 1's own JSD alone, which is what would happen if the occupancy-failed point had instead
+        ! been silently rejected or zero-weighted.
+        call assert_true(abs(global_js_divergence(1) - POINT1_JSD) > 0.01_real64, &
+                         "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                         "global JSD, study 1, is measurably changed by point 2's real contribution")
+        call assert_true(abs(global_js_divergence(2) - POINT1_JSD) > 0.01_real64, &
+                         "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                         "global JSD, study 2, is measurably changed by point 2's real contribution")
+        call assert_equal_real(global_js_divergence(1), EXPECTED_GLOBAL_JSD_STUDY1, 1d-9, &
+                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                               "global JSD, study 1, closed form")
+        call assert_equal_real(global_js_divergence(2), EXPECTED_GLOBAL_JSD_STUDY2, 1d-9, &
+                               "test_run_js_comp_test_occupancy_failed_point_still_contributes: "// &
+                               "global JSD, study 2, closed form")
+    end subroutine test_run_js_comp_test_occupancy_failed_point_still_contributes
 
     !> Forces `run_js_comp_test_parameter_search`'s second admissibility gate
     !| (`min_residuals_per_bin`) impossibly high, so no candidate in the grid can ever pass it and
@@ -1840,6 +2017,13 @@ contains
         call assert_equal_array_real(best_candidate_pair_confidence_interval(:, 2), [-1.0_real64, -1.0_real64], 2_int32, TOL, &
                                      "test_param_search_no_plateau_falls_back_to_finest: "// &
                                      "study 2 CI reset to -1.0")
+        ! Issue #187, Step 2.7: generate_js_comp_test_candidates_impl no longer computes any bin
+        ! estimate, so this fallback (candidate 1 never snapshotted, since the plateau machinery
+        ! never got past gate 2) now broadcasts actual_m_min (default 3) instead of the retired
+        ! n_bins_candidates(1) global-pool estimate.
+        call assert_equal_int(n_bins_per_point(1), 3_int32, &
+                              "test_param_search_no_plateau_falls_back_to_finest: "// &
+                              "n_bins_per_point falls back to m_min (default 3)")
     end subroutine test_param_search_no_plateau_falls_back_to_finest
 
     !> With `max_n_genes_all_studies=100`, the GAMMA-decay grid collapses to exactly ONE candidate

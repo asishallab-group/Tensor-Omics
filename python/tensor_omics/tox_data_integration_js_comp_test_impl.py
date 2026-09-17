@@ -4,10 +4,11 @@ r"""tox_data_integration_js_comp_test_impl
 
 The data-driven `(n_points, n_neighbors)` parameter-stabilization search this pipeline runs
 before the JSD-Comp-Test proper (Issue #126): a GAMMA-decay candidate grid
-(:func:`tensor_omics.generate_js_comp_test_candidates`,
-each candidate's histogram bin count from
-:func:`tensor_omics.estimate_bin_count`), two
-admissibility gates a candidate must pass before it is bootstrapped
+(:func:`tensor_omics.generate_js_comp_test_candidates`
+generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
+per-neighborhood histogram bin count is decided later, per reference point, by
+:func:`tensor_omics.determine_bin_count_occupancy`),
+two admissibility gates a candidate must pass before it is bootstrapped
 (:func:`tensor_omics.check_neighborhood_overlaps`,
 :func:`tensor_omics.check_mean_pmf_min_counts`),
 and the plateau check that decides when the search has converged

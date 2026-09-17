@@ -6,10 +6,11 @@
 !|
 !| The data-driven `(n_points, n_neighbors)` parameter-stabilization search this pipeline runs
 !| before the JSD-Comp-Test proper (Issue #126): a GAMMA-decay candidate grid
-!| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]],
-!| each candidate's histogram bin count from
-!| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]]), two
-!| admissibility gates a candidate must pass before it is bootstrapped
+!| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+!| generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
+!| per-neighborhood histogram bin count is decided later, per reference point, by
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]),
+!| two admissibility gates a candidate must pass before it is bootstrapped
 !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
 !| and the plateau check that decides when the search has converged
@@ -35,7 +36,6 @@ module tox_data_integration_js_comp_test_c
     public :: determine_bin_count_occupancy_c
     public :: determine_bin_count_occupancy_expert_c
     public :: generate_js_comp_test_candidates_c
-    public :: generate_js_comp_test_candidates_expert_c
     public :: check_neighborhood_overlaps_c
     public :: check_mean_pmf_min_counts_c
     public :: check_plateau_condition_c
@@ -549,45 +549,34 @@ contains
     !| `n_points_high` (clamped between MIN_POINTS and MAX_POINTS), repeatedly multiplies by
     !| GAMMA until it would drop below `n_points_low`, and for each distinct resulting
     !| `n_points` candidate pairs it with up to `size(KX_FACTORS)` distinct `n_neighbors`
-    !| candidates, calling
-    !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] for
-    !| each pair's bin count. A duplicate `n_points` or `n_neighbors` value (from clamping or
+    !| candidates. A duplicate `n_points` or `n_neighbors` value (from clamping or
     !| integer rounding) collapses rather than repeating -- this is real, derived behavior the
     !| grid depends on to avoid redundant candidates at small `max_n_genes_all_studies`, not a
     !| bug: a small enough `max_n_genes_all_studies` collapses the whole grid down to exactly one
     !| candidate.
+    !|
+    !| Issue #187: this routine no longer estimates a per-candidate histogram bin count as a side
+    !| effect -- both
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_impl(interface)]] and
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| now compute real per-neighborhood bin counts via
+    !| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]
+    !| once a candidate has passed admissibility, superseding the old global-pool
+    !| `estimate_bin_count_impl` estimate this routine used to produce for every candidate
+    !| regardless of admissibility.
     subroutine generate_js_comp_test_candidates_c(&
             max_n_genes_all_studies,&
-            residuals,&
-            n_residuals,&
-            max_n_reps_all_studies,&
-            shared_residual_range,&
             candidates_n_points_n_neighbors,&
-            n_bins_candidates,&
             n_candidates,&
             ierr&
         ) bind(C, name="generate_js_comp_test_candidates_c")
         use tox_data_integration_js_comp_test, only: generate_js_comp_test_candidates
 
-        integer(c_int), intent(in), target :: n_residuals
-            !! Number of pooled residuals
         integer(c_int), intent(in), target :: max_n_genes_all_studies
             !! Maximum number of genes across all studies
             !! The minimum valid value is `1_int32`.
-        real(c_double), dimension(n_residuals), intent(in), target :: residuals
-            !! Pooled signed residuals across all studies, reference points and neighbors
-            !! NaN is permitted for this value.
-        integer(c_int), intent(in), target :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-            !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
         integer(c_int), dimension(2, 16), intent(out), target :: candidates_n_points_n_neighbors
             !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
-            !! The first `n_candidates` elements will hold the results.
-        integer(c_int), dimension(16), intent(out), target :: n_bins_candidates
-            !! Per-candidate bin count from estimate_bin_count_impl, one per candidate pair
             !! The first `n_candidates` elements will hold the results.
         integer(c_int), intent(out), target :: n_candidates
             !! Number of candidate pairs actually filled (at most MAX_CANDIDATE_PAIRS = 16)
@@ -597,108 +586,16 @@ contains
         M_CHECK_IERR_NON_NULL
         call set_ok(ierr)
         M_CHECK_NON_NULL(max_n_genes_all_studies)
-        M_CHECK_NON_NULL(n_residuals)
-        M_CHECK_NON_NULL(max_n_reps_all_studies)
-        M_CHECK_NON_NULL(shared_residual_range)
         M_CHECK_NON_NULL(n_candidates)
-        M_CHECK_ARRAY_NON_NULL(residuals, n_residuals)
         M_CHECK_ARRAY_NON_NULL(candidates_n_points_n_neighbors, 2 * 16)
-        M_CHECK_ARRAY_NON_NULL(n_bins_candidates, 16)
 
         call generate_js_comp_test_candidates(&
             max_n_genes_all_studies = max_n_genes_all_studies,&
-            residuals = residuals,&
-            n_residuals = n_residuals,&
-            max_n_reps_all_studies = max_n_reps_all_studies,&
-            shared_residual_range = shared_residual_range,&
             candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
-            n_bins_candidates = n_bins_candidates,&
             n_candidates = n_candidates,&
             ierr = ierr&
         )
     end subroutine generate_js_comp_test_candidates_c
-
-    !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):generate_js_comp_test_candidates_expert(subroutine)]]
-    !| Ported from the grid-building half of 125-stabilize-jscomp's
-    !| `determine_js_comp_test_n_points_n_neighbors_helper`: starting from an initial
-    !| `n_points_high` (clamped between MIN_POINTS and MAX_POINTS), repeatedly multiplies by
-    !| GAMMA until it would drop below `n_points_low`, and for each distinct resulting
-    !| `n_points` candidate pairs it with up to `size(KX_FACTORS)` distinct `n_neighbors`
-    !| candidates, calling
-    !| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]] for
-    !| each pair's bin count. A duplicate `n_points` or `n_neighbors` value (from clamping or
-    !| integer rounding) collapses rather than repeating -- this is real, derived behavior the
-    !| grid depends on to avoid redundant candidates at small `max_n_genes_all_studies`, not a
-    !| bug: a small enough `max_n_genes_all_studies` collapses the whole grid down to exactly one
-    !| candidate.
-    subroutine generate_js_comp_test_candidates_expert_c(&
-            max_n_genes_all_studies,&
-            residuals,&
-            residuals_perm,&
-            n_residuals,&
-            max_n_reps_all_studies,&
-            shared_residual_range,&
-            candidates_n_points_n_neighbors,&
-            n_bins_candidates,&
-            n_candidates,&
-            ierr&
-        ) bind(C, name="generate_js_comp_test_candidates_expert_c")
-        use tox_data_integration_js_comp_test, only: generate_js_comp_test_candidates_expert
-
-        integer(c_int), intent(in), target :: n_residuals
-            !! Number of pooled residuals
-        integer(c_int), intent(in), target :: max_n_genes_all_studies
-            !! Maximum number of genes across all studies
-            !! The minimum valid value is `1_int32`.
-        real(c_double), dimension(n_residuals), intent(in), target :: residuals
-            !! Pooled signed residuals across all studies, reference points and neighbors
-            !! NaN is permitted for this value.
-        integer(c_int), dimension(n_residuals), intent(in), target :: residuals_perm
-            !! Sorting permutation for `residuals`, ascending, NaN last
-            !! The minimum valid value is `1_int32`.
-            !! The maximum valid value is `n_residuals`.
-        integer(c_int), intent(in), target :: max_n_reps_all_studies
-            !! Maximum number of replicates across all studies
-            !! The minimum valid value is `1_int32`.
-        real(c_double), intent(in), target :: shared_residual_range
-            !! Computed residual range (R)
-            !! The minimum valid value is `0.0_real64`.
-        integer(c_int), dimension(2, 16), intent(out), target :: candidates_n_points_n_neighbors
-            !! Candidate `[n_points, n_neighbors]` pairs, `n_points` descending
-            !! The first `n_candidates` elements will hold the results.
-        integer(c_int), dimension(16), intent(out), target :: n_bins_candidates
-            !! Per-candidate bin count from estimate_bin_count_impl, one per candidate pair
-            !! The first `n_candidates` elements will hold the results.
-        integer(c_int), intent(out), target :: n_candidates
-            !! Number of candidate pairs actually filled (at most MAX_CANDIDATE_PAIRS = 16)
-        integer(c_int), intent(out), target :: ierr
-            !! Error code; zero on success, non-zero on failure.
-
-        M_CHECK_IERR_NON_NULL
-        call set_ok(ierr)
-        M_CHECK_NON_NULL(max_n_genes_all_studies)
-        M_CHECK_NON_NULL(n_residuals)
-        M_CHECK_NON_NULL(max_n_reps_all_studies)
-        M_CHECK_NON_NULL(shared_residual_range)
-        M_CHECK_NON_NULL(n_candidates)
-        M_CHECK_ARRAY_NON_NULL(residuals, n_residuals)
-        M_CHECK_ARRAY_NON_NULL(residuals_perm, n_residuals)
-        M_CHECK_ARRAY_NON_NULL(candidates_n_points_n_neighbors, 2 * 16)
-        M_CHECK_ARRAY_NON_NULL(n_bins_candidates, 16)
-
-        call generate_js_comp_test_candidates_expert(&
-            max_n_genes_all_studies = max_n_genes_all_studies,&
-            residuals = residuals,&
-            residuals_perm = residuals_perm,&
-            n_residuals = n_residuals,&
-            max_n_reps_all_studies = max_n_reps_all_studies,&
-            shared_residual_range = shared_residual_range,&
-            candidates_n_points_n_neighbors = candidates_n_points_n_neighbors,&
-            n_bins_candidates = n_bins_candidates,&
-            n_candidates = n_candidates,&
-            ierr = ierr&
-        )
-    end subroutine generate_js_comp_test_candidates_expert_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):check_neighborhood_overlaps(subroutine)]]
     !| Ported from 125-stabilize-jscomp's `test_neighborhood_overlaps_helper`: the first
@@ -1589,12 +1486,34 @@ contains
     end subroutine bootstrap_histogram_expert_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):run_js_comp_test(subroutine)]]
-    !| Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its
-    !| neighborhoods
-    !| ([[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]])
-    !| and residual histograms
-    !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]), pools
-    !| them into the consensus pmf
+    !| Ported from 125-stabilize-jscomp's `js_comp_test_helper`, restructured for Issue #187's
+    !| occupancy-constrained per-neighborhood histogram binning into three passes, mirroring
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]'s
+    !| own Pass A/B/C split (Issue #187's own Steps 2.5/2.6):
+    !|
+    !| - Pass A (per study): builds every study's neighborhoods
+    !| ([[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]),
+    !| writing into `neighborhood_indices`/`neighborhood_range`, which already retain every
+    !| study's own values simultaneously (both are real `intent(out)` arguments sized
+    !| `(..., n_points, n_studies)` -- unlike `run_js_comp_test_parameter_search_impl`, no new
+    !| buffer was needed for this). Unlike that routine, there is no admissibility gate here, so
+    !| Pass A always runs to completion for every study.
+    !| - Pass B (per point, sequential -- see the implementation body's own comment for why): pools
+    !| every study's residuals for one reference point at a time (`gather_pooled_neighborhood_residuals`,
+    !| a private module helper, not itself published) and runs Issue #187's occupancy-constrained
+    !| bin-count search on the pooled result
+    !| ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]),
+    !| deciding `n_bins_per_point(i_point)` independently for every reference point, plus the
+    !| `occupancy_failed`/`n_pooled_residuals`/`min_bin_occupancy`/`mean_bin_occupancy`/
+    !| `max_bin_occupancy`/`sturges_bins`/`fd_bins` diagnostics. `max_n_bins_per_point`
+    !| (`maxval(n_bins_per_point(1:n_points))`) is derived once after Pass B and replaces the old
+    !| caller-supplied scalar `n_bins` everywhere downstream.
+    !| - Pass C (per study): re-gathers this study's residual values from the neighbor indices Pass
+    !| A already computed, then builds its residual histograms at the real per-point bin counts
+    !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
+    !|
+    !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
+    !| consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
     !| each study's observed JSD against that consensus
     !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
@@ -1607,6 +1526,41 @@ contains
     !| permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
     !| itself), exactly as 125 relies on.
     !|
+    !| **Behavioral asymmetry vs.
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| -- read before using this entry point where inadequately-supported neighborhoods must be
+    !| rejected:** unlike that routine, THIS one has NO multi-candidate fallback and NO
+    !| admissibility gate at all (no
+    !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
+    !| no [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]],
+    !| no early exit). A reference point whose Pass B occupancy search fails even at `m_min`
+    !| (`occupancy_failed(i_point) = .true._c_bool`) still gets a real histogram built, at
+    !| `n_bins_per_point(i_point) == m_min`, and that point still contributes to
+    !| `global_js_divergence` exactly like every other point -- its contribution is down-weighted
+    !| only by `included_n_reps` (an orthogonal quantity: how many non-NaN replicates it has), never
+    !| by bin sparsity. A caller that needs inadequately-supported neighborhoods rejected outright
+    !| should use `run_js_comp_test_parameter_search_impl` instead, which gates on exactly this via
+    !| `check_mean_pmf_min_counts_impl`.
+    !|
+    !| **A real, deliberate change to this routine's public array shapes (Issue #187):** the old
+    !| mandatory scalar input `n_bins` is gone -- there is no way for a caller to know the right bin
+    !| count in advance, since it is now genuinely computed inside this routine by Pass B's
+    !| occupancy search, independently per reference point. Every array whose bin-sized dimension
+    !| used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
+    !| `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
+    !| `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
+    !| ceiling [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] (`256`)
+    !| instead, exactly mirroring how `run_js_comp_test_parameter_search_impl`'s own
+    !| `tmp_counts_point_major`/`tmp_pmf_point_major`/`tmp_pmfs`/`tmp_counts` etc. have been sized
+    !| since Issue #187's earlier steps. The new `max_n_bins_per_point` output tells a caller how many of the
+    !| LEADING bins/rows of each of those arrays are actually meaningful
+    !| (`maxval(n_bins_per_point(1:n_points))`); the rest is unused padding. The generator's own
+    !| result-size trimming directive cannot express this trim, because it only ever trims an
+    !| array's LAST declared extent, and bins is the FIRST declared extent of every one of those
+    !| arrays -- so a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves, exactly as a
+    !| caller of `run_js_comp_test_parameter_search_impl`'s own jagged `trace_*` arrays already has
+    !| to.
+    !|
     !| `x_star` is an ordinary input here, not computed by this routine -- 125's own
     !| `js_comp_test_helper` takes it the same way, since a caller running several studies/several
     !| parameter settings is expected to compute the reference points once
@@ -1616,11 +1570,11 @@ contains
     !| `construct_neighborhoods_ranged_impl` reports neighbor gene INDICES, not gathered residual
     !| values (unlike its distance-sort sibling
     !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(interface)]]),
-    !| so this routine gathers each neighbor's actual residual values from `residuals` itself
+    !| so Pass C gathers each neighbor's actual residual values from `residuals` itself
     !| (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
     !| `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
-    !| POINT-major (`(n_points, n_bins)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` here
-    !| are BIN-major (`(n_bins, n_points, n_studies)`) to match
+    !| POINT-major (`(n_points, max_n_bins_per_point)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
+    !| here are BIN-major (`(256, n_points, n_studies)`) to match
     !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
     !| convention -- every call across that boundary bridges with an explicit `transpose`, exactly
     !| as [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
@@ -1634,7 +1588,6 @@ contains
             max_n_reps_all_studies,&
             n_points,&
             n_neighbors,&
-            n_bins,&
             shared_residual_range,&
             gene_means,&
             gene_means_perms,&
@@ -1642,6 +1595,15 @@ contains
             x_star,&
             neighborhood_indices,&
             neighborhood_range,&
+            n_bins_per_point,&
+            max_n_bins_per_point,&
+            occupancy_failed,&
+            n_pooled_residuals,&
+            min_bin_occupancy,&
+            mean_bin_occupancy,&
+            max_bin_occupancy,&
+            sturges_bins,&
+            fd_bins,&
             pmfs,&
             counts,&
             included_n_reps,&
@@ -1654,6 +1616,10 @@ contains
             p_values,&
             n_permutations,&
             random_seed,&
+            min_residuals_per_bin,&
+            m_min,&
+            m_max,&
+            gamma_occupancy,&
             ierr&
         ) bind(C, name="run_js_comp_test_c")
         use tox_data_integration_js_comp_test, only: run_js_comp_test
@@ -1673,9 +1639,6 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
-        integer(c_int), intent(in), target :: n_bins
-            !! Number of equally sized histogram bins
-            !! The minimum valid value is `1_int32`.
         real(c_double), intent(in), target :: shared_residual_range
             !! Computed residual range (R)
             !! The minimum valid value is `0.0_real64`.
@@ -1693,20 +1656,67 @@ contains
             !! Mean-expression reference points
             !! NaN is permitted for this value.
         integer(c_int), dimension(n_neighbors, n_points, n_studies), intent(out), target :: neighborhood_indices
-            !! Gene indices of the selected neighborhood, per reference point, per study
+            !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(c_int), dimension(2, n_points, n_studies), intent(out), target :: neighborhood_range
             !! For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
-            !! produced by construct_neighborhoods_ranged_impl
-        real(c_double), dimension(n_bins, n_points, n_studies), intent(out), target :: pmfs
-            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`
-        integer(c_int), dimension(n_bins, n_points, n_studies), intent(out), target :: counts
-            !! Absolute counts of a residual per bin for `pmfs`
+            !! produced by construct_neighborhoods_ranged_impl (Pass A)
+        integer(c_int), dimension(n_points), intent(out), target :: n_bins_per_point
+            !! This reference point's own selected histogram bin count (Issue #187's `M_j`), from
+            !! Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
+            !! may use a different bin count
+        integer(c_int), intent(out), target :: max_n_bins_per_point
+            !! The widest `n_bins_per_point` value across all `n_points` reference points
+            !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
+            !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
+            !! `tmp_counts_point_major` and `tmp_pmf_point_major` below -- those are all declared
+            !! with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
+            !! since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
+            !! caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
+            !! trimming directive cannot express this trim, because it only ever trims an array's
+            !! LAST declared extent, and bins is the FIRST declared extent of every one of those
+            !! arrays
+        logical(c_bool), dimension(n_points), intent(out), target :: occupancy_failed
+            !! This reference point's `occupancy_failed` flag from Pass B
+            !! (determine_bin_count_occupancy_impl) -- `.true.` iff even `m_min` bins could not
+            !! satisfy the occupancy criterion for it. See this routine's own doc block above for
+            !! the behavioral asymmetry this implies vs. run_js_comp_test_parameter_search_impl: a
+            !! `.true.` point here still gets a real histogram and still contributes to
+            !! `global_js_divergence`, it is never rejected
+        integer(c_int), dimension(n_points), intent(out), target :: n_pooled_residuals
+            !! This reference point's pooled residual count (N_j) from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(n_points), intent(out), target :: min_bin_occupancy
+            !! This reference point's minimum bin occupancy at `n_bins_per_point`, from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        real(c_double), dimension(n_points), intent(out), target :: mean_bin_occupancy
+            !! This reference point's mean bin occupancy at `n_bins_per_point`, from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(n_points), intent(out), target :: max_bin_occupancy
+            !! This reference point's maximum bin occupancy at `n_bins_per_point`, from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(n_points), intent(out), target :: sturges_bins
+            !! This reference point's Sturges' rule bin-count diagnostic from Pass B
+            !! (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
+            !! decision
+        integer(c_int), dimension(n_points), intent(out), target :: fd_bins
+            !! This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B
+            !! (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
+            !! decision
+        real(c_double), dimension(256, n_points, n_studies), intent(out), target :: pmfs
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
+            !! = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+            !! are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
+        integer(c_int), dimension(256, n_points, n_studies), intent(out), target :: counts
+            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(c_int), dimension(n_points, n_studies), intent(out), target :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study
-        real(c_double), dimension(n_bins, n_points), intent(out), target :: mean_pmf
-            !! The consensus pmf, from create_mean_pmf_impl
-        integer(c_int), dimension(n_bins, n_points), intent(out), target :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf
+        real(c_double), dimension(256, n_points), intent(out), target :: mean_pmf
+            !! The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
+        integer(c_int), dimension(256, n_points), intent(out), target :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
+            !! only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(c_int), dimension(n_points), intent(out), target :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
         real(c_double), dimension(n_points, n_studies), intent(out), target :: js_divergences
@@ -1724,6 +1734,31 @@ contains
         integer(c_int), intent(in), target :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
+        integer(c_int), intent(in), target :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible in Pass B's occupancy search, forwarded to
+            !! determine_bin_count_occupancy_impl
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `10_int32`.
+        integer(c_int), intent(in), target :: m_min
+            !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(c_int), intent(in), target :: m_max
+            !! Largest candidate bin count Pass B's occupancy search will ever test (M_max),
+            !! forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
+            !! determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        real(c_double), intent(in), target :: gamma_occupancy
+            !! Geometric growth factor for Pass B's occupancy search's coarse search stage,
+            !! forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
+            !! advances
+            !! The minimum valid value is `above(1.0_real64)`.
+            !! The default value is `1.25_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
@@ -1735,21 +1770,33 @@ contains
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(n_bins)
         M_CHECK_NON_NULL(shared_residual_range)
+        M_CHECK_NON_NULL(max_n_bins_per_point)
         M_CHECK_NON_NULL(n_permutations)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(min_residuals_per_bin)
+        M_CHECK_NON_NULL(m_min)
+        M_CHECK_NON_NULL(m_max)
+        M_CHECK_NON_NULL(gamma_occupancy)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(x_star, n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points * n_studies)
-        M_CHECK_ARRAY_NON_NULL(pmfs, n_bins * n_points * n_studies)
-        M_CHECK_ARRAY_NON_NULL(counts, n_bins * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(n_bins_per_point, n_points)
+        M_CHECK_ARRAY_NON_NULL(occupancy_failed, n_points)
+        M_CHECK_ARRAY_NON_NULL(n_pooled_residuals, n_points)
+        M_CHECK_ARRAY_NON_NULL(min_bin_occupancy, n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_bin_occupancy, n_points)
+        M_CHECK_ARRAY_NON_NULL(max_bin_occupancy, n_points)
+        M_CHECK_ARRAY_NON_NULL(sturges_bins, n_points)
+        M_CHECK_ARRAY_NON_NULL(fd_bins, n_points)
+        M_CHECK_ARRAY_NON_NULL(pmfs, 256 * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(counts, 256 * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf, 256 * n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, 256 * n_points)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(js_divergences, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(weights, n_points * n_studies)
@@ -1762,7 +1809,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            n_bins = n_bins,&
             shared_residual_range = shared_residual_range,&
             gene_means = gene_means,&
             gene_means_perms = gene_means_perms,&
@@ -1770,6 +1816,15 @@ contains
             x_star = x_star,&
             neighborhood_indices = neighborhood_indices,&
             neighborhood_range = neighborhood_range,&
+            n_bins_per_point = n_bins_per_point,&
+            max_n_bins_per_point = max_n_bins_per_point,&
+            occupancy_failed = occupancy_failed,&
+            n_pooled_residuals = n_pooled_residuals,&
+            min_bin_occupancy = min_bin_occupancy,&
+            mean_bin_occupancy = mean_bin_occupancy,&
+            max_bin_occupancy = max_bin_occupancy,&
+            sturges_bins = sturges_bins,&
+            fd_bins = fd_bins,&
             pmfs = pmfs,&
             counts = counts,&
             included_n_reps = included_n_reps,&
@@ -1782,17 +1837,43 @@ contains
             p_values = p_values,&
             n_permutations = n_permutations,&
             random_seed = random_seed,&
+            min_residuals_per_bin = min_residuals_per_bin,&
+            m_min = m_min,&
+            m_max = m_max,&
+            gamma_occupancy = gamma_occupancy,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_c
 
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):run_js_comp_test_expert(subroutine)]]
-    !| Ported from 125-stabilize-jscomp's `js_comp_test_helper`: for every study, builds its
-    !| neighborhoods
-    !| ([[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]])
-    !| and residual histograms
-    !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]), pools
-    !| them into the consensus pmf
+    !| Ported from 125-stabilize-jscomp's `js_comp_test_helper`, restructured for Issue #187's
+    !| occupancy-constrained per-neighborhood histogram binning into three passes, mirroring
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]'s
+    !| own Pass A/B/C split (Issue #187's own Steps 2.5/2.6):
+    !|
+    !| - Pass A (per study): builds every study's neighborhoods
+    !| ([[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_ranged_impl(interface)]]),
+    !| writing into `neighborhood_indices`/`neighborhood_range`, which already retain every
+    !| study's own values simultaneously (both are real `intent(out)` arguments sized
+    !| `(..., n_points, n_studies)` -- unlike `run_js_comp_test_parameter_search_impl`, no new
+    !| buffer was needed for this). Unlike that routine, there is no admissibility gate here, so
+    !| Pass A always runs to completion for every study.
+    !| - Pass B (per point, sequential -- see the implementation body's own comment for why): pools
+    !| every study's residuals for one reference point at a time (`gather_pooled_neighborhood_residuals`,
+    !| a private module helper, not itself published) and runs Issue #187's occupancy-constrained
+    !| bin-count search on the pooled result
+    !| ([[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]),
+    !| deciding `n_bins_per_point(i_point)` independently for every reference point, plus the
+    !| `occupancy_failed`/`n_pooled_residuals`/`min_bin_occupancy`/`mean_bin_occupancy`/
+    !| `max_bin_occupancy`/`sturges_bins`/`fd_bins` diagnostics. `max_n_bins_per_point`
+    !| (`maxval(n_bins_per_point(1:n_points))`) is derived once after Pass B and replaces the old
+    !| caller-supplied scalar `n_bins` everywhere downstream.
+    !| - Pass C (per study): re-gathers this study's residual values from the neighbor indices Pass
+    !| A already computed, then builds its residual histograms at the real per-point bin counts
+    !| ([[tox_data_integration_jsd_impl(module):build_residual_histograms_impl(interface)]]).
+    !|
+    !| After Pass C, the pipeline continues exactly as before: pools the per-study pmfs into the
+    !| consensus pmf
     !| ([[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]), computes
     !| each study's observed JSD against that consensus
     !| ([[tox_data_integration_jsd_impl(module):compute_divergence_per_reference_point_impl(interface)]]/[[tox_data_integration_jsd_impl(module):compute_weighted_global_divergence_impl(interface)]],
@@ -1805,6 +1886,41 @@ contains
     !| permutation test above only resamples its own scratch copies, never `mean_pmf_counts`
     !| itself), exactly as 125 relies on.
     !|
+    !| **Behavioral asymmetry vs.
+    !| [[tox_data_integration_js_comp_test_impl(module):run_js_comp_test_parameter_search_impl(interface)]]
+    !| -- read before using this entry point where inadequately-supported neighborhoods must be
+    !| rejected:** unlike that routine, THIS one has NO multi-candidate fallback and NO
+    !| admissibility gate at all (no
+    !| [[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
+    !| no [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]],
+    !| no early exit). A reference point whose Pass B occupancy search fails even at `m_min`
+    !| (`occupancy_failed(i_point) = .true._c_bool`) still gets a real histogram built, at
+    !| `n_bins_per_point(i_point) == m_min`, and that point still contributes to
+    !| `global_js_divergence` exactly like every other point -- its contribution is down-weighted
+    !| only by `included_n_reps` (an orthogonal quantity: how many non-NaN replicates it has), never
+    !| by bin sparsity. A caller that needs inadequately-supported neighborhoods rejected outright
+    !| should use `run_js_comp_test_parameter_search_impl` instead, which gates on exactly this via
+    !| `check_mean_pmf_min_counts_impl`.
+    !|
+    !| **A real, deliberate change to this routine's public array shapes (Issue #187):** the old
+    !| mandatory scalar input `n_bins` is gone -- there is no way for a caller to know the right bin
+    !| count in advance, since it is now genuinely computed inside this routine by Pass B's
+    !| occupancy search, independently per reference point. Every array whose bin-sized dimension
+    !| used to be sized by that input (`pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
+    !| `tmp_counts_point_major`, `tmp_pmf_point_major`, `tmp_permutation_mean_pmf_counts`,
+    !| `tmp_permutation_counts`, `tmp_permutation_pmfs`) is now sized to the fixed compile-time
+    !| ceiling [[tox_data_integration_js_comp_test_impl(module):MAX_N_BINS(variable)]] (`256`)
+    !| instead, exactly mirroring how `run_js_comp_test_parameter_search_impl`'s own
+    !| `tmp_counts_point_major`/`tmp_pmf_point_major`/`tmp_pmfs`/`tmp_counts` etc. have been sized
+    !| since Issue #187's earlier steps. The new `max_n_bins_per_point` output tells a caller how many of the
+    !| LEADING bins/rows of each of those arrays are actually meaningful
+    !| (`maxval(n_bins_per_point(1:n_points))`); the rest is unused padding. The generator's own
+    !| result-size trimming directive cannot express this trim, because it only ever trims an
+    !| array's LAST declared extent, and bins is the FIRST declared extent of every one of those
+    !| arrays -- so a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves, exactly as a
+    !| caller of `run_js_comp_test_parameter_search_impl`'s own jagged `trace_*` arrays already has
+    !| to.
+    !|
     !| `x_star` is an ordinary input here, not computed by this routine -- 125's own
     !| `js_comp_test_helper` takes it the same way, since a caller running several studies/several
     !| parameter settings is expected to compute the reference points once
@@ -1814,11 +1930,11 @@ contains
     !| `construct_neighborhoods_ranged_impl` reports neighbor gene INDICES, not gathered residual
     !| values (unlike its distance-sort sibling
     !| [[tox_data_integration_preprocessing_impl(module):construct_neighborhoods_impl(interface)]]),
-    !| so this routine gathers each neighbor's actual residual values from `residuals` itself
+    !| so Pass C gathers each neighbor's actual residual values from `residuals` itself
     !| (`tmp_neighborhood_residuals_gathered`, a per-study scratch buffer) before calling
     !| `build_residual_histograms_impl`. `build_residual_histograms_impl`/`calc_pmf_impl` are
-    !| POINT-major (`(n_points, n_bins)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` here
-    !| are BIN-major (`(n_bins, n_points, n_studies)`) to match
+    !| POINT-major (`(n_points, max_n_bins_per_point)`), while `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts`
+    !| here are BIN-major (`(256, n_points, n_studies)`) to match
     !| [[tox_data_integration_js_comp_test_impl(module):create_mean_pmf_impl(interface)]]'s own
     !| convention -- every call across that boundary bridges with an explicit `transpose`, exactly
     !| as [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]] and
@@ -1832,7 +1948,6 @@ contains
             max_n_reps_all_studies,&
             n_points,&
             n_neighbors,&
-            n_bins,&
             shared_residual_range,&
             gene_means,&
             gene_means_perms,&
@@ -1840,6 +1955,15 @@ contains
             x_star,&
             neighborhood_indices,&
             neighborhood_range,&
+            n_bins_per_point,&
+            max_n_bins_per_point,&
+            occupancy_failed,&
+            n_pooled_residuals,&
+            min_bin_occupancy,&
+            mean_bin_occupancy,&
+            max_bin_occupancy,&
+            sturges_bins,&
+            fd_bins,&
             pmfs,&
             counts,&
             included_n_reps,&
@@ -1853,7 +1977,9 @@ contains
             tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major,&
             tmp_pmf_point_major,&
-            tmp_n_bins_per_point,&
+            tmp_pooled_residuals,&
+            tmp_pooled_residuals_perm,&
+            tmp_bin_counts_search,&
             tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts,&
             tmp_permutation_pmfs,&
@@ -1862,6 +1988,10 @@ contains
             tmp_permutation_global_js_divergence,&
             n_permutations,&
             random_seed,&
+            min_residuals_per_bin,&
+            m_min,&
+            m_max,&
+            gamma_occupancy,&
             ierr&
         ) bind(C, name="run_js_comp_test_expert_c")
         use tox_data_integration_js_comp_test, only: run_js_comp_test_expert
@@ -1881,9 +2011,6 @@ contains
         integer(c_int), intent(in), target :: n_neighbors
             !! Number of neighbors per neighborhood
             !! The minimum valid value is `1_int32`.
-        integer(c_int), intent(in), target :: n_bins
-            !! Number of equally sized histogram bins
-            !! The minimum valid value is `1_int32`.
         real(c_double), intent(in), target :: shared_residual_range
             !! Computed residual range (R)
             !! The minimum valid value is `0.0_real64`.
@@ -1901,20 +2028,67 @@ contains
             !! Mean-expression reference points
             !! NaN is permitted for this value.
         integer(c_int), dimension(n_neighbors, n_points, n_studies), intent(out), target :: neighborhood_indices
-            !! Gene indices of the selected neighborhood, per reference point, per study
+            !! Gene indices of the selected neighborhood, per reference point, per study (Pass A)
         integer(c_int), dimension(2, n_points, n_studies), intent(out), target :: neighborhood_range
             !! For each reference point and study, the `[min_idx, max_idx]` neighborhood span, as
-            !! produced by construct_neighborhoods_ranged_impl
-        real(c_double), dimension(n_bins, n_points, n_studies), intent(out), target :: pmfs
-            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`
-        integer(c_int), dimension(n_bins, n_points, n_studies), intent(out), target :: counts
-            !! Absolute counts of a residual per bin for `pmfs`
+            !! produced by construct_neighborhoods_ranged_impl (Pass A)
+        integer(c_int), dimension(n_points), intent(out), target :: n_bins_per_point
+            !! This reference point's own selected histogram bin count (Issue #187's `M_j`), from
+            !! Pass B's occupancy search (determine_bin_count_occupancy_impl) -- every neighborhood
+            !! may use a different bin count
+        integer(c_int), intent(out), target :: max_n_bins_per_point
+            !! The widest `n_bins_per_point` value across all `n_points` reference points
+            !! (`maxval(n_bins_per_point(1:n_points))`), derived once after Pass B. The number of
+            !! leading, meaningful bins/rows in `pmfs`, `counts`, `mean_pmf`, `mean_pmf_counts`,
+            !! `tmp_counts_point_major` and `tmp_pmf_point_major` below -- those are all declared
+            !! with a fixed 256-bin ceiling (MAX_N_BINS) rather than a caller-supplied bin count,
+            !! since `n_bins_per_point` can no longer be known by a caller in advance. A Python/R
+            !! caller must slice `[:max_n_bins_per_point, ...]` themselves: the generator's own result-size
+            !! trimming directive cannot express this trim, because it only ever trims an array's
+            !! LAST declared extent, and bins is the FIRST declared extent of every one of those
+            !! arrays
+        logical(c_bool), dimension(n_points), intent(out), target :: occupancy_failed
+            !! This reference point's `occupancy_failed` flag from Pass B
+            !! (determine_bin_count_occupancy_impl) -- `.true.` iff even `m_min` bins could not
+            !! satisfy the occupancy criterion for it. See this routine's own doc block above for
+            !! the behavioral asymmetry this implies vs. run_js_comp_test_parameter_search_impl: a
+            !! `.true.` point here still gets a real histogram and still contributes to
+            !! `global_js_divergence`, it is never rejected
+        integer(c_int), dimension(n_points), intent(out), target :: n_pooled_residuals
+            !! This reference point's pooled residual count (N_j) from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(n_points), intent(out), target :: min_bin_occupancy
+            !! This reference point's minimum bin occupancy at `n_bins_per_point`, from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        real(c_double), dimension(n_points), intent(out), target :: mean_bin_occupancy
+            !! This reference point's mean bin occupancy at `n_bins_per_point`, from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(n_points), intent(out), target :: max_bin_occupancy
+            !! This reference point's maximum bin occupancy at `n_bins_per_point`, from Pass B
+            !! (determine_bin_count_occupancy_impl)
+        integer(c_int), dimension(n_points), intent(out), target :: sturges_bins
+            !! This reference point's Sturges' rule bin-count diagnostic from Pass B
+            !! (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
+            !! decision
+        integer(c_int), dimension(n_points), intent(out), target :: fd_bins
+            !! This reference point's Freedman-Diaconis rule bin-count diagnostic from Pass B
+            !! (determine_bin_count_occupancy_impl) -- never part of the occupancy search's own
+            !! decision
+        real(c_double), dimension(256, n_points, n_studies), intent(out), target :: pmfs
+            !! `counts` normalized to `0 <= pmfs(:, :, i) <= 1` and `sum(pmfs(:, j, i)) == 1`. `256`
+            !! = MAX_N_BINS, a fixed ceiling (see `max_n_bins_per_point` above) -- only rows `1:max_n_bins_per_point`
+            !! are meaningful; a Python/R caller must slice `[:max_n_bins_per_point, ...]` themselves
+        integer(c_int), dimension(256, n_points, n_studies), intent(out), target :: counts
+            !! Absolute counts of a residual per bin for `pmfs`. `256` = MAX_N_BINS; only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(c_int), dimension(n_points, n_studies), intent(out), target :: included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point, per study
-        real(c_double), dimension(n_bins, n_points), intent(out), target :: mean_pmf
-            !! The consensus pmf, from create_mean_pmf_impl
-        integer(c_int), dimension(n_bins, n_points), intent(out), target :: mean_pmf_counts
-            !! Absolute counts of a residual per bin for the consensus pmf
+        real(c_double), dimension(256, n_points), intent(out), target :: mean_pmf
+            !! The consensus pmf, from create_mean_pmf_impl. `256` = MAX_N_BINS; only rows
+            !! `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
+        integer(c_int), dimension(256, n_points), intent(out), target :: mean_pmf_counts
+            !! Absolute counts of a residual per bin for the consensus pmf. `256` = MAX_N_BINS;
+            !! only rows `1:max_n_bins_per_point` are meaningful -- see `pmfs` above
         integer(c_int), dimension(n_points), intent(out), target :: mean_pmf_included_n_reps
             !! Count of non-NaN replicates (included ones) per reference point for the consensus pmf
         real(c_double), dimension(n_points, n_studies), intent(out), target :: js_divergences
@@ -1927,21 +2101,35 @@ contains
             !! Empirical p-value per study from gjct_permutation_test_impl
         real(c_double), dimension(max_n_reps_all_studies, n_neighbors, n_points), intent(out), target :: tmp_neighborhood_residuals_gathered
             !! Working array: one study's gathered neighborhood residual values, reused per study
-        integer(c_int), dimension(n_points, n_bins), intent(out), target :: tmp_counts_point_major
-            !! Working array: one study's point-major histogram counts from build_residual_histograms_impl
-        real(c_double), dimension(n_points, n_bins), intent(out), target :: tmp_pmf_point_major
+            !! (Pass C)
+        integer(c_int), dimension(n_points, 256), intent(out), target :: tmp_counts_point_major
+            !! Working array: one study's point-major histogram counts from
+            !! build_residual_histograms_impl. `256` = MAX_N_BINS, written as a literal because a
+            !! generated wrapper's dummy dimension cannot reference a module parameter
+        real(c_double), dimension(n_points, 256), intent(out), target :: tmp_pmf_point_major
             !! Working array: one study's point-major pmf, reused both for
-            !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf
-        integer(c_int), dimension(n_points), intent(out), target :: tmp_n_bins_per_point
-            !! Working array: `n_bins` broadcast to every reference point, since
-            !! build_residual_histograms_impl now takes a per-point bin count; every point uses the
-            !! same `n_bins` here, so this is a pure mechanical translation with no behavior change
-        integer(c_int), dimension(n_bins, n_points), intent(out), target :: tmp_permutation_mean_pmf_counts
-            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool
-        integer(c_int), dimension(n_bins, n_points), intent(out), target :: tmp_permutation_counts
-            !! Working array forwarded to gjct_permutation_test_impl's own per-study resampled counts
-        real(c_double), dimension(n_bins, n_points, n_studies), intent(out), target :: tmp_permutation_pmfs
-            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs
+            !! build_residual_histograms_impl's output and for calc_pmf_impl's re-derived pmf.
+            !! `256` = MAX_N_BINS, see tmp_counts_point_major above
+        real(c_double), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out), target :: tmp_pooled_residuals
+            !! Working array: one reference point's pooled residuals across every neighbor and
+            !! every study (Pass B), reused per point -- one small buffer, not one per point, since
+            !! Pass B is a deliberate sequential loop (see the implementation body's own comment)
+        integer(c_int), dimension(max_n_reps_all_studies*n_neighbors*n_studies), intent(out), target :: tmp_pooled_residuals_perm
+            !! Working array: sorting permutation for tmp_pooled_residuals, reused per point
+        integer(c_int), dimension(256), intent(out), target :: tmp_bin_counts_search
+            !! Working array forwarded to determine_bin_count_occupancy_impl's own per-bin-count
+            !! search scratch, reused per point. `256` = MAX_N_BINS, matching
+            !! determine_bin_count_occupancy_impl's own tmp_bin_counts dummy -- written as a literal
+            !! because a generated wrapper's dummy dimension cannot reference a module parameter
+        integer(c_int), dimension(256, n_points), intent(out), target :: tmp_permutation_mean_pmf_counts
+            !! Working array forwarded to gjct_permutation_test_impl's own resampling pool. `256` =
+            !! MAX_N_BINS, see tmp_counts_point_major above
+        integer(c_int), dimension(256, n_points), intent(out), target :: tmp_permutation_counts
+            !! Working array forwarded to gjct_permutation_test_impl's own per-study resampled
+            !! counts. `256` = MAX_N_BINS, see tmp_counts_point_major above
+        real(c_double), dimension(256, n_points, n_studies), intent(out), target :: tmp_permutation_pmfs
+            !! Working array forwarded to gjct_permutation_test_impl's own resampled pmfs. `256` =
+            !! MAX_N_BINS, see tmp_counts_point_major above
         real(c_double), dimension(n_points, n_studies), intent(out), target :: tmp_permutation_js_divergences
             !! Working array forwarded to gjct_permutation_test_impl's own per-point JSD values
         real(c_double), dimension(n_points, n_studies), intent(out), target :: tmp_permutation_weights
@@ -1955,6 +2143,31 @@ contains
         integer(c_int), intent(in), target :: random_seed
             !! Seed for the GSL random number generator
             !! The default value is `42_int32`.
+        integer(c_int), intent(in), target :: min_residuals_per_bin
+            !! Minimum number of pooled residuals every bin must reach for a candidate bin count to
+            !! be admissible in Pass B's occupancy search, forwarded to
+            !! determine_bin_count_occupancy_impl
+            !! The minimum valid value is `1_int32`.
+            !! The default value is `10_int32`.
+        integer(c_int), intent(in), target :: m_min
+            !! Smallest candidate bin count Pass B's occupancy search will ever test (M_min),
+            !! forwarded to determine_bin_count_occupancy_impl
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `3_int32`.
+        integer(c_int), intent(in), target :: m_max
+            !! Largest candidate bin count Pass B's occupancy search will ever test (M_max),
+            !! forwarded to determine_bin_count_occupancy_impl; if a caller passes `m_max < m_min`,
+            !! determine_bin_count_occupancy_impl clamps it up to `m_min` internally
+            !! The minimum valid value is `1_int32`.
+            !! The maximum valid value is `MAX_N_BINS`.
+            !! The default value is `120_int32`.
+        real(c_double), intent(in), target :: gamma_occupancy
+            !! Geometric growth factor for Pass B's occupancy search's coarse search stage,
+            !! forwarded to determine_bin_count_occupancy_impl; must exceed 1 or the search never
+            !! advances
+            !! The minimum valid value is `above(1.0_real64)`.
+            !! The default value is `1.25_real64`.
         integer(c_int), intent(out), target :: ierr
             !! Error code; ERR_ALLOC_FAIL if GSL could not allocate the random number generator for
             !! the permutation test
@@ -1966,33 +2179,47 @@ contains
         M_CHECK_NON_NULL(max_n_reps_all_studies)
         M_CHECK_NON_NULL(n_points)
         M_CHECK_NON_NULL(n_neighbors)
-        M_CHECK_NON_NULL(n_bins)
         M_CHECK_NON_NULL(shared_residual_range)
+        M_CHECK_NON_NULL(max_n_bins_per_point)
         M_CHECK_NON_NULL(n_permutations)
         M_CHECK_NON_NULL(random_seed)
+        M_CHECK_NON_NULL(min_residuals_per_bin)
+        M_CHECK_NON_NULL(m_min)
+        M_CHECK_NON_NULL(m_max)
+        M_CHECK_NON_NULL(gamma_occupancy)
         M_CHECK_ARRAY_NON_NULL(gene_means, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(residuals, max_n_reps_all_studies * max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(x_star, n_points)
         M_CHECK_ARRAY_NON_NULL(neighborhood_indices, n_neighbors * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(neighborhood_range, 2 * n_points * n_studies)
-        M_CHECK_ARRAY_NON_NULL(pmfs, n_bins * n_points * n_studies)
-        M_CHECK_ARRAY_NON_NULL(counts, n_bins * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(n_bins_per_point, n_points)
+        M_CHECK_ARRAY_NON_NULL(occupancy_failed, n_points)
+        M_CHECK_ARRAY_NON_NULL(n_pooled_residuals, n_points)
+        M_CHECK_ARRAY_NON_NULL(min_bin_occupancy, n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_bin_occupancy, n_points)
+        M_CHECK_ARRAY_NON_NULL(max_bin_occupancy, n_points)
+        M_CHECK_ARRAY_NON_NULL(sturges_bins, n_points)
+        M_CHECK_ARRAY_NON_NULL(fd_bins, n_points)
+        M_CHECK_ARRAY_NON_NULL(pmfs, 256 * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(counts, 256 * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(included_n_reps, n_points * n_studies)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, n_bins * n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf, 256 * n_points)
+        M_CHECK_ARRAY_NON_NULL(mean_pmf_counts, 256 * n_points)
         M_CHECK_ARRAY_NON_NULL(mean_pmf_included_n_reps, n_points)
         M_CHECK_ARRAY_NON_NULL(js_divergences, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(weights, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(global_js_divergence, n_studies)
         M_CHECK_ARRAY_NON_NULL(p_values, n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_residuals_gathered, max_n_reps_all_studies * n_neighbors * n_points)
-        M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, n_points * n_bins)
-        M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, n_points * n_bins)
-        M_CHECK_ARRAY_NON_NULL(tmp_n_bins_per_point, n_points)
-        M_CHECK_ARRAY_NON_NULL(tmp_permutation_mean_pmf_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(tmp_permutation_counts, n_bins * n_points)
-        M_CHECK_ARRAY_NON_NULL(tmp_permutation_pmfs, n_bins * n_points * n_studies)
+        M_CHECK_ARRAY_NON_NULL(tmp_counts_point_major, n_points * 256)
+        M_CHECK_ARRAY_NON_NULL(tmp_pmf_point_major, n_points * 256)
+        M_CHECK_ARRAY_NON_NULL(tmp_pooled_residuals, (max_n_reps_all_studies*n_neighbors*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tmp_pooled_residuals_perm, (max_n_reps_all_studies*n_neighbors*n_studies))
+        M_CHECK_ARRAY_NON_NULL(tmp_bin_counts_search, 256)
+        M_CHECK_ARRAY_NON_NULL(tmp_permutation_mean_pmf_counts, 256 * n_points)
+        M_CHECK_ARRAY_NON_NULL(tmp_permutation_counts, 256 * n_points)
+        M_CHECK_ARRAY_NON_NULL(tmp_permutation_pmfs, 256 * n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_js_divergences, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_weights, n_points * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_permutation_global_js_divergence, n_studies)
@@ -2003,7 +2230,6 @@ contains
             max_n_reps_all_studies = max_n_reps_all_studies,&
             n_points = n_points,&
             n_neighbors = n_neighbors,&
-            n_bins = n_bins,&
             shared_residual_range = shared_residual_range,&
             gene_means = gene_means,&
             gene_means_perms = gene_means_perms,&
@@ -2011,6 +2237,15 @@ contains
             x_star = x_star,&
             neighborhood_indices = neighborhood_indices,&
             neighborhood_range = neighborhood_range,&
+            n_bins_per_point = n_bins_per_point,&
+            max_n_bins_per_point = max_n_bins_per_point,&
+            occupancy_failed = occupancy_failed,&
+            n_pooled_residuals = n_pooled_residuals,&
+            min_bin_occupancy = min_bin_occupancy,&
+            mean_bin_occupancy = mean_bin_occupancy,&
+            max_bin_occupancy = max_bin_occupancy,&
+            sturges_bins = sturges_bins,&
+            fd_bins = fd_bins,&
             pmfs = pmfs,&
             counts = counts,&
             included_n_reps = included_n_reps,&
@@ -2024,7 +2259,9 @@ contains
             tmp_neighborhood_residuals_gathered = tmp_neighborhood_residuals_gathered,&
             tmp_counts_point_major = tmp_counts_point_major,&
             tmp_pmf_point_major = tmp_pmf_point_major,&
-            tmp_n_bins_per_point = tmp_n_bins_per_point,&
+            tmp_pooled_residuals = tmp_pooled_residuals,&
+            tmp_pooled_residuals_perm = tmp_pooled_residuals_perm,&
+            tmp_bin_counts_search = tmp_bin_counts_search,&
             tmp_permutation_mean_pmf_counts = tmp_permutation_mean_pmf_counts,&
             tmp_permutation_counts = tmp_permutation_counts,&
             tmp_permutation_pmfs = tmp_permutation_pmfs,&
@@ -2033,6 +2270,10 @@ contains
             tmp_permutation_global_js_divergence = tmp_permutation_global_js_divergence,&
             n_permutations = n_permutations,&
             random_seed = random_seed,&
+            min_residuals_per_bin = min_residuals_per_bin,&
+            m_min = m_min,&
+            m_max = m_max,&
+            gamma_occupancy = gamma_occupancy,&
             ierr = ierr&
         )
     end subroutine run_js_comp_test_expert_c
@@ -2040,10 +2281,12 @@ contains
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):run_js_comp_test_parameter_search(subroutine)]]
     !| Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and
     !| `_alloc`, merged into one implementation now that the new `_impl` rules leave no separate
-    !| hand-written allocation layer. Pools all studies' residuals and gene means, sorts them once
+    !| hand-written allocation layer. Pools all studies' gene means, sorts them once
     !| ([[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]), generates the candidate
-    !| grid
-    !| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]),
+    !| grid from the gene count alone
+    !| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+    !| -- Issue #187, Step 2.7: this no longer needs the pooled residuals, since real per-neighborhood
+    !| bin counts are decided later, in Pass B below),
     !| then walks it from finest to coarsest resolution: for each candidate, builds every study's
     !| neighborhoods and checks the first admissibility gate
     !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]);
@@ -2092,12 +2335,12 @@ contains
     !| `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
     !| chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
     !| the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
-    !| `residuals`/`gene_means` are passed to
-    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]/[[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
-    !| as their own multi-dimensional selves -- both callees declare their matching dummy with an
+    !| `gene_means` is passed to
+    !| [[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
+    !| as its own multi-dimensional self -- that callee declares its matching dummy with an
     !| explicit shape, so standard Fortran sequence association reinterprets the contiguous actual
-    !| argument as the flat 1-D array they expect, exactly as 125's own `_alloc` layer did for the
-    !| same calls.
+    !| argument as the flat 1-D array it expects, exactly as 125's own `_alloc` layer did for the
+    !| same call.
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
@@ -2239,8 +2482,7 @@ contains
         integer(c_int), dimension(16), intent(out), target :: trace_n_points
             !! Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
             !! arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-            !! candidates_n_points_n_neighbors/n_bins_candidates are in
-            !! generate_js_comp_test_candidates_impl
+            !! candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(c_int), dimension(16), intent(out), target :: trace_n_neighbors
             !! Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
@@ -2565,10 +2807,12 @@ contains
     !> summary: C-wrapper for [[tox_data_integration_js_comp_test(module):run_js_comp_test_parameter_search_expert(subroutine)]]
     !| Ported from 125-stabilize-jscomp's `determine_js_comp_test_n_points_n_neighbors_helper` and
     !| `_alloc`, merged into one implementation now that the new `_impl` rules leave no separate
-    !| hand-written allocation layer. Pools all studies' residuals and gene means, sorts them once
+    !| hand-written allocation layer. Pools all studies' gene means, sorts them once
     !| ([[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]), generates the candidate
-    !| grid
-    !| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]),
+    !| grid from the gene count alone
+    !| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+    !| -- Issue #187, Step 2.7: this no longer needs the pooled residuals, since real per-neighborhood
+    !| bin counts are decided later, in Pass B below),
     !| then walks it from finest to coarsest resolution: for each candidate, builds every study's
     !| neighborhoods and checks the first admissibility gate
     !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]]);
@@ -2617,12 +2861,12 @@ contains
     !| `max_n_bins` is the widest per-point bin count Issue #187's occupancy search (Pass B below)
     !| chose for the current candidate, `maxval(tmp_n_bins_per_point(1:n_points))` -- it replaces
     !| the old single scalar `n_bins` that used to come from the global-pool Sturges/FD estimate.
-    !| `residuals`/`gene_means` are passed to
-    !| [[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]/[[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
-    !| as their own multi-dimensional selves -- both callees declare their matching dummy with an
+    !| `gene_means` is passed to
+    !| [[f42_sort_impl(module):sort_real_heapsort_expl_size(interface)]]
+    !| as its own multi-dimensional self -- that callee declares its matching dummy with an
     !| explicit shape, so standard Fortran sequence association reinterprets the contiguous actual
-    !| argument as the flat 1-D array they expect, exactly as 125's own `_alloc` layer did for the
-    !| same calls.
+    !| argument as the flat 1-D array it expects, exactly as 125's own `_alloc` layer did for the
+    !| same call.
     !|
     !| Impure: calls the impure
     !| [[tox_data_integration_js_comp_test_impl(module):bootstrap_histogram_impl(interface)]]. A GSL
@@ -2666,7 +2910,6 @@ contains
             trace_fd_bins,&
             tmp_gene_means_perms,&
             tmp_gene_means_perm_all,&
-            tmp_residuals_perm,&
             tmp_x_star,&
             tmp_neighborhood_indices_all_studies,&
             tmp_neighborhood_range,&
@@ -2806,8 +3049,7 @@ contains
         integer(c_int), dimension(16), intent(out), target :: trace_n_points
             !! Per-admissible-candidate `n_points`, one entry per column of the other `trace_*`
             !! arrays. `16` = MAX_CANDIDATE_PAIRS, written as a literal for the same reason
-            !! candidates_n_points_n_neighbors/n_bins_candidates are in
-            !! generate_js_comp_test_candidates_impl
+            !! candidates_n_points_n_neighbors is in generate_js_comp_test_candidates_impl
             !! The first `n_admissible_evaluated` elements will hold the results.
         integer(c_int), dimension(16), intent(out), target :: trace_n_neighbors
             !! Per-admissible-candidate `n_neighbors`, paired with trace_n_points above
@@ -2912,8 +3154,6 @@ contains
             !! Working array: each study's own sorting permutation for `gene_means`
         integer(c_int), dimension(max_n_genes_all_studies*n_studies), intent(out), target :: tmp_gene_means_perm_all
             !! Working array: sorting permutation for the flattened, all-studies-pooled `gene_means`
-        integer(c_int), dimension(max_n_reps_all_studies*max_n_genes_all_studies*n_studies), intent(out), target :: tmp_residuals_perm
-            !! Working array: sorting permutation for the flattened, all-studies-pooled `residuals`
         real(c_double), dimension(max_n_points_candidate), intent(out), target :: tmp_x_star
             !! Working array: reference points for the candidate whose `n_points` is current,
             !! recomputed only when `n_points` changes between candidates
@@ -3158,7 +3398,6 @@ contains
         M_CHECK_ARRAY_NON_NULL(trace_fd_bins, max_n_points_candidate * 16)
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perms, max_n_genes_all_studies * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_gene_means_perm_all, (max_n_genes_all_studies*n_studies))
-        M_CHECK_ARRAY_NON_NULL(tmp_residuals_perm, (max_n_reps_all_studies*max_n_genes_all_studies*n_studies))
         M_CHECK_ARRAY_NON_NULL(tmp_x_star, max_n_points_candidate)
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_indices_all_studies, max_n_neighbors_candidate * max_n_points_candidate * n_studies)
         M_CHECK_ARRAY_NON_NULL(tmp_neighborhood_range, 2 * max_n_points_candidate)
@@ -3265,7 +3504,6 @@ contains
             trace_fd_bins = trace_fd_bins,&
             tmp_gene_means_perms = tmp_gene_means_perms,&
             tmp_gene_means_perm_all = tmp_gene_means_perm_all,&
-            tmp_residuals_perm = tmp_residuals_perm,&
             tmp_x_star = tmp_x_star,&
             tmp_neighborhood_indices_all_studies = tmp_neighborhood_indices_all_studies,&
             tmp_neighborhood_range = tmp_neighborhood_range,&

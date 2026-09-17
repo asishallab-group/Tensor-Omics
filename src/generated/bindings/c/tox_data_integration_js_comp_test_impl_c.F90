@@ -6,10 +6,11 @@
 !|
 !| The data-driven `(n_points, n_neighbors)` parameter-stabilization search this pipeline runs
 !| before the JSD-Comp-Test proper (Issue #126): a GAMMA-decay candidate grid
-!| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]],
-!| each candidate's histogram bin count from
-!| [[tox_data_integration_js_comp_test_impl(module):estimate_bin_count_impl(interface)]]), two
-!| admissibility gates a candidate must pass before it is bootstrapped
+!| ([[tox_data_integration_js_comp_test_impl(module):generate_js_comp_test_candidates_impl(interface)]]
+!| generates candidate `(n_points, n_neighbors)` pairs only -- each candidate's real
+!| per-neighborhood histogram bin count is decided later, per reference point, by
+!| [[tox_data_integration_js_comp_test_impl(module):determine_bin_count_occupancy_impl(interface)]]),
+!| two admissibility gates a candidate must pass before it is bootstrapped
 !| ([[tox_data_integration_js_comp_test_impl(module):check_neighborhood_overlaps_impl(interface)]],
 !| [[tox_data_integration_js_comp_test_impl(module):check_mean_pmf_min_counts_impl(interface)]]),
 !| and the plateau check that decides when the search has converged

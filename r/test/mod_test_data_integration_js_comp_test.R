@@ -95,21 +95,17 @@ test_determine_bin_count_occupancy <- function() {
 }
 
 test_generate_js_comp_test_candidates <- function() {
-  residuals <- c(1, 2, 3, 4, 5)
-
   # ============================================================
   # Test 1 -- small-N candidate-grid collapse at its exact threshold
   # (test_generate_js_comp_test_candidates_collapses_at_8742): every candidate shares n_points=374.
   # ============================================================
-  out <- generate_js_comp_test_candidates(8742L, residuals, max_n_reps_all_studies = 1,
-                                           shared_residual_range = 1.0)
-  # NOTE: the generated R wrapper truncates `n_bins_candidates` to `n_candidates` correctly (it
-  # is a vector), but truncates `candidates_n_points_n_neighbors` via `utils::head(matrix,
-  # n_candidates)`, which trims ROWS, not columns -- a no-op here since the matrix always has
-  # exactly 2 rows. The columns past `n_candidates` therefore hold uninitialized garbage; slice
-  # manually using the (correctly truncated) length of `n_bins_candidates` instead.
-  n_candidates <- length(out$n_bins_candidates)
-  candidates <- out$candidates_n_points_n_neighbors[, 1:n_candidates, drop = FALSE]
+  candidates <- generate_js_comp_test_candidates(8742L)
+  # Issue #187, Step 2.7: `candidates_n_points_n_neighbors` is now the routine's only
+  # DM_RESULT_SIZE_IS output, so the generated R wrapper's own bracket slice
+  # (`[, seq_len(n_candidates), drop = FALSE]`) already returns it correctly trimmed by column --
+  # no manual re-slicing needed (contrast the old n_bins_candidates-vs-head() workaround this test
+  # used to need, now gone along with n_bins_candidates itself).
+  n_candidates <- ncol(candidates)
   assert_true(n_candidates >= 1, "Test 1 failed: expected at least one candidate")
   assert_true(all(candidates[1, ] == candidates[1, 1]),
               "Test 1 failed: every candidate must share the same n_points")
@@ -119,11 +115,8 @@ test_generate_js_comp_test_candidates <- function() {
   # Test 2 -- the other side of the bracket (test_generate_js_comp_test_candidates_has_two_distinct_at_8743):
   # at least two distinct n_points values, first=375, last=300.
   # ============================================================
-  out2 <- generate_js_comp_test_candidates(8743L, residuals, max_n_reps_all_studies = 1,
-                                            shared_residual_range = 1.0)
-  # See the NOTE above test 1: slice manually using n_bins_candidates' length, not head().
-  n_candidates2 <- length(out2$n_bins_candidates)
-  candidates2 <- out2$candidates_n_points_n_neighbors[, 1:n_candidates2, drop = FALSE]
+  candidates2 <- generate_js_comp_test_candidates(8743L)
+  n_candidates2 <- ncol(candidates2)
   n_distinct <- length(unique(candidates2[1, ]))
   assert_true(n_distinct >= 2, "Test 2 failed: expected at least two distinct n_points values")
   assert_equal_int(as.integer(candidates2[1, 1]), 375L, "Test 2 failed: first n_points should be 375")
@@ -131,18 +124,14 @@ test_generate_js_comp_test_candidates <- function() {
                     "Test 2 failed: last n_points should collapse to 300")
 
   # ============================================================
-  # Test 3 -- validation (test_generate_js_comp_test_candidates_validation)
+  # Test 3 -- validation (test_generate_js_comp_test_candidates_validation). Issue #187, Step 2.7:
+  # this routine's `_expert` tier no longer exists (no tmp_/work-array/permutation left in its
+  # signature once the bin-estimate side effect was removed), so this test no longer exercises it.
   # ============================================================
   assert_error(
-    generate_js_comp_test_candidates(0L, residuals, max_n_reps_all_studies = 1, shared_residual_range = 1.0),
+    generate_js_comp_test_candidates(0L),
     "Test 3 failed: expected ERR_INVALID_INPUT for max_n_genes_all_studies=0", ERR_INVALID_INPUT
   )
-
-  residuals_perm <- c(1L, 2L, 3L, 4L, 5L)
-  out3 <- generate_js_comp_test_candidates_expert(100L, residuals, residuals_perm, max_n_reps_all_studies = 1,
-                                                   shared_residual_range = 1.0)
-  assert_true(ncol(out3$candidates_n_points_n_neighbors) >= 1,
-              "Test 3 failed: expert tier should accept a valid permutation")
 }
 
 test_check_neighborhood_overlaps <- function() {
@@ -385,13 +374,9 @@ test_calc_js_comp_test_candidate_bounds <- function() {
   bounds <- calc_js_comp_test_candidate_bounds(8742L)
   assert_equal_int(as.integer(bounds$max_n_points_candidate), 374L, "expected max_n_points_candidate=374")
 
-  out <- generate_js_comp_test_candidates(8742L, c(1, 2, 3, 4, 5), max_n_reps_all_studies = 1,
-                                           shared_residual_range = 1.0)
-  # See the NOTE in test_generate_js_comp_test_candidates: slice manually using
-  # n_bins_candidates' length, since the generated wrapper's own truncation of the matrix is a
-  # no-op (utils::head() on a matrix trims rows, not columns).
-  n_candidates <- length(out$n_bins_candidates)
-  candidates <- out$candidates_n_points_n_neighbors[, 1:n_candidates, drop = FALSE]
+  # Issue #187, Step 2.7: generate_js_comp_test_candidates now returns the already-correctly-
+  # trimmed matrix directly (see the NOTE in test_generate_js_comp_test_candidates).
+  candidates <- generate_js_comp_test_candidates(8742L)
   assert_true(bounds$max_n_neighbors_candidate >= max(candidates[2, ]),
               "max_n_neighbors_candidate must be a safe upper bound on the grid's n_neighbors")
 }
@@ -409,11 +394,14 @@ test_calc_js_comp_test_n_top_k_jsds <- function() {
 }
 
 test_run_js_comp_test_two_studies_hand_traceable <- function() {
-  # End-to-end, fully closed-form 2-study case (test_run_js_comp_test_two_studies_hand_traceable),
-  # with n_permutations=0 so the pipeline is deterministic and hand-traceable.
-  log2_3 <- log(3.0) / log(2.0)
-  expected_jsd <- 1.5 - 0.75 * log2_3
-
+  # Call-ability/shape check only (Fortran_Coding_Guides.pdf Sec 17.1) -- the same fixture as the
+  # Fortran suite's own test_run_js_comp_test_two_studies_hand_traceable, which is where the exact
+  # hand-derived closed-form JSD assertions live. Issue #187 removed the mandatory scalar `n_bins`
+  # input (the bin count is now decided per reference point by an internal occupancy search) and
+  # added `n_bins_per_point`/`max_n_bins_per_point` plus several per-point diagnostics;
+  # `pmfs`/`counts`/`mean_pmf`/`mean_pmf_counts` are now always sized to the fixed 256-bin ceiling
+  # (MAX_N_BINS), of which only the leading `max_n_bins_per_point` rows are meaningful -- a caller
+  # must slice `[1:max_n_bins_per_point, ...]` themselves.
   gene_means <- matrix(c(1.0, 5.0, 1.0, 5.0), nrow = 2)
   gene_means_perms <- matrix(c(1L, 2L, 1L, 2L), nrow = 2)
 
@@ -423,27 +411,44 @@ test_run_js_comp_test_two_studies_hand_traceable <- function() {
 
   x_star <- c(1.0)
 
-  result <- run_js_comp_test(n_neighbors = 1L, n_bins = 4L, shared_residual_range = 4.0, gene_means = gene_means,
+  # min_residuals_per_bin=1 (its default is 10, which this tiny 4-residual fixture could never
+  # satisfy) so the occupancy search actually succeeds, matching the Fortran fixture's own
+  # override -- exercised here for call-ability, not to reproduce that test's exact numbers.
+  result <- run_js_comp_test(n_neighbors = 1L, shared_residual_range = 4.0, gene_means = gene_means,
                               gene_means_perms = gene_means_perms, residuals = residuals, x_star = x_star,
-                              n_permutations = 0L, random_seed = 1L)
+                              n_permutations = 0L, random_seed = 1L, min_residuals_per_bin = 1L)
+
+  n_points <- 1L
+  n_studies <- 2L
+  assert_equal_int(dim(result$neighborhood_indices), c(1L, n_points, n_studies), "neighborhood_indices shape")
+  assert_equal_int(dim(result$neighborhood_range), c(2L, n_points, n_studies), "neighborhood_range shape")
+  assert_equal_int(length(result$n_bins_per_point), n_points, "n_bins_per_point shape")
+  assert_true(is.numeric(result$max_n_bins_per_point), "max_n_bins_per_point must be numeric")
+  assert_equal_int(length(result$occupancy_failed), n_points, "occupancy_failed shape")
+  assert_equal_int(length(result$n_pooled_residuals), n_points, "n_pooled_residuals shape")
+  assert_equal_int(length(result$min_bin_occupancy), n_points, "min_bin_occupancy shape")
+  assert_equal_int(length(result$mean_bin_occupancy), n_points, "mean_bin_occupancy shape")
+  assert_equal_int(length(result$max_bin_occupancy), n_points, "max_bin_occupancy shape")
+  assert_equal_int(length(result$sturges_bins), n_points, "sturges_bins shape")
+  assert_equal_int(length(result$fd_bins), n_points, "fd_bins shape")
+  assert_equal_int(dim(result$pmfs), c(256L, n_points, n_studies), "pmfs shape")
+  assert_equal_int(dim(result$counts), c(256L, n_points, n_studies), "counts shape")
+  assert_equal_int(dim(result$included_n_reps), c(n_points, n_studies), "included_n_reps shape")
+  assert_equal_int(dim(result$mean_pmf), c(256L, n_points), "mean_pmf shape")
+  assert_equal_int(dim(result$mean_pmf_counts), c(256L, n_points), "mean_pmf_counts shape")
+  assert_equal_int(length(result$mean_pmf_included_n_reps), n_points, "mean_pmf_included_n_reps shape")
+  assert_equal_int(dim(result$js_divergences), c(n_points, n_studies), "js_divergences shape")
+  assert_equal_int(dim(result$weights), c(n_points, n_studies), "weights shape")
+  assert_equal_int(length(result$global_js_divergence), n_studies, "global_js_divergence shape")
+  assert_equal_int(length(result$p_values), n_studies, "p_values shape")
+
+  # A caller must be able to slice down to the meaningful leading bins.
+  max_n_bins <- as.integer(result$max_n_bins_per_point)
+  assert_equal_int(dim(result$pmfs[1:max_n_bins, , , drop = FALSE]), c(max_n_bins, n_points, n_studies),
+                    "pmfs slices down to max_n_bins_per_point")
 
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 1]), 1L, "study 1 neighbor should be gene 1")
   assert_equal_int(as.integer(result$neighborhood_indices[, 1, 2]), 1L, "study 2 neighbor should be gene 1")
-
-  assert_equal_int(as.integer(result$counts[, 1, 1]), c(0L, 1L, 1L, 0L), "study 1 counts mismatch")
-  assert_equal_int(as.integer(result$counts[, 1, 2]), c(1L, 0L, 0L, 1L), "study 2 counts mismatch")
-  assert_equal_int(as.integer(result$included_n_reps[1, 1]), 2L, "study 1 included_n_reps mismatch")
-  assert_equal_int(as.integer(result$included_n_reps[1, 2]), 2L, "study 2 included_n_reps mismatch")
-
-  assert_equal_numeric(result$mean_pmf[, 1], c(0.25, 0.25, 0.25, 0.25), TOL, "mean_pmf should be uniform")
-  assert_equal_int(as.integer(result$mean_pmf_counts[, 1]), c(1L, 1L, 1L, 1L), "mean_pmf_counts mismatch")
-  assert_equal_int(as.integer(result$mean_pmf_included_n_reps[1]), 4L, "mean_pmf_included_n_reps mismatch")
-
-  assert_true(abs(result$global_js_divergence[1] - expected_jsd) < 1e-9, "study 1 global JSD, closed form")
-  assert_true(abs(result$global_js_divergence[2] - expected_jsd) < 1e-9, "study 2 global JSD, closed form")
-
-  assert_true(abs(result$weights[1, 1] - 1.0) < TOL, "single reference point weight is 1.0")
-  assert_true(abs(result$weights[1, 2] - 1.0) < TOL, "single reference point weight is 1.0")
 
   assert_true(abs(result$p_values[1] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0")
   assert_true(abs(result$p_values[2] - 0.0) < TOL, "n_permutations=0 -> p_values stay 0.0")
